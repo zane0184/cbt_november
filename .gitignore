@@ -43,3 +43,21 @@ auth.json
 /.vscode/
 .DS_Store
 Thumbs.db
+
+# Explicitly excluded legacy/debug artifacts (see DISTRIBUTION_EXCLUSIONS.md)
+/check_latest.php
+/debug_auth.php
+/debug_scores.php
+/phase6f_seed.php
+/read_attempts.php
+/smoke_test.php
+/tenant_id}
+/database/seeders/DemoDataSeeder.php
+/database/seeders/RuntimeTestSeeder.php
+
+# Generated runtime files
+/storage/logs/
+/storage/framework/
+/storage/reports/
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
