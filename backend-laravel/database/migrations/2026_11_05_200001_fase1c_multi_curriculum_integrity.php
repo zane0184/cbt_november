@@ -107,7 +107,7 @@ return new class extends Migration
             Schema::create('tenant_curriculum_registrations', function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->foreignUuid('tenant_id')->constrained('tenants')->onDelete('cascade');
-                $table->foreignUuid('multi_curriculum_version_id')->constrained('multi_curriculum_versions')->onDelete('RESTRICT');
+                $table->foreignUuid('multi_curriculum_version_id')->constrained('multi_curriculum_versions', 'id', 'fk_tcr_mcv_id')->onDelete('RESTRICT');
                 $table->foreignUuid('curriculum_owner_id')->constrained('tenants')->onDelete('RESTRICT');
                 $table->string('status')->default('ACTIVE');
                 $table->timestamp('registered_at')->useCurrent();
