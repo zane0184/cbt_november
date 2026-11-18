@@ -65,7 +65,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p p095d-artifacts
+          mkdir -p ../p095d-artifacts
           RUN_DB="cbt_p095d_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ ]]; then
             echo "Refusing invalid disposable database identifier: $RUN_DB" >&2
@@ -89,6 +89,7 @@ jobs:
           export APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')"
           echo "APP_KEY=$APP_KEY" >> "$GITHUB_ENV"
           export CBT_DISPOSABLE_GATE="ALLOW_P095D"
+          echo "CBT_DISPOSABLE_GATE=ALLOW_P095D" >> "$GITHUB_ENV"
           php -r '
             $expected = "cbt_p095d_" . getenv("GITHUB_RUN_ID") . "_" . getenv("GITHUB_RUN_ATTEMPT");
             if (getenv("CBT_DISPOSABLE_GATE") !== "ALLOW_P095D" ||
