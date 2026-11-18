@@ -1,0 +1,45 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.testing.example
+*.pem
+*.key
+*.p12
+*.pfx
+auth.json
+
+# Dependencies and generated framework files
+/vendor/
+/node_modules/
+/bootstrap/cache/*
+!/bootstrap/cache/.gitignore
+/storage/*.key
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/testing/*
+/storage/reports/*
+/public/build/
+/public/hot
+
+# Local databases, dumps, logs and test artifacts
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+*.sql.gz
+*.dump
+*.log
+.phpunit.result.cache
+.phpunit.cache
+
+# Local backups and machine-specific files
+/backup_before_patch/
+/PRE_UPDATE_BACKUP/
+/backups/
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
