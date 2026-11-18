@@ -162,7 +162,7 @@ jobs:
           before=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_DATABASE}' AND table_name='tenant_curriculum_registrations'")
           test "$before" = "1"
           set +e
-          php artisan migrate:rollback --step=1 --force --no-interaction -vvv > ../p095d-artifacts/rollback-guard.log 2>&1
+          php artisan migrate:rollback --path=database/migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php --force --no-interaction -vvv > ../p095d-artifacts/rollback-guard.log 2>&1
           rollback_rc=$?
           set -e
           echo "$rollback_rc" > ../p095d-artifacts/rollback-guard-exit-code.txt
