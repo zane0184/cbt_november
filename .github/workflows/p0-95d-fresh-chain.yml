@@ -1,0 +1,257 @@
+name: P0.95D Fresh Chain Migration Gate
+
+on:
+  push:
+    branches:
+      - p0-95d-migration-gate-20261118
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p0-95d-fresh-chain-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  fresh-chain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: cbt_p095d_ephemeral_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pcbt_p095d_ephemeral_root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    defaults:
+      run:
+        working-directory: backend-laravel
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USERNAME: root
+      DB_PASSWORD: cbt_p095d_ephemeral_root
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: p0-95d-migration-gate-20261118
+
+      - name: Set up PHP 8.3 and Composer v2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, tokenizer, xml, curl, dom, gd, zip, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Stage 1 — validate runtime and create unique disposable database
+        id: identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p p095d-artifacts
+          RUN_DB="cbt_p095d_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ ]]; then
+            echo "Refusing invalid disposable database identifier: $RUN_DB" >&2
+            exit 70
+          fi
+          if [[ -e .env ]]; then
+            echo "Refusing checkout containing .env" >&2
+            exit 71
+          fi
+          test "$APP_ENV" = "testing"
+          test "$DB_CONNECTION" = "mysql"
+          test "$DB_HOST" = "127.0.0.1"
+          test "$DB_USERNAME" = "root"
+          test "$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')" = "8.3"
+          composer --version | tee ../p095d-artifacts/composer-version.txt
+          php -v | tee ../p095d-artifacts/php-version.txt
+          php -m | sort | tee ../p095d-artifacts/php-extensions.txt
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -e "CREATE DATABASE \`$RUN_DB\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          echo "DB_DATABASE=$RUN_DB" >> "$GITHUB_ENV"
+          export DB_DATABASE="$RUN_DB"
+          export APP_KEY="base64:$(openssl rand -base64 32 | tr -d '\n')"
+          echo "APP_KEY=$APP_KEY" >> "$GITHUB_ENV"
+          export CBT_DISPOSABLE_GATE="ALLOW_P095D"
+          php -r '
+            $expected = "cbt_p095d_" . getenv("GITHUB_RUN_ID") . "_" . getenv("GITHUB_RUN_ATTEMPT");
+            if (getenv("CBT_DISPOSABLE_GATE") !== "ALLOW_P095D" ||
+                getenv("APP_ENV") !== "testing" ||
+                getenv("DB_CONNECTION") !== "mysql" ||
+                getenv("DB_HOST") !== "127.0.0.1" ||
+                getenv("DB_DATABASE") !== $expected ||
+                !preg_match("/^cbt_p095d_[0-9]+_[0-9]+$/", getenv("DB_DATABASE")) ||
+                getenv("DB_USERNAME") !== "root" ||
+                file_exists(".env")) {
+              fwrite(STDERR, "P0.95D identity gate refused execution.\n");
+              exit(72);
+            }
+            $pdo = new PDO(
+              "mysql:host=127.0.0.1;port=3306;dbname=" . getenv("DB_DATABASE"),
+              getenv("DB_USERNAME"),
+              getenv("DB_PASSWORD"),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $r = $pdo->query("SELECT DATABASE() db, VERSION() version, @@hostname hostname, @@default_storage_engine engine, CURRENT_USER() db_user, CONNECTION_ID() connection_id")->fetch(PDO::FETCH_ASSOC);
+            $tables = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = \'BASE TABLE\'")->fetchColumn();
+            if ($r["db"] !== $expected || !str_starts_with($r["version"], "8.") ||
+                strtoupper($r["engine"]) !== "INNODB" || $tables !== 0) {
+              fwrite(STDERR, "P0.95D database identity/emptiness check failed: " . json_encode([$r, "tables" => $tables]) . "\n");
+              exit(73);
+            }
+            echo json_encode(["gate"=>"PASS","database"=>$r["db"],"mysql"=>$r["version"],"hostname"=>$r["hostname"],"default_engine"=>$r["engine"],"db_user"=>$r["db_user"],"connection_id"=>$r["connection_id"],"base_tables_before_migration"=>$tables], JSON_PRETTY_PRINT) . PHP_EOL;
+          ' | tee ../p095d-artifacts/identity-gate.json
+
+      - name: Validate Composer manifest and lock
+        run: composer validate --no-check-publish 2>&1 | tee ../p095d-artifacts/composer-validate.log
+
+      - name: Install locked dependencies without lifecycle scripts
+        shell: bash
+        run: |
+          set -o pipefail
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts 2>&1 | tee ../p095d-artifacts/composer-install.log
+
+      - name: Prepare disposable Laravel runtime directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+
+      - name: Explicit Laravel package discovery
+        run: php artisan package:discover --ansi 2>&1 | tee ../p095d-artifacts/package-discover.log
+
+      - name: Stage 2 — execute full fresh migration chain once
+        id: migrate
+        shell: bash
+        run: |
+          set +e
+          set -o pipefail
+          echo "COMMAND: php artisan migrate --force --no-interaction -vvv" | tee ../p095d-artifacts/migration-command.txt
+          php artisan migrate --force --no-interaction -vvv 2>&1 | tee ../p095d-artifacts/migration.log
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > ../p095d-artifacts/migration-exit-code.txt
+          echo "migration_exit_code=$rc" >> "$GITHUB_OUTPUT"
+          echo "P0.95D migration exit code: $rc"
+          exit "$rc"
+
+      - name: Stage 3/4 — audit schema, tenant constraints and migration 190008
+        if: always() && steps.identity.outcome == 'success'
+        shell: bash
+        run: |
+          set +e
+          php <<'PHP' 2>&1 | tee ../p095d-artifacts/schema-audit.log
+          <?php
+          $db = getenv('DB_DATABASE');
+          if (!preg_match('/^cbt_p095d_[0-9]+_[0-9]+$/', (string) $db) ||
+              getenv('CBT_DISPOSABLE_GATE') !== 'ALLOW_P095D') {
+              fwrite(STDERR, "Schema audit refused: disposable identity marker missing.\n");
+              exit(80);
+          }
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=' . $db,
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $tables = $pdo->query("SELECT TABLE_NAME, ENGINE, TABLE_ROWS FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type='BASE TABLE' ORDER BY TABLE_NAME")->fetchAll(PDO::FETCH_ASSOC);
+          $columns = $pdo->query("SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA FROM information_schema.columns WHERE table_schema = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);
+          $indexes = $pdo->query("SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, INDEX_TYPE FROM information_schema.statistics WHERE table_schema = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX")->fetchAll(PDO::FETCH_ASSOC);
+          $foreignKeys = $pdo->query("SELECT k.TABLE_NAME, k.CONSTRAINT_NAME, k.COLUMN_NAME, k.ORDINAL_POSITION, k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE k LEFT JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME WHERE k.CONSTRAINT_SCHEMA=DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);
+          $ledgerExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='migrations'")->fetchColumn();
+          $ledger = $ledgerExists ? $pdo->query("SELECT migration, batch FROM migrations ORDER BY batch, migration")->fetchAll(PDO::FETCH_ASSOC) : [];
+          $mappingExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='question_multi_curriculum_mappings'")->fetchColumn();
+          $mappingCreate = null;
+          if ($mappingExists) {
+              $mappingCreate = $pdo->query("SHOW CREATE TABLE question_multi_curriculum_mappings")->fetch(PDO::FETCH_ASSOC);
+          }
+          $nonInnoDb = array_values(array_filter($tables, fn($t) => strtoupper((string)$t['ENGINE']) !== 'INNODB'));
+          $migration190008 = false;
+          $log = @file_get_contents('../p095d-artifacts/migration.log') ?: '';
+          $migration190008 = str_contains($log, '2026_11_05_190008_create_question_multi_curriculum_mappings_table');
+          $result = [
+              'database' => $db,
+              'mysql' => $pdo->query('SELECT VERSION()')->fetchColumn(),
+              'table_count' => count($tables),
+              'tables' => $tables,
+              'columns' => $columns,
+              'indexes' => $indexes,
+              'foreign_keys' => $foreignKeys,
+              'composite_foreign_keys' => array_values(array_filter(
+                  array_reduce($foreignKeys, function($carry, $fk) {
+                      $key = $fk['TABLE_NAME'].'/'.$fk['CONSTRAINT_NAME'];
+                      $carry[$key]['table'] = $fk['TABLE_NAME'];
+                      $carry[$key]['constraint'] = $fk['CONSTRAINT_NAME'];
+                      $carry[$key]['columns'][] = $fk['COLUMN_NAME'];
+                      $carry[$key]['referenced_table'] = $fk['REFERENCED_TABLE_NAME'];
+                      $carry[$key]['referenced_columns'][] = $fk['REFERENCED_COLUMN_NAME'];
+                      return $carry;
+                  }, []),
+                  fn($fk) => count($fk['columns']) > 1
+              )),
+              'migration_ledger_count' => count($ledger),
+              'migration_ledger' => $ledger,
+              'question_multi_curriculum_mappings_exists' => $mappingExists,
+              'question_multi_curriculum_mappings_show_create' => $mappingCreate,
+              'migration_190008_seen_in_log' => $migration190008,
+              'non_innodb_tables' => $nonInnoDb
+          ];
+          $rc = (int) @file_get_contents('../p095d-artifacts/migration-exit-code.txt');
+          $result['migration_exit_code'] = $rc;
+          $result['schema_gate'] = ($rc === 0 && count($ledger) === 56 && $mappingExists && count($nonInnoDb) === 0) ? 'PASS' : 'NOT_PASS';
+          file_put_contents('../p095d-artifacts/schema-audit.json', json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+          echo json_encode([
+              'schema_gate' => $result['schema_gate'],
+              'table_count' => count($tables),
+              'migration_ledger_count' => count($ledger),
+              'mapping_table_exists' => $mappingExists,
+              'migration_190008_seen_in_log' => $migration190008,
+              'non_innodb_table_count' => count($nonInnoDb),
+              'foreign_key_rows' => count($foreignKeys),
+              'composite_foreign_key_count' => count($result['composite_foreign_keys'])
+          ], JSON_PRETTY_PRINT) . PHP_EOL;
+          if ($result['schema_gate'] !== 'PASS') exit(81);
+          PHP
+          audit_rc=${PIPESTATUS[0]}
+          echo "$audit_rc" > ../p095d-artifacts/schema-audit-exit-code.txt
+          exit "$audit_rc"
+
+      - name: Stage 5 — destroy unique disposable database and verify removal
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_DB="cbt_p095d_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ ]]; then
+            echo "Cleanup refused unsafe database identifier" | tee ../p095d-artifacts/cleanup-proof.txt
+            exit 90
+          fi
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -e "DROP DATABASE IF EXISTS \`$RUN_DB\`;"
+          remaining=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='$RUN_DB'")
+          test "$remaining" = "0"
+          printf 'cleanup=PASS\ndatabase=%s\nremaining_schema_count=%s\n' "$RUN_DB" "$remaining" | tee ../p095d-artifacts/cleanup-proof.txt
+
+      - name: Upload P0.95D evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-95d-fresh-chain-${{ github.run_id }}-${{ github.run_attempt }}
+          path: p095d-artifacts/
+          if-no-files-found: error
+          retention-days: 30
