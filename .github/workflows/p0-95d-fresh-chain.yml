@@ -90,34 +90,35 @@ jobs:
           echo "APP_KEY=$APP_KEY" >> "$GITHUB_ENV"
           export CBT_DISPOSABLE_GATE="ALLOW_P095D"
           echo "CBT_DISPOSABLE_GATE=ALLOW_P095D" >> "$GITHUB_ENV"
-          php -r '
-            $expected = "cbt_p095d_" . getenv("GITHUB_RUN_ID") . "_" . getenv("GITHUB_RUN_ATTEMPT");
-            if (getenv("CBT_DISPOSABLE_GATE") !== "ALLOW_P095D" ||
-                getenv("APP_ENV") !== "testing" ||
-                getenv("DB_CONNECTION") !== "mysql" ||
-                getenv("DB_HOST") !== "127.0.0.1" ||
-                getenv("DB_DATABASE") !== $expected ||
-                !preg_match("/^cbt_p095d_[0-9]+_[0-9]+$/", getenv("DB_DATABASE")) ||
-                getenv("DB_USERNAME") !== "root" ||
-                file_exists(".env")) {
-              fwrite(STDERR, "P0.95D identity gate refused execution.\n");
+          php <<'PHP' | tee ../p095d-artifacts/identity-gate.json
+          <?php
+          $expected = "cbt_p095d_" . getenv("GITHUB_RUN_ID") . "_" . getenv("GITHUB_RUN_ATTEMPT");
+          if (getenv("CBT_DISPOSABLE_GATE") !== "ALLOW_P095D" ||
+              getenv("APP_ENV") !== "testing" ||
+              getenv("DB_CONNECTION") !== "mysql" ||
+              getenv("DB_HOST") !== "127.0.0.1" ||
+              getenv("DB_DATABASE") !== $expected ||
+              !preg_match("/^cbt_p095d_[0-9]+_[0-9]+$/", getenv("DB_DATABASE")) ||
+              getenv("DB_USERNAME") !== "root" ||
+              file_exists(".env")) {
+              fwrite(STDERR, "P0.95D identity gate refused execution.\\n");
               exit(72);
-            }
-            $pdo = new PDO(
+          }
+          $pdo = new PDO(
               "mysql:host=127.0.0.1;port=3306;dbname=" . getenv("DB_DATABASE"),
               getenv("DB_USERNAME"),
               getenv("DB_PASSWORD"),
               [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
-            );
-            $r = $pdo->query("SELECT DATABASE() db, VERSION() version, @@hostname hostname, @@default_storage_engine engine, CURRENT_USER() db_user, CONNECTION_ID() connection_id")->fetch(PDO::FETCH_ASSOC);
-            $tables = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = \'BASE TABLE\'")->fetchColumn();
-            if ($r["db"] !== $expected || !str_starts_with($r["version"], "8.") ||
-                strtoupper($r["engine"]) !== "INNODB" || $tables !== 0) {
-              fwrite(STDERR, "P0.95D database identity/emptiness check failed: " . json_encode([$r, "tables" => $tables]) . "\n");
+          );
+          $r = $pdo->query("SELECT DATABASE() db, VERSION() version, @@hostname hostname, @@default_storage_engine engine, CURRENT_USER() db_user, CONNECTION_ID() connection_id")->fetch(PDO::FETCH_ASSOC);
+          $tables = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'")->fetchColumn();
+          if ($r["db"] !== $expected || !str_starts_with($r["version"], "8.") ||
+              strtoupper($r["engine"]) !== "INNODB" || $tables !== 0) {
+              fwrite(STDERR, "P0.95D database identity/emptiness check failed: " . json_encode([$r, "tables" => $tables]) . "\\n");
               exit(73);
-            }
-            echo json_encode(["gate"=>"PASS","database"=>$r["db"],"mysql"=>$r["version"],"hostname"=>$r["hostname"],"default_engine"=>$r["engine"],"db_user"=>$r["db_user"],"connection_id"=>$r["connection_id"],"base_tables_before_migration"=>$tables], JSON_PRETTY_PRINT) . PHP_EOL;
-          ' | tee ../p095d-artifacts/identity-gate.json
+          }
+          echo json_encode(["gate"=>"PASS","database"=>$r["db"],"mysql"=>$r["version"],"hostname"=>$r["hostname"],"default_engine"=>$r["engine"],"db_user"=>$r["db_user"],"connection_id"=>$r["connection_id"],"base_tables_before_migration"=>$tables], JSON_PRETTY_PRINT) . PHP_EOL;
+          PHP
 
       - name: Validate Composer manifest and lock
         run: composer validate --no-check-publish 2>&1 | tee ../p095d-artifacts/composer-validate.log
