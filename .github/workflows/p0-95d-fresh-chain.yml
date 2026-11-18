@@ -154,6 +154,29 @@ jobs:
           echo "P0.95D migration exit code: $rc"
           exit "$rc"
 
+      - name: Stage 2B — prove Fase1C rollback fails closed without schema mutation
+        if: steps.migrate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          before=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_DATABASE}' AND table_name='tenant_curriculum_registrations'")
+          test "$before" = "1"
+          set +e
+          php artisan migrate:rollback --step=1 --force --no-interaction -vvv > ../p095d-artifacts/rollback-guard.log 2>&1
+          rollback_rc=$?
+          set -e
+          echo "$rollback_rc" > ../p095d-artifacts/rollback-guard-exit-code.txt
+          if [[ "$rollback_rc" -eq 0 ]]; then
+            echo "Unsafe: Fase1C rollback unexpectedly succeeded" >&2
+            cat ../p095d-artifacts/rollback-guard.log
+            exit 82
+          fi
+          grep -F "Fase1C migration is intentionally irreversible" ../p095d-artifacts/rollback-guard.log
+          after=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_DATABASE}' AND table_name='tenant_curriculum_registrations'")
+          test "$after" = "1"
+          ledger=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM `${DB_DATABASE}`.migrations WHERE migration='2026_11_05_200001_fase1c_multi_curriculum_integrity'")
+          test "$ledger" = "1"
+          printf 'rollback_guard=PASS\nrollback_exit_code=%s\ntenant_curriculum_registrations_after=%s\nledger_row_after=%s\n' "$rollback_rc" "$after" "$ledger" | tee ../p095d-artifacts/rollback-guard-proof.txt
       - name: Stage 3/4 — audit schema, tenant constraints and migration 190008
         if: always() && steps.identity.outcome == 'success'
         shell: bash
