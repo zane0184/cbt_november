@@ -221,6 +221,15 @@ return new class extends Migration
 
     public function down(): void
     {
+        // This migration performs data reconciliation and engine-specific table
+        // reconstruction. A generic rollback would discard reconciled values and
+        // cannot safely restore the exact pre-migration state on every supported
+        // engine. Fail closed before issuing any DDL; use a reviewed forward-fix
+        // or restore a verified backup instead.
+        throw new \\RuntimeException(
+            'Fase1C migration is intentionally irreversible. No schema changes were made. '
+            .'Use a reviewed forward migration or restore a verified backup.'
+        );
         // Fail-Closed Safety Verification
         if (!Schema::hasTable('tenant_curriculum_registrations') ||
             !Schema::hasTable('question_multi_curriculum_mappings') ||
