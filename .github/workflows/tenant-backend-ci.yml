@@ -107,4 +107,4 @@ jobs:
         run: php artisan package:discover --ansi
 
       - name: Run PHPUnit against disposable MySQL 8
-        run: php artisan test --no-interaction
+        run: php artisan test
