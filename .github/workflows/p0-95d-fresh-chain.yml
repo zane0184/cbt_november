@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - p0-95d-migration-gate-20261118
+      - hotfix/fase1c-mysql8-fk-name-20261119
 
 permissions:
   contents: read
@@ -50,7 +51,7 @@ jobs:
       - name: Checkout exact source commit
         uses: actions/checkout@v4
         with:
-          ref: p0-95d-migration-gate-20261118
+          ref: ${{ github.ref_name }}
 
       - name: Set up PHP 8.3 and Composer v2
         uses: shivammathur/setup-php@v2
