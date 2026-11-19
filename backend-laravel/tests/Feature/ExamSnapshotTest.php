@@ -38,6 +38,7 @@ class ExamSnapshotTest extends TestCase
     private $tenant;
     private $user;
     private $student;
+    private $rombel;
     private $exam;
     private $context;
 
@@ -81,6 +82,7 @@ class ExamSnapshotTest extends TestCase
             'name' => '1A',
             'status' => 'ACTIVE',
         ]);
+        $this->rombel = $rombel;
         $studentProfile = StudentProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->student->id,
@@ -510,6 +512,23 @@ class ExamSnapshotTest extends TestCase
             'user_id' => $this->student->id,
             'status' => 'STARTED',
         ]);
+        $this->assertDatabaseHas('student_profiles', [
+            'id' => $this->student->studentProfile->id,
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->student->id,
+        ]);
+        $this->assertDatabaseHas('rombel_student', [
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $this->rombel->id,
+            'student_id' => $this->student->studentProfile->id,
+        ]);
+        $this->assertContains($this->rombel->id, $this->student->studentProfile->rombels()->pluck('rombels.id')->all());
+        $this->assertContains($this->rombel->id, \App\Support\Security\TeacherAccess::assignedRombelIdsForScope(
+            $this->user,
+            $this->exam->assessment->subject_id,
+            $this->exam->assessment->academic_year_id,
+            $this->exam->assessment->semester_id
+        ));
         $this->assertTrue(\App\Support\Security\TeacherAccess::canManageExam($this->user, $this->exam), 'Teacher must retain exact assignment coverage for every participant.');
 
         return ExamAttempt::create([
