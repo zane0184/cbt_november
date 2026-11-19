@@ -12,6 +12,9 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
+use App\Models\ExamAttemptAnswer;
+use App\Models\Question;
+use App\Models\QuestionVersion;
 use App\Models\ExamParticipant;
 use App\Models\ExamQuestionSnapshot;
 use App\Models\ExamQuestionScore;
@@ -238,6 +241,42 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'status' => 'SUBMITTED',
             'started_at' => now()->subHour(),
             'submitted_at' => now(),
+        ]);
+
+        // Reopen creates a new score version through ScoringService, so this
+        // historical attempt must carry a valid immutable snapshot order.
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'created_by' => $this->teacherA->id,
+        ]);
+        $questionVersion = QuestionVersion::create([
+            'tenant_id' => $this->tenantA->id,
+            'question_id' => $question->id,
+            'stem' => 'Jawaban uraian untuk rekalkulasi historis',
+            'question_type' => 'ESSAY',
+            'version_number' => 1,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->teacherA->id,
+        ]);
+        $snapshot = $exam->snapshots()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenantA->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $questionVersion->id,
+            'snapshot_stem' => 'Jawaban uraian untuk rekalkulasi historis',
+            'snapshot_options' => [],
+            'points' => 100,
+            'metadata' => ['question_type' => 'ESSAY'],
+        ]);
+        $attempt->update(['question_order' => [(string) $snapshot->id]]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $exam->id,
+            'exam_attempt_id' => $attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->studentA->id,
+            'answer_payload' => ['text' => 'Jawaban essay untuk uji rekalkulasi'],
+            'answer_state' => 'ANSWERED',
         ]);
         $score = ExamAttemptScore::create([
             'tenant_id' => $this->tenantA->id,
