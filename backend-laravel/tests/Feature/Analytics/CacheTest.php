@@ -11,6 +11,11 @@ use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamParticipant;
 use App\Models\StudentProfile;
+use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
@@ -37,6 +42,43 @@ class CacheTest extends TestCase
             'full_name' => 'Student Name'
         ]);
         $rombel = Rombel::factory()->create(['tenant_id' => $tenant->id]);
+        $academicYear = AcademicYear::query()->whereKey($rombel->academic_year_id)->firstOrFail();
+        $semester = Semester::create([
+            'tenant_id' => $tenant->id,
+            'academic_year_id' => $academicYear->id,
+            'term' => 'GANJIL',
+            'is_active' => true,
+        ]);
+        $subject = Subject::create([
+            'tenant_id' => $tenant->id,
+            'code' => 'MAT',
+            'name' => 'Matematika',
+            'short_name' => 'MTK',
+            'status' => 'ACTIVE',
+        ]);
+        $exam->assessment()->update([
+            'subject_id' => $subject->id,
+            'academic_year_id' => $academicYear->id,
+            'semester_id' => $semester->id,
+            'created_by' => $teacher->id,
+        ]);
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $tenant->id,
+            'user_id' => $teacher->id,
+            'full_name' => $teacher->name,
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $tenant->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $academicYear->id,
+            'semester_id' => $semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $teacher->id,
+        ]);
+        $this->bootstrapCbtRolePermissions();
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) \Illuminate\Support\Str::uuid(),
             'tenant_id' => $tenant->id,
@@ -74,7 +116,7 @@ class CacheTest extends TestCase
         Cache::put($examKey, ['stale' => true]);
         Cache::put($rombelKey, ['stale' => true]);
 
-        $this->actingAs($admin, 'sanctum');
+        $this->actingAs($teacher, 'sanctum');
 
         // Finalize via API
         $response = $this->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
