@@ -58,7 +58,7 @@ class ExamProctorAssignmentService
                 ->first();
 
             $oldValues = $existing?->only([
-                'status', 'starts_at', 'ends_at', 'revoked_at', 'revoked_by',
+                'assigned_by', 'status', 'starts_at', 'ends_at', 'revoked_at', 'revoked_by', 'notes',
             ]);
 
             if ($existing) {
@@ -128,7 +128,7 @@ class ExamProctorAssignmentService
                 return;
             }
 
-            $oldValues = $lockedAssignment->only(['status', 'revoked_at', 'revoked_by']);
+            $oldValues = $lockedAssignment->only(['assigned_by', 'status', 'starts_at', 'ends_at', 'notes', 'revoked_at', 'revoked_by']);
             $lockedAssignment->update([
                 'status' => 'REVOKED',
                 'revoked_at' => now(),
