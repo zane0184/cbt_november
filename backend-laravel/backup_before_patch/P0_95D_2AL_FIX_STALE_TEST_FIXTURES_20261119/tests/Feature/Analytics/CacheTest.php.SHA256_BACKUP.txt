@@ -1,0 +1,3 @@
+Original path: backend-laravel/tests/Feature/Analytics/CacheTest.php
+Original Git blob SHA: 7de090c158fd673cde1ad7649a98f49c97b88f72
+Reason: Preserve pre-patch source before correcting stale test fixture references.

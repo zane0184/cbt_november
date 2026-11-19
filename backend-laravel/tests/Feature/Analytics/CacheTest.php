@@ -32,6 +32,9 @@ class CacheTest extends TestCase
         $this->setTenantContext($tenant->id);
 
         $admin = User::factory()->create(['tenant_id' => $tenant->id]);
+        $teacher = User::factory()->create(['tenant_id' => $tenant->id]);
+        $teacherRole = \App\Models\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $teacher->roles()->attach($teacherRole);
         $admin->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin'])
         );

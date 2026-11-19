@@ -148,7 +148,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('questionCode', 'FIQ-MC-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
+        // Semester is not a QuestionBank component property; scope comes from teacher assignment.
             ->set('selectedOutcomeId', $this->learningOutcome->id)
             ->set('selectedObjectiveId', $this->learningObjective->id)
             ->set('stem', 'Apakah rukun Islam yang pertama?')
@@ -170,7 +170,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('questionCode', 'FIQ-TF-01')
             ->set('questionType', 'TRUE_FALSE')
             ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
+        // Semester is not a QuestionBank component property; scope comes from teacher assignment.
             ->set('stem', 'Shalat Subuh berjumlah dua rakaat.')
             ->set('defaultPoints', 5)
             ->set('correctOption', 'A')
@@ -186,7 +186,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('questionCode', 'FIQ-ESSAY-01')
             ->set('questionType', 'ESSAY')
             ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
+        // Semester is not a QuestionBank component property; scope comes from teacher assignment.
             ->set('stem', 'Jelaskan syarat sah shalat Jumat!')
             ->set('explanation', '1. Beragama Islam, 2. Baligh, 3. Berakal, 4. Laki-laki.')
             ->set('defaultPoints', 20)
@@ -208,7 +208,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('questionCode', 'FIQ-EDIT-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
+        // Semester is not a QuestionBank component property; scope comes from teacher assignment.
             ->set('stem', 'Pertanyaan Awal')
             ->set('optionA', 'Awal 1')
             ->set('optionB', 'Awal 2')
@@ -250,7 +250,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('questionCode', 'FIQ-EXAM-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
+        // Semester is not a QuestionBank component property; scope comes from teacher assignment.
             ->set('stem', 'Apakah hukum menuntut ilmu bagi setiap Muslim?')
             ->set('optionA', 'Fardhu Ain')
             ->set('optionB', 'Fardhu Kifayah')
@@ -317,7 +317,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('questionCode', 'FIQ-FREEZE-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
+        // Semester is not a QuestionBank component property; scope comes from teacher assignment.
             ->set('stem', 'Stem Asli Sebelum Diedit')
             ->set('optionA', 'Asli A')
             ->set('optionB', 'Asli B')
