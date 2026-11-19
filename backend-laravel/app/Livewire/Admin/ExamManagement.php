@@ -275,7 +275,7 @@ class ExamManagement extends Component
                     'attempt_limit' => $this->attemptLimit,
                     'shuffle_questions' => $this->shuffleQuestions,
                     'shuffle_options' => $this->shuffleOptions,
-                    'require_token' => $this->requireToken,
+                    'require_token' => true,
                     'token' => null,
                     'created_by' => auth()->id(),
                 ]);
