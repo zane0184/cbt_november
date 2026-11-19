@@ -12,6 +12,7 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Operator\OperatorDashboard;
+use App\Livewire\Kamad\KamadDashboard;
 use App\Livewire\Proktor\ProktorDashboard;
 
 Route::get('/', function () {
