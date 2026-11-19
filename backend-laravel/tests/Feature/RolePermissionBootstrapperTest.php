@@ -57,13 +57,13 @@ class RolePermissionBootstrapperTest extends TestCase
         $guru = Role::where('name', 'GURU')->firstOrFail();
         $operator = Role::where('name', 'OPERATOR')->firstOrFail();
 
-        $this->assertEqualsCanonicalizing(['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.reopen', 'report.view'], $admin->permissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'], $admin->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'exam.monitor', 'report.view'], $kamad->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'], $guru->permissions()->pluck('name')->all());
         $this->assertFalse($kamad->permissions()->where('name', 'curriculum.manage')->exists());
         $this->assertFalse($guru->permissions()->where('name', 'curriculum.manage')->exists());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'academic.manage', 'exam.monitor', 'report.view'], $operator->permissions()->pluck('name')->all());
-        $this->assertFalse($admin->permissions()->whereIn('name', ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'question.manage'])->exists());
+        $this->assertFalse($admin->permissions()->where('name', 'question.manage')->exists());
         $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'];
         $this->assertSame(count($expectedPermissions), Permission::whereIn('name', $expectedPermissions)->count());
     }
