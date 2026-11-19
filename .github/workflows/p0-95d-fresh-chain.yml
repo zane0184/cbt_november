@@ -5,6 +5,7 @@ on:
     branches:
       - p0-95d-migration-gate-20261118
       - hotfix/fase1c-mysql8-fk-name-20261119
+      - work/schema-dump-export-20261119
 
 permissions:
   contents: read
@@ -68,10 +69,12 @@ jobs:
           set -euo pipefail
           mkdir -p ../p095d-artifacts
           RUN_DB="cbt_p095d_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
-          if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ ]]; then
-            echo "Refusing invalid disposable database identifier: $RUN_DB" >&2
+          RUN_SCHEMA_DB="cbt_p095d_schema_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ || ! "$RUN_SCHEMA_DB" =~ ^cbt_p095d_schema_[0-9]+_[0-9]+$ ]]; then
+            echo "Refusing invalid disposable database identifier" >&2
             exit 70
           fi
+          echo "RUN_SCHEMA_DB=$RUN_SCHEMA_DB" >> "$GITHUB_ENV"
           if [[ -e .env ]]; then
             echo "Refusing checkout containing .env" >&2
             exit 71
@@ -153,6 +156,31 @@ jobs:
           echo "migration_exit_code=$rc" >> "$GITHUB_OUTPUT"
           echo "P0.95D migration exit code: $rc"
           exit "$rc"
+
+      - name: Stage 2A — generate and verify Laravel MySQL schema dump
+        if: steps.migrate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan schema:dump --database=mysql --no-interaction 2>&1 | tee ../p095d-artifacts/schema-dump.log
+          test -s database/schema/mysql-schema.sql
+          cp database/schema/mysql-schema.sql ../p095d-artifacts/mysql-schema.sql
+          RUN_SCHEMA_DB="cbt_p095d_schema_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -e "CREATE DATABASE $RUN_SCHEMA_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          export DB_DATABASE="$RUN_SCHEMA_DB"
+          echo "COMMAND: fresh install using Laravel schema dump" | tee ../p095d-artifacts/schema-dump-replay.log
+          php artisan migrate --force --no-interaction -vvv 2>&1 | tee -a ../p095d-artifacts/schema-dump-replay.log
+          php -r '
+            $db = getenv("DB_DATABASE");
+            $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=".$db, getenv("DB_USERNAME"), getenv("DB_PASSWORD"), [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+            $tables = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE'")->fetchColumn();
+            $ledger = (int)$pdo->query("SELECT COUNT(*) FROM migrations")->fetchColumn();
+            $fk = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tenant_curriculum_registrations' AND CONSTRAINT_NAME='fk_tcr_mcv_id' AND REFERENCED_TABLE_NAME='multi_curriculum_versions'")->fetchColumn();
+            $engines = (int)$pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND ENGINE<>'InnoDB'")->fetchColumn();
+            $result = ["database"=>$db,"table_count"=>$tables,"migration_ledger_count"=>$ledger,"fk_tcr_mcv_id_count"=>$fk,"non_innodb_count"=>$engines];
+            echo json_encode($result, JSON_PRETTY_PRINT).PHP_EOL;
+            if ($tables !== 70 || $ledger !== 56 || $fk !== 1 || $engines !== 0) exit(1);
+          ' | tee ../p095d-artifacts/schema-dump-replay-proof.json
 
       - name: Stage 2B — prove Fase1C rollback fails closed without schema mutation
         if: steps.migrate.outcome == 'success'
