@@ -29,9 +29,7 @@ class ProktorDashboard extends Component
             ->where('tenant_id', $tenantId)
             ->where('proctor_user_id', $user->id)
             ->notRevoked()
-            ->where(function ($query) {
-                $query->whereNull('ends_at')->orWhere('ends_at', '>', now());
-            })
+            ->where('ends_at', '>', now())
             ->with(['exam.subject'])
             ->orderBy('starts_at')
             ->get();
