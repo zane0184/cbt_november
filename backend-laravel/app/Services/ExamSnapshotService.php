@@ -29,7 +29,7 @@ class ExamSnapshotService
                 $lockedExam->snapshots()->delete();
                 $nextSequence = 0;
             } else {
-                $nextSequence = ((int) $exam->snapshots()->max('sequence')) + 1;
+                $nextSequence = ((int) $lockedExam->snapshots()->max('sequence')) + 1;
             }
 
             foreach ($questionVersionIds as $versionId) {
@@ -44,7 +44,7 @@ class ExamSnapshotService
                     ->firstOrFail();
                 $options = $version->options()->orderBy('sequence')->get();
                 $media = $version->media()
-                    ->where('media_assets.tenant_id', $exam->tenant_id)
+                    ->where('media_assets.tenant_id', $lockedExam->tenant_id)
                     ->orderBy('media_assets.id')
                     ->lockForUpdate()
                     ->get();
@@ -52,7 +52,7 @@ class ExamSnapshotService
                 // Prevent duplicate version in same exam if appending
                 // The database unique key is (exam_id, source_question_id),
                 // therefore deduplicate on question identity, not version ID.
-                if ($exam->snapshots()->where('source_question_id', $version->question_id)->exists()) {
+                if ($lockedExam->snapshots()->where('source_question_id', $version->question_id)->exists()) {
                     continue;
                 }
 
@@ -85,8 +85,8 @@ class ExamSnapshotService
                         'question_type' => $version->question_type,
                     ]
                 ]);
-                $snapshot->exam_id = $exam->id;
-                $snapshot->tenant_id = $exam->tenant_id;
+                $snapshot->exam_id = $lockedExam->id;
+                $snapshot->tenant_id = $lockedExam->tenant_id;
                 $snapshot->save();
                 $nextSequence++;
             }
