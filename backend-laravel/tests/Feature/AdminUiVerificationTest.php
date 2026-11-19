@@ -42,11 +42,11 @@ class AdminUiVerificationTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'Madrasah Aliyah Negeri', 'code' => 'MAN1']);
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
 
-        $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
-        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $studentRole = Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
+        Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         $permissions = collect(['academic.manage', 'curriculum.view', 'curriculum.manage', 'user.manage'])
-            ->mapWithKeys(fn (string $name) => [$name => Permission::create(['name' => $name, 'label' => $name])]);
+            ->mapWithKeys(fn (string $name) => [$name => Permission::firstOrCreate(['name' => $name, 'label' => $name])]);
         $adminRole->permissions()->attach($permissions->pluck('id')->all());
 
         $this->admin = User::create([
@@ -76,6 +76,7 @@ class AdminUiVerificationTest extends TestCase
             'short_name' => 'MTK',
             'status' => 'ACTIVE',
         ]);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** @test */
@@ -252,7 +253,7 @@ class AdminUiVerificationTest extends TestCase
     /** @test */
     public function admin_without_user_manage_permission_cannot_open_user_management()
     {
-        $role = Role::create(['name' => 'ADMIN_MADRASAH_NO_USER_MANAGE', 'label' => 'Admin tanpa user manage']);
+        $role = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH_NO_USER_MANAGE', 'label' => 'Admin tanpa user manage']);
         $limitedAdmin = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Admin Terbatas',
@@ -268,7 +269,7 @@ class AdminUiVerificationTest extends TestCase
     /** @test */
     public function guru_without_academic_manage_cannot_mutate_master_academic_data()
     {
-        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         $guru = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Guru Test',
@@ -287,7 +288,7 @@ class AdminUiVerificationTest extends TestCase
     /** @test */
     public function guru_can_view_curriculum_but_cannot_open_tp_creation()
     {
-        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         $curriculumView = Permission::firstOrCreate(['name' => 'curriculum.view'], ['label' => 'Lihat Kurikulum']);
         $guruRole->permissions()->attach($curriculumView);
         $guru = User::create([
