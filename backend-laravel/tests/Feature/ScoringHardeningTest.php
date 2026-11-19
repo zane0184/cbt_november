@@ -334,12 +334,17 @@ class ScoringHardeningTest extends TestCase
         }
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Lain', 'code' => 'M2']);
-        $foreignAdmin = User::create([
-            'tenant_id' => $otherTenant->id,
-            'name' => 'Foreign Admin',
-            'email' => 'foreign-admin@m.com',
-            'password' => 'p',
-        ]);
+        TenantContext::set($otherTenant->id);
+        try {
+            $foreignAdmin = User::create([
+                'tenant_id' => $otherTenant->id,
+                'name' => 'Foreign Admin',
+                'email' => 'foreign-admin@m.com',
+                'password' => 'p',
+            ]);
+        } finally {
+            TenantContext::clear();
+        }
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
         $foreignAdmin->roles()->syncWithoutDetaching($adminRole->id);
 
