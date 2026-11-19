@@ -122,7 +122,9 @@
         <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
             <div class="p-5 border-b border-cardBorder flex justify-between items-center bg-gray-50/50">
                 <h3 class="font-bold text-navy-900">Rombongan Belajar (Rombel)</h3>
-                <a href="/admin/academic" class="text-xs font-bold text-emerald-600 hover:underline">Lihat Semua →</a>
+                @if(auth()->user()->hasRole('ADMIN_MADRASAH'))
+                    <a href="/admin/academic" class="text-xs font-bold text-emerald-600 hover:underline">Lihat Semua →</a>
+                @endif
             </div>
             <div class="divide-y divide-cardBorder">
                 @forelse($recentRombels as $rombel)
