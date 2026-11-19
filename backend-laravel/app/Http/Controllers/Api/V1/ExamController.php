@@ -86,7 +86,8 @@ class ExamController extends Controller
         $exam = Exam::create(array_merge($validated, [
             'tenant_id' => $tenantId, // Explicitly set for safety
             'created_by' => $request->user()->id,
-            'status' => 'DRAFT'
+            'status' => 'DRAFT',
+            'require_token' => true,
         ]));
 
         $this->auditService->log('CREATE', 'Exam', $exam->id, null, $exam->toArray());
@@ -173,6 +174,7 @@ class ExamController extends Controller
         ]);
 
         $oldValues = $exam->toArray();
+        $validated['require_token'] = true;
         $exam->update($validated);
 
         $this->auditService->log('UPDATE', 'Exam', $exam->id, $oldValues, $exam->toArray());
@@ -303,11 +305,12 @@ class ExamController extends Controller
             }
 
             $publishedAt = now();
-            $tokenGenerated = (bool) ($lockedExam->require_token && !$lockedExam->token);
+            $tokenGenerated = !$lockedExam->token;
             $lockedExam->update([
                 'status' => 'PUBLISHED',
                 'locked_at' => $publishedAt,
                 'published_at' => $publishedAt,
+                'require_token' => true,
                 'token' => $tokenGenerated ? strtoupper(Str::random(6)) : $lockedExam->token,
             ]);
 
