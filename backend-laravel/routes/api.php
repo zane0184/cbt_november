@@ -56,6 +56,9 @@ Route::prefix('v1')->group(function () {
         // Assessment & Exam Builder
         Route::apiResource('assessments', \App\Http\Controllers\Api\V1\AssessmentController::class);
         Route::apiResource('exams', \App\Http\Controllers\Api\V1\ExamController::class);
+        Route::get('/exams/{exam}/proctor-assignments', [\App\Http\Controllers\Api\V1\ExamProctorAssignmentController::class, 'index']);
+        Route::post('/exams/{exam}/proctor-assignments', [\App\Http\Controllers\Api\V1\ExamProctorAssignmentController::class, 'store']);
+        Route::delete('/exams/{exam}/proctor-assignments/{assignment}', [\App\Http\Controllers\Api\V1\ExamProctorAssignmentController::class, 'destroy']);
         Route::get('/exams/{exam}/monitoring', [\App\Http\Controllers\Api\V1\MonitoringController::class, 'summary']);
         Route::get('/exams/{exam}/monitoring/participants', [\App\Http\Controllers\Api\V1\MonitoringController::class, 'participants']);
         Route::get('/exams/{exam}/monitoring/attempts/{attempt}', [\App\Http\Controllers\Api\V1\MonitoringController::class, 'attempt']);
