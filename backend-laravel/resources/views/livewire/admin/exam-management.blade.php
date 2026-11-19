@@ -5,7 +5,7 @@
             <h1 class="text-2xl font-bold text-navy-900">Manajemen Pembuatan Ujian & Sesi</h1>
             <p class="text-xs text-textSecondary mt-1">Buat, jadwalkan, kunci, dan kelola token asesmen digital siswa per rombel</p>
         </div>
-        @can('create', \\App\\Models\\Exam::class)
+        @can('create', \App\Models\Exam::class)
             <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
                 <span>+</span> Buat Ujian Baru
             </button>
@@ -287,7 +287,7 @@
 
                     <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
                         <button type="button" wire:click="$set('showModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
-                        @can('create', \\App\\Models\\Exam::class)
+                        @can('create', \App\Models\Exam::class)
                             <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">
                                 {{ $editingExamId ? 'Perbarui Ujian & Snapshot' : 'Simpan Ujian' }}
                             </button>
