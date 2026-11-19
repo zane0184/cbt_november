@@ -140,7 +140,27 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'grade_level_id' => $gradeLevel->id,
             'name' => 'Kelas 1A',
         ]);
-        $studentProfile->rombels()->attach($this->rombel->id, ['id' => (string)Str::uuid()]);
+        $studentProfile->rombels()->attach($this->rombel->id, [
+            'tenant_id' => $this->tenantA->id,
+            'id' => (string) Str::uuid(),
+        ]);
+
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->teacherA->id,
+            'full_name' => 'Guru A',
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenantA->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $this->subject->id,
+            'rombel_id' => $this->rombel->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $this->teacherA->id,
+        ]);
 
         $this->studentB = User::create([
             'tenant_id' => $this->tenantB->id,
