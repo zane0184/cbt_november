@@ -67,6 +67,7 @@ class ScoringHardeningTest extends TestCase
             'submitted_at' => now()
         ]);
         $this->bootstrapCbtRolePermissions();
+        $this->grantTeacherAccessToExam($this->teacher, $this->exam);
     }
 
     /** 1. MULTIPLE RESPONSE DUPLICATE SELECTION **/

@@ -66,6 +66,7 @@ class ScoringEngineTest extends TestCase
             'expires_at' => now()->addMinutes(30),
             'submitted_at' => now()
         ]);
+        $this->grantTeacherAccessToExam($this->teacher, $this->exam);
     }
 
     public function test_multiple_choice_scoring()

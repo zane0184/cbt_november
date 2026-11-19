@@ -68,6 +68,7 @@ class ResultWorkflowTest extends TestCase
             'submitted_at' => now()
         ]);
         $this->bootstrapCbtRolePermissions();
+        $this->grantTeacherAccessToExam($this->teacher, $this->exam);
     }
 
 
