@@ -380,17 +380,7 @@ class ExamAnswerTest extends TestCase
     {
         $this->actingAs($this->student, 'sanctum');
 
-        $unassignedSnapshot = new ExamQuestionSnapshot([
-            'id' => (string) Str::uuid(),
-            'exam_id' => $this->exam->id,
-            'source_question_id' => $this->snapshot->source_question_id,
-            'source_question_version_id' => $this->snapshot->source_question_version_id,
-            'snapshot_stem' => 'Not assigned to this attempt',
-            'snapshot_options' => $this->snapshot->snapshot_options,
-            'metadata' => ['question_type' => 'MC'],
-        ]);
-        $unassignedSnapshot->tenant_id = $this->tenant->id;
-        $unassignedSnapshot->save();
+        $unassignedSnapshot = $this->createUnassignedSnapshot('Not assigned to this attempt');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$unassignedSnapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -409,17 +399,7 @@ class ExamAnswerTest extends TestCase
     {
         $this->actingAs($this->student, 'sanctum');
 
-        $unassignedSnapshot = new ExamQuestionSnapshot([
-            'id' => (string) Str::uuid(),
-            'exam_id' => $this->exam->id,
-            'source_question_id' => $this->snapshot->source_question_id,
-            'source_question_version_id' => $this->snapshot->source_question_version_id,
-            'snapshot_stem' => 'Legacy unassigned answer',
-            'snapshot_options' => $this->snapshot->snapshot_options,
-            'metadata' => ['question_type' => 'MC'],
-        ]);
-        $unassignedSnapshot->tenant_id = $this->tenant->id;
-        $unassignedSnapshot->save();
+        $unassignedSnapshot = $this->createUnassignedSnapshot('Legacy unassigned answer');
 
         \App\Models\ExamAttemptAnswer::create([
             'tenant_id' => $this->tenant->id,
@@ -676,4 +656,41 @@ class ExamAnswerTest extends TestCase
             $res5->assertStatus(422);
         }
     }
+    /**
+     * Create a different source question so the exam/source-question unique
+     * constraint remains intact while testing an unassigned attempt snapshot.
+     */
+    private function createUnassignedSnapshot(string $stem): ExamQuestionSnapshot
+    {
+        $question = new Question(['created_by' => $this->student->id]);
+        $question->tenant_id = $this->tenant->id;
+        $question->save();
+
+        $version = new QuestionVersion([
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MC',
+            'stem' => $stem,
+            'is_current' => true,
+            'created_by' => $this->student->id,
+        ]);
+        $version->tenant_id = $this->tenant->id;
+        $version->save();
+
+        $snapshot = new ExamQuestionSnapshot([
+            'id' => (string) Str::uuid(),
+            'exam_id' => $this->exam->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'snapshot_stem' => $stem,
+            'snapshot_options' => $this->snapshot->snapshot_options,
+            'metadata' => ['question_type' => 'MC'],
+        ]);
+        $snapshot->tenant_id = $this->tenant->id;
+        $snapshot->save();
+
+        return $snapshot;
+    }
+
 }
