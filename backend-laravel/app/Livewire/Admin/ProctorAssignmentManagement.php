@@ -35,8 +35,9 @@ class ProctorAssignmentManagement extends Component
         $this->resetPage();
     }
 
-    public function saveAssignment(ExamProctorAssignmentService $assignmentService): void
+    public function saveAssignment(): void
     {
+        $assignmentService = app(ExamProctorAssignmentService::class);
         $tenantId = auth()->user()->tenant_id;
 
         $validated = $this->validate([
@@ -73,8 +74,9 @@ class ProctorAssignmentManagement extends Component
         session()->flash('message', 'Penugasan Proktor berhasil dibuat atau diperbarui. Perubahan tercatat di audit log.');
     }
 
-    public function revokeAssignment(string $assignmentId, ExamProctorAssignmentService $assignmentService): void
+    public function revokeAssignment(string $assignmentId): void
     {
+        $assignmentService = app(ExamProctorAssignmentService::class);
         $tenantId = auth()->user()->tenant_id;
 
         $assignment = ExamProctorAssignment::query()
