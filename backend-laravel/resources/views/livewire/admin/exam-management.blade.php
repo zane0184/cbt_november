@@ -5,9 +5,11 @@
             <h1 class="text-2xl font-bold text-navy-900">Manajemen Pembuatan Ujian & Sesi</h1>
             <p class="text-xs text-textSecondary mt-1">Buat, jadwalkan, kunci, dan kelola token asesmen digital siswa per rombel</p>
         </div>
-        <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
-            <span>+</span> Buat Ujian Baru
-        </button>
+        @can('create', \\App\\Models\\Exam::class)
+            <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                <span>+</span> Buat Ujian Baru
+            </button>
+        @endcan
     </div>
 
     @if (session()->has('message'))
@@ -51,11 +53,13 @@
                                    ($exam->status === 'CLOSED' ? 'bg-gray-100 text-gray-700 border border-gray-200' : 'bg-amber-50 text-amber-700 border border-amber-200') }}">
                                 {{ $exam->current_status }}
                             </span>
-                            @if(!$exam->isLocked())
-                                <button wire:click="openEditModal('{{ $exam->id }}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm">
-                                    ✎ Edit
-                                </button>
-                            @endif
+                            @can('update', $exam)
+                                @if(!$exam->isLocked())
+                                    <button wire:click="openEditModal('{{ $exam->id }}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm">
+                                        ✎ Edit
+                                    </button>
+                                @endif
+                            @endcan
                         </div>
                     </div>
 
@@ -85,9 +89,11 @@
                             <div class="mt-3 flex items-center justify-between bg-navy-900 text-white p-3 rounded-xl text-xs">
                                 <span class="text-gray-300 font-medium">Token Masuk Ujian:</span>
                                 <span class="font-mono font-bold text-emerald-400 text-sm tracking-widest">{{ $exam->token ?? '-' }}</span>
-                                <button wire:click="generateToken('{{ $exam->id }}')" class="text-[10px] text-emerald-300 hover:text-white underline font-bold">
-                                    Regenerate
-                                </button>
+                                @can('generateToken', $exam)
+                                    <button wire:click="generateToken('{{ $exam->id }}')" class="text-[10px] text-emerald-300 hover:text-white underline font-bold">
+                                        Regenerate
+                                    </button>
+                                @endcan
                             </div>
                         @else
                             <p class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Token dibuat otomatis setelah ujian diterbitkan.</p>
@@ -97,20 +103,24 @@
 
                 <!-- Action Links -->
                 <div class="pt-3 border-t border-cardBorder flex flex-wrap gap-2 text-xs">
-                    <a href="/exams/{{ $exam->id }}/monitoring" class="bg-navy-900 hover:bg-navy-800 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
-                        🖥️ Live Monitoring
-                    </a>
+                    @can('monitor', $exam)
+                        <a href="/exams/{{ $exam->id }}/monitoring" class="bg-navy-900 hover:bg-navy-800 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
+                            🖥️ Live Monitoring
+                        </a>
+                    @endcan
                     <a href="/exams/{{ $exam->id }}/results" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
                         📊 Hasil & Finalisasi
                     </a>
                     <a href="/exams/{{ $exam->id }}/analytics" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
                         📈 Analisis
                     </a>
-                    @if(!$exam->isLocked())
-                        <button wire:click="lockExam('{{ $exam->id }}')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm ml-auto">
-                            🔒 Kunci & Snapshot Ujian
-                        </button>
-                    @endif
+                    @can('lock', $exam)
+                        @if(!$exam->isLocked())
+                            <button wire:click="lockExam('{{ $exam->id }}')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm ml-auto">
+                                🔒 Terbitkan & Kunci Ujian
+                            </button>
+                        @endif
+                    @endcan
                 </div>
             </div>
         @empty
