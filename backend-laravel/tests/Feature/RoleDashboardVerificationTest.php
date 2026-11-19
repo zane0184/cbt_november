@@ -142,7 +142,9 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_dashboard_access_control()\n    {\n        // Unauthenticated
+    public function operator_dashboard_access_control()
+    {
+        // Unauthenticated
         $this->get('/admin/dashboard')->assertRedirect('/login');
         
         // Admin portal roles
@@ -159,7 +161,9 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function kamad_dashboard_access_control()\n    {\n        // Unauthenticated
+    public function kamad_dashboard_access_control()
+    {
+        // Unauthenticated
         $this->get('/admin/overview')->assertRedirect('/login');
         
         // Read-only executive view inside the Admin Madrasah portal
@@ -173,7 +177,9 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function proktor_dashboard_access_control()\n    {\n        // Unauthenticated
+    public function proktor_dashboard_access_control()
+    {
+        // Unauthenticated
         $this->get('/proktor/assignments')->assertRedirect('/login');
         
         // Temporary workbench is available only to the assigned Proktor role.
@@ -212,7 +218,9 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_can_access_curriculum_and_exams()\n    {\n        $this->actingAs($this->operatorA);
+    public function operator_can_access_curriculum_and_exams()
+    {
+        $this->actingAs($this->operatorA);
         // OPERATOR remains a legacy identity, not a fourth portal or an exam-authoring role.
         $this->get('/admin/dashboard')->assertStatus(200);
         $this->get('/admin/curriculum')->assertStatus(403);
@@ -220,7 +228,9 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function kamad_can_access_exams_module()\n    {\n        $this->actingAs($this->kamadA);
+    public function kamad_can_access_exams_module()
+    {
+        $this->actingAs($this->kamadA);
         // Kamad has read-only oversight and cannot enter the exam authoring module.
         $this->get('/admin/overview')->assertStatus(200);
         $this->get('/admin/exams')->assertStatus(403);
