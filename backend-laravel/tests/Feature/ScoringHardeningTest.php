@@ -16,12 +16,14 @@ use App\Models\ExamAttemptScore;
 use App\Models\ExamQuestionScore;
 use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
 use Illuminate\Support\Str;
 
 class ScoringHardeningTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesTeacherExamScope;
 
     private $tenant;
     private $teacher;
@@ -40,8 +42,16 @@ class ScoringHardeningTest extends TestCase
         $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa', 'email' => 'siswa@m.com', 'password' => 'p']);
         $this->student->roles()->create(['name' => 'SISWA', 'label' => 'Siswa']);
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->teacher->id]);
+        $scope = $this->createTeacherExamScope($this->tenant, $this->teacher, [$this->student], 'SCORING_HARDEN');
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $scope['academicYear']->id,
+            'subject_id' => $scope['subject']->id,
+            'semester_id' => $scope['semester']->id,
+            'title' => 'A1',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->teacher->id,
+        ]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -291,7 +301,7 @@ class ScoringHardeningTest extends TestCase
             $user = User::create([
                 'tenant_id' => $this->tenant->id,
                 'name' => $roleName,
-                'email' => strtolower($roleName) . '@m.com',
+                'email' => 'reopen-' . strtolower($roleName) . '@m.com',
                 'password' => 'p',
             ]);
             $user->roles()->create(['name' => $roleName, 'label' => $roleName]);
@@ -309,7 +319,7 @@ class ScoringHardeningTest extends TestCase
             $user = User::create([
                 'tenant_id' => $this->tenant->id,
                 'name' => $roleName,
-                'email' => strtolower($roleName) . '@m.com',
+                'email' => 'reopen-' . strtolower($roleName) . '@m.com',
                 'password' => 'p',
             ]);
             $user->roles()->create(['name' => $roleName, 'label' => $roleName]);
