@@ -31,7 +31,9 @@ class OperatorDashboard extends Component
         $totalExams = Exam::where('tenant_id', $tenantId)->count();
         $activeAcademicYear = AcademicYear::where('tenant_id', $tenantId)->where('is_active', true)->first();
 
-        $recentUsers = User::where('tenant_id', $tenantId)->with('roles')->latest()->take(5)->get();
+        $recentUsers = $user->hasRole('ADMIN_MADRASAH')
+            ? User::where('tenant_id', $tenantId)->with('roles')->latest()->take(5)->get()
+            : collect();
         $recentRombels = Rombel::where('tenant_id', $tenantId)->latest()->take(5)->get();
 
         return view('livewire.operator.operator-dashboard', [
