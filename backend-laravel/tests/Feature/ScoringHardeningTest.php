@@ -340,7 +340,8 @@ class ScoringHardeningTest extends TestCase
             'email' => 'foreign-admin@m.com',
             'password' => 'p',
         ]);
-        $foreignAdmin->roles()->create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin']);
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
+        $foreignAdmin->roles()->syncWithoutDetaching($adminRole->id);
 
         $this->assertFalse(
             app(\App\Policies\ExamAttemptPolicy::class)->reopen($foreignAdmin, $this->attempt),
