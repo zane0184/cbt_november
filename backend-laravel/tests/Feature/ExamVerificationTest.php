@@ -9,6 +9,11 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
+use App\Models\ExamQuestionSnapshot;
 use App\Models\Rombel;
 use App\Models\StudentProfile;
 use App\Models\Question;
@@ -25,6 +30,10 @@ class ExamVerificationTest extends TestCase
     private $tenantA;
     private $tenantB;
     private $adminA;
+    private $guruA;
+    private $subjectA;
+    private $semesterA;
+    private $snapshotA;
     private $siswaA;
     private $examA;
 
@@ -42,24 +51,69 @@ class ExamVerificationTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin'])
         );
 
+        $this->guruA = User::create(['tenant_id' => $this->tenantA->id, 'name' => 'Guru A', 'email' => 'guru@a.com', 'password' => 'p']);
+        $this->guruA->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
+
         $this->siswaA = User::create(['tenant_id' => $this->tenantA->id, 'name' => 'Siswa A', 'email' => 'siswa@a.com', 'password' => 'p']);
         $this->siswaA->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        $ay = AcademicYear::create(['name' => '2024']);
-        $assessment = Assessment::create(['academic_year_id' => $ay->id, 'title' => 'Daily', 'assessment_type' => 'DAILY', 'created_by' => $this->adminA->id]);
+        $ay = AcademicYear::create(['tenant_id' => $this->tenantA->id, 'name' => '2024']);
+        $this->semesterA = Semester::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
+        $this->subjectA = Subject::create(['tenant_id' => $this->tenantA->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenantA->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $this->semesterA->id,
+            'subject_id' => $this->subjectA->id,
+            'title' => 'Daily',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->guruA->id,
+        ]);
 
         $this->examA = Exam::create([
             'assessment_id' => $assessment->id,
             'title' => 'Test Exam',
             'duration_seconds' => 3600,
-            'created_by' => $this->adminA->id,
+            'created_by' => $this->guruA->id,
             'status' => 'DRAFT',
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
             'require_token' => true,
             'token' => 'SECRET'
+        ]);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->guruA->id,
+            'question_code' => 'VERIFY-01',
+            'created_by' => $this->guruA->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenantA->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Soal verifikasi',
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'created_by' => $this->guruA->id,
+        ]);
+        $this->snapshotA = ExamQuestionSnapshot::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $this->examA->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'sequence' => 1,
+            'points' => 10,
+            'snapshot_stem' => 'Soal verifikasi',
+            'snapshot_options' => [],
+            'snapshot_media' => [],
+            'metadata' => ['question_type' => 'ESSAY'],
+            'created_by' => $this->guruA->id,
         ]);
 
         $participant = ExamParticipant::create([
@@ -69,6 +123,7 @@ class ExamVerificationTest extends TestCase
         ]);
 
         $context->setTenantId(null);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** 1. Lifecycle Verification **/
@@ -113,7 +168,7 @@ class ExamVerificationTest extends TestCase
     /** 2. Token Security Verification **/
     public function test_token_validation_and_rate_limiting()
     {
-        $this->examA->update(['locked_at' => now()]); // Make it ongoing
+        $this->examA->update(['status' => 'PUBLISHED', 'published_at' => now(), 'locked_at' => now()]); // Make it ongoing
         $this->actingAs($this->siswaA, 'sanctum');
 
         // Valid Token
@@ -125,7 +180,7 @@ class ExamVerificationTest extends TestCase
         $this->examA->attempts()->delete();
 
         // Invalid Token
-        $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'WRONG']);
+        $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'WRONG1']);
         $response->assertStatus(422);
 
         // Brute force (5 hits)
@@ -150,7 +205,9 @@ class ExamVerificationTest extends TestCase
             'attempt_number' => 1,
             'status' => 'IN_PROGRESS',
             'started_at' => now(),
-            'device_fingerprint' => 'dev-1'
+            'expires_at' => now()->addMinutes(45),
+            'device_fingerprint' => 'dev-1',
+            'question_order' => [$this->snapshotA->id]
         ]);
 
         $this->actingAs($this->siswaA, 'sanctum');
@@ -200,13 +257,33 @@ class ExamVerificationTest extends TestCase
 
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenantA->id,
             'rombel_id' => $rombel->id,
             'student_id' => $student->id,
             'created_at' => now(),
             'updated_at' => now()
         ]);
 
-        $this->actingAs($this->adminA, 'sanctum');
+        // Replace the setup participant with the Rombel-scoped assignment under test.
+        $this->examA->participants()->delete();
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->guruA->id,
+            'full_name' => 'Guru A',
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenantA->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $this->subjectA->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $this->examA->assessment->academic_year_id,
+            'semester_id' => $this->semesterA->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $this->guruA->id,
+        ]);
+
+        $this->actingAs($this->guruA, 'sanctum');
 
         // Assign
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/assign-rombel", ['rombel_id' => $rombel->id]);
@@ -227,14 +304,14 @@ class ExamVerificationTest extends TestCase
     {
         $this->examA->update(['locked_at' => now()]);
 
-        $this->actingAs($this->adminA, 'sanctum');
+        $this->actingAs($this->guruA, 'sanctum');
 
         // Add Questions
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/questions", ['question_version_ids' => []]);
         $response->assertStatus(403); // canBeEdited() check in policy
 
         // Remove Questions (needs a real snapshot)
-        $q = new Question(['created_by' => $this->adminA->id]);
+        $q = new Question(['created_by' => $this->guruA->id]);
         $q->tenant_id = $this->tenantA->id;
         $q->save();
 
