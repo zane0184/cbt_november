@@ -9,6 +9,14 @@ use App\Models\Exam;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\Curriculum;
+use App\Models\Phase;
+use App\Models\GradeLevel;
+use App\Models\Rombel;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\ExamQuestionSnapshot;
 use App\Models\QuestionPublication;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,12 +43,48 @@ class ExamBuilderTest extends TestCase
         $this->teacher = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru', 'email' => 'guru@m.com', 'password' => 'p']);
         $teacherRole = \App\Models\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $this->teacher->roles()->attach($teacherRole);
-        $teacherPermissions = collect(['exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view', 'question.manage'])
+        $teacherPermissions = collect(['exam.manage', 'exam.assign', 'exam.monitor', 'exam.grade', 'report.view', 'question.manage'])
             ->map(fn ($name) => \App\Models\Permission::firstOrCreate(['name' => $name], ['label' => $name]));
         $teacherRole->permissions()->sync($teacherPermissions->pluck('id')->all());
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->teacher->id]);
+        $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
+        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024', 'is_active' => true]);
+        $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
+        $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
+        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
+        $rombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $ay->id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => '1A',
+            'status' => 'ACTIVE',
+        ]);
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->teacher->id,
+            'full_name' => 'Guru',
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $this->teacher->id,
+        ]);
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $semester->id,
+            'subject_id' => $subject->id,
+            'title' => 'A1',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->teacher->id,
+        ]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -52,6 +96,7 @@ class ExamBuilderTest extends TestCase
         ]);
 
         $context->setTenantId(null);
+        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_bulk_add_questions_to_exam()
@@ -160,7 +205,7 @@ class ExamBuilderTest extends TestCase
         $teacherB = User::create(['tenant_id' => $tenantB->id, 'name' => 'B', 'email' => 'b@e.com', 'password' => 'p']);
 
         $context->setTenantId(null);
-        $this->actingAs($teacherB);
+        $this->actingAs($teacherB, 'sanctum');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}");
 
         $response->assertStatus(404);
