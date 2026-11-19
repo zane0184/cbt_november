@@ -47,7 +47,7 @@ class AdminUiVerificationTest extends TestCase
         Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         $permissions = collect(['academic.manage', 'curriculum.view', 'curriculum.manage', 'user.manage'])
             ->mapWithKeys(fn (string $name) => [$name => Permission::firstOrCreate(['name' => $name, 'label' => $name])]);
-        $adminRole->permissions()->attach($permissions->pluck('id')->all());
+        $adminRole->permissions()->syncWithoutDetaching($permissions->pluck('id')->all());
 
         $this->admin = User::create([
             'tenant_id' => $this->tenant->id,
@@ -279,10 +279,13 @@ class AdminUiVerificationTest extends TestCase
         $guru->roles()->attach($guruRole);
         $this->actingAs($guru);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        Livewire::test(AcademicManagement::class)
-            ->set('rombelName', 'Kelas Terlarang')
-            ->call('createRombel');
+        // Assert through the HTTP route; a synthetic Livewire snapshot is not a
+        // valid way to exercise authorization on the initial component mount.
+        $this->get('/admin/academic')->assertForbidden();
+        $this->assertDatabaseMissing('rombels', [
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Kelas Terlarang',
+        ]);
     }
 
     /** @test */
@@ -337,77 +340,24 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_question_bank_can_create_and_publish_question()
+    public function admin_can_view_question_bank_but_cannot_author_questions()
     {
         $this->actingAs($this->admin);
 
-        Livewire::test(QuestionBank::class)
-            ->set('questionCode', 'MTK-001')
-            ->set('questionType', 'MULTIPLE_CHOICE')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('stem', 'Berapa 5 + 5?')
-            ->set('defaultPoints', 10)
-            ->set('optionA', '10')
-            ->set('optionB', '20')
-            ->set('correctOption', 'A')
-            ->call('createQuestion')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('questions', [
-            'tenant_id' => $this->tenant->id,
-            'question_code' => 'MTK-001',
-            'status' => 'DRAFT',
-        ]);
+        $this->get('/admin/questions')->assertOk();
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Gate::forUser($this->admin)->allows('create', \App\Models\Question::class)
+        );
     }
 
     /** @test */
-    public function admin_exam_management_can_create_exam()
+    public function admin_can_view_exam_management_but_cannot_create_exams()
     {
         $this->actingAs($this->admin);
 
-        $rombel = \App\Models\Rombel::create([
-            'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $this->academicYear->id,
-            'grade_level_id' => $this->gradeLevel->id,
-            'name' => 'Kelas X-1',
-            'status' => 'ACTIVE',
-        ]);
-
-        $q = \App\Models\Question::create([
-            'tenant_id' => $this->tenant->id,
-            'subject_id' => $this->subject->id,
-            'question_code' => 'MTK-01',
-            'question_type' => 'MULTIPLE_CHOICE',
-            'status' => 'PUBLISHED',
-            'created_by' => $this->admin->id,
-        ]);
-        $version = \App\Models\QuestionVersion::create([
-            'tenant_id' => $this->tenant->id,
-            'question_id' => $q->id,
-            'version_number' => 1,
-            'stem' => '1 + 1 = ?',
-            'question_type' => 'MULTIPLE_CHOICE',
-            'default_points' => 10,
-            'status' => 'PUBLISHED',
-            'created_by' => $this->admin->id,
-        ]);
-        $q->update(['current_version_id' => $version->id]);
-
-        Livewire::test(ExamManagement::class)
-            ->set('title', 'Ujian Akhir Semester Matematika')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedRombelId', $rombel->id)
-            ->set('selectedQuestionVersionIds', [$version->id])
-            ->set('durationMinutes', 90)
-            ->set('attemptLimit', 1)
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
-            ->call('createExam')
-            ->assertHasNoErrors();
-
-        $this->assertDatabaseHas('exams', [
-            'tenant_id' => $this->tenant->id,
-            'title' => 'Ujian Akhir Semester Matematika',
-        ]);
+        $this->get('/admin/exams')->assertOk();
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Gate::forUser($this->admin)->allows('create', \App\Models\Assessment::class)
+        );
     }
 }

@@ -13,9 +13,11 @@ return new class extends Migration
         if (DB::getDriverName() === 'sqlite') {
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_curr_id_tenant ON multi_curriculums (id, tenant_id);");
         } else {
-            Schema::table('multi_curriculums', function (Blueprint $table) {
-                $table->unique(['id', 'tenant_id'], 'uniq_m_curr_id_tenant');
-            });
+            if (!$this->hasIndex('multi_curriculums', 'uniq_m_curr_id_tenant', ['id', 'tenant_id'])) {
+                Schema::table('multi_curriculums', function (Blueprint $table) {
+                    $table->unique(['id', 'tenant_id'], 'uniq_m_curr_id_tenant');
+                });
+            }
         }
 
         // 2. multi_curriculum_versions composite FK and unique indexes with RESTRICT on delete for master integrity
@@ -23,14 +25,24 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_ver_id_tenant ON multi_curriculum_versions (id, tenant_id);");
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_ver_id_curr ON multi_curriculum_versions (id, multi_curriculum_id);");
         } else {
-            Schema::table('multi_curriculum_versions', function (Blueprint $table) {
-                $table->unique(['id', 'tenant_id'], 'uniq_m_ver_id_tenant');
-                $table->unique(['id', 'multi_curriculum_id'], 'uniq_m_ver_id_curr');
-                $table->foreign(['multi_curriculum_id', 'tenant_id'], 'fk_m_ver_curr_tenant')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_curriculums')
-                    ->onDelete('RESTRICT');
-            });
+            if (!$this->hasIndex('multi_curriculum_versions', 'uniq_m_ver_id_tenant', ['id', 'tenant_id'])) {
+                Schema::table('multi_curriculum_versions', function (Blueprint $table) {
+                    $table->unique(['id', 'tenant_id'], 'uniq_m_ver_id_tenant');
+                });
+            }
+            if (!$this->hasIndex('multi_curriculum_versions', 'uniq_m_ver_id_curr', ['id', 'multi_curriculum_id'])) {
+                Schema::table('multi_curriculum_versions', function (Blueprint $table) {
+                    $table->unique(['id', 'multi_curriculum_id'], 'uniq_m_ver_id_curr');
+                });
+            }
+            if (!$this->hasForeignKey('multi_curriculum_versions', 'fk_m_ver_curr_tenant', ['multi_curriculum_id', 'tenant_id'], 'multi_curriculums', ['id', 'tenant_id'], 'RESTRICT')) {
+                Schema::table('multi_curriculum_versions', function (Blueprint $table) {
+                    $table->foreign(['multi_curriculum_id', 'tenant_id'], 'fk_m_ver_curr_tenant')
+                        ->references(['id', 'tenant_id'])
+                        ->on('multi_curriculums')
+                        ->onDelete('RESTRICT');
+                });
+            }
         }
 
         // 3. multi_curriculum_structures composite FKs and unique indexes
@@ -38,20 +50,32 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_struct_id_ver ON multi_curriculum_structures (id, multi_curriculum_version_id);");
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_struct_id_ver_t ON multi_curriculum_structures (id, multi_curriculum_version_id, tenant_id);");
         } else {
-            Schema::table('multi_curriculum_structures', function (Blueprint $table) {
-                $table->unique(['id', 'multi_curriculum_version_id'], 'uniq_m_struct_id_ver');
-                $table->unique(['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_m_struct_id_ver_t');
-
-                $table->foreign(['multi_curriculum_version_id', 'tenant_id'], 'fk_m_struct_ver_tenant')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_curriculum_versions')
-                    ->onDelete('RESTRICT');
-
-                $table->foreign(['parent_id', 'multi_curriculum_version_id'], 'fk_m_struct_parent_ver')
-                    ->references(['id', 'multi_curriculum_version_id'])
-                    ->on('multi_curriculum_structures')
-                    ->onDelete('RESTRICT');
-            });
+            if (!$this->hasIndex('multi_curriculum_structures', 'uniq_m_struct_id_ver', ['id', 'multi_curriculum_version_id'])) {
+                Schema::table('multi_curriculum_structures', function (Blueprint $table) {
+                    $table->unique(['id', 'multi_curriculum_version_id'], 'uniq_m_struct_id_ver');
+                });
+            }
+            if (!$this->hasIndex('multi_curriculum_structures', 'uniq_m_struct_id_ver_t', ['id', 'multi_curriculum_version_id', 'tenant_id'])) {
+                Schema::table('multi_curriculum_structures', function (Blueprint $table) {
+                    $table->unique(['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_m_struct_id_ver_t');
+                });
+            }
+            if (!$this->hasForeignKey('multi_curriculum_structures', 'fk_m_struct_ver_tenant', ['multi_curriculum_version_id', 'tenant_id'], 'multi_curriculum_versions', ['id', 'tenant_id'], 'RESTRICT')) {
+                Schema::table('multi_curriculum_structures', function (Blueprint $table) {
+                    $table->foreign(['multi_curriculum_version_id', 'tenant_id'], 'fk_m_struct_ver_tenant')
+                        ->references(['id', 'tenant_id'])
+                        ->on('multi_curriculum_versions')
+                        ->onDelete('RESTRICT');
+                });
+            }
+            if (!$this->hasForeignKey('multi_curriculum_structures', 'fk_m_struct_parent_ver', ['parent_id', 'multi_curriculum_version_id'], 'multi_curriculum_structures', ['id', 'multi_curriculum_version_id'], 'RESTRICT')) {
+                Schema::table('multi_curriculum_structures', function (Blueprint $table) {
+                    $table->foreign(['parent_id', 'multi_curriculum_version_id'], 'fk_m_struct_parent_ver')
+                        ->references(['id', 'multi_curriculum_version_id'])
+                        ->on('multi_curriculum_structures')
+                        ->onDelete('RESTRICT');
+                });
+            }
         }
 
         // 4. multi_learning_outcomes additions and composite FKs
@@ -65,15 +89,24 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_mlo_id_ver ON multi_learning_outcomes (id, multi_curriculum_version_id);");
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_mlo_id_ver_t ON multi_learning_outcomes (id, multi_curriculum_version_id, tenant_id);");
         } else {
-            Schema::table('multi_learning_outcomes', function (Blueprint $table) {
-                $table->unique(['id', 'multi_curriculum_version_id'], 'uniq_mlo_id_ver');
-                $table->unique(['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_mlo_id_ver_t');
-
-                $table->foreign(['multi_curriculum_structure_id', 'multi_curriculum_version_id', 'tenant_id'], 'fk_mlo_struct_ver_t')
-                    ->references(['id', 'multi_curriculum_version_id', 'tenant_id'])
-                    ->on('multi_curriculum_structures')
-                    ->onDelete('RESTRICT');
-            });
+            if (!$this->hasIndex('multi_learning_outcomes', 'uniq_mlo_id_ver', ['id', 'multi_curriculum_version_id'])) {
+                Schema::table('multi_learning_outcomes', function (Blueprint $table) {
+                    $table->unique(['id', 'multi_curriculum_version_id'], 'uniq_mlo_id_ver');
+                });
+            }
+            if (!$this->hasIndex('multi_learning_outcomes', 'uniq_mlo_id_ver_t', ['id', 'multi_curriculum_version_id', 'tenant_id'])) {
+                Schema::table('multi_learning_outcomes', function (Blueprint $table) {
+                    $table->unique(['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_mlo_id_ver_t');
+                });
+            }
+            if (!$this->hasForeignKey('multi_learning_outcomes', 'fk_mlo_struct_ver_t', ['multi_curriculum_structure_id', 'multi_curriculum_version_id', 'tenant_id'], 'multi_curriculum_structures', ['id', 'multi_curriculum_version_id', 'tenant_id'], 'RESTRICT')) {
+                Schema::table('multi_learning_outcomes', function (Blueprint $table) {
+                    $table->foreign(['multi_curriculum_structure_id', 'multi_curriculum_version_id', 'tenant_id'], 'fk_mlo_struct_ver_t')
+                        ->references(['id', 'multi_curriculum_version_id', 'tenant_id'])
+                        ->on('multi_curriculum_structures')
+                        ->onDelete('RESTRICT');
+                });
+            }
         }
 
         // Safe Reconciliation for multi_learning_outcomes (backfill version ONLY from proven structure relation)
@@ -181,13 +214,17 @@ return new class extends Migration
 
             Schema::enableForeignKeyConstraints();
         } else {
-            Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
-                $table->dropForeign('qmcm_lo_tenant_fk');
+            if ($this->hasForeignKey('question_multi_curriculum_mappings', 'qmcm_lo_tenant_fk')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
+                    $table->dropForeign('qmcm_lo_tenant_fk');
+                });
+            }
 
-                if (!Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id')) {
+            if (!Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
                     $table->uuid('curriculum_owner_id')->nullable()->after('multi_learning_outcome_id');
-                }
-            });
+                });
+            }
 
             DB::statement("
                 UPDATE question_multi_curriculum_mappings
@@ -200,23 +237,95 @@ return new class extends Migration
                 WHERE curriculum_owner_id IS NULL AND multi_learning_outcome_id IS NOT NULL
             ");
 
-            Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
-                $table->foreign(['multi_learning_outcome_id', 'multi_curriculum_version_id'], 'fk_qmcm_lo_ver')
-                    ->references(['id', 'multi_curriculum_version_id'])
-                    ->on('multi_learning_outcomes')
-                    ->onDelete('cascade');
-
-                $table->foreign(['multi_learning_outcome_id', 'curriculum_owner_id'], 'fk_qmcm_lo_owner')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_learning_outcomes')
-                    ->onDelete('cascade');
-
-                $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'fk_qmcm_reg_triplet')
-                    ->references(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
-                    ->on('tenant_curriculum_registrations')
-                    ->onDelete('cascade');
-            });
+            if (!$this->hasForeignKey('question_multi_curriculum_mappings', 'fk_qmcm_lo_ver', ['multi_learning_outcome_id', 'multi_curriculum_version_id'], 'multi_learning_outcomes', ['id', 'multi_curriculum_version_id'], 'CASCADE')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
+                    $table->foreign(['multi_learning_outcome_id', 'multi_curriculum_version_id'], 'fk_qmcm_lo_ver')
+                        ->references(['id', 'multi_curriculum_version_id'])
+                        ->on('multi_learning_outcomes')
+                        ->onDelete('cascade');
+                });
+            }
+            if (!$this->hasForeignKey('question_multi_curriculum_mappings', 'fk_qmcm_lo_owner', ['multi_learning_outcome_id', 'curriculum_owner_id'], 'multi_learning_outcomes', ['id', 'tenant_id'], 'CASCADE')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
+                    $table->foreign(['multi_learning_outcome_id', 'curriculum_owner_id'], 'fk_qmcm_lo_owner')
+                        ->references(['id', 'tenant_id'])
+                        ->on('multi_learning_outcomes')
+                        ->onDelete('cascade');
+                });
+            }
+            if (!$this->hasForeignKey('question_multi_curriculum_mappings', 'fk_qmcm_reg_triplet', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'CASCADE')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
+                    $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'fk_qmcm_reg_triplet')
+                        ->references(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                        ->on('tenant_curriculum_registrations')
+                        ->onDelete('cascade');
+                });
+            }
         }
+    }
+
+    private function hasIndex(string $table, string $name, array $expectedColumns): bool
+    {
+        $rows = DB::table('information_schema.statistics')
+            ->where('table_schema', DB::getDatabaseName())
+            ->where('table_name', $table)
+            ->where('index_name', $name)
+            ->orderBy('seq_in_index')
+            ->get(['column_name', 'non_unique']);
+
+        if ($rows->isEmpty()) {
+            return false;
+        }
+
+        $actualColumns = $rows->pluck('column_name')->all();
+        $isUnique = $rows->every(fn ($row) => (int) $row->non_unique === 0);
+        if ($actualColumns !== $expectedColumns || !$isUnique) {
+            throw new \RuntimeException("Fase1C found an incompatible existing index {$table}.{$name}; no DDL was applied for this index.");
+        }
+
+        return true;
+    }
+
+    private function hasForeignKey(
+        string $table,
+        string $name,
+        ?array $expectedColumns = null,
+        ?string $referencedTable = null,
+        ?array $referencedColumns = null,
+        ?string $deleteRule = null
+    ): bool {
+        $rows = DB::table('information_schema.key_column_usage')
+            ->where('constraint_schema', DB::getDatabaseName())
+            ->where('table_name', $table)
+            ->where('constraint_name', $name)
+            ->orderBy('ordinal_position')
+            ->get(['column_name', 'referenced_table_name', 'referenced_column_name']);
+
+        if ($rows->isEmpty()) {
+            return false;
+        }
+
+        if ($expectedColumns !== null) {
+            $actualColumns = $rows->pluck('column_name')->all();
+            $actualReferencedTables = $rows->pluck('referenced_table_name')->unique()->values()->all();
+            $actualReferencedColumns = $rows->pluck('referenced_column_name')->all();
+            $actualDeleteRule = DB::table('information_schema.referential_constraints')
+                ->where('constraint_schema', DB::getDatabaseName())
+                ->where('table_name', $table)
+                ->where('constraint_name', $name)
+                ->value('delete_rule');
+
+            if (
+                $actualColumns !== $expectedColumns
+                || $actualReferencedTables !== [$referencedTable]
+                || $actualReferencedColumns !== $referencedColumns
+                || strtoupper((string) $actualDeleteRule) !== strtoupper((string) $deleteRule)
+            ) {
+                throw new \RuntimeException("Fase1C found an incompatible existing foreign key {$table}.{$name}; no DDL was applied for this foreign key.");
+            }
+        }
+
+        return true;
     }
 
     public function down(): void

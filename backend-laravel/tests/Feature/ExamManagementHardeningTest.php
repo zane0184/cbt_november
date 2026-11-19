@@ -290,9 +290,8 @@ class ExamManagementHardeningTest extends TestCase
         ]);
     }
     /** @test */
-    public function teacher_can_generate_token_only_after_published_exam_and_with_permission()
+    public function only_authorized_admin_can_rotate_token_after_publication()
     {
-        $this->actingAs($this->teacher);
         $assessment = \App\Models\Assessment::create([
             'tenant_id' => $this->tenant->id,
             'title' => 'Asesmen Token',
@@ -321,11 +320,14 @@ class ExamManagementHardeningTest extends TestCase
 
         $exam->update(['status' => 'PUBLISHED', 'locked_at' => now(), 'published_at' => now()]);
         $exam->refresh();
-        $this->assertTrue($policy->generateToken($this->teacher, $exam));
-
-        $this->teacher->roles()->first()->permissions()->where('name', 'exam.token')->detach();
-        $this->teacher->unsetRelation('roles');
         $this->assertFalse($policy->generateToken($this->teacher, $exam));
+
+        $adminRole = \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $tokenPermission = \App\Models\Permission::firstOrCreate(['name' => 'exam.token'], ['label' => 'Rotate exam token']);
+        $adminRole->permissions()->syncWithoutDetaching([$tokenPermission->id]);
+        $admin = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $admin->roles()->attach($adminRole);
+        $this->assertTrue($policy->generateToken($admin, $exam));
     }
 
 }

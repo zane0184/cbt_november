@@ -182,6 +182,7 @@ class Fase1bSchemaIntegrityTest extends TestCase
             'id' => $outcomeId,
             'tenant_id' => $tenant->id,
             'multi_curriculum_structure_id' => $structureId,
+            'multi_curriculum_version_id' => $versionId,
             'code' => 'KBC-001',
             'outcome_type' => 'KBC_CINTA',
             'description' => 'Meneladani Asmaul Husna dalam kehidupan sehari-hari',
