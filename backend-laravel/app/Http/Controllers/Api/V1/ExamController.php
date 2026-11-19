@@ -504,55 +504,37 @@ class ExamController extends Controller
 
     public function preview(Exam $exam)
     {
-        abort_unless(!auth()->user()->hasRole('SISWA'), 403, 'Preview soal hanya tersedia untuk petugas yang berwenang.');
-        $this->authorize('view', $exam);
+        $this->authorize('preview', $exam);
 
-        $snapshots = $exam->snapshots()->orderBy('sequence')->get();
-        $isStudent = auth()->user()->hasRole('SISWA');
+        $snapshots = $exam->snapshots()
+            ->where('tenant_id', $exam->tenant_id)
+            ->orderBy('sequence')
+            ->get();
 
         return response()->json([
             'success' => true,
             'data' => [
-                'exam' => $exam,
-                'questions' => $snapshots->map(function ($q) use ($isStudent) {
-                    $options = $q->snapshot_options;
-                    $metadata = $q->metadata ?? [];
-
-                    if ($isStudent) {
-                        unset($metadata['accepted_answers']);
-                        unset($metadata['rubric']);
-                        unset($metadata['answer_key']);
-                        unset($metadata['scoring_guide']);
-
-                        $qType = $metadata['question_type'] ?? null;
-                        if (in_array($qType, ['SHORT_ANSWER', 'ESSAY'])) {
-                            $options = [];
-                        } elseif (is_array($options)) {
-                            $options = array_map(function($opt) {
-                                unset($opt['is_correct']);
-                                unset($opt['score_weight']);
-                                if (isset($opt['option_key']) && $opt['option_key'] !== null && $opt['option_key'] !== '') {
-                                    $opt['option_key'] = 'LEFT';
-                                }
-                                if (isset($opt['matching_key']) && $opt['matching_key'] !== null && $opt['matching_key'] !== '') {
-                                    $opt['matching_key'] = 'RIGHT';
-                                }
-                                return $opt;
-                            }, $options);
-                        }
-                    }
-
+                'exam' => [
+                    'id' => $exam->id,
+                    'title' => $exam->title,
+                    'instructions' => $exam->instructions,
+                    'duration_seconds' => $exam->duration_seconds,
+                    'start_at' => $exam->start_at,
+                    'end_at' => $exam->end_at,
+                    'status' => $exam->status,
+                ],
+                'questions' => $snapshots->map(function ($question) {
                     return [
-                        'id' => $q->id,
-                        'sequence' => $q->sequence,
-                        'points' => $q->points,
-                        'snapshot_stem' => $q->snapshot_stem,
-                        'snapshot_options' => $options,
-                        'snapshot_media' => $q->snapshot_media,
-                        'metadata' => $metadata,
+                        'id' => $question->id,
+                        'sequence' => $question->sequence,
+                        'points' => $question->points,
+                        'snapshot_stem' => $question->snapshot_stem,
+                        'snapshot_options' => $question->snapshot_options,
+                        'snapshot_media' => $question->snapshot_media,
+                        'metadata' => $question->metadata,
                     ];
-                })
-            ]
+                }),
+            ],
         ]);
     }
 
