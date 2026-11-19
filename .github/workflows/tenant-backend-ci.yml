@@ -7,6 +7,7 @@ on:
       - work/schema-dump-export-20261119
       - work/p095d2u-snapshot-history-guard-20261119
       - work/p095d2u-portal-ci-reconciliation-20261119
+      - work/p095d2u-admin-proctor-ui-20261119
   pull_request:
     branches:
       - main
