@@ -135,6 +135,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         ]);
 
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** @test */
