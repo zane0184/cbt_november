@@ -12,6 +12,7 @@ use App\Models\Permission;
 use App\Models\LocalInstallationIdentity;
 use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class UserSecurityTest extends TestCase
@@ -180,7 +181,7 @@ class UserSecurityTest extends TestCase
         app(TenantContext::class)->setTenantId($this->tenantA->id);
         LocalInstallationIdentity::create([
             'tenant_id' => $this->tenantA->id,
-            'installation_id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'installation_id' => (string) Str::uuid(),
             'key_id' => 'test-key-a',
             'public_key' => 'test-public-key-a',
             'encrypted_private_key' => 'test-encrypted-private-key-a',
