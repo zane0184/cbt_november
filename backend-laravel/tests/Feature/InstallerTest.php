@@ -39,7 +39,7 @@ class InstallerTest extends TestCase
 
     public function test_installer_routes_require_operator_bootstrap_authorization(): void
     {
-        $this->withSession([]);
+        $this->flushSession();
 
         $response = $this->get('/install/requirements');
         $response->assertRedirect(route('installer.authorize.form'));
@@ -51,15 +51,16 @@ class InstallerTest extends TestCase
 
     public function test_bootstrap_gate_blocks_admin_creation_post_without_operator_authorization(): void
     {
-        $this->withSession([]);
+        $this->flushSession();
 
         $response = $this->post('/install/admin/save', [
             'madrasah_name' => 'MIN Tidak Sah',
             'madrasah_code' => 'MINTIDAKSAH',
             'admin_name' => 'Attempted Admin',
+            'admin_username' => 'blocked.admin',
             'admin_email' => 'blocked@min.test',
-            'admin_password' => 'Password123!',
-            'admin_password_confirmation' => 'Password123!',
+            'admin_password' => 'BlockedPassword123!Secure',
+            'admin_password_confirmation' => 'BlockedPassword123!Secure',
         ]);
 
         $response->assertRedirect(route('installer.authorize.form'));
@@ -69,7 +70,7 @@ class InstallerTest extends TestCase
 
     public function test_bootstrap_authorization_page_is_available_without_authorized_session_and_not_cacheable(): void
     {
-        $this->withSession([]);
+        $this->flushSession();
 
         $response = $this->get('/install/authorize');
         $response->assertOk();
@@ -79,7 +80,7 @@ class InstallerTest extends TestCase
 
     public function test_bootstrap_authorization_rejects_a_wrong_token_when_server_token_is_configured(): void
     {
-        $this->withSession([]);
+        $this->flushSession();
         config(['installer.bootstrap_token' => str_repeat('C', 64)]);
 
         $response = $this->post('/install/authorize', ['bootstrap_token' => str_repeat('X', 64)]);
@@ -89,7 +90,7 @@ class InstallerTest extends TestCase
 
     public function test_bootstrap_authorization_rejects_missing_or_short_server_token(): void
     {
-        $this->withSession([]);
+        $this->flushSession();
         config(['installer.bootstrap_token' => 'too-short']);
 
         $response = $this->post('/install/authorize', ['bootstrap_token' => 'too-short']);
@@ -99,8 +100,9 @@ class InstallerTest extends TestCase
 
     public function test_bootstrap_authorization_accepts_configured_token_and_opens_wizard(): void
     {
-        $this->withSession([]);
+        $this->flushSession();
         $token = str_repeat('S', 64);
+        config(['installer.bootstrap_token' => $token]);
 
         $response = $this->post('/install/authorize', ['bootstrap_token' => $token]);
         $response->assertRedirect(route('installer.requirements'));
@@ -144,7 +146,8 @@ class InstallerTest extends TestCase
     {
         $result = app(InstallerService::class)->runMigrations();
         $this->assertFalse($result['success']);
-        $this->assertStringContainsString('konfigurasi database', strtolower($result['message']));
+        $this->assertStringContainsString('persyaratan server belum terpenuhi', strtolower($result['message']));
+        $this->assertSame('UNINITIALIZED', app(InstallerService::class)->currentState());
     }
 
     public function test_database_inspection_fails_closed_when_target_cannot_be_verified(): void
@@ -166,8 +169,9 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Test',
             'madrasah_code' => 'MINTEST',
             'admin_name' => 'Admin Test',
+            'admin_username' => 'admin.test',
             'admin_email' => 'admin@min.test',
-            'admin_password' => 'Password123!',
+            'admin_password' => 'Password123!Secure',
         ]);
 
         $this->assertFalse($result['success']);
@@ -196,8 +200,9 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Test',
             'madrasah_code' => 'MINTEST',
             'admin_name' => 'Admin Test',
+            'admin_username' => 'admin.test',
             'admin_email' => 'admin@min.test',
-            'admin_password' => 'Password123!',
+            'admin_password' => 'Password123!Secure',
         ]);
 
         $this->assertTrue($result['success'], $result['message']);
@@ -217,6 +222,7 @@ class InstallerTest extends TestCase
         $admin = User::forceCreate([
             'tenant_id' => $tenant->id,
             'name' => 'Admin Recovery',
+            'username' => 'admin.recovery',
             'email' => 'recovery@min.test',
             'password' => bcrypt('RecoveryPassword123!'),
         ]);
@@ -243,6 +249,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Recovery',
             'madrasah_code' => 'MINRECOVERY',
             'admin_name' => 'Admin Recovery',
+            'admin_username' => 'admin.recovery',
             'admin_email' => 'recovery@min.test',
             'admin_password' => 'RecoveryPassword123!',
         ]);
@@ -264,6 +271,7 @@ class InstallerTest extends TestCase
         $admin = User::forceCreate([
             'tenant_id' => $tenant->id,
             'name' => 'Legacy Admin',
+            'username' => 'legacy.admin',
             'email' => 'legacy-admin@min.test',
             'password' => bcrypt('LegacyPassword123!'),
         ]);
@@ -290,6 +298,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Legacy Pair',
             'madrasah_code' => 'MINLEGACYPAIR',
             'admin_name' => 'Legacy Admin',
+            'admin_username' => 'legacy.admin',
             'admin_email' => 'legacy-admin@min.test',
             'admin_password' => 'LegacyPassword123!',
         ]);
@@ -322,6 +331,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Partial',
             'madrasah_code' => 'MINPARTIAL',
             'admin_name' => 'Attempted Admin',
+            'admin_username' => 'partial.admin',
             'admin_email' => 'partial@min.test',
             'admin_password' => 'PartialPassword123!',
         ]);
@@ -378,6 +388,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'Another MIN',
             'madrasah_code' => 'ANOTHERMIN',
             'admin_name' => 'Attempted Takeover',
+            'admin_username' => 'takeover.admin',
             'admin_email' => 'owner@existing.test',
             'admin_password' => 'NewPassword123!',
         ]);
@@ -400,7 +411,7 @@ class InstallerTest extends TestCase
         $this->mock(InstallerService::class, function ($mock): void {
             $mock->shouldReceive('isInstalled')->andReturn(false);
             $mock->shouldReceive('completionStatus')->once()->andReturn([
-                'state' => 'ADMIN_CREATED',
+                'state' => 'LICENSE_ACTIVATED',
                 'can_finalize' => true,
                 'message' => 'Ready for final verification.',
             ]);
@@ -419,6 +430,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MTs Test',
             'madrasah_code' => 'MTSTEST',
             'admin_name' => 'Admin Name',
+            'admin_username' => 'admin.name',
             'admin_email' => 'admin@test.com',
             'admin_password' => 'Password123!',
             'admin_password_confirmation' => 'MismatchPassword!',
