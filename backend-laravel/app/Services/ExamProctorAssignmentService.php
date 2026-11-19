@@ -40,8 +40,9 @@ class ExamProctorAssignmentService
             }
 
             $timezone = $lockedExam->timezone ?: config('app.timezone', 'UTC');
-            $startsAt = Carbon::parse($data['starts_at'], $timezone)->utc();
-            $endsAt = Carbon::parse($data['ends_at'], $timezone)->utc();
+            $applicationTimezone = config('app.timezone', 'Asia/Jakarta');
+            $startsAt = Carbon::parse($data['starts_at'], $timezone)->setTimezone($applicationTimezone);
+            $endsAt = Carbon::parse($data['ends_at'], $timezone)->setTimezone($applicationTimezone);
 
             if ($endsAt->lessThanOrEqualTo($startsAt)) {
                 throw ValidationException::withMessages([
