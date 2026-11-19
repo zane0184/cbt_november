@@ -592,7 +592,7 @@ class ExamSnapshotTest extends TestCase
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
-                $connectionB->table('curriculums')->where('id', $this->curriculum->id)->delete();
+                $connectionB->table('curricula')->where('id', $this->curriculum->id)->delete();
                 $this->role->permissions()->detach();
                 $this->role->delete();
                 if ($this->createdPermissionNames !== []) {
