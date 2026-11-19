@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\Rombel;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\RolePermissionBootstrapper;
 use App\Livewire\Operator\OperatorDashboard;
 use App\Livewire\Kamad\KamadDashboard;
 use App\Livewire\Proktor\ProktorDashboard;
@@ -61,6 +62,8 @@ class RoleDashboardVerificationTest extends TestCase
         $this->roleProctor    = Role::create(['name' => 'PROKTOR', 'label' => 'Proktor']);
         $this->roleTeacher    = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $this->roleStudent    = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+
+        app(RolePermissionBootstrapper::class)->bootstrap();
 
         // Tenant A Users
         $this->superAdmin = User::create([
@@ -157,37 +160,31 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function kamad_dashboard_access_control()
+    public function kamad_has_no_separate_permanent_dashboard_route()
     {
-        // Unauthenticated
-        $this->get('/kamad/dashboard')->assertRedirect('/login');
-
-        // Authorized roles
-        $this->actingAs($this->kamadA)->get('/kamad/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/kamad/dashboard')->assertStatus(200);
-        $this->actingAs($this->superAdmin)->get('/kamad/dashboard')->assertStatus(403);
-
-        // Unauthorized roles
-        $this->actingAs($this->operatorA)->get('/kamad/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/kamad/dashboard')->assertStatus(403);
+        // Kamad retains monitoring/report permissions but uses the approved portal structure.
+        $this->get('/kamad/dashboard')->assertNotFound();
+        $this->actingAs($this->kamadA)->get('/kamad/dashboard')->assertNotFound();
+        $this->actingAs($this->adminA)->get('/kamad/dashboard')->assertNotFound();
+        $this->actingAs($this->operatorA)->get('/kamad/dashboard')->assertNotFound();
+        $this->actingAs($this->siswaA)->get('/kamad/dashboard')->assertNotFound();
     }
 
     /** @test */
-    public function proktor_dashboard_access_control()
+    public function proktor_has_only_an_assignment_surface_not_a_permanent_dashboard()
     {
-        // Unauthenticated
-        $this->get('/proktor/dashboard')->assertRedirect('/login');
+        $this->get('/proktor/dashboard')->assertNotFound();
+        $this->actingAs($this->proctorA)->get('/proktor/dashboard')->assertNotFound();
 
-        // Authorized roles
-        $this->actingAs($this->proctorA)->get('/proktor/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/proktor/dashboard')->assertStatus(200);
-        $this->actingAs($this->superAdmin)->get('/proktor/dashboard')->assertStatus(403);
-
-        // Unauthorized roles (GURU, OPERATOR, KAMAD, SISWA MUST be forbidden)
-        $this->actingAs($this->guruA)->get('/proktor/dashboard')->assertStatus(403);
-        $this->actingAs($this->operatorA)->get('/proktor/dashboard')->assertStatus(403);
-        $this->actingAs($this->kamadA)->get('/proktor/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/proktor/dashboard')->assertStatus(403);
+        // The assignment surface is restricted to a Proktor identity; no tenant-wide
+        // exam list is exposed until a temporary assignment record exists.
+        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertStatus(200);
+        $this->actingAs($this->adminA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->superAdmin)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->guruA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->operatorA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->kamadA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->siswaA)->get('/proktor/assignments')->assertStatus(403);
     }
 
     /** @test */
@@ -209,8 +206,10 @@ class RoleDashboardVerificationTest extends TestCase
         $opResponse->assertSee('Dashboard Operator');
 
         // Sidebar rendering verification for PROCTOR (Proktor Dashboard menu MUST be present)
-        $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/dashboard');
-        $proctorResponse->assertSee('Dashboard Proktor');
+        $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/assignments');
+        $proctorResponse->assertSee('Penugasan Proktor');
+        $proctorResponse->assertDontSee('Dashboard Proktor');
+        $proctorResponse->assertDontSee('Token:');
     }
 
     /** @test */
@@ -218,14 +217,14 @@ class RoleDashboardVerificationTest extends TestCase
     {
         $this->actingAs($this->operatorA);
         $this->get('/admin/curriculum')->assertStatus(200);
-        $this->get('/admin/exams')->assertStatus(200);
+        $this->get('/admin/exams')->assertStatus(403);
     }
 
     /** @test */
-    public function kamad_can_access_exams_module()
+    public function kamad_cannot_manage_exams()
     {
         $this->actingAs($this->kamadA);
-        $this->get('/admin/exams')->assertStatus(200);
+        $this->get('/admin/exams')->assertStatus(403);
     }
 
     /** @test */
@@ -253,7 +252,7 @@ class RoleDashboardVerificationTest extends TestCase
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
 
         // Tenant A authorized users can access monitoring
-        $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
+        $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
         $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
         $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
         $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
@@ -322,8 +321,8 @@ class RoleDashboardVerificationTest extends TestCase
         // Test Proktor Dashboard for Tenant A
         $this->actingAs($this->proctorA);
         Livewire::test(ProktorDashboard::class)
-            ->assertViewHas('activeExams', function ($exams) use ($examA) {
-                return $exams->count() === 1 && $exams->first()->id === $examA->id;
-            });
+            ->assertViewHas('activeExams', fn ($exams) => $exams->isEmpty())
+            ->assertViewHas('inProgressAttempts', 0)
+            ->assertViewHas('submittedAttempts', 0);
     }
 }
