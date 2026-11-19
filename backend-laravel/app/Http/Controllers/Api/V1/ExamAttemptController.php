@@ -93,28 +93,34 @@ class ExamAttemptController extends Controller
                 ], 200);
             }
 
-            if ($lockedExam->require_token) {
-                $throttleKey = 'exam-token:' . $user->id . ':' . $lockedExam->id;
-
-                if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
-                    $seconds = RateLimiter::availableIn($throttleKey);
-                    return response()->json([
-                        'success' => false,
-                        'message' => "Too many invalid token attempts. Try again in $seconds seconds."
-                    ], 429);
-                }
-
-                $request->validate(['token' => 'required|string']);
-                if ($request->token !== $lockedExam->token) {
-                    RateLimiter::hit($throttleKey, 60);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Invalid exam token.'
-                    ], 422);
-                }
-
-                RateLimiter::clear($throttleKey);
+            if (!$lockedExam->require_token || !$lockedExam->token) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token ujian belum dikonfigurasi. Hubungi Admin/Guru untuk pemeriksaan.',
+                    'code' => 'EXAM_TOKEN_NOT_CONFIGURED',
+                ], 409);
             }
+
+            $throttleKey = 'exam-token:' . $user->id . ':' . $lockedExam->id;
+            if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+                $seconds = RateLimiter::availableIn($throttleKey);
+                return response()->json([
+                    'success' => false,
+                    'message' => "Too many invalid token attempts. Try again in $seconds seconds."
+                ], 429);
+            }
+
+            $request->validate(['token' => 'required|string|size:6']);
+            $providedToken = strtoupper(trim((string) $request->input('token')));
+            if (!hash_equals((string) $lockedExam->token, $providedToken)) {
+                RateLimiter::hit($throttleKey, 60);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid exam token.'
+                ], 422);
+            }
+
+            RateLimiter::clear($throttleKey);
 
             $attemptsCount = $participant->attempts()->count();
             if ($attemptsCount >= ($participant->attempt_limit_override ?? $lockedExam->attempt_limit)) {
