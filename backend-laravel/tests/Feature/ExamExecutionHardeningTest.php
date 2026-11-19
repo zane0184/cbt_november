@@ -126,7 +126,7 @@ class ExamExecutionHardeningTest extends TestCase
 
         // If limit is 1, and first is expired, it's counted as an attempt.
         // Current logic: store() count attempts.
-        $response->assertStatus(422);
+        $response->assertStatus(403);
 
         // 4. Try to access execution endpoint
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
