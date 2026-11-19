@@ -48,6 +48,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
     private User $teacherA;
     private User $studentA;
     private User $studentB;
+    private TeacherProfile $teacherProfile;
     private AcademicYear $academicYear;
     private Semester $semester;
     private Subject $subject;
@@ -143,7 +144,24 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'grade_level_id' => $gradeLevel->id,
             'name' => 'Kelas 1A',
         ]);
-        $studentProfile->rombels()->attach($this->rombel->id, ['id' => (string)Str::uuid()]);
+        $studentProfile->rombels()->attach($this->rombel->id, ['id' => (string)Str::uuid(), 'tenant_id' => $this->tenantA->id]);
+
+        $this->teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->teacherA->id,
+            'full_name' => 'Guru A',
+            'employee_identifier' => 'GURU-A-001',
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenantA->id,
+            'teacher_profile_id' => $this->teacherProfile->id,
+            'subject_id' => $this->subject->id,
+            'rombel_id' => $this->rombel->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'status' => 'ACTIVE',
+            'created_by' => $this->adminA->id,
+        ]);
 
         $this->studentB = User::create([
             'tenant_id' => $this->tenantB->id,
@@ -259,7 +277,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'scoring_version' => 1,
         ]);
 
-        $response = $this->actingAs($this->adminA, 'sanctum')
+        $response = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
 
         $response->assertStatus(200);
@@ -343,7 +361,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $scoreV2->update(['raw_score' => 90, 'percentage' => 90.00, 'grading_status' => 'GRADED']);
 
         // Step 4 & 5: Re-finalize attempt version 2
-        $finalV2Resp = $this->actingAs($this->adminA, 'sanctum')
+        $finalV2Resp = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
         $finalV2Resp->assertStatus(200);
 
@@ -546,7 +564,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'scoring_version' => 1,
         ]);
 
-        $response = $this->actingAs($this->adminA, 'sanctum')
+        $response = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
 
         // Fails with HTTP 422
@@ -568,23 +586,6 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
     public function test_teacher_tp_analytics_uses_subject_from_linked_learning_outcome(): void
     {
         $this->test_1_initial_finalization_calculates_curriculum_achievements();
-
-        $profile = TeacherProfile::create([
-            'tenant_id' => $this->tenantA->id,
-            'user_id' => $this->teacherA->id,
-            'full_name' => 'Guru A',
-            'employee_identifier' => 'GURU-A-001',
-        ]);
-
-        TeacherSubjectAssignment::create([
-            'tenant_id' => $this->tenantA->id,
-            'teacher_profile_id' => $profile->id,
-            'subject_id' => $this->subject->id,
-            'rombel_id' => $this->rombel->id,
-            'academic_year_id' => $this->academicYear->id,
-            'semester_id' => $this->semester->id,
-            'status' => 'ACTIVE',
-        ]);
 
         $response = $this->actingAs($this->teacherA, 'sanctum')
             ->getJson("/api/v1/analytics/curriculum/tps/{$this->tp->id}?" . http_build_query([
