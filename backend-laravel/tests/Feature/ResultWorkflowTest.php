@@ -32,6 +32,8 @@ class ResultWorkflowTest extends TestCase
     private $student;
     private $exam;
     private $attempt;
+    private $rombel;
+    private $subject;
 
     protected function setUp(): void
     {
@@ -46,6 +48,7 @@ class ResultWorkflowTest extends TestCase
 
         $scope = $this->createTeacherAssignmentScope($this->teacher, $this->student, $this->tenant, 'RESWF');
         $this->rombel = $scope['rombel'];
+        $this->subject = $scope['subject'];
         $assessment = Assessment::create([
             'tenant_id' => $this->tenant->id,
             'subject_id' => $scope['subject']->id,
@@ -385,7 +388,52 @@ class ResultWorkflowTest extends TestCase
 
     public function test_exam_result_publication_workflow_and_student_visibility()
     {
-        // 1. Setup attempt and score finalized
+        // 1. Setup a valid snapshot/answer before scoring and finalizing.
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subject->id,
+            'question_code' => 'RES-MC-01',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->teacher->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MC',
+            'stem' => '1 + 1 = ?',
+            'default_points' => 10,
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'created_by' => $this->teacher->id,
+        ]);
+        $optionId = (string) Str::uuid();
+        $snapshot = $this->createSnapshotForAttempt($this->attempt, [
+            'tenant_id' => $this->tenant->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'sequence' => 1,
+            'points' => 10,
+            'snapshot_stem' => $version->stem,
+            'snapshot_options' => [[
+                'id' => $optionId,
+                'content' => '2',
+                'is_correct' => true,
+                'score_weight' => 1,
+                'option_key' => 'A',
+            ]],
+            'metadata' => ['question_type' => 'MC'],
+        ]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->student->id,
+            'answer_payload' => ['selected_option_id' => $optionId],
+            'answer_state' => 'ANSWERED',
+        ]);
         (new \App\Services\ScoringService())->scoreAttempt($this->attempt);
         $this->attempt->score->update(['grading_status' => 'FINALIZED', 'finalized_at' => now()]);
 

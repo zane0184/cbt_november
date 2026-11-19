@@ -12,6 +12,9 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
+use App\Models\ExamAttemptAnswer;
+use App\Models\Question;
+use App\Models\QuestionVersion;
 use App\Models\ExamParticipant;
 use App\Models\ExamQuestionSnapshot;
 use App\Models\ExamQuestionScore;
@@ -258,6 +261,59 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'started_at' => now()->subHour(),
             'submitted_at' => now(),
         ]);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subject->id,
+            'question_code' => 'HIST-MR-01',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->teacherA->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenantA->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MULTIPLE_RESPONSE',
+            'stem' => 'Pilih tiga jawaban benar',
+            'default_points' => 100,
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'created_by' => $this->teacherA->id,
+        ]);
+        $optionIds = array_map(fn () => (string) \Illuminate\Support\Str::uuid(), range(1, 5));
+        $snapshotOptions = [];
+        foreach ($optionIds as $index => $optionId) {
+            $snapshotOptions[] = [
+                'id' => $optionId,
+                'content' => 'Pilihan ' . ($index + 1),
+                'is_correct' => true,
+                'score_weight' => 1,
+                'option_key' => chr(65 + $index),
+            ];
+        }
+        $snapshot = ExamQuestionSnapshot::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $exam->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'sequence' => 1,
+            'points' => 100,
+            'snapshot_stem' => $version->stem,
+            'snapshot_options' => $snapshotOptions,
+            'metadata' => ['question_type' => 'MULTIPLE_RESPONSE'],
+        ]);
+        $attempt->update(['question_order' => [$snapshot->id]]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_attempt_id' => $attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->studentA->id,
+            'answer_payload' => ['selected_option_ids' => array_slice($optionIds, 0, 3)],
+            'answer_state' => 'ANSWERED',
+        ]);
+
         $score = ExamAttemptScore::create([
             'tenant_id' => $this->tenantA->id,
             'attempt_id' => $attempt->id,

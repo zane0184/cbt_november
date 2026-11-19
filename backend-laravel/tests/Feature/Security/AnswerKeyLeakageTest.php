@@ -14,15 +14,19 @@ use App\Models\QuestionOption;
 use App\Services\ExamSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Feature\Concerns\CreatesTeacherExamAssignment;
 
 class AnswerKeyLeakageTest extends TestCase
 {
+    use CreatesTeacherExamAssignment;
+
     use RefreshDatabase;
 
     private $tenant;
     private $student;
     private $guru;
     private $exam;
+    private $subject;
 
     protected function setUp(): void
     {
@@ -38,8 +42,10 @@ class AnswerKeyLeakageTest extends TestCase
         $this->guru = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru', 'email' => 'guru@test.com', 'password' => bcrypt('password')]);
         $this->guru->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->guru->id]);
+        $scope = $this->createTeacherAssignmentScope($this->guru, $this->student, $this->tenant, 'AKL');
+        $this->subject = $scope['subject'];
+        $this->bootstrapCbtRolePermissions();
+        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'subject_id' => $scope['subject']->id, 'academic_year_id' => $scope['academicYear']->id, 'semester_id' => $scope['semester']->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->guru->id]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -51,11 +57,12 @@ class AnswerKeyLeakageTest extends TestCase
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
             'timezone' => 'UTC',
-            'require_token' => false
+            'require_token' => true,
+            'token' => 'ABC123'
         ]);
 
         // Create a question with correct option
-        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => \App\Models\Subject::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'code' => 'S1'])->id, 'created_by' => $this->guru->id]);
+        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'created_by' => $this->guru->id]);
         $version = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $question->id,
@@ -82,7 +89,7 @@ class AnswerKeyLeakageTest extends TestCase
         ]);
 
         app(ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
-        $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
+        $this->exam->update(['locked_at' => now(), 'published_at' => now(), 'status' => 'PUBLISHED']);
 
         ExamParticipant::create(['tenant_id' => $this->tenant->id, 'exam_id' => $this->exam->id, 'user_id' => $this->student->id, 'status' => 'ASSIGNED']);
 
@@ -95,7 +102,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         // Start attempt first
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts")
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
              ->assertStatus(201);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
@@ -205,14 +212,14 @@ class AnswerKeyLeakageTest extends TestCase
 
         $this->exam->update(['status' => 'DRAFT', 'locked_at' => null]);
         app(ExamSnapshotService::class)->createSnapshots($this->exam, [$vMatching->id]);
-        $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
+        $this->exam->update(['locked_at' => now(), 'published_at' => now(), 'status' => 'PUBLISHED']);
 
         $context->setTenantId(null);
 
         $this->actingAs($this->student);
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
@@ -259,14 +266,14 @@ class AnswerKeyLeakageTest extends TestCase
         $meta['accepted_answers'] = ['Paris', 'Paris City'];
         $meta['rubric'] = 'Answer must be Paris';
         $snapshot->update(['metadata' => $meta, 'snapshot_explanation' => 'Paris is the capital of France.']);
-        $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
+        $this->exam->update(['locked_at' => now(), 'published_at' => now(), 'status' => 'PUBLISHED']);
 
         $context->setTenantId(null);
 
         $this->actingAs($this->student);
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
