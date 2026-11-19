@@ -53,7 +53,8 @@ class ExamProctorAssignment extends Model
             && $this->revoked_at === null
             && $this->starts_at !== null
             && $this->starts_at->lessThanOrEqualTo($at)
-            && ($this->ends_at === null || $this->ends_at->greaterThan($at));
+            && $this->ends_at !== null
+            && $this->ends_at->greaterThan($at);
     }
 
     public function scopeNotRevoked($query)
@@ -66,8 +67,6 @@ class ExamProctorAssignment extends Model
         $at = $at ?? now();
 
         return $query->where('starts_at', '<=', $at)
-            ->where(function ($builder) use ($at) {
-                $builder->whereNull('ends_at')->orWhere('ends_at', '>', $at);
-            });
+            ->where('ends_at', '>', $at);
     }
 }
