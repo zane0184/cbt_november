@@ -136,6 +136,7 @@ class Phase7BManualReviewTest extends TestCase
             'expires_at' => now()->addMinutes(30),
             'submitted_at' => now(),
         ]);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** A. ROLE AUTHORIZATION (RBAC) **/
