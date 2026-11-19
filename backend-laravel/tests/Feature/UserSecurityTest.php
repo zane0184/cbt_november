@@ -10,6 +10,7 @@ use App\Models\Assessment;
 use App\Models\AcademicYear;
 use App\Models\Role;
 use App\Contexts\TenantContext;
+use Illuminate\Support\Str;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -32,7 +33,7 @@ class UserSecurityTest extends TestCase
         $this->tenantB = Tenant::create(['name' => 'Tenant B', 'code' => 'TENANTB']);
         LocalInstallationIdentity::create([
             'tenant_id' => $this->tenantA->id,
-            'installation_id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'installation_id' => (string) Str::uuid(),
             'key_id' => 'test-key-a',
             'public_key' => 'test-public-key-a',
             'encrypted_private_key' => 'test-encrypted-private-key-a',
