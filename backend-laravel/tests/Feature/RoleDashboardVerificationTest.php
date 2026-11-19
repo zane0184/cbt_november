@@ -150,8 +150,15 @@ class RoleDashboardVerificationTest extends TestCase
         $this->get('/admin/dashboard')->assertRedirect('/login');
         
         // Admin portal roles
-        $this->actingAs($this->operatorA)->get('/admin/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertStatus(200);
+        $operatorDashboard = $this->actingAs($this->operatorA)->get('/admin/dashboard');
+        $operatorDashboard->assertStatus(200)
+            ->assertDontSee('Penugasan Proktor')
+            ->assertDontSee('Pengguna & Akun');
+
+        $adminDashboard = $this->actingAs($this->adminA)->get('/admin/dashboard');
+        $adminDashboard->assertStatus(200)
+            ->assertSee('Penugasan Proktor')
+            ->assertSee('Pengguna & Akun');
         $this->actingAs($this->superAdmin)->get('/admin/dashboard')->assertStatus(403);
         
         // Roles outside the Admin Madrasah portal
