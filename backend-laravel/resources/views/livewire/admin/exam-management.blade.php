@@ -261,10 +261,10 @@
                     </div>
 
                     <div class="space-y-2 bg-contentBg p-3 rounded-xl border border-cardBorder text-xs">
-                        <label class="flex items-center gap-2 font-bold text-navy-900">
-                            <input type="checkbox" wire:model="requireToken" class="rounded text-emerald-600 focus:ring-emerald-600">
-                            Wajibkan Token Masuk Ujian
-                        </label>
+                        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900">
+                            <p class="font-bold">Token masuk wajib digunakan.</p>
+                            <p class="mt-1 text-[11px]">Sistem membuat token otomatis saat Guru menerbitkan ujian. Token dapat dilihat sebelum jadwal dimulai.</p>
+                        </div>
                         <label class="flex items-center gap-2 font-bold text-navy-900">
                             <input type="checkbox" wire:model="shuffleQuestions" class="rounded text-emerald-600 focus:ring-emerald-600">
                             Acak Urutan Soal
