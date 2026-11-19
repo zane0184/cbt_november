@@ -196,6 +196,7 @@ class Phase7DReportingTest extends TestCase
     {
         app(TenantContext::class)->setTenantId(null);
         return $this->actingAs($user, 'sanctum');
+        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_pdf_report_export_returns_200_and_pdf_headers()
