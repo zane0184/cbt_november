@@ -91,7 +91,10 @@ class ExamPolicy
 
         // Manual token rotation is a privileged recovery action. Normal
         // publication creates the token automatically for the assigned teacher.
-        return $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.token');
+        return $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasPermission('exam.token')
+            && $exam->status === 'PUBLISHED'
+            && $exam->locked_at !== null;
     }
 
     public function lock(User $user, Exam $exam): bool
