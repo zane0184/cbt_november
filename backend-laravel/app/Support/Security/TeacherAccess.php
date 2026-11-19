@@ -333,21 +333,41 @@ class TeacherAccess
             return false;
         }
 
-        $participants = $exam->participants()->where('exam_participants.tenant_id', $exam->tenant_id);
+        $participants = $exam->participants()
+            ->where('exam_participants.tenant_id', $exam->tenant_id);
         $total = (clone $participants)->count();
         if ($total === 0) {
             return false;
         }
 
+        // Use explicit tenant-correlated EXISTS predicates instead of nested
+        // whereHas('rombels'). The StudentProfile::rombels relation applies a
+        // withPivotValue based on the in-memory model tenant_id; nested
+        // relation queries can instantiate a model without that attribute and
+        // accidentally filter for NULL pivot tenant IDs.
         $covered = (clone $participants)
             ->whereHas('user', function ($userQuery) use ($user, $assignedRombelIds, $assessment) {
-                $userQuery->where('users.tenant_id', $user->tenant_id)
-                    ->whereHas('studentProfile', function ($profileQuery) use ($user, $assignedRombelIds, $assessment) {
-                        $profileQuery->where('student_profiles.tenant_id', $user->tenant_id)
-                            ->whereHas('rombels', function ($rombelQuery) use ($user, $assignedRombelIds, $assessment) {
-                                $rombelQuery->whereIn('rombels.id', $assignedRombelIds)
-                                    ->where('rombels.tenant_id', $user->tenant_id)
-                                    ->where('rombels.academic_year_id', $assessment->academic_year_id);
+                $userQuery
+                    ->where('users.tenant_id', $user->tenant_id)
+                    ->whereExists(function ($profileQuery) use ($user, $assignedRombelIds, $assessment) {
+                        $profileQuery->selectRaw('1')
+                            ->from('student_profiles as teacher_student_profiles')
+                            ->whereColumn('teacher_student_profiles.user_id', 'users.id')
+                            ->where('teacher_student_profiles.tenant_id', $user->tenant_id)
+                            ->whereNull('teacher_student_profiles.deleted_at')
+                            ->whereExists(function ($membershipQuery) use ($user, $assignedRombelIds, $assessment) {
+                                $membershipQuery->selectRaw('1')
+                                    ->from('rombel_student as teacher_memberships')
+                                    ->join('rombels as teacher_rombels', function ($join) {
+                                        $join->on('teacher_rombels.id', '=', 'teacher_memberships.rombel_id')
+                                            ->on('teacher_rombels.tenant_id', '=', 'teacher_memberships.tenant_id');
+                                    })
+                                    ->whereColumn('teacher_memberships.student_id', 'teacher_student_profiles.id')
+                                    ->where('teacher_memberships.tenant_id', $user->tenant_id)
+                                    ->whereIn('teacher_rombels.id', $assignedRombelIds)
+                                    ->where('teacher_rombels.tenant_id', $user->tenant_id)
+                                    ->where('teacher_rombels.academic_year_id', $assessment->academic_year_id)
+                                    ->whereNull('teacher_rombels.deleted_at');
                             });
                     });
             })
