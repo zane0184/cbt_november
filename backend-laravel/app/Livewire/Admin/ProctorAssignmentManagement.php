@@ -99,7 +99,7 @@ class ProctorAssignmentManagement extends Component
         $exams = Exam::query()
             ->where('tenant_id', $tenantId)
             ->orderByDesc('start_at')
-            ->get(['id', 'title', 'status', 'start_at', 'end_at']);
+            ->get(['id', 'title', 'status', 'start_at', 'end_at', 'timezone']);
 
         $proctors = User::query()
             ->where('tenant_id', $tenantId)
@@ -107,9 +107,11 @@ class ProctorAssignmentManagement extends Component
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
 
+        $selectedExamTimezone = $exams->firstWhere('id', $this->examId)?->timezone ?: config('app.timezone', 'UTC');
+
         $assignments = ExamProctorAssignment::query()
             ->where('tenant_id', $tenantId)
-            ->with(['exam:id,title,status,start_at,end_at', 'proctor:id,name,email', 'assigner:id,name', 'revoker:id,name'])
+            ->with(['exam:id,title,status,start_at,end_at,timezone', 'proctor:id,name,email', 'assigner:id,name', 'revoker:id,name'])
             ->when($this->examFilter !== '', fn ($query) => $query->where('exam_id', $this->examFilter))
             ->orderByDesc('starts_at')
             ->paginate(20);
@@ -118,6 +120,7 @@ class ProctorAssignmentManagement extends Component
             'exams' => $exams,
             'proctors' => $proctors,
             'assignments' => $assignments,
+            'selectedExamTimezone' => $selectedExamTimezone,
         ])->layout('layouts.app');
     }
 }
