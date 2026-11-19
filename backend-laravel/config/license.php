@@ -4,6 +4,8 @@ return [
     // Explicit, temporary 2026 pilot mode. Publisher licensing remains the default.
     'mode' => env('CBT_LICENSE_MODE', 'PUBLISHER'),
     'pre_activation_2026' => env('CBT_LICENSE_MODE', 'PUBLISHER') === 'PRE_ACTIVATION_2026',
+    // Test-only bypass; requires APP_ENV=testing and is false by default.
+    'testing_bypass' => (bool) env('CBT_LICENSE_TEST_BYPASS', false),
     'publisher_url' => rtrim(env('CBT_PUBLISHER_URL', 'https://portal.rdmdigital.id'), '/'),
     'product_code' => env('CBT_PRODUCT_CODE', 'CBT-MI'),
     'product_version' => env('CBT_PRODUCT_VERSION', '1.0.0'),
