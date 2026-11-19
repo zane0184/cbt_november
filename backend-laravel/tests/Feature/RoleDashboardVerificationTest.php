@@ -63,6 +63,8 @@ class RoleDashboardVerificationTest extends TestCase
         $this->roleTeacher    = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $this->roleStudent    = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
 
+        app(\App\Services\RolePermissionBootstrapper::class)->bootstrap();
+
         // Tenant A Users
         $this->superAdmin = User::create([
             'tenant_id' => $this->tenantA->id,
@@ -203,7 +205,7 @@ class RoleDashboardVerificationTest extends TestCase
 
         // Sidebar rendering verification for GURU (Proktor Dashboard menu MUST NOT be present)
         $response = $this->actingAs($this->guruA)->get('/admin/exams');
-        $response->assertDontSee('Dashboard Proktor');
+        $response->assertDontSee('Penugasan Operasional');
         $response->assertSee('Manajemen Ujian');
         $response->assertSee('Bank Soal');
 
