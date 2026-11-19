@@ -9,6 +9,14 @@ use App\Models\Exam;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\Curriculum;
+use App\Models\Phase;
+use App\Models\GradeLevel;
+use App\Models\Rombel;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\MediaAsset;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -41,21 +49,56 @@ class ExamSnapshotTest extends TestCase
         $role = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $this->user->roles()->sync([$role->id]);
 
-        $ay = AcademicYear::create(['name' => '2024']);
-        $assessment = Assessment::create([
+        $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
+        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024', 'is_active' => true]);
+        $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
+        $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
+        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
+        $rombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
             'academic_year_id' => $ay->id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => '1A',
+            'status' => 'ACTIVE',
+        ]);
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->user->id,
+            'full_name' => 'Guru',
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $this->user->id,
+        ]);
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $subject->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $semester->id,
             'title' => 'Daily',
             'assessment_type' => 'DAILY',
             'created_by' => $this->user->id
         ]);
 
         $this->exam = Exam::create([
+            'tenant_id' => $this->tenant->id,
             'assessment_id' => $assessment->id,
             'title' => 'Math Test',
             'duration_seconds' => 3600,
             'created_by' => $this->user->id,
             'status' => 'DRAFT'
         ]);
+
+        $this->context->setTenantId(null);
+        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_exam_snapshot_remains_immutable_when_bank_question_changes()
