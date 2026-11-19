@@ -191,7 +191,7 @@ class Phase7BManualReviewTest extends TestCase
 
     /** A. ROLE AUTHORIZATION (RBAC) **/
 
-    public function test_authorized_teacher_or_admin_can_grade_manual_questions()
+    public function test_only_assigned_teacher_can_grade_manual_questions()
     {
         $snapshot = $this->createEssaySnapshot(20);
         $this->submitAnswer($snapshot->id, ['text' => 'Jawaban essay siswa']);
@@ -201,22 +201,23 @@ class Phase7BManualReviewTest extends TestCase
 
         $qScore = ExamQuestionScore::where('snapshot_id', $snapshot->id)->first();
 
-        // Teacher A can grade
+        // Assigned Teacher A can grade.
         $this->actingAs($this->teacherA, 'sanctum');
         $resTeacher = $this->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$this->attemptA->id}/grading/{$qScore->id}", [
             'awarded_score' => 15,
             'feedback' => 'Penjelasan baik'
         ]);
         $resTeacher->assertStatus(200);
+        $this->assertEquals(15, $qScore->fresh()->awarded_score);
 
-        // Admin A can also grade
+        // Admin may reopen a finalized score, but cannot perform ordinary grading.
         $this->actingAs($this->adminA, 'sanctum');
         $resAdmin = $this->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$this->attemptA->id}/grading/{$qScore->id}", [
             'awarded_score' => 18,
-            'feedback' => 'Diperbarui oleh Admin'
+            'feedback' => 'Percobaan perubahan oleh Admin'
         ]);
-        $resAdmin->assertStatus(200);
-        $this->assertEquals(18, $qScore->fresh()->awarded_score);
+        $resAdmin->assertStatus(403);
+        $this->assertEquals(15, $qScore->fresh()->awarded_score);
     }
 
     public function test_unauthorized_student_cannot_grade_or_finalize()
