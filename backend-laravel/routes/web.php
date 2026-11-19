@@ -18,11 +18,11 @@ Route::get('/', function () {
     if (auth()->check()) {
         $user = auth()->user();
         if ($user->hasRole('KAMAD')) {
-            return redirect('/operator/dashboard');
+            return redirect('/admin/overview');
         } elseif ($user->hasRole('PROKTOR')) {
             return redirect('/proktor/assignments');
         } elseif ($user->hasRole('OPERATOR') || $user->hasRole('ADMIN_MADRASAH')) {
-            return redirect('/operator/dashboard');
+            return redirect('/admin/dashboard');
         } elseif ($user->hasRole('GURU')) {
             return redirect('/admin/exams');
         } elseif ($user->hasRole('SISWA')) {
@@ -73,8 +73,11 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('stude
 });
 
 Route::middleware(['auth', 'tenant', 'license'])->group(function () {
-    // Dedicated Dashboards
-    Route::get('/operator/dashboard', OperatorDashboard::class);
+    // Shared Admin Madrasah portal. Kamad receives a read-only executive view
+    // inside the same portal; Proktor receives only a temporary assignment workbench.
+    Route::get('/admin/dashboard', OperatorDashboard::class)->name('admin.dashboard');
+    Route::get('/admin/overview', KamadDashboard::class)->name('admin.overview');
+    Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'))->name('operator.dashboard.legacy');
     Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
     // Admin Operational Routes
