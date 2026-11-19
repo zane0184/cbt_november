@@ -27,7 +27,7 @@ class MonitoringDuplicationTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'T1', 'code' => 'T1']);
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
         $this->admin = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Admin', 'email' => 'admin@e.com', 'password' => 'p']);
-        $adminRole = \\App\\Models\\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $adminRole = \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
         $this->admin->roles()->attach($adminRole);
         $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'email' => 's@e.com', 'password' => 'p']);
         $this->student->roles()->create(['name' => 'SISWA', 'label' => 'Siswa']);
