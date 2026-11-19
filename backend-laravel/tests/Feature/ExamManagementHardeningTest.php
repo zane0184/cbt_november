@@ -259,16 +259,25 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('selectedRombelId', $this->rombelA->id)
             ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
+            ->set('requireToken', false) // Client tampering must not disable mandatory tokens.
             ->set('startAt', now()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasNoErrors();
 
         $exam = Exam::where('title', 'Ujian Biologi 1 Soal')->first();
+        $this->assertTrue((bool) $exam->fresh()->require_token);
         $this->assertNull($exam->fresh()->token);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'CREATE_EXAM', 'entity_id' => $exam->id]);
+
+        // Even a legacy draft row with require_token=false must be corrected at publish.
+        $exam->update(['require_token' => false]);
         Livewire::test(ExamManagement::class)->call('lockExam', $exam->id);
 
-        $this->assertNotNull($exam->fresh()->token);
+        $exam->refresh();
+        $this->assertTrue((bool) $exam->require_token);
+        $this->assertMatchesRegularExpression('/^[A-Z0-9]{6}$/', $exam->token);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'PUBLISH_EXAM', 'entity_id' => $exam->id]);
         $this->assertEquals(1, $exam->snapshots()->count());
         $this->assertDatabaseHas('exam_question_snapshots', [
             'exam_id' => $exam->id,
