@@ -97,7 +97,6 @@ class ExamSnapshotTest extends TestCase
             'status' => 'DRAFT'
         ]);
 
-        $this->context->setTenantId(null);
         $this->bootstrapCbtRolePermissions();
     }
 
