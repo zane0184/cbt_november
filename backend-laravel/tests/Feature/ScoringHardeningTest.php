@@ -256,7 +256,7 @@ class ScoringHardeningTest extends TestCase
 
         // Assert database state was rolled back cleanly (no ExamAttemptScore or ExamQuestionScore persisted)
         $this->assertNull(ExamAttemptScore::where('attempt_id', $this->attempt->id)->first());
-        $this->assertEquals(0, ExamQuestionScore::where('exam_attempt_id', $this->attempt->id)->count());
+        $this->assertEquals(0, ExamQuestionScore::where('attempt_id', $this->attempt->id)->count());
     }
 
     /** 8. MASS ASSIGNMENT PROTECTION **/
