@@ -13,14 +13,19 @@ class RolePermissionBootstrapperTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createRequiredRoles(): void
+    private function createRequiredRoles(bool $includeOperator = true): void
     {
-        foreach ([
+        $roles = [
             'ADMIN_MADRASAH' => 'Admin Madrasah',
             'KAMAD' => 'Kepala Madrasah',
             'GURU' => 'Guru',
-            'OPERATOR' => 'Operator',
-        ] as $name => $label) {
+        ];
+
+        if ($includeOperator) {
+            $roles['OPERATOR'] = 'Operator';
+        }
+
+        foreach ($roles as $name => $label) {
             Role::create(['name' => $name, 'label' => $label]);
         }
     }
@@ -31,7 +36,7 @@ class RolePermissionBootstrapperTest extends TestCase
         $manage = Permission::create(['name' => 'curriculum.manage', 'label' => 'Kelola Struktur Kurikulum']);
         Role::whereIn('name', ['KAMAD', 'GURU', 'OPERATOR'])->get()->each(fn (Role $role) => $role->permissions()->attach($manage->id));
 
-        $staleAdminPermissions = Permission::insertOrIgnore([
+        Permission::insertOrIgnore([
             ['name' => 'exam.manage', 'label' => 'Kelola ujian'],
             ['name' => 'exam.assign', 'label' => 'Kelola peserta'],
             ['name' => 'exam.token', 'label' => 'Kelola token'],
@@ -61,6 +66,17 @@ class RolePermissionBootstrapperTest extends TestCase
         $this->assertFalse($admin->permissions()->whereIn('name', ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'question.manage'])->exists());
         $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'];
         $this->assertSame(count($expectedPermissions), Permission::whereIn('name', $expectedPermissions)->count());
+    }
+
+    public function test_optional_operator_role_is_not_required_for_bootstrap(): void
+    {
+        $this->createRequiredRoles(false);
+
+        app(RolePermissionBootstrapper::class)->bootstrap();
+
+        $admin = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $this->assertTrue($admin->permissions()->where('name', 'exam.proctor.assign')->exists());
+        $this->assertFalse(Role::where('name', 'OPERATOR')->exists());
     }
 
     public function test_missing_required_role_fails_before_creating_permissions(): void
