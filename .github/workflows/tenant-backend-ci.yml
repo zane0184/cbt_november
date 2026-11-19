@@ -117,7 +117,7 @@ jobs:
 
       - name: Run focused exam snapshot history guard tests
         continue-on-error: true
-        run: php artisan test --display-errors --display-warnings --filter='ExamSnapshotTest' -v
+        run: php artisan test --display-errors --display-warnings --filter='ExamSnapshotTest'
 
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
