@@ -201,7 +201,6 @@ class ExamAttemptController extends Controller
         }
 
         $user = $request->user();
-        $this->authorize('view', $exam);
 
         $lockedState = DB::transaction(function () use ($exam, $user, $deviceId) {
             // Execution heartbeat/binding mutation follows lifecycle parent-first locks.
@@ -209,8 +208,6 @@ class ExamAttemptController extends Controller
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            $this->authorize('view', $lockedExam);
 
             $participant = ExamParticipant::query()
                 ->where('exam_id', $lockedExam->id)
@@ -225,6 +222,8 @@ class ExamAttemptController extends Controller
                     'message' => 'Participant not found for this exam.'
                 ], 404);
             }
+
+            $this->authorize('view', $lockedExam);
 
             $eligibilityNow = now();
             if (($participant->eligible_from && $eligibilityNow->lt($participant->eligible_from))
