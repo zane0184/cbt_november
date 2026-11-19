@@ -69,7 +69,8 @@ class ExamSessionHardeningTest extends TestCase
             'timezone' => 'Asia/Jakarta',
             'status' => 'PUBLISHED',
             'attempt_limit' => 2,
-            'require_token' => false,
+            'require_token' => true,
+            'token' => 'ABC123',
             'created_by' => $this->userA->id,
             'locked_at' => now()
         ]);
@@ -79,6 +80,7 @@ class ExamSessionHardeningTest extends TestCase
             'user_id' => $this->userA->id,
             'status' => 'ASSIGNED'
         ]);
+        $this->createSnapshot();
 
         // Switch context to B for creating Tenant B data
         $context->setTenantId($this->tenantB->id);
@@ -144,7 +146,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $start->assertStatus(201);
         $attemptId = $start->json('data.id');
 
@@ -179,7 +181,7 @@ class ExamSessionHardeningTest extends TestCase
     {
         $this->actingAs($this->userA, 'sanctum');
 
-        $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+        $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $response->assertStatus(400);
         $response->assertJson([
             'success' => false,
@@ -192,7 +194,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(201);
         $this->assertPublicAttemptPayload($response->json('data'));
@@ -207,10 +209,10 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(200);
         $response->assertJson(['success' => true, 'message' => 'Resuming existing attempt.']);
@@ -222,10 +224,10 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(409);
         $response->assertJson([
@@ -239,7 +241,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
@@ -252,7 +254,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
@@ -269,7 +271,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
@@ -284,7 +286,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
@@ -303,7 +305,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
@@ -329,7 +331,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
@@ -348,7 +350,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
@@ -368,7 +370,7 @@ class ExamSessionHardeningTest extends TestCase
         $this->actingAs($this->userA, 'sanctum');
 
         $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
