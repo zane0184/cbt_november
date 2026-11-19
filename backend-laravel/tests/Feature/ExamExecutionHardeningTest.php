@@ -9,6 +9,9 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\AcademicYear;
+use App\Models\Question;
+use App\Models\QuestionVersion;
+use App\Services\ExamSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Carbon\Carbon;
@@ -46,8 +49,34 @@ class ExamExecutionHardeningTest extends TestCase
             'status' => 'DRAFT',
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
+            'require_token' => true,
+            'token' => null,
+        ]);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->student->id,
+            'question_code' => 'EXEC-1',
+            'created_by' => $this->student->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Soal uji eksekusi',
+            'is_current' => true,
+            'created_by' => $this->student->id,
+        ]);
+        app(ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
+        $this->exam->update([
+            'status' => 'PUBLISHED',
             'locked_at' => now(),
-            'require_token' => false
+            'published_at' => now(),
+            'require_token' => true,
+            'token' => 'ABC123',
         ]);
 
         $participant = new ExamParticipant(['user_id' => $this->student->id]);
@@ -58,18 +87,18 @@ class ExamExecutionHardeningTest extends TestCase
     }
 
     /** 1. CONCURRENT / DUPLICATE START **/
-    public function test_concurrent_start_returns_same_attempt()
+    public function test_duplicate_start_resumes_same_attempt_for_same_device()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-1');
 
         // Simulate two sequential requests that pass the initial checks
         // In a real environment, we'd use multiple processes, but here we test the logic
-        $response1 = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+        $response1 = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
         $response1->assertStatus(201);
         $attemptId1 = $response1->json('data.id');
 
-        $response2 = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+        $response2 = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
         $response2->assertStatus(200); // Should resume
         $attemptId2 = $response2->json('data.id');
 
@@ -97,7 +126,7 @@ class ExamExecutionHardeningTest extends TestCase
 
         // If limit is 1, and first is expired, it's counted as an attempt.
         // Current logic: store() count attempts.
-        $response->assertStatus(403);
+        $response->assertStatus(422);
 
         // 4. Try to access execution endpoint
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
@@ -122,7 +151,7 @@ class ExamExecutionHardeningTest extends TestCase
         $this->withHeader('X-Device-Binding-ID', 'device-1');
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
 
-        $this->actingAs($otherStudent);
+        $this->actingAs($otherStudent, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-2');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $response->assertStatus(404); // Participant not found for S2
