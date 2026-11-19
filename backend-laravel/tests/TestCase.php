@@ -16,6 +16,19 @@ abstract class TestCase extends BaseTestCase
         }
     }
 
+    protected function bootstrapCbtRolePermissions(): void
+    {
+        foreach ([
+            'ADMIN_MADRASAH' => 'Admin Madrasah',
+            'KAMAD' => 'Kepala Madrasah',
+            'GURU' => 'Guru',
+        ] as $name => $label) {
+            \App\Models\Role::firstOrCreate(['name' => $name], ['label' => $label]);
+        }
+
+        app(\App\Services\RolePermissionBootstrapper::class)->bootstrap();
+    }
+
     protected function setTenantContext(?string $tenantId): void
     {
         $context = app(TenantContext::class);
