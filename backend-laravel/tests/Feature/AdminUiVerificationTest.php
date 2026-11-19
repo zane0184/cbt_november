@@ -290,7 +290,7 @@ class AdminUiVerificationTest extends TestCase
     {
         $guruRole = Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         $curriculumView = Permission::firstOrCreate(['name' => 'curriculum.view'], ['label' => 'Lihat Kurikulum']);
-        $guruRole->permissions()->attach($curriculumView);
+        $guruRole->permissions()->syncWithoutDetaching([$curriculumView->id]);
         $guru = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Guru Kurikulum',
