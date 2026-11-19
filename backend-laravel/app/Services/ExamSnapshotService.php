@@ -12,14 +12,21 @@ class ExamSnapshotService
     public function createSnapshots(Exam $exam, array $questionVersionIds, bool $append = false): void
     {
         DB::transaction(function () use ($exam, $questionVersionIds, $append) {
-            if (!$exam->canBeEdited()) {
+            // Serialize snapshot edits with publish/lock operations. Both paths
+            // must lock the same exam row before inspecting or changing snapshots.
+            $lockedExam = Exam::query()
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (!$lockedExam->canBeEdited()) {
                 throw new \Exception('Exam is locked and cannot be modified.');
             }
 
             if (!$append) {
                 // Sync is allowed only while the exam remains editable; retain
                 // a deterministic sequence for the replacement snapshot set.
-                $exam->snapshots()->delete();
+                $lockedExam->snapshots()->delete();
                 $nextSequence = 0;
             } else {
                 $nextSequence = ((int) $exam->snapshots()->max('sequence')) + 1;
@@ -31,7 +38,7 @@ class ExamSnapshotService
                 // Media writers lock QuestionVersion before MediaAsset; use the same
                 // order here so the snapshot captures one committed version state.
                 $version = QuestionVersion::query()
-                    ->where('tenant_id', $exam->tenant_id)
+                    ->where('tenant_id', $lockedExam->tenant_id)
                     ->whereKey($versionId)
                     ->lockForUpdate()
                     ->firstOrFail();
