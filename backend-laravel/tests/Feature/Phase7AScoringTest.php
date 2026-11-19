@@ -20,9 +20,12 @@ use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use Tests\Feature\Concerns\CreatesTeacherExamAssignment;
 
 class Phase7AScoringTest extends TestCase
 {
+    use CreatesTeacherExamAssignment;
+
     use RefreshDatabase;
 
     private Tenant $tenant;
@@ -57,14 +60,13 @@ class Phase7AScoringTest extends TestCase
         ]);
         $this->student->roles()->attach($siswaRole);
 
-        $ay = AcademicYear::create([
-            'tenant_id' => $this->tenant->id,
-            'name' => '2024/2025',
-        ]);
-
+        $scope = $this->createTeacherAssignmentScope($this->teacher, $this->student, $this->tenant, 'P7A');
+        $this->bootstrapCbtRolePermissions();
         $assessment = Assessment::create([
             'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $ay->id,
+            'subject_id' => $scope['subject']->id,
+            'academic_year_id' => $scope['academicYear']->id,
+            'semester_id' => $scope['semester']->id,
             'title' => 'Assesmen Harian 1',
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,

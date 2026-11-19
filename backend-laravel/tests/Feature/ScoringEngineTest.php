@@ -11,16 +11,20 @@ use App\Models\ExamParticipant;
 use App\Models\AcademicYear;
 use App\Models\Question;
 use App\Models\QuestionVersion;
+use App\Models\Role;
 use App\Models\ExamAttemptAnswer;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamQuestionScore;
 use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Feature\Concerns\CreatesTeacherExamAssignment;
 use Illuminate\Support\Str;
 
 class ScoringEngineTest extends TestCase
 {
+    use CreatesTeacherExamAssignment;
+
     use RefreshDatabase;
 
     private $tenant;
@@ -35,13 +39,18 @@ class ScoringEngineTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'Madrasah', 'code' => 'M1']);
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
         $this->teacher = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru', 'email' => 'guru@m.com', 'password' => 'p']);
-        $this->teacher->roles()->create(['name' => 'GURU', 'label' => 'Guru']);
+        $this->teacher->roles()->attach(Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
 
         $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa', 'email' => 'siswa@m.com', 'password' => 'p']);
-        $this->student->roles()->create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $this->student->roles()->attach(Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']));
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->teacher->id]);
+        $scope = $this->createTeacherAssignmentScope($this->teacher, $this->student, $this->tenant, 'SCENG');
+        $this->bootstrapCbtRolePermissions();
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $scope['subject']->id,
+            'academic_year_id' => $scope['academicYear']->id,
+            'semester_id' => $scope['semester']->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->teacher->id]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
