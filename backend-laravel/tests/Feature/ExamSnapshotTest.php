@@ -329,6 +329,24 @@ class ExamSnapshotTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
         $this->assertTrue(
+            $student->studentProfile()->exists(),
+            'Student user must resolve its tenant-scoped student profile.'
+        );
+        $this->assertTrue(
+            $studentProfile->rombels()->whereKey($this->rombel->id)->exists(),
+            'Student profile must resolve the tenant-scoped rombel membership.'
+        );
+        $this->assertContains(
+            $this->rombel->id,
+            TeacherAccess::assignedRombelIdsForScope(
+                $this->user,
+                $this->exam->assessment->subject_id,
+                $this->exam->assessment->academic_year_id,
+                $this->exam->assessment->semester_id
+            ),
+            'Teacher must have the exact active assignment for this rombel.'
+        );
+        $this->assertTrue(
             TeacherAccess::canManageAssessment($this->user, $this->exam->assessment),
             'Teacher fixture must retain assessment management permission.'
         );
