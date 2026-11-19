@@ -377,9 +377,17 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $reopenResp->assertStatus(200);
         $reopenResp->assertJsonPath('data.scoring_version', 2);
 
-        // Update score for reopened attempt version 2 (from 60 to 90)
-        $scoreV2 = ExamAttemptScore::where('attempt_id', $attempt->id)->where('scoring_version', 2)->first();
-        $scoreV2->update(['raw_score' => 90, 'percentage' => 90.00, 'grading_status' => 'GRADED']);
+        // Grade the reopened essay question through the authorized scoring API.
+        // Finalization must derive the aggregate score from question-level marks.
+        $questionScoreV2 = ExamQuestionScore::where('attempt_id', $attempt->id)
+            ->where('scoring_version', 2)
+            ->firstOrFail();
+        $this->actingAs($this->adminA, 'sanctum')
+            ->putJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/grading/{$questionScoreV2->id}", [
+                'awarded_score' => 90,
+                'feedback' => 'Penilaian ulang setelah sanggahan',
+            ])
+            ->assertStatus(200);
 
         // Step 4 & 5: Re-finalize attempt version 2
         $finalV2Resp = $this->actingAs($this->adminA, 'sanctum')
