@@ -437,7 +437,7 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
         if (Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id')) {
             Schema::disableForeignKeyConstraints();
             Schema::dropIfExists('question_multi_curriculum_mappings');
-            Schema::create('question_multi_curriculum_mappings', function (\\Illuminate\\Database\\Schema\\Blueprint $table) {
+            Schema::create('question_multi_curriculum_mappings', function (\Illuminate\Database\Schema\Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->uuid('tenant_id');
                 $table->uuid('question_id');
