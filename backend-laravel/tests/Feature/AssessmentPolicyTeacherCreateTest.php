@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Models\Role;
 use App\Models\User;
 use App\Policies\AssessmentPolicy;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 class AssessmentPolicyTeacherCreateTest extends TestCase
 {

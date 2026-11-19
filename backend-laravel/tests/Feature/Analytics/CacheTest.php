@@ -15,6 +15,7 @@ use App\Models\StudentProfile;
 use App\Models\AcademicYear;
 use App\Models\Semester;
 use App\Models\Subject;
+use App\Models\Role;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,8 +34,10 @@ class CacheTest extends TestCase
 
         $admin = User::factory()->create(['tenant_id' => $tenant->id]);
         $admin->roles()->attach(
-            \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin'])
+            Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin'])
         );
+        $teacher = User::factory()->create(['tenant_id' => $tenant->id]);
+        $teacher->roles()->attach(Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
         $exam = Exam::factory()->create(['tenant_id' => $tenant->id]);
         $student = User::factory()->create(['tenant_id' => $tenant->id]);
         $profile = StudentProfile::create([
