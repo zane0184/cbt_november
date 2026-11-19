@@ -3,11 +3,12 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 mb-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Role: Operator Madrasah
+                <span class="w-2 h-2 rounded-full bg-emerald-600"></span> {{ auth()->user()->hasRole('ADMIN_MADRASAH') ? 'Admin Madrasah' : 'Ringkasan Operasional' }}
             </div>
-            <h1 class="text-2xl font-bold text-navy-900">Dashboard Operasional Madrasah</h1>
-            <p class="text-sm text-textSecondary">Pengelolaan data induk madrasah, rombel, mata pelajaran, pengguna, dan administrasi ujian.</p>
+            <h1 class="text-2xl font-bold text-navy-900">Dashboard Administrasi Madrasah</h1>
+            <p class="text-sm text-textSecondary">Ringkasan data akademik dan pelaksanaan asesmen pada madrasah aktif.</p>
         </div>
+        @if(auth()->user()->hasRole('ADMIN_MADRASAH'))
         <div class="flex items-center gap-3">
             <a href="/admin/users" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-sm">
                 + Tambah Pengguna
@@ -16,6 +17,8 @@
                 Kelola Akademik
             </a>
         </div>
+        @endif
+
     </div>
 
     <!-- Summary Cards Grid -->
@@ -52,6 +55,7 @@
         </div>
     </div>
 
+    @if(auth()->user()->hasRole('ADMIN_MADRASAH'))
     <!-- Quick Operational Actions -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <a href="/admin/users" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
@@ -84,8 +88,11 @@
         </a>
     </div>
 
+    @endif
+
     <!-- Tables Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        @if(auth()->user()->hasRole('ADMIN_MADRASAH'))
         <!-- Recent Users Table -->
         <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
             <div class="p-5 border-b border-cardBorder flex justify-between items-center bg-gray-50/50">
@@ -108,6 +115,8 @@
                 @endforelse
             </div>
         </div>
+
+        @endif
 
         <!-- Recent Rombels -->
         <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
