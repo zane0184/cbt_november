@@ -90,7 +90,7 @@ class ExamManagement extends Component
         $this->selectedSemesterId = $exam->assessment ? (string) $exam->assessment->semester_id : '';
         $this->durationMinutes = intval($exam->duration_seconds / 60);
         $this->attemptLimit = $exam->attempt_limit ?? 1;
-        $this->requireToken = $exam->require_token ?? true;
+        $this->requireToken = true;
         $this->shuffleQuestions = $exam->shuffle_questions ?? true;
         $this->shuffleOptions = $exam->shuffle_options ?? true;
         $this->startAt = $exam->start_at ? date('Y-m-d\TH:i', strtotime($exam->start_at)) : now()->format('Y-m-d\TH:i');
@@ -238,7 +238,7 @@ class ExamManagement extends Component
                     'attempt_limit' => $this->attemptLimit,
                     'shuffle_questions' => $this->shuffleQuestions,
                     'shuffle_options' => $this->shuffleOptions,
-                    'require_token' => $this->requireToken,
+                    'require_token' => true,
                 ]);
 
                 if ($exam->assessment) {
@@ -411,11 +411,12 @@ class ExamManagement extends Component
             }
 
             $publishedAt = now();
-            $tokenGenerated = (bool) ($lockedExam->require_token && !$lockedExam->token);
+            $tokenGenerated = !$lockedExam->token;
             $lockedExam->update([
                 'status' => 'PUBLISHED',
                 'locked_at' => $publishedAt,
                 'published_at' => $publishedAt,
+                'require_token' => true,
                 'token' => $tokenGenerated ? strtoupper(Str::random(6)) : $lockedExam->token,
             ]);
 
