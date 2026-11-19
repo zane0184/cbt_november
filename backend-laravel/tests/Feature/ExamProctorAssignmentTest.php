@@ -132,8 +132,10 @@ class ExamProctorAssignmentTest extends TestCase
         $foreignProctorRole = Role::firstOrCreate(['name' => 'PROKTOR'], ['label' => 'Proktor']);
         $foreignUser = User::factory()->create(['tenant_id' => $otherTenant->id]);
         $foreignUser->roles()->attach($foreignProctorRole);
-        $nonProctor = User::factory()->create(['tenant_id' => $otherTenant->id]);
+
+        // A same-tenant account without the PROKTOR role must also be rejected.
         app(TenantContext::class)->setTenantId($this->tenant->id);
+        $nonProctor = User::factory()->create(['tenant_id' => $this->tenant->id]);
 
         $this->actingAs($this->admin)
             ->postJson("/api/v1/exams/{$this->exam->id}/proctor-assignments", [
