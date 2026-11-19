@@ -107,7 +107,7 @@ return new class extends Migration
             Schema::create('tenant_curriculum_registrations', function (Blueprint $table) {
                 $table->uuid('id')->primary();
                 $table->foreignUuid('tenant_id')->constrained('tenants')->onDelete('cascade');
-                $table->foreignUuid('multi_curriculum_version_id')->constrained('multi_curriculum_versions')->onDelete('RESTRICT');
+                $table->foreignUuid('multi_curriculum_version_id')->constrained('multi_curriculum_versions', 'id', 'fk_tcr_mcv_id')->onDelete('RESTRICT');
                 $table->foreignUuid('curriculum_owner_id')->constrained('tenants')->onDelete('RESTRICT');
                 $table->string('status')->default('ACTIVE');
                 $table->timestamp('registered_at')->useCurrent();
@@ -221,90 +221,14 @@ return new class extends Migration
 
     public function down(): void
     {
-        // Fail-Closed Safety Verification
-        if (!Schema::hasTable('tenant_curriculum_registrations') ||
-            !Schema::hasTable('question_multi_curriculum_mappings') ||
-            !Schema::hasTable('multi_learning_outcomes') ||
-            !Schema::hasTable('multi_curriculum_structures') ||
-            !Schema::hasTable('multi_curriculum_versions') ||
-            !Schema::hasTable('multi_curriculums')) {
-            throw new \RuntimeException("Rollback Safety Verification Failed: Required table missing.");
-        }
-
-        if (!Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id') ||
-            !Schema::hasColumn('multi_learning_outcomes', 'multi_curriculum_version_id')) {
-            throw new \RuntimeException("Rollback Safety Verification Failed: Required column missing.");
-        }
-
-        // Schema Metadata & Structure Integrity Check
-        if (Schema::hasColumn('multi_curriculum_versions', 'id') && !Schema::hasColumn('multi_curriculum_versions', 'tenant_id')) {
-            throw new \RuntimeException("Rollback Safety Verification Failed: Structure metadata mismatch.");
-        }
-
-        // System Tenant Provenance Verification
-        $systemTenant = DB::table('tenants')->where('id', '00000000-0000-0000-0000-000000000000')->first();
-        if ($systemTenant && $systemTenant->code !== 'SYSTEM_GLOBAL') {
-            throw new \RuntimeException("Rollback Safety Verification Failed: System Tenant provenance check failed.");
-        }
-
-        // FK and Unique Index Metadata Existence Verification before Destructive DDL
-        if (DB::getDriverName() === 'sqlite') {
-            DB::unprepared("DROP TRIGGER IF EXISTS trg_mlo_sync_ver;");
-            DB::statement("DROP INDEX IF EXISTS uniq_mlo_id_ver_t;");
-            DB::statement("DROP INDEX IF EXISTS uniq_mlo_id_ver;");
-            DB::statement("DROP INDEX IF EXISTS uniq_m_struct_id_ver_t;");
-            DB::statement("DROP INDEX IF EXISTS uniq_m_struct_id_ver;");
-            DB::statement("DROP INDEX IF EXISTS uniq_m_ver_id_curr;");
-            DB::statement("DROP INDEX IF EXISTS uniq_m_ver_id_tenant;");
-            DB::statement("DROP INDEX IF EXISTS uniq_m_curr_id_tenant;");
-        }
-
-        Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
-            if (DB::getDriverName() !== 'sqlite') {
-                $table->dropForeign('fk_qmcm_reg_triplet');
-                $table->dropForeign('fk_qmcm_lo_owner');
-                $table->dropForeign('fk_qmcm_lo_ver');
-                $table->dropColumn('curriculum_owner_id');
-
-                $table->foreign(['multi_learning_outcome_id', 'tenant_id'], 'qmcm_lo_tenant_fk')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_learning_outcomes')
-                    ->onDelete('cascade');
-            }
-        });
-
-        Schema::dropIfExists('tenant_curriculum_registrations');
-
-        Schema::table('multi_learning_outcomes', function (Blueprint $table) {
-            if (DB::getDriverName() !== 'sqlite') {
-                $table->dropForeign('fk_mlo_struct_ver_t');
-                $table->dropUnique('uniq_mlo_id_ver_t');
-                $table->dropUnique('uniq_mlo_id_ver');
-                $table->dropColumn('multi_curriculum_version_id');
-            }
-        });
-
-        Schema::table('multi_curriculum_structures', function (Blueprint $table) {
-            if (DB::getDriverName() !== 'sqlite') {
-                $table->dropForeign('fk_m_struct_parent_ver');
-                $table->dropForeign('fk_m_struct_ver_tenant');
-                $table->dropUnique('uniq_m_struct_id_ver_t');
-                $table->dropUnique('uniq_m_struct_id_ver');
-            }
-        });
-
-        Schema::table('multi_curriculum_versions', function (Blueprint $table) {
-            if (DB::getDriverName() !== 'sqlite') {
-                $table->dropForeign('fk_m_ver_curr_tenant');
-                $table->dropUnique('uniq_m_ver_id_curr');
-                $table->dropUnique('uniq_m_ver_id_tenant');
-            }
-        });
-
-        Schema::table('multi_curriculums', function (Blueprint $table) {
-            if (DB::getDriverName() !== 'sqlite') {
-                $table->dropUnique('uniq_m_curr_id_tenant');
-            }
-        });
+        // This migration performs data reconciliation and engine-specific table
+        // reconstruction. A generic rollback would discard reconciled values and
+        // cannot safely restore the exact pre-migration state on every supported
+        // engine. Fail closed before issuing any DDL; use a reviewed forward-fix
+        // or restore a verified backup instead.
+        throw new \RuntimeException(
+            'Fase1C migration is intentionally irreversible. No schema changes were made. '
+            .'Use a reviewed forward migration or restore a verified backup.'
+        );
     }
 };

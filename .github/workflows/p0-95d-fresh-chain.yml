@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - p0-95d-migration-gate-20261118
+      - hotfix/fase1c-mysql8-fk-name-20261119
 
 permissions:
   contents: read
@@ -50,7 +51,7 @@ jobs:
       - name: Checkout exact source commit
         uses: actions/checkout@v4
         with:
-          ref: p0-95d-migration-gate-20261118
+          ref: ${{ github.ref_name }}
 
       - name: Set up PHP 8.3 and Composer v2
         uses: shivammathur/setup-php@v2
@@ -153,6 +154,34 @@ jobs:
           echo "P0.95D migration exit code: $rc"
           exit "$rc"
 
+      - name: Stage 2B — prove Fase1C rollback fails closed without schema mutation
+        if: steps.migrate.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          before_tables=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE'")
+          before_ledger=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM migrations")
+          before_registrations=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='tenant_curriculum_registrations'")
+          test "$before_registrations" = "1"
+          set +e
+          php artisan migrate:rollback --path=database/migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php --force --no-interaction -vvv > ../p095d-artifacts/rollback-guard.log 2>&1
+          rollback_rc=$?
+          set -e
+          echo "$rollback_rc" > ../p095d-artifacts/rollback-guard-exit-code.txt
+          if [[ "$rollback_rc" -eq 0 ]]; then
+            echo "Unsafe: Fase1C rollback unexpectedly succeeded" >&2
+            cat ../p095d-artifacts/rollback-guard.log
+            exit 82
+          fi
+          grep -F "Fase1C migration is intentionally irreversible" ../p095d-artifacts/rollback-guard.log
+          after_tables=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE'")
+          after_ledger=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM migrations")
+          after_registrations=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='tenant_curriculum_registrations'")
+          test "$after_tables" = "$before_tables"
+          test "$after_ledger" = "$before_ledger"
+          test "$after_registrations" = "1"
+          printf 'rollback_guard=PASS\nrollback_exit_code=%s\ntables_before=%s\ntables_after=%s\nledger_before=%s\nledger_after=%s\nregistration_table_after=%s\n' "$rollback_rc" "$before_tables" "$after_tables" "$before_ledger" "$after_ledger" "$after_registrations" | tee ../p095d-artifacts/rollback-guard-proof.txt
+
       - name: Stage 3/4 — audit schema, tenant constraints and migration 190008
         if: always() && steps.identity.outcome == 'success'
         shell: bash
@@ -176,6 +205,8 @@ jobs:
           $columns = $pdo->query("SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA FROM information_schema.columns WHERE table_schema = DATABASE() ORDER BY TABLE_NAME, ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);
           $indexes = $pdo->query("SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME, SUB_PART, INDEX_TYPE FROM information_schema.statistics WHERE table_schema = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX")->fetchAll(PDO::FETCH_ASSOC);
           $foreignKeys = $pdo->query("SELECT k.TABLE_NAME, k.CONSTRAINT_NAME, k.COLUMN_NAME, k.ORDINAL_POSITION, k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, r.UPDATE_RULE, r.DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE k LEFT JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME WHERE k.CONSTRAINT_SCHEMA=DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL ORDER BY k.TABLE_NAME, k.CONSTRAINT_NAME, k.ORDINAL_POSITION")->fetchAll(PDO::FETCH_ASSOC);
+          $targetFkRows = $pdo->query("SELECT k.CONSTRAINT_NAME, k.COLUMN_NAME, k.REFERENCED_TABLE_NAME, k.REFERENCED_COLUMN_NAME, r.DELETE_RULE FROM information_schema.KEY_COLUMN_USAGE k JOIN information_schema.REFERENTIAL_CONSTRAINTS r ON r.CONSTRAINT_SCHEMA=k.CONSTRAINT_SCHEMA AND r.TABLE_NAME=k.TABLE_NAME AND r.CONSTRAINT_NAME=k.CONSTRAINT_NAME WHERE k.CONSTRAINT_SCHEMA=DATABASE() AND k.TABLE_NAME='tenant_curriculum_registrations' AND k.CONSTRAINT_NAME='fk_tcr_mcv_id' AND k.REFERENCED_TABLE_NAME='multi_curriculum_versions' AND k.COLUMN_NAME='multi_curriculum_version_id' AND k.REFERENCED_COLUMN_NAME='id' AND r.DELETE_RULE='RESTRICT'")->fetchAll(PDO::FETCH_ASSOC);
+          $targetFkPass = count($targetFkRows) === 1 && strlen($targetFkRows[0]['CONSTRAINT_NAME']) <= 64;
           $ledgerExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='migrations'")->fetchColumn();
           $ledger = $ledgerExists ? $pdo->query("SELECT migration, batch FROM migrations ORDER BY batch, migration")->fetchAll(PDO::FETCH_ASSOC) : [];
           $mappingExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='question_multi_curriculum_mappings'")->fetchColumn();
@@ -195,6 +226,8 @@ jobs:
               'columns' => $columns,
               'indexes' => $indexes,
               'foreign_keys' => $foreignKeys,
+              'fk_tcr_mcv_id' => $targetFkRows,
+              'fk_tcr_mcv_id_pass' => $targetFkPass,
               'composite_foreign_keys' => array_values(array_filter(
                   array_reduce($foreignKeys, function($carry, $fk) {
                       $key = $fk['TABLE_NAME'].'/'.$fk['CONSTRAINT_NAME'];
@@ -216,7 +249,7 @@ jobs:
           ];
           $rc = (int) @file_get_contents('../p095d-artifacts/migration-exit-code.txt');
           $result['migration_exit_code'] = $rc;
-          $result['schema_gate'] = ($rc === 0 && count($ledger) === 56 && $mappingExists && count($nonInnoDb) === 0) ? 'PASS' : 'NOT_PASS';
+          $result['schema_gate'] = ($rc === 0 && count($ledger) === 56 && $mappingExists && count($nonInnoDb) === 0 && $targetFkPass) ? 'PASS' : 'NOT_PASS';
           file_put_contents('../p095d-artifacts/schema-audit.json', json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           echo json_encode([
               'schema_gate' => $result['schema_gate'],
@@ -226,7 +259,8 @@ jobs:
               'migration_190008_seen_in_log' => $migration190008,
               'non_innodb_table_count' => count($nonInnoDb),
               'foreign_key_rows' => count($foreignKeys),
-              'composite_foreign_key_count' => count($result['composite_foreign_keys'])
+              'composite_foreign_key_count' => count($result['composite_foreign_keys']),
+              'fk_tcr_mcv_id_pass' => $targetFkPass
           ], JSON_PRETTY_PRINT) . PHP_EOL;
           if ($result['schema_gate'] !== 'PASS') exit(81);
           PHP
