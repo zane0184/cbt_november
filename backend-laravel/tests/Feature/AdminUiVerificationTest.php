@@ -304,8 +304,9 @@ class AdminUiVerificationTest extends TestCase
         $this->actingAs($guru);
 
         $this->get('/admin/curriculum')->assertStatus(200);
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        Livewire::test(CurriculumManagement::class)->call('openCreateTpModal');
+        Livewire::test(CurriculumManagement::class)
+            ->call('openCreateTpModal')
+            ->assertForbidden();
     }
 
     /** @test */
