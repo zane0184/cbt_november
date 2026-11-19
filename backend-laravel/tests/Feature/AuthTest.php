@@ -27,8 +27,21 @@ class AuthTest extends TestCase
         $this->user = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Test User',
+            'username' => 'test-user',
             'email' => 'test@example.com',
             'password' => bcrypt('password')
+        ]);
+
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'key_id' => 'test-key-1',
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => str_repeat('a', 64),
+            'registered_domain' => 'cbt.test',
+            'product_code' => 'CBT_WEB',
+            'product_version' => '1.0.0',
         ]);
 
         app(TenantContext::class)->setTenantId(null);
@@ -37,8 +50,7 @@ class AuthTest extends TestCase
     public function test_login_successful()
     {
         $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMO',
-            'email' => 'test@example.com',
+            'identifier' => 'test-user',
             'password' => 'password',
             'device_name' => 'android'
         ]);
@@ -55,8 +67,7 @@ class AuthTest extends TestCase
     public function test_login_failed_wrong_password()
     {
         $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMO',
-            'email' => 'test@example.com',
+            'identifier' => 'test-user',
             'password' => 'wrong-password'
         ]);
 
@@ -77,7 +88,7 @@ class AuthTest extends TestCase
         $response = $this->getJson('/api/v1/auth/me');
 
         $response->assertStatus(200)
-            ->assertJsonPath('data.email', 'test@example.com')
+            ->assertJsonPath('data.username', 'test-user')
             ->assertJsonPath('data.tenant_id', $this->tenant->id);
     }
 
