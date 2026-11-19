@@ -167,7 +167,7 @@ class QuestionBankTest extends TestCase
 
         $response = $this->getJson("/api/v1/media/{$mediaB->id}");
 
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 
     public function test_cannot_create_question_with_other_tenant_curriculum()

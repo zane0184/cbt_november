@@ -35,7 +35,7 @@ class MonitoringDuplicationTest extends TestCase
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->admin->id]);
 
-        $this->exam = Exam::create(['tenant_id' => $this->tenant->id, 'assessment_id' => $assessment->id, 'title' => 'E1', 'duration_seconds' => 60, 'created_by' => $this->teacher->id]);
+        $this->exam = Exam::create(['tenant_id' => $this->tenant->id, 'assessment_id' => $assessment->id, 'title' => 'E1', 'duration_seconds' => 60, 'created_by' => $this->admin->id]);
         $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id]);
         $this->bootstrapCbtRolePermissions();
     }
