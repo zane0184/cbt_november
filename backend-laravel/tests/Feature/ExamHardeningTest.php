@@ -9,6 +9,11 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\AcademicYear;
+use App\Models\Question;
+use App\Models\QuestionVersion;
+use App\Models\QuestionOption;
+use App\Models\ExamQuestionSnapshot;
+use App\Services\ExamSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -20,6 +25,7 @@ class ExamHardeningTest extends TestCase
     private $admin;
     private $siswa;
     private $exam;
+    private $snapshot;
 
     protected function setUp(): void
     {
@@ -51,7 +57,51 @@ class ExamHardeningTest extends TestCase
             'status' => 'DRAFT',
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
-            'locked_at' => now() // Locked
+            'require_token' => true,
+        ]);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->admin->id,
+            'question_code' => 'HARD-01',
+            'created_by' => $this->admin->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MULTIPLE_CHOICE',
+            'stem' => 'Soal uji submit',
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'created_by' => $this->admin->id,
+        ]);
+        QuestionOption::create([
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+            'option_key' => 'A',
+            'content' => 'Benar',
+            'is_correct' => true,
+            'sequence' => 1,
+        ]);
+        QuestionOption::create([
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+            'option_key' => 'B',
+            'content' => 'Salah',
+            'is_correct' => false,
+            'sequence' => 2,
+        ]);
+        app(ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
+        $this->snapshot = $this->exam->snapshots()->firstOrFail();
+        $this->exam->update([
+            'status' => 'PUBLISHED',
+            'locked_at' => now(),
+            'published_at' => now(),
+            'token' => 'ABC123',
+            'require_token' => true,
         ]);
 
         $participant = new ExamParticipant(['user_id' => $this->siswa->id]);
@@ -63,14 +113,14 @@ class ExamHardeningTest extends TestCase
 
     public function test_siswa_cannot_update_exam()
     {
-        $this->actingAs($this->siswa);
+        $this->actingAs($this->siswa, 'sanctum');
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}", ['title' => 'Hacked']);
         $response->assertStatus(403);
     }
 
     public function test_admin_cannot_update_locked_exam()
     {
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'sanctum');
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}", ['title' => 'Changed']);
         $response->assertStatus(403); // Per policy update returns false if locked
     }
@@ -86,7 +136,10 @@ class ExamHardeningTest extends TestCase
             'participant_id' => $participant->id,
             'attempt_number' => 1,
             'status' => 'IN_PROGRESS',
-            'started_at' => now()
+            'started_at' => now(),
+            'expires_at' => now()->addMinutes(45),
+            'device_fingerprint' => 'device-1',
+            'question_order' => [$this->snapshot->id],
         ]);
         $attempt->save();
 
@@ -128,7 +181,7 @@ class ExamHardeningTest extends TestCase
         $attempt->save();
 
         $context->setTenantId(null);
-        $this->actingAs($userB);
+        $this->actingAs($userB, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-2');
         $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/submit");
 
