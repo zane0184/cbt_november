@@ -41,7 +41,7 @@ class ExamProctorAssignmentController extends Controller
                 Rule::exists('users', 'id')->where('tenant_id', $exam->tenant_id),
             ],
             'starts_at' => ['required', 'date'],
-            'ends_at' => ['nullable', 'date', 'after:starts_at'],
+            'ends_at' => ['required', 'date', 'after:starts_at'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ]);
 
