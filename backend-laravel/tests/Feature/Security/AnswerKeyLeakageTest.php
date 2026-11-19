@@ -257,7 +257,7 @@ class AnswerKeyLeakageTest extends TestCase
         $this->actingAs($this->student);
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
@@ -311,7 +311,7 @@ class AnswerKeyLeakageTest extends TestCase
         $this->actingAs($this->student);
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
