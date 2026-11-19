@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Curriculum;
 use App\Models\Exam;
+use App\Models\ExamProctorAssignment;
 use App\Models\GradeLevel;
 use App\Models\Phase;
 use App\Models\Role;
@@ -141,53 +142,50 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_dashboard_access_control()
-    {
-        // Unauthenticated
-        $this->get('/operator/dashboard')->assertRedirect('/login');
-
-        // Authorized roles
-        $this->actingAs($this->operatorA)->get('/operator/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/operator/dashboard')->assertStatus(200);
-        $this->actingAs($this->superAdmin)->get('/operator/dashboard')->assertStatus(403);
-
-        // Unauthorized roles
-        $this->actingAs($this->kamadA)->get('/operator/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/operator/dashboard')->assertStatus(403);
+    public function operator_dashboard_access_control()\n    {\n        // Unauthenticated
+        $this->get('/admin/dashboard')->assertRedirect('/login');
+        
+        // Admin portal roles
+        $this->actingAs($this->operatorA)->get('/admin/dashboard')->assertStatus(200);
+        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertStatus(200);
+        $this->actingAs($this->superAdmin)->get('/admin/dashboard')->assertStatus(403);
+        
+        // Roles outside the Admin Madrasah portal
+        $this->actingAs($this->kamadA)->get('/admin/dashboard')->assertStatus(403);
+        $this->actingAs($this->siswaA)->get('/admin/dashboard')->assertStatus(403);
+        
+        // Legacy URL is only a redirect, not a separate Operator portal.
+        $this->actingAs($this->adminA)->get('/operator/dashboard')->assertRedirect('/admin/dashboard');
     }
 
     /** @test */
-    public function kamad_dashboard_access_control()
-    {
-        // Unauthenticated
-        $this->get('/kamad/dashboard')->assertRedirect('/login');
-
-        // Authorized roles
-        $this->actingAs($this->kamadA)->get('/kamad/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/kamad/dashboard')->assertStatus(200);
-        $this->actingAs($this->superAdmin)->get('/kamad/dashboard')->assertStatus(403);
-
-        // Unauthorized roles
-        $this->actingAs($this->operatorA)->get('/kamad/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/kamad/dashboard')->assertStatus(403);
+    public function kamad_dashboard_access_control()\n    {\n        // Unauthenticated
+        $this->get('/admin/overview')->assertRedirect('/login');
+        
+        // Read-only executive view inside the Admin Madrasah portal
+        $this->actingAs($this->kamadA)->get('/admin/overview')->assertStatus(200);
+        $this->actingAs($this->adminA)->get('/admin/overview')->assertStatus(200);
+        $this->actingAs($this->superAdmin)->get('/admin/overview')->assertStatus(403);
+        
+        // No separate Kamad portal and no access for unrelated roles
+        $this->actingAs($this->operatorA)->get('/admin/overview')->assertStatus(403);
+        $this->actingAs($this->siswaA)->get('/admin/overview')->assertStatus(403);
     }
 
     /** @test */
-    public function proktor_dashboard_access_control()
-    {
-        // Unauthenticated
-        $this->get('/proktor/dashboard')->assertRedirect('/login');
-
-        // Authorized roles
-        $this->actingAs($this->proctorA)->get('/proktor/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/proktor/dashboard')->assertStatus(200);
-        $this->actingAs($this->superAdmin)->get('/proktor/dashboard')->assertStatus(403);
-
+    public function proktor_dashboard_access_control()\n    {\n        // Unauthenticated
+        $this->get('/proktor/assignments')->assertRedirect('/login');
+        
+        // Temporary workbench is available only to the assigned Proktor role.
+        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertStatus(200);
+        $this->actingAs($this->adminA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->superAdmin)->get('/proktor/assignments')->assertStatus(403);
+        
         // Unauthorized roles (GURU, OPERATOR, KAMAD, SISWA MUST be forbidden)
-        $this->actingAs($this->guruA)->get('/proktor/dashboard')->assertStatus(403);
-        $this->actingAs($this->operatorA)->get('/proktor/dashboard')->assertStatus(403);
-        $this->actingAs($this->kamadA)->get('/proktor/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/proktor/dashboard')->assertStatus(403);
+        $this->actingAs($this->guruA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->operatorA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->kamadA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->siswaA)->get('/proktor/assignments')->assertStatus(403);
     }
 
     /** @test */
@@ -204,28 +202,28 @@ class RoleDashboardVerificationTest extends TestCase
         $response->assertSee('Bank Soal');
 
         // Sidebar rendering verification for OPERATOR (Proktor Dashboard menu MUST NOT be present)
-        $opResponse = $this->actingAs($this->operatorA)->get('/operator/dashboard');
+        $opResponse = $this->actingAs($this->operatorA)->get('/admin/dashboard');
         $opResponse->assertDontSee('Dashboard Proktor');
-        $opResponse->assertSee('Dashboard Operator');
+        $opResponse->assertSee('Dashboard Madrasah');
 
         // Sidebar rendering verification for PROCTOR (Proktor Dashboard menu MUST be present)
-        $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/dashboard');
-        $proctorResponse->assertSee('Dashboard Proktor');
+        $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/assignments');
+        $proctorResponse->assertSee('Penugasan Operasional');
     }
 
     /** @test */
-    public function operator_can_access_curriculum_and_exams()
-    {
-        $this->actingAs($this->operatorA);
-        $this->get('/admin/curriculum')->assertStatus(200);
-        $this->get('/admin/exams')->assertStatus(200);
+    public function operator_can_access_curriculum_and_exams()\n    {\n        $this->actingAs($this->operatorA);
+        // OPERATOR remains a legacy identity, not a fourth portal or an exam-authoring role.
+        $this->get('/admin/dashboard')->assertStatus(200);
+        $this->get('/admin/curriculum')->assertStatus(403);
+        $this->get('/admin/exams')->assertStatus(403);
     }
 
     /** @test */
-    public function kamad_can_access_exams_module()
-    {
-        $this->actingAs($this->kamadA);
-        $this->get('/admin/exams')->assertStatus(200);
+    public function kamad_can_access_exams_module()\n    {\n        $this->actingAs($this->kamadA);
+        // Kamad has read-only oversight and cannot enter the exam authoring module.
+        $this->get('/admin/overview')->assertStatus(200);
+        $this->get('/admin/exams')->assertStatus(403);
     }
 
     /** @test */
@@ -253,9 +251,9 @@ class RoleDashboardVerificationTest extends TestCase
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
 
         // Tenant A authorized users can access monitoring
-        $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
+        $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
         $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
-        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
+        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
         $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
 
         // Tenant A Siswa is blocked
@@ -319,7 +317,18 @@ class RoleDashboardVerificationTest extends TestCase
             ->assertViewHas('totalExams', 1)
             ->assertViewHas('activeExams', 1);
 
-        // Test Proktor Dashboard for Tenant A
+        // Test Proktor workbench: only an active, bounded assignment grants exam visibility.
+        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantA->id);
+        ExamProctorAssignment::create([
+            'exam_id' => $examA->id,
+            'proctor_user_id' => $this->proctorA->id,
+            'assigned_by' => $this->adminA->id,
+            'starts_at' => now()->subMinute(),
+            'ends_at' => now()->addHour(),
+            'status' => 'ACTIVE',
+        ]);
+        app(\App\Contexts\TenantContext::class)->setTenantId(null);
+
         $this->actingAs($this->proctorA);
         Livewire::test(ProktorDashboard::class)
             ->assertViewHas('activeExams', function ($exams) use ($examA) {
