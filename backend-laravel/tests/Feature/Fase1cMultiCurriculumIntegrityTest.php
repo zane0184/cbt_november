@@ -89,6 +89,54 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
         SystemTenantSeeder::seed();
     }
 
+    public function test_system_tenant_seeder_halts_when_reserved_uuid_is_soft_deleted(): void
+    {
+        $tenant = Tenant::create([
+            'id' => Tenant::SYSTEM_TENANT_ID,
+            'name' => 'Soft Deleted Reserved UUID',
+            'code' => 'SOFT_DELETED_UUID',
+            'status' => 'ACTIVE',
+        ]);
+        $tenant->delete();
+
+        try {
+            SystemTenantSeeder::seed();
+            $this->fail('Seeder must halt when the reserved System Tenant UUID is soft-deleted.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('soft-deleted', strtolower($exception->getMessage()));
+        }
+
+        $record = Tenant::withTrashed()->find(Tenant::SYSTEM_TENANT_ID);
+        $this->assertNotNull($record);
+        $this->assertTrue($record->trashed());
+        $this->assertSame(1, Tenant::withTrashed()->where('id', Tenant::SYSTEM_TENANT_ID)->count());
+        $this->assertSame(0, Tenant::where('id', Tenant::SYSTEM_TENANT_ID)->count());
+    }
+
+    public function test_system_tenant_seeder_halts_when_reserved_code_is_soft_deleted(): void
+    {
+        $tenant = Tenant::create([
+            'id' => (string) Str::uuid(),
+            'name' => 'Soft Deleted Reserved Code',
+            'code' => Tenant::SYSTEM_TENANT_CODE,
+            'status' => 'ACTIVE',
+        ]);
+        $tenant->delete();
+
+        try {
+            SystemTenantSeeder::seed();
+            $this->fail('Seeder must halt when the reserved System Tenant code is soft-deleted.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('soft-deleted', strtolower($exception->getMessage()));
+        }
+
+        $record = Tenant::withTrashed()->where('code', Tenant::SYSTEM_TENANT_CODE)->first();
+        $this->assertNotNull($record);
+        $this->assertTrue($record->trashed());
+        $this->assertSame(1, Tenant::withTrashed()->where('code', Tenant::SYSTEM_TENANT_CODE)->count());
+        $this->assertSame(0, Tenant::where('code', Tenant::SYSTEM_TENANT_CODE)->count());
+    }
+
     public function test_tenant_curriculum_registration_allows_global_and_same_tenant_curriculum(): void
     {
         $systemTenant = SystemTenantSeeder::seed();
