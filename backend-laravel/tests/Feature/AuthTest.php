@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Tenant;
+use App\Models\LocalInstallationIdentity;
 use App\Models\User;
 use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -60,7 +61,7 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+            ->assertJsonValidationErrors(['identifier']);
     }
 
     public function test_me_endpoint_requires_auth()
@@ -71,7 +72,7 @@ class AuthTest extends TestCase
 
     public function test_me_endpoint_returns_user_data()
     {
-        $this->actingAs($this->user);
+        $this->actingAs($this->user, 'sanctum');
 
         $response = $this->getJson('/api/v1/auth/me');
 
