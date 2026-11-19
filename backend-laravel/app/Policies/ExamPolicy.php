@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Exam;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 use App\Support\Security\TeacherAccess;
 
 class ExamPolicy
@@ -30,8 +29,7 @@ class ExamPolicy
 
         if ($user->hasRole('ADMIN_MADRASAH') ||
             $user->hasRole('OPERATOR') ||
-            $user->hasRole('KAMAD') ||
-            false) {
+            $user->hasRole('KAMAD')) {
             return true;
         }
 
@@ -40,6 +38,28 @@ class ExamPolicy
         }
 
         return false;
+    }
+
+    /**
+     * Answer-key preview is an authoring capability, not a general exam-view
+     * capability. Only the assigned Guru who owns the assessment may use it.
+     */
+    public function preview(User $user, Exam $exam): bool
+    {
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('GURU')) {
+            return false;
+        }
+
+        $assessment = $exam->assessment;
+        if (!$assessment
+            || !$user->hasPermission('exam.manage')
+            || !$user->hasPermission('question.manage')
+            || (string) $assessment->created_by !== (string) $user->id) {
+            return false;
+        }
+
+        return TeacherAccess::canManageAssessment($user, $assessment)
+            && TeacherAccess::canManageExam($user, $exam);
     }
 
     public function create(User $user): bool
