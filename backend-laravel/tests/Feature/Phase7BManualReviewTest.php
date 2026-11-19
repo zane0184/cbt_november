@@ -209,6 +209,7 @@ class Phase7BManualReviewTest extends TestCase
             'submitted_at' => now(),
         ]);
         $this->bootstrapCbtRolePermissions();
+        $this->adminA->unsetRelation('roles');
     }
 
     /** A. ROLE AUTHORIZATION (RBAC) **/
