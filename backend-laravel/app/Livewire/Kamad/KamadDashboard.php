@@ -23,7 +23,11 @@ class KamadDashboard extends Component
 
         $totalExams = Exam::where('tenant_id', $tenantId)->count();
         $completedExams = Exam::where('tenant_id', $tenantId)->where('status', 'CLOSED')->count();
-        $activeExams = Exam::where('tenant_id', $tenantId)->where('status', 'PUBLISHED')->count();
+        $activeExams = Exam::where('tenant_id', $tenantId)
+            ->where('status', 'PUBLISHED')
+            ->where('start_at', '<=', now())
+            ->where('end_at', '>', now())
+            ->count();
 
         $totalAttempts = ExamAttempt::where('tenant_id', $tenantId)->where('status', 'SUBMITTED')->count();
 
