@@ -13,6 +13,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 use Livewire\Livewire;
 
@@ -201,6 +202,19 @@ class ExamProctorAssignmentTest extends TestCase
             'entity_id' => $assignment->id,
             'action' => 'REVOKE_PROCTOR_ASSIGNMENT',
         ]);
+    }
+
+    public function test_application_and_mysql_session_timezones_are_consistent(): void
+    {
+        $this->assertSame(config('cbt.timezone'), config('app.timezone'));
+        $this->assertSame(config('app.timezone'), date_default_timezone_get());
+
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('MySQL session timezone assertion requires MySQL.');
+        }
+
+        $session = DB::selectOne('SELECT @@session.time_zone AS timezone');
+        $this->assertSame(config('database.connections.mysql.timezone'), $session->timezone);
     }
 
     public function test_admin_assignment_times_are_normalized_using_exam_timezone(): void
