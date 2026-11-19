@@ -7,6 +7,7 @@ on:
       - hotfix/fase1c-mysql8-fk-name-20261119
       - work/schema-dump-export-20261119
       - work/p095d2u-snapshot-history-guard-20261119
+      - work/p095d2u-portal-ci-reconciliation-20261119
 
 permissions:
   contents: read
@@ -167,6 +168,10 @@ jobs:
           test -s database/schema/mysql-schema.sql
           cp database/schema/mysql-schema.sql ../p095d-artifacts/mysql-schema.sql
           RUN_SCHEMA_DB="cbt_p095d_schema_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          SOURCE_TABLE_COUNT=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE'")
+          SOURCE_LEDGER_COUNT=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root --database="$DB_DATABASE" -Nse "SELECT COUNT(*) FROM migrations")
+          export EXPECTED_SOURCE_TABLE_COUNT="$SOURCE_TABLE_COUNT"
+          export EXPECTED_SOURCE_LEDGER_COUNT="$SOURCE_LEDGER_COUNT"
           mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -e "CREATE DATABASE $RUN_SCHEMA_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
           export DB_DATABASE="$RUN_SCHEMA_DB"
           echo "COMMAND: fresh install using Laravel schema dump" | tee ../p095d-artifacts/schema-dump-replay.log
@@ -184,15 +189,19 @@ jobs:
           $ledger = (int) $pdo->query("SELECT COUNT(*) FROM migrations")->fetchColumn();
           $fk = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tenant_curriculum_registrations' AND CONSTRAINT_NAME='fk_tcr_mcv_id' AND REFERENCED_TABLE_NAME='multi_curriculum_versions'")->fetchColumn();
           $engines = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND ENGINE<>'InnoDB'")->fetchColumn();
+          $expectedTables = filter_var(getenv('EXPECTED_SOURCE_TABLE_COUNT'), FILTER_VALIDATE_INT);
+          $expectedLedger = filter_var(getenv('EXPECTED_SOURCE_LEDGER_COUNT'), FILTER_VALIDATE_INT);
           $result = [
               'database' => $db,
               'table_count' => $tables,
               'migration_ledger_count' => $ledger,
+              'expected_source_table_count' => $expectedTables,
+              'expected_source_migration_ledger_count' => $expectedLedger,
               'fk_tcr_mcv_id_count' => $fk,
               'non_innodb_count' => $engines,
           ];
           echo json_encode($result, JSON_PRETTY_PRINT).PHP_EOL;
-          if ($tables !== 70 || $ledger !== 56 || $fk !== 1 || $engines !== 0) {
+          if ($expectedTables === false || $expectedLedger === false || $tables !== $expectedTables || $ledger !== $expectedLedger || $fk !== 1 || $engines !== 0) {
               exit(1);
           }
           PHP
@@ -258,6 +267,12 @@ jobs:
               $mappingCreate = $pdo->query("SHOW CREATE TABLE question_multi_curriculum_mappings")->fetch(PDO::FETCH_ASSOC);
           }
           $nonInnoDb = array_values(array_filter($tables, fn($t) => strtoupper((string)$t['ENGINE']) !== 'INNODB'));
+          $migrationFiles = glob('database/migrations/*.php') ?: [];
+          $expectedMigrationNames = array_map(fn($path) => basename($path, '.php'), $migrationFiles);
+          $ledgerMigrationNames = array_column($ledger, 'migration');
+          sort($expectedMigrationNames);
+          sort($ledgerMigrationNames);
+          $migrationLedgerMatchesFiles = $expectedMigrationNames === $ledgerMigrationNames;
           $migration190008 = false;
           $log = @file_get_contents('../p095d-artifacts/migration.log') ?: '';
           $migration190008 = str_contains($log, '2026_11_05_190008_create_question_multi_curriculum_mappings_table');
@@ -284,6 +299,8 @@ jobs:
                   fn($fk) => count($fk['columns']) > 1
               )),
               'migration_ledger_count' => count($ledger),
+              'migration_file_count' => count($migrationFiles),
+              'migration_ledger_matches_files' => $migrationLedgerMatchesFiles,
               'migration_ledger' => $ledger,
               'question_multi_curriculum_mappings_exists' => $mappingExists,
               'question_multi_curriculum_mappings_show_create' => $mappingCreate,
@@ -292,12 +309,14 @@ jobs:
           ];
           $rc = (int) @file_get_contents('../p095d-artifacts/migration-exit-code.txt');
           $result['migration_exit_code'] = $rc;
-          $result['schema_gate'] = ($rc === 0 && count($ledger) === 56 && $mappingExists && count($nonInnoDb) === 0 && $targetFkPass) ? 'PASS' : 'NOT_PASS';
+          $result['schema_gate'] = ($rc === 0 && $migrationLedgerMatchesFiles && $mappingExists && count($nonInnoDb) === 0 && $targetFkPass) ? 'PASS' : 'NOT_PASS';
           file_put_contents('../p095d-artifacts/schema-audit.json', json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           echo json_encode([
               'schema_gate' => $result['schema_gate'],
               'table_count' => count($tables),
               'migration_ledger_count' => count($ledger),
+              'migration_file_count' => count($migrationFiles),
+              'migration_ledger_matches_files' => $migrationLedgerMatchesFiles,
               'mapping_table_exists' => $mappingExists,
               'migration_190008_seen_in_log' => $migration190008,
               'non_innodb_table_count' => count($nonInnoDb),
