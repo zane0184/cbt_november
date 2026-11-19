@@ -1,12 +1,12 @@
 <?php
 
-namespace Database\\Factories;
+namespace Database\Factories;
 
-use App\\Models\\ExamAttemptScore;
-use App\\Models\\Exam;
-use App\\Models\\ExamAttempt;
-use App\\Models\\User;
-use Illuminate\\Database\\Eloquent\\Factories\\Factory;
+use App\Models\ExamAttemptScore;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ExamAttemptScoreFactory extends Factory
 {
