@@ -233,6 +233,14 @@ class MonitoringController extends Controller
         $participant = $attempt->participant;
         $participantUser = $participant?->user;
 
+        if (!$participant
+            || $participant->tenant_id !== $exam->tenant_id
+            || $participant->exam_id !== $exam->id
+            || !$participantUser
+            || $participantUser->tenant_id !== $exam->tenant_id) {
+            abort(404);
+        }
+
         // Monitoring receives operational fields only. Device fingerprints,
         // lease/fencing state, server references and answer ordering stay private.
         $attemptData = [
