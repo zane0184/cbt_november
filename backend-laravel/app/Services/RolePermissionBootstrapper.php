@@ -72,10 +72,22 @@ class RolePermissionBootstrapper
                 }
             }
 
-            // Remove only the curriculum.manage grant from non-admin curriculum roles.
-            $managePermissionId = $permissionIds['curriculum.manage'];
-            foreach (['KAMAD', 'GURU', 'OPERATOR'] as $roleName) {
-                $roles->get($roleName)->permissions()->detach($managePermissionId);
+            // Revoke stale grants that contradict the current tenant role matrix.
+            $revokedGrants = [
+                'ADMIN_MADRASAH' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'question.manage'],
+                'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
+                'OPERATOR' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
+                'PROKTOR' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'exam.monitor', 'question.manage'],
+            ];
+
+            foreach ($revokedGrants as $roleName => $permissionNames) {
+                $role = $roles->get($roleName) ?? Role::query()->where('name', $roleName)->first();
+                if (!$role) {
+                    continue;
+                }
+
+                $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
+                $role->permissions()->detach($ids);
             }
         });
     }
