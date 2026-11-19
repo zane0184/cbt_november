@@ -265,7 +265,12 @@ class ExamBuilderTest extends TestCase
         $vOwn->save();
 
         // 2. Madrasah Question (Shared with Madrasah)
-        $qMadrasah = new Question(['owner_type' => 'MADRASAH', 'created_by' => $this->teacher->id]);
+        // Guru sees subject-owned madrasah questions only within an active assignment.
+        $qMadrasah = new Question([
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subject->id,
+            'created_by' => $this->teacher->id,
+        ]);
         $qMadrasah->save();
 
         $vMadrasah = new QuestionVersion([
