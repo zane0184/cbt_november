@@ -529,6 +529,16 @@ class ExamSnapshotTest extends TestCase
             $this->exam->assessment->academic_year_id,
             $this->exam->assessment->semester_id
         ));
+        $this->assertDatabaseHas('exam_participants', [
+            'exam_id' => $this->exam->id,
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->student->id,
+        ]);
+        $participants = $this->exam->participants()->where('exam_participants.tenant_id', $this->tenant->id)->with('user.studentProfile.rombels')->get();
+        $this->assertCount(1, $participants);
+        $this->assertSame($this->student->id, $participants->first()->user->id);
+        $this->assertSame($this->tenant->id, $participants->first()->user->tenant_id);
+        $this->assertContains($this->rombel->id, $participants->first()->user->studentProfile->rombels->pluck('id')->all());
         $this->assertTrue(\App\Support\Security\TeacherAccess::canManageExam($this->user, $this->exam), 'Teacher must retain exact assignment coverage for every participant.');
 
         return ExamAttempt::create([
