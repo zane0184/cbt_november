@@ -292,6 +292,7 @@ class ExamManagementHardeningTest extends TestCase
     /** @test */
     public function only_authorized_admin_can_rotate_token_after_publication()
     {
+        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
         $assessment = \App\Models\Assessment::create([
             'tenant_id' => $this->tenant->id,
             'title' => 'Asesmen Token',

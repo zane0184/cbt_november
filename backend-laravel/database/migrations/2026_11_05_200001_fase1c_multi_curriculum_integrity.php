@@ -271,7 +271,8 @@ return new class extends Migration
             ->where('table_name', $table)
             ->where('index_name', $name)
             ->orderBy('seq_in_index')
-            ->get(['column_name', 'non_unique']);
+            ->selectRaw('COLUMN_NAME AS column_name, NON_UNIQUE AS non_unique')
+            ->get();
 
         if ($rows->isEmpty()) {
             return false;
@@ -299,7 +300,8 @@ return new class extends Migration
             ->where('table_name', $table)
             ->where('constraint_name', $name)
             ->orderBy('ordinal_position')
-            ->get(['column_name', 'referenced_table_name', 'referenced_column_name']);
+            ->selectRaw('COLUMN_NAME AS column_name, REFERENCED_TABLE_NAME AS referenced_table_name, REFERENCED_COLUMN_NAME AS referenced_column_name')
+            ->get();
 
         if ($rows->isEmpty()) {
             return false;

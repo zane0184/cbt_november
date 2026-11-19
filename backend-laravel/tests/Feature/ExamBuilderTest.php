@@ -267,7 +267,7 @@ class ExamBuilderTest extends TestCase
         $vOwn->save();
 
         // 2. Madrasah Question (Shared with Madrasah)
-        $qMadrasah = new Question(['owner_type' => 'MADRASAH', 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
+        $qMadrasah = new Question(['owner_type' => 'SUBJECT', 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
         $qMadrasah->save();
 
         $vMadrasah = new QuestionVersion([
