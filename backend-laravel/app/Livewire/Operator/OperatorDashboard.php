@@ -21,7 +21,8 @@ class OperatorDashboard extends Component
 
     public function render()
     {
-        $tenantId = auth()->user()->tenant_id;
+        $user = auth()->user();
+        $tenantId = $user->tenant_id;
 
         $totalUsers = User::where('tenant_id', $tenantId)->count();
         $totalStudents = User::where('tenant_id', $tenantId)->whereHas('roles', fn($q) => $q->where('name', 'SISWA'))->count();
