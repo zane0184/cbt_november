@@ -380,11 +380,12 @@ class ExamAnswerTest extends TestCase
     {
         $this->actingAs($this->student, 'sanctum');
 
+        [$unassignedQuestion, $unassignedVersion] = $this->createUnassignedQuestionSource('Not assigned to this attempt');
         $unassignedSnapshot = new ExamQuestionSnapshot([
             'id' => (string) Str::uuid(),
             'exam_id' => $this->exam->id,
-            'source_question_id' => $this->snapshot->source_question_id,
-            'source_question_version_id' => $this->snapshot->source_question_version_id,
+            'source_question_id' => $unassignedQuestion->id,
+            'source_question_version_id' => $unassignedVersion->id,
             'snapshot_stem' => 'Not assigned to this attempt',
             'snapshot_options' => $this->snapshot->snapshot_options,
             'metadata' => ['question_type' => 'MC'],
@@ -409,11 +410,12 @@ class ExamAnswerTest extends TestCase
     {
         $this->actingAs($this->student, 'sanctum');
 
+        [$unassignedQuestion, $unassignedVersion] = $this->createUnassignedQuestionSource('Legacy unassigned answer');
         $unassignedSnapshot = new ExamQuestionSnapshot([
             'id' => (string) Str::uuid(),
             'exam_id' => $this->exam->id,
-            'source_question_id' => $this->snapshot->source_question_id,
-            'source_question_version_id' => $this->snapshot->source_question_version_id,
+            'source_question_id' => $unassignedQuestion->id,
+            'source_question_version_id' => $unassignedVersion->id,
             'snapshot_stem' => 'Legacy unassigned answer',
             'snapshot_options' => $this->snapshot->snapshot_options,
             'metadata' => ['question_type' => 'MC'],
@@ -676,4 +678,25 @@ class ExamAnswerTest extends TestCase
             $res5->assertStatus(422);
         }
     }
+    private function createUnassignedQuestionSource(string $stem): array
+    {
+        $question = new Question(['created_by' => $this->student->id]);
+        $question->tenant_id = $this->tenant->id;
+        $question->save();
+
+        $version = new QuestionVersion([
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MC',
+            'stem' => $stem,
+            'is_current' => true,
+            'created_by' => $this->student->id,
+        ]);
+        $version->tenant_id = $this->tenant->id;
+        $version->save();
+
+        return [$question, $version];
+    }
+
 }

@@ -624,19 +624,19 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
         $this->assertEquals($version->id, $outcomeAfter->multi_curriculum_version_id);
     }
 
-    public function test_rollback_halts_before_ddl_if_table_or_column_missing(): void
+    public function test_rollback_is_forward_only_and_does_not_mutate_schema(): void
     {
         $migration = require database_path('migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php');
+        $tableExistedBefore = Schema::hasTable('tenant_curriculum_registrations');
 
-        $this->assertTrue(Schema::hasTable('tenant_curriculum_registrations'));
+        try {
+            $migration->down();
+            $this->fail('The irreversible migration must refuse rollback.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('intentionally irreversible', $exception->getMessage());
+        }
 
-        // Artificially drop a required table to trigger safety gate failure
-        Schema::dropIfExists('tenant_curriculum_registrations');
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/Rollback Safety Verification Failed/i');
-
-        $migration->down();
+        $this->assertSame($tableExistedBefore, Schema::hasTable('tenant_curriculum_registrations'));
     }
 
     public function test_rollback_does_not_delete_foreign_metadata(): void
@@ -649,9 +649,16 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 
         $migration = require database_path('migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php');
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/System Tenant provenance check failed/i');
+        try {
+            $migration->down();
+            $this->fail('The irreversible migration must refuse rollback.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('intentionally irreversible', $exception->getMessage());
+        }
 
-        $migration->down();
+        $this->assertDatabaseHas('tenants', [
+            'id' => $systemTenant->id,
+            'code' => 'FOREIGN_METADATA',
+        ]);
     }
 }

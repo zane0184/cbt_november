@@ -110,7 +110,8 @@ class CacheTest extends TestCase
             'exam_id' => $exam->id,
             'student_id' => $student->id,
             'tenant_id' => $tenant->id,
-            'grading_status' => 'AUTO_SCORED'
+            'grading_status' => 'AUTO_SCORED',
+            'scoring_version' => 1
         ]);
         ExamAttemptScoreCurrent::create([
             'tenant_id' => $tenant->id,

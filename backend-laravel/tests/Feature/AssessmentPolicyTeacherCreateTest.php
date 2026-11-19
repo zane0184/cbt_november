@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Policies\AssessmentPolicy;
@@ -12,9 +13,11 @@ class AssessmentPolicyTeacherCreateTest extends TestCase
     public function test_teacher_role_can_reach_assignment_validation_when_creating_assessment(): void
     {
         $teacher = new User();
-        $teacher->setRelation('roles', collect([
-            new Role(['name' => 'GURU']),
+        $guruRole = new Role(['name' => 'GURU']);
+        $guruRole->setRelation('permissions', collect([
+            new Permission(['name' => 'exam.manage']),
         ]));
+        $teacher->setRelation('roles', collect([$guruRole]));
 
         $this->assertTrue((new AssessmentPolicy())->create($teacher));
     }

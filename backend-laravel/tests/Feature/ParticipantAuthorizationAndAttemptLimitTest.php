@@ -300,7 +300,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         // 2. Direct attempt show access
         $showRes = $this->withHeader('X-Device-Binding-ID', 'device-a2')
             ->getJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}");
-        $showRes->assertStatus(403);
+        $showRes->assertStatus(404);
 
         // 3. Submit attempt
         $submitRes = $this->withHeader('X-Device-Binding-ID', 'device-a2')
