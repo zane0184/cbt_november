@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Tenant;
+use App\Models\Role;
 use App\Models\LocalInstallationIdentity;
 use App\Models\User;
 use App\Contexts\TenantContext;
@@ -31,6 +32,7 @@ class AuthTest extends TestCase
             'email' => 'test@example.com',
             'password' => bcrypt('password')
         ]);
+        $this->user->roles()->attach(Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
 
         LocalInstallationIdentity::create([
             'tenant_id' => $this->tenant->id,

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contexts\TenantContext;
 use App\Models\LocalInstallationIdentity;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -28,6 +29,7 @@ class MultiTenantAuthTest extends TestCase
         parent::setUp();
 
         $this->tenantA = Tenant::create(['name' => 'Madrasah A', 'code' => 'MAD-A']);
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
         $this->userA = User::create([
             'tenant_id' => $this->tenantA->id,
             'name' => 'User A',
@@ -35,9 +37,11 @@ class MultiTenantAuthTest extends TestCase
             'email' => 'user-a@example.test',
             'password' => Hash::make('password-a'),
         ]);
+        $this->userA->roles()->attach(Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
 
         $this->installationIdA = (string) Str::uuid();
         $this->createInstallationIdentity($this->tenantA, $this->installationIdA, 'key-a', 'a.cbt.test');
+        app(TenantContext::class)->setTenantId(null);
     }
 
     public function test_login_resolves_identity_inside_one_madrasah_installation(): void
@@ -74,6 +78,7 @@ class MultiTenantAuthTest extends TestCase
     public function test_super_admin_identity_is_rejected_by_tenant_login(): void
     {
         $role = Role::firstOrCreate(['name' => 'SUPER_ADMIN'], ['label' => 'Super Admin']);
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
         $superAdmin = User::create([
             'tenant_id' => $this->tenantA->id,
             'name' => 'Publisher Operator',
@@ -82,6 +87,7 @@ class MultiTenantAuthTest extends TestCase
             'password' => Hash::make('publisher-password'),
         ]);
         $superAdmin->roles()->attach($role);
+        app(TenantContext::class)->setTenantId(null);
 
         $response = $this->postJson('/api/v1/auth/login', [
             'identifier' => 'publisher-operator',

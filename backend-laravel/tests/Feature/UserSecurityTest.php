@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\LocalInstallationIdentity;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Exam;
@@ -29,6 +30,17 @@ class UserSecurityTest extends TestCase
 
         $this->tenantA = Tenant::create(['name' => 'Tenant A', 'code' => 'TENANTA']);
         $this->tenantB = Tenant::create(['name' => 'Tenant B', 'code' => 'TENANTB']);
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenantA->id,
+            'installation_id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'key_id' => 'test-key-a',
+            'public_key' => 'test-public-key-a',
+            'encrypted_private_key' => 'test-encrypted-private-key-a',
+            'key_fingerprint' => hash('sha256', 'test-key-a'),
+            'registered_domain' => 'tenant-a.cbt.test',
+            'product_code' => 'CBT_WEB',
+            'product_version' => '1.0.0',
+        ]);
 
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
         $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
@@ -140,37 +152,38 @@ class UserSecurityTest extends TestCase
         ]);
 
         // Validation should fail because user_id must exist in users table WHERE tenant_id = exam->tenant_id
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['user_id']);
+        // Policy authorization runs before request validation for this operation.
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('exam_participants', [
+            'exam_id' => $exam->id,
+            'user_id' => $this->userB->id,
+        ]);
     }
 
     /**
      * Test that two users with same email on different tenants are distinct.
      */
-    public function test_same_email_different_tenants_distinct_login()
+    public function test_login_fails_closed_when_multiple_tenants_exist_in_one_installation()
     {
         $email = 'common@example.com';
+        $adminRole = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
 
         app(TenantContext::class)->setTenantId($this->tenantA->id);
         $uA = User::create(['tenant_id' => $this->tenantA->id, 'name' => 'UA', 'email' => $email, 'password' => bcrypt('passA')]);
+        $uA->roles()->attach($adminRole);
 
         app(TenantContext::class)->setTenantId($this->tenantB->id);
         $uB = User::create(['tenant_id' => $this->tenantB->id, 'name' => 'UB', 'email' => $email, 'password' => bcrypt('passB')]);
+        $uB->roles()->attach($adminRole);
+        app(TenantContext::class)->setTenantId(null);
 
-        // Login to Tenant A with Tenant A's password
+        // A database/installation must identify exactly one tenant. A second
+        // tenant record makes login fail closed even when identifiers collide.
         $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'TENANTA',
-            'email' => $email,
-            'password' => 'passA'
+            'identifier' => 'common',
+            'password' => 'passA',
         ]);
-        $response->assertStatus(200)->assertJsonPath('data.user.id', $uA->id);
-
-        // Login to Tenant A with Tenant B's password should fail
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'TENANTA',
-            'email' => $email,
-            'password' => 'passB'
-        ]);
-        $response->assertStatus(422);
+        $response->assertStatus(422)->assertJsonValidationErrors(['identifier']);
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 }
