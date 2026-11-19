@@ -76,6 +76,7 @@ class RolePermissionBootstrapper
             $revokedGrants = [
                 'ADMIN_MADRASAH' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'question.manage'],
                 'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
+                'GURU' => ['curriculum.manage'],
                 'OPERATOR' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
                 'PROKTOR' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'exam.monitor', 'question.manage'],
             ];
