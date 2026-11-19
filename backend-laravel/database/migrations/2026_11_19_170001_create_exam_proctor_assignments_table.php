@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('proctor_user_id');
             $table->uuid('assigned_by');
             $table->timestamp('starts_at');
-            $table->timestamp('ends_at')->nullable();
+            $table->timestamp('ends_at');
             $table->string('status', 20)->default('ACTIVE');
             $table->timestamp('revoked_at')->nullable();
             $table->uuid('revoked_by')->nullable();
@@ -39,6 +39,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (Schema::hasTable('exam_proctor_assignments') && DB::table('exam_proctor_assignments')->exists()) {
+            throw new RuntimeException('Proctor assignment history is retained; this migration is intentionally irreversible after assignments exist.');
+        }
+
         Schema::dropIfExists('exam_proctor_assignments');
     }
 };
