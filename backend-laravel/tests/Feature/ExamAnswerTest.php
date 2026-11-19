@@ -188,10 +188,31 @@ class ExamAnswerTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_future_base_revision_is_rejected_for_a_new_answer(): void
+    {
+        $this->actingAs($this->student);
+
+        $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
+            'client_request_id' => Str::uuid(),
+            'base_revision' => 7,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+        ]);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('error', 'ANSWER_REVISION_CONFLICT')
+            ->assertJsonPath('current_revision', 0)
+            ->assertJsonPath('current_answer', null);
+        $this->assertDatabaseMissing('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $this->snapshot->id,
+        ]);
+    }
+
     public function test_student_can_save_mc_answer()
     {
         $this->actingAs($this->student);
-        $this->withHeader('X-Device-Binding-ID', 'device-123');
+        $this->withHeader('X-Device-Binding-ID', 'device-test');
 
         $optionId = $this->snapshot->snapshot_options[0]['id'];
 
