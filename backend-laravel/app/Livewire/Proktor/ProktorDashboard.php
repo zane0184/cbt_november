@@ -2,8 +2,6 @@
 
 namespace App\Livewire\Proktor;
 
-use App\Models\Exam;
-use App\Models\ExamAttempt;
 use Livewire\Component;
 
 class ProktorDashboard extends Component
@@ -25,4 +23,6 @@ class ProktorDashboard extends Component
             'allExams' => collect(),
             'inProgressAttempts' => 0,
             'submittedAttempts' => 0,
-        ])->layout('layouts.app');}
+        ])->layout('layouts.app');
+    }
+}
