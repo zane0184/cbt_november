@@ -34,7 +34,7 @@ class AuthTest extends TestCase
 
         LocalInstallationIdentity::create([
             'tenant_id' => $this->tenant->id,
-            'installation_id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'installation_id' => (string) \Illuminate\Support\Str::uuid(),
             'key_id' => 'test-key-1',
             'public_key' => 'test-public-key',
             'encrypted_private_key' => 'test-encrypted-private-key',
