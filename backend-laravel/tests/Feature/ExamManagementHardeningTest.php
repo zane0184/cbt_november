@@ -168,6 +168,7 @@ class ExamManagementHardeningTest extends TestCase
         $q2->update(['current_version_id' => $this->questionVersion2->id]);
 
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** @test */
