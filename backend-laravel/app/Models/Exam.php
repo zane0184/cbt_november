@@ -69,6 +69,11 @@ class Exam extends Model
         return $this->hasMany(ExamAttempt::class);
     }
 
+    public function proctorAssignments(): HasMany
+    {
+        return $this->hasMany(ExamProctorAssignment::class);
+    }
+
     public function isLocked(): bool
     {
         return !is_null($this->locked_at);
