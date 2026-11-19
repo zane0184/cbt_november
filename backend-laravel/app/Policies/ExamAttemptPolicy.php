@@ -77,12 +77,26 @@ class ExamAttemptPolicy
 
     public function grade(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->tenant_id !== $attempt->tenant_id) return false;
+
+        // Admin Madrasah may perform explicitly authorized operational grading;
+        // Guru grading remains restricted to the assigned assessment scope.
+        if ($user->hasRole('ADMIN_MADRASAH')) {
+            return $user->hasPermission('exam.grade');
+        }
+
         return $this->score($user, $attempt);
     }
 
     public function finalize(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id) return false;
+
+        if ($user->hasRole('ADMIN_MADRASAH')) {
+            return $user->hasPermission('exam.grade');
+        }
+
+        if (!$user->hasRole('GURU')) return false;
 
         $exam = $attempt->exam;
         $assessment = $exam?->assessment;
