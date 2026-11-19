@@ -21,6 +21,10 @@ class EnsureLicenseActive
 
     public function handle(Request $request, Closure $next): Response
     {
+        // Explicit test-only bypass. It is disabled by default and cannot bypass
+        // licensing in local, staging, or production environments.
+        if (app()->environment('testing') && config('license.testing_bypass') === true) return $next($request);
+
         if ($request->is('up') || $request->is('install/*') || $request->is('license/status') || $request->is('api/v1/health')) return $next($request);
 
         // Temporary pilot exception: only a finalized, locked installation explicitly configured
