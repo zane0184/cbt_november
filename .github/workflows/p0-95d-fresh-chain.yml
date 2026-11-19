@@ -6,6 +6,7 @@ on:
       - p0-95d-migration-gate-20261118
       - hotfix/fase1c-mysql8-fk-name-20261119
       - work/schema-dump-export-20261119
+      - work/p095d2u-snapshot-history-guard-20261119
 
 permissions:
   contents: read
