@@ -66,6 +66,7 @@ class ScoringHardeningTest extends TestCase
             'expires_at' => now()->addMinutes(30),
             'submitted_at' => now()
         ]);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** 1. MULTIPLE RESPONSE DUPLICATE SELECTION **/
