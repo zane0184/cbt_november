@@ -16,18 +16,21 @@ use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamQuestionScore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
 use Illuminate\Support\Str;
 
 class ResultWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesTeacherExamScope;
 
     private $tenant;
     private $teacher;
     private $student;
     private $exam;
     private $attempt;
+    private $teacherScope;
 
     protected function setUp(): void
     {
@@ -40,8 +43,16 @@ class ResultWorkflowTest extends TestCase
         $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa', 'email' => 'siswa@m.com', 'password' => 'p']);
         $this->student->roles()->create(['name' => 'SISWA', 'label' => 'Siswa']);
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->teacher->id]);
+        $this->teacherScope = $this->createTeacherExamScope($this->tenant, $this->teacher, [$this->student], 'RESULT_WORKFLOW');
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->teacherScope['academicYear']->id,
+            'subject_id' => $this->teacherScope['subject']->id,
+            'semester_id' => $this->teacherScope['semester']->id,
+            'title' => 'A1',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->teacher->id,
+        ]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -302,6 +313,7 @@ class ResultWorkflowTest extends TestCase
 
         // 2. Setup Attempt 2: Essay Question (pending manual review)
         $student2 = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa 2', 'email' => 'siswa2@m.com', 'password' => 'p']);
+        $this->attachStudentToRombel($this->tenant, $student2, $this->teacherScope['rombel']);
         $participant2 = $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $student2->id]);
         $attempt2 = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
@@ -338,6 +350,7 @@ class ResultWorkflowTest extends TestCase
 
         // 3. Setup Attempt 3: Already finalized
         $student3 = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa 3', 'email' => 'siswa3@m.com', 'password' => 'p']);
+        $this->attachStudentToRombel($this->tenant, $student3, $this->teacherScope['rombel']);
         $participant3 = $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $student3->id]);
         $attempt3 = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
@@ -376,7 +389,41 @@ class ResultWorkflowTest extends TestCase
 
     public function test_exam_result_publication_workflow_and_student_visibility()
     {
-        // 1. Setup attempt and score finalized
+        // 1. Setup a valid immutable question snapshot and attempt order.
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'created_by' => $this->teacher->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MC',
+            'stem' => 'Soal publikasi hasil?',
+            'created_by' => $this->teacher->id,
+        ]);
+        $optionId = (string) Str::uuid();
+        $snapshot = $this->createSnapshotForAttempt($this->attempt, [
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'snapshot_stem' => $version->stem,
+            'snapshot_options' => [['id' => $optionId, 'content' => 'A', 'is_correct' => true]],
+            'points' => 10,
+            'metadata' => ['question_type' => 'MC'],
+        ]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->student->id,
+            'answer_payload' => ['selected_option_id' => $optionId],
+            'answer_state' => 'ANSWERED',
+        ]);
+
         (new \App\Services\ScoringService())->scoreAttempt($this->attempt);
         $this->attempt->score->update(['grading_status' => 'FINALIZED', 'finalized_at' => now()]);
 
