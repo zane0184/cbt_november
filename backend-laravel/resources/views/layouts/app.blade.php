@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <h1 class="text-base font-bold leading-tight">CBT MADRASAH</h1>
-                    <p class="text-xs text-gray-400">Panel Admin & Guru</p>
+                    <p class="text-xs text-gray-400">Portal Administrasi Madrasah</p>
                 </div>
             </div>
 
@@ -59,31 +59,31 @@
                     $u = auth()->user();
                 @endphp
 
-                <!-- Dashboards Per Role -->
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR')))
-                    <a href="/operator/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('operator/dashboard') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
-                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                        <span>Dashboard Operator</span>
+                <!-- Portal and role-scoped workbenches -->
+                @if($u && $u->hasRole('ADMIN_MADRASAH'))
+                    <a href="/admin/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/dashboard') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
+                        <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2-2h-2a2 2 0 01-2-2z"/></svg>
+                        <span>Dashboard Madrasah</span>
                     </a>
                 @endif
 
                 @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('KAMAD')))
-                    <a href="/kamad/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('kamad/dashboard') ? 'bg-navy-800 text-white font-bold border-l-4 border-indigo-500' : '' }}">
+                    <a href="/admin/overview" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/overview') ? 'bg-navy-800 text-white font-bold border-l-4 border-indigo-500' : '' }}">
                         <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
-                        <span>Dashboard Kamad</span>
+                        <span>Ringkasan Eksekutif</span>
                     </a>
                 @endif
 
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('PROKTOR')))
-                    <a href="/proktor/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('proktor/dashboard') ? 'bg-navy-800 text-white font-bold border-l-4 border-amber-500' : '' }}">
+                @if($u && $u->hasRole('PROKTOR'))
+                    <a href="/proktor/assignments" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('proktor/assignments*') ? 'bg-navy-800 text-white font-bold border-l-4 border-amber-500' : '' }}">
                         <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                        <span>Dashboard Proktor</span>
+                        <span>Penugasan Operasional</span>
                     </a>
                 @endif
 
                 <div class="pt-3 pb-1 px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Modul Operasional</div>
 
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('GURU') || $u->hasRole('OPERATOR') || $u->hasRole('KAMAD')))
+                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('GURU')))
                     <a href="/admin/exams" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/exams*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                         <span>Manajemen Ujian</span>
@@ -97,14 +97,14 @@
                     </a>
                 @endif
 
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('GURU') || $u->hasRole('OPERATOR')))
+                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('GURU')))
                     <a href="/admin/curriculum" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/curriculum*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                         <span>Kurikulum (CP/TP)</span>
                     </a>
                 @endif
 
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR') || $u->hasRole('GURU') || $u->hasRole('KAMAD')))
+                @if($u && $u->hasRole('ADMIN_MADRASAH'))
                     <a href="/admin/academic" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/academic*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
                         <span>Data Akademik & Rombel</span>
