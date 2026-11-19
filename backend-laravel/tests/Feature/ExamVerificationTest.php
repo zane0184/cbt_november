@@ -185,9 +185,9 @@ class ExamVerificationTest extends TestCase
 
         // Brute force (5 hits)
         for ($i = 0; $i < 4; $i++) {
-            $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'WRONG']);
+            $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'WRONG1']);
         }
-        $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'WRONG']);
+        $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'WRONG1']);
         $response->assertStatus(429);
     }
 
@@ -196,6 +196,7 @@ class ExamVerificationTest extends TestCase
     {
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenantA->id);
+        $this->examA->update(['status' => 'PUBLISHED', 'published_at' => now(), 'locked_at' => now()]);
 
         $participant = ExamParticipant::where('exam_id', $this->examA->id)->where('user_id', $this->siswaA->id)->first();
 
@@ -232,8 +233,9 @@ class ExamVerificationTest extends TestCase
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenantA->id);
 
-        $tp = \App\Models\TeacherProfile::create([
-            'user_id' => $this->adminA->id,
+        $tp = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->guruA->id,
             'full_name' => 'Guru A'
         ]);
 
@@ -266,14 +268,9 @@ class ExamVerificationTest extends TestCase
 
         // Replace the setup participant with the Rombel-scoped assignment under test.
         $this->examA->participants()->delete();
-        $teacherProfile = TeacherProfile::create([
-            'tenant_id' => $this->tenantA->id,
-            'user_id' => $this->guruA->id,
-            'full_name' => 'Guru A',
-        ]);
         TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
-            'teacher_profile_id' => $teacherProfile->id,
+            'teacher_profile_id' => $tp->id,
             'subject_id' => $this->subjectA->id,
             'rombel_id' => $rombel->id,
             'academic_year_id' => $this->examA->assessment->academic_year_id,
@@ -310,38 +307,13 @@ class ExamVerificationTest extends TestCase
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/questions", ['question_version_ids' => []]);
         $response->assertStatus(403); // canBeEdited() check in policy
 
-        // Remove Questions (needs a real snapshot)
-        $q = new Question(['created_by' => $this->guruA->id]);
-        $q->tenant_id = $this->tenantA->id;
-        $q->save();
-
-        $v = new QuestionVersion([
-            'question_id' => $q->id,
-            'major_version' => 1,
-            'minor_version' => 0,
-            'question_type' => 'ESSAY',
-            'stem' => 'S',
-            'created_by' => $this->adminA->id
-        ]);
-        $v->tenant_id = $this->tenantA->id;
-        $v->save();
-
-        $snapshot = new \App\Models\ExamQuestionSnapshot([
-            'source_question_id' => $q->id,
-            'source_question_version_id' => $v->id,
-            'snapshot_stem' => 'S',
-            'snapshot_options' => []
-        ]);
-        $snapshot->exam_id = $this->examA->id;
-        $snapshot->tenant_id = $this->tenantA->id;
-        $snapshot->save();
-
+        // Remove the existing immutable snapshot.
         // Reorder
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/questions/reorder", ['orders' => []]);
         $response->assertStatus(403);
 
         // Remove
-        $response = $this->deleteJson("/api/v1/exams/{$this->examA->id}/questions/{$snapshot->id}");
+        $response = $this->deleteJson("/api/v1/exams/{$this->examA->id}/questions/{$this->snapshotA->id}");
         $response->assertStatus(403);
     }
 
