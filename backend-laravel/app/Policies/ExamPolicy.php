@@ -6,6 +6,7 @@ use App\Models\Exam;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 use App\Support\Security\TeacherAccess;
+use App\Models\ExamProctorAssignment;
 
 class ExamPolicy
 {
@@ -153,9 +154,26 @@ class ExamPolicy
             ->exists();
     }
 
+    public function manageProctors(User $user, Exam $exam): bool
+    {
+        return $user->tenant_id === $exam->tenant_id
+            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasPermission('exam.proctor.assign');
+    }
+
     public function monitor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id) return false;
+
+        if ($user->hasRole('PROKTOR')) {
+            return ExamProctorAssignment::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('proctor_user_id', $user->id)
+                ->notRevoked()
+                ->withinWindow()
+                ->exists();
+        }
 
         return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD'))
             ? $user->hasPermission('exam.monitor')
