@@ -79,7 +79,8 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'timezone' => 'Asia/Jakarta',
             'status' => 'PUBLISHED',
             'attempt_limit' => 1,
-            'require_token' => false,
+            'require_token' => true,
+            'token' => 'ABC123',
             'created_by' => $this->userA1->id,
             'locked_at' => now()
         ]);
@@ -153,7 +154,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $this->assertEquals(0, $this->participantA1->attempts()->count());
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(201);
         $response->assertJson(['success' => true]);
@@ -168,7 +169,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $this->actingAs($this->userA1, 'sanctum');
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(403);
         $this->assertEquals(0, $this->participantA1->attempts()->count());
@@ -183,7 +184,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $response->assertOk();
         $response->assertSee('Ujian Matematika Tenant A');
         $response->assertSee('Token Ujian');
-        $response->assertDontSee('TEST66');
+        $response->assertDontSee('ABC123');
     }
 
     public function test_unassigned_student_cannot_open_exam_instruction()
@@ -212,7 +213,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $this->actingAs($this->userA1, 'sanctum');
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(201);
         $this->assertEquals(
@@ -226,7 +227,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $this->actingAs($this->userA2, 'sanctum');
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a2')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(403);
         $this->assertEquals(0, ExamAttempt::where('exam_id', $this->examA->id)->count());
@@ -238,7 +239,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // Start first attempt
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $res1->assertStatus(201);
         $attemptId = $res1->json('data.id');
 
@@ -249,7 +250,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // Attempt second start when limit = 1
         $res2 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $res2->assertStatus(422);
         $res2->assertJson(['success' => false, 'message' => 'Attempt limit reached.']);
@@ -263,14 +264,14 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // Initial start
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $res1->assertStatus(201);
         $attemptId1 = $res1->json('data.id');
 
         // Replay start request 10 times
         for ($i = 0; $i < 10; $i++) {
             $replayRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-                ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+                ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
             $replayRes->assertStatus(200);
             $replayRes->assertJson(['success' => true, 'message' => 'Resuming existing attempt.']);
@@ -285,7 +286,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         // First create an attempt for userA1
         $this->actingAs($this->userA1, 'sanctum');
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $attemptId = $startRes->json('data.id');
 
         // Now switch to userA2 (same tenant, but not owner of attempt)
@@ -322,7 +323,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // User B from Tenant B trying to start Exam A from Tenant A
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-b')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $this->assertTrue(in_array($startRes->status(), [403, 404]));
         $this->assertEquals(0, ExamAttempt::where('exam_id', $this->examA->id)->count());
@@ -334,7 +335,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // Start and submit attempt 1
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $attemptId1 = $res1->json('data.id');
 
         $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -344,7 +345,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // Attempt to start attempt 2
         $res2 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $res2->assertStatus(422);
         $res2->assertJson(['success' => false, 'message' => 'Attempt limit reached.']);
@@ -356,7 +357,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $this->actingAs($this->userA1, 'sanctum');
 
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
-            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $attemptId = $startRes->json('data.id');
 
         $randomExamUuid = (string) Str::uuid();
