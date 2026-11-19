@@ -218,22 +218,52 @@ class MonitoringController extends Controller
 
         if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) abort(404);
 
-        $totalQuestions = $exam->snapshots()->count();
-        $answeredCount = ExamAttemptAnswer::where('exam_attempt_id', $attempt->id)
+        $totalQuestions = $exam->snapshots()
+            ->where('tenant_id', $exam->tenant_id)
+            ->count();
+
+        $answeredCount = ExamAttemptAnswer::query()
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->where('exam_attempt_id', $attempt->id)
             ->where('answer_state', 'ANSWERED')
             ->count();
+
+        $attempt->loadMissing('participant.user');
+        $participant = $attempt->participant;
+        $participantUser = $participant?->user;
+
+        // Monitoring receives operational fields only. Device fingerprints,
+        // lease/fencing state, server references and answer ordering stay private.
+        $attemptData = [
+            'id' => $attempt->id,
+            'attempt_number' => $attempt->attempt_number,
+            'status' => $attempt->status,
+            'started_at' => $attempt->started_at?->toIso8601String(),
+            'expires_at' => $attempt->expires_at?->toIso8601String(),
+            'submitted_at' => $attempt->submitted_at?->toIso8601String(),
+            'last_activity_at' => $attempt->last_activity_at?->toIso8601String(),
+            'participant' => $participant ? [
+                'id' => $participant->id,
+                'status' => $participant->status,
+                'user' => $participantUser ? [
+                    'id' => $participantUser->id,
+                    'name' => $participantUser->name,
+                ] : null,
+            ] : null,
+        ];
 
         return response()->json([
             'success' => true,
             'data' => [
-                'attempt' => $attempt->load('participant.user'),
+                'attempt' => $attemptData,
                 'server_now' => now()->toIso8601String(),
                 'stats' => [
                     'total_questions' => $totalQuestions,
                     'answered_count' => $answeredCount,
                     'unanswered_count' => max(0, $totalQuestions - $answeredCount),
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
