@@ -11,35 +11,18 @@ class ProktorDashboard extends Component
     public function mount()
     {
         $user = auth()->user();
-        if (!$user || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'PROKTOR'])->exists()) {
-            abort(403, 'Akses ditolak. Layanan ini khusus untuk Proktor dan Pengawas Ujian.');
+        if (!$user || !$user->hasRole('PROKTOR')) {
+            abort(403, 'Akses ditolak. Halaman ini hanya untuk akun Proktor yang ditugaskan.');
         }
     }
 
     public function render()
     {
-        $tenantId = auth()->user()->tenant_id;
-
-        $activeExams = Exam::where('tenant_id', $tenantId)
-            ->whereIn('status', ['PUBLISHED', 'ACTIVE', 'DRAFT'])
-            ->with(['subject'])
-            ->latest()
-            ->get();
-
-        $allExams = Exam::where('tenant_id', $tenantId)
-            ->with(['subject'])
-            ->latest()
-            ->take(10)
-            ->get();
-
-        $inProgressAttempts = ExamAttempt::where('tenant_id', $tenantId)->where('status', 'IN_PROGRESS')->count();
-        $submittedAttempts = ExamAttempt::where('tenant_id', $tenantId)->where('status', 'SUBMITTED')->count();
-
+        // Fail closed until temporary exam-proctor assignment records and policies exist.
+        // Never expose a tenant-wide exam or attempt list to a Proktor account.
         return view('livewire.proktor.proktor-dashboard', [
-            'activeExams' => $activeExams,
-            'allExams' => $allExams,
-            'inProgressAttempts' => $inProgressAttempts,
-            'submittedAttempts' => $submittedAttempts,
-        ])->layout('layouts.app');
-    }
-}
+            'activeExams' => collect(),
+            'allExams' => collect(),
+            'inProgressAttempts' => 0,
+            'submittedAttempts' => 0,
+        ])->layout('layouts.app');}
