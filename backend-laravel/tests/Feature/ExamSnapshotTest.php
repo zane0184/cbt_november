@@ -29,6 +29,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\QueryException;
+
 
 
 class ExamSnapshotTest extends TestCase
@@ -39,6 +41,11 @@ class ExamSnapshotTest extends TestCase
     private $user;
     private $student;
     private $rombel;
+    private $curriculum;
+    private $phase;
+    private $gradeLevel;
+    private $role;
+    private array $createdPermissionNames = [];
     private $exam;
     private $context;
 
@@ -57,7 +64,11 @@ class ExamSnapshotTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $role = Role::create(['name' => 'GURU', 'label' => 'Guru']);
-        $teacherPermissions = collect(['exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view', 'question.manage'])
+        $this->role = $role;
+        $permissionNames = ['exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view', 'question.manage'];
+        $existingPermissionNames = Permission::whereIn('name', $permissionNames)->pluck('name')->all();
+        $this->createdPermissionNames = array_values(array_diff($permissionNames, $existingPermissionNames));
+        $teacherPermissions = collect($permissionNames)
             ->map(fn ($name) => Permission::firstOrCreate(['name' => $name], ['label' => $name]));
         $role->permissions()->sync($teacherPermissions->pluck('id')->all());
         $this->user->roles()->attach($role);
@@ -70,11 +81,14 @@ class ExamSnapshotTest extends TestCase
         ]);
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
+        $this->curriculum = $curriculum;
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
+        $this->phase = $phase;
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024', 'is_active' => true]);
         $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
         $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
+        $this->gradeLevel = $gradeLevel;
         $rombel = Rombel::create([
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $ay->id,
@@ -479,6 +493,118 @@ class ExamSnapshotTest extends TestCase
         $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
         $this->assertDatabaseHas('exam_attempt_answers', ['id' => $answerId]);
         $this->assertDatabaseHas('exam_question_scores', ['id' => $scoreId]);
+    }
+
+    public function test_mysql8_two_connection_publish_serializes_snapshot_mutations()
+    {
+        $primaryName = DB::getDefaultConnection();
+        if (DB::connection($primaryName)->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('Requires MySQL 8/InnoDB two-connection locking.');
+        }
+
+        $snapshot = $this->createSnapshotForMutationTests();
+        $examId = $this->exam->id;
+        $snapshotId = $snapshot->id;
+        $versionId = $snapshot->source_question_version_id;
+        $tenantId = $this->tenant->id;
+        $userId = $this->user->id;
+
+        config(['database.connections.mysql_concurrency' => config("database.connections.{$primaryName}")]);
+        DB::purge('mysql_concurrency');
+        $connectionA = DB::connection($primaryName);
+        $connectionB = DB::connection('mysql_concurrency');
+        $fixturesCommitted = false;
+
+        try {
+            $connectionA->commit();
+            $fixturesCommitted = true;
+
+            $connectionA->beginTransaction();
+            $connectionA->table('exams')->where('id', $examId)->lockForUpdate()->first();
+
+            DB::setDefaultConnection('mysql_concurrency');
+            $connectionB->statement('SET SESSION innodb_lock_wait_timeout = 1');
+            app(\App\Contexts\TenantContext::class)->setTenantId($tenantId);
+            \Illuminate\Support\Facades\Auth::shouldUse('sanctum');
+            $userB = User::findOrFail($userId);
+            \Illuminate\Support\Facades\Auth::guard('sanctum')->setUser($userB);
+            $examB = Exam::findOrFail($examId);
+            $snapshotB = \App\Models\ExamQuestionSnapshot::findOrFail($snapshotId);
+            $controllerB = app(\App\Http\Controllers\Api\V1\ExamController::class);
+
+            $operations = [
+                fn () => $controllerB->removeQuestion($examB, $snapshotB),
+                fn () => $controllerB->bulkRemoveQuestions(\Illuminate\Http\Request::create('/', 'POST', ['snapshot_ids' => [$snapshotId]]), $examB),
+                fn () => $controllerB->reorderQuestions(\Illuminate\Http\Request::create('/', 'POST', ['orders' => [['snapshot_id' => $snapshotId, 'sequence' => 99]]]), $examB),
+                fn () => $controllerB->addQuestions(\Illuminate\Http\Request::create('/', 'POST', ['question_version_ids' => [$versionId], 'append' => true]), $examB),
+                fn () => app(\App\Services\ExamSnapshotService::class)->createSnapshots($examB, [$versionId]),
+            ];
+
+            foreach ($operations as $index => $operation) {
+                try {
+                    $operation();
+                    $this->fail("Snapshot mutation {$index} passed while connection A held the exam row lock.");
+                } catch (QueryException $exception) {
+                    $this->assertSame(1205, (int) ($exception->errorInfo[1] ?? 0), 'Second connection must be blocked by the InnoDB exam row lock.');
+                }
+            }
+
+            DB::setDefaultConnection($primaryName);
+            app(\App\Contexts\TenantContext::class)->setTenantId($tenantId);
+            \Illuminate\Support\Facades\Auth::shouldUse('sanctum');
+            \Illuminate\Support\Facades\Auth::guard('sanctum')->setUser(User::findOrFail($userId));
+            $publishResponse = app(\App\Http\Controllers\Api\V1\ExamController::class)->lock($this->exam);
+            $this->assertSame(200, $publishResponse->getStatusCode());
+            $connectionA->commit();
+
+            DB::setDefaultConnection('mysql_concurrency');
+            \Illuminate\Support\Facades\Auth::shouldUse('sanctum');
+            \Illuminate\Support\Facades\Auth::guard('sanctum')->setUser(User::findOrFail($userId));
+            foreach (array_slice($operations, 0, 4) as $index => $operation) {
+                try {
+                    $operation();
+                    $this->fail("Snapshot mutation {$index} was not rejected after publish.");
+                } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
+                    $this->assertTrue(true);
+                }
+            }
+
+            try {
+                app(\App\Services\ExamSnapshotService::class)->createSnapshots($examB, [$versionId]);
+                $this->fail('Snapshot service must reject direct mutation after publish.');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+                $this->assertSame(409, $exception->getStatusCode());
+            }
+
+            $this->assertSame(1, $connectionB->table('exam_question_snapshots')->where('exam_id', $examId)->count());
+            $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshotId, 'sequence' => 0]);
+        } finally {
+            if ($connectionA->transactionLevel() > 0) {
+                $connectionA->rollBack();
+            }
+            if ($connectionB->transactionLevel() > 0) {
+                $connectionB->rollBack();
+            }
+
+            if ($fixturesCommitted) {
+                DB::setDefaultConnection('mysql_concurrency');
+                $connectionB->table('tenants')->where('id', $tenantId)->delete();
+                $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
+                $connectionB->table('phases')->where('id', $this->phase->id)->delete();
+                $connectionB->table('curriculums')->where('id', $this->curriculum->id)->delete();
+                $this->role->permissions()->detach();
+                $this->role->delete();
+                if ($this->createdPermissionNames !== []) {
+                    Permission::whereIn('name', $this->createdPermissionNames)->delete();
+                }
+            }
+
+            DB::setDefaultConnection($primaryName);
+            DB::purge('mysql_concurrency');
+            if ($connectionA->transactionLevel() === 0) {
+                $connectionA->beginTransaction();
+            }
+        }
     }
 
     private function createSnapshotForMutationTests()
