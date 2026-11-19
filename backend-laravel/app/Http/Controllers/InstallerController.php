@@ -265,19 +265,27 @@ class InstallerController extends Controller
 
     public function complete()
     {
+        // Read one authoritative checkpoint so routing cannot mix two different
+        // installer states during a concurrent step/recovery operation.
+        $status = $this->installerService->completionStatus();
+        $state = (string) ($status['state'] ?? 'UNKNOWN');
         $allowedStates = config('license.pre_activation_2026')
             ? ['PRE_ACTIVATION_READY', 'LICENSE_ACTIVATED', 'INSTALL_VERIFIED']
             : ['LICENSE_ACTIVATED', 'INSTALL_VERIFIED'];
-        if (! in_array($this->installerService->currentState(), $allowedStates, true)) return redirect()->route('installer.license')->with('error', 'Aktivasi Publisher wajib selesai atau mode pra-aktivasi harus dikonfigurasi.');
-        $status = $this->installerService->completionStatus();
-        if (!$status['can_finalize']) {
-            $state = $status['state'];
+
+        if (!($status['can_finalize'] ?? false) || !in_array($state, $allowedStates, true)) {
             $target = match ($state) {
                 'UNINITIALIZED' => 'installer.database',
-                'SCHEMA_READY' => 'installer.admin',
+                'DB_CONFIG_VERIFIED' => 'installer.migrations',
+                'SCHEMA_READY', 'TENANT_CREATED' => 'installer.admin',
+                'ADMIN_CREATED' => 'installer.license',
                 default => 'installer.migrations',
             };
-            return redirect()->route($target)->with('error', $status['message']);
+
+            return redirect()->route($target)->with(
+                'error',
+                $status['message'] ?? 'Status instalasi belum memenuhi prasyarat finalisasi.'
+            );
         }
 
         return view('installer.complete', compact('status'));
