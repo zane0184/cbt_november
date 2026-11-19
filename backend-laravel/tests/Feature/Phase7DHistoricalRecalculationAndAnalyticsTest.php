@@ -191,6 +191,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'version' => 1,
             'threshold' => 70.00,
         ]);
+        $this->bootstrapCbtRolePermissions();
     }
 
     /**
