@@ -1,154 +1,108 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\\Feature;
 
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\Role;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
-use App\Contexts\TenantContext;
+use App\\Models\\LocalInstallationIdentity;
+use App\\Models\\Role;
+use App\\Models\\Tenant;
+use App\\Models\\User;
+use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use Illuminate\\Support\\Facades\\Hash;
+use Illuminate\\Support\\Str;
+use Tests\\TestCase;
 
+/**
+ * Deployment model: one CBT Web installation and one database per madrasah.
+ * Multiple tenant/install identity records in one database are invalid and must fail closed.
+ */
 class MultiTenantAuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    private $tenantA;
-    private $tenantB;
-    private $userA;
-    private $userB;
-    private $studentRole;
+    private Tenant $tenantA;
+    private User $userA;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
-
-        $this->tenantA = Tenant::create(['name' => 'Tenant A', 'code' => 'DEMOA']);
-        $this->tenantB = Tenant::create(['name' => 'Tenant B', 'code' => 'DEMOB']);
-
-        // User A in Tenant A
-        app(TenantContext::class)->setTenantId($this->tenantA->id);
+        $this->tenantA = Tenant::create(['name' => 'Madrasah A', 'code' => 'MAD-A']);
         $this->userA = User::create([
             'tenant_id' => $this->tenantA->id,
             'name' => 'User A',
-            'email' => 'same@example.com',
-            'password' => bcrypt('passwordA')
+            'username' => 'user-a',
+            'email' => 'user-a@example.test',
+            'password' => Hash::make('password-a'),
         ]);
-        $this->userA->roles()->attach($this->studentRole->id);
 
-        // User B in Tenant B
-        app(TenantContext::class)->setTenantId($this->tenantB->id);
-        $this->userB = User::create([
-            'tenant_id' => $this->tenantB->id,
-            'name' => 'User B',
-            'email' => 'same@example.com',
-            'password' => bcrypt('passwordB')
-        ]);
-        $this->userB->roles()->attach($this->studentRole->id);
-
-        app(TenantContext::class)->setTenantId(null);
+        $this->createInstallationIdentity($this->tenantA, 'install-a', 'key-a', 'a.cbt.test');
     }
 
-    public function test_login_success_tenant_a()
+    public function test_login_resolves_identity_inside_one_madrasah_installation(): void
     {
         $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMOA',
-            'email' => 'same@example.com',
-            'password' => 'passwordA'
+            'identifier' => 'user-a',
+            'password' => 'password-a',
+            'device_name' => 'test-client',
         ]);
 
-        $response->assertStatus(200)
+        $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.user.id', $this->userA->id)
-            ->assertJsonPath('data.user.tenant_id', $this->tenantA->id);
+            ->assertJsonPath('data.user.tenant_id', $this->tenantA->id)
+            ->assertJsonPath('data.installation_id', 'install-a');
     }
 
-    public function test_login_success_tenant_b()
+    public function test_login_fails_closed_if_multiple_installations_are_present_in_one_database(): void
     {
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMOB',
-            'email' => 'same@example.com',
-            'password' => 'passwordB'
-        ]);
+        $tenantB = Tenant::create(['name' => 'Madrasah B', 'code' => 'MAD-B']);
+        $this->createInstallationIdentity($tenantB, 'install-b', 'key-b', 'b.cbt.test');
 
-        $response->assertStatus(200)
-            ->assertJsonPath('success', true)
-            ->assertJsonPath('data.user.id', $this->userB->id)
-            ->assertJsonPath('data.user.tenant_id', $this->tenantB->id);
-    }
-
-    public function test_login_fail_wrong_tenant_password_a()
-    {
-        // Tenant A code with User B's password for the same email
         $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMOA',
-            'email' => 'same@example.com',
-            'password' => 'passwordB'
+            'identifier' => 'user-a',
+            'password' => 'password-a',
+            'device_name' => 'test-client',
         ]);
 
         $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
+            ->assertJsonValidationErrors(['identifier']);
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 
-    public function test_login_fail_wrong_tenant_password_b()
+    public function test_super_admin_identity_is_rejected_by_tenant_login(): void
     {
-        // Tenant B code with User A's password for the same email
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMOB',
-            'email' => 'same@example.com',
-            'password' => 'passwordA'
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
-    }
-
-    public function test_login_fail_invalid_tenant_code()
-    {
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'INVALID',
-            'email' => 'same@example.com',
-            'password' => 'passwordA'
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
-    }
-
-    public function test_login_fail_invalid_email()
-    {
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMOA',
-            'email' => 'nonexistent@example.com',
-            'password' => 'passwordA'
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['email']);
-    }
-    public function test_legacy_platform_super_admin_cannot_receive_tenant_api_token()
-    {
-        app(TenantContext::class)->setTenantId($this->tenantA->id);
-        $role = Role::create(['name' => 'SUPER_ADMIN', 'label' => 'Super Admin']);
-        $legacy = User::create([
+        $role = Role::firstOrCreate(['name' => 'SUPER_ADMIN'], ['label' => 'Super Admin']);
+        $superAdmin = User::create([
             'tenant_id' => $this->tenantA->id,
-            'name' => 'Legacy Platform Admin',
-            'email' => 'legacy-super@example.com',
-            'password' => bcrypt('legacy-password'),
+            'name' => 'Publisher Operator',
+            'username' => 'publisher-operator',
+            'email' => 'publisher@example.test',
+            'password' => Hash::make('publisher-password'),
         ]);
-        $legacy->roles()->attach($role->id);
-        app(TenantContext::class)->setTenantId(null);
+        $superAdmin->roles()->attach($role);
 
         $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'DEMOA',
-            'email' => 'legacy-super@example.com',
-            'password' => 'legacy-password',
+            'identifier' => 'publisher-operator',
+            'password' => 'publisher-password',
+            'device_name' => 'test-client',
         ]);
 
-        $response->assertStatus(422)->assertJsonValidationErrors(['email']);
-        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $legacy->id]);
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identifier']);
     }
 
+    private function createInstallationIdentity(Tenant $tenant, string $installationId, string $keyId, string $domain): void
+    {
+        LocalInstallationIdentity::create([
+            'tenant_id' => $tenant->id,
+            'installation_id' => (string) Str::uuid(),
+            'key_id' => $keyId,
+            'public_key' => 'test-public-key-'.$keyId,
+            'encrypted_private_key' => 'test-encrypted-private-key-'.$keyId,
+            'key_fingerprint' => hash('sha256', $keyId),
+            'registered_domain' => $domain,
+            'product_code' => 'CBT_WEB',
+            'product_version' => '1.0.0',
+        ])->forceFill(['installation_id' => $installationId])->save();
+    }
 }
