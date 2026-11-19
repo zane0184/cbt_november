@@ -9,6 +9,7 @@ use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
 use App\Models\Subject;
 use App\Support\Security\TeacherAccess;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
@@ -277,10 +278,22 @@ class QuestionBank extends Component
         }
 
         DB::transaction(function () {
+            $oldAuditValues = null;
+            $auditAction = 'CREATE_QUESTION';
+
             if ($this->editingQuestionId) {
                 // Update Existing Question
                 $question = Question::query()->whereKey($this->editingQuestionId)->lockForUpdate()->firstOrFail();
                 Gate::authorize('update', $question);
+                $oldVersion = $question->currentVersion;
+                $oldAuditValues = [
+                    'question_code' => $question->question_code,
+                    'subject_id' => $question->subject_id,
+                    'status' => $question->status,
+                    'question_version_id' => $oldVersion?->id,
+                    'question_type' => $oldVersion?->question_type,
+                ];
+                $auditAction = 'UPDATE_QUESTION';
                 $question->update([
                     'question_code' => strtoupper($this->questionCode),
                     'subject_id' => $this->selectedSubjectId,
@@ -418,6 +431,28 @@ class QuestionBank extends Component
                     ]);
                 }
             }
+
+            // Never write answer keys or full question content to the audit trail.
+            $question->refresh();
+            $version->refresh();
+            app(AuditService::class)->log(
+                $auditAction,
+                Question::class,
+                (string) $question->id,
+                $oldAuditValues,
+                [
+                    'question_code' => $question->question_code,
+                    'subject_id' => $question->subject_id,
+                    'status' => $question->status,
+                    'question_version_id' => $version->id,
+                    'major_version' => $version->major_version,
+                    'minor_version' => $version->minor_version,
+                    'question_type' => $version->question_type,
+                    'learning_outcome_id' => $version->learning_outcome_id,
+                    'learning_objective_id' => $version->learning_objective_id,
+                    'option_count' => $version->options()->count(),
+                ]
+            );
         });
 
         $this->showModal = false;
@@ -430,13 +465,29 @@ class QuestionBank extends Component
         Gate::authorize('publish', $question);
         $this->authorizeTeacherQuestionAccess($question->subject_id);
         DB::transaction(function () use ($question) {
-            $question = Question::query()->whereKey($question->id)->lockForUpdate()->firstOrFail();
-            Gate::authorize('publish', $question);
-            abort_unless($question->currentVersion, 409, 'Soal tidak memiliki versi aktif.');
-            $question->update(['status' => 'PUBLISHED']);
-            if ($question->currentVersion) {
-                $question->currentVersion->update(['status' => 'PUBLISHED']);
-            }
+            $lockedQuestion = Question::query()->whereKey($question->id)->lockForUpdate()->firstOrFail();
+            Gate::authorize('publish', $lockedQuestion);
+            $version = $lockedQuestion->currentVersion;
+            abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            $oldValues = [
+                'question_status' => $lockedQuestion->status,
+                'version_status' => $version->status,
+                'question_version_id' => $version->id,
+            ];
+            $lockedQuestion->update(['status' => 'PUBLISHED']);
+            $version->update(['status' => 'PUBLISHED']);
+
+            app(AuditService::class)->log(
+                'PUBLISH_QUESTION',
+                Question::class,
+                (string) $lockedQuestion->id,
+                $oldValues,
+                [
+                    'question_status' => 'PUBLISHED',
+                    'version_status' => 'PUBLISHED',
+                    'question_version_id' => $version->id,
+                ]
+            );
         });
 
         session()->flash('message', "Soal {$question->question_code} berhasil dipublikasikan.");
@@ -464,8 +515,21 @@ class QuestionBank extends Component
                 // Archive + soft-delete the question identity only. Keep all
                 // versions/options because exam snapshots and scoring history
                 // retain source references to these rows.
+                $oldValues = [
+                    'question_code' => $locked->question_code,
+                    'status' => $locked->status,
+                    'current_version_id' => $locked->currentVersion?->id,
+                ];
                 $locked->update(['status' => 'ARCHIVED', 'updated_by' => auth()->id()]);
                 $locked->delete();
+
+                app(AuditService::class)->log(
+                    'ARCHIVE_QUESTION',
+                    Question::class,
+                    (string) $locked->id,
+                    $oldValues,
+                    ['status' => 'ARCHIVED', 'soft_deleted' => true]
+                );
             });
 
             session()->flash('message', "Soal {$this->deletingQuestionCode} berhasil diarsipkan. Histori ujian dipertahankan.");
