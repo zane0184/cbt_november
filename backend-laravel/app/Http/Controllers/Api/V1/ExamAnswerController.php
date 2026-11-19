@@ -206,12 +206,15 @@ class ExamAnswerController extends Controller
                     ]);
                 }
 
-                // Conflict Detection
-                if ($baseRevision < $answer->revision_number) {
+                // Optimistic concurrency requires an exact revision match. Reject both
+                // stale and impossible future revisions; the idempotency check above
+                // still returns the original result for a retried request ID.
+                $currentRevision = (int) $answer->revision_number;
+                if ((int) $baseRevision !== $currentRevision) {
                     return response()->json([
                         'success' => false,
                         'error' => 'ANSWER_REVISION_CONFLICT',
-                        'current_revision' => $answer->revision_number,
+                        'current_revision' => $currentRevision,
                         'current_answer' => [
                             'answer_payload' => $answer->answer_payload,
                             'answer_state' => $answer->answer_state,
@@ -230,6 +233,18 @@ class ExamAnswerController extends Controller
                 ]);
                 $lockedAttempt->update(['last_activity_at' => $serverNow]);
             } else {
+                // A new answer starts at revision zero. A client claiming a future
+                // revision has stale or corrupted local state and must resynchronize.
+                if ((int) $baseRevision !== 0) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'ANSWER_REVISION_CONFLICT',
+                        'current_revision' => 0,
+                        'current_answer' => null,
+                        'server_now' => $serverNow->toIso8601String(),
+                    ], 409);
+                }
+
                 $answer = ExamAttemptAnswer::create([
                     'tenant_id' => $exam->tenant_id,
                     'exam_id' => $exam->id,
