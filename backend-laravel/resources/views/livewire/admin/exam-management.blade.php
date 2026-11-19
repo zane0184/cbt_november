@@ -287,9 +287,11 @@
 
                     <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
                         <button type="button" wire:click="$set('showModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
-                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">
-                            {{ $editingExamId ? 'Perbarui Ujian & Snapshot' : 'Simpan Ujian' }}
-                        </button>
+                        @can('create', \\App\\Models\\Exam::class)
+                            <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">
+                                {{ $editingExamId ? 'Perbarui Ujian & Snapshot' : 'Simpan Ujian' }}
+                            </button>
+                        @endcan
                     </div>
                 </form>
             </div>
