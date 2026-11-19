@@ -8,11 +8,13 @@ use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\Curriculum;
 use App\Models\Exam;
+use App\Models\ExamParticipant;
 use App\Models\GradeLevel;
 use App\Models\Phase;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\Role;
+use App\Models\Permission;
 use App\Models\Rombel;
 use App\Models\StudentProfile;
 use App\Models\Subject;
@@ -316,6 +318,12 @@ class ExamManagementHardeningTest extends TestCase
             'require_token' => true,
         ]);
 
+        // Teacher token access is scoped to exams with an assigned participant roster.
+        $exam->participants()->create([
+            'user_id' => $this->student1->id,
+            'status' => 'ASSIGNED',
+        ]);
+
         $policy = app(\App\Policies\ExamPolicy::class);
         $this->assertFalse($policy->generateToken($this->teacher, $exam));
 
@@ -323,7 +331,9 @@ class ExamManagementHardeningTest extends TestCase
         $exam->refresh();
         $this->assertTrue($policy->generateToken($this->teacher, $exam));
 
-        $this->teacher->roles()->first()->permissions()->where('name', 'exam.token')->detach();
+        $guruRole = $this->teacher->roles()->where('roles.name', 'GURU')->firstOrFail();
+        $tokenPermission = Permission::query()->where('name', 'exam.token')->firstOrFail();
+        $guruRole->permissions()->detach($tokenPermission->id);
         $this->teacher->unsetRelation('roles');
         $this->assertFalse($policy->generateToken($this->teacher, $exam));
     }
