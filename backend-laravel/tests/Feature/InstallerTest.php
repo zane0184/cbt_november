@@ -221,6 +221,7 @@ class InstallerTest extends TestCase
             'tenant_id' => $tenant->id,
             'name' => 'Admin Recovery',
             'email' => 'recovery@min.test',
+            'username' => 'recovery_admin',
             'password' => bcrypt('RecoverySecurePassword123!'),
         ]);
         $admin->roles()->sync([$role->id]);
@@ -269,6 +270,7 @@ class InstallerTest extends TestCase
             'tenant_id' => $tenant->id,
             'name' => 'Legacy Admin',
             'email' => 'legacy-admin@min.test',
+            'username' => 'legacy_admin',
             'password' => bcrypt('LegacySecurePassword123!'),
         ]);
         $admin->roles()->sync([$role->id]);
@@ -406,7 +408,7 @@ class InstallerTest extends TestCase
     {
         $this->mock(InstallerService::class, function ($mock): void {
             $mock->shouldReceive('isInstalled')->andReturn(false);
-            $mock->shouldReceive('currentState')->andReturn('ADMIN_CREATED');
+            $mock->shouldReceive('currentState')->andReturn('LICENSE_ACTIVATED');
             $mock->shouldReceive('completionStatus')->once()->andReturn([
                 'state' => 'ADMIN_CREATED',
                 'can_finalize' => true,

@@ -258,7 +258,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'scoring_version' => 1,
         ]);
 
-        $response = $this->actingAs($this->adminA, 'sanctum')
+        $response = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
 
         $response->assertStatus(200);
@@ -342,7 +342,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $scoreV2->update(['raw_score' => 90, 'percentage' => 90.00, 'grading_status' => 'GRADED']);
 
         // Step 4 & 5: Re-finalize attempt version 2
-        $finalV2Resp = $this->actingAs($this->adminA, 'sanctum')
+        $finalV2Resp = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
         $finalV2Resp->assertStatus(200);
 
@@ -545,7 +545,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'scoring_version' => 1,
         ]);
 
-        $response = $this->actingAs($this->adminA, 'sanctum')
+        $response = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
 
         // Fails with HTTP 422

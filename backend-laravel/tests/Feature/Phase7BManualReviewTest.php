@@ -214,7 +214,7 @@ class Phase7BManualReviewTest extends TestCase
 
     /** A. ROLE AUTHORIZATION (RBAC) **/
 
-    public function test_authorized_teacher_or_admin_can_grade_manual_questions()
+    public function test_authorized_teacher_can_grade_but_admin_without_exam_grade_cannot()
     {
         $snapshot = $this->createEssaySnapshot(20);
         $this->submitAnswer($snapshot->id, ['text' => 'Jawaban essay siswa']);
@@ -232,21 +232,17 @@ class Phase7BManualReviewTest extends TestCase
         ]);
         $resTeacher->assertStatus(200);
 
-        // Admin A can also grade
+        // Admin monitors and manages administration but does not receive exam.grade.
         $this->actingAs($this->adminA, 'sanctum');
         $this->adminA->unsetRelation('roles');
         $this->assertTrue($this->adminA->hasRole('ADMIN_MADRASAH'));
-        $this->assertTrue($this->adminA->hasPermission('exam.grade'));
-        $this->assertTrue(
-            app(\App\Policies\ExamAttemptPolicy::class)->grade($this->adminA, $this->attemptA),
-            'Admin policy must allow grading when the tenant role has exam.grade.'
-        );
+        $this->assertFalse($this->adminA->hasPermission('exam.grade'));
         $resAdmin = $this->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$this->attemptA->id}/grading/{$qScore->id}", [
             'awarded_score' => 18,
-            'feedback' => 'Diperbarui oleh Admin'
+            'feedback' => 'Percobaan perubahan nilai oleh Admin'
         ]);
-        $resAdmin->assertStatus(200);
-        $this->assertEquals(18, $qScore->fresh()->awarded_score);
+        $resAdmin->assertStatus(403);
+        $this->assertEquals(15, $qScore->fresh()->awarded_score);
     }
 
     public function test_unauthorized_student_cannot_grade_or_finalize()
