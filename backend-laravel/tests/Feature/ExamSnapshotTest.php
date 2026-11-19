@@ -17,6 +17,7 @@ use App\Models\Curriculum;
 use App\Models\Phase;
 use App\Models\GradeLevel;
 use App\Models\Rombel;
+use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\MediaAsset;
@@ -33,6 +34,7 @@ class ExamSnapshotTest extends TestCase
     private $user;
     private $exam;
     private $context;
+    private $rombel;
 
     protected function setUp(): void
     {
@@ -64,6 +66,7 @@ class ExamSnapshotTest extends TestCase
             'name' => '1A',
             'status' => 'ACTIVE',
         ]);
+        $this->rombel = $rombel;
         $teacherProfile = TeacherProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->user->id,
@@ -298,9 +301,30 @@ class ExamSnapshotTest extends TestCase
 
     private function createAttemptForMutationTests(): void
     {
+        // Use a real student in the teacher's assigned rombel. The exam
+        // policy correctly denies management when an unrelated teacher account
+        // is inserted as a participant outside the assignment scope.
+        $student = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Uji',
+            'email' => 'student-snapshot@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $student->roles()->sync([$studentRole->id]);
+
+        $studentProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $student->id,
+            'full_name' => 'Siswa Uji',
+        ]);
+        $this->rombel->students()->attach($studentProfile->id, [
+            'tenant_id' => $this->tenant->id,
+        ]);
+
         $participant = ExamParticipant::create([
             'exam_id' => $this->exam->id,
-            'user_id' => $this->user->id,
+            'user_id' => $student->id,
             'status' => 'STARTED',
         ]);
 
