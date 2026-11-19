@@ -19,11 +19,13 @@ use App\Models\User;
 use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
 
 class Phase7AScoringTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesTeacherExamScope;
 
     private Tenant $tenant;
     private User $teacher;
@@ -57,14 +59,13 @@ class Phase7AScoringTest extends TestCase
         ]);
         $this->student->roles()->attach($siswaRole);
 
-        $ay = AcademicYear::create([
-            'tenant_id' => $this->tenant->id,
-            'name' => '2024/2025',
-        ]);
+        $scope = $this->createTeacherExamScope($this->tenant, $this->teacher, [$this->student], 'PHASE7A');
 
         $assessment = Assessment::create([
             'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $ay->id,
+            'academic_year_id' => $scope['academicYear']->id,
+            'subject_id' => $scope['subject']->id,
+            'semester_id' => $scope['semester']->id,
             'title' => 'Assesmen Harian 1',
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,
@@ -98,6 +99,8 @@ class Phase7AScoringTest extends TestCase
             'expires_at' => now()->addMinutes(30),
             'submitted_at' => now(),
         ]);
+
+        $this->bootstrapCbtRolePermissions();
     }
 
     /** A. AUTOMATIC SCORING **/
