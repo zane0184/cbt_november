@@ -14,6 +14,7 @@ use App\Models\QuestionVersion;
 use App\Models\ExamAttemptAnswer;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamQuestionScore;
+use App\Models\Role;
 use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesTeacherExamScope;
