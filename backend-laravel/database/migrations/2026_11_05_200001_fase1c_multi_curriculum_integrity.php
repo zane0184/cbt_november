@@ -231,4 +231,4 @@ return new class extends Migration
             .'Use a reviewed forward migration or restore a verified backup.'
         );
     }
-}
+};
