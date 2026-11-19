@@ -25,10 +25,19 @@ class StudentProfile extends Model
 
     public function rombels(): BelongsToMany
     {
-        return $this->belongsToMany(Rombel::class, 'rombel_student', 'student_id', 'rombel_id')
+        $relation = $this->belongsToMany(Rombel::class, 'rombel_student', 'student_id', 'rombel_id')
             ->using(RombelStudent::class)
             ->withPivot('id', 'tenant_id')
-            ->withPivotValue('tenant_id', $this->tenant_id)
             ->withTimestamps();
+
+        // A persisted parent always has a tenant. Do not pass null into
+        // withPivotValue(), which throws during relationship construction.
+        if ($this->tenant_id) {
+            $relation->wherePivot('tenant_id', $this->tenant_id);
+        } else {
+            $relation->whereRaw('1 = 0');
+        }
+
+        return $relation;
     }
 }
