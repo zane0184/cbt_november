@@ -26,7 +26,9 @@ class StudentProfile extends Model
     public function rombels(): BelongsToMany
     {
         return $this->belongsToMany(Rombel::class, 'rombel_student', 'student_id', 'rombel_id')
-            ->withPivot('tenant_id')
-            ->withPivotValue('tenant_id', $this->tenant_id);
+            ->using(RombelStudent::class)
+            ->withPivot('id', 'tenant_id')
+            ->withPivotValue('tenant_id', $this->tenant_id)
+            ->withTimestamps();
     }
 }
