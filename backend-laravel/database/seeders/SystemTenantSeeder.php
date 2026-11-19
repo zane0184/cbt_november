@@ -17,8 +17,12 @@ class SystemTenantSeeder extends Seeder
         $uuid = Tenant::SYSTEM_TENANT_ID;
         $code = Tenant::SYSTEM_TENANT_CODE;
 
-        $tenantByUuid = Tenant::find($uuid);
-        $tenantByCode = Tenant::where('code', $code)->first();
+        $tenantByUuid = Tenant::withTrashed()->find($uuid);
+        $tenantByCode = Tenant::withTrashed()->where('code', $code)->first();
+
+        if (($tenantByUuid && $tenantByUuid->trashed()) || ($tenantByCode && $tenantByCode->trashed())) {
+            throw new \RuntimeException("System Tenant Seeding Halted: Reserved identity is soft-deleted; manual review is required.");
+        }
 
         // Condition 1: Neither UUID nor Code exists -> Create record.
         if (!$tenantByUuid && !$tenantByCode) {
