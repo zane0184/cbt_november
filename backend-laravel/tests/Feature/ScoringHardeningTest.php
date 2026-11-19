@@ -173,7 +173,7 @@ class ScoringHardeningTest extends TestCase
     public function test_active_attempt_is_rejected_by_score_and_recalculate_endpoints()
     {
         $this->attempt->update(['status' => 'IN_PROGRESS', 'submitted_at' => null]);
-        $this->actingAs($this->teacher);
+        $this->actingAs($this->teacher, 'sanctum');
 
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/score")
             ->assertStatus(422)
@@ -254,14 +254,14 @@ class ScoringHardeningTest extends TestCase
         }
 
         // Assert database state was rolled back cleanly (no ExamAttemptScore or ExamQuestionScore persisted)
-        $this->assertNull(ExamAttemptScore::where('exam_attempt_id', $this->attempt->id)->first());
+        $this->assertNull(ExamAttemptScore::where('attempt_id', $this->attempt->id)->first());
         $this->assertEquals(0, ExamQuestionScore::where('exam_attempt_id', $this->attempt->id)->count());
     }
 
     /** 8. MASS ASSIGNMENT PROTECTION **/
     public function test_client_cannot_inject_score()
     {
-        $this->actingAs($this->teacher);
+        $this->actingAs($this->teacher, 'sanctum');
 
         // Let's say we have an endpoint that might be misused.
         // We'll test manual grading but trying to inject 'grading_status'
