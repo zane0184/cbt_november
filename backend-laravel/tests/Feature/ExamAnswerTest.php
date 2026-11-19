@@ -110,7 +110,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_matching_payload_rejects_foreign_or_duplicate_pair_ids()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->snapshot->update([
             'snapshot_options' => [
                 ['id' => 'LEFT-1', 'content' => 'Kiri 1', 'option_key' => 'PAIR-1'],
@@ -142,7 +142,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_restore_rejects_different_device_binding()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->withHeader('X-Device-Binding-ID', 'another-device')
             ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers");
@@ -153,7 +153,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_restore_response_omits_internal_and_identity_fields()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         \App\Models\ExamAttemptAnswer::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
@@ -178,7 +178,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answered_state_requires_non_null_payload()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
             'answer_payload' => null,
@@ -190,7 +190,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_future_base_revision_is_rejected_for_a_new_answer(): void
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -211,7 +211,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_student_can_save_mc_answer()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-test');
 
         $optionId = $this->snapshot->snapshot_options[0]['id'];
@@ -231,7 +231,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_student_can_clear_answer()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -248,7 +248,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_invalid_option_id_rejected()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -261,7 +261,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_revision_conflict_detection()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $optionId = $this->snapshot->snapshot_options[0]['id'];
 
         // 1. First Save (Revision 1)
@@ -295,7 +295,7 @@ class ExamAnswerTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        $this->actingAs($otherStudent);
+        $this->actingAs($otherStudent, 'sanctum');
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers");
         $response->assertStatus(403);
@@ -303,7 +303,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_idempotent_request_handling()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $optionId = $this->snapshot->snapshot_options[0]['id'];
         $requestId = (string) Str::uuid();
 
@@ -330,7 +330,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_all_question_types_payload_validation()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $types = [
             'MULTIPLE_RESPONSE' => ['selected_option_ids' => []],
@@ -378,7 +378,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_same_exam_snapshot_not_in_attempt_question_order_is_rejected()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $unassignedSnapshot = new ExamQuestionSnapshot([
             'id' => (string) Str::uuid(),
@@ -407,7 +407,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_restore_hides_rows_for_snapshots_not_assigned_to_attempt()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $unassignedSnapshot = new ExamQuestionSnapshot([
             'id' => (string) Str::uuid(),
@@ -473,7 +473,7 @@ class ExamAnswerTest extends TestCase
         $otherSnapshot->tenant_id = $this->tenant->id;
         $otherSnapshot->save();
 
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$otherSnapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -486,7 +486,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_live_question_bank_isolation()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         // 1. Snapshot exists with Option 1
         $optionId = $this->snapshot->snapshot_options[0]['id'];
@@ -508,7 +508,7 @@ class ExamAnswerTest extends TestCase
     public function test_answer_mutation_on_submitted_attempt_rejected()
     {
         $this->attempt->update(['status' => 'SUBMITTED']);
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -523,7 +523,7 @@ class ExamAnswerTest extends TestCase
     public function test_answer_mutation_on_expired_attempt_rejected()
     {
         $this->attempt->update(['expires_at' => now()->subMinute()]);
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -537,7 +537,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_concurrent_revision_conflict_prevention()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $optionId = $this->snapshot->snapshot_options[0]['id'];
 
         // 1. Initial State (Revision 1)
@@ -571,7 +571,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_idempotency_same_request_id_no_mutation()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $optionId = $this->snapshot->snapshot_options[0]['id'];
         $requestId = (string) Str::uuid();
 
@@ -602,7 +602,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_text_questions_draft_validation()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         foreach (['SHORT_ANSWER', 'ESSAY'] as $type) {
             $q = new Question(['created_by' => $this->student->id]);
