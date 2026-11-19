@@ -13,9 +13,7 @@ return new class extends Migration
         if (DB::getDriverName() === 'sqlite') {
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_curr_id_tenant ON multi_curriculums (id, tenant_id);");
         } else {
-            Schema::table('multi_curriculums', function (Blueprint $table) {
-                $table->unique(['id', 'tenant_id'], 'uniq_m_curr_id_tenant');
-            });
+            $this->addUniqueIndexIfMissing('multi_curriculums', ['id', 'tenant_id'], 'uniq_m_curr_id_tenant');
         }
 
         // 2. multi_curriculum_versions composite FK and unique indexes with RESTRICT on delete for master integrity
@@ -23,14 +21,9 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_ver_id_tenant ON multi_curriculum_versions (id, tenant_id);");
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_ver_id_curr ON multi_curriculum_versions (id, multi_curriculum_id);");
         } else {
-            Schema::table('multi_curriculum_versions', function (Blueprint $table) {
-                $table->unique(['id', 'tenant_id'], 'uniq_m_ver_id_tenant');
-                $table->unique(['id', 'multi_curriculum_id'], 'uniq_m_ver_id_curr');
-                $table->foreign(['multi_curriculum_id', 'tenant_id'], 'fk_m_ver_curr_tenant')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_curriculums')
-                    ->onDelete('RESTRICT');
-            });
+            $this->addUniqueIndexIfMissing('multi_curriculum_versions', ['id', 'tenant_id'], 'uniq_m_ver_id_tenant');
+            $this->addUniqueIndexIfMissing('multi_curriculum_versions', ['id', 'multi_curriculum_id'], 'uniq_m_ver_id_curr');
+            $this->addForeignKeyIfMissing('multi_curriculum_versions', ['multi_curriculum_id', 'tenant_id'], 'fk_m_ver_curr_tenant', 'multi_curriculums', ['id', 'tenant_id'], 'RESTRICT');
         }
 
         // 3. multi_curriculum_structures composite FKs and unique indexes
@@ -38,20 +31,10 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_struct_id_ver ON multi_curriculum_structures (id, multi_curriculum_version_id);");
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_m_struct_id_ver_t ON multi_curriculum_structures (id, multi_curriculum_version_id, tenant_id);");
         } else {
-            Schema::table('multi_curriculum_structures', function (Blueprint $table) {
-                $table->unique(['id', 'multi_curriculum_version_id'], 'uniq_m_struct_id_ver');
-                $table->unique(['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_m_struct_id_ver_t');
-
-                $table->foreign(['multi_curriculum_version_id', 'tenant_id'], 'fk_m_struct_ver_tenant')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_curriculum_versions')
-                    ->onDelete('RESTRICT');
-
-                $table->foreign(['parent_id', 'multi_curriculum_version_id'], 'fk_m_struct_parent_ver')
-                    ->references(['id', 'multi_curriculum_version_id'])
-                    ->on('multi_curriculum_structures')
-                    ->onDelete('RESTRICT');
-            });
+            $this->addUniqueIndexIfMissing('multi_curriculum_structures', ['id', 'multi_curriculum_version_id'], 'uniq_m_struct_id_ver');
+            $this->addUniqueIndexIfMissing('multi_curriculum_structures', ['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_m_struct_id_ver_t');
+            $this->addForeignKeyIfMissing('multi_curriculum_structures', ['multi_curriculum_version_id', 'tenant_id'], 'fk_m_struct_ver_tenant', 'multi_curriculum_versions', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('multi_curriculum_structures', ['parent_id', 'multi_curriculum_version_id'], 'fk_m_struct_parent_ver', 'multi_curriculum_structures', ['id', 'multi_curriculum_version_id'], 'RESTRICT');
         }
 
         // 4. multi_learning_outcomes additions and composite FKs
@@ -65,15 +48,9 @@ return new class extends Migration
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_mlo_id_ver ON multi_learning_outcomes (id, multi_curriculum_version_id);");
             DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS uniq_mlo_id_ver_t ON multi_learning_outcomes (id, multi_curriculum_version_id, tenant_id);");
         } else {
-            Schema::table('multi_learning_outcomes', function (Blueprint $table) {
-                $table->unique(['id', 'multi_curriculum_version_id'], 'uniq_mlo_id_ver');
-                $table->unique(['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_mlo_id_ver_t');
-
-                $table->foreign(['multi_curriculum_structure_id', 'multi_curriculum_version_id', 'tenant_id'], 'fk_mlo_struct_ver_t')
-                    ->references(['id', 'multi_curriculum_version_id', 'tenant_id'])
-                    ->on('multi_curriculum_structures')
-                    ->onDelete('RESTRICT');
-            });
+            $this->addUniqueIndexIfMissing('multi_learning_outcomes', ['id', 'multi_curriculum_version_id'], 'uniq_mlo_id_ver');
+            $this->addUniqueIndexIfMissing('multi_learning_outcomes', ['id', 'multi_curriculum_version_id', 'tenant_id'], 'uniq_mlo_id_ver_t');
+            $this->addForeignKeyIfMissing('multi_learning_outcomes', ['multi_curriculum_structure_id', 'multi_curriculum_version_id', 'tenant_id'], 'fk_mlo_struct_ver_t', 'multi_curriculum_structures', ['id', 'multi_curriculum_version_id', 'tenant_id'], 'RESTRICT');
         }
 
         // Safe Reconciliation for multi_learning_outcomes (backfill version ONLY from proven structure relation)
@@ -181,13 +158,17 @@ return new class extends Migration
 
             Schema::enableForeignKeyConstraints();
         } else {
-            Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
-                $table->dropForeign('qmcm_lo_tenant_fk');
+            if (Schema::hasForeignKey('question_multi_curriculum_mappings', 'qmcm_lo_tenant_fk')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
+                    $table->dropForeign('qmcm_lo_tenant_fk');
+                });
+            }
 
-                if (!Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id')) {
+            if (!Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id')) {
+                Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
                     $table->uuid('curriculum_owner_id')->nullable()->after('multi_learning_outcome_id');
-                }
-            });
+                });
+            }
 
             DB::statement("
                 UPDATE question_multi_curriculum_mappings
@@ -200,35 +181,52 @@ return new class extends Migration
                 WHERE curriculum_owner_id IS NULL AND multi_learning_outcome_id IS NOT NULL
             ");
 
-            Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) {
-                $table->foreign(['multi_learning_outcome_id', 'multi_curriculum_version_id'], 'fk_qmcm_lo_ver')
-                    ->references(['id', 'multi_curriculum_version_id'])
-                    ->on('multi_learning_outcomes')
-                    ->onDelete('cascade');
-
-                $table->foreign(['multi_learning_outcome_id', 'curriculum_owner_id'], 'fk_qmcm_lo_owner')
-                    ->references(['id', 'tenant_id'])
-                    ->on('multi_learning_outcomes')
-                    ->onDelete('cascade');
-
-                $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'fk_qmcm_reg_triplet')
-                    ->references(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
-                    ->on('tenant_curriculum_registrations')
-                    ->onDelete('cascade');
-            });
+            $this->addForeignKeyIfMissing('question_multi_curriculum_mappings', ['multi_learning_outcome_id', 'multi_curriculum_version_id'], 'fk_qmcm_lo_ver', 'multi_learning_outcomes', ['id', 'multi_curriculum_version_id'], 'cascade');
+            $this->addForeignKeyIfMissing('question_multi_curriculum_mappings', ['multi_learning_outcome_id', 'curriculum_owner_id'], 'fk_qmcm_lo_owner', 'multi_learning_outcomes', ['id', 'tenant_id'], 'cascade');
+            $this->addForeignKeyIfMissing('question_multi_curriculum_mappings', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'fk_qmcm_reg_triplet', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'cascade');
         }
+    }
+
+    private function addUniqueIndexIfMissing(string $tableName, array $columns, string $indexName): void
+    {
+        if (Schema::hasIndex($tableName, $indexName, 'unique') || Schema::hasIndex($tableName, $columns, 'unique')) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) use ($columns, $indexName): void {
+            $table->unique($columns, $indexName);
+        });
+    }
+
+    private function addForeignKeyIfMissing(
+        string $tableName,
+        array $columns,
+        string $foreignKeyName,
+        string $referencedTable,
+        array $referencedColumns,
+        string $onDelete
+    ): void {
+        if (Schema::hasForeignKey($tableName, $foreignKeyName) || Schema::hasForeignKey($tableName, $columns)) {
+            return;
+        }
+
+        Schema::table($tableName, function (Blueprint $table) use ($columns, $foreignKeyName, $referencedTable, $referencedColumns, $onDelete): void {
+            $table->foreign($columns, $foreignKeyName)
+                ->references($referencedColumns)
+                ->on($referencedTable)
+                ->onDelete($onDelete);
+        });
     }
 
     public function down(): void
     {
-        // This migration performs data reconciliation and engine-specific table
-        // reconstruction. A generic rollback would discard reconciled values and
-        // cannot safely restore the exact pre-migration state on every supported
-        // engine. Fail closed before issuing any DDL; use a reviewed forward-fix
-        // or restore a verified backup instead.
+        // Intentionally forward-only: MySQL DDL may implicitly commit and this
+        // migration backfills data and alters existing tables. A generic down()
+        // could destroy tenant curriculum registrations and academic mappings.
+        // Use an approved, data-preserving corrective migration if reversal is
+        // ever required; never drop these tables/columns automatically.
         throw new \RuntimeException(
-            'Fase1C migration is intentionally irreversible. No schema changes were made. '
-            .'Use a reviewed forward migration or restore a verified backup.'
+            'Fase1C migration is intentionally irreversible. No schema changes were made. Use a reviewed forward migration or restore a verified backup.'
         );
     }
 };

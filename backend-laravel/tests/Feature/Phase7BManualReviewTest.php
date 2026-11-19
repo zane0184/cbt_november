@@ -12,12 +12,22 @@ use App\Models\ExamAttemptAnswer;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamQuestionScore;
+use App\Models\Curriculum;
+use App\Models\GradeLevel;
+use App\Models\Phase;
+use App\Models\Rombel;
+use App\Models\Semester;
+use App\Models\StudentProfile;
+use App\Models\Subject;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ScoringService;
+use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -34,6 +44,10 @@ class Phase7BManualReviewTest extends TestCase
     private User $proctorA;
     private User $teacherB;
     private Exam $examA;
+    private AcademicYear $academicYearA;
+    private Semester $semesterA;
+    private Subject $subjectA;
+    private Rombel $rombelA;
     private ExamAttempt $attemptA;
 
     protected function setUp(): void
@@ -49,6 +63,8 @@ class Phase7BManualReviewTest extends TestCase
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
         $siswaRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $proctorRole = Role::firstOrCreate(['name' => 'PROKTOR'], ['label' => 'Proktor']);
+        Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
+        app(RolePermissionBootstrapper::class)->bootstrap();
 
         $this->teacherA = User::create([
             'tenant_id' => $this->tenantA->id,
@@ -95,14 +111,49 @@ class Phase7BManualReviewTest extends TestCase
         // Switch back to Tenant A for test exam setup
         app(TenantContext::class)->setTenantId($this->tenantA->id);
 
-        $ay = AcademicYear::create([
+        $this->academicYearA = AcademicYear::create([
             'tenant_id' => $this->tenantA->id,
             'name' => '2024/2025',
+        ]);
+        $this->semesterA = Semester::create([
+            'tenant_id' => $this->tenantA->id,
+            'academic_year_id' => $this->academicYearA->id,
+            'term' => 'GANJIL',
+            'is_active' => true,
+        ]);
+        $this->subjectA = Subject::create([
+            'tenant_id' => $this->tenantA->id,
+            'code' => 'PHASE7B-SUBJECT',
+            'name' => 'Mata Pelajaran Phase 7B',
+        ]);
+        $curriculum = Curriculum::create(['tenant_id' => $this->tenantA->id, 'name' => 'Kurikulum Merdeka', 'code' => 'KM']);
+        $phase = Phase::create(['tenant_id' => $this->tenantA->id, 'curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
+        $grade = GradeLevel::create(['tenant_id' => $this->tenantA->id, 'phase_id' => $phase->id, 'code' => '1', 'name' => 'Kelas 1', 'level' => 1]);
+        $this->rombelA = Rombel::create([
+            'tenant_id' => $this->tenantA->id,
+            'academic_year_id' => $this->academicYearA->id,
+            'grade_level_id' => $grade->id,
+            'name' => 'Kelas 1A Phase 7B',
+        ]);
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id, 'user_id' => $this->teacherA->id, 'full_name' => 'Guru Tenant A',
+        ]);
+        $studentProfile = StudentProfile::create([
+            'tenant_id' => $this->tenantA->id, 'user_id' => $this->studentA->id, 'full_name' => 'Siswa Tenant A',
+        ]);
+        $studentProfile->rombels()->attach($this->rombelA->id, ['id' => (string) Str::uuid(), 'tenant_id' => $this->tenantA->id]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenantA->id, 'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $this->subjectA->id, 'rombel_id' => $this->rombelA->id,
+            'academic_year_id' => $this->academicYearA->id, 'semester_id' => $this->semesterA->id,
+            'status' => 'ACTIVE', 'created_by' => $this->adminA->id,
         ]);
 
         $assessment = Assessment::create([
             'tenant_id' => $this->tenantA->id,
-            'academic_year_id' => $ay->id,
+            'academic_year_id' => $this->academicYearA->id,
+            'semester_id' => $this->semesterA->id,
+            'subject_id' => $this->subjectA->id,
             'title' => 'Assesmen Harian Phase 7B',
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacherA->id,
@@ -136,7 +187,6 @@ class Phase7BManualReviewTest extends TestCase
             'expires_at' => now()->addMinutes(30),
             'submitted_at' => now(),
         ]);
-        $this->bootstrapCbtRolePermissions();
     }
 
     /** A. ROLE AUTHORIZATION (RBAC) **/

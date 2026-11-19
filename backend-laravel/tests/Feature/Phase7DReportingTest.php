@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Reporting\ReportHeaderService;
+use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -64,6 +65,8 @@ class Phase7DReportingTest extends TestCase
         $adminRoleA = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
         $guruRoleA = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $siswaRoleA = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
+        app(RolePermissionBootstrapper::class)->bootstrap();
 
         $this->adminA = User::create([
             'tenant_id' => $this->tenantA->id,
@@ -196,7 +199,6 @@ class Phase7DReportingTest extends TestCase
     {
         app(TenantContext::class)->setTenantId(null);
         return $this->actingAs($user, 'sanctum');
-        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_pdf_report_export_returns_200_and_pdf_headers()

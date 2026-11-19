@@ -33,6 +33,7 @@ use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\TpAchievement;
 use App\Models\User;
+use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -69,6 +70,8 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
         $teacherRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
+        app(RolePermissionBootstrapper::class)->bootstrap();
 
         $this->adminA = User::create([
             'tenant_id' => $this->tenantA->id,
@@ -191,7 +194,6 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'version' => 1,
             'threshold' => 70.00,
         ]);
-        $this->bootstrapCbtRolePermissions();
     }
 
     /**

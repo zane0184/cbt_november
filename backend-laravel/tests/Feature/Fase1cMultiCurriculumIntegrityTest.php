@@ -23,6 +23,20 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_fase1c_migration_up_is_idempotent_when_constraints_already_exist(): void
+    {
+        $migration = require database_path('migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php');
+
+        // The migration chain has already applied Fase1C. Re-running up() must
+        // preserve existing indexes/FKs instead of creating duplicate names.
+        $migration->up();
+        $migration->up();
+
+        $this->assertTrue(Schema::hasIndex('multi_curriculums', 'uniq_m_curr_id_tenant', 'unique'));
+        $this->assertTrue(Schema::hasForeignKey('question_multi_curriculum_mappings', 'fk_qmcm_reg_triplet'));
+        $this->assertTrue(Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id'));
+    }
+
     public function test_system_tenant_seeder_condition_1_creates_record(): void
     {
         $tenant = SystemTenantSeeder::seed();
@@ -624,19 +638,24 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
         $this->assertEquals($version->id, $outcomeAfter->multi_curriculum_version_id);
     }
 
-    public function test_rollback_halts_before_ddl_if_table_or_column_missing(): void
+    public function test_rollback_is_explicitly_blocked_without_schema_changes(): void
     {
         $migration = require database_path('migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php');
+        $this->assertTrue(Schema::hasTable('tenant_curriculum_registrations'));
+        $columnsBefore = Schema::getColumnListing('question_multi_curriculum_mappings');
+
+        try {
+            $migration->down();
+            $this->fail('Fase1C is forward-only and must reject generic rollback.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame(
+                'Fase1C migration is intentionally irreversible. No schema changes were made. Use a reviewed forward migration or restore a verified backup.',
+                $exception->getMessage()
+            );
+        }
 
         $this->assertTrue(Schema::hasTable('tenant_curriculum_registrations'));
-
-        // Artificially drop a required table to trigger safety gate failure
-        Schema::dropIfExists('tenant_curriculum_registrations');
-
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/Rollback Safety Verification Failed/i');
-
-        $migration->down();
+        $this->assertSame($columnsBefore, Schema::getColumnListing('question_multi_curriculum_mappings'));
     }
 
     public function test_rollback_does_not_delete_foreign_metadata(): void
@@ -649,9 +668,19 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 
         $migration = require database_path('migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php');
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/System Tenant provenance check failed/i');
+        try {
+            $migration->down();
+            $this->fail('Fase1C is forward-only and must reject generic rollback.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame(
+                'Fase1C migration is intentionally irreversible. No schema changes were made. Use a reviewed forward migration or restore a verified backup.',
+                $exception->getMessage()
+            );
+        }
 
-        $migration->down();
+        $this->assertDatabaseHas('tenants', [
+            'id' => $systemTenant->id,
+            'code' => 'FOREIGN_METADATA',
+        ]);
     }
 }
