@@ -52,11 +52,12 @@ class ExamSnapshotTest extends TestCase
             'email' => 'g@e.com',
             'password' => bcrypt('password')
         ]);
-        $role = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $role = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $teacherPermissions = collect(['exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view', 'question.manage'])
             ->map(fn ($name) => Permission::firstOrCreate(['name' => $name], ['label' => $name]));
-        $role->permissions()->syncWithoutDetaching($teacherPermissions->pluck('id')->all());
-        $this->user->roles()->sync([$role->id]);
+        $role->permissions()->sync($teacherPermissions->pluck('id')->all());
+        $this->user->roles()->attach($role);
+        $this->user->refresh()->load('roles.permissions');
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
@@ -105,6 +106,11 @@ class ExamSnapshotTest extends TestCase
             'created_by' => $this->user->id,
             'status' => 'DRAFT'
         ]);
+
+        $this->assertTrue($this->user->hasRole('GURU'), 'Snapshot test fixture must authenticate as GURU.');
+        $this->assertTrue($this->user->hasPermission('exam.manage'), 'Snapshot test fixture must grant exam.manage.');
+        $this->assertTrue($this->user->hasPermission('question.manage'), 'Snapshot test fixture must grant question.manage.');
+        $this->assertTrue(\App\Support\Security\TeacherAccess::canManageExam($this->user, $this->exam), 'Snapshot test fixture must have an active matching teacher assignment.');
 
     }
 
