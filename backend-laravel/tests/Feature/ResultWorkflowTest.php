@@ -226,12 +226,12 @@ class ResultWorkflowTest extends TestCase
         $this->assertEquals('MANUAL_REVIEW', $qScore->scoring_status);
 
         // 2. Student cannot see score yet
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/score");
         $response->assertStatus(403);
 
         // 3. Teacher grades Essay
-        $this->actingAs($this->teacher);
+        $this->actingAs($this->teacher, 'sanctum');
         $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/grading/{$qScore->id}", [
             'awarded_score' => 15,
             'feedback' => 'Good job'
@@ -245,13 +245,13 @@ class ResultWorkflowTest extends TestCase
         $this->assertEquals('FINALIZED', ExamAttemptScore::first()->grading_status);
 
         // 5. Student can now see score
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/score");
         $response->assertStatus(200)
                  ->assertJsonPath('data.summary.raw_score', "15.0000");
 
         // 6. Immutability check
-        $this->actingAs($this->teacher);
+        $this->actingAs($this->teacher, 'sanctum');
         $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/grading/{$qScore->id}", [
             'awarded_score' => 20
         ])->assertStatus(422);
@@ -383,7 +383,7 @@ class ResultWorkflowTest extends TestCase
         $this->exam->update(['show_result' => false]);
 
         // 3. Student cannot view score when unpublished
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/score")
             ->assertStatus(403);
 
@@ -402,7 +402,7 @@ class ResultWorkflowTest extends TestCase
         $this::assertTrue($this->exam->fresh()->show_result);
 
         // 6. Student can now view score
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/score")
             ->assertStatus(200);
 
@@ -414,7 +414,7 @@ class ResultWorkflowTest extends TestCase
         $this::assertFalse($this->exam->fresh()->show_result);
 
         // 8. Student blocked again
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/score")
             ->assertStatus(403);
     }
