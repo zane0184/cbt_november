@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Tenant;
 use App\Models\LocalInstallationIdentity;
 use App\Models\User;
+use App\Models\Role;
 use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -31,6 +32,11 @@ class AuthTest extends TestCase
             'email' => 'test@example.com',
             'password' => bcrypt('password')
         ]);
+
+        // LoginIdentityResolver deliberately rejects users without an authorized
+        // madrasah role. Give this fixture the minimum valid staff role.
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $this->user->roles()->attach($adminRole);
 
         LocalInstallationIdentity::create([
             'tenant_id' => $this->tenant->id,
