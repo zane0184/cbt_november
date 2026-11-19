@@ -18,8 +18,7 @@ class ExamAttemptPolicy
 
         if ($user->hasRole('ADMIN_MADRASAH') ||
             $user->hasRole('OPERATOR') ||
-            $user->hasRole('KAMAD') ||
-            $user->hasRole('PROKTOR')) {
+            $user->hasRole('KAMAD')) {
             return true;
         }
 
@@ -61,13 +60,11 @@ class ExamAttemptPolicy
     public function score(User $user, ExamAttempt $attempt): bool
     {
         if ($user->tenant_id !== $attempt->tenant_id) return false;
-        if ($user->hasRole('PROKTOR') || $user->hasRole('KAMAD') || $user->hasRole('OPERATOR')) return false;
+        if (!$user->hasRole('GURU')) return false;
 
-        if ($user->hasRole('GURU')) {
-            return $user->hasPermission('exam.grade') && TeacherAccess::canViewExam($user, $attempt->exam);
-        }
-
-        return $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.grade');
+        return $user->hasPermission('exam.grade')
+            && TeacherAccess::canManageAssessment($user, $attempt->exam->assessment)
+            && TeacherAccess::canViewExam($user, $attempt->exam);
     }
 
     public function grade(User $user, ExamAttempt $attempt): bool
@@ -78,10 +75,11 @@ class ExamAttemptPolicy
     public function finalize(User $user, ExamAttempt $attempt): bool
     {
         if ($user->tenant_id !== $attempt->tenant_id) return false;
-        if ($user->hasRole('PROKTOR') || $user->hasRole('KAMAD') || $user->hasRole('OPERATOR')) return false;
+        if (!$user->hasRole('GURU')) return false;
 
-        return ($user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.grade'))
-            || ($user->hasRole('GURU') && $user->hasPermission('exam.grade') && TeacherAccess::canViewExam($user, $attempt->exam));
+        return $user->hasPermission('exam.grade')
+            && TeacherAccess::canManageAssessment($user, $attempt->exam->assessment)
+            && TeacherAccess::canViewExam($user, $attempt->exam);
     }
 
     /**
