@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
+use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
@@ -13,6 +14,7 @@ use App\Models\User;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Livewire\Livewire;
 
 class ExamProctorAssignmentTest extends TestCase
 {
@@ -152,6 +154,60 @@ class ExamProctorAssignmentTest extends TestCase
                 'ends_at' => now()->addHour()->toISOString(),
             ])
             ->assertUnprocessable();
+    }
+
+
+    public function test_admin_can_manage_proctor_assignments_from_admin_ui_and_revoke_without_deleting_history(): void
+    {
+        $this->actingAs($this->admin)
+            ->get('/admin/proctor-assignments')
+            ->assertOk();
+
+        Livewire::actingAs($this->admin)
+            ->test(ProctorAssignmentManagement::class)
+            ->set('examId', $this->exam->id)
+            ->set('proctorUserId', $this->proctor->id)
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
+            ->set('endsAt', now()->addHour()->format('Y-m-d\\TH:i'))
+            ->set('notes', 'Proktor ruang ujian 1')
+            ->call('saveAssignment')
+            ->assertHasNoErrors()
+            ->assertSee('Penugasan Proktor berhasil dibuat atau diperbarui.');
+
+        $assignment = ExamProctorAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('proctor_user_id', $this->proctor->id)
+            ->firstOrFail();
+
+        $this->assertSame('ACTIVE', $assignment->status);
+
+        Livewire::actingAs($this->admin)
+            ->test(ProctorAssignmentManagement::class)
+            ->call('revokeAssignment', $assignment->id)
+            ->assertHasNoErrors()
+            ->assertSee('Penugasan Proktor berhasil dicabut dan dicatat di audit log.');
+
+        $this->assertSame('REVOKED', $assignment->fresh()->status);
+        $this->assertDatabaseHas('exam_proctor_assignments', [
+            'id' => $assignment->id,
+            'status' => 'REVOKED',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'entity_id' => $assignment->id,
+            'action' => 'ASSIGN_PROCTOR',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'entity_id' => $assignment->id,
+            'action' => 'REVOKE_PROCTOR_ASSIGNMENT',
+        ]);
+    }
+
+    public function test_non_admin_cannot_open_proctor_assignment_management_ui(): void
+    {
+        $this->actingAs($this->proctor)
+            ->get('/admin/proctor-assignments')
+            ->assertForbidden();
     }
 
     public function test_only_admin_madrasah_can_assign_proctors(): void
