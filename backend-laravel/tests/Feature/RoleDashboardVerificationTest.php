@@ -6,6 +6,8 @@ use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Curriculum;
 use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
 use App\Models\GradeLevel;
 use App\Models\Phase;
 use App\Models\Role;
@@ -249,6 +251,25 @@ class RoleDashboardVerificationTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->adminA->id,
         ]);
+
+        $participant = ExamParticipant::create([
+            'exam_id' => $exam->id,
+            'user_id' => $this->siswaA->id,
+            'status' => 'ASSIGNED',
+        ]);
+        $attempt = ExamAttempt::create([
+            'exam_id' => $exam->id,
+            'participant_id' => $participant->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+            'device_fingerprint' => 'DEVICE-FINGERPRINT-SECRET',
+            'server_start_reference' => 'SERVER-REFERENCE-SECRET',
+            'question_order' => ['QUESTION-ORDER-SECRET'],
+            'options_order' => ['OPTIONS-ORDER-SECRET'],
+            'started_at' => now(),
+            'expires_at' => now()->addHour(),
+        ]);
+
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
 
         // Tenant A authorized users can access monitoring
@@ -256,6 +277,21 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
         $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
         $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
+
+        // The monitoring detail response must be an allowlist, not a raw attempt model.
+        $attemptResponse = $this->actingAs($this->adminA, 'sanctum')
+            ->getJson("/api/v1/exams/{$exam->id}/monitoring/attempts/{$attempt->id}");
+        $attemptResponse->assertStatus(200)
+            ->assertJsonPath('data.attempt.participant.user.name', 'Siswa A')
+            ->assertJsonMissingPath('data.attempt.tenant_id')
+            ->assertJsonMissingPath('data.attempt.device_fingerprint')
+            ->assertJsonMissingPath('data.attempt.server_start_reference')
+            ->assertJsonMissingPath('data.attempt.question_order')
+            ->assertJsonMissingPath('data.attempt.options_order')
+            ->assertDontSee('DEVICE-FINGERPRINT-SECRET')
+            ->assertDontSee('SERVER-REFERENCE-SECRET')
+            ->assertDontSee('QUESTION-ORDER-SECRET')
+            ->assertDontSee('OPTIONS-ORDER-SECRET');
 
         // Tenant A Siswa is blocked
         $this->actingAs($this->siswaA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
