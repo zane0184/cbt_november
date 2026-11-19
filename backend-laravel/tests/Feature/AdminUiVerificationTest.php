@@ -12,6 +12,9 @@ use App\Models\Role;
 use App\Models\Subject;
 use App\Models\Rombel;
 use App\Models\StudentProfile;
+use App\Models\Semester;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Livewire\Admin\UserManagement;
@@ -33,6 +36,7 @@ class AdminUiVerificationTest extends TestCase
     private $student;
     private $subject;
     private $academicYear;
+    private $semester;
     private $gradeLevel;
 
     protected function setUp(): void
@@ -68,6 +72,12 @@ class AdminUiVerificationTest extends TestCase
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'K-MERDEKA', 'is_active' => true]);
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase E', 'code' => 'E']);
         $this->academicYear = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
+        $this->semester = Semester::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->academicYear->id,
+            'term' => 'GANJIL',
+            'is_active' => true,
+        ]);
         $this->gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas X', 'code' => 'X', 'level' => 10]);
         $this->subject = Subject::create([
             'tenant_id' => $this->tenant->id,
@@ -279,10 +289,8 @@ class AdminUiVerificationTest extends TestCase
         $guru->roles()->attach($guruRole);
         $this->actingAs($guru);
 
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        Livewire::test(AcademicManagement::class)
-            ->set('rombelName', 'Kelas Terlarang')
-            ->call('createRombel');
+        // AcademicManagement denies this role during component mount.
+        Livewire::test(AcademicManagement::class)->assertStatus(403);
     }
 
     /** @test */
@@ -301,8 +309,9 @@ class AdminUiVerificationTest extends TestCase
         $this->actingAs($guru);
 
         $this->get('/admin/curriculum')->assertStatus(200);
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
-        Livewire::test(CurriculumManagement::class)->call('openCreateTpModal');
+        Livewire::test(CurriculumManagement::class)
+            ->call('openCreateTpModal')
+            ->assertStatus(403);
     }
 
     /** @test */
@@ -337,9 +346,42 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_question_bank_can_create_and_publish_question()
+    public function guru_can_create_question_for_assigned_subject()
     {
-        $this->actingAs($this->admin);
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        $guru = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Bank Soal',
+            'email' => 'guru.banksoal@man1.sch.id',
+            'password' => bcrypt('password123'),
+        ]);
+        $guru->roles()->attach($guruRole);
+
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $guru->id,
+            'full_name' => $guru->name,
+        ]);
+        $rombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->academicYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => 'Kelas X-Guru',
+            'status' => 'ACTIVE',
+        ]);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $this->subject->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $guru->id,
+        ]);
+
+        $this->actingAs($guru);
 
         Livewire::test(QuestionBank::class)
             ->set('questionCode', 'MTK-001')
@@ -394,6 +436,7 @@ class AdminUiVerificationTest extends TestCase
         $q->update(['current_version_id' => $version->id]);
 
         Livewire::test(ExamManagement::class)
+            ->call('openCreateModal')
             ->set('title', 'Ujian Akhir Semester Matematika')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedRombelId', $rombel->id)
