@@ -30,12 +30,18 @@ class StudentProfile extends Model
             ->withPivot('id', 'tenant_id')
             ->withTimestamps();
 
-        // A persisted parent always has a tenant. Do not pass null into
-        // withPivotValue(), which throws during relationship construction.
-        if ($this->tenant_id) {
-            $relation->wherePivot('tenant_id', $this->tenant_id);
-        } else {
+        $parentTenantId = $this->tenant_id;
+        $contextTenantId = app(\App\Contexts\TenantContext::class)->getTenantId();
+
+        if ($parentTenantId && $contextTenantId && (string) $parentTenantId !== (string) $contextTenantId) {
             $relation->whereRaw('1 = 0');
+        } else {
+            $tenantId = $parentTenantId ?: $contextTenantId;
+            if ($tenantId) {
+                $relation->wherePivot('tenant_id', $tenantId);
+            } else {
+                $relation->whereRaw('1 = 0');
+            }
         }
 
         return $relation;
