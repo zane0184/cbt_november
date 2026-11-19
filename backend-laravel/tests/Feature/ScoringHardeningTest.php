@@ -304,7 +304,8 @@ class ScoringHardeningTest extends TestCase
                 'email' => 'reopen-' . strtolower($roleName) . '@m.com',
                 'password' => 'p',
             ]);
-            $user->roles()->create(['name' => $roleName, 'label' => $roleName]);
+            $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
+            $user->roles()->syncWithoutDetaching($role->id);
 
             $this->assertFalse(
                 app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
@@ -322,7 +323,8 @@ class ScoringHardeningTest extends TestCase
                 'email' => 'reopen-' . strtolower($roleName) . '@m.com',
                 'password' => 'p',
             ]);
-            $user->roles()->create(['name' => $roleName, 'label' => $roleName]);
+            $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
+            $user->roles()->syncWithoutDetaching($role->id);
 
             $this->assertTrue(
                 app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
