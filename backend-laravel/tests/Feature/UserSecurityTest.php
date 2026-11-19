@@ -8,6 +8,8 @@ use App\Models\Exam;
 use App\Models\Assessment;
 use App\Models\AcademicYear;
 use App\Models\Role;
+use App\Models\Permission;
+use App\Models\LocalInstallationIdentity;
 use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,6 +33,9 @@ class UserSecurityTest extends TestCase
         $this->tenantB = Tenant::create(['name' => 'Tenant B', 'code' => 'TENANTB']);
 
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
+        $examManage = Permission::firstOrCreate(['name' => 'exam.manage'], ['label' => 'Manage exams']);
+        $examAssign = Permission::firstOrCreate(['name' => 'exam.assign'], ['label' => 'Assign participants']);
+        $adminRole->permissions()->syncWithoutDetaching([$examManage->id, $examAssign->id]);
         $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
 
         // Explicitly set context for model creation
@@ -139,38 +144,62 @@ class UserSecurityTest extends TestCase
             'user_id' => $this->userB->id
         ]);
 
-        // Validation should fail because user_id must exist in users table WHERE tenant_id = exam->tenant_id
+        // Admin A has the exact exam.manage + exam.assign permissions, so the
+        // request reaches tenant-scoped participant validation. User B must not
+        // be accepted into Tenant A's exam.
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['user_id']);
     }
 
     /**
-     * Test that two users with same email on different tenants are distinct.
+     * A database containing more than one tenant is invalid for the
+     * independently installed madrasah deployment model and must fail closed.
      */
-    public function test_same_email_different_tenants_distinct_login()
+    public function test_login_fails_closed_when_database_contains_multiple_tenants()
     {
         $email = 'common@example.com';
 
         app(TenantContext::class)->setTenantId($this->tenantA->id);
-        $uA = User::create(['tenant_id' => $this->tenantA->id, 'name' => 'UA', 'email' => $email, 'password' => bcrypt('passA')]);
+        User::create([
+            'tenant_id' => $this->tenantA->id,
+            'name' => 'UA',
+            'username' => 'common-user',
+            'email' => $email,
+            'password' => bcrypt('passA'),
+        ]);
 
         app(TenantContext::class)->setTenantId($this->tenantB->id);
-        $uB = User::create(['tenant_id' => $this->tenantB->id, 'name' => 'UB', 'email' => $email, 'password' => bcrypt('passB')]);
-
-        // Login to Tenant A with Tenant A's password
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'TENANTA',
+        User::create([
+            'tenant_id' => $this->tenantB->id,
+            'name' => 'UB',
+            'username' => 'common-user',
             'email' => $email,
-            'password' => 'passA'
+            'password' => bcrypt('passB'),
         ]);
-        $response->assertStatus(200)->assertJsonPath('data.user.id', $uA->id);
 
-        // Login to Tenant A with Tenant B's password should fail
-        $response = $this->postJson('/api/v1/auth/login', [
-            'tenant_code' => 'TENANTA',
-            'email' => $email,
-            'password' => 'passB'
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenantA->id,
+            'installation_id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'key_id' => 'test-key-a',
+            'public_key' => 'test-public-key-a',
+            'encrypted_private_key' => 'test-encrypted-private-key-a',
+            'key_fingerprint' => hash('sha256', 'test-key-a'),
+            'registered_domain' => 'tenant-a.cbt.test',
+            'product_code' => 'CBT_WEB',
+            'product_version' => '1.0.0',
         ]);
-        $response->assertStatus(422);
+
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'common-user',
+            'password' => 'passA',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identifier']);
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 }
