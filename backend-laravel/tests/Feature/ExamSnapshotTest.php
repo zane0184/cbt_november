@@ -18,6 +18,7 @@ use App\Models\Phase;
 use App\Models\GradeLevel;
 use App\Models\Rombel;
 use App\Models\StudentProfile;
+use App\Support\Security\TeacherAccess;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\MediaAsset;
@@ -322,11 +323,26 @@ class ExamSnapshotTest extends TestCase
             'tenant_id' => $this->tenant->id,
         ]);
 
+        $this->assertDatabaseHas('rombel_student', [
+            'rombel_id' => $this->rombel->id,
+            'student_id' => $studentProfile->id,
+            'tenant_id' => $this->tenant->id,
+        ]);
+        $this->assertTrue(
+            TeacherAccess::canManageAssessment($this->user, $this->exam->assessment),
+            'Teacher fixture must retain assessment management permission.'
+        );
+
         $participant = ExamParticipant::create([
             'exam_id' => $this->exam->id,
             'user_id' => $student->id,
             'status' => 'STARTED',
         ]);
+
+        $this->assertTrue(
+            TeacherAccess::canViewExam($this->user, $this->exam->fresh()),
+            'Teacher fixture must retain exam visibility after assigning an in-scope student.'
+        );
 
         ExamAttempt::create([
             'exam_id' => $this->exam->id,
