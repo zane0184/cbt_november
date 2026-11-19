@@ -21,6 +21,8 @@ class ExamAttemptScoreFactory extends Factory
             'raw_score' => 80.0,
             'max_score' => 100.0,
             'percentage' => 80.0,
+            // The first scoring version allocated by ScoringService is 1.
+            'scoring_version' => 1,
             'grading_status' => 'FINALIZED',
         ];
     }
