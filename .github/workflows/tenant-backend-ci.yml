@@ -108,5 +108,8 @@ jobs:
       - name: Discover Laravel packages explicitly
         run: php artisan package:discover --ansi
 
+      - name: Prepare empty test environment file
+        run: touch .env
+
       - name: Run PHPUnit against disposable MySQL 8
         run: php artisan test --display-warnings
