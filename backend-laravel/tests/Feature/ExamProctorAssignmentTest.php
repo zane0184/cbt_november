@@ -203,6 +203,29 @@ class ExamProctorAssignmentTest extends TestCase
         ]);
     }
 
+    public function test_admin_assignment_times_are_normalized_using_exam_timezone(): void
+    {
+        $this->exam->update(['timezone' => 'Asia/Jakarta']);
+
+        Livewire::actingAs($this->admin)
+            ->test(ProctorAssignmentManagement::class)
+            ->set('examId', $this->exam->id)
+            ->set('proctorUserId', $this->proctor->id)
+            ->set('startsAt', '2026-11-20T08:00')
+            ->set('endsAt', '2026-11-20T09:00')
+            ->call('saveAssignment')
+            ->assertHasNoErrors();
+
+        $assignment = ExamProctorAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('proctor_user_id', $this->proctor->id)
+            ->firstOrFail();
+
+        $this->assertSame('2026-11-20 01:00:00', $assignment->starts_at->utc()->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-11-20 02:00:00', $assignment->ends_at->utc()->format('Y-m-d H:i:s'));
+    }
+
     public function test_non_admin_cannot_open_proctor_assignment_management_ui(): void
     {
         $this->actingAs($this->proctor)
