@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Contexts\TenantContext;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
@@ -334,7 +335,9 @@ class ScoringHardeningTest extends TestCase
         }
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Lain', 'code' => 'M2']);
-        TenantContext::set($otherTenant->id);
+        $tenantContext = app(TenantContext::class);
+        $previousTenantId = $tenantContext->getTenantId();
+        $tenantContext->setTenantId($otherTenant->id);
         try {
             $foreignAdmin = User::create([
                 'tenant_id' => $otherTenant->id,
@@ -343,7 +346,7 @@ class ScoringHardeningTest extends TestCase
                 'password' => 'p',
             ]);
         } finally {
-            TenantContext::clear();
+            $tenantContext->setTenantId($previousTenantId);
         }
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
         $foreignAdmin->roles()->syncWithoutDetaching($adminRole->id);
