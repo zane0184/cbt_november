@@ -180,7 +180,7 @@ jobs:
           test "$after_tables" = "$before_tables"
           test "$after_ledger" = "$before_ledger"
           test "$after_registrations" = "1"
-          printf 'rollback_guard=PASS\\nrollback_exit_code=%s\\ntables_before=%s\\ntables_after=%s\\nledger_before=%s\\nledger_after=%s\\nregistration_table_after=%s\\n' "$rollback_rc" "$before_tables" "$after_tables" "$before_ledger" "$after_ledger" "$after_registrations" | tee ../p095d-artifacts/rollback-guard-proof.txt
+          printf 'rollback_guard=PASS\nrollback_exit_code=%s\ntables_before=%s\ntables_after=%s\nledger_before=%s\nledger_after=%s\nregistration_table_after=%s\n' "$rollback_rc" "$before_tables" "$after_tables" "$before_ledger" "$after_ledger" "$after_registrations" | tee ../p095d-artifacts/rollback-guard-proof.txt
 
       - name: Stage 3/4 — audit schema, tenant constraints and migration 190008
         if: always() && steps.identity.outcome == 'success'
