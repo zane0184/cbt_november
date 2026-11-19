@@ -190,6 +190,28 @@ class ScoringService
                 ]
             );
 
+            // Score history and its current pointer are audited atomically.
+            // A finalized idempotent return above does not create a duplicate event.
+            if (!$createNewVersion) {
+                $this->auditService->log(
+                    $existingScore ? 'RECALCULATE_SCORE' : 'SCORE_ATTEMPT',
+                    ExamAttemptScore::class,
+                    (string) $attemptScore->id,
+                    $existingScore?->only([
+                        'attempt_id', 'scoring_version', 'raw_score',
+                        'max_score', 'percentage', 'grading_status',
+                    ]),
+                    [
+                        'attempt_id' => $attempt->id,
+                        'scoring_version' => $version,
+                        'raw_score' => $attemptScore->raw_score,
+                        'max_score' => $attemptScore->max_score,
+                        'percentage' => $attemptScore->percentage,
+                        'grading_status' => $attemptScore->grading_status,
+                    ]
+                );
+            }
+
             return $attemptScore;
         });
     }
