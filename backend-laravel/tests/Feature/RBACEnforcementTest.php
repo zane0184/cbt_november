@@ -70,7 +70,7 @@ class RBACEnforcementTest extends TestCase
 
     public function test_admin_without_academic_manage_cannot_create_teacher_assignment()
     {
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'sanctum');
 
         $response = $this->postJson('/api/v1/teacher-subject-assignments', []);
         $response->assertStatus(403);
@@ -82,7 +82,7 @@ class RBACEnforcementTest extends TestCase
         $permission = Permission::firstOrCreate(['name' => 'academic.manage'], ['label' => 'Kelola Data Akademik']);
         $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
         $this->admin->unsetRelation('roles');
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'sanctum');
 
         $response = $this->postJson('/api/v1/teacher-subject-assignments', []);
         $response->assertStatus(422);
@@ -91,7 +91,7 @@ class RBACEnforcementTest extends TestCase
 
     public function test_student_cannot_create_exam()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->postJson('/api/v1/exams', [
             'title' => 'Student Exam',
@@ -101,9 +101,9 @@ class RBACEnforcementTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_admin_can_create_exam()
+    public function test_admin_cannot_create_exam_without_teacher_authoring_role()
     {
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'sanctum');
 
         $year = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
 
@@ -123,12 +123,12 @@ class RBACEnforcementTest extends TestCase
             'timezone' => 'Asia/Jakarta',
         ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(403);
     }
 
     public function test_student_cannot_access_curricula_store()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->postJson('/api/v1/curricula', ['name' => 'New Cur']);
         $response->assertStatus(403);
@@ -136,7 +136,7 @@ class RBACEnforcementTest extends TestCase
 
     public function test_admin_can_access_curricula_store()
     {
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'sanctum');
 
         $response = $this->postJson('/api/v1/curricula', [
             'name' => 'New Cur',
