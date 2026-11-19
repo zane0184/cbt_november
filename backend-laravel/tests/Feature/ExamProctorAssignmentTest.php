@@ -71,6 +71,15 @@ class ExamProctorAssignmentTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/proctor-assignments", [
                 'proctor_user_id' => $this->proctor->id,
                 'starts_at' => now()->subMinute()->toISOString(),
+                'notes' => 'Penugasan tanpa batas waktu harus ditolak',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['ends_at']);
+
+        $this->actingAs($this->admin)
+            ->postJson("/api/v1/exams/{$this->exam->id}/proctor-assignments", [
+                'proctor_user_id' => $this->proctor->id,
+                'starts_at' => now()->subMinute()->toISOString(),
                 'ends_at' => now()->addHour()->toISOString(),
                 'notes' => 'Penugasan ruang ujian 1',
             ])
@@ -130,6 +139,7 @@ class ExamProctorAssignmentTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/proctor-assignments", [
                 'proctor_user_id' => $foreignUser->id,
                 'starts_at' => now()->toISOString(),
+                'ends_at' => now()->addHour()->toISOString(),
             ])
             ->assertUnprocessable();
 
@@ -137,6 +147,7 @@ class ExamProctorAssignmentTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/proctor-assignments", [
                 'proctor_user_id' => $nonProctor->id,
                 'starts_at' => now()->toISOString(),
+                'ends_at' => now()->addHour()->toISOString(),
             ])
             ->assertUnprocessable();
     }
