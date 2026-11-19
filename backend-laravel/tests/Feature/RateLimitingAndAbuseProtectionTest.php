@@ -191,13 +191,13 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
 
         for ($i = 0; $i < 5; $i++) {
             $res = $this->withHeader('X-Device-Binding-ID', 'device-user-a')
-                ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'WRONG_TOKEN']);
+                ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'BADTOK']);
             $res->assertStatus(422); // Invalid token
         }
 
         // 6th attempt with invalid token triggers 429
         $resLock = $this->withHeader('X-Device-Binding-ID', 'device-user-a')
-            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'WRONG_TOKEN']);
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'BADTOK']);
 
         $resLock->assertStatus(429);
         $resLock->assertJson(['success' => false]);
