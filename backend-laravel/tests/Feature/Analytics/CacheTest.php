@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\Rombel;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
+use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamParticipant;
 use App\Models\StudentProfile;
 use App\Models\AcademicYear;
@@ -107,6 +108,12 @@ class CacheTest extends TestCase
             'student_id' => $student->id,
             'tenant_id' => $tenant->id,
             'grading_status' => 'AUTO_SCORED'
+        ]);
+        ExamAttemptScoreCurrent::create([
+            'tenant_id' => $tenant->id,
+            'attempt_id' => $attempt->id,
+            'current_score_id' => $score->id,
+            'scoring_version' => $score->scoring_version,
         ]);
 
         // Put stale cache
