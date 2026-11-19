@@ -3,6 +3,8 @@
 namespace Tests\Feature\Security;
 
 use App\Models\Tenant;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Assessment;
 use App\Models\Exam;
@@ -47,7 +49,12 @@ class AnswerKeyLeakageTest extends TestCase
         $this->student->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']));
 
         $this->guru = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru', 'email' => 'guru@test.com', 'password' => bcrypt('password')]);
-        $this->guru->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
+        $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $this->guru->roles()->attach($guruRole);
+        $guruRole->permissions()->syncWithoutDetaching([
+            Permission::firstOrCreate(['name' => 'exam.manage'], ['label' => 'Kelola ujian'])->id,
+            Permission::firstOrCreate(['name' => 'question.manage'], ['label' => 'Kelola bank soal'])->id,
+        ]);
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
@@ -159,22 +166,29 @@ class AnswerKeyLeakageTest extends TestCase
         }
     }
 
-    public function test_student_preview_does_not_leak_answer_key()
+    public function test_student_preview_is_forbidden()
     {
         $this->actingAs($this->student);
 
-        $response = $this->getJson("/api/v1/exams/{$this->exam->id}/preview");
+        $this->getJson("/api/v1/exams/{$this->exam->id}/preview")
+            ->assertForbidden();
+    }
 
-        // If student can access preview, it must be clean.
-        // Based on ExamPolicy, student can view exam if participant.
-        if ($response->status() === 200) {
-            $questions = $response->json('data.questions');
-            foreach ($questions as $q) {
-                foreach ($q['snapshot_options'] as $option) {
-                    $this->assertArrayNotHasKey('is_correct', $option);
-                    $this->assertArrayNotHasKey('score_weight', $option);
-                }
-            }
+    public function test_non_teacher_staff_cannot_preview_answer_key()
+    {
+        foreach (['ADMIN_MADRASAH', 'OPERATOR', 'KAMAD', 'PROKTOR'] as $roleName) {
+            $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
+            $staff = User::create([
+                'tenant_id' => $this->tenant->id,
+                'name' => $roleName,
+                'email' => strtolower($roleName) . '@test.com',
+                'password' => bcrypt('password'),
+            ]);
+            $staff->roles()->attach($role);
+
+            $this->actingAs($staff);
+            $this->getJson("/api/v1/exams/{$this->exam->id}/preview")
+                ->assertForbidden();
         }
     }
 
