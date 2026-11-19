@@ -22,7 +22,12 @@ class ExamAttemptPolicy
             return true;
         }
 
-        return $attempt->participant->user_id === $user->id;
+        $participant = $attempt->participant;
+
+        return $participant
+            && $participant->tenant_id === $attempt->tenant_id
+            && $participant->exam_id === $attempt->exam_id
+            && $participant->user_id === $user->id;
     }
 
     public function viewScore(User $user, ExamAttempt $attempt): bool
@@ -59,12 +64,15 @@ class ExamAttemptPolicy
 
     public function score(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->tenant_id !== $attempt->tenant_id) return false;
-        if (!$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+
+        $exam = $attempt->exam;
+        $assessment = $exam?->assessment;
+        if (!$exam || !$assessment) return false;
 
         return $user->hasPermission('exam.grade')
-            && TeacherAccess::canManageAssessment($user, $attempt->exam->assessment)
-            && TeacherAccess::canViewExam($user, $attempt->exam);
+            && TeacherAccess::canManageAssessment($user, $assessment)
+            && TeacherAccess::canViewExam($user, $exam);
     }
 
     public function grade(User $user, ExamAttempt $attempt): bool
@@ -74,12 +82,15 @@ class ExamAttemptPolicy
 
     public function finalize(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->tenant_id !== $attempt->tenant_id) return false;
-        if (!$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+
+        $exam = $attempt->exam;
+        $assessment = $exam?->assessment;
+        if (!$exam || !$assessment) return false;
 
         return $user->hasPermission('exam.grade')
-            && TeacherAccess::canManageAssessment($user, $attempt->exam->assessment)
-            && TeacherAccess::canViewExam($user, $attempt->exam);
+            && TeacherAccess::canManageAssessment($user, $assessment)
+            && TeacherAccess::canViewExam($user, $exam);
     }
 
     /**
