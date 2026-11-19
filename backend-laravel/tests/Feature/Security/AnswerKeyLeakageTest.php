@@ -176,16 +176,26 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_non_teacher_staff_cannot_preview_answer_key()
     {
-        foreach (['ADMIN_MADRASAH', 'OPERATOR', 'KAMAD', 'PROKTOR'] as $roleName) {
-            $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
-            $staff = User::create([
-                'tenant_id' => $this->tenant->id,
-                'name' => $roleName,
-                'email' => strtolower($roleName) . '@test.com',
-                'password' => bcrypt('password'),
-            ]);
-            $staff->roles()->attach($role);
+        $context = app(\App\Contexts\TenantContext::class);
+        $context->setTenantId($this->tenant->id);
 
+        try {
+            foreach (['ADMIN_MADRASAH', 'OPERATOR', 'KAMAD', 'PROKTOR'] as $roleName) {
+                $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
+                $staff = User::create([
+                    'tenant_id' => $this->tenant->id,
+                    'name' => $roleName,
+                    'email' => strtolower($roleName) . '@test.com',
+                    'password' => bcrypt('password'),
+                ]);
+                $staff->roles()->attach($role);
+                $staffUsers[] = $staff;
+            }
+        } finally {
+            $context->setTenantId(null);
+        }
+
+        foreach ($staffUsers ?? [] as $staff) {
             $this->actingAs($staff);
             $this->getJson("/api/v1/exams/{$this->exam->id}/preview")
                 ->assertForbidden();
