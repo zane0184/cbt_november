@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - source-import/p0-87
+      - work/schema-dump-export-20261119
   pull_request:
     branches:
       - main
