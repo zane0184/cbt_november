@@ -218,7 +218,7 @@ class RoleDashboardVerificationTest extends TestCase
     public function operator_can_access_curriculum_and_exams()
     {
         $this->actingAs($this->operatorA);
-        $this->get('/admin/curriculum')->assertStatus(403);
+        $this->get('/admin/curriculum')->assertStatus(200);
         $this->get('/admin/exams')->assertStatus(403);
     }
 
