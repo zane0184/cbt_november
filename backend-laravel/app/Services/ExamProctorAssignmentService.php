@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Exam;
 use App\Models\ExamProctorAssignment;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -38,6 +39,16 @@ class ExamProctorAssignmentService
                 ]);
             }
 
+            $timezone = $lockedExam->timezone ?: config('app.timezone', 'UTC');
+            $startsAt = Carbon::parse($data['starts_at'], $timezone)->utc();
+            $endsAt = Carbon::parse($data['ends_at'], $timezone)->utc();
+
+            if ($endsAt->lessThanOrEqualTo($startsAt)) {
+                throw ValidationException::withMessages([
+                    'ends_at' => 'Akhir penugasan harus setelah waktu mulai dalam zona waktu ujian.',
+                ]);
+            }
+
             $existing = ExamProctorAssignment::query()
                 ->where('tenant_id', $lockedExam->tenant_id)
                 ->where('exam_id', $lockedExam->id)
@@ -52,8 +63,8 @@ class ExamProctorAssignmentService
             if ($existing) {
                 $existing->update([
                     'assigned_by' => auth()->id(),
-                    'starts_at' => $data['starts_at'],
-                    'ends_at' => $data['ends_at'],
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
                     'status' => 'ACTIVE',
                     'revoked_at' => null,
                     'revoked_by' => null,
@@ -65,8 +76,8 @@ class ExamProctorAssignmentService
                     'exam_id' => $lockedExam->id,
                     'proctor_user_id' => $lockedProctor->id,
                     'assigned_by' => auth()->id(),
-                    'starts_at' => $data['starts_at'],
-                    'ends_at' => $data['ends_at'],
+                    'starts_at' => $startsAt,
+                    'ends_at' => $endsAt,
                     'status' => 'ACTIVE',
                     'notes' => $data['notes'] ?? null,
                 ]);
