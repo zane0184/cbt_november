@@ -323,6 +323,7 @@ class ScoringHardeningTest extends TestCase
         }
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Lain', 'code' => 'M2']);
+        app(\App\Contexts\TenantContext::class)->setTenantId($otherTenant->id);
         $foreignAdmin = User::create([
             'tenant_id' => $otherTenant->id,
             'name' => 'Foreign Admin',
@@ -330,6 +331,7 @@ class ScoringHardeningTest extends TestCase
             'password' => 'p',
         ]);
         $foreignAdmin->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']));
+        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
 
         $this->assertFalse(
             app(\App\Policies\ExamAttemptPolicy::class)->reopen($foreignAdmin, $this->attempt),
