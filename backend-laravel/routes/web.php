@@ -11,6 +11,7 @@ use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
+use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Operator\OperatorDashboard;
 use App\Livewire\Kamad\KamadDashboard;
 use App\Livewire\Proktor\ProktorDashboard;
@@ -78,6 +79,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // inside the same portal; Proktor receives only a temporary assignment workbench.
     Route::get('/admin/dashboard', OperatorDashboard::class)->name('admin.dashboard');
     Route::get('/admin/overview', KamadDashboard::class)->name('admin.overview');
+    Route::get('/admin/proctor-assignments', ProctorAssignmentManagement::class)->name('admin.proctor-assignments');
     Route::get('/operator/dashboard', fn () => new \Illuminate\Http\RedirectResponse('/admin/dashboard'))->name('operator.dashboard.legacy');
     Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
