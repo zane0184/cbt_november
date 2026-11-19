@@ -16,7 +16,7 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
         <div>
             <h2 class="text-lg font-bold text-navy-900">Buat / Perbarui Penugasan</h2>
-            <p class="text-xs text-textSecondary mt-1">Memilih pasangan ujian dan Proktor yang sama akan memperbarui jendela waktu assignment yang sudah ada.</p>
+            <p class="text-xs text-textSecondary mt-1">Memilih pasangan ujian dan Proktor yang sama akan memperbarui jendela waktu assignment yang sudah ada. Waktu input mengikuti zona waktu ujian yang dipilih.</p>
         </div>
 
         @if($proctors->isEmpty())
@@ -49,13 +49,13 @@
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">Mulai Penugasan</label>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Mulai Penugasan ({{ $selectedExamTimezone }})</label>
                 <input type="datetime-local" wire:model="startsAt" class="w-full border border-cardBorder rounded-xl px-3 py-2.5 text-sm">
                 @error('startsAt') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
 
             <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">Akhir Penugasan</label>
+                <label class="block text-xs font-bold text-gray-600 mb-1">Akhir Penugasan ({{ $selectedExamTimezone }})</label>
                 <input type="datetime-local" wire:model="endsAt" class="w-full border border-cardBorder rounded-xl px-3 py-2.5 text-sm">
                 @error('endsAt') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
@@ -119,8 +119,8 @@
                                 <p class="text-xs text-gray-500">{{ $assignment->proctor?->email ?? '' }}</p>
                             </td>
                             <td class="px-5 py-4 whitespace-nowrap text-xs text-gray-600">
-                                <p>Mulai: {{ $assignment->starts_at?->format('d/m/Y H:i') ?? '-' }}</p>
-                                <p>Akhir: {{ $assignment->ends_at?->format('d/m/Y H:i') ?? '-' }}</p>
+                                <p>Mulai: {{ $assignment->starts_at?->copy()->timezone($assignment->exam?->timezone ?? config('app.timezone', 'UTC'))->format('d/m/Y H:i') ?? '-' }}</p>
+                                <p>Akhir: {{ $assignment->ends_at?->copy()->timezone($assignment->exam?->timezone ?? config('app.timezone', 'UTC'))->format('d/m/Y H:i') ?? '-' }}</p>
                             </td>
                             <td class="px-5 py-4">
                                 <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold {{ $statusLabel === 'Aktif' ? 'bg-emerald-50 text-emerald-700' : ($statusLabel === 'Dicabut' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700') }}">{{ $statusLabel }}</span>
