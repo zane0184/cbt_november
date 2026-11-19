@@ -8,6 +8,17 @@ use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\AcademicYear;
 use App\Models\ExamParticipant;
+use App\Models\StudentProfile;
+use App\Models\Rombel;
+use App\Models\Curriculum;
+use App\Models\Phase;
+use App\Models\GradeLevel;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\QuestionOption;
@@ -39,7 +50,40 @@ class AnswerKeyLeakageTest extends TestCase
         $this->guru->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']));
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->guru->id]);
+        $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
+        $subject = Subject::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'code' => 'S1', 'short_name' => 'S1', 'status' => 'ACTIVE']);
+        $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
+        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
+        $rombel = Rombel::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'grade_level_id' => $gradeLevel->id, 'name' => '1A', 'status' => 'ACTIVE']);
+        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->guru->id, 'full_name' => 'Guru']);
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $this->guru->id,
+        ]);
+        $studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id, 'full_name' => 'Student']);
+        DB::table('rombel_student')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $rombel->id,
+            'student_id' => $studentProfile->id,
+        ]);
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $ay->id,
+            'semester_id' => $semester->id,
+            'subject_id' => $subject->id,
+            'title' => 'A1',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->guru->id,
+        ]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -51,11 +95,12 @@ class AnswerKeyLeakageTest extends TestCase
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
             'timezone' => 'UTC',
-            'require_token' => false
+            'require_token' => true,
+            'token' => 'ABC123'
         ]);
 
         // Create a question with correct option
-        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => \App\Models\Subject::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'code' => 'S1'])->id, 'created_by' => $this->guru->id]);
+        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
         $version = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $question->id,
@@ -95,7 +140,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         // Start attempt first
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts")
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
              ->assertStatus(201);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
