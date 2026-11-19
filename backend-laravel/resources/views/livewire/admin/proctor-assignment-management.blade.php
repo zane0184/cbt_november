@@ -109,7 +109,7 @@
                                     ? 'Kedaluwarsa'
                                     : ($assignment->starts_at?->isFuture() ? 'Akan Datang' : 'Aktif'));
                         @endphp
-                        <tr>
+                        <tr wire:key="proctor-assignment-{{ $assignment->id }}">
                             <td class="px-5 py-4">
                                 <p class="font-semibold text-navy-900">{{ $assignment->exam?->title ?? 'Ujian tidak ditemukan' }}</p>
                                 <p class="text-xs text-gray-500">{{ $assignment->exam?->status ?? '-' }}</p>
@@ -125,7 +125,7 @@
                             <td class="px-5 py-4">
                                 <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-bold {{ $statusLabel === 'Aktif' ? 'bg-emerald-50 text-emerald-700' : ($statusLabel === 'Dicabut' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700') }}">{{ $statusLabel }}</span>
                                 @if($assignment->revoked_at)
-                                    <p class="text-xs text-gray-500 mt-1">Dicabut: {{ $assignment->revoked_at->format('d/m/Y H:i') }}</p>
+                                    <p class="text-xs text-gray-500 mt-1">Dicabut: {{ $assignment->revoked_at->format('d/m/Y H:i') }} oleh {{ $assignment->revoker?->name ?? 'Admin' }}</p>
                                 @endif
                             </td>
                             <td class="px-5 py-4 text-xs text-gray-600">{{ $assignment->assigner?->name ?? '-' }}</td>
