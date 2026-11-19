@@ -14,6 +14,7 @@ use App\Models\Semester;
 use App\Models\Subject;
 use App\Models\User;
 use App\Services\ExamSnapshotService;
+use App\Services\AuditService;
 use App\Support\Security\TeacherAccess;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
@@ -209,11 +210,25 @@ class ExamManagement extends Component
             abort(403, 'Soal yang dipilih tidak seluruhnya berasal dari mata pelajaran dan tenant yang diizinkan.');
         }
 
-        DB::transaction(function () use ($tenantId, $activeYear, $semester, $user) {
+        $editingExamId = $this->editingExamId;
+        DB::transaction(function () use ($tenantId, $activeYear, $semester, $user, $editingExamId) {
+            $oldExamValues = null;
+            $exam = null;
 
-            if ($this->editingExamId) {
-                $exam = Exam::with('assessment')->where('tenant_id', $tenantId)->findOrFail($this->editingExamId);
+            if ($editingExamId) {
+                $exam = Exam::with('assessment')
+                    ->where('tenant_id', $tenantId)
+                    ->whereKey($editingExamId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
                 Gate::authorize('update', $exam);
+                if (!$exam->canBeEdited()) {
+                    abort(403, 'Ujian sudah diterbitkan dan tidak dapat diubah.');
+                }
+                $oldExamValues = $exam->only([
+                    'assessment_id', 'title', 'start_at', 'end_at',
+                    'duration_seconds', 'attempt_limit', 'status', 'require_token',
+                ]);
                 $exam->update([
                     'title' => $this->title,
                     'instructions' => $this->instructions,
@@ -302,6 +317,30 @@ class ExamManagement extends Component
                     'status' => 'ASSIGNED',
                 ]);
             }
+
+            // Keep the audit record in the same transaction as the exam,
+            // snapshot, and participant changes.
+            $exam->refresh();
+            app(AuditService::class)->log(
+                $editingExamId ? 'UPDATE_EXAM' : 'CREATE_EXAM',
+                Exam::class,
+                (string) $exam->id,
+                $oldExamValues,
+                [
+                    'assessment_id' => $exam->assessment_id,
+                    'title' => $exam->title,
+                    'start_at' => $exam->getAttribute('start_at'),
+                    'end_at' => $exam->getAttribute('end_at'),
+                    'duration_seconds' => $exam->duration_seconds,
+                    'attempt_limit' => $exam->attempt_limit,
+                    'status' => $exam->status,
+                    'require_token' => $exam->require_token,
+                    'snapshot_count' => $exam->snapshots()->count(),
+                    'participant_count' => $exam->participants()->count(),
+                    'target_rombel_id' => $this->selectedRombelId === 'ALL' ? null : ($this->selectedRombelId ?: null),
+                    'target_all_students' => $this->selectedRombelId === 'ALL',
+                ]
+            );
         });
 
         $this->showModal = false;
