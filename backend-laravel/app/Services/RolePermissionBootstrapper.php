@@ -11,7 +11,7 @@ use RuntimeException;
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.token', 'exam.reopen', 'report.view'],
+        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.proctor.assign', 'exam.token', 'exam.reopen', 'report.view'],
         'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
         'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.grade', 'report.view'],
     ];
@@ -38,6 +38,7 @@ class RolePermissionBootstrapper
                 'exam.manage' => 'Kelola ujian sesuai kewenangan',
                 'exam.assign' => 'Kelola peserta ujian sesuai kewenangan',
                 'exam.monitor' => 'Monitoring ujian sesuai kewenangan',
+                'exam.proctor.assign' => 'Menugaskan Proktor sementara pada ujian tenant aktif',
                 'exam.token' => 'Kelola token ujian setelah publikasi',
                 'exam.grade' => 'Koreksi dan finalisasi nilai sesuai kewenangan',
                 'exam.reopen' => 'Buka kembali hasil final sesuai kewenangan',
