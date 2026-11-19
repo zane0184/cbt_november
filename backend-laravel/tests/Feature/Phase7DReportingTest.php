@@ -4,6 +4,15 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\Curriculum;
+use App\Models\Phase;
+use App\Models\GradeLevel;
+use App\Models\Rombel;
+use App\Models\StudentProfile;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
@@ -188,6 +197,8 @@ class Phase7DReportingTest extends TestCase
             'locked_at' => now(),
             'show_result' => true
         ]);
+
+        $this->bootstrapCbtRolePermissions();
 
         app(TenantContext::class)->setTenantId(null);
     }
