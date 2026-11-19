@@ -101,6 +101,7 @@ class StudentWebLoginTest extends TestCase
 
     public function test_duplicate_nisn_across_two_student_accounts_is_rejected(): void
     {
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $studentRole = Role::where('name', 'SISWA')->firstOrFail();
         $second = User::create([
             'name' => 'Siswa Duplikat',
@@ -113,6 +114,7 @@ class StudentWebLoginTest extends TestCase
             'nisn' => $this->nisn,
             'full_name' => 'Siswa Duplikat',
         ]);
+        app(TenantContext::class)->setTenantId(null);
 
         $response = $this->post('/login', [
             'identifier' => $this->nisn,
