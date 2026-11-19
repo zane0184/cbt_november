@@ -40,12 +40,12 @@ class RolePermissionBootstrapperTest extends TestCase
         $kamad = Role::where('name', 'KAMAD')->firstOrFail();
         $guru = Role::where('name', 'GURU')->firstOrFail();
 
-        $this->assertEqualsCanonicalizing(['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.token', 'exam.reopen', 'report.view'], $admin->permissions()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.proctor.assign', 'exam.token', 'exam.reopen', 'report.view'], $admin->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'exam.monitor', 'report.view'], $kamad->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.grade', 'report.view'], $guru->permissions()->pluck('name')->all());
         $this->assertFalse($kamad->permissions()->where('name', 'curriculum.manage')->exists());
         $this->assertFalse($guru->permissions()->where('name', 'curriculum.manage')->exists());
-        $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'];
+        $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'];
         $this->assertSame(count($expectedPermissions), Permission::whereIn('name', $expectedPermissions)->count());
     }
 
@@ -61,6 +61,6 @@ class RolePermissionBootstrapperTest extends TestCase
             $this->assertStringContainsString('KAMAD', $exception->getMessage());
         }
 
-        $this->assertSame(0, Permission::whereIn('name', ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'])->count());
+        $this->assertSame(0, Permission::whereIn('name', ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'])->count());
     }
 }
