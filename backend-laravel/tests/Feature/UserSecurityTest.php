@@ -145,11 +145,14 @@ class UserSecurityTest extends TestCase
             'user_id' => $this->userB->id
         ]);
 
-        // Admin A has the exact exam.manage + exam.assign permissions, so the
-        // request reaches tenant-scoped participant validation. User B must not
-        // be accepted into Tenant A's exam.
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['user_id']);
+        // Admin manages administration/monitoring, not participant assignment.
+        // The request is denied before any cross-tenant participant can be attached.
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('exam_participants', [
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $exam->id,
+            'user_id' => $this->userB->id,
+        ]);
     }
 
     /**
