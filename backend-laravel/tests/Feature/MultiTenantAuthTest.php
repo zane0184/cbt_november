@@ -6,6 +6,7 @@ use App\Models\LocalInstallationIdentity;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -28,16 +29,21 @@ class MultiTenantAuthTest extends TestCase
         parent::setUp();
 
         $this->tenantA = Tenant::create(['name' => 'Madrasah A', 'code' => 'MAD-A']);
+        $context = app(TenantContext::class);
+        $context->setTenantId($this->tenantA->id);
+
         $this->userA = User::create([
-            'tenant_id' => $this->tenantA->id,
             'name' => 'User A',
             'username' => 'user-a',
             'email' => 'user-a@example.test',
             'password' => Hash::make('password-a'),
         ]);
+        $staffRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $this->userA->roles()->attach($staffRole);
 
         $this->installationIdA = (string) Str::uuid();
         $this->createInstallationIdentity($this->tenantA, $this->installationIdA, 'key-a', 'a.cbt.test');
+        $context->setTenantId(null);
     }
 
     public function test_login_resolves_identity_inside_one_madrasah_installation(): void
@@ -74,13 +80,14 @@ class MultiTenantAuthTest extends TestCase
     public function test_super_admin_identity_is_rejected_by_tenant_login(): void
     {
         $role = Role::firstOrCreate(['name' => 'SUPER_ADMIN'], ['label' => 'Super Admin']);
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
         $superAdmin = User::create([
-            'tenant_id' => $this->tenantA->id,
             'name' => 'Publisher Operator',
             'username' => 'publisher-operator',
             'email' => 'publisher@example.test',
             'password' => Hash::make('publisher-password'),
         ]);
+        app(TenantContext::class)->setTenantId(null);
         $superAdmin->roles()->attach($role);
 
         $response = $this->postJson('/api/v1/auth/login', [
