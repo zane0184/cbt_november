@@ -12,6 +12,9 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
+use App\Models\ExamAttemptAnswer;
+use App\Models\Question;
+use App\Models\QuestionVersion;
 use App\Models\ExamParticipant;
 use App\Models\ExamQuestionSnapshot;
 use App\Models\ExamQuestionScore;
@@ -258,6 +261,50 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'started_at' => now()->subHour(),
             'submitted_at' => now(),
         ]);
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'created_by' => $this->teacherA->id,
+            'status' => 'PUBLISHED',
+        ]);
+        $questionVersion = QuestionVersion::create([
+            'tenant_id' => $this->tenantA->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MULTIPLE_RESPONSE',
+            'stem' => 'Pilih tiga jawaban benar',
+            'default_points' => 100,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->teacherA->id,
+        ]);
+        $optionIds = array_map(fn () => (string) Str::uuid(), range(1, 5));
+        $snapshot = ExamQuestionSnapshot::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $exam->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $questionVersion->id,
+            'sequence' => 1,
+            'points' => 100,
+            'snapshot_stem' => 'Pilih tiga jawaban benar',
+            'snapshot_options' => array_map(fn ($id, $index) => [
+                'id' => $id,
+                'content' => 'Opsi ' . ($index + 1),
+                'is_correct' => true,
+            ], $optionIds, array_keys($optionIds)),
+            'snapshot_media' => [],
+            'metadata' => ['question_type' => 'MULTIPLE_RESPONSE'],
+        ]);
+        $attempt->update(['question_order' => [(string) $snapshot->id]]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $exam->id,
+            'exam_attempt_id' => $attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->studentA->id,
+            'answer_payload' => ['selected_option_ids' => array_slice($optionIds, 0, 3)],
+            'answer_state' => 'ANSWERED',
+        ]);
+
         $score = ExamAttemptScore::create([
             'tenant_id' => $this->tenantA->id,
             'attempt_id' => $attempt->id,
@@ -360,6 +407,10 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         // Update score for reopened attempt version 2 (from 60 to 90)
         $scoreV2 = ExamAttemptScore::where('attempt_id', $attempt->id)->where('scoring_version', 2)->first();
         $scoreV2->update(['raw_score' => 90, 'percentage' => 90.00, 'grading_status' => 'GRADED']);
+        ExamQuestionScore::where('attempt_id', $attempt->id)
+            ->where('snapshot_id', $snapshot->id)
+            ->where('scoring_version', 2)
+            ->update(['awarded_score' => 90, 'scoring_status' => 'GRADED']);
 
         // Step 4 & 5: Re-finalize attempt version 2
         $finalV2Resp = $this->actingAs($this->teacherA, 'sanctum')

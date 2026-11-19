@@ -292,10 +292,11 @@ class ScoringHardeningTest extends TestCase
             $user = User::create([
                 'tenant_id' => $this->tenant->id,
                 'name' => $roleName,
-                'email' => strtolower($roleName) . '@m.com',
+                'email' => strtolower($roleName) . '.' . Str::uuid() . '@m.com',
                 'password' => 'p',
             ]);
-            $user->roles()->create(['name' => $roleName, 'label' => $roleName]);
+            $role = \\App\\Models\\Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
+            $user->roles()->attach($role);
 
             $this->assertFalse(
                 app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),

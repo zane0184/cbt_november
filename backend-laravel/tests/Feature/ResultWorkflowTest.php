@@ -355,8 +355,8 @@ class ResultWorkflowTest extends TestCase
         $attempt3->score->update(['grading_status' => 'FINALIZED', 'finalized_at' => now()]);
 
         // 4. Test Livewire ResultList preflight logic
-        $component = \Livewire\Livewire::actingAs($this->teacher)
-            ->test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
+        $this->actingAs($this->teacher);
+        $component = \Livewire\Livewire::test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
             ->call('startFinalizeAll');
 
         $preflight = $component->get('preflight');
@@ -377,7 +377,47 @@ class ResultWorkflowTest extends TestCase
 
     public function test_exam_result_publication_workflow_and_student_visibility()
     {
-        // 1. Setup attempt and score finalized
+        // 1. Setup a valid immutable attempt snapshot and answer before scoring.
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'created_by' => $this->teacher->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MC',
+            'stem' => 'Berapakah 1 + 1?',
+            'default_points' => 10,
+            'created_by' => $this->teacher->id,
+        ]);
+        $snapshot = $this->createSnapshotForAttempt($this->attempt, [
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'sequence' => 1,
+            'snapshot_stem' => 'Berapakah 1 + 1?',
+            'snapshot_options' => [[
+                'id' => (string) Str::uuid(),
+                'content' => '2',
+                'is_correct' => true,
+            ]],
+            'snapshot_media' => [],
+            'points' => 10,
+            'metadata' => ['question_type' => 'MC'],
+        ]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->student->id,
+            'answer_payload' => ['selected_option_id' => $snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+        ]);
+
         (new \App\Services\ScoringService())->scoreAttempt($this->attempt);
         $this->attempt->score->update(['grading_status' => 'FINALIZED', 'finalized_at' => now()]);
 
@@ -390,8 +430,8 @@ class ResultWorkflowTest extends TestCase
             ->assertStatus(403);
 
         // 4. Teacher uses Livewire ResultList to view publish preflight and publish results
-        $component = \Livewire\Livewire::actingAs($this->teacher)
-            ->test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
+        $this->actingAs($this->teacher);
+        $component = \Livewire\Livewire::test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
             ->call('startPublishModal');
 
         $publishPreflight = $component->get('publishPreflight');
@@ -409,8 +449,8 @@ class ResultWorkflowTest extends TestCase
             ->assertStatus(200);
 
         // 7. Teacher unpublishes results
-        \Livewire\Livewire::actingAs($this->teacher)
-            ->test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
+        $this->actingAs($this->teacher);
+        \Livewire\Livewire::test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
             ->call('toggleResultPublication');
 
         $this::assertFalse($this->exam->fresh()->show_result);

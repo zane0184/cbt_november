@@ -82,9 +82,10 @@ class AnswerKeyLeakageTest extends TestCase
         ]);
 
         app(ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
-        $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
+        $this->exam->update(['locked_at' => now(), 'status' => 'PUBLISHED', 'require_token' => true, 'token' => 'ABC123']);
 
         ExamParticipant::create(['tenant_id' => $this->tenant->id, 'exam_id' => $this->exam->id, 'user_id' => $this->student->id, 'status' => 'ASSIGNED']);
+        $this->grantTeacherAccessToExam($this->guru, $this->exam);
 
         $context->setTenantId(null);
     }
@@ -95,7 +96,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         // Start attempt first
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts")
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
              ->assertStatus(201);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
