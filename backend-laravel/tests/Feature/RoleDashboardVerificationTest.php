@@ -144,7 +144,7 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_dashboard_access_control()
+    public function admin_madrasah_portal_access_control()
     {
         // Unauthenticated
         $this->get('/admin/dashboard')->assertRedirect('/login');
@@ -163,7 +163,7 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function kamad_dashboard_access_control()
+    public function kamad_read_only_overview_access_control()
     {
         // Unauthenticated
         $this->get('/admin/overview')->assertRedirect('/login');
@@ -171,6 +171,10 @@ class RoleDashboardVerificationTest extends TestCase
         // Read-only executive view inside the Admin Madrasah portal
         $this->actingAs($this->kamadA)->get('/admin/overview')->assertStatus(200);
         $this->actingAs($this->adminA)->get('/admin/overview')->assertStatus(200);
+        $this->actingAs($this->kamadA)->get('/')->assertRedirect('/admin/overview');
+        $this->actingAs($this->adminA)->get('/')->assertRedirect('/admin/dashboard');
+        $this->actingAs($this->proctorA)->get('/')->assertRedirect('/proktor/assignments');
+        $this->actingAs($this->guruA)->get('/')->assertRedirect('/admin/exams');
         $this->actingAs($this->superAdmin)->get('/admin/overview')->assertStatus(403);
         
         // No separate Kamad portal and no access for unrelated roles
@@ -179,7 +183,7 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function proktor_dashboard_access_control()
+    public function proktor_assignment_workbench_access_control()
     {
         // Unauthenticated
         $this->get('/proktor/assignments')->assertRedirect('/login');
@@ -220,7 +224,7 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_can_access_curriculum_and_exams()
+    public function legacy_operator_cannot_access_authoring_modules()
     {
         $this->actingAs($this->operatorA);
         // OPERATOR remains a legacy identity, not a fourth portal or an exam-authoring role.
@@ -230,7 +234,7 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function kamad_can_access_exams_module()
+    public function kamad_cannot_access_exam_authoring_module()
     {
         $this->actingAs($this->kamadA);
         // Kamad has read-only oversight and cannot enter the exam authoring module.
@@ -300,6 +304,8 @@ class RoleDashboardVerificationTest extends TestCase
             'assessment_id' => $assessmentA->id,
             'title' => 'Ujian A',
             'duration_seconds' => 1800,
+            'start_at' => now()->subMinutes(5),
+            'end_at' => now()->addHour(),
             'status' => 'PUBLISHED',
             'created_by' => $this->adminA->id,
         ]);
