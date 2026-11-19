@@ -37,25 +37,21 @@ class AssessmentPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('GURU') && $user->hasPermission('exam.manage');
+        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'))
+            && $user->hasPermission('exam.manage');
     }
 
     public function update(User $user, Assessment $assessment): bool
     {
         if ($user->tenant_id !== $assessment->tenant_id) return false;
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.manage')
-            && (string) $assessment->created_by === (string) $user->id
-            && TeacherAccess::canManageAssessment($user, $assessment);
+        return ($user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.manage'))
+            || ($user->hasRole('GURU') && $user->hasPermission('exam.manage') && (string) $assessment->created_by === (string) $user->id && TeacherAccess::canManageAssessment($user, $assessment));
     }
 
     public function delete(User $user, Assessment $assessment): bool
     {
         if ($user->tenant_id !== $assessment->tenant_id) return false;
         if ($assessment->exams()->count() > 0) return false;
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.manage')
-            && (string) $assessment->created_by === (string) $user->id
-            && TeacherAccess::canManageAssessment($user, $assessment);
+        return $user->hasRole('ADMIN_MADRASAH');
     }
 }

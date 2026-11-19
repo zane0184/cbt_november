@@ -14,6 +14,7 @@ class ExamPolicy
         return $user->hasRole('ADMIN_MADRASAH') ||
                $user->hasRole('OPERATOR') ||
                $user->hasRole('KAMAD') ||
+               $user->hasRole('PROKTOR') ||
                $user->hasRole('GURU') ||
                $user->hasRole('SISWA');
     }
@@ -30,7 +31,8 @@ class ExamPolicy
 
         if ($user->hasRole('ADMIN_MADRASAH') ||
             $user->hasRole('OPERATOR') ||
-            $user->hasRole('KAMAD')) {
+            $user->hasRole('KAMAD') ||
+            $user->hasRole('PROKTOR')) {
             return true;
         }
 
@@ -43,8 +45,8 @@ class ExamPolicy
 
     public function create(User $user): bool
     {
-        // Exam authoring and publication belong to assigned teachers.
-        return $user->hasRole('GURU') && $user->hasPermission('exam.manage');
+        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'))
+            && $user->hasPermission('exam.manage');
     }
 
     public function update(User $user, Exam $exam): bool
@@ -52,11 +54,12 @@ class ExamPolicy
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($exam->isLocked()) return false;
 
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.manage')
-            && $exam->assessment
-            && (string) $exam->assessment->created_by === (string) $user->id
-            && TeacherAccess::canManageExam($user, $exam);
+        return ($user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.manage'))
+            || ($user->hasRole('GURU')
+                && $user->hasPermission('exam.manage')
+                && $exam->assessment
+                && (string) $exam->assessment->created_by === (string) $user->id
+                && TeacherAccess::canManageExam($user, $exam));
     }
 
     public function delete(User $user, Exam $exam): bool
@@ -64,16 +67,16 @@ class ExamPolicy
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($exam->isLocked()) return false;
 
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.manage')
-            && $exam->assessment
-            && (string) $exam->assessment->created_by === (string) $user->id
-            && TeacherAccess::canManageExam($user, $exam);
+        return $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.manage');
     }
 
     public function manageQuestions(User $user, Exam $exam): bool
     {
         if ($user->hasRole('PROKTOR') || $user->hasRole('KAMAD')) return false;
+        if ($user->hasRole('ADMIN_MADRASAH')) {
+            return $this->update($user, $exam);
+        }
+
         return $user->hasRole('GURU')
             && $user->hasPermission('question.manage')
             && $this->update($user, $exam);
@@ -89,12 +92,12 @@ class ExamPolicy
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($exam->status !== 'PUBLISHED' || !$exam->locked_at) return false;
 
-        // Manual token rotation is a privileged recovery action. Normal
-        // publication creates the token automatically for the assigned teacher.
-        return $user->hasRole('ADMIN_MADRASAH')
-            && $user->hasPermission('exam.token')
-            && $exam->status === 'PUBLISHED'
-            && $exam->locked_at !== null;
+        return ($user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.token'))
+            || ($user->hasRole('GURU')
+                && $user->hasPermission('exam.token')
+                && $exam->assessment
+                && (string) $exam->assessment->created_by === (string) $user->id
+                && TeacherAccess::canViewExam($user, $exam));
     }
 
     public function lock(User $user, Exam $exam): bool
@@ -115,6 +118,10 @@ class ExamPolicy
 
         if (!in_array($exam->status, ['PUBLISHED', 'CLOSED'], true)) {
             return false;
+        }
+
+        if ($user->hasRole('ADMIN_MADRASAH')) {
+            return $user->hasPermission('exam.manage');
         }
 
         return $user->hasRole('GURU')
@@ -172,11 +179,12 @@ class ExamPolicy
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($user->hasRole('PROKTOR') || $user->hasRole('KAMAD') || $user->hasRole('SISWA')) return false;
 
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.grade')
-            && $exam->assessment
-            && (string) $exam->assessment->created_by === (string) $user->id
-            && TeacherAccess::canManageAssessment($user, $exam->assessment)
-            && TeacherAccess::canViewExam($user, $exam);
+        return ($user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.grade'))
+            || ($user->hasRole('GURU')
+                && $user->hasPermission('exam.grade')
+                && $exam->assessment
+                && (string) $exam->assessment->created_by === (string) $user->id
+                && TeacherAccess::canManageAssessment($user, $exam->assessment)
+                && TeacherAccess::canViewExam($user, $exam));
     }
 }

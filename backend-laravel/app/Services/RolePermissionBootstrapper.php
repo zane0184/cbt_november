@@ -11,9 +11,9 @@ use RuntimeException;
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.token', 'exam.reopen', 'report.view'],
+        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
         'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
-        'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.grade', 'report.view'],
+        'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
     ];
 
     public function bootstrap(): void
