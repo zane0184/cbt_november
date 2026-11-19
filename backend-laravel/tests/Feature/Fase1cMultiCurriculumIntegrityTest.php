@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
 use App\Models\User;
 use Database\Seeders\SystemTenantSeeder;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
