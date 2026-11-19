@@ -314,7 +314,7 @@ class ScoringHardeningTest extends TestCase
                 'email' => strtolower($roleName) . '@m.com',
                 'password' => 'p',
             ]);
-            $user->roles()->create(['name' => $roleName, 'label' => $roleName]);
+            $user->roles()->attach(\App\Models\Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]));
 
             $this->assertTrue(
                 app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
@@ -329,7 +329,7 @@ class ScoringHardeningTest extends TestCase
             'email' => 'foreign-admin@m.com',
             'password' => 'p',
         ]);
-        $foreignAdmin->roles()->create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin']);
+        $foreignAdmin->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']));
 
         $this->assertFalse(
             app(\App\Policies\ExamAttemptPolicy::class)->reopen($foreignAdmin, $this->attempt),

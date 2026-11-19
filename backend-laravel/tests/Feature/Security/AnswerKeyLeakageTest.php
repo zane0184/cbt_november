@@ -51,7 +51,8 @@ class AnswerKeyLeakageTest extends TestCase
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
             'timezone' => 'UTC',
-            'require_token' => false
+            'require_token' => true,
+            'token' => 'ABC123'
         ]);
 
         // Create a question with correct option
@@ -206,14 +207,14 @@ class AnswerKeyLeakageTest extends TestCase
 
         $this->exam->update(['status' => 'DRAFT', 'locked_at' => null]);
         app(ExamSnapshotService::class)->createSnapshots($this->exam, [$vMatching->id]);
-        $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
+        $this->exam->update(['locked_at' => now(), 'published_at' => now(), 'status' => 'PUBLISHED']);
 
         $context->setTenantId(null);
 
         $this->actingAs($this->student);
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
@@ -260,14 +261,14 @@ class AnswerKeyLeakageTest extends TestCase
         $meta['accepted_answers'] = ['Paris', 'Paris City'];
         $meta['rubric'] = 'Answer must be Paris';
         $snapshot->update(['metadata' => $meta, 'snapshot_explanation' => 'Paris is the capital of France.']);
-        $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
+        $this->exam->update(['locked_at' => now(), 'published_at' => now(), 'status' => 'PUBLISHED']);
 
         $context->setTenantId(null);
 
         $this->actingAs($this->student);
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");

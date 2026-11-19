@@ -358,7 +358,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $this->assertNotNull($cpAch);
         $this->assertEquals('60.00', (string)$cpAch->score);
 
-        return ['exam' => $exam, 'attempt' => $attempt, 'ass' => $ass];
+        return ['exam' => $exam, 'attempt' => $attempt, 'ass' => $ass, 'snapshot' => $snapshot];
     }
 
     /**
@@ -369,6 +369,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $fixture = $this->test_1_initial_finalization_calculates_curriculum_achievements();
         $exam = $fixture['exam'];
         $attempt = $fixture['attempt'];
+        $snapshot = $fixture['snapshot'];
 
         // Step 2: Modify master mapping by adding a SECOND assessment to the TP in master tables
         $ass2 = Assessment::create([

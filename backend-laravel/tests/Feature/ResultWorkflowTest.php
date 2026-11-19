@@ -354,6 +354,10 @@ class ResultWorkflowTest extends TestCase
         (new \App\Services\ScoringService())->scoreAttempt($attempt3);
         $attempt3->score->update(['grading_status' => 'FINALIZED', 'finalized_at' => now()]);
 
+        // Ensure all participants in the bulk operation have valid tenant-scoped
+        // StudentProfile/Rombel membership under the Guru's active assignment.
+        $this->grantTeacherAccessToExam($this->teacher, $this->exam);
+
         // 4. Test Livewire ResultList preflight logic
         $this->actingAs($this->teacher);
         $component = \Livewire\Livewire::test(\App\Livewire\Teacher\ResultList::class, ['exam' => $this->exam])
