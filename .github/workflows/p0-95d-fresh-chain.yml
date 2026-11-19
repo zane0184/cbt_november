@@ -296,20 +296,21 @@ jobs:
           echo "$audit_rc" > ../p095d-artifacts/schema-audit-exit-code.txt
           exit "$audit_rc"
 
-      - name: Stage 5 — destroy unique disposable database and verify removal
+      - name: Stage 5 — destroy both unique disposable databases and verify removal
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           RUN_DB="cbt_p095d_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
-          if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ ]]; then
+          RUN_SCHEMA_DB="cbt_p095d_schema_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          if [[ ! "$RUN_DB" =~ ^cbt_p095d_[0-9]+_[0-9]+$ || ! "$RUN_SCHEMA_DB" =~ ^cbt_p095d_schema_[0-9]+_[0-9]+$ ]]; then
             echo "Cleanup refused unsafe database identifier" | tee ../p095d-artifacts/cleanup-proof.txt
             exit 90
           fi
-          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -e "DROP DATABASE IF EXISTS \`$RUN_DB\`;"
-          remaining=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='$RUN_DB'")
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -e "DROP DATABASE IF EXISTS $RUN_DB; DROP DATABASE IF EXISTS $RUN_SCHEMA_DB;"
+          remaining=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pcbt_p095d_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name IN ('$RUN_DB','$RUN_SCHEMA_DB')")
           test "$remaining" = "0"
-          printf 'cleanup=PASS\ndatabase=%s\nremaining_schema_count=%s\n' "$RUN_DB" "$remaining" | tee ../p095d-artifacts/cleanup-proof.txt
+          printf 'cleanup=PASS\ndatabase=%s\nschema_database=%s\nremaining_schema_count=%s\n' "$RUN_DB" "$RUN_SCHEMA_DB" "$remaining" | tee ../p095d-artifacts/cleanup-proof.txt
 
       - name: Upload P0.95D evidence
         if: always()
