@@ -28,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $timezone = config('cbt.timezone', 'Asia/Jakarta');
+        config(['app.timezone' => $timezone]);
+        date_default_timezone_set($timezone);
+
         Event::listen(Authenticated::class, function ($event) {
             if ($event->user && $event->user->tenant_id) {
                 app(TenantContext::class)->setTenantId($event->user->tenant_id);
