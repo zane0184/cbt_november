@@ -295,7 +295,7 @@ class ScoringHardeningTest extends TestCase
                 'email' => strtolower($roleName) . '.' . Str::uuid() . '@m.com',
                 'password' => 'p',
             ]);
-            $role = \\App\\Models\\Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
+            $role = \App\Models\Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
             $user->roles()->attach($role);
 
             $this->assertFalse(
