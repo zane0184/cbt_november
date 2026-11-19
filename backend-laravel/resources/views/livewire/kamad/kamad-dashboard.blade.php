@@ -18,7 +18,7 @@
         <div class="bg-white p-6 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total Ujian</p>
             <p class="text-3xl font-bold text-navy-900 mt-2">{{ $totalExams }}</p>
-            <p class="text-xs text-emerald-600 mt-1 font-semibold">Aktif: {{ $activeExams }} | Selesai: {{ $completedExams }}</p>
+            <p class="text-xs text-emerald-600 mt-1 font-semibold">Berlangsung sesuai jadwal: {{ $activeExams }} | Selesai: {{ $completedExams }}</p>
         </div>
         <div class="bg-white p-6 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total Partisipasi Ujian</p>
@@ -32,8 +32,8 @@
         </div>
         <div class="bg-white p-6 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Evaluasi Akademik</p>
-            <p class="text-3xl font-bold text-purple-600 mt-2">100%</p>
-            <p class="text-xs text-gray-500 mt-1 font-semibold">Integritas Kurikulum Merdeka</p>
+            <p class="text-xl font-bold text-purple-600 mt-2">Belum dihitung</p>
+            <p class="text-xs text-gray-500 mt-1 font-semibold">Data pemetaan kurikulum tervalidasi</p>
         </div>
     </div>
 
