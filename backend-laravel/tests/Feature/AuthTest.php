@@ -71,8 +71,8 @@ class AuthTest extends TestCase
             'password' => 'wrong-password'
         ]);
 
-        $response->assertStatus(401)
-            ->assertJsonPath('success', false);
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['identifier']);
     }
 
     public function test_me_endpoint_requires_auth()
