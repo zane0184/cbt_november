@@ -78,7 +78,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // inside the same portal; Proktor receives only a temporary assignment workbench.
     Route::get('/admin/dashboard', OperatorDashboard::class)->name('admin.dashboard');
     Route::get('/admin/overview', KamadDashboard::class)->name('admin.overview');
-    Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'))->name('operator.dashboard.legacy');
+    Route::get('/operator/dashboard', fn () => \\Illuminate\\Support\\Facades\\Redirect::to('/admin/dashboard'))->name('operator.dashboard.legacy');
     Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
     // Admin Operational Routes
