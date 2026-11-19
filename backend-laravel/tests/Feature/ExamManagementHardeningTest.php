@@ -121,8 +121,8 @@ class ExamManagementHardeningTest extends TestCase
         ]);
 
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
-            ['id' => (string) \Illuminate\Support\Str::uuid(), 'rombel_id' => $this->rombelA->id, 'student_id' => $sp1->id],
-            ['id' => (string) \Illuminate\Support\Str::uuid(), 'rombel_id' => $this->rombelB->id, 'student_id' => $sp2->id],
+            ['id' => (string) \Illuminate\Support\Str::uuid(), 'tenant_id' => $this->tenant->id, 'rombel_id' => $this->rombelA->id, 'student_id' => $sp1->id],
+            ['id' => (string) \Illuminate\Support\Str::uuid(), 'tenant_id' => $this->tenant->id, 'rombel_id' => $this->rombelB->id, 'student_id' => $sp2->id],
         ]);
 
         // Question 1
