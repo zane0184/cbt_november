@@ -39,6 +39,7 @@ class CacheTest extends TestCase
         $rombel = Rombel::factory()->create(['tenant_id' => $tenant->id]);
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) \Illuminate\Support\Str::uuid(),
+            'tenant_id' => $tenant->id,
             'rombel_id' => $rombel->id,
             'student_id' => $profile->id,
             'created_at' => now(),
@@ -73,7 +74,7 @@ class CacheTest extends TestCase
         Cache::put($examKey, ['stale' => true]);
         Cache::put($rombelKey, ['stale' => true]);
 
-        $this->actingAs($admin);
+        $this->actingAs($admin, 'sanctum');
 
         // Finalize via API
         $response = $this->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/finalize");
