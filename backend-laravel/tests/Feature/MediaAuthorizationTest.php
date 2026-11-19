@@ -46,6 +46,7 @@ class MediaAuthorizationTest extends TestCase
             'password' => bcrypt('password'),
         ]);
         $this->otherTeacher->roles()->attach($role);
+        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_user_media_owner_is_forced_to_authenticated_user(): void
