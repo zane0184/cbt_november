@@ -403,52 +403,15 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_exam_management_can_create_exam()
+    public function admin_cannot_create_or_configure_exams_through_livewire()
     {
         $this->actingAs($this->admin);
 
-        $rombel = \App\Models\Rombel::create([
-            'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $this->academicYear->id,
-            'grade_level_id' => $this->gradeLevel->id,
-            'name' => 'Kelas X-1',
-            'status' => 'ACTIVE',
-        ]);
-
-        $q = \App\Models\Question::create([
-            'tenant_id' => $this->tenant->id,
-            'subject_id' => $this->subject->id,
-            'question_code' => 'MTK-01',
-            'question_type' => 'MULTIPLE_CHOICE',
-            'status' => 'PUBLISHED',
-            'created_by' => $this->admin->id,
-        ]);
-        $version = \App\Models\QuestionVersion::create([
-            'tenant_id' => $this->tenant->id,
-            'question_id' => $q->id,
-            'version_number' => 1,
-            'stem' => '1 + 1 = ?',
-            'question_type' => 'MULTIPLE_CHOICE',
-            'default_points' => 10,
-            'status' => 'PUBLISHED',
-            'created_by' => $this->admin->id,
-        ]);
-        $q->update(['current_version_id' => $version->id]);
-
         Livewire::test(ExamManagement::class)
             ->call('openCreateModal')
-            ->set('title', 'Ujian Akhir Semester Matematika')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedRombelId', $rombel->id)
-            ->set('selectedQuestionVersionIds', [$version->id])
-            ->set('durationMinutes', 90)
-            ->set('attemptLimit', 1)
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
-            ->call('createExam')
-            ->assertHasNoErrors();
+            ->assertForbidden();
 
-        $this->assertDatabaseHas('exams', [
+        $this->assertDatabaseMissing('exams', [
             'tenant_id' => $this->tenant->id,
             'title' => 'Ujian Akhir Semester Matematika',
         ]);
