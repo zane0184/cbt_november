@@ -126,6 +126,7 @@ class ExamProctorAssignmentTest extends TestCase
 
         $this->assertFalse($policy->monitor($this->proctor, $this->exam));
         $this->assertSame('REVOKED', $assignment->fresh()->status);
+        $this->assertSame($this->admin->id, $assignment->fresh()->revoked_by);
     }
 
     public function test_admin_cannot_assign_cross_tenant_or_non_proctor_user(): void
