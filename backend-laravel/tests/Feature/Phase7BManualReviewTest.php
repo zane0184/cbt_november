@@ -234,6 +234,13 @@ class Phase7BManualReviewTest extends TestCase
 
         // Admin A can also grade
         $this->actingAs($this->adminA, 'sanctum');
+        $this->adminA->unsetRelation('roles');
+        $this->assertTrue($this->adminA->hasRole('ADMIN_MADRASAH'));
+        $this->assertTrue($this->adminA->hasPermission('exam.grade'));
+        $this->assertTrue(
+            app(\App\Policies\ExamAttemptPolicy::class)->grade($this->adminA, $this->attemptA),
+            'Admin policy must allow grading when the tenant role has exam.grade.'
+        );
         $resAdmin = $this->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$this->attemptA->id}/grading/{$qScore->id}", [
             'awarded_score' => 18,
             'feedback' => 'Diperbarui oleh Admin'

@@ -192,6 +192,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'threshold' => 70.00,
         ]);
         $this->bootstrapCbtRolePermissions();
+        $this->adminA->unsetRelation('roles');
     }
 
     /**

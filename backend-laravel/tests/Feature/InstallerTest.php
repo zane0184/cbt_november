@@ -101,6 +101,7 @@ class InstallerTest extends TestCase
     {
         $this->flushSession();
         $token = str_repeat('S', 64);
+        config(['installer.bootstrap_token' => $token]);
 
         $response = $this->post('/install/authorize', ['bootstrap_token' => $token]);
         $response->assertRedirect(route('installer.requirements'));
@@ -144,7 +145,7 @@ class InstallerTest extends TestCase
     {
         $result = app(InstallerService::class)->runMigrations();
         $this->assertFalse($result['success']);
-        $this->assertStringContainsString('konfigurasi database', strtolower($result['message']));
+        $this->assertStringContainsString('persyaratan server', strtolower($result['message']));
     }
 
     public function test_database_inspection_fails_closed_when_target_cannot_be_verified(): void
@@ -166,6 +167,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Test',
             'madrasah_code' => 'MINTEST',
             'admin_name' => 'Admin Test',
+            'admin_username' => 'admin_test',
             'admin_email' => 'admin@min.test',
             'admin_password' => 'SecurePassword123!',
         ]);
@@ -196,6 +198,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Test',
             'madrasah_code' => 'MINTEST',
             'admin_name' => 'Admin Test',
+            'admin_username' => 'admin_test',
             'admin_email' => 'admin@min.test',
             'admin_password' => 'SecurePassword123!',
         ]);
@@ -243,6 +246,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Recovery',
             'madrasah_code' => 'MINRECOVERY',
             'admin_name' => 'Admin Recovery',
+            'admin_username' => 'recovery_admin',
             'admin_email' => 'recovery@min.test',
             'admin_password' => 'RecoverySecurePassword123!',
         ]);
@@ -290,6 +294,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Legacy Pair',
             'madrasah_code' => 'MINLEGACYPAIR',
             'admin_name' => 'Legacy Admin',
+            'admin_username' => 'legacy_admin',
             'admin_email' => 'legacy-admin@min.test',
             'admin_password' => 'LegacySecurePassword123!',
         ]);
@@ -322,6 +327,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'MIN Partial',
             'madrasah_code' => 'MINPARTIAL',
             'admin_name' => 'Attempted Admin',
+            'admin_username' => 'partial_admin',
             'admin_email' => 'partial@min.test',
             'admin_password' => 'PartialSecurePassword123!',
         ]);
@@ -378,6 +384,7 @@ class InstallerTest extends TestCase
             'madrasah_name' => 'Another MIN',
             'madrasah_code' => 'ANOTHERMIN',
             'admin_name' => 'Attempted Takeover',
+            'admin_username' => 'takeover_admin',
             'admin_email' => 'owner@existing.test',
             'admin_password' => 'NewSecurePassword123!',
         ]);
@@ -391,7 +398,7 @@ class InstallerTest extends TestCase
     public function test_get_complete_page_never_locks_installer(): void
     {
         $response = $this->get('/install/complete');
-        $response->assertRedirect(route('installer.database'));
+        $response->assertRedirect(route('installer.license'));
         $this->assertFalse(File::exists(storage_path('installed.lock')));
     }
 
@@ -399,6 +406,7 @@ class InstallerTest extends TestCase
     {
         $this->mock(InstallerService::class, function ($mock): void {
             $mock->shouldReceive('isInstalled')->andReturn(false);
+            $mock->shouldReceive('currentState')->andReturn('ADMIN_CREATED');
             $mock->shouldReceive('completionStatus')->once()->andReturn([
                 'state' => 'ADMIN_CREATED',
                 'can_finalize' => true,
