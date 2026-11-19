@@ -588,6 +588,7 @@ class ExamSnapshotTest extends TestCase
 
             if ($fixturesCommitted) {
                 DB::setDefaultConnection('mysql_concurrency');
+                $connectionB->table('teacher_subject_assignments')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
