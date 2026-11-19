@@ -443,15 +443,29 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
             'status' => 'PUBLISHED',
         ]);
 
-        // Recreate question_multi_curriculum_mappings in legacy state (without curriculum_owner_id)
+        // Recreate the legacy schema in-place. CREATE TABLE AS SELECT is not
+        // suitable here: MySQL may derive a different character set/collation
+        // for copied UUID columns, which makes the later composite FK invalid.
+        // Keep the original table definition and remove only the Fase1C additions.
         if (Schema::hasColumn('question_multi_curriculum_mappings', 'curriculum_owner_id')) {
-            Schema::disableForeignKeyConstraints();
-            DB::statement("
-                CREATE TABLE qmcm_legacy AS SELECT id, tenant_id, question_id, multi_curriculum_version_id, multi_learning_outcome_id, weight, created_at, updated_at FROM question_multi_curriculum_mappings WHERE 1=0;
-            ");
-            Schema::dropIfExists('question_multi_curriculum_mappings');
-            Schema::rename('qmcm_legacy', 'question_multi_curriculum_mappings');
-            Schema::enableForeignKeyConstraints();
+            foreach (['fk_qmcm_lo_ver', 'fk_qmcm_lo_owner', 'fk_qmcm_reg_triplet'] as $foreignKey) {
+                if (Schema::hasForeignKey('question_multi_curriculum_mappings', $foreignKey)) {
+                    Schema::table('question_multi_curriculum_mappings', function (Blueprint $table) use ($foreignKey): void {
+                        $table->dropForeign($foreignKey);
+                    });
+                }
+            }
+
+            Schema::table('question_multi_curriculum_mappings', function (Blueprint $table): void {
+                $table->dropColumn('curriculum_owner_id');
+            });
+
+            Schema::table('question_multi_curriculum_mappings', function (Blueprint $table): void {
+                $table->foreign(['multi_learning_outcome_id', 'tenant_id'], 'qmcm_lo_tenant_fk')
+                    ->references(['id', 'tenant_id'])
+                    ->on('multi_learning_outcomes')
+                    ->onDelete('cascade');
+            });
         }
 
         $mappingId = (string) Str::uuid();
