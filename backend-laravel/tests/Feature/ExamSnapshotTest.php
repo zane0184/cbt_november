@@ -6,6 +6,10 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Assessment;
 use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
+use App\Models\Permission;
+
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\AcademicYear;
@@ -22,6 +26,8 @@ use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+
 
 class ExamSnapshotTest extends TestCase
 {
@@ -47,6 +53,9 @@ class ExamSnapshotTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $role = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $teacherPermissions = collect(['exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view', 'question.manage'])
+            ->map(fn ($name) => Permission::firstOrCreate(['name' => $name], ['label' => $name]));
+        $role->permissions()->syncWithoutDetaching($teacherPermissions->pluck('id')->all());
         $this->user->roles()->sync([$role->id]);
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
@@ -97,7 +106,6 @@ class ExamSnapshotTest extends TestCase
             'status' => 'DRAFT'
         ]);
 
-        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_exam_snapshot_remains_immutable_when_bank_question_changes()
@@ -211,4 +219,284 @@ class ExamSnapshotTest extends TestCase
         $response = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", ['snapshot_ids' => []]);
         $response->assertStatus(403);
     }
+
+    public function test_snapshot_cannot_be_removed_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->deleteJson("/api/v1/exams/{$this->exam->id}/questions/{$snapshot->id}");
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+    }
+
+    public function test_snapshots_cannot_be_bulk_removed_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", [
+                'snapshot_ids' => [$snapshot->id],
+            ]);
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+    }
+
+    public function test_snapshot_order_cannot_change_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions/reorder", [
+                'orders' => [['snapshot_id' => $snapshot->id, 'sequence' => 99]],
+            ]);
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', [
+            'id' => $snapshot->id,
+            'sequence' => 0,
+        ]);
+    }
+
+    public function test_snapshot_sync_is_rejected_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions", [
+                'question_version_ids' => [$snapshot->source_question_version_id],
+                'append' => false,
+            ]);
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+    }
+
+    public function test_snapshot_from_another_exam_cannot_be_removed_or_reordered()
+    {
+        $sourceSnapshot = $this->createSnapshotForMutationTests();
+
+        $otherExam = Exam::create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $this->exam->assessment_id,
+            'title' => 'Other exam',
+            'duration_seconds' => 1800,
+            'created_by' => $this->user->id,
+            'status' => 'DRAFT',
+        ]);
+        app(\App\Services\ExamSnapshotService::class)->createSnapshots(
+            $otherExam,
+            [$sourceSnapshot->source_question_version_id]
+        );
+        $foreignSnapshot = $otherExam->snapshots()->firstOrFail();
+
+        $this->actingAs($this->user, 'sanctum');
+
+        $remove = $this->deleteJson("/api/v1/exams/{$this->exam->id}/questions/{$foreignSnapshot->id}");
+        $remove->assertStatus(404);
+
+        $bulkRemove = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", [
+            'snapshot_ids' => [$foreignSnapshot->id],
+        ]);
+        $bulkRemove->assertStatus(404);
+
+        $reorder = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/reorder", [
+            'orders' => [['snapshot_id' => $foreignSnapshot->id, 'sequence' => 99]],
+        ]);
+        $reorder->assertStatus(404);
+
+        $this->assertDatabaseHas('exam_question_snapshots', [
+            'id' => $foreignSnapshot->id,
+            'exam_id' => $otherExam->id,
+            'tenant_id' => $this->tenant->id,
+        ]);
+    }
+
+    public function test_snapshot_from_another_tenant_cannot_be_mutated()
+    {
+        $otherTenant = Tenant::create(['name' => 'Other tenant', 'code' => 'OTHER-TENANT']);
+        $this->context->setTenantId($otherTenant->id);
+
+        $otherUser = User::create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Other Guru',
+            'email' => 'other-guru@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $otherYear = AcademicYear::create([
+            'tenant_id' => $otherTenant->id,
+            'name' => '2026/2027',
+            'is_active' => true,
+        ]);
+        $otherSemester = Semester::create([
+            'tenant_id' => $otherTenant->id,
+            'academic_year_id' => $otherYear->id,
+            'term' => 'GANJIL',
+            'is_active' => true,
+        ]);
+        $otherSubject = Subject::create([
+            'tenant_id' => $otherTenant->id,
+            'code' => 'OTH-MAT',
+            'name' => 'Other Mathematics',
+            'short_name' => 'OMT',
+            'status' => 'ACTIVE',
+        ]);
+        $otherAssessment = Assessment::create([
+            'tenant_id' => $otherTenant->id,
+            'subject_id' => $otherSubject->id,
+            'academic_year_id' => $otherYear->id,
+            'semester_id' => $otherSemester->id,
+            'title' => 'Other tenant assessment',
+            'assessment_type' => 'DAILY',
+            'created_by' => $otherUser->id,
+        ]);
+        $otherExam = Exam::create([
+            'tenant_id' => $otherTenant->id,
+            'assessment_id' => $otherAssessment->id,
+            'title' => 'Other tenant exam',
+            'duration_seconds' => 1800,
+            'created_by' => $otherUser->id,
+            'status' => 'DRAFT',
+        ]);
+        $otherQuestion = Question::create([
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $otherUser->id,
+            'question_code' => 'OTHER-TENANT-Q1',
+            'created_by' => $otherUser->id,
+        ]);
+        $otherVersion = QuestionVersion::create([
+            'question_id' => $otherQuestion->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Other tenant snapshot',
+            'is_current' => true,
+            'created_by' => $otherUser->id,
+        ]);
+        app(\App\Services\ExamSnapshotService::class)->createSnapshots($otherExam, [$otherVersion->id]);
+        $foreignSnapshot = $otherExam->snapshots()->firstOrFail();
+
+        $this->context->setTenantId($this->tenant->id);
+        $this->actingAs($this->user, 'sanctum');
+
+        $response = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", [
+            'snapshot_ids' => [$foreignSnapshot->id],
+        ]);
+
+        $response->assertStatus(404);
+        $this->assertDatabaseHas('exam_question_snapshots', [
+            'id' => $foreignSnapshot->id,
+            'exam_id' => $otherExam->id,
+            'tenant_id' => $otherTenant->id,
+        ]);
+    }
+
+    public function test_snapshot_mutation_rejection_preserves_answer_and_score_rows()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $attempt = $this->createAttemptForMutationTests();
+        $answerId = (string) Str::uuid();
+        $scoreId = (string) Str::uuid();
+        $now = now();
+
+        DB::table('exam_attempt_answers')->insert([
+            'id' => $answerId,
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_attempt_id' => $attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->user->id,
+            'answer_payload' => json_encode(['text' => 'local answer']),
+            'answer_state' => 'ANSWERED',
+            'revision_number' => 1,
+            'client_request_id' => 'snapshot-history-answer-1',
+            'answered_at' => $now,
+            'saved_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('exam_question_scores')->insert([
+            'id' => $scoreId,
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'attempt_id' => $attempt->id,
+            'snapshot_id' => $snapshot->id,
+            'student_id' => $this->user->id,
+            'question_type' => 'ESSAY',
+            'awarded_score' => 4,
+            'max_score' => 5,
+            'scoring_status' => 'MANUAL_REVIEW',
+            'scoring_rule_version' => 1,
+            'evaluated_answer_snapshot' => json_encode(['text' => 'local answer']),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->actingAs($this->user, 'sanctum');
+
+        $remove = $this->deleteJson("/api/v1/exams/{$this->exam->id}/questions/{$snapshot->id}");
+        $remove->assertStatus(409);
+
+        $bulkRemove = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", [
+            'snapshot_ids' => [$snapshot->id],
+        ]);
+        $bulkRemove->assertStatus(409);
+
+        $reorder = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/reorder", [
+            'orders' => [['snapshot_id' => $snapshot->id, 'sequence' => 99]],
+        ]);
+        $reorder->assertStatus(409);
+
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+        $this->assertDatabaseHas('exam_attempt_answers', ['id' => $answerId]);
+        $this->assertDatabaseHas('exam_question_scores', ['id' => $scoreId]);
+    }
+
+    private function createSnapshotForMutationTests()
+    {
+        $question = Question::create([
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'MUTATION-1',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Snapshot mutation guard',
+            'is_current' => true,
+            'created_by' => $this->user->id,
+        ]);
+
+        app(\App\Services\ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
+
+        return $this->exam->snapshots()->firstOrFail();
+    }
+
+    private function createAttemptForMutationTests(): ExamAttempt
+    {
+        $participant = ExamParticipant::create([
+            'exam_id' => $this->exam->id,
+            'user_id' => $this->user->id,
+            'status' => 'STARTED',
+        ]);
+
+        return ExamAttempt::create([
+            'exam_id' => $this->exam->id,
+            'participant_id' => $participant->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+            'started_at' => now(),
+        ]);
+    }
+
 }

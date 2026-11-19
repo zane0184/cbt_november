@@ -15,12 +15,35 @@ class ExamSnapshotService
             // Serialize snapshot edits with publish/lock operations. Both paths
             // must lock the same exam row before inspecting or changing snapshots.
             $lockedExam = Exam::query()
+                ->where('tenant_id', $exam->tenant_id)
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
             if (!$lockedExam->canBeEdited()) {
-                throw new \Exception('Exam is locked and cannot be modified.');
+                abort(409, 'Exam is locked and cannot be modified.');
+            }
+
+            // A draft should not normally have attempts, but fail closed for
+            // legacy/inconsistent data instead of mutating an exam history.
+            $existingSnapshotIds = $lockedExam->snapshots()->pluck('id')->all();
+            $hasSnapshotHistory = $lockedExam->attempts()->exists();
+            if (!$hasSnapshotHistory && $existingSnapshotIds !== []) {
+                $hasSnapshotHistory = DB::table('exam_attempt_answers')
+                    ->where('tenant_id', $lockedExam->tenant_id)
+                    ->where('exam_id', $lockedExam->id)
+                    ->whereIn('exam_question_snapshot_id', $existingSnapshotIds)
+                    ->exists();
+            }
+            if (!$hasSnapshotHistory && $existingSnapshotIds !== []) {
+                $hasSnapshotHistory = DB::table('exam_question_scores')
+                    ->where('tenant_id', $lockedExam->tenant_id)
+                    ->where('exam_id', $lockedExam->id)
+                    ->whereIn('snapshot_id', $existingSnapshotIds)
+                    ->exists();
+            }
+            if ($hasSnapshotHistory) {
+                abort(409, 'Exam snapshots cannot be changed after attempt, answer, or score history exists.');
             }
 
             if (!$append) {

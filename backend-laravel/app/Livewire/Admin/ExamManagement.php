@@ -284,9 +284,18 @@ class ExamManagement extends Component
 
             // Sync Snapshots if questions were selected
             if (!empty($this->selectedQuestionVersionIds)) {
-                Gate::authorize('manageQuestions', $exam);
+                $lockedExam = Exam::query()
+                    ->where('tenant_id', $tenantId)
+                    ->whereKey($exam->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Re-check teacher assignment/permission against the locked exam
+                // so a concurrent publish or assignment change cannot race snapshot sync.
+                Gate::authorize('manageQuestions', $lockedExam);
+
                 $snapshotService = app(ExamSnapshotService::class);
-                $snapshotService->createSnapshots($exam, $this->selectedQuestionVersionIds, false);
+                $snapshotService->createSnapshots($lockedExam, $this->selectedQuestionVersionIds, false);
             }
 
             // Assign Participants (Target Rombel or All Students)
