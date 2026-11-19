@@ -109,6 +109,7 @@ class MonitoringTest extends TestCase
         ]);
 
         $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id]);
+        $this->bootstrapCbtRolePermissions();
     }
 
     public function test_teacher_can_access_monitoring_summary()
