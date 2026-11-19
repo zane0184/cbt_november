@@ -30,6 +30,7 @@ class ExamBuilderTest extends TestCase
     private $tenant;
     private $teacher;
     private $exam;
+    private $subject;
 
     protected function setUp(): void
     {
@@ -52,6 +53,7 @@ class ExamBuilderTest extends TestCase
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024', 'is_active' => true]);
         $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
         $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
+        $this->subject = $subject;
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
         $rombel = Rombel::create([
             'tenant_id' => $this->tenant->id,
