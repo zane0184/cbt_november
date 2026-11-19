@@ -117,6 +117,7 @@ class Fase1bSchemaIntegrityTest extends TestCase
         DB::table('multi_learning_outcomes')->insert([
             'id' => $outcomeId,
             'tenant_id' => $tenant->id,
+            'multi_curriculum_version_id' => $versionId,
             'multi_curriculum_structure_id' => $structureId,
             'code' => 'KBC-001',
             'outcome_type' => 'KBC_CINTA',
@@ -180,6 +181,7 @@ class Fase1bSchemaIntegrityTest extends TestCase
         DB::table('multi_learning_outcomes')->insert([
             'id' => $outcomeId,
             'tenant_id' => $tenant->id,
+            'multi_curriculum_version_id' => $versionId,
             'multi_curriculum_structure_id' => $structureId,
             'code' => 'KBC-001',
             'outcome_type' => 'KBC_CINTA',
