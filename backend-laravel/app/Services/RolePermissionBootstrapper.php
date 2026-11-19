@@ -11,9 +11,14 @@ use RuntimeException;
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
+        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.reopen', 'report.view'],
         'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
         'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
+    ];
+
+    /** Optional legacy operational role sharing the Admin Madrasah portal, without exam authoring rights. */
+    private const OPTIONAL_ROLE_GRANTS = [
+        'OPERATOR' => ['curriculum.view', 'academic.manage', 'exam.monitor', 'report.view'],
     ];
 
     public function bootstrap(): void
@@ -38,6 +43,8 @@ class RolePermissionBootstrapper
                 'exam.manage' => 'Kelola ujian sesuai kewenangan',
                 'exam.assign' => 'Kelola peserta ujian sesuai kewenangan',
                 'exam.monitor' => 'Monitoring ujian sesuai kewenangan',
+                'exam.close' => 'Menutup ujian untuk kebutuhan operasional dengan audit',
+                'exam.proctor.assign' => 'Menugaskan dan mencabut penugasan Proktor sementara',
                 'exam.token' => 'Kelola token ujian setelah publikasi',
                 'exam.grade' => 'Koreksi dan finalisasi nilai sesuai kewenangan',
                 'exam.reopen' => 'Buka kembali hasil final sesuai kewenangan',
@@ -57,9 +64,17 @@ class RolePermissionBootstrapper
                 $roles->get($roleName)->permissions()->syncWithoutDetaching($ids);
             }
 
+            foreach (self::OPTIONAL_ROLE_GRANTS as $roleName => $permissionNames) {
+                $role = Role::query()->where('name', $roleName)->first();
+                if ($role) {
+                    $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
+                    $role->permissions()->syncWithoutDetaching($ids);
+                }
+            }
+
             // Remove only the curriculum.manage grant from non-admin curriculum roles.
             $managePermissionId = $permissionIds['curriculum.manage'];
-            foreach (['KAMAD', 'GURU'] as $roleName) {
+            foreach (['KAMAD', 'GURU', 'OPERATOR'] as $roleName) {
                 $roles->get($roleName)->permissions()->detach($managePermissionId);
             }
         });
