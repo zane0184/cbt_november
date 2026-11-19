@@ -11,7 +11,7 @@ use RuntimeException;
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.reopen', 'report.view'],
+        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
         'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
         'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
     ];
@@ -74,7 +74,7 @@ class RolePermissionBootstrapper
 
             // Revoke stale grants that contradict the current tenant role matrix.
             $revokedGrants = [
-                'ADMIN_MADRASAH' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'question.manage'],
+                'ADMIN_MADRASAH' => ['question.manage'],
                 'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
                 'GURU' => ['curriculum.manage'],
                 'OPERATOR' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
