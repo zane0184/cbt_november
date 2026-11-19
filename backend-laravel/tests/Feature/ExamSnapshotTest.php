@@ -6,6 +6,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Assessment;
 use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\AcademicYear;
@@ -211,4 +213,104 @@ class ExamSnapshotTest extends TestCase
         $response = $this->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", ['snapshot_ids' => []]);
         $response->assertStatus(403);
     }
+
+    public function test_snapshot_cannot_be_removed_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->deleteJson("/api/v1/exams/{$this->exam->id}/questions/{$snapshot->id}");
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+    }
+
+    public function test_snapshots_cannot_be_bulk_removed_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions/bulk-remove", [
+                'snapshot_ids' => [$snapshot->id],
+            ]);
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+    }
+
+    public function test_snapshot_order_cannot_change_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions/reorder", [
+                'orders' => [['snapshot_id' => $snapshot->id, 'sequence' => 99]],
+            ]);
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', [
+            'id' => $snapshot->id,
+            'sequence' => 0,
+        ]);
+    }
+
+    public function test_snapshot_sync_is_rejected_after_an_attempt_exists()
+    {
+        $snapshot = $this->createSnapshotForMutationTests();
+        $this->createAttemptForMutationTests();
+
+        $response = $this->actingAs($this->user, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions", [
+                'question_version_ids' => [$snapshot->source_question_version_id],
+                'append' => false,
+            ]);
+
+        $response->assertStatus(409);
+        $this->assertDatabaseHas('exam_question_snapshots', ['id' => $snapshot->id]);
+    }
+
+    private function createSnapshotForMutationTests(): \App\Models\ExamQuestionSnapshot
+    {
+        $question = Question::create([
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'MUTATION-1',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Snapshot mutation guard',
+            'is_current' => true,
+            'created_by' => $this->user->id,
+        ]);
+
+        app(\App\Services\ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
+
+        return $this->exam->snapshots()->firstOrFail();
+    }
+
+    private function createAttemptForMutationTests(): void
+    {
+        $participant = ExamParticipant::create([
+            'exam_id' => $this->exam->id,
+            'user_id' => $this->user->id,
+            'status' => 'STARTED',
+        ]);
+
+        ExamAttempt::create([
+            'exam_id' => $this->exam->id,
+            'participant_id' => $participant->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+            'started_at' => now(),
+        ]);
+    }
+
 }

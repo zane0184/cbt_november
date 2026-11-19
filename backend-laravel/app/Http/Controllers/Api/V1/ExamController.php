@@ -330,63 +330,158 @@ class ExamController extends Controller
     {
         $this->authorize('manageQuestions', $exam);
 
-        if (!$exam->canBeEdited()) {
-            return response()->json(['success' => false, 'message' => 'Locked exams cannot have questions modified.'], 422);
-        }
+        return DB::transaction(function () use ($exam, $snapshot) {
+            // Shared serialization point with publish and attempt creation.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($snapshot->exam_id !== $exam->id) {
-            return response()->json(['success' => false, 'message' => 'Snapshot not found in this exam.'], 404);
-        }
+            $this->authorize('manageQuestions', $lockedExam);
+            if (!$lockedExam->canBeEdited()) {
+                return response()->json(['success' => false, 'message' => 'Locked exams cannot have questions modified.'], 422);
+            }
 
-        $snapshot->delete();
-        $this->auditService->log('REMOVE_QUESTION', 'Exam', $exam->id, ['snapshot_id' => $snapshot->id]);
-        return response()->json(['success' => true]);
+            $lockedSnapshot = $lockedExam->snapshots()
+                ->whereKey($snapshot->id)
+                ->lockForUpdate()
+                ->first();
+            if (!$lockedSnapshot) {
+                return response()->json(['success' => false, 'message' => 'Snapshot not found in this exam.'], 404);
+            }
+
+            if ($this->examHasSnapshotHistory($lockedExam, [$lockedSnapshot->id])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Snapshot tidak dapat dihapus karena ujian sudah memiliki attempt atau histori jawaban/nilai.',
+                ], 409);
+            }
+
+            $lockedSnapshot->delete();
+            $this->auditService->log('REMOVE_QUESTION', 'Exam', $lockedExam->id, ['snapshot_id' => $lockedSnapshot->id]);
+
+            return response()->json(['success' => true]);
+        });
     }
 
     public function reorderQuestions(Request $request, Exam $exam)
     {
         $this->authorize('manageQuestions', $exam);
 
-        if (!$exam->canBeEdited()) {
-            return response()->json(['success' => false, 'message' => 'Locked exams cannot have questions modified.'], 422);
-        }
-
         $validated = $request->validate([
             'orders' => 'required|array',
-            'orders.*.snapshot_id' => 'required|uuid|exists:exam_question_snapshots,id',
+            'orders.*.snapshot_id' => 'required|uuid',
             'orders.*.sequence' => 'required|integer'
         ]);
 
-        DB::transaction(function () use ($exam, $validated) {
-            foreach ($validated['orders'] as $order) {
-                $exam->snapshots()->where('id', $order['snapshot_id'])->update(['sequence' => $order['sequence']]);
-            }
-        });
+        return DB::transaction(function () use ($exam, $validated) {
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        $this->auditService->log('REORDER_QUESTIONS', 'Exam', $exam->id);
-        return response()->json(['success' => true]);
+            $this->authorize('manageQuestions', $lockedExam);
+            if (!$lockedExam->canBeEdited()) {
+                return response()->json(['success' => false, 'message' => 'Locked exams cannot have questions modified.'], 422);
+            }
+
+            $snapshotIds = array_values(array_unique(array_column($validated['orders'], 'snapshot_id')));
+            if (count($snapshotIds) !== count($validated['orders'])) {
+                return response()->json(['success' => false, 'message' => 'Snapshot tidak boleh muncul lebih dari satu kali dalam urutan.'], 422);
+            }
+            $ownedCount = $lockedExam->snapshots()->whereIn('id', $snapshotIds)->count();
+            if ($ownedCount !== count($snapshotIds)) {
+                return response()->json(['success' => false, 'message' => 'Satu atau lebih snapshot tidak ditemukan pada ujian ini.'], 404);
+            }
+
+            if ($this->examHasSnapshotHistory($lockedExam, $snapshotIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Urutan snapshot tidak dapat diubah karena ujian sudah memiliki attempt atau histori jawaban/nilai.',
+                ], 409);
+            }
+
+            foreach ($validated['orders'] as $order) {
+                $lockedExam->snapshots()->where('id', $order['snapshot_id'])->update(['sequence' => $order['sequence']]);
+            }
+
+            $this->auditService->log('REORDER_QUESTIONS', 'Exam', $lockedExam->id);
+            return response()->json(['success' => true]);
+        });
     }
 
     public function bulkRemoveQuestions(Request $request, Exam $exam)
     {
         $this->authorize('manageQuestions', $exam);
 
-        if (!$exam->canBeEdited()) {
-            return response()->json(['success' => false, 'message' => 'Locked exams cannot have questions modified.'], 422);
-        }
-
         $validated = $request->validate([
             'snapshot_ids' => 'required|array',
-            'snapshot_ids.*' => 'uuid|exists:exam_question_snapshots,id'
+            'snapshot_ids.*' => 'uuid'
         ]);
 
-        DB::transaction(function () use ($exam, $validated) {
-            $exam->snapshots()->whereIn('id', $validated['snapshot_ids'])->delete();
+        return DB::transaction(function () use ($exam, $validated) {
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->authorize('manageQuestions', $lockedExam);
+            if (!$lockedExam->canBeEdited()) {
+                return response()->json(['success' => false, 'message' => 'Locked exams cannot have questions modified.'], 422);
+            }
+
+            $snapshotIds = array_values(array_unique($validated['snapshot_ids']));
+            $ownedCount = $lockedExam->snapshots()->whereIn('id', $snapshotIds)->count();
+            if ($ownedCount !== count($snapshotIds)) {
+                return response()->json(['success' => false, 'message' => 'Satu atau lebih snapshot tidak ditemukan pada ujian ini.'], 404);
+            }
+
+            if ($this->examHasSnapshotHistory($lockedExam, $snapshotIds)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Snapshot tidak dapat dihapus karena ujian sudah memiliki attempt atau histori jawaban/nilai.',
+                ], 409);
+            }
+
+            $lockedExam->snapshots()->whereIn('id', $snapshotIds)->delete();
+            $this->auditService->log('BULK_REMOVE_QUESTIONS', 'Exam', $lockedExam->id, null, ['count' => count($snapshotIds)]);
+
+            return response()->json(['success' => true]);
         });
+    }
 
-        $this->auditService->log('BULK_REMOVE_QUESTIONS', 'Exam', $exam->id, null, ['count' => count($validated['snapshot_ids'])]);
+    /**
+     * Snapshot identity/order becomes historical as soon as an attempt exists.
+     * Legacy answer/score rows are checked as a second line of defense.
+     */
+    private function examHasSnapshotHistory(Exam $exam, array $snapshotIds): bool
+    {
+        if ($exam->attempts()->exists()) {
+            return true;
+        }
 
-        return response()->json(['success' => true]);
+        if ($snapshotIds === []) {
+            return false;
+        }
+
+        $hasAnswers = DB::table('exam_attempt_answers')
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->whereIn('exam_question_snapshot_id', $snapshotIds)
+            ->exists();
+
+        if ($hasAnswers) {
+            return true;
+        }
+
+        return DB::table('exam_question_scores')
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->whereIn('snapshot_id', $snapshotIds)
+            ->exists();
     }
 
     public function preview(Exam $exam)
