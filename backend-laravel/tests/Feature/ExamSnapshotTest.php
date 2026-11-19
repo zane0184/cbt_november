@@ -8,6 +8,8 @@ use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
+use App\Models\StudentProfile;
+
 use App\Models\Permission;
 
 use App\Models\Question;
@@ -35,6 +37,7 @@ class ExamSnapshotTest extends TestCase
 
     private $tenant;
     private $user;
+    private $student;
     private $exam;
     private $context;
 
@@ -58,6 +61,12 @@ class ExamSnapshotTest extends TestCase
         $role->permissions()->sync($teacherPermissions->pluck('id')->all());
         $this->user->roles()->attach($role);
         $this->user->refresh()->load('roles.permissions');
+        $this->student = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Uji',
+            'email' => 'student@e.com',
+            'password' => bcrypt('password'),
+        ]);
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'is_active' => true]);
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
@@ -72,6 +81,12 @@ class ExamSnapshotTest extends TestCase
             'name' => '1A',
             'status' => 'ACTIVE',
         ]);
+        $studentProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->student->id,
+            'full_name' => 'Siswa Uji',
+        ]);
+        $studentProfile->rombels()->attach($rombel->id, ['tenant_id' => $this->tenant->id]);
         $teacherProfile = TeacherProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->user->id,
@@ -417,7 +432,7 @@ class ExamSnapshotTest extends TestCase
             'exam_id' => $this->exam->id,
             'exam_attempt_id' => $attempt->id,
             'exam_question_snapshot_id' => $snapshot->id,
-            'student_id' => $this->user->id,
+            'student_id' => $this->student->id,
             'answer_payload' => json_encode(['text' => 'local answer']),
             'answer_state' => 'ANSWERED',
             'revision_number' => 1,
@@ -492,9 +507,10 @@ class ExamSnapshotTest extends TestCase
     {
         $participant = ExamParticipant::create([
             'exam_id' => $this->exam->id,
-            'user_id' => $this->user->id,
+            'user_id' => $this->student->id,
             'status' => 'STARTED',
         ]);
+        $this->assertTrue(\App\Support\Security\TeacherAccess::canManageExam($this->user, $this->exam), 'Teacher must retain exact assignment coverage for every participant.');
 
         return ExamAttempt::create([
             'exam_id' => $this->exam->id,
