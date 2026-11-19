@@ -109,11 +109,11 @@ class ExamExecutionHardeningTest extends TestCase
     /** 2. SERVER-AUTHORITATIVE EXPIRATION **/
     public function test_expired_attempt_cannot_be_resumed()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-1');
 
         // 1. Start attempt
-        $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+        $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
         $response->assertStatus(201);
         $attempt = ExamAttempt::first();
 
@@ -122,7 +122,7 @@ class ExamExecutionHardeningTest extends TestCase
 
         // 3. Try to resume (should create new attempt if limit allowed, or fail)
         // In this case, duration is 3600.
-        $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+        $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         // If limit is 1, and first is expired, it's counted as an attempt.
         // Current logic: store() count attempts.
@@ -147,9 +147,9 @@ class ExamExecutionHardeningTest extends TestCase
         );
 
         $context->setTenantId(null);
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-1');
-        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $this->actingAs($otherStudent, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-2');
@@ -169,18 +169,31 @@ class ExamExecutionHardeningTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        $this->actingAs($otherStudent);
+        $this->actingAs($otherStudent, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-2');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $response->assertStatus(404); // Exam not found in Tenant 2 scope
     }
 
     /** 5. SNAPSHOT / ORDER IMMUTABILITY **/
+    public function test_published_exam_without_token_configuration_fails_closed(): void
+    {
+        $this->exam->update(['require_token' => false, 'token' => null]);
+        $this->actingAs($this->student, 'sanctum');
+
+        $response = $this->withHeader('X-Device-Binding-ID', 'device-1')
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('code', 'EXAM_TOKEN_NOT_CONFIGURED');
+    }
+
+
     public function test_repeated_execution_returns_identical_order()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
         $this->withHeader('X-Device-Binding-ID', 'device-1');
-        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts");
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response1 = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $order1 = collect($response1->json('data.questions'))->pluck('id')->toArray();
