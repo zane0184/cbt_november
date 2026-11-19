@@ -41,7 +41,7 @@ return new class extends Migration
     public function down(): void
     {
         if (Schema::hasTable('exam_proctor_assignments') && DB::table('exam_proctor_assignments')->exists()) {
-            throw new \\RuntimeException('Proctor assignment history is retained; this migration is intentionally irreversible after assignments exist.');
+            throw new \RuntimeException('Proctor assignment history is retained; this migration is intentionally irreversible after assignments exist.');
         }
 
         Schema::dropIfExists('exam_proctor_assignments');
