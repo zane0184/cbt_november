@@ -391,3 +391,70 @@ Acceptance criteria:
 - Perubahan/penggantian jadwal langsung mengubah hak sementara secara konsisten.
 - Tidak ada role Proktor permanen atau proses aktivasi manual.
 - Konflik jadwal, tenant isolation, waktu server, dan audit log diuji.
+
+## 15. KEPUTUSAN BARU — MENU PENGATURAN JADWAL UJIAN DAN PENUGASAN PROKTOR DI WEB ADMIN
+
+Pengguna menegaskan bahwa Web Admin wajib memiliki fitur **Pengaturan Jadwal Ujian**. Di halaman/modul ini Admin/Operator Madrasah menetapkan kalender/jadwal pelaksanaan ujian dan menentukan Guru yang bertugas mengawas (Proktor) dengan mengikuti edaran/pedoman resmi yang berlaku.
+
+### Pembagian kewenangan yang wajib dibedakan
+**Admin/Operator Madrasah mengelola sisi administrasi dan koordinasi pelaksanaan:**
+- Kalender/periode ujian madrasah.
+- Jenis/kegiatan ujian, tanggal, sesi, jam mulai/selesai, ruang/lokasi, kapasitas bila relevan.
+- Jadwal pengawasan dan daftar Guru pengawas untuk setiap ujian/sesi/ruang.
+- Aturan penjadwalan, pemeriksaan benturan jadwal Guru/ruang, penggantian pengawas, perubahan/pembatalan, publikasi informasi jadwal administratif.
+- Referensi edaran/pedoman resmi yang menjadi dasar penjadwalan dan penugasan, termasuk nomor, tahun, penerbit, tanggal, file/link sumber, masa berlaku, dan catatan verifikasi.
+- Rekap dan cetak/ekspor jadwal ujian serta daftar pengawas sesuai permission.
+
+**Guru tetap mengelola sisi akademik dan operasional CBT yang menjadi kewenangannya:**
+- Menyusun bank soal dan instrumen.
+- Membuat/mengonfigurasi paket/asesmen/ujian CBT, memilih soal, aturan penilaian, dan snapshot.
+- Menerbitkan ujian dan mengelola token sesuai alur produk, selama sesuai kalender/jadwal institusi dan permission.
+- Penilaian, analisis, dan hasil ujian.
+
+Admin tidak mengambil alih isi soal, bank soal, konfigurasi akademik ujian, penerbitan, penilaian, jawaban, atau analisis Guru. Jadwal institusi yang ditetapkan Admin menjadi kerangka kalender/sesi/pengawasan; ujian CBT yang dibuat Guru harus ditautkan atau divalidasi terhadap jadwal yang sesuai. Jangan menciptakan dua sumber jadwal yang saling bertentangan.
+
+### Penjadwalan Proktor otomatis dari roster
+1. Admin memilih Guru aktif dari madrasah yang sama untuk ditempatkan pada jadwal pengawasan.
+2. Semua Guru aktif dapat dijadwalkan; status Wali Kelas/Guru Kelas/Guru Mapel bukan syarat khusus.
+3. Ketika roster/jadwal pengawasan berlaku, Guru yang tercantum otomatis memperoleh konteks/hak Proktor terbatas pada ujian, sesi, ruang, dan rentang waktu tersebut.
+4. Tidak ada role Proktor permanen, aktivasi manual, atau portal Proktor.
+5. Sistem memeriksa konflik jadwal Guru, konflik ruang/sesi, jumlah pengawas bila aturan edaran mensyaratkan, status Guru, tenant, dan waktu server.
+6. Perubahan/penggantian/pembatalan jadwal harus memperbarui hak sementara dan mengirim/menampilkan pemberitahuan sesuai fitur notifikasi yang tersedia.
+7. Simpan jejak siapa yang membuat/mengubah/mengesahkan roster, waktu, alasan perubahan, versi jadwal, dan sumber edaran.
+
+### Kepatuhan terhadap edaran
+- Jangan mengarang nomor edaran, rasio pengawas, jumlah sesi, larangan, atau syarat penugasan.
+- Audit edaran resmi yang benar-benar tersedia dalam repository/Project files/Library atau sumber resmi yang dapat diverifikasi.
+- Jika edaran belum tersedia atau status berlakunya belum dapat diverifikasi, sediakan struktur referensi/configuration yang dapat diisi setelah verifikasi dan tandai aturan terkait BELUM TERVERIFIKASI. Jangan mengunci aturan rekaan.
+- Simpan versi edaran dan periode berlaku agar jadwal lama tetap dapat ditelusuri jika aturan berubah.
+- Aturan wajib (misalnya jumlah pengawas per ruang, larangan mengawas kelas sendiri, batas beban, atau komposisi tertentu) hanya diterapkan jika benar-benar disebut oleh edaran yang berlaku dan diverifikasi.
+- Berikan preview validasi sebelum jadwal/roster disimpan atau dipublikasikan; tampilkan konflik dan alasan penolakan dengan jelas.
+
+### UI Web Admin
+Sediakan menu khusus **Jadwal Ujian & Pengawas** atau **Pengaturan Jadwal Ujian**, dengan:
+- Kalender/daftar jadwal ujian.
+- Form tambah/edit kegiatan, tanggal, sesi, jam, ruang, dan kapasitas.
+- Tab/area penugasan Guru pengawas.
+- Referensi edaran dan status verifikasi.
+- Deteksi konflik dan preview roster.
+- Riwayat perubahan, pembatalan, dan audit.
+- Filter tahun ajaran, semester, jenis ujian, tanggal, ruang, dan status.
+- Tampilan cetak/ekspor jadwal dan daftar pengawas.
+- Empty/loading/error/success state dan layout responsif.
+
+### Acceptance criteria
+- Admin/Operator dapat mengatur kalender/jadwal ujian institusi dan roster pengawas.
+- Penugasan Guru dilakukan mengikuti aturan edaran yang sudah diverifikasi.
+- Semua Guru aktif dapat dipilih, tanpa role Proktor permanen.
+- Hak Proktor muncul otomatis hanya selama jadwal dan ruang lingkup tugas berlaku.
+- Konflik jadwal dan ketentuan edaran yang terverifikasi dicegah/diberi peringatan.
+- Ujian CBT Guru ditautkan/validasi terhadap kalender institusi tanpa mengambil alih kepemilikan akademik Guru.
+- Semua perubahan jadwal/roster dan sumber aturan tercatat.
+- Tidak ada aturan edaran yang dikarang.
+- Pengujian mencakup konflik jadwal, pergantian pengawas, pembatalan, perubahan aturan, tenant isolation, dan waktu server.
+
+Temuan ini menjadi bagian scope Web Admin. Audit source dan desain tetap harus diselesaikan dan disetujui sebelum implementasi.
+
+
+### Koreksi batas kewenangan terkait jadwal
+Jika bagian 3 sebelumnya menyatakan Admin tidak mengatur ujian, tafsirkan larangan itu sebagai larangan mengambil alih isi/konfigurasi akademik CBT dan operasional Guru. Admin/Operator tetap wajib mengelola kalender/jadwal institusi, sesi/ruang, dan roster pengawas sesuai bagian 15 dan spesifikasi bagian 29.
