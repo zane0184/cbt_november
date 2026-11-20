@@ -27,7 +27,7 @@ jobs:
       - name: Checkout exact source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
 
       - name: Set up PHP 8.3 and required extensions
@@ -63,7 +63,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_SHA="$(git rev-parse HEAD)"
-          SOURCE_BRANCH="${GITHUB_REF_NAME}"
+          SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           SOURCE_DATE="$(git show -s --format=%cI HEAD)"
           STAGE="$RUNNER_TEMP/CBT_MADRASAH_WEB_DEPLOYMENT"
           mkdir -p "$STAGE/backend-laravel"
