@@ -117,7 +117,7 @@ class InstallerController extends Controller
         }
         if ($state === 'ADMIN_CREATED') {
             if (config('license.pre_activation_2026')) {
-                return view('installer.admin')->with('warning', 'Akun Admin sudah tercatat. Lanjutkan kembali untuk menyelesaikan identitas pilot; jangan mengulang migration.');
+                return redirect()->route('installer.admin')->with('success', 'Akun Admin sudah tercatat. Lanjutkan kembali untuk menyelesaikan identitas pilot; jangan mengulang migration.');
             }
             return redirect()->route('installer.license');
         }
@@ -158,7 +158,7 @@ class InstallerController extends Controller
         $state = $this->installerService->currentState();
         if ($state === 'ADMIN_CREATED') {
             if (config('license.pre_activation_2026')) {
-                return view('installer.admin')->with('warning', 'Akun Admin sudah tercatat. Lanjutkan kembali untuk menyelesaikan identitas pilot; jangan mengulang migration.');
+                return view('installer.admin');
             }
             return redirect()->route('installer.license');
         }
