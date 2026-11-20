@@ -73,9 +73,19 @@ class EnsureLicenseActive
 
     private function isAttemptRecoveryRequest(Request $request): bool
     {
-        if (! str_starts_with($request->path(), 'api/v1/exams/')) return false;
-        if (! in_array(strtoupper($request->method()), ['GET','PUT','POST'], true)) return false;
-        return preg_match('#^api/v1/exams/[^/]+/attempts/[^/]+/(?:answers(?:/[^/]+)?|submit|heartbeat)$#', $request->path()) === 1;
+        $path = $request->path();
+        $method = strtoupper($request->method());
+
+        // Resume an already-running attempt after the pilot window closes.
+        // These collection/execution routes are safe only when the helper below
+        // proves that exactly one eligible attempt already exists for this user.
+        if (preg_match('#^api/v1/exams/[^/]+/execution$#', $path)) return $method === 'GET';
+        if (preg_match('#^api/v1/exams/[^/]+/attempts$#', $path)) return $method === 'POST';
+        if (preg_match('#^api/v1/exams/[^/]+/attempts/[^/]+$#', $path)) return $method === 'GET';
+
+        if (! str_starts_with($path, 'api/v1/exams/')) return false;
+        if (! in_array($method, ['GET','PUT','POST'], true)) return false;
+        return preg_match('#^api/v1/exams/[^/]+/attempts/[^/]+/(?:answers(?:/[^/]+)?|submit|heartbeat)$#', $path) === 1;
     }
 
     private function allowExistingAttempt(Request $request, LocalLicenseState $state): bool
@@ -131,18 +141,50 @@ class EnsureLicenseActive
     private function allowExpiredPilotAttemptRecovery(Request $request, array $install): bool
     {
         try {
-            if (!$this->isAttemptRecoveryRequest($request) || !$request->user()) return false;
+            $user = $request->user();
+            $tenantId = (string) ($install['tenant_id'] ?? '');
+            if (!$this->isAttemptRecoveryRequest($request) || !$user || $tenantId === ''
+                || (string) $user->tenant_id !== $tenantId) {
+                return false;
+            }
+
+            $pilotExpiresAt = \\Illuminate\\Support\\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
+            $path = $request->path();
+
+            // A browser/client reloads the execution resource or POSTs the attempt
+            // collection to resume. Never let these routes create a new attempt:
+            // exactly one pre-expiry active attempt must already exist.
+            if (preg_match('#^api/v1/exams/([^/]+)/(?:execution|attempts)$#', $path, $collectionMatch)) {
+                $activeAttempts = ExamAttempt::withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)
+                    ->where('exam_id', $collectionMatch[1])
+                    ->where('status', 'IN_PROGRESS')
+                    ->whereNotNull('started_at')
+                    ->where('started_at', '<=', $pilotExpiresAt)
+                    ->where('expires_at', '>', now())
+                    ->whereHas('participant', function ($query) use ($tenantId, $user): void {
+                        $query->withoutGlobalScopes()
+                            ->where('tenant_id', $tenantId)
+                            ->where('user_id', (string) $user->id);
+                    })
+                    ->limit(2)
+                    ->get(['id']);
+
+                return $activeAttempts->count() === 1;
+            }
+
             $match = [];
-            if (!preg_match('#^api/v1/exams/([^/]+)/attempts/([^/]+)/(?:answers(?:/[^/]+)?|submit|heartbeat)$#', $request->path(), $match)) return false;
+            if (!preg_match('#^api/v1/exams/([^/]+)/attempts/([^/]+)(?:/(?:answers(?:/[^/]+)?|submit|heartbeat))?$#', $path, $match)) {
+                return false;
+            }
 
             $attempt = ExamAttempt::withoutGlobalScopes()->with('participant')->whereKey($match[2])->first();
             if (!$attempt || $attempt->status !== 'IN_PROGRESS' || !$attempt->started_at || !$attempt->expires_at) return false;
 
-            $pilotExpiresAt = \Illuminate\Support\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
-            return (string) $attempt->tenant_id === (string) ($install['tenant_id'] ?? '')
+            return (string) $attempt->tenant_id === $tenantId
                 && (string) $attempt->exam_id === (string) $match[1]
-                && (string) $attempt->participant?->user_id === (string) $request->user()->id
-                && (string) $request->user()->tenant_id === (string) ($install['tenant_id'] ?? '')
+                && (string) $attempt->participant?->tenant_id === $tenantId
+                && (string) $attempt->participant?->user_id === (string) $user->id
                 && $attempt->started_at->lessThanOrEqualTo($pilotExpiresAt)
                 && $attempt->expires_at->isFuture();
         } catch (Throwable) {
