@@ -814,21 +814,44 @@ class InstallerService
 
     private function writeDatabaseEnvironment(array $params): void
     {
-        $this->writeEnvValues([
-            'DB_CONNECTION' => 'mysql',
-            'DB_HOST' => $params['host'],
-            'DB_PORT' => (string) $params['port'],
-            'DB_DATABASE' => $params['database'],
-            'DB_USERNAME' => $params['username'],
-            'DB_PASSWORD' => $params['password'],
-        ]);
+        $privateDirectory = storage_path('app/private');
+        if (!is_dir($privateDirectory) && !mkdir($privateDirectory, 0700, true) && !is_dir($privateDirectory)) {
+            throw new RuntimeException('Private installer directory cannot be created.');
+        }
 
+        $configPath = $privateDirectory . '/installer-database.php';
+        $backupDirectory = $privateDirectory . '/installer-backups';
+        if (!is_dir($backupDirectory) && !mkdir($backupDirectory, 0700, true) && !is_dir($backupDirectory)) {
+            throw new RuntimeException('Private installer backup directory cannot be created.');
+        }
+
+        // Preserve a prior installer config before replacing it. Credentials never enter .env or installer state.
+        if (is_file($configPath)) {
+            $backupPath = $backupDirectory . '/database-config-' . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.bak';
+            if (!copy($configPath, $backupPath)) {
+                throw new RuntimeException('Existing private database configuration backup failed.');
+            }
+            @chmod($backupPath, 0600);
+        }
+
+        $privateConfig = [
+            'default' => 'mysql',
+            'mysql' => [
+                'driver' => 'mysql',
+                'url' => null,
+                'host' => $params['host'],
+                'port' => (string) $params['port'],
+                'database' => $params['database'],
+                'username' => $params['username'],
+                'password' => $params['password'],
+            ],
+        ];
+        $contents = "<?php\n\nreturn " . var_export($privateConfig, true) . ";\n";
+        $this->writeAtomicFile($configPath, $contents, 0600);
+
+        // A cached config would otherwise hide the newly persisted private override on the next request.
         $configCache = base_path('bootstrap/cache/config.php');
         if (is_file($configCache)) {
-            $backupDirectory = storage_path('app/private/installer-backups');
-            if (!is_dir($backupDirectory) && !mkdir($backupDirectory, 0700, true) && !is_dir($backupDirectory)) {
-                throw new RuntimeException('Private installer backup directory cannot be created.');
-            }
             $cacheBackup = $backupDirectory . '/config-cache-' . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.bak';
             if (!copy($configCache, $cacheBackup)) {
                 throw new RuntimeException('Existing configuration cache backup failed.');
@@ -839,15 +862,15 @@ class InstallerService
             }
         }
 
-        $envPath = base_path('.env');
-        $contents = is_file($envPath) ? (string) file_get_contents($envPath) : '';
-        if (!preg_match('/^APP_KEY\s*=\s*\S.+$/m', $contents)) {
-            $this->writeEnvValues(['APP_KEY' => 'base64:' . base64_encode(random_bytes(32))]);
-            $contents = is_file($envPath) ? (string) file_get_contents($envPath) : '';
+        // The APP_KEY is provisioned before authorization; never rewrite the read-only application root.
+        if (!is_string(config('app.key')) || strlen((string) config('app.key')) < 32) {
+            throw new RuntimeException('APP_KEY must be configured before saving database settings.');
         }
-        if (preg_match('/^APP_KEY\s*=\s*"?([^"\r\n]+)"?\s*$/m', $contents, $match)) {
-            config(['app.key' => $match[1]]);
-        }
+
+        config([
+            'database.default' => 'mysql',
+            'database.connections.mysql' => array_replace(config('database.connections.mysql', []), $privateConfig['mysql']),
+        ]);
     }
 
     /** Preserve unrelated .env entries; never use replacement-string interpolation. */
