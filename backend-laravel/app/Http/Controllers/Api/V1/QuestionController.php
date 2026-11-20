@@ -124,6 +124,7 @@ class QuestionController extends Controller
             'difficulty' => 'required|in:EASY,MEDIUM,HARD',
             'default_points' => 'required|numeric|min:0',
         ]);
+        $this->validateOptionIntegrity($validated['question_type'], $validated['options'] ?? []);
 
         if (!empty($validated['subject_id'])
             && !\App\Support\Security\TeacherAccess::canManageSubject($request->user(), $validated['subject_id'])) {
@@ -223,6 +224,9 @@ class QuestionController extends Controller
             'default_points' => 'sometimes|required|numeric|min:0',
             'create_new_version' => 'boolean'
         ]);
+        if (array_key_exists('options', $validated)) {
+            $this->validateOptionIntegrity($current->question_type, $validated['options']);
+        }
 
         $outcomeId = array_key_exists('learning_outcome_id', $validated) ? $validated['learning_outcome_id'] : $current->learning_outcome_id;
         $objectiveId = array_key_exists('learning_objective_id', $validated) ? $validated['learning_objective_id'] : $current->learning_objective_id;
@@ -406,6 +410,66 @@ class QuestionController extends Controller
                 ->orderByDesc('minor_version')
                 ->paginate(25),
         ]);
+    }
+
+    private function validateOptionIntegrity(string $questionType, array $options): void
+    {
+        $fail = function (string $message): never {
+            throw \Illuminate\Validation\ValidationException::withMessages(['options' => $message]);
+        };
+
+        if (in_array($questionType, ['SHORT_ANSWER', 'ESSAY'], true)) {
+            if ($options !== []) $fail('Soal jawaban singkat/esai tidak boleh memiliki opsi pilihan.');
+            return;
+        }
+
+        if (in_array($questionType, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+            $min = $questionType === 'TRUE_FALSE' ? 2 : 2;
+            $max = $questionType === 'TRUE_FALSE' ? 2 : 4;
+            if (count($options) < $min || count($options) > $max) {
+                $fail('Jumlah opsi tidak sesuai dengan jenis soal.');
+            }
+
+            $keys = [];
+            $correctCount = 0;
+            foreach ($options as $option) {
+                $key = strtoupper(trim((string) ($option['option_key'] ?? '')));
+                $content = trim((string) ($option['content'] ?? ''));
+                if ($key === '' || $content === '' || !in_array($key, ['A', 'B', 'C', 'D'], true)) {
+                    $fail('Setiap opsi harus memiliki kunci A-D dan isi yang tidak kosong.');
+                }
+                if (in_array($key, $keys, true)) $fail('Kunci opsi tidak boleh duplikat.');
+                $keys[] = $key;
+                if ((bool) ($option['is_correct'] ?? false)) $correctCount++;
+            }
+
+            if ($questionType === 'TRUE_FALSE' && array_diff(['A', 'B'], $keys) !== []) {
+                $fail('Soal benar/salah wajib memiliki opsi A dan B.');
+            }
+            if (in_array($questionType, ['MULTIPLE_CHOICE', 'TRUE_FALSE'], true) && $correctCount !== 1) {
+                $fail('Soal ini wajib memiliki tepat satu kunci jawaban benar.');
+            }
+            if ($questionType === 'MULTIPLE_RESPONSE' && $correctCount < 1) {
+                $fail('Pilihan ganda kompleks wajib memiliki minimal satu kunci jawaban benar.');
+            }
+            return;
+        }
+
+        if ($questionType === 'MATCHING') {
+            $left = [];
+            $right = [];
+            foreach ($options as $option) {
+                $content = trim((string) ($option['content'] ?? ''));
+                $leftKey = trim((string) ($option['option_key'] ?? ''));
+                $rightKey = trim((string) ($option['matching_key'] ?? ''));
+                if ($content === '') $fail('Setiap bagian pasangan menjodohkan wajib memiliki isi.');
+                if ($leftKey !== '') $left[$leftKey] = ($left[$leftKey] ?? 0) + 1;
+                if ($rightKey !== '') $right[$rightKey] = ($right[$rightKey] ?? 0) + 1;
+            }
+            if (count($left) < 2 || $left !== $right) {
+                $fail('Soal menjodohkan wajib memiliki minimal dua pasangan lengkap dan seimbang.');
+            }
+        }
     }
 
     private function saveOptions(QuestionVersion $version, array $options)
