@@ -458,3 +458,56 @@ Temuan ini menjadi bagian scope Web Admin. Audit source dan desain tetap harus d
 
 ### Koreksi batas kewenangan terkait jadwal
 Jika bagian 3 sebelumnya menyatakan Admin tidak mengatur ujian, tafsirkan larangan itu sebagai larangan mengambil alih isi/konfigurasi akademik CBT dan operasional Guru. Admin/Operator tetap wajib mengelola kalender/jadwal institusi, sesi/ruang, dan roster pengawas sesuai bagian 15 dan spesifikasi bagian 29.
+
+## 16. ALUR FINAL SUMBER JADWAL UJIAN DAN PENUGASAN PROKTOR DARI LIST UJIAN GURU
+
+Klarifikasi terbaru pengguna memperjelas alur sebenarnya dan menjadi acuan yang mengesampingkan asumsi bahwa Admin membuat jadwal ujian dari awal:
+
+**Guru membuat soal dan menyusun jadwal ujian beserta mata pelajarannya. Setelah data ujian dibuat/disimpan (dan sesuai status alur yang berlaku), ujian tersebut muncul otomatis pada daftar ujian di Web Admin. Admin membuka daftar itu untuk menentukan Guru yang menjadi pengawas/Proktor.**
+
+### Alur wajib
+1. Guru membuat soal/bank soal dan menyiapkan ujian sesuai kewenangannya.
+2. Guru menentukan mata pelajaran serta jadwal ujian (tanggal, sesi/waktu, dan informasi pelaksanaan yang diperlukan) dalam alur pembuatan ujian.
+3. Setelah ujian tersimpan, metadata ujian harus tersinkron/terbaca di Web Admin pada halaman **Daftar Ujian** atau **Ujian & Penugasan Proktor**. Jangan membuat Admin mengetik ulang jadwal atau mapel yang sudah dibuat Guru.
+4. List Admin sekurangnya menampilkan nama ujian, mata pelajaran, kelas/rombel atau peserta sasaran bila tersedia, tanggal, sesi, jam, status, dan informasi lain yang memang ada di source. Tampilkan sumber pembuat (Guru) dan status penugasan pengawas.
+5. Admin memilih satu ujian dari list tersebut, lalu menetapkan Guru pengawas/Proktor untuk ujian/sesi tersebut. Semua Guru aktif pada madrasah yang sama dapat dipilih sesuai aturan edaran resmi yang terverifikasi.
+6. Setelah assignment disimpan, sistem mengaitkan Guru pengawas dengan ujian yang tepat. Pada saat jadwal berlaku, hak/konteks Proktor aktif otomatis dan terbatas pada ujian tersebut.
+7. Perubahan jadwal atau mapel yang dilakukan Guru harus tercermin pada list Admin. Jika perubahan memengaruhi roster yang sudah dibuat, sistem harus menandai assignment perlu ditinjau ulang dan meminta tindakan eksplisit Admin; jangan diam-diam menghapus atau mengubah pengawas.
+8. Admin dapat melihat status: belum ada pengawas, penugasan sebagian, lengkap, konflik, atau perlu ditinjau ulang. Status harus diturunkan dari data aktual.
+9. Riwayat perubahan ujian dan penugasan harus tetap terlacak: siapa mengubah jadwal/mapel, siapa menugaskan/mengganti Proktor, kapan, alasan, dan nilai sebelum/sesudah.
+
+### Batas kewenangan yang dikunci
+- **Guru adalah pemilik/pembuat soal, mapel dalam konteks ujian, serta jadwal ujian CBT** sesuai assignment dan permission.
+- **Admin/Operator bukan pembuat ulang jadwal akademik ujian.** Admin melihat daftar ujian yang dibuat Guru dan mengelola penugasan pengawas/Proktor serta administrasi yang memang menjadi kewenangannya.
+- Admin tidak mengubah soal, bank soal, mapel ujian, snapshot, aturan akademik/penilaian, token, atau konfigurasi ujian milik Guru.
+- Jika ada kesalahan jadwal/mapel, koreksi dilakukan melalui alur Guru yang berwenang; Admin dapat memberi catatan/permintaan koreksi, bukan mengubah data akademik Guru secara langsung.
+- Penjadwalan roster Proktor harus mengacu pada jadwal ujian yang dibuat Guru dan edaran resmi yang berlaku. Jangan membuat kalender/jadwal kedua yang bertentangan.
+- Jika diperlukan data ruang/sesi administratif tambahan, kaitkan sebagai metadata/penugasan pengawasan dan jangan menimpa jadwal akademik ujian yang dibuat Guru.
+
+### UI yang harus tersedia di Web Admin
+Halaman **Daftar Ujian & Penugasan Proktor**:
+- Daftar ujian yang dibuat Guru dan sudah tersinkron ke Admin.
+- Filter mata pelajaran, Guru pembuat, tanggal/periode, kelas/rombel, status ujian, dan status penugasan Proktor.
+- Detail ujian read-only untuk informasi akademik milik Guru.
+- Aksi Admin: **Atur/Tentukan Pengawas**.
+- Panel penugasan Guru pengawas dengan pemeriksaan aturan edaran, konflik jadwal, dan kelengkapan.
+- Indikator belum ditugaskan/sebagian/lengkap/perlu ditinjau.
+- Riwayat assignment, penggantian, pembatalan, serta audit log.
+- Tidak menyediakan form Admin untuk membuat ulang ujian atau mengubah mapel/jadwal akademik yang merupakan milik Guru.
+
+### Acceptance criteria
+1. Ujian yang dibuat Guru muncul di list Web Admin tanpa input ulang.
+2. Mata pelajaran dan jadwal yang tampil berasal dari data ujian Guru, bukan salinan manual yang bisa berbeda.
+3. Admin dapat membuka item ujian dan menetapkan Guru pengawas.
+4. Guru yang dijadwalkan sebagai pengawas otomatis memperoleh konteks Proktor pada ujian itu saat jadwal berlaku.
+5. Admin tidak dapat mengubah soal, mapel, jadwal akademik, snapshot, token, atau penilaian ujian Guru.
+6. Perubahan Guru tersinkron ke Admin dan memicu review assignment jika berdampak.
+7. Konflik jadwal dan aturan edaran terverifikasi ditangani sebelum assignment disimpan.
+8. Tenant isolation, permission, audit, dan concurrency penugasan diuji.
+
+### Koreksi terhadap bagian jadwal sebelumnya
+Frasa “Admin mengatur kalender/jadwal ujian” harus ditafsirkan sebagai Admin mengelola **penugasan pengawas terhadap jadwal ujian yang dibuat Guru**, bukan Admin membuat atau memiliki jadwal akademik ujian dari awal. Daftar ujian Admin adalah tampilan terintegrasi dari data ujian Guru.
+
+
+### Prioritas interpretasi alur ujian
+Jika bagian 15 sebelumnya menyatakan Admin mengatur kalender/jadwal ujian, baca bersama bagian 16: sumber jadwal akademik dan mapel adalah ujian yang dibuat Guru. Admin hanya melihat daftar terintegrasi dan menetapkan pengawas/Proktor. Jangan membuat duplikasi jadwal.
