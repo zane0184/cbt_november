@@ -1265,16 +1265,54 @@ CP/TP/ATP tidak boleh diisi dengan rumusan buatan agent. Prosedur seed:
 
 ## 24.6 Default 5 Pilar Panca Cinta (KBC)
 
-Seed default 5 Pilar Panca Cinta persis sesuai rumusan pada KMA 1503 Tahun 2025:
-1. Cinta Allah dan Rasul-Nya.
-2. Cinta Ilmu.
-3. Cinta Lingkungan.
-4. Cinta Diri dan Sesama Manusia.
-5. Cinta Tanah Air.
+Seed default lima dimensi Panca Cinta mengikuti nomenklatur yang digunakan dalam Panduan KBC, Kepdirjen Pendis Nomor 6077 Tahun 2025, dengan urutan tampilan produk yang ditetapkan proyek:
+1. **Cinta Allah dan Rasul-Nya.**
+2. **Cinta Ilmu.**
+3. **Cinta Diri dan Sesama.**
+4. **Cinta Lingkungan.**
+5. **Cinta Tanah Air.**
 
-Kelima pilar merupakan nilai yang menjiwai kurikulum dan pembelajaran, bukan lima mata pelajaran baru. Setiap pilar dapat memiliki uraian, indikator pembelajaran, contoh penerapan, sumber, dan versi hanya jika uraian tersebut diambil dari panduan resmi yang telah diverifikasi.
+Gunakan istilah lengkap dan uraian operasional sesuai panduan resmi. Panduan memuat tema-tema seperti cinta kepada Allah dan Rasul-Nya, cinta ilmu, cinta kepada diri sendiri, cinta kepada sesama, cinta lingkungan, dan cinta tanah air. Untuk kategori gabungan "Cinta Diri dan Sesama", aplikasi boleh menyediakan satu tag induk dengan subtag "Cinta kepada Diri Sendiri" dan "Cinta kepada Sesama" agar rincian panduan tidak hilang. Jangan mengubah urutan/label yang telah disetujui proyek tanpa verifikasi dokumen resmi dan catatan versi.
 
-Admin boleh menambahkan indikator/kegiatan/konteks lokal pada lapisan madrasah, tetapi nama dan urutan lima pilar sumber resmi tidak boleh ditimpa. Pemetaan soal ke Panca Cinta sebaiknya opsional dan kontekstual; jangan memaksa setiap soal memiliki label karakter jika tidak relevan.
+Kelima pilar merupakan nilai yang menjiwai pembelajaran, bukan lima mata pelajaran baru. Admin boleh menambah indikator, contoh, kegiatan, dan subtag lokal di lapisan madrasah. Master sumber resmi harus tetap terlindungi.
+
+## 24.6A Fitur Penandaan Panca Cinta pada Butir Soal dan Instrumen Non-Tes
+
+Sediakan fitur **Tagging Panca Cinta** sebagai metadata pedagogis yang dapat digunakan pada:
+- Butir soal individual di bank soal.
+- Paket/kelompok butir jika sistem mendukung.
+- Instrumen non-tes, termasuk lembar observasi, panduan wawancara, angket/kuesioner, rubrik penilaian, portofolio, projek, studi kasus, survei, refleksi diri, penilaian teman sejawat, dan laporan kegiatan.
+
+Panduan Kepdirjen Pendis 6077/2025 secara eksplisit memberi contoh metode evaluasi KBC berupa analisis dokumen, observasi, wawancara, angket, portofolio, projek, studi kasus, survei, diskusi kelompok, refleksi diri, penilaian teman sejawat, dan laporan kegiatan; serta contoh instrumen lembar observasi, panduan wawancara, angket, dan rubrik penilaian. Sistem harus dapat merepresentasikan metode/instrumen tersebut, tidak membatasi KBC pada soal pilihan ganda.
+
+### Perilaku tagging
+1. Guru memilih satu atau lebih tag Panca Cinta yang benar-benar relevan dengan tujuan, stimulus, konteks, indikator, atau perilaku yang dinilai.
+2. Tagging bersifat **opsional dan kontekstual**, bukan kewajiban setiap soal/instrumen.
+3. Satu butir/instrumen dapat memiliki lebih dari satu dimensi jika memang mengukur atau memfasilitasi lebih dari satu nilai secara bermakna.
+4. Setiap tag dapat memiliki alasan/justifikasi singkat, indikator yang dirujuk, subtag, dan catatan guru.
+5. Sistem tidak boleh menyimpulkan otomatis bahwa soal mengukur karakter hanya dari kata kunci atau topik. Rekomendasi otomatis, jika kelak ada, harus ditinjau dan dikonfirmasi Guru.
+6. Bedakan metadata "mengandung konteks/nilai" dengan "mengukur perilaku/karakter". Soal pengetahuan tentang cinta lingkungan tidak otomatis menjadi bukti bahwa siswa memiliki perilaku peduli lingkungan.
+7. Untuk instrumen non-tes, simpan jenis instrumen, sasaran/responden, indikator perilaku/kompetensi, metode pengumpulan bukti, rubrik/skala, periode, dan pihak penilai jika relevan.
+8. Sediakan filter, pencarian, laporan, dan rekap berdasarkan lima dimensi, mapel, fase/kelas, jenis instrumen, dan periode.
+9. Simpan versi master/tag pada saat dipakai. Perubahan label/indikator berikutnya tidak boleh mengubah histori soal, instrumen, pelaksanaan, atau laporan lama.
+10. Tagging KBC tidak menggantikan CP/TP/ATP, kisi-kisi, validitas isi, reliabilitas, atau kaidah penilaian mata pelajaran.
+
+### Pemisahan fungsi dan hak akses
+- Admin mengelola master resmi dan konfigurasi lokal/indikator tambahan sesuai kewenangan.
+- Guru melakukan tagging pada butir soal dan instrumen yang dibuatnya, serta memilih tag dari master aktif.
+- Admin tidak mengambil alih kepemilikan bank soal atau operasional ujian Guru.
+- Jika instrumen dipakai untuk survei/observasi karakter, hasilnya harus dilaporkan sesuai metode dan batas interpretasinya; jangan menghasilkan skor karakter otomatis tanpa rubrik/instrumen tervalidasi dan kebijakan yang jelas.
+
+### Acceptance criteria tagging KBC
+- Lima tag default tersedia dengan nomenklatur dan urutan proyek yang konsisten.
+- Subtag diri sendiri dan sesama dapat dibedakan tanpa menghilangkan kategori gabungan.
+- Tagging tersedia pada butir soal dan semua tipe instrumen non-tes yang didukung.
+- Guru dapat memilih lebih dari satu tag dan menambahkan justifikasi.
+- Tagging boleh kosong bila tidak relevan.
+- Filter dan laporan menampilkan hasil berdasarkan tag dan jenis instrumen.
+- Tidak ada inferensi otomatis/label karakter tanpa konfirmasi Guru.
+- Versi tag dan instrumen historis tidak berubah ketika master diperbarui.
+- Permission, assignment, dan audit log berlaku.
 
 ## 24.7 Default 8 Dimensi Profil Lulusan (DPL)
 
