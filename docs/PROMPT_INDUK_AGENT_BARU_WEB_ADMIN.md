@@ -277,3 +277,45 @@ Lakukan dalam urutan ini:
 **Jangan bertanya ulang keputusan yang sudah ditetapkan di dokumen ini.** Ajukan satu pertanyaan hanya jika ada keputusan baru yang benar-benar belum tersedia dan menghalangi pekerjaan.
 
 **Target akhir:** Web Admin lengkap, aman, ringan, responsif, multi-tenant sesuai model instalasi, teruji, tervalidasi, terdokumentasi, dan disetujui pengguna — tanpa mengganggu portal lain.
+
+
+## 11. TEMUAN UI WAJIB DITINDAKLANJUTI — SIDEBAR DAN IDENTITAS WEB ADMIN
+
+Pengguna meninjau screenshot dashboard dan menemukan dua masalah nyata pada tampilan yang diberikan:
+
+1. Sidebar kiri berwarna gelap tidak dapat digulir. Akibatnya, menu yang berada di bawah/di luar tinggi viewport tidak dapat dijangkau.
+2. Identitas sidebar menampilkan tulisan **“Panel Admin & Guru”**, padahal halaman yang sedang dibahas adalah Web Admin. Ini tidak konsisten dengan pemisahan portal dan kewenangan yang telah ditetapkan.
+
+Temuan ini harus masuk audit UI/UX Web Admin. Screenshot yang dilampirkan pengguna menjadi bukti visual awal; jangan menganggap akar masalah teknis telah diketahui sebelum memeriksa DOM/CSS/layout source aktual.
+
+### 11.1 Perilaku scrolling wajib
+- Sidebar desktop harus memiliki tinggi yang mengikuti viewport (misalnya `100dvh` dengan fallback yang sesuai) dan area menu dapat di-scroll vertikal secara independen dari konten utama.
+- Jika daftar menu lebih tinggi dari viewport, pengguna tetap dapat mencapai seluruh item sampai menu paling bawah.
+- Header/brand sidebar boleh tetap terlihat saat daftar menu bergulir; implementasikan dengan struktur flex yang benar, bukan membuat seluruh sidebar tidak bisa digulir.
+- Area konten utama memiliki perilaku scroll yang benar dan tidak mematikan scroll sidebar. Hindari nested scroll yang saling mengunci.
+- Pastikan tidak ada elemen transparan/overlay, `overflow: hidden`, tinggi tetap yang keliru, atau parent flex tanpa `min-height: 0` yang menghalangi scroll.
+- Scrollbar boleh bergaya minimal, tetapi fungsi scroll harus tetap jelas dan dapat digunakan dengan mouse wheel, touchpad, keyboard, dan layar sentuh.
+- Pada layar kecil, sidebar dapat berubah menjadi drawer/off-canvas sesuai desain responsif; menu harus tetap dapat di-scroll dan semua item tetap dapat diakses. Pastikan fokus keyboard dan tombol tutup bekerja.
+- Jangan menyelesaikan masalah hanya dengan mengecilkan font/menu atau menghilangkan item navigasi.
+
+### 11.2 Konsistensi identitas dan portal
+- Branding sidebar untuk portal ini harus secara konsisten menyebut **“Panel Admin Madrasah”** atau **“Admin Madrasah”**.
+- Hapus label gabungan **“Panel Admin & Guru”**, “Admin & Guru”, atau istilah serupa dari shell/layout Web Admin.
+- Judul dashboard, badge role, breadcrumb, heading, navigasi, profil, dan teks bantuan harus mencerminkan role/portal yang benar-benar sedang aktif.
+- Jangan menampilkan “Dashboard Operator” atau “Role: Operator Madrasah” sebagai identitas Admin jika autentikasi/role halaman adalah Admin Madrasah. Label role harus berasal dari role/permission aktual, bukan hard-coded.
+- Jangan menampilkan menu operasional Guru (Bank Soal, Manajemen Ujian, penerbitan ujian, penilaian, dan sebagainya) pada navigasi Admin, kecuali ada elemen informasi agregat eksekutif yang secara eksplisit diizinkan spesifikasi. Jangan memberi kesan Admin dan Guru berada dalam satu portal gabungan.
+- Jangan sekadar mengganti teks di screenshot atau membuat mockup. Telusuri dan perbaiki sumber label pada layout, komponen sidebar, konfigurasi menu, route, dan role display.
+- Jangan mengubah hak akses backend hanya untuk menyesuaikan tampilan. UI harus mengikuti otorisasi server-side yang benar.
+
+### 11.3 Acceptance criteria khusus
+1. Pada viewport desktop 1366×768 dan resolusi lebih pendek, seluruh menu Admin dapat dijangkau dengan scroll sidebar.
+2. Scroll konten utama tidak mengunci scroll sidebar dan sebaliknya.
+3. Header/brand sidebar tetap terbaca ketika menu digulir.
+4. Pada viewport mobile, drawer/sidebar dapat dibuka, digulir, ditutup, dan semua menu dapat dipilih.
+5. Tidak ada label “Panel Admin & Guru” pada seluruh shell Web Admin.
+6. Tidak ada label “Dashboard Operator” atau role Operator yang salah pada sesi Admin; nama role ditampilkan secara dinamis sesuai role aktual.
+7. Navigasi Admin tidak mencampur menu operasional Guru.
+8. Uji visual dan interaksi dilakukan pada browser nyata/emulator browser; sertakan screenshot sebelum/sesudah dan catat viewport serta langkah uji.
+9. Perbaikan diuji regresi agar tidak merusak navigasi, responsive layout, aksesibilitas keyboard, maupun halaman Admin lainnya.
+
+Temuan ini **belum dinyatakan sudah diperbaiki**. Agent harus mereproduksi dan mengaudit source dahulu, kemudian memasukkannya ke desain dan backlog implementasi. Jangan coding sebelum gerbang persetujuan desain umum yang sudah ditetapkan.
