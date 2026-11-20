@@ -233,11 +233,15 @@ class ExcelQuestionImporter implements QuestionImportService
     {
         if (in_array($row['type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE', 'MATCHING'])) {
             foreach ($row['options'] as $idx => $opt) {
+                $optionKey = $opt['option_key'] ?? null;
+                if ($optionKey === null && in_array($row['type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+                    $optionKey = chr(65 + $idx);
+                }
                 $version->options()->create([
                     'tenant_id' => auth()->user()->tenant_id,
                     'content' => $opt['content'] ?? '',
                     'is_correct' => $opt['is_correct'] ?? false,
-                    'option_key' => $opt['option_key'] ?? null,
+                    'option_key' => $optionKey,
                     'matching_key' => $opt['matching_key'] ?? null,
                     'sequence' => $idx
                 ]);
