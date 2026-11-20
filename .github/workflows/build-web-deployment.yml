@@ -38,6 +38,15 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      - name: Prepare Laravel writable build directories
+        run: |
+          mkdir -p backend-laravel/bootstrap/cache
+          mkdir -p backend-laravel/storage/app/private
+          mkdir -p backend-laravel/storage/framework/cache/data
+          mkdir -p backend-laravel/storage/framework/sessions
+          mkdir -p backend-laravel/storage/framework/views
+          mkdir -p backend-laravel/storage/logs
+
       - name: Validate locked Composer project
         working-directory: backend-laravel
         run: |
