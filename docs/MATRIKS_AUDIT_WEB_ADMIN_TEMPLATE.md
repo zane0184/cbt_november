@@ -240,3 +240,6 @@ Semua blob dari branch kandidat Web Admin ade5daa6cf853c164c4f51ec6e25ca68be40b4
 - WebAdminAuthTest.php 93a822f44f7d21d4c25913599bda2bcfe7d32e34
 - ProctorAssignmentSecurityTest.php a5eca4ea2ce05d62d4fa76e6b9cd5a21a17dd668
 
+
+
+Catatan ketelitian: RolePermissionBootstrapperTest memakai fixture berbeda untuk optional role. Hasilnya bukan kontradiksi logis langsung; namun test tetap belum membuktikan keputusan final satu role aktif ADMIN_MADRASAH dan parity permission/route Admin lama vs Operator lama.

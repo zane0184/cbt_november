@@ -459,3 +459,10 @@ Selain tabel utama, token role juga ditemukan pada:
 - resources/views/installer/authorize.blade.php memakai frasa Operator Installer untuk otorisasi operator server/bootstrap. Ini bukan role Operator Madrasah dan tidak boleh diubah menjadi permission Admin.
 
 Source paths lengkap untuk test role telah dicantumkan pada bagian Matriks lengkap hasil scan identifier. Tidak ada token OPERATOR/ADMIN yang ditemukan sebagai role literal dalam 58 migration schema; role records berasal dari seeder/bootstrap/installer. User model menggunakan relasi role/pivot, bukan alias runtime, sehingga migration role harus memindahkan pivot secara nyata.
+
+
+## Pemeriksaan Library dan filesystem terakhir
+Library dipaginasi hingga tidak ada next_cursor (5 halaman). Tidak ditemukan raw baseline ZIP, V50.39, V50.10, 01_SOURCE_WORKSPACE_RECOVERED(1).zip, CBT_MADRASAH_PAKET_FINAL.zip, atau ZIP handover. Satu-satunya ZIP pada daftar Library adalah CBT agent.zip berukuran 245.690 byte, tidak dianggap source CBT. Conversation Files berisi 27 item dan tidak ada ZIP source. Pemeriksaan langsung /mnt/data menghasilkan direktori kosong. Dengan demikian hash baseline dan manifest worktree 533 file hanya dapat dikutip sebagai bukti historis, bukan dihitung ulang dari bytes pada sesi ini.
+
+## Koreksi ketelitian test lama
+RolePermissionBootstrapperTest memakai fixture berbeda; satu test menguji pemberian optional grants jika role OPERATOR sudah ada, sedangkan test lain menguji bootstrap tidak membuat role optional jika tidak ada. Itu bukan kontradiksi logis langsung, tetapi test suite tetap tidak memenuhi keputusan final karena source seeder/installer masih membuat OPERATOR dan test belum membuktikan satu role aktif serta parity Admin/Operator 100%.

@@ -340,3 +340,10 @@ Rencana lengkap, file sasaran, acceptance criteria, risiko dan test cases ada pa
 
 ## Perubahan sesi ini
 Hanya enam file dokumentasi di branch docs/source-canonical-design-closure-20261121. Tidak ada source aplikasi, migration, DB, .env, secret, PR, merge, deployment, atau runtime test yang diubah/dijalankan.
+
+
+## Verifikasi ketersediaan byte pada sesi penutupan
+- Filesystem /mnt/data saat pemeriksaan langsung kosong: tidak ada ZIP, workspace rekonstruksi, worktree 14-11, folder backup, atau source root.
+- Conversation Files berisi 27 item: 24 laporan Tahap 1–5P, instruksi Lanjutkan, teks tempel, dan laporan audit Web Admin. Tidak ada source ZIP.
+- Library dipaginasi seluruhnya dalam 5 halaman. Satu-satunya ZIP yang tercantum adalah CBT agent.zip (245.690 byte); baseline 6 November, V50.39, V50.10, recovered source ZIP, CBT_MADRASAH_PAKET_FINAL, dan ZIP handover tidak ada pada daftar Library saat ini.
+- Dokumen provenance historis tetap dapat dibaca dan memuat hash/manifest, tetapi bukan pengganti raw source bytes.
