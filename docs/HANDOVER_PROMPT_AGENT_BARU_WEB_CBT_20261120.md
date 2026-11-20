@@ -238,3 +238,43 @@ Mulai dengan membaca branch/PR/checkpoint terbaru dan periksa source aktual. Ver
 - PR #5 tetap Draft/unmerged/undeployed sampai semua gerbang lulus.
 - Tidak ada deployment VPS, migration produksi, perubahan DB/.env/storage/vhost, atau ZIP distribusi final tanpa prosedur dan persetujuan yang diwajibkan.
 - Jangan menyatakan sistem aman/siap ujian sebelum role matrix, tenant isolation, alur ujian, penilaian, pemulihan, dan validasi madrasah memiliki bukti pengujian.
+
+
+---
+
+# HANDOVER ADDENDUM — 20 NOVEMBER 2026 — HEAD 9e48a719
+
+Agent penerus WAJIB menganggap addendum ini sebagai status yang lebih baru daripada catatan status CI lama di bagian atas dokumen.
+
+## Status terkini terverifikasi
+- Branch: `fix/web-portal-usability-rbac-20261120`.
+- Head: `9e48a719668eecd80e03682d33fa2ba978231d37`.
+- PR #5: OPEN, DRAFT, UNMERGED, UNDEPLOYED, mergeable=true. Jangan merge atau deploy.
+- CI #684 / ID `44748706279`: COMPLETED SUCCESS. Job ID `136330660780`; semua steps sukses termasuk focused login/tenant smoke dan full PHPUnit pada disposable MySQL 8.0.46. Hasil: **480 passed (1.942 assertions), 89,88s**. URL: https://github.com/zane0184/cbt_november/actions/runs/44748706279.
+- Patch commit #684 hanya mengubah test pagination QuestionBank; backup: `backend-laravel/backup_before_patch/WEB_QUESTION_BANK_PAGINATION_VIEW_ASSERTION_20261120/QuestionBankTest.php.before`.
+- Tidak ada perubahan VPS, DB produksi, .env, private storage, installer-state, vhost, atau migration produksi.
+
+## Koreksi status lama
+Setiap keterangan lama di dokumen ini yang menyatakan run #684 masih berjalan, belum ada hasil PHPUnit, atau test terakhir belum lulus sudah kedaluwarsa. Gunakan hasil CI di atas. Run lama yang gagal/batal tetap dicatat sebagai riwayat, bukan status terkini.
+
+## Source yang diperiksa ulang
+- `RolePermissionBootstrapper.php` SHA `fac82573de84c52b52867afbbf7e1637164835b4`.
+- `RolePermissionBootstrapperTest.php` SHA `cfacac702f967667c8e1e4f6dff18000fc105f68`.
+- Bootstrapper menggunakan grant additive `syncWithoutDetaching` dan revoke selektif. Coverage seluruh stale built-in permissions belum terbukti. Inventaris semua permissions dan pemetaan pemakaiannya sebelum patch; jangan blanket detach dan jangan hapus custom grants tanpa kebijakan eksplisit.
+- Test bootstrap belum membuat PROKTOR role untuk menguji stale grants; perlu regression coverage.
+- ResultDetail/ExamAttemptPolicy role-permission-assignment/cross-tenant matrix belum lengkap.
+
+## Instruksi kerja berikutnya
+1. Audit semua permission names dari migrations/seeders/code references/routes/policies/Gates/Livewire/controllers/views. Bentuk matriks role × permission yang selaras dengan keputusan produk. Perhatikan akun multi-role dan Super Admin.
+2. Perbaiki bootstrapper hanya setelah inventaris/matriks valid. Tambah test stale grants untuk Admin, Kamad, Guru, Operator, Proktor; pertahankan custom permissions sesuai desain.
+3. Tambahkan regression matrix detail hasil/grade/finalize/reopen untuk Admin/Kamad/Guru/Operator/Proktor/Siswa dan tenant lain; akses langsung URL wajib dites.
+4. Teruskan audit lengkap Exam Builder, Question Bank enam tipe, hasil/penilaian, laporan/analytics/export, user/academic/curriculum, monitoring/proctor assignment.
+5. Pastikan Kurikulum Merdeka, Panca Cinta, Pembelajaran Mendalam menyatu ke seluruh alur akademik dan semua role.
+6. Backup source sebelum setiap patch; commit backup lebih dahulu. Jangan push saat CI aktif. Jalankan focused tests lalu full CI di disposable MySQL.
+7. Jalankan runtime/browser smoke hanya di staging disposable setelah source audit memadai.
+8. Update checkpoint/handover setiap tahap. PR tetap Draft sampai review dan semua gerbang lulus.
+
+## Guardrails tetap berlaku
+- Web/backend saja sekarang; Android ditunda sampai Juni 2027.
+- Jangan deployment/migration/ubah DB/.env/storage/vhost/installer state produksi tanpa persetujuan eksplisit, backup terverifikasi, dan preflight.
+- Jangan menyebut siap produksi/siap ujian hanya karena CI lulus.
