@@ -68,7 +68,7 @@ class InstallerEnvSerializationTest extends TestCase
                 mkdir(dirname($runtimePath), 0700, true);
             }
             $runtime = ['bootstrap_token' => null];
-            file_put_contents($runtimePath, "<?php\\n\\nreturn " . var_export($runtime, true) . ";\\n", LOCK_EX);
+            file_put_contents($runtimePath, "<?php\n\nreturn " . var_export($runtime, true) . ";\n", LOCK_EX);
             @chmod($runtimePath, 0600);
 
             $loadedConfig = require config_path('installer.php');
