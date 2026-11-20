@@ -19,9 +19,11 @@
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
+                @can('publishResults', $exam)
                 <button wire:click="startPublishModal" class="text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm {{ $exam->show_result ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white' }}">
                     {{ $exam->show_result ? 'Tarik Publikasi Nilai' : 'Publikasikan Nilai ke Siswa' }}
                 </button>
+                @endcan
                 <a href="/exams/{{ $exam->id }}/analytics" class="bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
                     Dashboard Analisis
                 </a>
@@ -31,9 +33,11 @@
                 <a href="/exams/{{ $exam->id }}/export/pdf" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
                     Export PDF
                 </a>
+                @if(auth()->user()?->hasPermission('exam.grade') && (auth()->user()->hasRole('ADMIN_MADRASAH') || auth()->user()->hasRole('GURU')))
                 <button wire:click="startFinalizeAll" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
                     Finalisasi Masal
                 </button>
+                @endif
             </div>
         </div>
 
