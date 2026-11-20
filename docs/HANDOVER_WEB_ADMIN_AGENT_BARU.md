@@ -32,3 +32,7 @@ Pengguna melaporkan sidebar gelap tidak dapat di-scroll dan brand “Panel Admin
 - Bagian 10 di `CHECKPOINT_WEB_ADMIN_2026-11-21.md`
 
 Statusnya masih temuan untuk diaudit; belum ada klaim perbaikan. Agent harus memperbaiki source setelah audit, desain, dan persetujuan pengguna.
+
+
+## Klarifikasi role terbaru (wajib)
+**Admin Madrasah = Operator Madrasah.** Ini satu role dan satu portal, bukan dua. Baca bagian 12 pada prompt agent dan bagian 26 pada spesifikasi. Gunakan “Admin Madrasah” sebagai label utama, “Operator Madrasah” hanya alias; Guru tetap portal terpisah. Jangan mengubah identifier role/data source lama sebelum audit kompatibilitas dan persetujuan.
