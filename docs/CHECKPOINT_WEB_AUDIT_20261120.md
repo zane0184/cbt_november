@@ -330,3 +330,53 @@ Tanggal: 2026-11-20
 - PR #5 tetap Draft/unmerged/undeployed sampai semua gerbang lulus.
 - Tidak ada deployment VPS, migration produksi, perubahan DB/.env/storage/vhost, atau ZIP distribusi final tanpa prosedur dan persetujuan yang diwajibkan.
 - Jangan menyatakan sistem aman/siap ujian sebelum role matrix, tenant isolation, alur ujian, penilaian, pemulihan, dan validasi madrasah memiliki bukti pengujian.
+
+
+---
+
+# CHECKPOINT LANJUTAN — 20 NOVEMBER 2026 — CI #684 BERHASIL
+
+## AUDIT
+- Branch: `fix/web-portal-usability-rbac-20261120`.
+- Head commit terverifikasi: `9e48a719668eecd80e03682d33fa2ba978231d37` — `test: verify question paginator resets through rendered paginator`.
+- PR #5: OPEN, DRAFT, UNMERGED, UNDEPLOYED; mergeable=true. Base `fix/p0-96g-installer-private-db-config-20261120`.
+- Rincian RolePermissionBootstrapper diperiksa ulang pada head ini. SHA sumber `fac82573de84c52b52867afbbf7e1637164835b4`; test SHA `cfacac702f967667c8e1e4f6dff18000fc105f68`.
+- Temuan belum selesai: bootstrap grants secara additive dengan `syncWithoutDetaching` dan hanya revoke daftar tertentu. Test saat ini menguji daftar permission role yang diharapkan setelah memberi beberapa stale grant, tetapi tidak membuktikan seluruh permission legacy/built-in yang mungkin sudah ada telah ditangani. Jangan mengubah detach/revoke sebelum inventaris permission dari migrations/seeders/pemakaian kode dan matriks role disusun. Custom permission perlu dipertahankan kecuali kebijakan eksplisit menyatakan sebaliknya.
+- Test RolePermissionBootstrapperTest membuat role ADMIN_MADRASAH, KAMAD, GURU, optional OPERATOR; belum menguji PROKTOR sebagai role existing dengan stale grant. Revoke PROKTOR saat ini hanya mencakup tujuh nama permission.
+- Detail ResultDetail role/permission regression matrix masih belum lengkap. Audit route/controller/policy/UI dan kurikulum lintas alur juga belum tuntas.
+
+## DESAIN
+- Pagination filter Question Bank diuji melalui paginator yang dirender (currentPage), bukan property Livewire internal `page` yang dapat null. Pertahankan assertion yang menguji perilaku tampilan, jangan kembali mengasumsikan property internal.
+- PR tetap draft hingga seluruh audit role/action/tenant dan runtime staging selesai. Tidak ada perubahan desain produk/portal.
+
+## IMPLEMENTASI
+- Patch terakhir hanya mengubah `backend-laravel/tests/Feature/QuestionBankTest.php` agar memeriksa current page dari paginator hasil render setelah filter.
+- Backup sebelum patch: `backend-laravel/backup_before_patch/WEB_QUESTION_BANK_PAGINATION_VIEW_ASSERTION_20261120/QuestionBankTest.php.before`.
+- Commit patch: `9e48a719668eecd80e03682d33fa2ba978231d37`.
+- Tidak ada patch source aplikasi pada commit ini; tidak ada perubahan VPS/DB produksi.
+
+## PENGUJIAN
+- GitHub Actions run #684, ID `44748706279`, job `laravel-mysql`, job ID `136330660780`: COMPLETED / SUCCESS.
+- Semua langkah penting sukses: identitas DB disposable fail-closed, Composer lock/platform validation, dependency install, Laravel package discovery, pembuatan disposable installer E2E DB, focused Web login/tenant identity smoke tests, full PHPUnit pada MySQL 8 disposable.
+- Log full PHPUnit: **480 passed, 1.942 assertions, 89,88 detik**. Tidak ada test gagal.
+- MySQL container CI tercatat versi 8.0.46. Ini bukan DB VPS.
+- Link run: https://github.com/zane0184/cbt_november/actions/runs/44748706279
+- Catatan: workflow run ini adalah push event pada branch audit. PR #5 tetap Draft dan belum merge.
+
+## PEKERJAAN TERTUNDA / URUTAN AGENT BERIKUTNYA
+1. Inventaris seluruh permission dari migrations, seeders, RolePermissionBootstrapper, Gate/Policy, middleware, route, komponen Livewire, controller, Blade, dan test. Klasifikasikan built-in vs custom. Buat matriks permission × role resmi sebelum mengubah bootstrapper.
+2. Tambah test bootstrap dengan permission stale pre-existing untuk semua role termasuk PROKTOR; pastikan stale built-in dicabut, grant resmi tetap, custom permission ditangani sesuai kebijakan yang diputuskan. Jangan lakukan blanket detach.
+3. Lengkapi ResultDetail/ExamAttemptPolicy matrix: Admin/Kamad tanpa-dengan report.view; Guru tanpa assignment/dengan assignment; Operator; Proktor hanya penugasan yang relevan; Siswa hanya hasil sendiri melalui DTO; cross-tenant; uji URL langsung dan tombol grade/finalize/reopen.
+4. Audit Exam Builder lifecycle, participant assignment/removal, token, schedule/server time, close/publish, snapshot, tenant/year/subject, race/idempotency dan audit log.
+5. Audit Question Bank enam tipe soal, media, CP/TP, import/export, versioning/immutability, validasi opsi/kunci, kebocoran jawaban.
+6. Audit laporan/analytics/export/cache, role, tenant, rombel, tahun ajaran, penugasan Guru, finalized/current score pointer.
+7. Audit seluruh halaman dan aksi Web (User/Academic/Curriculum/Question/Exam/Results/Monitoring/Proctor), serta integrasi Kurikulum Merdeka, Panca Cinta, Pembelajaran Mendalam di seluruh alur/role.
+8. Jalankan focused tests dan full CI tiap patch; jangan push selama workflow aktif karena concurrency dapat membatalkan run. Backup sebelum perubahan source.
+9. Setelah audit source dan tests memadai, jalankan browser/runtime smoke di staging disposable, bukan VPS produksi.
+10. Perbarui checkpoint/handover lagi dengan hasil dan SHA aktual.
+
+## BATAS KESELAMATAN
+- Fokus hanya Web CBT/backend Laravel. Android ditunda sampai Juni 2027.
+- PR #5 tetap Draft/open/unmerged/undeployed.
+- Dilarang deployment VPS, migration produksi, ekstraksi ZIP, overwrite DB/.env/storage/vhost tanpa rencana, backup, preflight dan persetujuan eksplisit.
+- Jangan nyatakan production-ready atau siap ujian berdasarkan CI saja.
