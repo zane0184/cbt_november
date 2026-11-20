@@ -36,3 +36,6 @@ Statusnya masih temuan untuk diaudit; belum ada klaim perbaikan. Agent harus mem
 
 ## Klarifikasi role terbaru (wajib)
 **Admin Madrasah = Operator Madrasah.** Ini satu role dan satu portal, bukan dua. Baca bagian 12 pada prompt agent dan bagian 26 pada spesifikasi. Gunakan “Admin Madrasah” sebagai label utama, “Operator Madrasah” hanya alias; Guru tetap portal terpisah. Jangan mengubah identifier role/data source lama sebelum audit kompatibilitas dan persetujuan.
+
+## Klarifikasi Proktor (wajib)
+Proktor adalah **Guru yang ditugaskan Admin/Operator Madrasah** untuk mengawasi ujian tertentu. Calon Proktor dapat berupa Guru kelas, Wali Kelas, atau Guru Mata Pelajaran. Status Proktor hanya assignment sementara dan terbatas pada ujian/waktu yang ditugaskan; bukan role atau portal permanen. Baca bagian 13 pada prompt agent dan bagian 27 pada spesifikasi. Pada tahap Web Admin hanya pengelolaan assignment oleh Admin; workflow Guru/Proktor ditahan sampai tahap Guru.
