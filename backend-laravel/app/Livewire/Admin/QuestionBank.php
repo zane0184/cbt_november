@@ -578,6 +578,16 @@ class QuestionBank extends Component
         $this->resetPage();
     }
 
+    public function updatingSubjectFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $user = auth()->user();
