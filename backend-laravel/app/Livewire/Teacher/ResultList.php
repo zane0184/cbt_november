@@ -247,6 +247,7 @@ class ResultList extends Component
             ->pluck('user_id');
 
         $rombels = Rombel::query()
+            ->where('academic_year_id', $this->exam->assessment?->academic_year_id)
             ->whereHas('students', function ($studentQuery) use ($participantUserIds) {
                 $studentQuery->whereHas('user', function ($userQuery) use ($participantUserIds) {
                     $userQuery->whereIn('id', $participantUserIds);
@@ -266,13 +267,20 @@ class ResultList extends Component
                 $q->where('status', $this->status);
             })
             ->when($this->gradingStatus, function ($q) {
+                if ($this->gradingStatus === 'NOT_SCORED') {
+                    $q->whereDoesntHave('score');
+                    return;
+                }
+
                 $q->whereHas('score', function ($sq) {
                     $sq->where('grading_status', $this->gradingStatus);
                 });
             })
             ->when($this->rombelId, function ($q) {
                 $q->whereHas('participant.user.studentProfile.rombels', function ($rombelQuery) {
-                    $rombelQuery->where('rombels.id', $this->rombelId);
+                    $rombelQuery->where('rombels.id', $this->rombelId)
+                        ->where('rombels.tenant_id', $this->exam->tenant_id)
+                        ->where('rombels.academic_year_id', $this->exam->assessment?->academic_year_id);
                 });
             });
 
