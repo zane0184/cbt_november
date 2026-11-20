@@ -199,6 +199,8 @@ class ExamBuilderTest extends TestCase
 
     public function test_assign_rombel_api_does_not_reset_existing_participant_status()
     {
+        $context = app(\\App\\Contexts\\TenantContext::class);
+        $context->setTenantId($this->tenant->id);
         $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $student = User::create([
             'tenant_id' => $this->tenant->id,
@@ -228,6 +230,7 @@ class ExamBuilderTest extends TestCase
             'status' => 'COMPLETED',
         ]);
 
+        $context->setTenantId(null);
         $this->actingAs($this->teacher, 'sanctum')
             ->postJson("/api/v1/exams/{$this->exam->id}/assign-rombel", ['rombel_id' => $rombel->id])
             ->assertOk();
@@ -241,6 +244,8 @@ class ExamBuilderTest extends TestCase
 
     public function test_add_individual_participant_api_does_not_reset_existing_status()
     {
+        $context = app(\\App\\Contexts\\TenantContext::class);
+        $context->setTenantId($this->tenant->id);
         $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $student = User::create([
             'tenant_id' => $this->tenant->id,
@@ -269,6 +274,7 @@ class ExamBuilderTest extends TestCase
             'status' => 'COMPLETED',
         ]);
 
+        $context->setTenantId(null);
         $this->actingAs($this->teacher, 'sanctum')
             ->postJson("/api/v1/exams/{$this->exam->id}/participants", ['user_id' => $student->id])
             ->assertOk();
