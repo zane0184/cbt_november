@@ -144,6 +144,48 @@ class QuestionBankTest extends TestCase
             'stem' => 'New Stem',
             'is_current' => true
         ]);
+        $this->assertSame('DRAFT', $question->fresh()->status);
+    }
+
+    public function test_web_editing_published_question_creates_new_immutable_version()
+    {
+        $this->actingAs($this->userA);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'question_code' => 'WEB-VERSION-01',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->userA->id,
+        ]);
+        $published = $question->versions()->create([
+            'tenant_id' => $this->tenantA->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'SHORT_ANSWER',
+            'stem' => 'Stem lama',
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'created_by' => $this->userA->id,
+        ]);
+
+        Livewire::test(QuestionBank::class)
+            ->call('openEditModal', $question->id)
+            ->set('stem', 'Stem versi baru')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $published->refresh();
+        $question->refresh();
+        $current = $question->currentVersion;
+
+        $this->assertSame('Stem lama', $published->stem);
+        $this->assertFalse((bool) $published->is_current);
+        $this->assertSame('DRAFT', $question->status);
+        $this->assertSame('DRAFT', $current->status);
+        $this->assertSame('Stem versi baru', $current->stem);
+        $this->assertSame(1, (int) $current->minor_version);
     }
 
     public function test_tenant_isolation_on_media()
