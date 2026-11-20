@@ -284,10 +284,10 @@ class QuestionBankTest extends TestCase
         Livewire::test(QuestionBank::class)
             ->call('gotoPage', 2)
             ->set('subjectFilter', $this->subjectA->id)
-            ->assertSet('page', 1)
+            ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1)
             ->call('gotoPage', 2)
             ->set('statusFilter', 'PUBLISHED')
-            ->assertSet('page', 1);
+            ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1);
     }
 
     public function test_web_admin_create_and_update_multiple_response_question()
