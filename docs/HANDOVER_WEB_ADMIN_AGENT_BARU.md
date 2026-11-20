@@ -23,3 +23,12 @@ Baca semua dokumen di atas, verifikasi status GitHub/PR/branch terkini, kemudian
 `docs/web-admin-agent-handover-20261121`
 
 Dokumentasi ini tidak mengubah source aplikasi, migration, database, .env, konfigurasi VPS, atau deployment.
+
+
+## Temuan UI terbaru yang wajib dibaca
+Pengguna melaporkan sidebar gelap tidak dapat di-scroll dan brand “Panel Admin & Guru” tidak konsisten untuk halaman Admin. Requirement lengkap dan acceptance criteria sudah ditambahkan pada:
+- Bagian 11 di `PROMPT_INDUK_AGENT_BARU_WEB_ADMIN.md`
+- Bagian 25 di `SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md`
+- Bagian 10 di `CHECKPOINT_WEB_ADMIN_2026-11-21.md`
+
+Statusnya masih temuan untuk diaudit; belum ada klaim perbaikan. Agent harus memperbaiki source setelah audit, desain, dan persetujuan pengguna.
