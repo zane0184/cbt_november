@@ -20,6 +20,7 @@ use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\MediaAsset;
 use App\Livewire\Admin\QuestionBank;
+use App\Services\ExcelQuestionImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -169,6 +170,26 @@ class QuestionBankTest extends TestCase
 
         // Tenant-scoped route binding hides foreign media as not found.
         $response->assertStatus(404);
+    }
+
+    public function test_import_rejects_multiple_choice_with_multiple_correct_options()
+    {
+        $this->actingAs($this->userA);
+
+        $result = app(ExcelQuestionImporter::class)->import('unused', ['rows' => [[
+            'stem' => 'Pilih satu jawaban',
+            'type' => 'MULTIPLE_CHOICE',
+            'subject_id' => $this->subjectA->id,
+            'options' => [
+                ['option_key' => 'A', 'content' => 'A', 'is_correct' => true],
+                ['option_key' => 'B', 'content' => 'B', 'is_correct' => true],
+            ],
+        ]]]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(0, $result['imported']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertDatabaseCount('questions', 0);
     }
 
     public function test_api_rejects_multiple_choice_without_exactly_one_correct_option()
