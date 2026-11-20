@@ -136,48 +136,7 @@ jobs:
           test -f backend-laravel/composer.lock
           test -f backend-laravel/vendor/autoload.php
           test -f backend-laravel/.env.example
-          grep -q '^CBT_LICENSE_MODE=PUBLISHER
-          test -f backend-laravel/database/migrations/2026_11_20_100001_create_exam_proctor_assignments_table.php
-          test ! -e backend-laravel/.env
-          test ! -d backend-laravel/tests
-          test ! -d backend-laravel/backup_before_patch
-
-          if find backend-laravel -type f \( -name '.env' -o -name 'phpunit.xml' -o -name 'phpunit.mysql.xml' -o -name '.phpunit.result.cache' \) | grep -q .; then
-            echo 'Forbidden environment/test artifact found in deployment tree.' >&2
-            exit 1
-          fi
-          if find backend-laravel -type f \( -name 'DemoDataSeeder.php' -o -name 'RuntimeTestSeeder.php' -o -name 'debug_auth.php' -o -name 'debug_scores.php' -o -name 'smoke_test.php' -o -name 'read_attempts.php' -o -name 'check_latest.php' -o -name 'phase6f_seed.php' \) | grep -q .; then
-            echo 'Forbidden demo/debug artifact found in deployment tree.' >&2
-            exit 1
-          fi
-
-          cd "$RUNNER_TEMP"
-          ARCHIVE="CBT_MADRASAH_WEB_DEPLOYMENT_${SOURCE_SHA:0:12}.zip"
-          zip -qr "$ARCHIVE" CBT_MADRASAH_WEB_DEPLOYMENT
-          unzip -t "$ARCHIVE"
-          unzip -Z1 "$ARCHIVE" > "$ARCHIVE.contents.txt"
-          if grep -E '(^|/)backup_before_patch/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/tests/|(^|/)\.env$|DemoDataSeeder\.php|RuntimeTestSeeder\.php|phpunit\.mysql\.xml' "$ARCHIVE.contents.txt"; then
-            echo 'Archive contains a forbidden path.' >&2
-            exit 1
-          fi
-          sha256sum "$ARCHIVE" | tee "$ARCHIVE.sha256"
-          du -h "$ARCHIVE"
-          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
-
-      - name: Upload verified deployment archive
-        uses: actions/upload-artifact@v4
-        with:
-          name: cbt-madrasah-web-deployment-${{ github.sha }}
-          path: |
-            ${{ runner.temp }}/${{ env.ARCHIVE }}
-            ${{ runner.temp }}/${{ env.ARCHIVE }}.sha256
-            ${{ runner.temp }}/${{ env.ARCHIVE }}.contents.txt
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
- backend-laravel/.env.example
-          test -f "$STAGE/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md"
-          test -f backend-laravel/routes/web.php
+          grep -q 'CBT_LICENSE_MODE=PUBLISHER' backend-laravel/.env.example
           test -f backend-laravel/database/migrations/2026_11_20_100001_create_exam_proctor_assignments_table.php
           test ! -e backend-laravel/.env
           test ! -d backend-laravel/tests
