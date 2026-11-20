@@ -193,6 +193,19 @@ class QuestionBankTest extends TestCase
 
     /** Web Admin Livewire Tests **/
 
+    public function test_question_bank_filters_reset_pagination()
+    {
+        $this->actingAs($this->userA);
+
+        Livewire::test(QuestionBank::class)
+            ->call('gotoPage', 2)
+            ->set('subjectFilter', $this->subjectA->id)
+            ->assertSet('p', 1)
+            ->call('gotoPage', 2)
+            ->set('statusFilter', 'PUBLISHED')
+            ->assertSet('p', 1);
+    }
+
     public function test_web_admin_create_and_update_multiple_response_question()
     {
         $this->actingAs($this->userA);
