@@ -50,3 +50,29 @@ PR: #5 (Draft)
 - Implementasi: validasi sekarang memastikan kunci PG menunjuk opsi terisi; PG Kompleks memvalidasi array, nilai hanya A-D, elemen unik, dan setiap kunci menunjuk opsi terisi.
 - Commit: `cbb727191879734fa6207acb3abe81ad133593a5`.
 - Belum ada PHPUnit/Livewire runtime test untuk kasus valid/invalid ini; status BELUM LULUS UJI.
+
+
+## Audit integritas snapshot ujian — 2026-11-20
+### AUDIT
+- `ExamSnapshotService::createSnapshots()` mengunci Exam dan QuestionVersion serta menolak perubahan snapshot setelah attempt/answer/score history ada.
+- Ditemukan celah validasi pada service: pemanggil Livewire memvalidasi tenant dan subject sebelum transaksi, tetapi service sendiri hanya memastikan `QuestionVersion.tenant_id` sama dengan tenant ujian. Service dapat dipanggil dari jalur lain atau menerima perubahan kondisi di antara validasi awal dan transaksi.
+- Karena snapshot menjadi sumber soal ujian yang immutable, pemeriksaan subject harus dilakukan kembali di dalam transaksi setelah Exam dikunci.
+
+### DESAIN
+- Subject resmi ujian diambil dari Assessment yang terhubung ke Exam yang terkunci.
+- Setiap QuestionVersion yang akan disnapshot harus berasal dari tenant yang sama dan Question dengan subject_id yang sama dengan Assessment.
+- Gagal tertutup jika Assessment tidak memiliki subject; tidak mengubah skema database.
+
+### IMPLEMENTASI
+- `ExamSnapshotService.php`: menambahkan validasi subject di dalam transaksi dan query QuestionVersion dengan `whereHas('question')` yang mensyaratkan tenant serta subject ujian.
+- Commit: `0ff72ab11fff907d9e70e4b0077e486a26f9212d`.
+
+### PENGUJIAN
+- Source diff diperiksa setelah perubahan.
+- PHPUnit/Livewire/DB concurrency test belum dijalankan. CI run untuk commit baru belum diverifikasi.
+- Status: BELUM LULUS UJI; jangan merge/deploy berdasarkan patch ini saja.
+
+### TERTUNDA
+- Tambahkan regression test: versi soal dari subject berbeda pada tenant yang sama harus ditolak; versi soal dari tenant berbeda harus ditolak; subject yang sesuai harus berhasil; kegagalan tidak boleh meninggalkan snapshot parsial.
+- Uji race antara snapshot edit dan publish/lock.
+- Verifikasi constraint unik DB dan urutan sequence snapshot dari migration aktual.
