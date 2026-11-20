@@ -201,7 +201,6 @@ class InstallerController extends Controller
                         throw new \RuntimeException('PILOT_INSTALLER_STATE_INVALID');
                     }
 
-                    $identity = app(InstallationIdentityService::class)->getOrCreate((string) $installState['tenant_id']);
                     $issuedAt = !empty($installState['pre_activation_issued_at'])
                         ? \Illuminate\Support\Carbon::parse($installState['pre_activation_issued_at'])->utc()
                         : now()->utc();
@@ -209,6 +208,15 @@ class InstallerController extends Controller
                         ? \Illuminate\Support\Carbon::parse($installState['pre_activation_expires_at'])->utc()
                         : $issuedAt->copy()->addDays(max(1, (int) config('license.pre_activation_duration_days', 180)));
 
+                    // Persist the one-time issuance window first so a retry after an
+                    // identity-provider interruption cannot silently extend the pilot.
+                    $store->write(array_merge($installState, [
+                        'license_mode' => 'PRE_ACTIVATION_2026',
+                        'pre_activation_issued_at' => $issuedAt->toIso8601String(),
+                        'pre_activation_expires_at' => $expiresAt->toIso8601String(),
+                    ]));
+
+                    $identity = app(InstallationIdentityService::class)->getOrCreate((string) $installState['tenant_id']);
                     $store->write(array_merge($installState, [
                         'state' => 'PRE_ACTIVATION_READY',
                         'license_mode' => 'PRE_ACTIVATION_2026',
