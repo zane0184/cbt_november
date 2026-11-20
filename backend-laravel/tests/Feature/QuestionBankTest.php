@@ -287,7 +287,7 @@ class QuestionBankTest extends TestCase
             ->assertSet('page', 1)
             ->call('gotoPage', 2)
             ->set('statusFilter', 'PUBLISHED')
-            ->assertSet('p', 1);
+            ->assertSet('page', 1);
     }
 
     public function test_web_admin_create_and_update_multiple_response_question()
