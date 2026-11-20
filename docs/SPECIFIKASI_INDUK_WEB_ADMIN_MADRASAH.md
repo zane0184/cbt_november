@@ -1729,3 +1729,106 @@ Sediakan:
 ## 29.9 Status
 
 Requirement ini merupakan perluasan scope Web Admin yang ditetapkan pengguna. Belum ada klaim implementasi. Agent wajib mengaudit fitur jadwal/roster yang sudah ada sebelum merancang atau membuat duplikasi modul. Tetap ikuti gerbang audit → desain → persetujuan → implementasi → pengujian.
+
+---
+
+# 30. ALUR INTEGRASI UJIAN GURU KE WEB ADMIN DAN PENETAPAN PROKTOR
+
+## 30.1 Sumber data ujian
+
+Sumber utama data ujian adalah alur pembuatan ujian oleh Guru. Guru:
+- Menyusun soal/bank soal sesuai kewenangan.
+- Menentukan mata pelajaran ujian.
+- Menentukan jadwal ujian (tanggal, sesi/waktu, dan informasi pelaksanaan).
+- Menyimpan/mengelola ujian melalui portal Guru.
+
+Setelah ujian tersimpan, metadata ujian otomatis tersedia di Web Admin. Admin tidak membuat ulang record ujian dan tidak memasukkan ulang mata pelajaran atau jadwal akademik.
+
+## 30.2 Daftar ujian pada Web Admin
+
+Sediakan halaman **Daftar Ujian & Penugasan Proktor** yang mengambil data dari ujian yang dibuat Guru, dengan field yang tersedia dan diizinkan, sekurangnya:
+- Nama/judul ujian.
+- Mata pelajaran.
+- Guru pembuat/penanggung jawab.
+- Kelas, fase, rombel, atau sasaran peserta jika tersedia.
+- Tanggal, sesi, jam mulai dan selesai.
+- Status ujian.
+- Status penugasan pengawas (belum, sebagian, lengkap, konflik, perlu ditinjau ulang).
+
+Sediakan filter berdasarkan mapel, Guru pembuat, tanggal/periode, kelas/rombel, status ujian, dan status penugasan Proktor. Detail akademik ujian yang menjadi kewenangan Guru ditampilkan read-only.
+
+## 30.3 Penetapan pengawas oleh Admin
+
+Dari setiap item ujian pada list, Admin/Operator dapat membuka aksi **Atur/Tentukan Pengawas**. Admin memilih Guru aktif dari madrasah yang sama dan menetapkan pengawasan sesuai edaran resmi terverifikasi. Assignment terkait langsung dengan identitas ujian dan jadwal yang dibuat Guru.
+
+Semua Guru aktif dapat menjadi pengawas; tidak ada pembatasan kategori Guru kelas/Wali Kelas/Guru Mapel. Ketika jadwal berlaku, Guru yang tercantum otomatis memperoleh konteks/hak Proktor sementara untuk ujian/sesi yang ditugaskan.
+
+## 30.4 Batas kepemilikan dan otorisasi
+
+| Data/aksi | Pemilik kewenangan |
+|---|---|
+| Soal dan bank soal | Guru |
+| Mata pelajaran dalam konteks ujian | Guru |
+| Jadwal akademik ujian | Guru |
+| Konfigurasi akademik/CBT dan snapshot | Guru |
+| Token/penerbitan sesuai alur CBT | Guru |
+| Penilaian, jawaban, analisis, hasil | Guru |
+| Membaca daftar ujian untuk koordinasi | Admin/Operator |
+| Menetapkan/mengganti pengawas | Admin/Operator |
+| Validasi konflik dan kepatuhan roster | Sistem + Admin sesuai permission |
+
+Admin tidak boleh mengubah soal, mapel ujian, jadwal akademik, snapshot, token, aturan penilaian, atau hasil. Jika jadwal/mapel salah, koreksi dilakukan oleh Guru yang berwenang; Admin dapat memberikan catatan atau meminta koreksi.
+
+## 30.5 Sinkronisasi perubahan
+
+- Perubahan jadwal/mapel oleh Guru harus tercermin pada daftar Admin dari sumber data yang sama.
+- Bila perubahan memengaruhi assignment pengawas, tandai assignment sebagai **Perlu Ditinjau Ulang**.
+- Jangan menghapus, mengganti, atau memindahkan pengawas secara diam-diam.
+- Admin melakukan konfirmasi perubahan roster setelah melihat perubahan yang berdampak.
+- Simpan histori nilai lama/baru, actor, waktu, alasan, serta status peninjauan.
+- Pastikan pembaruan list konsisten dan tidak menampilkan data stale setelah perubahan tersimpan.
+
+## 30.6 Kepatuhan edaran dan konflik
+
+Penugasan pengawas mengikuti edaran resmi yang berlaku dan telah diverifikasi. Jangan mengarang rasio, jumlah pengawas, larangan, atau batas beban. Jika sumber belum diverifikasi, tampilkan status BELUM TERVERIFIKASI dan jangan menerapkan sebagai aturan wajib.
+
+Sebelum assignment disimpan, validasi:
+- Guru aktif dan satu madrasah dengan ujian.
+- Benturan jadwal Guru.
+- Benturan sesi/ruang bila informasi ruang tersedia.
+- Kesesuaian dengan aturan edaran terverifikasi.
+- Scope ujian, tanggal, sesi, dan waktu.
+- Permission Admin yang melakukan assignment.
+
+## 30.7 UI/UX yang wajib
+
+Halaman Admin menyediakan:
+- List ujian Guru yang otomatis terintegrasi.
+- Kolom mapel dan jadwal dari record ujian sumber.
+- Filter dan pencarian.
+- Detail ujian read-only.
+- Tombol “Atur/Tentukan Pengawas”.
+- Dialog/panel pemilihan Guru pengawas.
+- Preview roster dan hasil validasi konflik.
+- Status assignment.
+- Riwayat penggantian/pembatalan dan audit.
+- Empty/loading/error/success states.
+
+Tidak boleh ada form Admin untuk membuat ulang ujian atau mengubah mapel/jadwal akademik yang menjadi kewenangan Guru.
+
+## 30.8 Acceptance criteria
+
+1. Ujian yang dibuat Guru muncul otomatis pada list Admin.
+2. Mapel dan jadwal yang ditampilkan berasal dari record ujian Guru yang sama.
+3. Tidak ada input ulang atau duplikasi jadwal di Admin.
+4. Admin dapat menetapkan/mengganti Guru pengawas dari item ujian.
+5. Hak Proktor otomatis berasal dari assignment dan jadwal yang berlaku.
+6. Admin tidak dapat mengubah data akademik/CBT yang menjadi milik Guru.
+7. Perubahan jadwal Guru tercermin dan assignment terdampak ditandai perlu ditinjau ulang.
+8. Tidak ada perubahan roster otomatis tanpa konfirmasi Admin.
+9. Aturan edaran hanya diterapkan bila terverifikasi.
+10. Audit, tenant isolation, permission, konflik jadwal, sinkronisasi, dan concurrency diuji.
+
+## 30.9 Status
+
+Ini adalah klarifikasi alur produk dari pengguna. Requirement ini mengoreksi interpretasi sebelumnya: Admin bukan pembuat kalender akademik ujian dari awal, melainkan menetapkan pengawas dari daftar ujian yang dibuat Guru. Agent wajib mengaudit source dan alur integrasi aktual sebelum desain/implementasi. Tetap ikuti gerbang audit → desain → persetujuan → implementasi → pengujian.
