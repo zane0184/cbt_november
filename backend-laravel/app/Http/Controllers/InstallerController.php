@@ -171,23 +171,55 @@ class InstallerController extends Controller
             'admin_password' => 'required|string|min:14|confirmed',
         ]);
 
+        if (config('license.pre_activation_2026')) {
+            try {
+                $existingState = app(InstallerStateStore::class)->read();
+                $alreadyIssued = !empty($existingState['pre_activation_issued_at']);
+                $issueDeadline = \Illuminate\Support\Carbon::parse((string) config('license.pre_activation_issue_deadline'))->utc();
+                if (!$alreadyIssued && now()->utc()->greaterThan($issueDeadline)) {
+                    return back()->withInput()->with('error', 'Penerbitan mode pilot 2026 telah ditutup pada 31 Desember 2026. Gunakan aktivasi Publisher.');
+                }
+            } catch (Throwable $exception) {
+                Log::error('CBT pilot issue deadline could not be verified.', ['exception' => get_class($exception)]);
+                return back()->withInput()->with('error', 'Batas penerbitan mode pilot tidak dapat diverifikasi. Instalasi dihentikan.');
+            }
+        }
+
         $result = $this->installerService->createInitialDataAndAdmin($validated);
         if (!$result['success']) {
             return back()->withInput()->with('error', $result['message']);
         }
 
         if (config('license.pre_activation_2026')) {
-            $store = app(InstallerStateStore::class);
-            $installState = $store->read();
-            if (($installState['state'] ?? null) === 'ADMIN_CREATED' && !empty($installState['tenant_id'])) {
-                $identity = app(InstallationIdentityService::class)->getOrCreate((string) $installState['tenant_id']);
-                $store->write(array_merge($installState, [
-                    'state' => 'PRE_ACTIVATION_READY',
-                    'license_mode' => 'PRE_ACTIVATION_2026',
-                    'installation_identity_id' => (string) $identity->getKey(),
-                ]));
+            try {
+                $store = app(InstallerStateStore::class);
+                $store->synchronized(function (array $installState) use ($store): void {
+                    if (($installState['state'] ?? null) !== 'ADMIN_CREATED' || empty($installState['tenant_id'])) {
+                        throw new \RuntimeException('PILOT_INSTALLER_STATE_INVALID');
+                    }
+
+                    $identity = app(InstallationIdentityService::class)->getOrCreate((string) $installState['tenant_id']);
+                    $issuedAt = !empty($installState['pre_activation_issued_at'])
+                        ? \Illuminate\Support\Carbon::parse($installState['pre_activation_issued_at'])->utc()
+                        : now()->utc();
+                    $expiresAt = !empty($installState['pre_activation_expires_at'])
+                        ? \Illuminate\Support\Carbon::parse($installState['pre_activation_expires_at'])->utc()
+                        : $issuedAt->copy()->addDays(max(1, (int) config('license.pre_activation_duration_days', 180)));
+
+                    $store->write(array_merge($installState, [
+                        'state' => 'PRE_ACTIVATION_READY',
+                        'license_mode' => 'PRE_ACTIVATION_2026',
+                        'installation_identity_id' => (string) $identity->getKey(),
+                        'pre_activation_issued_at' => $issuedAt->toIso8601String(),
+                        'pre_activation_expires_at' => $expiresAt->toIso8601String(),
+                    ]));
+                });
+            } catch (Throwable $exception) {
+                Log::error('CBT pilot identity preparation failed after Admin creation.', ['exception' => get_class($exception)]);
+                return back()->with('error', 'Akun Admin sudah tercatat, tetapi identitas pilot belum siap. Jangan menghapus database atau mengulang migration; hubungi dukungan dengan kode PILOT_IDENTITY_PREPARATION_FAILED.');
             }
         }
+
         return redirect()->route(config('license.pre_activation_2026') ? 'installer.complete' : 'installer.license')->with('success', $result['message']);
     }
 
