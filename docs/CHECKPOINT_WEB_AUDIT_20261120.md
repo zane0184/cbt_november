@@ -250,3 +250,26 @@ Tanggal: 2026-11-20
 - Tidak ada workflow run pull_request dan tidak ada combined status checks pada head terakhir. Status tes tetap BELUM LULUS / BELUM DIJALANKAN.
 - Prompt handover agent baru tersedia di docs/HANDOVER_PROMPT_AGENT_BARU_WEB_CBT_20261120.md dan sudah ditambahkan addendum pagination.
 - Deployment VPS, ekstraksi ZIP, migration, dan perubahan database tetap BELUM dilakukan.
+
+
+## CI branch trigger diperbaiki dan run pertama
+### AUDIT
+- tenant-backend-ci.yml sebelumnya hanya memicu pull_request ke main dan push ke dua branch lama. PR #5 memakai base lain, sehingga event pull_request tidak memicu workflow.
+### DESAIN
+- Tambahkan branch audit Web pada daftar push trigger agar setiap perubahan branch menjalankan workflow yang memakai MySQL 8 disposable, validasi identitas DB fail-closed, smoke login/tenant, dan seluruh PHPUnit suite.
+### IMPLEMENTASI
+- Backup workflow: backend-laravel/backup_before_patch/WEB_CI_TRIGGER_20261120/tenant-backend-ci.yml.before
+- Workflow .github/workflows/tenant-backend-ci.yml menambahkan fix/web-portal-usability-rbac-20261120 ke daftar push branches.
+- Commit backup: edbb229ebf479c40345c36a10528757f14b1d947.
+- Commit workflow: 7d9e0fbe92a8305daea56fc7c633705ea8d01a5b.
+### PENGUJIAN
+- GitHub Actions run #620, ID 44732146599, event push, head 7d9e0fbe92a8305daea56fc7c633705ea8d01a5b.
+- Saat checkpoint ini diperbarui: run masih in_progress pada job laravel-mysql; container MySQL sedang inisialisasi. Belum ada hasil PHPUnit. Pantau run sampai conclusion terminal dan periksa job steps/log.
+- Link: https://github.com/zane0184/cbt_november/actions/runs/44732146599
+- Workflow DB bersifat disposable (MySQL 8 container) dan tidak mengarah ke VPS.
+
+## Status PR terkini
+- PR #5 tetap OPEN, Draft, unmerged, mergeable=true.
+- Head commit sebelum checkpoint update ini: 7d9e0fbe92a8305daea56fc7c633705ea8d01a5b.
+- CI workflow trigger sekarang diperbaiki; setiap push berikutnya pada branch audit memicu tes. Pull_request trigger masih terbatas main, sehingga PR check status dapat berbeda dengan push run.
+- VPS, DB produksi, .env, storage privat, installer state, vhost belum disentuh.
