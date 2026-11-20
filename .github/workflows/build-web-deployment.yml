@@ -54,6 +54,8 @@ jobs:
           composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
           composer check-platform-reqs --no-dev
           php artisan --version
+          php artisan route:list --path=install --json > "$RUNNER_TEMP/installer-routes.json"
+          php -r '$routes = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR); $uris = array_column($routes, "uri"); foreach (["install/authorize", "install/requirements", "install/database/test", "install/migrations/run", "install/admin/save", "install/complete"] as $required) { if (!in_array($required, $uris, true)) { fwrite(STDERR, "Missing installer route: {$required}" . PHP_EOL); exit(1); } }' "$RUNNER_TEMP/installer-routes.json"
           test -f vendor/autoload.php
 
       - name: Assemble clean standalone deployment tree
