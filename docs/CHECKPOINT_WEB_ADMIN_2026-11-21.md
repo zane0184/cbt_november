@@ -160,3 +160,24 @@ Ini catatan historis, wajib dites ulang sebelum digunakan sebagai fakta runtime 
 ## 9. CATATAN INTEGRITAS
 
 Checkpoint ini adalah posisi dokumentasi dan keputusan. Source aktual tetap menjadi dasar kebenaran. Jika checkpoint berbeda dari source/PR aktual, agent wajib mencatat perbedaan dan memperbarui checkpoint setelah verifikasi.
+
+
+## 10. TEMUAN BARU DARI REVIEW SCREENSHOT — SIDEBAR DAN LABEL PORTAL
+
+Pengguna melaporkan dua masalah pada screenshot dashboard yang ditinjau:
+- Sidebar gelap tidak dapat digulir, sehingga menu yang tidak muat di viewport tidak dapat dijangkau.
+- Teks brand “Panel Admin & Guru” tidak konsisten karena halaman yang dimaksud adalah halaman Admin, bukan portal gabungan Admin/Guru.
+
+**Keputusan/requirement baru:**
+1. Sidebar desktop harus scrollable secara vertikal dan independen dari konten utama.
+2. Seluruh menu harus tetap dapat diakses pada viewport pendek; jangan mengatasi dengan menyembunyikan item atau sekadar mengecilkan menu.
+3. Header brand sidebar tetap terbaca ketika menu di-scroll.
+4. Mobile memakai drawer/off-canvas yang tetap scrollable, dapat ditutup, dan mendukung keyboard/focus.
+5. Branding portal harus “Panel Admin Madrasah” atau “Admin Madrasah”; hapus “Panel Admin & Guru”.
+6. Judul halaman, badge role, breadcrumb, menu, dan profil harus sesuai role aktual. Jangan tampilkan “Dashboard Operator” atau “Role: Operator Madrasah” pada sesi Admin.
+7. Navigasi Admin tidak boleh mencampur fitur operasional Guru. Role display harus dinamis dari autentikasi/permission, bukan hard-coded.
+8. Perbaikan harus ditelusuri ke source layout/sidebar/menu/role; bukan hanya mengganti teks pada screenshot/mockup.
+
+**Acceptance criteria:** uji desktop 1366×768 dan viewport pendek; uji scroll sidebar vs konten utama secara independen; uji mobile drawer; cari seluruh string label yang salah; screenshot sebelum/sesudah dan bukti uji browser.
+
+**Status:** TEMUAN DICATAT — BELUM DIAUDIT ROOT CAUSE, BELUM DIIMPLEMENTASIKAN, BELUM DIUJI. Temuan ini masuk audit UI/UX dan backlog desain Web Admin. Tetap ikuti gerbang: audit read-only, desain, persetujuan pengguna, baru implementasi.
