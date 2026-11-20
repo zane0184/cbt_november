@@ -249,6 +249,18 @@ class ExamBuilderTest extends TestCase
             'password' => 'p',
         ]);
         $student->roles()->attach($studentRole);
+        $profile = \\App\\Models\\StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $student->id,
+            'full_name' => 'Siswa Sudah Selesai',
+        ]);
+        $assignedRombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
+        \\Illuminate\\Support\\Facades\\DB::table('rombel_student')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $assignedRombel->id,
+            'student_id' => $profile->id,
+        ]);
 
         $participant = \\App\\Models\\ExamParticipant::create([
             'tenant_id' => $this->tenant->id,
