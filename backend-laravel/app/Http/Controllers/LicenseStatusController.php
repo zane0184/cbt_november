@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\LocalInstallationIdentity;
 use App\Models\LocalLicenseState;
+use App\Services\InstallerStateStore;
 use App\Services\Licensing\PublisherLicenseClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,11 +13,30 @@ use Throwable;
 
 class LicenseStatusController extends Controller
 {
-    public function __invoke(): View
+    public function __invoke(Request $request): View
     {
+        $installState = [];
+        try {
+            $candidate = app(InstallerStateStore::class)->read();
+            if ((string) ($candidate['tenant_id'] ?? '') === (string) $request->user()?->tenant_id) {
+                $installState = $candidate;
+            }
+        } catch (Throwable) {
+            // Status remains available even if the local installer checkpoint is damaged.
+        }
+
+        $tenantId = (string) ($request->user()?->tenant_id ?? '');
+        $identity = $tenantId !== ''
+            ? LocalInstallationIdentity::withoutGlobalScopes()->where('tenant_id', $tenantId)->first()
+            : null;
+        $state = $identity
+            ? LocalLicenseState::withoutGlobalScopes()->where('installation_identity_id', $identity->id)->first()
+            : null;
+
         return view('license.status', [
-            'identity' => LocalInstallationIdentity::query()->first(),
-            'state' => LocalLicenseState::query()->first(),
+            'identity' => $identity,
+            'state' => $state,
+            'installState' => $installState,
         ]);
     }
 
