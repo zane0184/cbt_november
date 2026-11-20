@@ -118,7 +118,7 @@
                     </a>
                 @endif
 
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR')))
+                @if($u && $u->hasRole('ADMIN_MADRASAH') && $u->hasPermission('user.manage'))
                     <a href="/admin/users" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/users*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
                         <span>Pengguna & Akun</span>
