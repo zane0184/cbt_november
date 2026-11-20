@@ -129,6 +129,9 @@ jobs:
           EOF
 
           cd "$STAGE"
+          test -s README_PEMASANGAN.md
+          test -s PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md
+          grep -q 'CBT_LICENSE_MODE=PUBLISHER' backend-laravel/.env.example
           find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
 
           test -f backend-laravel/artisan
