@@ -92,3 +92,23 @@ GitHub blob SHA-1 saat pemeriksaan:
 Arsip snapshots memiliki byte-length: 20,450; 15,077; 11,978; 2,153; 1,740; 1,615; 1,674; 16,924. GitHub fetch menghasilkan character-length: 20,746; 15,942; 13,521; 2,103; 1,700; 1,580; 1,638; 13,770. Ini menunjukkan perbedaan versi/representasi dan wajib diaudit sebagai dua snapshot terpisah.
 
 **Keputusan keselamatan:** source aktif GitHub tidak ditimpa. Snapshot arsip belum berhasil diunggah sebagai raw file tersendiri. ZIP tetap diperlukan sampai raw snapshot yang ingin dipertahankan benar-benar disimpan dan diverifikasi.
+
+
+## ADDENDUM PENTING — ATURAN SUMBER KEBENARAN (DIKONFIRMASI USER)
+**GitHub branch source terbaru adalah acuan utama dan wajib dipertahankan.** Arsip ZIP 18 Nov (1) adalah sumber historis/pemulihan, bukan pengganti source terbaru.
+
+Branch source yang diverifikasi:
+- `fix/web-portal-usability-rbac-20261120`
+- HEAD: `ade5daa6cf853c164c4f51ec6e25ca68ce40b4f2`
+- Tree: `f5cc0a523f52d19b0fa9ca7c30fb7576d3ace615`
+- Commit: `ci: enable verified web deployment package for PR5 branch`
+- URL: https://github.com/zane0184/cbt_november/commit/ade5daa6cf853c164c4f51ec6e25ca68ce40b4f2
+
+### Instruksi wajib
+1. Jangan pernah mengganti, menurunkan versi, atau menimpa file branch source terbaru menggunakan file ZIP 18 Nov (1), ZIP 18 Nov (2), ZIP 17 Nov, atau arsip lebih lama.
+2. Jika file arsip berbeda dengan HEAD GitHub, pertahankan HEAD GitHub. File arsip hanya boleh disimpan sebagai snapshot historis terpisah dengan nama/path dan checksum asal.
+3. Pemulihan hanya untuk artefak yang tidak ada di GitHub, setelah pencarian branch/commit/tree selesai. Jangan duplikasi file yang sudah ada.
+4. Untuk file yang sama: GitHub HEAD tetap canonical; file historis masuk karantina `docs/recovery/archive-snapshots/` bila perlu, bukan ke source aktif.
+5. Tidak ada force push, reset, rebase destruktif, overwrite, merge, atau pengubahan branch source tanpa instruksi dan persetujuan user.
+6. Branch `recovery/source-preservation-20261121` hanya untuk laporan/manifest/snapshot recovery. Branch ini bukan pengganti branch source.
+7. Sebelum menghapus ZIP, verifikasi inventaris semua artefak unik yang belum ada di GitHub dan pastikan sudah disimpan terpisah. Jangan hapus arsip yang masih satu-satunya salinan source/backup.
