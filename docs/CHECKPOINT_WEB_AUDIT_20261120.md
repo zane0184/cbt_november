@@ -33,3 +33,12 @@ PR: #5 (Draft)
 - Tambah regression tests untuk mismatch menu/authorization dan skenario tenant.
 - Jalankan CI dan verifikasi hasil.
 - Deployment menunggu review/merge PR dan backup VPS yang disetujui secara eksplisit. Jangan timpa .env, DB, storage privat, atau installer state.
+
+
+## Audit lanjutan — visibilitas aksi dan navigasi hasil
+- Ditemukan tombol Publikasikan/Tarik Publikasi pada halaman hasil tampil tanpa memperhatikan policy `publishResults`, padahal ExamPolicy hanya mengizinkan Guru pemilik asesmen yang memiliki permission dan penugasan aktif. Admin Madrasah/Kamad dapat melihat halaman hasil tetapi tombol tersebut akan ditolak server.
+- Ditemukan tombol Finalisasi Masal juga tampil untuk semua pembaca hasil, meskipun kebijakan finalisasi hanya mengizinkan Admin Madrasah atau Guru dengan permission `exam.grade` dan batas penugasan terkait.
+- Link Bank Soal dan Kurikulum sebelumnya hanya memeriksa role, padahal mount komponen memerlukan permission `question.view` dan `curriculum.view`.
+- Implementasi: navigasi Bank Soal dan Kurikulum kini memeriksa permission view; tombol publikasi memakai Blade policy `@can('publishResults', $exam)`; tombol finalisasi hanya ditampilkan untuk Admin Madrasah/Guru dengan `exam.grade`. Server-side authorization yang ada tetap menjadi otoritas.
+- Commit: `93e1af2357b1ec4fdd3db50373f79c0fe122a03c` (layout) dan `899e5d442d20ab571ef8a3ccec800d2e63d56aa6` (hasil ujian).
+- Tes otomatis/runtime untuk perubahan ini belum dijalankan; status tetap BELUM LULUS UJI.
