@@ -138,7 +138,7 @@ class EnsureLicenseActive
             $attempt = ExamAttempt::withoutGlobalScopes()->with('participant')->whereKey($match[2])->first();
             if (!$attempt || $attempt->status !== 'IN_PROGRESS' || !$attempt->started_at || !$attempt->expires_at) return false;
 
-            $pilotExpiresAt = \\Illuminate\\Support\\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
+            $pilotExpiresAt = \Illuminate\Support\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
             return (string) $attempt->tenant_id === (string) ($install['tenant_id'] ?? '')
                 && (string) $attempt->exam_id === (string) $match[1]
                 && (string) $attempt->participant?->user_id === (string) $request->user()->id
