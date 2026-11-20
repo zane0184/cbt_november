@@ -187,7 +187,7 @@ jobs:
           $proctorMigration = (int) $pdo->query("SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100001_create_exam_proctor_assignments_table'")->fetchColumn();
           $deviceLeaseMigration = (int) $pdo->query("SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100002_harden_device_lease_tenant_constraints'")->fetchColumn();
           $deviceLeaseForeignKeys = (int) $pdo->query("SELECT COUNT(DISTINCT CONSTRAINT_NAME) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND CONSTRAINT_NAME IN ('registered_devices_tenant_fk','registered_devices_user_tenant_fk','registered_devices_revoker_tenant_fk','device_leases_tenant_fk','device_leases_attempt_tenant_fk','device_leases_device_tenant_fk','device_leases_releaser_tenant_fk')")->fetchColumn();
-          $deviceCandidateIndex = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='registered_devices' AND INDEX_NAME='registered_devices_id_tenant_unique' AND NON_UNIQUE=0")->fetchColumn();
+          $deviceCandidateIndex = (int) $pdo->query("SELECT COUNT(DISTINCT INDEX_NAME) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='registered_devices' AND INDEX_NAME='registered_devices_id_tenant_unique' AND NON_UNIQUE=0")->fetchColumn();
           $result = [
               'database' => $db,
               'table_count' => $tables,
@@ -267,7 +267,7 @@ jobs:
           $deviceLeaseMigrationSeen = in_array('2026_11_20_100002_harden_device_lease_tenant_constraints', array_column($ledger, 'migration'), true);
           $deviceLeaseForeignKeyNames = $pdo->query("SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND CONSTRAINT_NAME IN ('registered_devices_tenant_fk','registered_devices_user_tenant_fk','registered_devices_revoker_tenant_fk','device_leases_tenant_fk','device_leases_attempt_tenant_fk','device_leases_device_tenant_fk','device_leases_releaser_tenant_fk')")->fetchAll(PDO::FETCH_COLUMN);
           $deviceLeaseFkPass = count(array_unique($deviceLeaseForeignKeyNames)) === 7;
-          $deviceCandidateIndex = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='registered_devices' AND INDEX_NAME='registered_devices_id_tenant_unique' AND NON_UNIQUE=0")->fetchColumn();
+          $deviceCandidateIndex = (int) $pdo->query("SELECT COUNT(DISTINCT INDEX_NAME) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='registered_devices' AND INDEX_NAME='registered_devices_id_tenant_unique' AND NON_UNIQUE=0")->fetchColumn();
           $mappingCreate = null;
           if ($mappingExists) {
               $mappingCreate = $pdo->query("SHOW CREATE TABLE question_multi_curriculum_mappings")->fetch(PDO::FETCH_ASSOC);
