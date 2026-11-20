@@ -51,6 +51,13 @@
                 <option value="EXPIRED">Expired</option>
             </select>
 
+            <select wire:model.live="rombelId" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                <option value="">Semua Rombel</option>
+                @foreach($rombels as $rombel)
+                    <option value="{{ $rombel->id }}">{{ $rombel->name }}</option>
+                @endforeach
+            </select>
+
             <select wire:model.live="gradingStatus" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                 <option value="">Semua Status Penilaian</option>
                 <option value="NOT_SCORED">Belum Dinilai</option>
