@@ -7,7 +7,7 @@ on:
     paths:
       - '.github/workflows/build-web-deployment.yml'
       - 'backend-laravel/**'
-      - 'docs/PANDUAN_INSTALASI_WEB_CBT_MANDIRI.md'
+      - 'docs/**'
   workflow_dispatch:
 
 permissions:
