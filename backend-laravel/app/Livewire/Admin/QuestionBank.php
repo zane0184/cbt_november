@@ -23,6 +23,21 @@ class QuestionBank extends Component
     public $subjectFilter = '';
     public $statusFilter = '';
 
+    public function updatingSubjectFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount()
     {
         $user = auth()->user();
