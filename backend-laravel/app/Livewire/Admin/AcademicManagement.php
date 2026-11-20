@@ -127,8 +127,14 @@ class AcademicManagement extends Component
             ->latest()
             ->paginate(15);
 
-        $subjects = Subject::when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%')
-            ->orWhere('code', 'like', '%' . $this->search . '%'))
+        $subjects = Subject::query()
+            ->when($this->search, function ($query): void {
+                // Group alternatives to preserve tenant/soft-delete constraints.
+                $query->where(function ($searchQuery): void {
+                    $searchQuery->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('code', 'like', '%' . $this->search . '%');
+                });
+            })
             ->latest()
             ->paginate(15);
 
