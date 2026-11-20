@@ -380,3 +380,41 @@ Tanggal: 2026-11-20
 - PR #5 tetap Draft/open/unmerged/undeployed.
 - Dilarang deployment VPS, migration produksi, ekstraksi ZIP, overwrite DB/.env/storage/vhost tanpa rencana, backup, preflight dan persetujuan eksplisit.
 - Jangan nyatakan production-ready atau siap ujian berdasarkan CI saja.
+
+
+---
+
+# ADDENDUM AUDIT LANJUTAN — 20 NOVEMBER 2026 — CI #686
+
+## AUDIT
+- CI #686 / run ID 44749489282: COMPLETED SUCCESS. Job laravel-mysql ID 136333362885; full suite 480 passed, 1.942 assertions, 61,09 detik pada MySQL 8.0.46 disposable. https://github.com/zane0184/cbt_november/actions/runs/44749489282
+- Migration role_user many-to-many (migration SHA 18602aca8a15e4d75edec415fd012ea16f8289dd) memungkinkan satu user memiliki lebih dari satu role.
+- User.php SHA 74dd080f703d7ef3256b406176e53dad5786a937: hasRole mengecek koleksi role; hasPermission menggabungkan permission semua role (roles->flatMap->permissions). Akun multi-role menggabungkan hak seluruh role.
+- AuthWebController.php SHA 1f76179dbbf304eb11271b74fbe1d1d38c74a401: login mengizinkan jika setidaknya satu role allowlist; redirectForUser memprioritaskan ADMIN/OPERATOR, KAMAD, PROKTOR, GURU, SISWA. Tidak ada pemeriksaan tepat satu role.
+- UserManagement.php SHA 5f90e3873cadeb77a1bcd5a6aa2134953e60beed membuat role Guru/Siswa dengan sync tunggal, tetapi tidak membuktikan jalur lain/akun existing bebas multi-role.
+- DatabaseSeeder.php SHA bb9a55dd16ac7b7e56b79dc8f5ccaca689416868 menciptakan tenant.view, tenant.manage, user.view, executive.dashboard selain permission lain. RolePermissionBootstrapper tidak memasukkan empat permission ini ke map reconcile. Telusuri semua referensi sebelum menyimpulkan unused; jangan hapus/revoke spekulatif.
+- RolePermissionBootstrapper SHA fac82573de84c52b52867afbbf7e1637164835b4 tetap additive syncWithoutDetaching + selective detach. Test SHA cfacac702f967667c8e1e4f6dff18000fc105f68 belum mencakup semua stale grants dan belum membuat role PROKTOR.
+- Migration mendefinisikan role tenant permanen ADMIN_MADRASAH, OPERATOR, KAMAD, GURU, SISWA; PROKTOR tidak tercantum sebagai role tenant permanen.
+- AssessmentPolicy SHA 79a0367c8c83723ae3cc9e581fb8dda8a6e2d02a dan ExamPolicy SHA 350c1ddc6bed8738d1af17cacd6c95bc367b7c29: viewAny beberapa role tidak mensyaratkan permission eksplisit; pastikan list query tetap tenant/assignment scoped.
+- ReportPolicy SHA e53be3994c52d067c1e31fe37edc450c24a0f4b6: Guru butuh report.view + assignment untuk hasil ujian; Admin/Kamad report.view; self-view student diperbolehkan. Subject aggregate dibatasi Admin/Kamad. Controller query/export dan ResultDetail matrix belum tuntas.
+- routes/web.php SHA c22fed7d54871bf4971acf626514fc02c4a68ce9: beberapa route memakai auth+tenant+license dan mengandalkan authorization di mount/method Livewire. Audit seluruh mutation methods.
+
+## DESAIN
+- Multi-role berpotensi privilege aggregation. Keputusan proyek memisahkan portal; Proktor penugasan sementara. Belum ada keputusan eksplisit mengizinkan akun multi-role permanen. Susun cardinality matrix sebelum mengubah model/pivot; pertimbangkan role utama tunggal + penugasan Proktor terpisah dan Super Admin tetap platform-level. Jangan patch sebelum impact analysis installer/seeder/auth/proctor.
+
+## IMPLEMENTASI
+- Tidak ada perubahan source aplikasi, migration, atau DB produksi pada audit ini.
+
+## PENGUJIAN
+- CI #686: 480 passed / 1.942 assertions, disposable MySQL 8.0.46. CI hijau tidak membuktikan seluruh matrix role tercakup.
+
+## TUGAS AGENT PENERUS
+1. Code-reference inventory tenant.view, tenant.manage, user.view, executive.dashboard dan semua permission; klasifikasikan active/legacy/reserved.
+2. Audit multi-role: login, redirect precedence, permission union, create/edit, installer, seeder, proctor assignment. Terapkan invariant hanya setelah matriks dan regression tests.
+3. Isolasi Super Admin dari tenant portal; Proktor hanya monitoring exam dengan assignment aktif, tanpa hak global/authoring.
+4. Lengkapi stale permission tests seluruh role termasuk PROKTOR, tanpa blanket detach custom grants.
+5. Lengkapi ResultDetail/report/export/analytics role matrix dan query scope; audit viewAny/list endpoints.
+6. Backup sebelum patch; CI disposable; update checkpoint/handover. Tidak ada deployment/migration produksi.
+
+## BATASAN
+- PR #5 tetap Draft/open/unmerged/undeployed. Fokus Web/backend; Android ditunda sampai Juni 2027. Tidak ada perubahan VPS/DB/.env/storage/installer-state/vhost.
