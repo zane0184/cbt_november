@@ -37,7 +37,7 @@ Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login')
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
-Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->name('license.status');
+Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
 Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
 
 // Web Installer Wizard Routes
