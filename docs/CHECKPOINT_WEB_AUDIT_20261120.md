@@ -221,3 +221,10 @@ Tanggal: 2026-11-20
 - Tambahkan/selesaikan regression coverage untuk batas tenant subject dan tahun ajaran rombel pada ExamManagement.
 - Jalankan test suite lengkap pada MySQL 8 disposable. Pastikan fixture ExamSnapshotTest dan test baru lolos.
 - Lanjutkan audit seluruh UI aksi, role/permission, tenant isolation, laporan, analytics, dan sinkronisasi sebelum menyatakan Web selesai.
+
+
+## Handover untuk agent penerus
+- Prompt handover lengkap telah dibuat di docs/HANDOVER_PROMPT_AGENT_BARU_WEB_CBT_20261120.md.
+- Dokumen memuat arsitektur/keputusan yang tidak boleh berubah, batas keselamatan, status PR/CI, temuan audit, file yang harus dibaca, pekerjaan tertunda, status VPS, instruksi Android Studio, dan deliverables.
+- Commit prompt handover: dcaedd1a176675192d525db6a8aedb2b87762445.
+- Head branch setelah pembuatan dokumen perlu diverifikasi ulang sebelum handover final.
