@@ -42,3 +42,11 @@ PR: #5 (Draft)
 - Implementasi: navigasi Bank Soal dan Kurikulum kini memeriksa permission view; tombol publikasi memakai Blade policy `@can('publishResults', $exam)`; tombol finalisasi hanya ditampilkan untuk Admin Madrasah/Guru dengan `exam.grade`. Server-side authorization yang ada tetap menjadi otoritas.
 - Commit: `93e1af2357b1ec4fdd3db50373f79c0fe122a03c` (layout) dan `899e5d442d20ab571ef8a3ccec800d2e63d56aa6` (hasil ujian).
 - Tes otomatis/runtime untuk perubahan ini belum dijalankan; status tetap BELUM LULUS UJI.
+
+
+## Audit Bank Soal — validasi kunci jawaban
+- Ditemukan validasi Pilihan Ganda yang menerima `correctOption=C/D` walaupun opsi C/D kosong. Untuk Pilihan Ganda Kompleks, daftar kunci dapat menunjuk ke opsi yang kosong atau berisi key tidak dikenal/duplikat.
+- Dampak: soal dapat tersimpan dengan kunci yang tidak punya opsi pasangan, sehingga jawaban siswa berpotensi tidak dapat dipilih atau dinilai sesuai kunci.
+- Implementasi: validasi sekarang memastikan kunci PG menunjuk opsi terisi; PG Kompleks memvalidasi array, nilai hanya A-D, elemen unik, dan setiap kunci menunjuk opsi terisi.
+- Commit: `cbb727191879734fa6207acb3abe81ad133593a5`.
+- Belum ada PHPUnit/Livewire runtime test untuk kasus valid/invalid ini; status BELUM LULUS UJI.
