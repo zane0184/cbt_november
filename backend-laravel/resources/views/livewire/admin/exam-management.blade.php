@@ -175,7 +175,7 @@
                             @error('selectedSemesterId') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Rombel Target Peserta (Wajib)</label>
+                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">{{ $editingExamId ? 'Tambahkan Peserta dari Rombel' : 'Rombel Target Peserta (Wajib)' }}</label>
                             <select wire:model.live="selectedRombelId" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
                                 <option value="">Pilih Rombel Target Peserta...</option>
                                 @foreach($rombels as $rombel)
@@ -185,6 +185,11 @@
                                     <option value="ALL">⚠️ SELURUH SISWA MADRASAH (TETAPKAN GLOBAL)</option>
                                 @endif
                             </select>
+                            @if($editingExamId)
+                                <p class="text-[11px] text-amber-800 mt-1">Mode edit hanya menambahkan siswa yang belum terdaftar dari rombel yang dipilih. Peserta lama tetap dipertahankan; sistem tidak menghapus atau mengganti daftar peserta yang sudah ada.</p>
+                            @else
+                                <p class="text-[11px] text-textSecondary mt-1">Peserta diambil dari rombel yang dipilih saat ujian disimpan.</p>
+                            @endif
                             @error('selectedRombelId') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                         </div>
                     </div>
