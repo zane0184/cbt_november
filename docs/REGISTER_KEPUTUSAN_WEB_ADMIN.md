@@ -21,23 +21,16 @@ Status: keputusan produk dari pengguna; perubahan hanya melalui klarifikasi/pers
 
 ## 3. Role dan kewenangan
 
-### Admin Madrasah = Operator Madrasah
-- Satu role, satu akun/portal/dashboard/sidebar/permission set.
-- Label utama: **Admin Madrasah**; brand sidebar: **Panel Admin Madrasah**.
-- “Operator Madrasah” hanya alias/istilah penjelas, bukan role kedua.
-- Jangan mengubah identifier role lama sebelum audit kompatibilitas data/source.
+### Admin Madrasah — satu-satunya role aktif
+ADMIN_MADRASAH adalah satu-satunya role aktif pengelola madrasah. Operator adalah nama/identifier lama dan bukan role kedua. Semua akun lama OPERATOR/ADMIN tenant-local dipetakan ke ADMIN_MADRASAH melalui migration aman. Tidak ada runtime branch, portal, dashboard, sidebar, atau permission profile Operator.
+
+Akun berbeda tetap dipertahankan sebagai user record berbeda; jangan menggabungkan akun orang yang berbeda. Semua akun lama memperoleh permission array dan otorisasi route/action yang identik.
 
 ### Guru
-- Portal/role terpisah.
-- Pemilik alur akademik CBT sesuai assignment dan permission: bank soal/media, pembuatan ujian, mapel dalam ujian, jadwal akademik, konfigurasi, snapshot, token/penerbitan, penilaian, jawaban, analisis, hasil.
+Guru tetap menjadi pemilik bank soal, soal, ujian, mapel yang tertaut pada ujian, jadwal akademik, konfigurasi CBT, snapshot, penerbitan/token, jawaban, penilaian, analisis dan hasil.
 
 ### Proktor
-- Bukan role permanen dan bukan portal tersendiri.
-- Proktor adalah Guru yang mendapat assignment pengawasan pada ujian tertentu.
-- Semua Guru aktif pada madrasah yang sama dapat dipilih; jangan membatasi kategori Guru kelas/Wali Kelas/Guru Mapel.
-- Status/hak Proktor sementara berasal otomatis dari assignment dan jadwal yang berlaku.
-- Hak dibatasi ujian/sesi/ruang/waktu yang ditugaskan. Waktu server menjadi acuan.
-- Penetapan/penggantian/pembatalan wajib memiliki otorisasi, validasi konflik, dan audit trail.
+Proktor adalah capability sementara untuk Guru aktif yang memiliki assignment sah. Tidak ada role atau portal Proktor permanen. Semua Guru aktif dalam madrasah yang sama dapat dipilih.
 
 ## 4. Alur ujian Guru → Admin → pengawas (KEPUTUSAN TERBARU)
 
@@ -132,39 +125,38 @@ Admin bukan operator authoring CBT Guru.
 
 ## 13. Arsitektur instalasi mandiri
 
-1. Satu madrasah = satu instalasi = satu database sendiri.
-2. Tidak ada shared operational database atau pertukaran data akademik/operasional antarmadrasah.
-3. tenant_id, TenantContext, middleware, global scope, policy, audit, dan composite FK dipertahankan sebagai pertahanan internal; bukan untuk menyatukan database.
-4. TenantContext berasal dari identitas instalasi dan user sah; tidak ada tenant switching atau X-Tenant-Override.
-5. Installer wajib memastikan satu tenant kanonis pada DB instalasi. Source sekarang membuat tenant dan LocalInstallationIdentity, tetapi invariant satu tenant per DB belum dibuktikan.
-6. Setiap domain mempunyai .env, APP_KEY, DB credentials, storage, secrets, dan backup sendiri. .env.example configurable, tetapi uji install lintas domain dan interaksi registered_domain/lisensi belum dijalankan.
-7. Web Super Admin/Publisher ditunda; scope mendatang hanya lisensi, aktivasi, pembayaran, bukan data akademik.
+Satu madrasah = satu instalasi = satu database sendiri. Tidak ada shared operational database atau pertukaran data akademik antarmadrasah. tenant_id, TenantContext, middleware, global scope, policy, audit dan composite FK dipertahankan sebagai defense-in-depth internal.
+
+InstallationIdentityService sudah menegakkan tepat satu Tenant dan maksimal satu LocalInstallationIdentity per DB. TenantScoped fail-closed jika context kosong. IdentifyTenant mengambil tenant dari user dan mengabaikan X-Tenant-Override. Batas tersisa: SystemTenantSeeder harus diisolasi, User model diuji eksplisit, dan registered_domain existing identity harus dicocokkan dengan APP_URL host.
 
 ## 14. Role dan kepemilikan ujian
 
-- ADMIN_MADRASAH adalah satu permission profile untuk Admin Madrasah/Operator. OPERATOR legacy dipertahankan sementara untuk kompatibilitas.
-- Semua Guru aktif dalam instalasi yang sama dapat ditugaskan sebagai Proktor.
-- Tidak ada role atau portal Proktor permanen. Role PROKTOR lama tidak dihapus sebelum migrasi aman dan tidak menjadi dasar akses baru.
-- Guru memiliki soal, ujian, mapel dalam ujian, jadwal akademik ujian, snapshot, token/penerbitan, jawaban, penilaian, analisis, dan hasil.
-- Admin hanya membaca metadata ujian Guru dan menetapkan pengawas. Admin tidak boleh monitoring, close, token, grading, jawaban, hasil, atau mengubah metadata ujian.
-- Admin boleh mengelola master katalog mapel madrasah; mapel yang dipilih/ditautkan pada ujian tetap milik Guru.
+- ADMIN_MADRASAH adalah satu-satunya role Admin aktif. OPERATOR dan ADMIN hanya identifier legacy migration-only; tidak ada role/pivot/grant aktif setelah transisi.
+- Semua akun OPERATOR/ADMIN tenant-local dipetakan ke ADMIN_MADRASAH dengan menjaga user ID, password, tenant, profil, dan histori. Akun orang berbeda tidak digabung.
+- Semua Guru aktif dapat ditugaskan sebagai Proktor sementara. Tidak ada role/portal Proktor permanen. Legacy PROKTOR hanya dipetakan ke GURU jika TeacherProfile valid dan tenant cocok.
+- Guru memiliki soal, ujian, mapel ujian, jadwal akademik, snapshot, token/penerbitan, jawaban, penilaian, analisis, hasil.
+- Admin hanya membaca metadata ujian Guru dan menetapkan/meninjau/mencabut assignment pengawas. Admin tidak mengubah atau memonitor ujian, tidak membuat token, tidak grading, tidak membuka jawaban/nilai/hasil.
 
 ## 15. Aturan assignment Proktor
 
-- Assignment terikat ke tenant, exam, rombel/class, Guru, actor Admin, periode [starts_at, expires_at), status, alasan, versi/fingerprint jadwal, dan histori.
-- Interval setengah terbuka: starts_at <= now < expires_at.
-- Overlap: existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at.
-- Satu Guru tidak boleh mempunyai assignment overlap lintas kelas/rombel maupun lintas ujian.
-- Transaksi lock exam, lock baris Guru sebagai mutex, query overlap locking/current read, lalu simpan. Lock Guru sudah ada di source; pemeriksaan overlap belum ada.
-- Perubahan jadwal Guru memicu NEEDS_REVIEW; Admin mengonfirmasi ulang setelah validasi konflik. Tidak ada pergeseran roster diam-diam.
-- Expiry ditolak otomatis pada setiap request dengan waktu server. Revoke langsung memutus akses. NEEDS_REVIEW, REVOKED, dan COMPLETED tidak memberi hak.
-- Semua aksi create/change/replace/review/confirm/revoke/complete dicatat append-only.
+- Assignment mengikat tenant, exam, rombel, Guru aktif, actor Admin, periode [starts_at, expires_at), status, schedule revision, alasan dan histori.
+- Interval setengah terbuka [start,end). Overlap: existing.starts_at < new.expires_at AND effective_existing_end > new.starts_at.
+- Satu Guru tidak boleh mempunyai assignment overlap lintas kelas/rombel atau ujian.
+- Transaksi InnoDB memakai lock order exam → Guru row → assignment rows. Setelah mutex Guru didapat, query overlap locking/current read FOR UPDATE. Semua write memakai service yang sama.
+- Perubahan jadwal Guru melalui ExamScheduleChangeService menandai assignment terdampak NEEDS_REVIEW; Admin meninjau/confirm setelah validasi konflik.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED tidak memberi capability. Expiry ditolak langsung berdasarkan waktu server; revoke langsung menghentikan akses.
+- Semua create/renew/reschedule/review/confirm/revoke/expire dicatat AuditService dan event append-only.
 
 ## 16. Koreksi audit
 
-Penguncian baris Guru pada ExamProctorAssignmentService sudah ada; temuan concurrency lama diperjelas: masalahnya bukan tidak ada mutex, tetapi tidak ada query overlap setelah mutex. TenantScoped juga belum otomatis fail-closed saat TenantContext kosong. Admin saat ini memiliki permission/policy monitoring dan close yang harus dicabut dari profile final.
-
-
+- Source aktual masih membuat role OPERATOR pada DatabaseSeeder, RolePermissionBootstrapper, dan InstallerService; grant Admin/Operator berbeda.
+- Login resolver, auth controller, license status, routes, policies, layout, dan dashboard masih membedakan Admin/Operator.
+- ADMIN legacy masih diterima pada beberapa komponen; harus migration-only setelah preflight.
+- Proktor masih role permanen pada beberapa source; harus capability Guru dari assignment.
+- TenantScoped fail-closed dan one Tenant per DB sudah ada; catatan audit lama yang menyebut belum ada dikoreksi.
+- Assignment service sudah lock row Guru, tetapi belum overlap query; revoke belum konsisten lock order.
+- Jadwal API/Livewire belum memicu NEEDS_REVIEW; rombel_id dan event history belum ada.
+- Source canonical seluruh CBT belum terkunci karena raw baseline/workspace tidak tersedia; working source Web Admin yang direkomendasikan tercatat pada Section 19.
 
 ## 17. Koreksi final Admin Madrasah = Operator
 Keputusan final: satu role aktif ADMIN_MADRASAH. OPERATOR 100% sama dengan Admin Madrasah dan bukan role kedua. Satu akun/login/portal/dashboard/sidebar/permission profile/kewenangan. Tidak ada runtime branching untuk OPERATOR atau ADMIN. Legacy ADMIN tenant-local juga diverifikasi dan dipetakan ke ADMIN_MADRASAH; SUPER_ADMIN tidak dipetakan. KAMAD tetap terpisah.

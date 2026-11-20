@@ -58,7 +58,7 @@ Klasifikasi: MASIH BERLAKU = temuan audit lama masih terlihat pada source branch
 8. **Batas interval akses sudah setengah terbuka.** ExamProctorAssignment::scopeActiveNow memakai starts_at <= waktu server dan expires_at > waktu server. Ini sesuai [start,end) untuk pemeriksaan akses. Belum ada validasi overlap.
 9. **Kelas tidak terikat pada assignment.** Tabel assignment hanya memiliki exam_id dan proctor_user_id; tidak memiliki rombel_id/class_id. Session/room juga belum menjadi atribut assignment. Aturan satu Guru satu kelas belum dapat ditegakkan dengan konteks kelas eksplisit.
 10. **Perubahan jadwal belum memicu review.** Belum ditemukan alur yang mengubah assignment menjadi NEEDS_REVIEW/Perlu Ditinjau Ulang saat Guru mengubah jadwal ujian.
-11. **TenantScoped perlu koreksi fail-closed.** Trait membuat model tenant-scoped menolak create tanpa tenant context, tetapi global scope hanya menambahkan where tenant_id bila context tersedia. Jika context tidak ada, query tidak otomatis ditolak. IdentifyTenant juga meneruskan request ketika tidak ada user atau user tanpa tenant. Middleware auth melindungi route tertentu, tetapi fail-closed pada seluruh jalur query/API belum dibuktikan. Tambahkan guard eksplisit dan tes tenantless-context.
+11. **TenantScoped sudah fail-closed pada model yang memakai trait.** Context kosong menghasilkan whereRaw 1=0 untuk query dan exception untuk create. IdentifyTenant mengambil tenant dari user terautentikasi dan mengabaikan X-Tenant-Override. User tidak memakai TenantScoped, sehingga query User/withoutGlobalScopes tetap perlu audit eksplisit.
 12. **TenantContext diturunkan dari user.** IdentifyTenant mengabaikan X-Tenant-Override dan mengambil tenant_id dari user terautentikasi; ini selaras dengan larangan tenant switching. Tetap perlu invariant satu tenant lokal per instalasi.
 13. **Composite foreign keys assignment sudah menjadi fondasi baik.** Migration mengikat exam, user proktor, assigner, dan revoker bersama tenant_id. Pertahankan dan perluas untuk rombel bila skema final disetujui.
 14. **CI tidak dijalankan ulang oleh audit ini.** Status pengujian pada dokumen lama tidak boleh diperlakukan sebagai pengujian baru. Tidak ada test runtime, browser, atau concurrency test yang dijalankan pada sesi rekonsiliasi.
@@ -78,7 +78,7 @@ Klasifikasi: MASIH BERLAKU = temuan audit lama masih terlihat pada source branch
 ## E. Role dan permission kanonis
 
 ### Admin Madrasah
-ADMIN_MADRASAH menjadi identitas dan permission profile kanonis untuk Admin Madrasah/Operator. Satu dashboard, satu portal, satu sidebar, satu permission profile. OPERATOR dipertahankan sementara sebagai legacy identifier/alias kompatibilitas sampai inventaris akun, pivot, dan grant selesai; jangan menghapus atau mengubah akun/role secara destruktif.
+ADMIN_MADRASAH adalah satu-satunya role aktif. OPERATOR/ADMIN hanya alias migration-only; tidak ada runtime role branch atau role row/pivot/grant aktif setelah transisi. Akun orang berbeda tetap dipertahankan sebagai user record berbeda; semua akun lama dipetakan ke permission profile yang identik.
 
 Permission Admin hanya mencakup administrasi madrasah sesuai modul, pembacaan metadata ujian Guru, dan exam.proctor.assign. Admin tidak membuat/mengubah soal, ujian, mapel yang tertaut pada ujian, jadwal akademik ujian, snapshot, token, peserta, jawaban, nilai, analisis, atau monitoring operasional Guru/Proktor.
 
@@ -152,9 +152,9 @@ Pada setiap request/action yang memerlukan capability Proktor, server memeriksa 
 | Tahap | Target source/modul | Dependency | Acceptance criteria | Risiko utama | Pengujian wajib |
 |---|---|---|---|---|---|
 | W0 | Branch/source inventory, tree, manifest, backup, route-action matrix; tidak ada file aplikasi yang diubah | Persetujuan desain terlebih dahulu | Source branch canonical disepakati; main backup-only tidak dipakai; baseline SHA dan backup terverifikasi; inventaris tidak duplikatif | Salah memilih branch/source dan menimpa pekerjaan lama | Static tree/path/SHA comparison; tidak mengubah DB |
-| W1 | routes/web.php, RolePermissionBootstrapper, DatabaseSeeder, User/Role, ExamPolicy, QuestionPolicy, IdentifyTenant, TenantScoped, layouts/app.blade.php, auth/RBAC tests | W0 | Admin Madrasah satu profile; legacy OPERATOR kompatibel; tidak ada portal Proktor; tenantless request fail-closed; Admin tidak punya aksi Guru | Migrasi role merusak akun/pivot; regresi route | Route-action matrix positif/negatif, legacy login, IDOR, tenantless context |
+| W1 | routes/web.php, RolePermissionBootstrapper, DatabaseSeeder, User/Role, ExamPolicy, QuestionPolicy, IdentifyTenant, TenantScoped, layouts/app.blade.php, auth/RBAC tests | W0 | Admin Madrasah satu profile; OPERATOR/ADMIN migration-only, tidak aktif; tidak ada portal Proktor; tenantless request fail-closed; Admin tidak punya aksi Guru | Migrasi role merusak akun/pivot; regresi route | Route-action matrix positif/negatif, legacy login, IDOR, tenantless context |
 | W2 | AcademicManagement, AcademicYear, Semester, GradeLevel, Rombel, Subject, migrations, policies, views | W1 | Tahun/semester/kelas/fase/rombel/wali kelas konsisten dan tenant-scoped; histori tidak hilang | Duplikasi master dan perubahan histori | Unique, tenant FK, active period, class/teacher assignment |
-| W3 | OperatorDashboard, dashboard view, school identity model/service/migration, routes, tests | W1-W2 | Brand Panel Admin Madrasah; KPI dengan definisi; identitas/kop dokumen berversi | KPI salah dan PII bocor | Query KPI fixtures, authorization, print output, responsive |
+| W3 | AdminDashboard, dashboard view, school identity model/service/migration, routes, tests | W1-W2 | Brand Panel Admin Madrasah; KPI dengan definisi; identitas/kop dokumen berversi | KPI salah dan PII bocor | Query KPI fixtures, authorization, print output, responsive |
 | W4 | UserManagement, User/TeacherProfile/StudentProfile, TeacherSubjectAssignmentController/model, Admin views, policies | W1-W2 | CRUD lifecycle Guru/Siswa dan assignment Guru memiliki validasi, histori, reset aman | Role escalation, duplikasi NISN/NIP, account lockout | CRUD positif/negatif, import preflight, tenant/assignment tests |
 | W5 | StudentRombelManagement, RombelStudent, StudentProfile, lifecycle service/history models and migrations | W2-W4 | Penempatan, mutasi, promosi, tinggal kelas, kelulusan, alumni append-only dan transaksional | Kehilangan histori atau siswa ganda | Idempotency, rollback, double promotion, concurrent enrollment |
 | W6 | CurriculumManagement, curriculum models, CP/TP/ATP, Mulok, Panca Cinta, Deep Learning, DPL provenance/version | W2 | Kurmer/KBC dengan source/version/effective date; data resmi tidak dikarang; histori immutable | Data resmi tidak valid atau histori tertimpa | Seed idempotency, source provenance, version regression |
@@ -331,3 +331,85 @@ Hanya enam dokumen yang diperbarui pada branch docs/source-canonical-design-clos
 | W9 | AuditService, health, backup/restore, profile/preferences | Full audit, checksum, disposable restore | Audit gaps/secret leak | Audit coverage/checksum/restore |
 | W10 | Integration/security/browser/performance/UAT | All acceptance PASS and user UAT | False ready claim | Full MySQL/browser/security/performance/restore/UAT |
 
+
+
+
+
+## Matriks lengkap hasil scan identifier pada source aktif
+
+338 file PHP/Blade aktif dipindai; vendor dan backup_before_patch dikecualikan. Semua lokasi yang mengandung token role pada source aplikasi:
+
+**PHP app/runtime dan seed**
+- app/Console/Commands/InventoryLegacySuperAdminCommand.php — SUPER_ADMIN saja.
+- app/Console/Commands/Phase7dBenchmarkCommand.php — ADMIN_MADRASAH (benchmark).
+- app/Http/Controllers/Api/V1/AuthController.php — SUPER_ADMIN.
+- app/Http/Controllers/Api/V1/CurriculumAnalyticsController.php — ADMIN_MADRASAH.
+- app/Http/Controllers/Api/V1/MediaController.php — ADMIN_MADRASAH.
+- app/Http/Controllers/Api/V1/QuestionController.php — ADMIN_MADRASAH.
+- app/Http/Controllers/Api/V1/TeacherSubjectAssignmentController.php — ADMIN_MADRASAH.
+- app/Http/Controllers/AuthWebController.php — ADMIN_MADRASAH, OPERATOR, PROKTOR, SUPER_ADMIN.
+- app/Http/Controllers/LicenseStatusController.php — ADMIN_MADRASAH, OPERATOR.
+- app/Http/Middleware/IdentifyTenant.php — SUPER_ADMIN.
+- app/Livewire/Admin/AcademicManagement.php — ADMIN_MADRASAH, ADMIN.
+- app/Livewire/Admin/CurriculumManagement.php — ADMIN_MADRASAH, ADMIN.
+- app/Livewire/Admin/ExamManagement.php — ADMIN_MADRASAH, GURU.
+- app/Livewire/Admin/ProctorAssignmentManagement.php — ADMIN_MADRASAH, PROKTOR.
+- app/Livewire/Admin/QuestionBank.php — ADMIN_MADRASAH.
+- app/Livewire/Admin/StudentRombelManagement.php — ADMIN_MADRASAH.
+- app/Livewire/Admin/UserManagement.php — ADMIN_MADRASAH.
+- app/Livewire/Kamad/KamadDashboard.php — ADMIN_MADRASAH, ADMIN, KAMAD.
+- app/Livewire/Operator/OperatorDashboard.php — ADMIN_MADRASAH, ADMIN, OPERATOR.
+- app/Livewire/Proktor/ProktorDashboard.php — PROKTOR.
+- app/Policies/AssessmentPolicy.php — ADMIN_MADRASAH, OPERATOR.
+- app/Policies/ExamAttemptPolicy.php — ADMIN_MADRASAH; OPERATOR disebut pada komentar kebijakan.
+- app/Policies/ExamPolicy.php — ADMIN_MADRASAH, OPERATOR, PROKTOR, KAMAD, GURU.
+- app/Policies/QuestionPolicy.php — ADMIN_MADRASAH.
+- app/Policies/ReportPolicy.php — ADMIN_MADRASAH.
+- app/Services/ExamProctorAssignmentService.php — PROKTOR.
+- app/Services/InstallerService.php — ADMIN_MADRASAH, OPERATOR.
+- app/Services/LoginIdentityResolver.php — ADMIN_MADRASAH, ADMIN, OPERATOR, PROKTOR, SUPER_ADMIN.
+- app/Services/RolePermissionBootstrapper.php — ADMIN_MADRASAH, OPERATOR, PROKTOR.
+- database/seeders/DatabaseSeeder.php — membuat role ADMIN_MADRASAH dan OPERATOR.
+- database/seeders/SystemTenantSeeder.php — bukan role alias; membuat System Global Tenant dan tidak boleh dijalankan pada DB madrasah.
+
+**Blade/views**
+- resources/views/layouts/app.blade.php — cek role ADMIN_MADRASAH/OPERATOR/PROKTOR; label Panel Admin & Guru, Dashboard Operator, menu Proktor.
+- resources/views/livewire/admin/user-management.blade.php — filter UI memuat ADMIN_MADRASAH dan OPERATOR.
+- resources/views/livewire/admin/proctor-assignment-management.blade.php — label/pemilih Proktor.
+- resources/views/livewire/operator/operator-dashboard.blade.php — label Role: Operator Madrasah dan teks pengelolaan akun Operator.
+- resources/views/livewire/proktor/proktor-dashboard.blade.php — portal Proktor.
+- resources/views/livewire/teacher/result-list.blade.php — Admin_Madrasah ditampilkan pada kondisi exam.grade.
+- resources/views/livewire/teacher/analytics-dashboard.blade.php — teks umum finalisasi oleh guru/admin.
+- resources/views/welcome.blade.php — Panel Guru & Admin.
+- resources/views/installer/complete.blade.php — role awal ADMIN_MADRASAH.
+- resources/views/installer/authorize.blade.php — istilah Operator Installer/token bootstrap merujuk operator server/installer, **bukan role Operator Madrasah**; jangan diubah menjadi role Admin Madrasah.
+- resources/views/installer/admin.blade.php dan auth/login.blade.php — label umum akun Admin, bukan role kedua.
+
+**Tests**
+- tests/Feature/AdminUiVerificationTest.php
+- tests/Feature/Analytics/CacheTest.php
+- tests/Feature/Analytics/SecurityTest.php
+- tests/Feature/AuthTest.php
+- tests/Feature/ExamHardeningTest.php
+- tests/Feature/ExamVerificationTest.php
+- tests/Feature/InstallerTest.php
+- tests/Feature/LegacySuperAdminInventoryCommandTest.php
+- tests/Feature/MonitoringDuplicationTest.php
+- tests/Feature/MultiTenantAuthTest.php
+- tests/Feature/Phase7BManualReviewTest.php
+- tests/Feature/Phase7CReopenTest.php
+- tests/Feature/Phase7DHistoricalRecalculationAndAnalyticsTest.php
+- tests/Feature/Phase7DReportingTest.php
+- tests/Feature/ProctorAssignmentSecurityTest.php
+- tests/Feature/RBACEnforcementTest.php
+- tests/Feature/RoleDashboardVerificationTest.php
+- tests/Feature/RolePermissionBootstrapperTest.php
+- tests/Feature/ScoringHardeningTest.php
+- tests/Feature/Security/AnswerKeyLeakageTest.php
+- tests/Feature/SeederSafetyTest.php
+- tests/Feature/TenantIsolationTest.php
+- tests/Feature/UserSecurityTest.php
+- tests/Feature/WebAdminAuthTest.php
+- tests/TestCase.php
+
+Migrations (58 file), routes (3 file), seeders (2 file), views (34 file), tests (66 file), app (155 file), dan bootstrap/config/factories/public (20 file) telah dipindai. Migration roles mendefinisikan roles/permissions dan pivot; identifier role aktif berasal dari seeder/bootstrap/installer, bukan migration schema. Hasil ini statis dan tidak mengubah source.

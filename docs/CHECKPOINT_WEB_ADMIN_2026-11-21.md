@@ -183,71 +183,32 @@ Pengguna melaporkan dua masalah pada screenshot dashboard yang ditinjau:
 **Status:** TEMUAN DICATAT — BELUM DIAUDIT ROOT CAUSE, BELUM DIIMPLEMENTASIKAN, BELUM DIUJI. Temuan ini masuk audit UI/UX dan backlog desain Web Admin. Tetap ikuti gerbang: audit read-only, desain, persetujuan pengguna, baru implementasi.
 
 
-## 11. KLARIFIKASI KEPUTUSAN ROLE — ADMIN = OPERATOR
+## 11. KEPUTUSAN FINAL ROLE — ADMIN_MADRASAH = OPERATOR
 
-Pengguna menegaskan bahwa **Admin Madrasah dan Operator Madrasah adalah satu peran yang sama**, bukan dua role atau portal. Tidak perlu ada dua dashboard atau dua akun/identitas terpisah.
+ADMIN_MADRASAH adalah satu-satunya role aktif Admin Madrasah. OPERATOR adalah nama/identifier lama, bukan role kedua, portal, permission profile, atau tingkat kewenangan. Semua akun lama OPERATOR/ADMIN tenant-local dipetakan ke ADMIN_MADRASAH melalui migration aman.
 
-Keputusan yang berlaku:
-- Satu role/portal pengelola madrasah.
-- Label utama UI: “Admin Madrasah”; “Operator Madrasah” boleh menjadi alias/istilah penjelas, bukan role kedua.
-- Brand sidebar: “Panel Admin Madrasah”.
-- Tidak ada dashboard/menu/permission terpisah antara Admin dan Operator.
-- Portal Guru tetap terpisah; keputusan ini tidak menggabungkan Admin/Operator dengan Guru.
-- Source role lama wajib diaudit dahulu. Jangan menghapus atau mengubah role identifier, data user, seeder, policy, middleware, atau schema tanpa pemetaan kompatibel dan persetujuan jika berdampak pada data/authorization.
+Setiap orang tetap memiliki user record sendiri. Akun Admin lama dan Operator lama tidak digabung jika pemiliknya berbeda; user ID, password hash, tenant, profile, sesi/token sah, dan histori dipertahankan. Setelah migration tidak ada role/pivot/grant aktif OPERATOR atau ADMIN, dan tidak ada runtime hasRole(OPERATOR)/hasRole(ADMIN). UI hanya memakai label Admin Madrasah.
 
-**Koreksi atas catatan sebelumnya:** kalimat yang melarang label “Dashboard Operator” atau “Role: Operator Madrasah” tidak boleh ditafsirkan sebagai larangan menyebut Operator sama sekali. Yang dilarang adalah menciptakan kesan Operator merupakan role/portal kedua yang berbeda dari Admin. Admin = Operator.
+## 12. KEPUTUSAN FINAL PROKTOR
 
-Status: keputusan produk final; implementasi/mapping teknis menunggu audit source dan persetujuan desain.
+Proktor adalah capability sementara bagi Guru aktif yang ditugaskan pada ujian tertentu. Tidak ada role atau portal Proktor permanen. Semua Guru aktif pada madrasah yang sama dapat dipilih. Akun legacy PROKTOR hanya dikonversi ke GURU jika TeacherProfile valid dan tenant cocok; selain itu manual review.
 
-## 12. KLARIFIKASI PROKTOR
+Admin Madrasah mengelola assignment; Guru tetap pemilik ujian dan jadwal akademik. Hak Proktor dibatasi pada exam/rombel/waktu/status assignment yang sah dan divalidasi server pada setiap request.
 
-Pengguna menegaskan bahwa Proktor adalah **Guru yang ditugaskan oleh Admin/Operator Madrasah** untuk mengawasi ujian tertentu. Guru yang dapat ditugaskan meliputi:
-- Guru kelas.
-- Wali Kelas.
-- Guru Mata Pelajaran.
+## 13. PENEGASAN FINAL ASSIGNMENT PENGAWAS
 
-Status Proktor adalah penugasan operasional sementara, bukan role permanen atau portal tersendiri. Guru tetap memakai akun/identitas Guru; assignment memberikan hak terbatas hanya pada ujian, sesi/ruang (jika ada), dan rentang waktu yang ditentukan.
+Semua Guru aktif dapat menerima assignment pengawasan. Capability Proktor aktif otomatis hanya selama assignment sah dan rentang waktu berlaku. Tidak ada role atau portal Proktor permanen, dan tidak ada aktivasi manual. Perubahan, pencabutan, pembatalan, kedaluwarsa, atau NEEDS_REVIEW menghentikan capability sesuai waktu server.
 
-Admin/Operator mengelola penugasan. Backend wajib memvalidasi madrasah/tenant, status Guru, ujian, waktu, assignment, dan izin setiap aksi. Assignment dapat diubah/dicabut/kedaluwarsa dan seluruh siklusnya harus diaudit. Penugasan tidak memberi akses ke bank soal, pengaturan ujian, penilaian, jawaban/nilai, atau ujian lain kecuali ada permission terpisah yang sah.
+## 14. CATATAN HISTORIS — KEPUTUSAN JADWAL ADMIN TELAH DIGANTIKAN
 
-**Status:** keputusan produk final; pada tahap Web Admin hanya audit dan pengelolaan assignment oleh Admin. Portal/workflow Guru atau Proktor tidak dibangun sekarang.
-
-## 13. PENEGASAN FINAL JADWAL PENGAWASAN
-
-Klarifikasi terbaru: **semua Guru otomatis menjadi Proktor ketika mendapat jadwal pengawasan ujian yang berlaku.** Tidak ada seleksi role Proktor tersendiri dan tidak perlu aktivasi manual.
-
-- Admin/Operator menyusun jadwal pengawasan dan menempatkan Guru pada ujian/sesi/ruang/waktu.
-- Semua Guru aktif dapat dijadwalkan; tidak dibatasi kategori Guru kelas, Wali Kelas, atau Guru Mapel.
-- Saat jadwal berlaku dan Guru tercantum sebagai pengawas, sistem memberi konteks/hak Proktor sementara secara otomatis.
-- Hak Proktor hanya berlaku untuk tugas tersebut. Di luar jadwal, Guru tetap menggunakan hak dasar Guru.
-- Pembatalan, perubahan, penggantian, dan kedaluwarsa jadwal harus memperbarui hak sementara.
-- Role dasar tetap Guru. Jangan membuat role Proktor permanen, aktivasi manual, atau portal Proktor.
-- Server memvalidasi jadwal aktif, waktu server, ujian/sesi/ruang, tenant, status akun, dan permission setiap aksi.
-- Pada tahap Web Admin, cakupan hanya administrasi jadwal pengawasan oleh Admin/Operator. Workflow Guru menunggu tahap berikutnya.
-
-**Koreksi atas bagian sebelumnya:** penyebutan Guru kelas/Wali Kelas/Guru Mapel hanya contoh kategori Guru, bukan daftar pembatas. Semua Guru dapat dijadwalkan.
-
-## 14. KEPUTUSAN BARU — ADMIN MENGATUR JADWAL UJIAN DAN ROSTER PENGAWAS
-
-Web Admin wajib memiliki modul **Pengaturan Jadwal Ujian / Jadwal Ujian & Pengawas**. Admin/Operator menetapkan kalender dan jadwal pelaksanaan ujian institusi, sesi, jam, ruang/lokasi, serta roster Guru yang mengawas. Penugasan mengikuti edaran/pedoman resmi yang berlaku dan sudah diverifikasi.
-
-Pembagian kewenangan:
-- Admin/Operator: kalender/jadwal institusi, sesi/ruang, roster pengawas, validasi benturan, perubahan/pembatalan, referensi edaran, rekap/cetak jadwal, audit trail.
-- Guru: bank soal, paket/asesmen/konfigurasi akademik CBT, snapshot, penerbitan ujian/token sesuai alur produk, penilaian, analisis, dan hasil.
-- Ujian CBT yang dibuat Guru harus ditautkan/divalidasi terhadap jadwal institusi yang ditetapkan Admin agar tidak ada dua sumber jadwal yang bertentangan.
-
-Semua Guru aktif dapat ditempatkan pada roster. Saat jadwal berlaku, status/hak Proktor sementara aktif otomatis hanya untuk ujian/sesi/ruang/waktu yang ditugaskan. Tidak ada role atau aktivasi Proktor permanen.
-
-**Kepatuhan edaran:** nomor, penerbit, tanggal, masa berlaku, syarat penugasan, jumlah pengawas, rasio, larangan, dan aturan lainnya hanya boleh diterapkan setelah sumber resmi diverifikasi. Jika edaran belum tersedia, tandai BELUM TERVERIFIKASI; jangan mengarang ketentuannya. Simpan versi dan periode berlaku.
-
-**Status:** requirement Web Admin baru; audit dan desain dahulu. Implementasi belum dimulai.
+Bagian ini sebelumnya menggambarkan Admin membuat kalender/jadwal ujian institusi. Interpretasi itu sudah digantikan oleh alur final pada Bagian 15 dan spesifikasi Bagian 30. Admin Madrasah tidak membuat atau mengubah jadwal akademik ujian Guru; Admin hanya membaca metadata ujian dan menetapkan/meninjau/mencabut pengawas. Jangan menggunakan bagian lama ini sebagai requirement aktif.
 
 ## 15. ALUR FINAL — UJIAN DIBUAT GURU, PROKTOR DITETAPKAN ADMIN DARI DAFTAR UJIAN
 
 Klarifikasi terbaru pengguna:
 - Guru membuat soal dan menyiapkan ujian, termasuk mata pelajaran dan jadwal ujian.
 - Setelah ujian tersimpan, data ujian beserta mapel dan jadwal otomatis muncul pada list Web Admin.
-- Admin/Operator memilih ujian dari list tersebut dan menentukan Guru yang bertugas sebagai pengawas/Proktor.
+- Admin Madrasah memilih ujian dari list tersebut dan menentukan Guru yang bertugas sebagai pengawas/Proktor.
 
 Dengan demikian, Admin **tidak membuat ulang jadwal ujian** dan tidak mengetik ulang mapel. List Admin mengambil data dari ujian yang dibuat Guru. Admin bertanggung jawab pada penugasan pengawas.
 

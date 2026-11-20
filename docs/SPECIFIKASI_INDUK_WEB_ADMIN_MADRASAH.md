@@ -1439,298 +1439,62 @@ Requirement ini baru dicatat dari review screenshot pengguna. **Belum ada klaim 
 
 # 26. KEPUTUSAN ROLE KANONIS — ADMIN MADRASAH = OPERATOR MADRASAH
 
-## 26.1 Satu peran dan satu portal
+## 26.1 Satu role aktif
+Hanya ada satu role aktif pengelola madrasah: ADMIN_MADRASAH. Admin Madrasah = Operator 100% sama persis. Operator adalah nama/identifier lama, bukan role kedua, portal, kelompok permission, atau tingkat kewenangan.
 
-**Admin Madrasah dan Operator Madrasah adalah satu peran yang sama dalam produk CBT Madrasah.** Tidak boleh ada dua role pengelola madrasah yang terpisah hanya karena perbedaan penyebutan.
+- Satu portal, satu dashboard, satu sidebar, satu permission profile, satu kewenangan.
+- Label produk dan UI hanya “Admin Madrasah” dan “Panel Admin Madrasah”. Operator hanya disebut dalam dokumentasi historis, migration mapping, dan test transisi; bukan label UI.
+- Tidak ada login mode Admin vs Operator, tidak ada percabangan role/route/policy/view, dan tidak ada permission profile Operator.
+- Setiap orang tetap mempunyai akun pengguna sendiri. Jika akun Admin lama dan akun Operator lama dimiliki orang berbeda, kedua record user tetap dipertahankan; akun tidak digabung. Keduanya dipetakan ke role ADMIN_MADRASAH dengan hak yang identik.
+- KAMAD tetap role terpisah. PROKTOR bukan role; capability sementara berasal dari assignment Guru aktif.
 
-- Nama portal/label utama produk: **Admin Madrasah**.
-- Istilah **Operator Madrasah** adalah alias/istilah operasional yang dapat dipakai untuk menjelaskan peran yang sama.
-- Brand sidebar: **Panel Admin Madrasah**.
-- Hanya ada satu dashboard, satu navigasi, satu akun/peran, dan satu himpunan permission pengelola madrasah.
-- Pengguna tidak diminta memilih atau berpindah antara mode Admin dan Operator.
-- Jangan membuat dashboard Admin dan dashboard Operator secara terpisah.
+## 26.2 Konsolidasi identifier lama
+Identifier OPERATOR dan ADMIN hanya boleh muncul pada preflight, migration, audit mapping, dan test migrasi. Setelah transisi, tidak boleh ada role row/pivot/grant aktif atau runtime check hasRole(OPERATOR)/hasRole(ADMIN). Jika URL lama /operator/dashboard dipertahankan, ia hanya redirect statis ke /admin/dashboard tanpa route group atau authorization branch Operator.
 
-## 26.2 Batas pemisahan role
+Semua akun OPERATOR dan ADMIN tenant-local diverifikasi sebelum dipetakan ke ADMIN_MADRASAH. SUPER_ADMIN tidak pernah dipetakan ke Admin Madrasah. Akun multi-role yang ambigu, tenant mismatch, orphan pivot, atau profile mismatch menghentikan migration untuk manual review.
 
-Pemisahan role yang berlaku adalah:
-- **Admin/Operator Madrasah:** satu role pengelola administrasi madrasah sesuai seluruh kewenangan yang ditetapkan dalam spesifikasi ini.
-- **Guru:** role dan portal terpisah dengan kewenangan operasional pembelajaran/CBT sesuai assignment dan permission.
+## 26.3 Preflight dan keselamatan data
+Periksa roles, role_user, permission_role, users.role, users aktif/deleted, tenant_id, TeacherProfile, sessions/tokens, audit history, dan seluruh FK yang mengacu ke roles.id. Backup database, hash backup, dan restore ke disposable DB sebelum DML. Mapping dilakukan transaksional; pertahankan user ID, password hash, tenant, profile, sesi/token yang sah, dan histori. Bersihkan pivot/grant/role legacy hanya setelah semua akun terpetakan dan FK diverifikasi. Migration harus idempotent dan fail-closed.
 
-Keputusan Admin = Operator tidak menggabungkan Admin/Operator dengan Guru. Karena itu brand “Panel Admin & Guru” tetap tidak tepat dan harus diganti menjadi “Panel Admin Madrasah”.
+## 26.4 Permission profile tunggal
+Hak Admin adalah satu daftar final yang sama untuk seluruh akun ADMIN_MADRASAH: administrasi madrasah, akademik/kurikulum, data Guru/Siswa, metadata ujian read-only, assignment pengawas, laporan administratif, audit, health, backup, profil dan preferensi. Admin tidak mempunyai exam.manage, exam.assign, exam.monitor, exam.close, exam.token, exam.grade, exam.reopen, question.manage, akses jawaban, detail nilai, atau hasil operasional Guru. Mapel master madrasah boleh dikelola Admin; mapel yang tertaut pada ujian tetap milik Guru.
 
-## 26.3 Kompatibilitas source lama
+## 26.5 Acceptance criteria
+- Satu role aktif ADMIN_MADRASAH; tidak ada role/portal/dashboard/permission Operator.
+- Akun Admin lama dan Operator lama memiliki permission array dan hasil otorisasi route/action yang identik.
+- Tidak ada data akun/histori yang hilang atau digabung antarorang.
+- Tidak ada runtime role branching OPERATOR/ADMIN setelah migration.
+- Semua mapping diuji, diaudit, dan memiliki rollback plan.
 
-Source yang sudah ada mungkin menggunakan identifier seperti `admin`, `operator`, role enum, permission, atau route name yang berbeda. Agent wajib:
-1. Audit role model, tabel roles/permissions, seeder, user records, middleware, policies, gates, route groups, dan UI role labels.
-2. Identifikasi apakah `admin` dan `operator` saat ini dua identifier teknis untuk hak akses yang sama, atau memang memiliki perbedaan permission/data.
-3. Jangan menganggap dua identifier otomatis boleh digabung tanpa memeriksa pengguna, hak akses, audit trail, dan dependensinya.
-4. Jangan membuat role ketiga atau menambah pemisahan baru.
-5. Usulkan satu role kanonis dan strategi kompatibilitas/mapping. Pertahankan identifier lama sementara bila diperlukan agar tidak memutus akses atau histori.
-6. Perubahan data role, permission, seeder, migration, atau authorization harus disertai rencana rollback, test RBAC, dan persetujuan pengguna sebelum implementasi jika berdampak pada akun/akses.
-7. Semua label UI harus mengkomunikasikan satu peran yang sama. Gunakan “Admin Madrasah” sebagai label utama; “Operator Madrasah” hanya alias/istilah penjelas, bukan portal/role kedua.
+# 27. PROKTOR ADALAH CAPABILITY SEMENTARA GURU
 
-## 26.4 Acceptance criteria
+Proktor adalah Guru yang diberi assignment pengawasan pada ujian tertentu oleh Admin Madrasah. Proktor bukan role permanen dan bukan portal terpisah. Semua Guru aktif dalam instalasi yang sama dapat dipilih; kategori Guru kelas, Wali Kelas, dan Guru Mata Pelajaran bukan pembatas.
 
-- Hanya satu portal pengelola madrasah.
-- Satu dashboard dan satu sidebar untuk Admin/Operator.
-- Tidak ada pilihan role atau login mode Admin vs Operator.
-- Tidak ada menu/permission duplikat yang memecah Admin dan Operator.
-- Role/permission aktual di backend tetap menjadi otoritas; label UI tidak menggantikan authorization.
-- Guru tetap terpisah dari Admin/Operator.
-- Tidak ada akun atau histori yang hilang akibat konsolidasi identifier.
-- Seluruh perubahan mapping diuji dan diaudit sebelum rilis.
+Assignment mengikat Guru, tenant, exam, rombel, rentang waktu, status, schedule revision, actor Admin, alasan, dan audit history. Guru tetap memakai akun/role GURU. Capability hanya berlaku untuk exam/rombel/waktu yang ditugaskan.
 
-## 26.5 Status dan prioritas interpretasi
+Akses Proktor harus diperiksa pada setiap request: Guru aktif, tenant cocok, assignment sah, exam/rombel cocok, status ACTIVE, revoked_at null, starts_at <= server_now < expires_at, dan schedule revision cocok. Admin hanya membuat/meninjau/mencabut assignment dan membaca metadata ujian; Admin tidak memonitor ujian atau mengakses jawaban/nilai.
 
-Keputusan ini adalah klarifikasi terbaru dan mengesampingkan interpretasi sebelumnya yang seolah-olah melarang istilah “Operator” sepenuhnya. Yang dilarang adalah **dua role/portal Admin dan Operator yang terpisah**. Admin = Operator. Implementasi teknis tetap menunggu audit source dan gerbang persetujuan.
+Semua perubahan assignment dan semua aksi penting pengawasan masuk audit log. Tidak ada role PROKTOR global/permanen.
 
----
+# 28. AKTIVASI PROKTOR OTOMATIS DARI ASSIGNMENT
 
-# 27. PROKTOR ADALAH GURU YANG DITUGASKAN ADMIN MADRASAH
+Status/capability Proktor berasal dari assignment yang sah, bukan role. Ketika Guru aktif tercantum pada assignment dan waktu tugas berlaku, sistem otomatis memberi capability sementara untuk ujian/rombel tersebut. Tidak ada aktivasi manual, role permanen, atau portal Proktor.
 
-## 27.1 Definisi dan sumber personel
+Hak berhenti otomatis jika assignment dicabut, kedaluwarsa, dibatalkan, selesai, atau berubah menjadi NEEDS_REVIEW. Waktu server adalah acuan. Status NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED atau waktu di luar [starts_at, expires_at) tidak memberi akses. Cron hanya boleh memperbarui label/event expiry; otorisasi tidak bergantung pada cron.
 
-**Proktor adalah Guru yang ditugaskan oleh Admin/Operator Madrasah untuk menjalankan tugas pengawasan pada ujian tertentu.** Proktor bukan role pegawai permanen dan bukan portal permanen.
+Semua jalur penulisan assignment memakai service dan transaksi MySQL/InnoDB dengan urutan lock exam → Guru row → assignment rows. Setelah mutex Guru diperoleh, query overlap wajib locking/current read FOR UPDATE. Perubahan jadwal ujian menggunakan satu service reschedule dan menandai assignment terdampak NEEDS_REVIEW. Detail skema, interval, race protection, audit dan acceptance ada pada Addendum 32 serta laporan rekonsiliasi.
 
-Guru yang dapat dipilih untuk penugasan Proktor meliputi:
-- Guru kelas.
-- Wali Kelas.
-- Guru Mata Pelajaran.
+# 29. DAFTAR UJIAN GURU DAN PENUGASAN PENGAWAS OLEH ADMIN
 
-Ketiga kategori tersebut merupakan sumber calon personel; jangan mengunci fitur hanya untuk Guru kelas atau hanya Guru Mata Pelajaran. Calon harus merupakan akun Guru aktif yang terdaftar pada madrasah yang sama.
+Admin Madrasah tidak membuat kalender akademik ujian, tidak membuat ulang ujian, dan tidak mengubah jadwal akademik ujian Guru. Guru adalah pemilik soal, mapel ujian, konfigurasi CBT, snapshot, penerbitan/token, jadwal akademik, penilaian, analisis dan hasil.
 
-## 27.2 Penugasan oleh Admin/Operator
+Setelah Guru menyimpan ujian, metadata ujian otomatis muncul pada daftar Web Admin dari record yang sama. Admin hanya membaca metadata secara read-only dan menetapkan/mengganti Guru pengawas. Tidak ada input ulang jadwal atau mapel pada portal Admin.
 
-Admin/Operator Madrasah mengelola penugasan Proktor pada konteks ujian. Data assignment sekurangnya mengikat:
-- Identitas Guru yang ditugaskan.
-- Ujian yang diawasi.
-- Sesi/ruang/lokasi bila digunakan.
-- Rentang waktu tugas atau jadwal yang berlaku.
-- Status: direncanakan/aktif/selesai/dicabut/kedaluwarsa sesuai lifecycle.
-- Admin/Operator yang membuat atau mengubah assignment.
-- Alasan dan timestamp perubahan/pencabutan jika relevan.
+Admin dapat melihat judul ujian, mapel, Guru pembuat, kelas/rombel/sasaran peserta jika tersedia, tanggal/sesi/jam, status ujian, dan status assignment. Aksi Admin terbatas pada Atur/Tentukan Pengawas, review assignment, confirm roster, dan revoke/reassign. Admin tidak dapat mengubah soal, mapel ujian, jadwal akademik, snapshot, token, peserta, jawaban, nilai, analisis atau hasil.
 
-Satu Guru dapat menerima penugasan pada ujian yang berbeda sesuai aturan konflik jadwal dan kebijakan madrasah. Sistem harus mencegah assignment ganda yang bertentangan pada sesi/waktu/ruang yang sama jika aturan operasional menetapkannya.
+Perubahan jadwal/mapel dilakukan oleh Guru yang berwenang. Daftar Admin membaca data terbaru dari sumber yang sama. Jika jadwal berubah dan berdampak pada assignment, assignment menjadi NEEDS_REVIEW; Admin meninjau dan mengonfirmasi ulang setelah validasi konflik. Tidak ada pergeseran roster diam-diam.
 
-## 27.3 Batas kewenangan Proktor
-
-- Guru tetap memiliki akun dan role dasar Guru.
-- Assignment Proktor memberi konteks/hak sementara hanya untuk ujian yang ditugaskan dan selama masa tugas yang berlaku.
-- Hak tersebut tidak otomatis memberikan kewenangan mengelola bank soal, mengubah konfigurasi atau jadwal ujian, menerbitkan ujian, melakukan penilaian, melihat jawaban/nilai yang tidak diperlukan, atau mengakses ujian lain.
-- Hak aksi Proktor harus dirinci dengan permission dan policy yang eksplisit. Jangan menganggap semua tindakan pengawasan otomatis diizinkan.
-- Ketika assignment dicabut, selesai, atau kedaluwarsa, akses sementara harus berhenti sesuai kebijakan.
-- Jangan membuat role Proktor global/permanen atau portal Proktor tersendiri.
-
-## 27.4 Keamanan dan audit
-
-Setiap permintaan yang menggunakan hak Proktor wajib divalidasi di server berdasarkan:
-1. Tenant/madrasah yang aktif.
-2. Akun Guru aktif dan berasal dari madrasah yang sama.
-3. Assignment Proktor yang sah.
-4. Ujian/sesi/ruang yang tepat.
-5. Rentang waktu dan status assignment.
-6. Permission untuk aksi yang diminta.
-
-Semua pembuatan, perubahan, pencabutan, aktivasi, penyelesaian, dan aksi penting Proktor wajib masuk audit log dengan actor, target, waktu, alasan bila relevan, dan hasil. Assignment lintas tenant harus ditolak.
-
-## 27.5 Batas scope tahap Web Admin
-
-Dalam tahap Web Admin saat ini:
-- Audit dan sediakan administrasi penugasan Proktor oleh Admin/Operator sesuai kewenangannya.
-- Data calon Proktor bersumber dari daftar Guru yang dikelola secara administratif oleh Admin.
-- Jangan membangun portal Proktor atau workflow operasional Guru/Proktor pada tahap ini.
-- Integrasi tindakan Guru/Proktor pada ujian menjadi bagian tahap Guru berikutnya setelah Web Admin disetujui selesai.
-
-## 27.6 Acceptance criteria
-
-- Admin dapat menugaskan Guru kelas, Wali Kelas, atau Guru Mata Pelajaran sebagai Proktor untuk ujian tertentu.
-- Hanya Guru aktif dalam madrasah yang sama yang dapat ditugaskan.
-- Assignment memiliki cakupan ujian dan periode yang jelas.
-- Assignment konflik dapat dicegah sesuai aturan jadwal/ruang.
-- Guru tanpa assignment tidak mendapat akses Proktor.
-- Assignment tidak menciptakan role atau portal permanen.
-- Pencabutan/kedaluwarsa menghentikan hak sementara.
-- Tenant isolation, authorization, dan audit log diuji.
-- Admin tidak memperoleh hak operasional Guru hanya karena mengelola assignment.
-
----
-
-# 28. STATUS PROKTOR OTOMATIS BERDASARKAN JADWAL PENGAWASAN
-
-## 28.1 Prinsip utama
-
-**Semua Guru otomatis menjadi Proktor ketika mendapat jadwal pengawasan ujian yang berlaku.** Proktor bukan role permanen, jabatan terpisah, atau status yang harus diaktifkan secara manual. Status Proktor merupakan konteks tugas sementara yang diturunkan dari jadwal pengawasan.
-
-## 28.2 Penyusunan jadwal oleh Admin/Operator
-
-Admin/Operator Madrasah mengelola jadwal pengawasan dan menempatkan Guru pada:
-- Ujian tertentu.
-- Sesi ujian.
-- Ruang/lokasi bila digunakan.
-- Tanggal dan rentang waktu tugas.
-- Peran/tanggung jawab pengawasan bila diperlukan.
-
-Semua Guru aktif dapat dijadwalkan. Tidak ada pembatasan hanya kepada Guru kelas, Wali Kelas, atau Guru Mata Pelajaran. Kategori tersebut hanyalah contoh latar penugasan Guru, bukan syarat khusus menjadi Proktor.
-
-## 28.3 Aktivasi hak secara otomatis
-
-Ketika jadwal pengawasan sah berlaku dan akun Guru tercantum sebagai pengawas, sistem otomatis memberikan konteks/hak Proktor sementara untuk ujian/sesi/ruang yang dijadwalkan. Guru tidak perlu:
-- Diubah role dasarnya menjadi Proktor.
-- Mengajukan aktivasi atau menerima role Proktor permanen.
-- Login ke portal Proktor terpisah.
-- Meminta Admin mengaktifkan hak Proktor secara manual di luar pembuatan jadwal.
-
-Role dasar Guru tetap sama. Hak Proktor bersifat contextual/temporary dan hanya berasal dari jadwal pengawasan yang sah.
-
-## 28.4 Batas akses dan siklus jadwal
-
-Hak Proktor hanya berlaku untuk ujian, sesi, ruang, dan rentang waktu yang ditugaskan. Di luar konteks tersebut, akun hanya memiliki hak dasar Guru.
-
-Perubahan jadwal, pergantian Guru, pembatalan, pencabutan, atau berakhirnya jadwal harus segera memengaruhi hak Proktor. Sistem harus mencegah akses jika:
-- Guru tidak tercantum pada jadwal.
-- Jadwal belum mulai atau sudah berakhir.
-- Jadwal dibatalkan/diganti.
-- Guru mencoba mengakses ujian/sesi/ruang lain.
-- Akun tidak aktif atau bukan berasal dari madrasah yang sama.
-
-Sistem wajib memeriksa benturan jadwal Guru dan konflik ruang/sesi sesuai kebijakan operasional. Gunakan waktu server sebagai acuan resmi.
-
-## 28.5 Keamanan dan audit
-
-Setiap aksi yang memakai konteks Proktor harus divalidasi server-side berdasarkan akun Guru, tenant, jadwal aktif, ujian, sesi/ruang, rentang waktu, status jadwal, dan permission aksi. Jangan mengandalkan flag dari browser/aplikasi.
-
-Audit log mencatat pembuatan, perubahan, penggantian, pembatalan, aktivasi otomatis berdasarkan waktu jadwal, penyelesaian, serta aksi penting Proktor. Perubahan jadwal harus memiliki actor dan timestamp yang jelas.
-
-## 28.6 Batas tahap Web Admin
-
-Untuk tahap Web Admin:
-- Audit dan kelola penyusunan jadwal pengawasan oleh Admin/Operator.
-- Pastikan seluruh Guru aktif dapat dipilih sebagai pengawas tanpa kategori khusus.
-- Jangan membangun portal atau workflow UI Guru/Proktor sekarang; itu menunggu tahap Guru.
-- Jangan membuat role Proktor permanen atau proses aktivasi manual.
-
-## 28.7 Acceptance criteria
-
-1. Semua Guru aktif dapat dimasukkan ke jadwal pengawasan.
-2. Guru yang jadwalnya aktif otomatis memperoleh konteks/hak Proktor terbatas.
-3. Tidak ada role Proktor permanen atau aktivasi manual.
-4. Hak hanya berlaku pada ujian/sesi/ruang dan rentang waktu yang ditugaskan.
-5. Jadwal yang belum mulai, berakhir, dibatalkan, atau diganti tidak memberi hak yang tidak sah.
-6. Penggantian pengawas memperbarui hak secara konsisten.
-7. Konflik jadwal, tenant isolation, validasi waktu server, dan audit log diuji.
-
----
-
-# 29. MODUL PENGATURAN JADWAL UJIAN DAN PENUGASAN PENGAWAS
-
-## 29.1 Mandat Admin/Operator
-
-Web Admin wajib menyediakan modul **Pengaturan Jadwal Ujian** (nama menu yang disarankan: **Jadwal Ujian & Pengawas**). Admin/Operator Madrasah bertanggung jawab atas kalender/jadwal institusi dan penugasan Guru sebagai pengawas ujian berdasarkan edaran/pedoman resmi yang berlaku.
-
-Fungsi Admin/Operator:
-- Menetapkan periode/kegiatan ujian madrasah.
-- Mengatur tanggal, sesi, jam mulai/selesai, ruang/lokasi, dan kapasitas bila relevan.
-- Menyusun roster Guru pengawas per ujian/sesi/ruang.
-- Memeriksa konflik jadwal Guru, ruang, sesi, dan beban penugasan.
-- Mengganti pengawas, mengubah atau membatalkan jadwal dengan alasan dan audit trail.
-- Mencatat referensi edaran/pedoman resmi yang menjadi dasar jadwal dan penugasan.
-- Menampilkan kalender, daftar, rekap, serta cetak/ekspor jadwal dan daftar pengawas.
-- Mengelola publikasi informasi jadwal administratif kepada pihak yang berwenang.
-
-## 29.2 Pembagian kewenangan Admin dan Guru
-
-| Area | Admin/Operator Madrasah | Guru |
-|---|---|---|
-| Kalender/periode ujian institusi | Mengelola | Mengacu |
-| Tanggal, sesi, jam, ruang ujian | Menetapkan jadwal institusi | Mengaitkan ujian CBT ke slot yang sesuai |
-| Roster pengawas | Menyusun dan mengubah | Menjalankan tugas bila terjadwal |
-| Referensi edaran dan aturan penjadwalan | Mencatat/verifikasi administrasi | Mengikuti |
-| Bank soal dan media soal | Tidak mengelola | Mengelola |
-| Paket/asesmen dan konfigurasi akademik CBT | Tidak mengambil alih | Mengelola |
-| Snapshot dan pemilihan soal | Tidak mengelola | Mengelola |
-| Penerbitan ujian dan token | Tidak mengambil alih | Mengelola sesuai jadwal/permission |
-| Penilaian, analisis, jawaban, hasil | Tidak mengambil alih | Mengelola sesuai kewenangan |
-
-Jadwal institusi yang dikelola Admin menjadi kerangka kalender/sesi/pengawasan. Ujian CBT yang disusun Guru harus ditautkan atau divalidasi terhadap jadwal institusi yang sesuai. Hindari dua sumber tanggal/sesi yang saling bertentangan. Perubahan jadwal institusi harus memiliki kebijakan dampak terhadap ujian CBT yang sudah ditautkan, notifikasi, dan audit trail; jangan mengubah jadwal ujian Guru secara diam-diam.
-
-## 29.3 Roster pengawas dan status Proktor otomatis
-
-- Semua Guru aktif dalam madrasah dapat dipilih sebagai pengawas, termasuk Guru Kelas, Wali Kelas, dan Guru Mata Pelajaran. Kategori tersebut bukan pembatas.
-- Admin/Operator menempatkan Guru pada ujian, sesi, ruang, tanggal, dan rentang waktu.
-- Saat roster/jadwal pengawasan yang sah berlaku, Guru yang tercantum otomatis memperoleh konteks/hak Proktor sementara.
-- Role dasar Guru tidak berubah. Tidak ada role Proktor permanen, aktivasi manual, atau portal Proktor.
-- Hak Proktor hanya untuk ujian/sesi/ruang/waktu yang ditugaskan dan aksi pengawasan yang diizinkan.
-- Guru yang tidak tercantum pada roster, jadwal belum berlaku, sudah selesai, dibatalkan, atau diganti tidak memperoleh hak Proktor untuk jadwal tersebut.
-- Penggantian/pencabutan harus segera memperbarui hak sementara. Gunakan waktu server sebagai acuan.
-
-## 29.4 Kepatuhan terhadap edaran/pedoman resmi
-
-Sistem harus mendukung pencatatan sumber aturan yang digunakan:
-- Nomor dan tahun edaran/keputusan.
-- Judul dan penerbit.
-- Tanggal terbit/ditetapkan dan periode berlaku.
-- URL atau file dokumen resmi.
-- Tanggal verifikasi dan petugas yang memverifikasi.
-- Versi aturan dan catatan perubahan.
-- Ketentuan yang relevan terhadap jadwal dan penugasan.
-
-**Dilarang mengarang ketentuan.** Jumlah pengawas per ruang, rasio, larangan Guru mengawas kelas sendiri, batas beban, komposisi pengawas, jumlah sesi, atau persyaratan khusus hanya boleh dijadikan validasi sistem setelah ditemukan dalam edaran resmi yang berlaku dan diverifikasi. Jika dokumen belum tersedia, aturan ditandai BELUM TERVERIFIKASI dan tidak boleh diterapkan sebagai aturan wajib.
-
-Ketika edaran berubah, buat versi aturan baru dengan periode efektif. Jadwal historis harus tetap menyimpan versi aturan yang dipakai saat dibuat.
-
-## 29.5 Validasi jadwal dan konflik
-
-Sebelum menyimpan/mempublikasikan jadwal, sistem menyediakan preview dan memeriksa:
-- Guru aktif dan berasal dari madrasah yang sama.
-- Benturan jadwal pengawasan Guru.
-- Benturan pemakaian ruang pada sesi yang sama.
-- Kapasitas ruang bila datanya tersedia.
-- Kecukupan jumlah pengawas hanya jika aturan resmi telah diverifikasi.
-- Ketentuan lain sesuai edaran yang aktif.
-- Konsistensi tanggal/sesi terhadap kalender institusi dan ujian CBT yang ditautkan.
-
-Konflik wajib ditampilkan dengan penjelasan. Sistem tidak boleh mengabaikan konflik atau otomatis mengganti pengawas tanpa persetujuan Admin.
-
-## 29.6 UI dan laporan
-
-Sediakan:
-- Kalender dan daftar jadwal.
-- Form kegiatan/jenis ujian, tanggal, sesi, jam, ruang/lokasi, kapasitas.
-- Roster pengawas dengan pencarian/filter Guru.
-- Referensi edaran dan status verifikasi.
-- Preview jadwal dan konflik sebelum konfirmasi.
-- Riwayat versi, perubahan, penggantian, dan pembatalan.
-- Filter tahun ajaran, semester, jenis ujian, tanggal, ruang, dan status.
-- Cetak/ekspor jadwal per ujian, sesi, ruang, dan Guru.
-- Empty/loading/error/success states, responsive layout, serta aksesibilitas.
-
-## 29.7 Keamanan, otorisasi, dan audit
-
-- Hanya Admin/Operator dengan permission yang sesuai dapat membuat/mengubah jadwal institusi dan roster.
-- Guru tidak dapat mengubah roster atau mengangkat dirinya sendiri menjadi Proktor.
-- Hak Proktor berasal dari jadwal sah dan divalidasi server-side pada setiap aksi.
-- Isolasi tenant, status akun, rentang waktu, ujian, sesi, ruang, dan status roster wajib diperiksa.
-- Semua perubahan menyimpan actor, timestamp, alasan, nilai sebelum/sesudah, versi edaran, dan hasil aksi.
-- Perubahan jadwal yang memengaruhi ujian CBT yang sudah terhubung harus ditangani melalui alur perubahan yang eksplisit, bukan perubahan diam-diam.
-
-## 29.8 Acceptance criteria
-
-1. Admin dapat membuat/mengubah kalender dan jadwal ujian institusi.
-2. Admin dapat menyusun roster Guru pengawas per sesi/ruang.
-3. Semua Guru aktif dapat dijadwalkan.
-4. Guru yang terjadwal otomatis memperoleh status/hak Proktor sementara ketika jadwal berlaku.
-5. Tidak ada role/portal Proktor permanen atau aktivasi manual.
-6. Konflik Guru/ruang/sesi dideteksi dan ditampilkan.
-7. Ketentuan edaran hanya diterapkan setelah sumber resmi diverifikasi.
-8. Jadwal CBT Guru ditautkan/validasi ke jadwal institusi tanpa mengambil alih pengelolaan akademik Guru.
-9. Perubahan, penggantian, pembatalan, dan riwayat jadwal diaudit.
-10. Uji tenant isolation, RBAC, benturan jadwal, perubahan jadwal, hak Proktor berdasarkan waktu server, dan integrasi kalender institusi dilakukan pada lingkungan test.
-
-## 29.9 Status
-
-Requirement ini merupakan perluasan scope Web Admin yang ditetapkan pengguna. Belum ada klaim implementasi. Agent wajib mengaudit fitur jadwal/roster yang sudah ada sebelum merancang atau membuat duplikasi modul. Tetap ikuti gerbang audit → desain → persetujuan → implementasi → pengujian.
-
----
+Edaran resmi hanya diterapkan setelah sumber diverifikasi. Jangan mengarang jumlah pengawas, rasio, larangan, atau ketentuan lain. Semua perubahan assignment dan peninjauan dicatat di audit log.
 
 # 30. ALUR INTEGRASI UJIAN GURU KE WEB ADMIN DAN PENETAPAN PROKTOR
 
@@ -1759,7 +1523,7 @@ Sediakan filter berdasarkan mapel, Guru pembuat, tanggal/periode, kelas/rombel, 
 
 ## 30.3 Penetapan pengawas oleh Admin
 
-Dari setiap item ujian pada list, Admin/Operator dapat membuka aksi **Atur/Tentukan Pengawas**. Admin memilih Guru aktif dari madrasah yang sama dan menetapkan pengawasan sesuai edaran resmi terverifikasi. Assignment terkait langsung dengan identitas ujian dan jadwal yang dibuat Guru.
+Dari setiap item ujian pada list, Admin Madrasah dapat membuka aksi **Atur/Tentukan Pengawas**. Admin memilih Guru aktif dari madrasah yang sama dan menetapkan pengawasan sesuai edaran resmi terverifikasi. Assignment terkait langsung dengan identitas ujian dan jadwal yang dibuat Guru.
 
 Semua Guru aktif dapat menjadi pengawas; tidak ada pembatasan kategori Guru kelas/Wali Kelas/Guru Mapel. Ketika jadwal berlaku, Guru yang tercantum otomatis memperoleh konteks/hak Proktor sementara untuk ujian/sesi yang ditugaskan.
 
@@ -1773,8 +1537,8 @@ Semua Guru aktif dapat menjadi pengawas; tidak ada pembatasan kategori Guru kela
 | Konfigurasi akademik/CBT dan snapshot | Guru |
 | Token/penerbitan sesuai alur CBT | Guru |
 | Penilaian, jawaban, analisis, hasil | Guru |
-| Membaca daftar ujian untuk koordinasi | Admin/Operator |
-| Menetapkan/mengganti pengawas | Admin/Operator |
+| Membaca daftar ujian untuk koordinasi | Admin Madrasah |
+| Menetapkan/mengganti pengawas | Admin Madrasah |
 | Validasi konflik dan kepatuhan roster | Sistem + Admin sesuai permission |
 
 Admin tidak boleh mengubah soal, mapel ujian, jadwal akademik, snapshot, token, aturan penilaian, atau hasil. Jika jadwal/mapel salah, koreksi dilakukan oleh Guru yang berwenang; Admin dapat memberikan catatan atau meminta koreksi.
@@ -1867,29 +1631,25 @@ Guru tetap pemilik soal, bank soal, ujian, mapel yang tertaut pada ujian, jadwal
 
 ## 31.4 Desain assignment Proktor
 
-Tabel existing exam_proctor_assignments dipertahankan. Kolom existing: tenant_id, exam_id, proctor_user_id, assigned_by, starts_at, expires_at, status, reason, revoked_at/by/reason. Usulan perluasan additive: rombel_id wajib; session_id/room_id nullable hanya jika dipakai; exam_revision atau schedule_fingerprint; review_required_at; review_reason; event history append-only.
+Pertahankan exam_proctor_assignments dan composite FK tenant yang ada. Perluasan additive: exam_rombels, rombel_id wajib pada assignment, schedule_revision, exam_schedule_revision, NEEDS_REVIEW metadata, dan append-only assignment events.
 
-Foreign key composite wajib mengikat exam, rombel, Guru, Admin assigner, dan revoker ke tenant yang sama. Index konflik memakai tenant_id, proctor_user_id, status, starts_at, expires_at.
+Interval [starts_at, expires_at). Overlap: existing.starts_at < new.expires_at AND effective_existing_end > new.starts_at. Semua jalur create/renew/revoke/confirm/reschedule memakai urutan lock exam → Guru row → assignment rows. Setelah mutex Guru diperoleh, overlap query adalah locking/current read FOR UPDATE. Semua jalur harus melalui service yang sama; MySQL tidak memiliki exclusion constraint range generik.
 
-Interval assignment adalah [starts_at, expires_at): starts_at inklusif, expires_at eksklusif. Dua interval bertemu tepat pada batas akhir/batas awal tidak bentrok. Overlap ditentukan oleh existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at. Satu Guru tidak boleh memiliki assignment overlap pada kelas/rombel berbeda, termasuk lintas ujian.
+API ExamController::update dan Livewire ExamManagement::saveExam memakai satu ExamScheduleChangeService. Perubahan jadwal memerlukan alasan, lock exam, belum ada attempt dimulai, increment schedule_revision, dan menandai seluruh assignment terdampak NEEDS_REVIEW dalam transaksi sama. Direct update di luar service ditolak. Admin mengonfirmasi ulang setelah validasi konflik; tidak ada reschedule roster diam-diam.
 
-Dalam transaksi MySQL/InnoDB, lock exam lalu lock baris Guru sebagai mutex, kemudian query overlap sebagai locking/current read sebelum insert/update. Penguncian Guru sudah ada pada source saat ini; query overlap belum ada. Semua jalur assignment harus mengikuti urutan lock konsisten.
-
-Perubahan jadwal oleh Guru menandai assignment terdampak NEEDS_REVIEW/Perlu Ditinjau Ulang, menyimpan versi jadwal lama/baru dan audit. Tidak ada perpindahan jadwal atau pengawas diam-diam. Admin harus meninjau dan mengonfirmasi roster; konfirmasi menjalankan validasi konflik ulang. Assignment NEEDS_REVIEW tidak memberi akses.
-
-Akses Proktor divalidasi pada setiap request berdasarkan Guru aktif, tenant, assignment, exam, rombel, status, permission, dan waktu server. Akses hanya ketika starts_at <= now < expires_at dan status sah. Kedaluwarsa otomatis menolak akses tanpa menunggu cron. Pencabutan menghentikan akses pada request berikutnya.
+NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED atau waktu di luar interval tidak memberi capability. Expiry ditolak berdasarkan waktu server meskipun cron belum berjalan. Semua transisi dicatat AuditService dan event append-only; kegagalan audit membatalkan transaksi.
 
 ## 31.5 Koreksi source aktual yang wajib masuk audit
 
-- RolePermissionBootstrapper memisahkan ADMIN_MADRASAH dan OPERATOR serta memberi Admin grant exam.monitor, exam.close, exam.token, exam.grade, exam.reopen, exam.manage yang tidak sesuai batas final.
-- routes/web.php masih memiliki /proktor/assignments dan redirect role PROKTOR.
-- ProctorAssignmentManagement dan ExamProctorAssignmentService masih membatasi pemilih pada role PROKTOR.
-- ExamPolicy mengizinkan Admin monitoring dan close; Admin harus dibatasi ke metadata read-only dan assignment.
-- ExamProctorAssignmentService sudah mengunci baris Guru dengan lockForUpdate, tetapi belum mengecek overlap.
-- exam_proctor_assignments belum mengikat rombel/class.
-- scopeActiveNow sudah memakai batas starts_at <= now dan expires_at > now.
-- TenantScoped hanya menerapkan global scope bila TenantContext ada; jika context tidak ada, query tidak otomatis fail-closed. IdentifyTenant meneruskan request tanpa user/tenant. Guard dan test tenantless-context diperlukan.
-- Jadwal Guru belum memicu status NEEDS_REVIEW.
+- DatabaseSeeder, RolePermissionBootstrapper, dan InstallerService masih membuat role OPERATOR; Admin dan Operator mendapat grant berbeda.
+- AuthWebController, LoginIdentityResolver, LicenseStatusController, routes, layout dan OperatorDashboard masih menerima/menampilkan OPERATOR; ADMIN juga masih diterima pada beberapa komponen.
+- UserManagement hanya menerima ADMIN_MADRASAH, sedangkan AcademicManagement/CurriculumManagement menerima ADMIN legacy; ini membuktikan akses tidak identik.
+- Proktor masih role permanen pada login, policy, dashboard, picker dan service.
+- Admin masih memiliki permission/policy monitoring, close, token, grading, result/answer yang dilarang.
+- ExamProctorAssignmentService sudah lock row Guru saat assign tetapi belum query overlap; revoke belum mengikuti lock order Guru yang sama.
+- Assignment belum mengikat rombel, tidak ada NEEDS_REVIEW, dan perubahan jadwal API/Livewire belum memicu review.
+- TenantScoped sudah fail-closed dan InstallationIdentityService sudah menegakkan satu Tenant per DB; batas tersisa: User model, SystemTenantSeeder, dan registered_domain existing identity.
+- Bukti file/blob dan matriks 23 modul ada pada laporan AUDIT_REKONSILIASI_DESAIN_WEB_ADMIN_2026-11-21.md.
 
 ## 31.6 Rencana W0–W10
 
@@ -1904,7 +1664,7 @@ Rencana rinci, file sasaran, dependensi, acceptance criteria, risiko, dan penguj
 ADMIN_MADRASAH dan OPERATOR adalah 100% sama persis. Hanya ada satu role aktif kanonis ADMIN_MADRASAH. Operator adalah nama/identifier lama, bukan role kedua, portal, kelompok permission, atau tingkat kewenangan.
 
 - Satu akun, satu login, satu portal, satu dashboard, satu sidebar, satu permission profile, satu kewenangan.
-- Semua akun yang sebelumnya memakai role OPERATOR dipetakan ke ADMIN_MADRASAH dengan mempertahankan user ID, password hash, tenant, profil, sesi/token sah, dan histori audit.
+- Semua akun yang sebelumnya memakai role OPERATOR dipetakan ke ADMIN_MADRASAH dengan mempertahankan user ID, password hash, tenant, profil, sesi/token sah, dan histori audit. Akun dari orang yang berbeda tetap menjadi record user terpisah; migrasi role tidak menggabungkan akun.
 - Tidak boleh ada runtime branching hasRole(OPERATOR) atau hasRole(ADMIN). Identifier legacy hanya boleh muncul pada preflight, migration, audit mapping, dan test migrasi.
 - ADMIN tenant-local yang ditemukan pada source diverifikasi dan dipetakan ke ADMIN_MADRASAH; jangan pernah memetakan SUPER_ADMIN.
 - Tidak ada role row/pivot OPERATOR aktif setelah migrasi. Jejak transisi disimpan sebagai migration/audit record, bukan role runtime.
@@ -1936,3 +1696,7 @@ Perubahan jadwal hanya lewat satu ExamScheduleChangeService dari API ExamControl
 
 ## 32.5 Prioritas dokumen
 Addendum 32 ini menggantikan pernyataan lama pada Addendum 31, Register, matriks, dan checkpoint yang masih menyebut OPERATOR sebagai role legacy aktif, TenantScoped tidak fail-closed, atau one-tenant-per-DB belum terbukti. Tidak ada keputusan arsitektur lain yang diubah.
+
+
+## 33. KETENTUAN PRECEDENCE SOURCE DAN ROLE
+Addendum 32 dan bagian 26–30 hasil revisi ini adalah keputusan terbaru. Bagian historis yang menyebut Operator sebagai role, Admin menyusun kalender/jadwal akademik ujian, atau role Proktor permanen telah digantikan. Source audit yang masih menemukan perilaku lama adalah temuan ketidaksesuaian implementasi, bukan perubahan keputusan desain.

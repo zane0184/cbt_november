@@ -142,7 +142,7 @@ Semua status di bawah dibandingkan kembali dengan branch fix/web-portal-usabilit
 | SEC-08 Teacher assignment UI | MASIH BERLAKU | Backend API/model ada; UI Admin belum ditemukan. |
 | SEC-09 Curriculum provenance | MASIH BERLAKU | Official/custom/source/version belum lengkap. |
 | SEC-10 Import master data | MASIH BERLAKU | Question importer bukan importer Guru/Siswa/mapel. |
-| SEC-11 Tenant fail-closed | BERUBAH/KOREKSI | IdentifyTenant menurunkan context dari user dan mengabaikan override; tetapi TenantScoped hanya menambah filter jika context ada. Tanpa context query tidak otomatis ditolak. Tambahkan fail-closed guard dan tes. |
+| SEC-11 Tenant fail-closed | SUDAH ADA DI SOURCE (dengan batas model) | TenantScoped memakai whereRaw 1=0 saat context kosong dan menolak create tanpa tenant; IdentifyTenant mengabaikan override. User tidak memakai TenantScoped, sehingga jalur User/withoutGlobalScopes tetap harus diuji. |
 | SEC-12 Conflict concurrency | BERUBAH/KOREKSI | Service sudah lock exam dan row Guru. Tidak ada overlap query setelah lock, sehingga konflik tetap dapat tersimpan. |
 | SEC-13 Admin permission terlalu luas | MASIH BERLAKU | Grant exam.monitor/close/token/grade/reopen/manage belum sesuai batas final Admin. |
 

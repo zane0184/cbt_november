@@ -110,8 +110,8 @@ Semua test baru berstatus NOT RUN sampai benar-benar dijalankan pada environment
 | ID | Kategori | Skenario | Expected result |
 |---|---|---|---|
 | T-039 | Role | Admin Madrasah login dengan permission profile kanonis | Satu dashboard/sidebar Admin; tidak ada portal Operator terpisah |
-| T-040 | Legacy role | Akun legacy OPERATOR login selama masa kompatibilitas | Dipetakan ke capability Admin yang sama; tidak mendapat grant lebih luas |
-| T-041 | Role Proktor | Akun legacy PROKTOR membuka /proktor/assignments | Ditolak; tidak ada portal permanen |
+| T-040 | Legacy role migration | Fixture akun lama OPERATOR diproses oleh migration sebelum login | Akun tetap ada, role aktif menjadi ADMIN_MADRASAH; tidak ada runtime login/permission branch OPERATOR |
+| T-041 | Legacy Proktor migration | Akun lama PROKTOR diperiksa saat preflight | Hanya TeacherProfile valid yang dapat dipetakan ke GURU; tidak ada role/portal Proktor aktif |
 | T-042 | Eligibility | Guru aktif tenant yang sama dipilih sebagai pengawas | Diterima tanpa role PROKTOR |
 | T-043 | Eligibility negatif | Guru nonaktif/deleted dipilih | Ditolak |
 | T-044 | Eligibility negatif | Akun non-Guru dipilih | Ditolak |
