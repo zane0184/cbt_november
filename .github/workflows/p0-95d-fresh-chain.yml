@@ -6,6 +6,7 @@ on:
       - p0-95d-migration-gate-20261118
       - hotfix/fase1c-mysql8-fk-name-20261119
       - work/schema-dump-export-20261119
+      - fix/p0-96g-installer-private-db-config-20261120
 
 permissions:
   contents: read
@@ -52,7 +53,7 @@ jobs:
       - name: Checkout exact source commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref_name }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up PHP 8.3 and Composer v2
         uses: shivammathur/setup-php@v2

@@ -217,7 +217,7 @@ class InstallerService
         return !$inspection['success'] || !$inspection['is_empty'];
     }
 
-    /** Save a verified empty MySQL target into .env using atomic replacement. */
+    /** Save a verified empty MySQL target into private runtime storage using atomic replacement. */
     public function saveDatabaseConfig(array $params): array
     {
         if (!$this->checkRequirements()['is_ready']) {
@@ -266,7 +266,7 @@ class InstallerService
             });
         } catch (Throwable $exception) {
             Log::error('CBT installer failed to save database configuration.', ['exception' => get_class($exception)]);
-            return ['success' => false, 'message' => 'Konfigurasi database gagal disimpan secara aman. Periksa izin file .env dan storage.'];
+            return ['success' => false, 'message' => 'Konfigurasi database gagal disimpan secara aman. Periksa izin storage/app/private dan bootstrap/cache.'];
         }
     }
 
@@ -532,9 +532,9 @@ class InstallerService
                 ]);
                 $this->stateStore->write($verifiedState);
 
-                $envPath = base_path('.env');
-                $envExisted = is_file($envPath);
-                $originalEnv = $envExisted ? file_get_contents($envPath) : null;
+                $runtimeConfigPath = storage_path('app/private/installer-runtime.php');
+                $runtimeConfigExisted = is_file($runtimeConfigPath);
+                $originalRuntimeConfig = $runtimeConfigExisted ? file_get_contents($runtimeConfigPath) : null;
                 $originalBootstrapToken = config('installer.bootstrap_token');
                 $lockPath = storage_path('installed.lock');
                 $lockContent = json_encode([
@@ -552,11 +552,10 @@ class InstallerService
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL;
 
                 try {
-                    $this->writeEnvValues([
-                        'APP_INSTALLED' => 'true',
-                        // The bootstrap secret is no longer needed after the installer locks.
-                        'CBT_INSTALLER_BOOTSTRAP_TOKEN' => '',
-                    ], false);
+                    // Disable the bootstrap token in a private writable runtime override; .env remains read-only.
+                    $runtimeConfig = ['bootstrap_token' => null];
+                    $runtimeContents = "<?php\n\nreturn " . var_export($runtimeConfig, true) . ";\n";
+                    $this->writeAtomicFile($runtimeConfigPath, $runtimeContents, 0600);
                     config(['installer.bootstrap_token' => null]);
                     $configClearExit = Artisan::call('config:clear');
                     if ($configClearExit !== 0) {
@@ -597,10 +596,15 @@ class InstallerService
                     } catch (Throwable) {
                         Log::critical('CBT installer state rollback failed after finalization error.');
                     }
-                    if ($envExisted && $originalEnv !== null) {
-                        $this->writeAtomicFile($envPath, $originalEnv, 0600);
-                    } elseif (is_file($envPath)) {
-                        @unlink($envPath);
+                    if ($runtimeConfigExisted && $originalRuntimeConfig !== null) {
+                        $this->writeAtomicFile($runtimeConfigPath, $originalRuntimeConfig, 0600);
+                    } elseif (is_file($runtimeConfigPath)) {
+                        @unlink($runtimeConfigPath);
+                    }
+                    try {
+                        Artisan::call('config:clear');
+                    } catch (Throwable) {
+                        Log::warning('CBT installer config cache cleanup failed during finalization rollback.');
                     }
                     config([
                         'app.installed' => false,
@@ -814,21 +818,44 @@ class InstallerService
 
     private function writeDatabaseEnvironment(array $params): void
     {
-        $this->writeEnvValues([
-            'DB_CONNECTION' => 'mysql',
-            'DB_HOST' => $params['host'],
-            'DB_PORT' => (string) $params['port'],
-            'DB_DATABASE' => $params['database'],
-            'DB_USERNAME' => $params['username'],
-            'DB_PASSWORD' => $params['password'],
-        ]);
+        $privateDirectory = storage_path('app/private');
+        if (!is_dir($privateDirectory) && !mkdir($privateDirectory, 0700, true) && !is_dir($privateDirectory)) {
+            throw new RuntimeException('Private installer directory cannot be created.');
+        }
 
+        $configPath = $privateDirectory . '/installer-database.php';
+        $backupDirectory = $privateDirectory . '/installer-backups';
+        if (!is_dir($backupDirectory) && !mkdir($backupDirectory, 0700, true) && !is_dir($backupDirectory)) {
+            throw new RuntimeException('Private installer backup directory cannot be created.');
+        }
+
+        // Preserve a prior installer config before replacing it. Credentials never enter .env or installer state.
+        if (is_file($configPath)) {
+            $backupPath = $backupDirectory . '/database-config-' . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.bak';
+            if (!copy($configPath, $backupPath)) {
+                throw new RuntimeException('Existing private database configuration backup failed.');
+            }
+            @chmod($backupPath, 0600);
+        }
+
+        $privateConfig = [
+            'default' => 'mysql',
+            'mysql' => [
+                'driver' => 'mysql',
+                'url' => null,
+                'host' => $params['host'],
+                'port' => (string) $params['port'],
+                'database' => $params['database'],
+                'username' => $params['username'],
+                'password' => $params['password'],
+            ],
+        ];
+        $contents = "<?php\n\nreturn " . var_export($privateConfig, true) . ";\n";
+        $this->writeAtomicFile($configPath, $contents, 0600);
+
+        // A cached config would otherwise hide the newly persisted private override on the next request.
         $configCache = base_path('bootstrap/cache/config.php');
         if (is_file($configCache)) {
-            $backupDirectory = storage_path('app/private/installer-backups');
-            if (!is_dir($backupDirectory) && !mkdir($backupDirectory, 0700, true) && !is_dir($backupDirectory)) {
-                throw new RuntimeException('Private installer backup directory cannot be created.');
-            }
             $cacheBackup = $backupDirectory . '/config-cache-' . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.bak';
             if (!copy($configCache, $cacheBackup)) {
                 throw new RuntimeException('Existing configuration cache backup failed.');
@@ -839,81 +866,15 @@ class InstallerService
             }
         }
 
-        $envPath = base_path('.env');
-        $contents = is_file($envPath) ? (string) file_get_contents($envPath) : '';
-        if (!preg_match('/^APP_KEY\s*=\s*\S.+$/m', $contents)) {
-            $this->writeEnvValues(['APP_KEY' => 'base64:' . base64_encode(random_bytes(32))]);
-            $contents = is_file($envPath) ? (string) file_get_contents($envPath) : '';
-        }
-        if (preg_match('/^APP_KEY\s*=\s*"?([^"\r\n]+)"?\s*$/m', $contents, $match)) {
-            config(['app.key' => $match[1]]);
-        }
-    }
-
-    /** Preserve unrelated .env entries; never use replacement-string interpolation. */
-    private function writeEnvValues(array $values, bool $createBackup = true): void
-    {
-        $envPath = base_path('.env');
-        $directory = dirname($envPath);
-        $contents = is_file($envPath)
-            ? (string) file_get_contents($envPath)
-            : (is_file(base_path('.env.example')) ? (string) file_get_contents(base_path('.env.example')) : '');
-
-        $lines = preg_split('/\r\n|\n|\r/', $contents) ?: [];
-        foreach ($values as $key => $rawValue) {
-            $value = (string) $rawValue;
-            if (preg_match('/[\r\n\0]/', $value)) {
-                throw new RuntimeException('Environment value contains an invalid control character.');
-            }
-            $formatted = $this->formatEnvValue($value);
-            $pattern = '/^\s*(?:export\s+)?' . preg_quote((string) $key, '/') . '\s*=/' ;
-            $found = false;
-            $updatedLines = [];
-            foreach ($lines as $line) {
-                if (preg_match($pattern, $line) === 1) {
-                    if (!$found) {
-                        $updatedLines[] = $key . '=' . $formatted;
-                        $found = true;
-                    }
-                    // Remove duplicate assignments to prevent ambiguous dotenv resolution.
-                    continue;
-                }
-                $updatedLines[] = $line;
-            }
-            if (!$found) {
-                $updatedLines[] = $key . '=' . $formatted;
-            }
-            $lines = $updatedLines;
+        // The APP_KEY is provisioned before authorization; never rewrite the read-only application root.
+        if (!is_string(config('app.key')) || strlen((string) config('app.key')) < 32) {
+            throw new RuntimeException('APP_KEY must be configured before saving database settings.');
         }
 
-        $newContents = rtrim(implode(PHP_EOL, $lines), "\r\n") . PHP_EOL;
-        if ($createBackup) {
-            $this->backupEnvironmentFile($envPath);
-        }
-        $this->writeAtomicFile($envPath, $newContents, 0600);
-    }
-
-    private function formatEnvValue(string $value): string
-    {
-        $escaped = str_replace(['\\', '"', '$'], ['\\\\', '\\"', '\\$'], $value);
-        return '"' . $escaped . '"';
-    }
-
-    private function backupEnvironmentFile(string $envPath): void
-    {
-        if (!is_file($envPath)) {
-            return;
-        }
-
-        $directory = storage_path('app/private/installer-backups');
-        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
-            throw new RuntimeException('Private installer backup directory cannot be created.');
-        }
-        $backup = $directory . '/env-' . date('Ymd-His') . '-' . bin2hex(random_bytes(3)) . '.bak';
-        if (!copy($envPath, $backup)) {
-            throw new RuntimeException('Existing environment file backup failed.');
-        }
-        @chmod($backup, 0600);
+        config([
+            'database.default' => 'mysql',
+            'database.connections.mysql' => array_replace(config('database.connections.mysql', []), $privateConfig['mysql']),
+        ]);
     }
 
     private function writeAtomicFile(string $path, string $contents, int $mode = 0600): void

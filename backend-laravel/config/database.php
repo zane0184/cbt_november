@@ -2,8 +2,39 @@
 
 use Illuminate\Support\Str;
 
+// Installer credentials are persisted outside the application source tree.
+// The file is created with mode 0600 under storage/app/private by InstallerService.
+$installerDatabasePath = dirname(__DIR__) . '/storage/app/private/installer-database.php';
+$installerDatabaseOverrides = [];
+if (is_file($installerDatabasePath)) {
+    $loadedInstallerDatabase = require $installerDatabasePath;
+    if (is_array($loadedInstallerDatabase)) {
+        $installerDatabaseOverrides = $loadedInstallerDatabase;
+    }
+}
+
+$mysqlConnection = array_replace([
+    'driver' => 'mysql',
+    'url' => env('DB_URL'),
+    'host' => env('DB_HOST', '127.0.0.1'),
+    'port' => env('DB_PORT', '3306'),
+    'database' => env('DB_DATABASE', ''),
+    'username' => env('DB_USERNAME', ''),
+    'password' => env('DB_PASSWORD', ''),
+    'unix_socket' => env('DB_SOCKET', ''),
+    'charset' => env('DB_CHARSET', 'utf8mb4'),
+    'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+    'prefix' => '',
+    'prefix_indexes' => true,
+    'strict' => true,
+    'engine' => null,
+    'options' => extension_loaded('pdo_mysql') ? array_filter([
+        PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+    ]) : [],
+], is_array($installerDatabaseOverrides['mysql'] ?? null) ? $installerDatabaseOverrides['mysql'] : []);
+
 return [
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => $installerDatabaseOverrides['default'] ?? env('DB_CONNECTION', 'sqlite'),
 
     'connections' => [
         'sqlite' => [
@@ -19,25 +50,7 @@ return [
             'transaction_mode' => 'DEFERRED',
         ],
 
-        'mysql' => [
-            'driver' => 'mysql',
-            'url' => env('DB_URL'),
-            'host' => env('DB_HOST', '127.0.0.1'),
-            'port' => env('DB_PORT', '3306'),
-            'database' => env('DB_DATABASE', ''),
-            'username' => env('DB_USERNAME', ''),
-            'password' => env('DB_PASSWORD', ''),
-            'unix_socket' => env('DB_SOCKET', ''),
-            'charset' => env('DB_CHARSET', 'utf8mb4'),
-            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'strict' => true,
-            'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
-            ]) : [],
-        ],
+        'mysql' => $mysqlConnection,
 
         'mariadb' => [
             'driver' => 'mariadb',
@@ -76,7 +89,6 @@ return [
 
         'sqlsrv' => [
             'driver' => 'sqlsrv',
-            'url' => env('DB_URL'),
             'host' => env('DB_HOST', 'localhost'),
             'port' => env('DB_PORT', '1433'),
             'database' => env('DB_DATABASE', ''),

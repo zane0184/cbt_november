@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/schema-dump-export-20261119
+      - fix/p0-96g-installer-private-db-config-20261120
     paths:
       - '.github/workflows/build-web-deployment.yml'
       - 'backend-laravel/**'
@@ -27,7 +28,7 @@ jobs:
       - name: Checkout exact source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
 
       - name: Set up PHP 8.3 and required extensions
@@ -63,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_SHA="$(git rev-parse HEAD)"
-          SOURCE_BRANCH="${GITHUB_REF_NAME}"
+          SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
           SOURCE_DATE="$(git show -s --format=%cI HEAD)"
           STAGE="$RUNNER_TEMP/CBT_MADRASAH_WEB_DEPLOYMENT"
           mkdir -p "$STAGE/backend-laravel"
@@ -77,6 +78,9 @@ jobs:
             --exclude='phpunit.xml' \
             --exclude='phpunit.mysql.xml' \
             --exclude='.phpunit.result.cache' \
+            --exclude='vendor/**/phpunit.xml*' \
+            --exclude='vendor/**/.phpunit.cache/***' \
+            --exclude='vendor/**/.phpunit.result.cache' \
             --exclude='database/seeders/DemoDataSeeder.php' \
             --exclude='database/seeders/RuntimeTestSeeder.php' \
             --exclude='AUDIT_AWAL_SOURCE_TENANT.md' \
@@ -145,7 +149,7 @@ jobs:
           test ! -d backend-laravel/tests
           test ! -d backend-laravel/backup_before_patch
 
-          if find backend-laravel -type f \( -name '.env' -o -name 'phpunit.xml' -o -name 'phpunit.mysql.xml' -o -name '.phpunit.result.cache' \) | grep -q .; then
+          if find backend-laravel \( -type f \( -name '.env' -o -name 'phpunit.xml' -o -name 'phpunit.mysql.xml' -o -name 'phpunit.xml.dist' -o -name '.phpunit.result.cache' \) -o -type d -name '.phpunit.cache' \) | grep -q .; then
             echo 'Forbidden environment/test artifact found in deployment tree.' >&2
             exit 1
           fi
@@ -159,7 +163,7 @@ jobs:
           zip -qr "$ARCHIVE" CBT_MADRASAH_WEB_DEPLOYMENT
           unzip -t "$ARCHIVE"
           unzip -Z1 "$ARCHIVE" > "$ARCHIVE.contents.txt"
-          if grep -E '(^|/)backup_before_patch/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/tests/|(^|/)\.env$|DemoDataSeeder\.php|RuntimeTestSeeder\.php|phpunit\.mysql\.xml' "$ARCHIVE.contents.txt"; then
+          if grep -E '(^|/)backup_before_patch/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/tests/|(^|/)\.env$|(^|/)phpunit\.xml([^/]*$)|(^|/)\.phpunit\.cache/|DemoDataSeeder\.php|RuntimeTestSeeder\.php|phpunit\.mysql\.xml' "$ARCHIVE.contents.txt"; then
             echo 'Archive contains a forbidden path.' >&2
             exit 1
           fi
