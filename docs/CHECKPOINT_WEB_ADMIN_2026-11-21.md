@@ -341,3 +341,41 @@ Hanya dokumentasi pada branch docs/web-admin-audit-reconciliation-20261121:
 
 Tidak ada source aplikasi, migration, database, .env, secret, PR existing, merge, deployment, atau test runtime yang diubah/dijalankan.
 Parent docs SHA sebelum rekonsiliasi: a7bef3dea2b1f57c79d34c775822bd5bde24998f. Final docs-only commit SHA dicantumkan pada laporan handover ChatGPT setelah branch diperbarui.
+
+
+
+# ADDENDUM CHECKPOINT — SOURCE CANONICAL & DESIGN CLOSURE (21 NOVEMBER 2026)
+
+## Sumber dan branch
+- Baseline 6 November: historical report mencatat 105.365.379 byte, 16.080 entri, CRC PASS, SHA b7017b7d0ccc2a93cc6b522e8a34ccacffe28d1a7e081c68dfded83238785ad0; raw ZIP tidak ada pada runtime sekarang.
+- V50.7.4 B0 snapshot: SHA 697fc62ef41423b079cbedb72d297322044dd9fca13aa5ca40115cc0de14dc1a, 957 entri, 954/954 manifest B0; snapshot referensi bukan worktree aktif.
+- Worktree 14-11 manifest 533 records; 38 target pada audit historis 0 match, 26 mismatch, 12 tidak ditemukan di V50.10 mirror.
+- Current /mnt/data/CBT_MADRASAH_RECONSTRUCTION/ dan worktree 14-11 tidak ada di filesystem sesi ini. CBT_MADRASAH_PAKET_FINAL.zip raw tidak dapat diakses; tujuh part tidak ditemukan.
+- GitHub branch main SHA 91dae257...: 24 entries = 10 files +14 dirs, 0 backend active.
+- Working source Web Admin yang direkomendasikan (belum disetujui): recovery/source-preservation-20261121 SHA 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0; 768 entries, 531 files, 237 dirs, 4.425.698 blob bytes, 347 backend active files, 160 backup files. Source code sama dengan PR #5; hanya lima dokumen recovery tambahan.
+- Source canonical seluruh CBT belum locked karena byte baseline/worktree belum tersedia untuk comparison baru. Recovery branch hanya rekomendasi Web Admin backend.
+
+## Koreksi role final
+- ADMIN_MADRASAH adalah satu-satunya role Admin aktif. OPERATOR = Admin Madrasah 100% sama; bukan role kedua/portal/permission profile.
+- Semua akun OPERATOR dan ADMIN tenant-local dipetakan melalui migration aman ke ADMIN_MADRASAH. Runtime tidak memeriksa OPERATOR atau ADMIN.
+- PROKTOR bukan role; semua Guru aktif dapat ditugaskan. Legacy PROKTOR hanya dikonversi ke GURU bila TeacherProfile valid; selain itu manual review.
+- KAMAD dan SUPER_ADMIN tidak dipetakan.
+- Source aktual masih melanggar keputusan ini pada seeder/bootstrapper/installer/login resolver/routes/policies/dashboard/layout/tests.
+
+## Koreksi tenant
+- InstallationIdentityService sudah memaksa satu Tenant per DB dan maksimal satu LocalInstallationIdentity.
+- TenantScoped sudah fail-closed ketika context kosong.
+- IdentifyTenant mengabaikan X-Tenant-Override dan memakai tenant user.
+- Batas tersisa: SystemTenantSeeder harus diisolasi, User model diuji fail-closed, registered_domain existing identity harus dicocokkan dengan APP_URL host.
+
+## Proktor
+- Service sekarang lock exam dan Guru saat assign tetapi belum query overlap; revoke belum memakai lock Guru yang sama.
+- Assignment belum rombel_id; tidak ada NEEDS_REVIEW atau schedule revision.
+- API ExamController::update dan Livewire ExamManagement::saveExam adalah jalur perubahan jadwal yang perlu disatukan.
+- Desain final menggunakan [start,end), locking/current read, lock order exam→Guru→assignment, ExamScheduleChangeService, NEEDS_REVIEW, per-request capability check, expiry/revoke deny, dan AuditService + append-only events.
+
+## W0–W10
+Rencana lengkap, file sasaran, acceptance criteria, risiko dan test cases ada pada addendum Source Canonical & Design Closure di laporan audit. Tidak ada tahap yang dimulai.
+
+## Perubahan sesi ini
+Hanya enam file dokumentasi di branch docs/source-canonical-design-closure-20261121. Tidak ada source aplikasi, migration, DB, .env, secret, PR, merge, deployment, atau runtime test yang diubah/dijalankan.

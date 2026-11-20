@@ -149,3 +149,66 @@ Semua test baru berstatus NOT RUN sampai benar-benar dijalankan pada environment
 | T-076 | Guru update | Guru mengubah mapel/jadwal exam melalui jalur yang diizinkan | Admin list membaca record sumber terbaru dan assignment terkait ditinjau ulang |
 
 Status semua T-039–T-076: NOT RUN. Acceptance tidak boleh dinyatakan PASS berdasarkan desain atau keberadaan test file saja.
+
+
+
+# ADDENDUM TEST CASE — SOURCE, ROLE CONSOLIDATION, TENANT, PROKTOR
+
+Semua test berikut NOT RUN. Runtime acceptance wajib memakai MySQL 8/InnoDB; SQLite tidak membuktikan row locking atau current-read overlap.
+
+| ID | Test case | Expected |
+|---|---|---|
+| T-077 | Preflight hitung semua role/pivot/users.role per tenant | Laporan lengkap; tidak ada DML |
+| T-078 | Migrasi akun legacy OPERATOR | Akun sama, user ID/password/profile/tenant/histori tetap; role aktif menjadi ADMIN_MADRASAH |
+| T-079 | Migrasi akun legacy ADMIN tenant-local | Dipetakan ke ADMIN_MADRASAH; SUPER_ADMIN tidak disentuh |
+| T-080 | Bandingkan permission account Admin lama dan Operator lama setelah migrasi | Array permission identik 100%, role aktif sama persis |
+| T-081 | Bandingkan seluruh route/action Admin untuk dua akun lama | HTTP/Gate result identik untuk setiap route/action |
+| T-082 | Postcondition role | Tidak ada role_user/permission_role/role aktif OPERATOR atau ADMIN; hanya ADMIN_MADRASAH |
+| T-083 | DatabaseSeeder | Tidak membuat OPERATOR atau PROKTOR role |
+| T-084 | InstallerService | Hanya membuat/menetapkan ADMIN_MADRASAH; tidak ada role Operator |
+| T-085 | Static source scan | Tidak ada runtime hasRole(OPERATOR), hasRole(ADMIN), atau role branch Operator |
+| T-086 | Akun multi-role/conflicting role | Migration berhenti sebelum perubahan; laporan konflik dibuat |
+| T-087 | Legacy PROKTOR dengan TeacherProfile valid | Dipetakan menjadi GURU; assignment historis tetap terikat ke user yang sama |
+| T-088 | Legacy PROKTOR tanpa TeacherProfile | Migration berhenti untuk manual review; tidak otomatis diberi GURU |
+| T-089 | Guru aktif calon Proktor | GURU + user aktif + TeacherProfile aktif tenant sama dapat dipilih |
+| T-090 | Role/portal Proktor | Tidak ada login role/route/dashboard permanen Proktor |
+| T-091 | Admin exam boundary | Admin hanya metadata read-only + assignment; close/monitor/token/grade/reopen/answer/result ditolak |
+| T-092 | TenantContext kosong pada TenantScoped query | Hasil 0 row (1=0) |
+| T-093 | TenantContext kosong pada create TenantScoped | Runtime exception; tidak ada row tersimpan |
+| T-094 | X-Tenant-Override dimanipulasi | Diabaikan; tenant tetap dari user terautentikasi |
+| T-095 | Database dengan 0 atau 2 Tenant | InstallationIdentityService menolak |
+| T-096 | Dua installation identity dalam satu DB | Login/identity creation menolak |
+| T-097 | Dua domain, dua database | Masing-masing memiliki tenant/identity/domain sendiri; tidak ada data silang |
+| T-098 | Satu DB diakses melalui domain kedua | Ditolak karena registered_domain mismatch setelah guard ditambahkan |
+| T-099 | SystemTenantSeeder dijalankan pada DB madrasah | Ditolak/diisolasi; tidak menambah tenant kedua |
+| T-100 | User model tanpa TenantContext | Semua jalur query/create fail-closed; termasuk withoutGlobalScopes |
+| T-101 | Assignment 07:00–09:00 lalu 09:00–11:00 | Boleh; batas akhir eksklusif |
+| T-102 | Assignment 07:00–09:00 lalu 08:00–10:00 | Ditolak |
+| T-103 | Guru sama overlap lintas ujian | Ditolak |
+| T-104 | Guru sama overlap lintas rombel | Ditolak |
+| T-105 | Dua Admin, dua koneksi MySQL, Guru sama, interval overlap | Tepat satu commit; transaksi kedua ditolak setelah lock Guru dan locking-current-read |
+| T-106 | Dua Admin, dua koneksi MySQL, Guru sama, interval non-overlap | Kedua commit berhasil |
+| T-107 | Revoke bersamaan dengan assignment baru | Lock order konsisten; tidak ada overlap/capability stale |
+| T-108 | Reschedule melalui API ExamController::update | Memanggil ExamScheduleChangeService dan menandai semua assignment NEEDS_REVIEW |
+| T-109 | Reschedule melalui Livewire ExamManagement::saveExam | Jalur yang sama; semua assignment NEEDS_REVIEW |
+| T-110 | Direct Eloquent schedule update di luar service | Ditolak oleh observer/guard |
+| T-111 | Reschedule setelah attempt dimulai | Ditolak; tidak mengubah jadwal/assignment |
+| T-112 | Reschedule sebelum attempt dimulai | Schedule revision naik; assignment NEEDS_REVIEW; audit before/after tercatat |
+| T-113 | Guru menggunakan assignment NEEDS_REVIEW | Ditolak pada request berikutnya |
+| T-114 | Admin mengonfirmasi assignment NEEDS_REVIEW yang tidak konflik | Status kembali ACTIVE dan schedule_revision diperbarui |
+| T-115 | Admin mengonfirmasi assignment yang konflik | Ditolak; status tetap NEEDS_REVIEW |
+| T-116 | Assignment tepat pada starts_at | Akses boleh bila semua status/permission sah |
+| T-117 | Assignment tepat pada expires_at | Akses ditolak |
+| T-118 | Assignment expired tetapi status DB belum diubah cron | Akses tetap ditolak oleh waktu server |
+| T-119 | Assignment revoked | Request berikutnya langsung ditolak |
+| T-120 | Assignment EXPIRED/REVOKED/NEEDS_REVIEW/COMPLETED | Semua tidak memberi capability |
+| T-121 | Audit CREATE/RENEW/REVOKE | Actor, tenant, before/after, reason, timestamp ada |
+| T-122 | Audit RESCHEDULE/NEEDS_REVIEW/CONFIRM | Semua perubahan dan schedule revision tercatat dalam transaksi yang sama |
+| T-123 | Audit EXPIRE otomatis | Actor type SYSTEM, event dan waktu tercatat; otorisasi tidak bergantung cron |
+| T-124 | Manipulasi assignment ID dari tenant lain | 403/404; tidak ada data bocor/berubah |
+| T-125 | Manipulasi exam_id/rombel_id | Ditolak oleh tenant-aware FK/policy/service |
+| T-126 | Guru nonaktif atau TeacherProfile deleted | Tidak dapat ditugaskan dan capability yang ada dicabut |
+| T-127 | Admin account lama vs Operator account lama pada menu/sidebar | UI identik; tidak ada label/portal Operator |
+| T-128 | Audit log gagal ditulis | Transaksi assignment/reschedule rollback |
+| T-129 | Idempotency create/renew assignment | Retry tidak membuat duplikasi atau status ganda |
+

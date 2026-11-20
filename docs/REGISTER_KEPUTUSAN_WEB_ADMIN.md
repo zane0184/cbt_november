@@ -163,3 +163,31 @@ Admin bukan operator authoring CBT Guru.
 ## 16. Koreksi audit
 
 Penguncian baris Guru pada ExamProctorAssignmentService sudah ada; temuan concurrency lama diperjelas: masalahnya bukan tidak ada mutex, tetapi tidak ada query overlap setelah mutex. TenantScoped juga belum otomatis fail-closed saat TenantContext kosong. Admin saat ini memiliki permission/policy monitoring dan close yang harus dicabut dari profile final.
+
+
+
+## 17. Koreksi final Admin Madrasah = Operator
+Keputusan final: satu role aktif ADMIN_MADRASAH. OPERATOR 100% sama dengan Admin Madrasah dan bukan role kedua. Satu akun/login/portal/dashboard/sidebar/permission profile/kewenangan. Tidak ada runtime branching untuk OPERATOR atau ADMIN. Legacy ADMIN tenant-local juga diverifikasi dan dipetakan ke ADMIN_MADRASAH; SUPER_ADMIN tidak dipetakan. KAMAD tetap terpisah.
+
+DatabaseSeeder, InstallerService, RolePermissionBootstrapper, AuthWebController, LoginIdentityResolver, LicenseStatusController, routes, policies, dashboard, layout, UserManagement, dan tests harus menghapus role aktif OPERATOR. Role migration wajib preflight roles, role_user, permission_role, users.role, account/profile/tenant, audit, sessions/tokens, dan seluruh FK. Preserve account ID/password/profile/history. Konflik multi-role menghentikan migrasi. Setelah mapping, tidak ada OPERATOR pivot/grant/role row aktif. Permission Admin di-sync ke satu exact profile; bukan union grant lama.
+
+Legacy PROKTOR bukan role aktif. Akun lama hanya dipetakan ke GURU bila TeacherProfile valid dan tenant cocok; selain itu manual review. Tidak ada portal Proktor.
+
+## 18. Koreksi tenant fail-closed dan satu DB
+InstallationIdentityService sudah menegakkan satu Tenant per DB dan satu LocalInstallationIdentity; LoginIdentityResolver menolak selain satu. TenantScoped sudah fail-closed bila TenantContext kosong. IdentifyTenant mengabaikan X-Tenant-Override dan mengambil tenant dari user. Koreksi ini menggantikan catatan lama yang menyatakan fail-closed/one-tenant belum terbukti.
+
+Satu madrasah = satu instalasi = satu database mandiri; no shared operational DB/academic exchange. Batas yang tersisa: SystemTenantSeeder harus diisolasi dari DB madrasah; User yang tidak menggunakan TenantScoped harus diuji eksplisit; registered_domain existing identity harus dibandingkan dengan APP_URL host. Domain berbeda harus memakai DB berbeda.
+
+## 19. Source canonical kerja Web Admin — rekomendasi bersyarat
+Rekomendasi working source Web Admin: recovery/source-preservation-20261121 @ 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0. Branch ini memiliki source backend aktif, 768 tree entries, 531 files, 237 dirs, 4.425.698 blob bytes; 347 active backend files di luar vendor/backup. Dibanding PR #5 head, hanya lima dokumen recovery/provenance ditambahkan, tidak ada source app berubah.
+
+Ini bukan bukti byte parity dengan ZIP asli 6 November atau worktree 533 file. Source canonical seluruh proyek tetap NOT VERIFIED/NOT LOCKED. main bukan source aktif (24 entries, 10 files, 14 dirs, 0 backend active). Tidak merge PR. Branch implementasi baru hanya setelah persetujuan.
+
+## 20. Desain Proktor — penguncian dan review jadwal
+- Semua Guru aktif dapat dipilih; tidak ada role/portal Proktor.
+- Perlu exam_rombels, rombel_id pada assignment, schedule_revision, NEEDS_REVIEW metadata, dan append-only assignment events.
+- Interval [start,end); overlap formula memakai effective end (expires_at atau revoked_at).
+- Semua assignment create/renew/revoke/confirm/reschedule memakai urutan lock exam → Guru → assignment; overlap query locking/current read FOR UPDATE.
+- API ExamController::update dan Livewire ExamManagement::saveExam harus menggunakan satu ExamScheduleChangeService. Direct update di luar service ditolak. Reschedule setelah attempt dimulai ditolak.
+- NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED tidak memberi capability. Expiry ditolak langsung dari waktu server; cron hanya label/event.
+- Semua transisi dicatat dalam AuditService dan event append-only dalam transaksi yang sama.

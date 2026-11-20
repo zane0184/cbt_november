@@ -211,3 +211,123 @@ Tidak ada file aplikasi, migration, database, .env, secret, PR existing, branch 
 ## K. Gerbang berikutnya
 
 Paket rekonsiliasi dan rancangan diserahkan untuk audit bersama pengguna. Desain belum dinyatakan disetujui. W0 belum dimulai. Implementasi hanya dapat dimulai setelah pengguna menyetujui desain dan memilih branch source canonical yang benar.
+
+
+
+## Source provenance dan source canonical
+
+| Sumber | Bukti historis | Kondisi sesi ini |
+|---|---|---|
+| Baseline asli CBT REVISI 6 NOPEMBER 2026.zip | Audit 14-11 mencatat 105.365.379 byte, 16.080 entri, CRC PASS, SHA b7017b7d0ccc2a93cc6b522e8a34ccacffe28d1a7e081c68dfded83238785ad0, nested pada V50.39 | Raw ZIP tidak ada di /mnt/data; hanya laporan/checksum historis. Tidak rehash sesi ini. |
+| B0 V50.7.4 snapshot | 10.197.619 byte, 957 entri, CRC PASS, SHA 697fc62ef41423b079cbedb72d297322044dd9fca13aa5ca40115cc0de14dc1a; 954/954 manifest cocok | Raw ZIP tidak terpasang; baseline referensi, bukan otomatis source aktif. |
+| V50.10 Web Focus | 62.548.810 byte, 23.239 entri, CRC PASS, SHA 0ca6e8dca13c5176aacd2aab8db5eb5aa3a75c11205b514c47675cd316593a15 | Hanya metadata historis. |
+| 01_SOURCE_WORKSPACE_RECOVERED(1).zip | 65.569.951 byte, 26.836 entri, 23.238 file, CRC PASS, SHA 3e22109a6a4909294324e3f73ae2b576c5d7eb2f4cdbe798ed670b48a021fd6c; 23.237/23.237 file sama dengan V50.10 | Bukan worktree 14-11: 0/38 target match, 26 mismatch, 12 not found. |
+| Worktree 14-11 | Manifest 533 records | Raw folder tidak ada di runtime; historical report menyatakan tidak memiliki .git. |
+| Workspace CBT_MADRASAH_RECONSTRUCTION | Laporan lama: 10-11 hanya README; 15-11 source_branches/backups diperiksa; 19-11 hanya docs/evidence | Direktori tidak ada di filesystem sesi ini. |
+| CBT_MADRASAH_PAKET_FINAL.zip | Library metadata 320.322.070 byte; petunjuk checksum 999503e2fa62834c348859e47872cedc2555a4c00a3b74114b4916cfdd4a8bea | Raw materialization ditolak; tujuh part tidak ditemukan pada enumerasi terdahulu. |
+| Backup lama | Historical inventory: 26 backup productization; 23/26 pointer cocok; 3 pointer mismatch tetapi 3/3 hash asli ditemukan di source_snapshot_original | Folder backup tidak terpasang sesi ini. |
+| Project Files/checkpoint | 24 laporan Tahap 1–5P, instruksi Lanjutkan, prompt/handover dan laporan audit tersedia | Dokumen ada, ZIP/source raw tidak ikut terpasang. |
+
+Filesystem sesi ini tidak menemukan /mnt/data/CBT_MADRASAH_RECONSTRUCTION/, /mnt/data/CBT_IMPLEMENTATION_WORKTREE_2026-11-14/, /mnt/data/cbt_audit_work/, atau /mnt/data/cbt_stage5p_work/.
+
+### Branch GitHub yang diverifikasi
+
+| Branch | HEAD SHA | Tree entries | Files | Dirs | Blob bytes | Backend active files | backup_before_patch |
+|---|---|---:|---:|---:|---:|---:|---:|
+| main | 91dae257b2210ef89c90534185a3cbdd8979ffe0 | 24 | 10 | 14 | 138.763 | 0 | 8 |
+| source-import/p0-87 | a4358983a90cbc7a252482cf2717af97699c0fae | 407 | 337 | 70 | 2.143.030 | 334 | 0 |
+| fix/p0-96g-installer-private-db-config-20261120 | 158227362eea82fc7ec7e9c232736596015739d2 | 665 | 488 | 177 | 3.682.409 | 347 | 124 |
+| fix/web-portal-usability-rbac-20261120 | ade5daa6cf853c164c4f51ec6e25ca68be40b4f2 | 761 | 526 | 235 | 4.388.224 | 347 | 160 |
+| recovery/source-preservation-20261121 | 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0 | 768 | 531 | 237 | 4.425.698 | 347 | 160 |
+
+Backend active files = blob di backend-laravel di luar vendor dan backup_before_patch. Repository ini tidak berisi source Android maupun publisher-laravel; canonical hanya dapat dipertimbangkan untuk Web Admin backend.
+
+Koreksi hitungan main: 24 entries = 10 blob + 14 directory nodes, bukan 23. Tree tidak truncated. Main tidak memiliki backend source aktif.
+
+Perbandingan Git: main vs installer diverged (installer 368 commits ahead, main 8 ahead, 300 paths berbeda); source-import → installer 363 commits ahead/231 paths; installer → Web Admin candidate 114 commits ahead/64 paths (+14.945/-120); candidate → recovery 7 commits ahead/5 docs only, no app files. PR #5/#6/#7 masih Open/Draft/Unmerged.
+
+### Rekomendasi source canonical
+Working source yang direkomendasikan untuk Web Admin backend: recovery/source-preservation-20261121 @ 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0. Branch ini terbaru, berisi source backend aktif dan provenance docs, serta app source identik dengan PR #5. Main bukan source aktif; installer/source-import lebih tua.
+
+Batas keputusan: tidak ada bukti byte langsung yang menghubungkan recovery branch dengan ZIP asli 6 November atau worktree 533 file 14 November. Raw baseline/workspace tidak tersedia. Ini rekomendasi working canonical Web Admin, bukan canonical seluruh CBT/Android/Publisher. Jika disetujui, branch implementasi baru dibuat dari SHA recovery; jangan merge PR #5 atau mengubah branch recovery.
+
+## Matriks penggunaan role pada source aktif
+
+Pemindaian statis mencakup 338 file PHP/Blade aktif pada branch kandidat (app, views, routes, migrations, seeders, tests, bootstrap/config/factories/public; tidak termasuk vendor dan backup_before_patch).
+
+| File | Identifier dan temuan | Blob SHA |
+|---|---|---|
+| DatabaseSeeder.php | Membuat ADMIN_MADRASAH dan OPERATOR sebagai dua role | bb9a55dd16ac7b7e56b79dc8f5ccaca689416868 |
+| RolePermissionBootstrapper.php | ROLE_GRANTS Admin dan OPTIONAL_ROLE_GRANTS Operator berbeda; Admin mendapat exam.manage/monitor/close/token/grade/reopen/report | fac82573de84c52b52867afbbf7e1637164835b4 |
+| InstallerService.php | Role definitions membuat OPERATOR; akun installer hanya disinkronkan ke ADMIN_MADRASAH | 62dcecd5db10574067cef41529ce531a08e02999 |
+| AuthWebController.php | Allowlist OPERATOR/PROKTOR; Admin dan Operator redirect ke /operator/dashboard | 1f76179dbbf304eb11271b74fbe1d1d38c74a401 |
+| LoginIdentityResolver.php | Staff allowlist ADMIN, OPERATOR, PROKTOR | ec1da249e643b48094459bc3eb51ce1b5e58ab39 |
+| LicenseStatusController.php | Dua endpoint menerima ADMIN_MADRASAH/OPERATOR | 2e6a718c54e8aac573790cf3b117c1822759f72b |
+| routes/web.php | Dashboard Operator dan portal Proktor masih ada | c22fed7d54871bf4971acf626514fc02c4a68ce9 |
+| AcademicManagement.php | ADMIN_MADRASAH/ADMIN; OPERATOR tidak | 5afd0780fa642354c11954fce307d8e6f7e4576f |
+| CurriculumManagement.php | ADMIN_MADRASAH/ADMIN; OPERATOR tidak | e3422650ea71709cba5ae07cd2b887cf812166a8 |
+| UserManagement.php | Hanya ADMIN_MADRASAH | 5f90e3873cadeb77a1bcd5a6aa2134953e60beed |
+| OperatorDashboard.php | ADMIN_MADRASAH/ADMIN/OPERATOR; dashboard terpisah bernama Operator | 75ef8da79896994c98b00b9941f6f976a36b671c |
+| KamadDashboard.php | ADMIN_MADRASAH/ADMIN/KAMAD | 8a0fb4d402f69e5e2542cb256e704c0ecf6f7089 |
+| ExamManagement.php | Komponen exam gabungan ADMIN_MADRASAH/GURU | 478aaa170ee297b0c8399f049cd9b1ba56cbfb10 |
+| ProctorAssignmentManagement.php | Admin assign; picker mensyaratkan PROKTOR | 4e8bd91dd54757aa863d35983aace718def2ca2c |
+| ProktorDashboard.php | Portal memerlukan role PROKTOR | 172fff1aa4a101193aad9061a729cc17ccb11ecc |
+| ExamPolicy.php | Admin/Operator view-monitor, Admin close, Proktor monitor dengan role permanen | 350c1ddc6bed8738d1af17cacd6c95bc367b7c29 |
+| AssessmentPolicy.php | Admin dan Operator diterima bersama pada beberapa policy | 79a0367c8c83723ae3cc9e581fb8dda8a6e2d02a |
+| ExamAttemptPolicy.php | Admin dapat detail hasil/finalize/reopen; komentar menyatakan Operator tidak boleh answer-level | b19d6d39d34884d8be464f786340c1a2ab7108b6 |
+| QuestionPolicy.php | ADMIN_MADRASAH diterima, OPERATOR tidak | af94614a2043206922149b0c44a8ec1e3d87767d |
+| ReportPolicy.php | ADMIN_MADRASAH/KAMAD report.view, Operator tidak | e53be3994c52d067c1e31fe37edc450c24a0f4b6 |
+| ExamProctorAssignmentService.php | Memvalidasi hasRole(PROKTOR), bukan Guru aktif | e16ef5db308714aa98bf283dc5a1545608da0477 |
+| layouts/app.blade.php | Panel Admin & Guru, Dashboard Operator, menu Proktor, menu exam/question campur | 0163813cafc0226b9eae8af789223da0fb793f64 |
+| operator-dashboard.blade.php | Label Role: Operator Madrasah | 4e33946f74bf5aebbce5bc2a5fc64586a34310ec |
+| teacher/result-list.blade.php | Admin diberi UI exam.grade | f9c8de95b18954379b0c1e93555e90acad246983 |
+| RolePermissionBootstrapperTest.php | Satu test mengharapkan grant berbeda; test lain mengharapkan OPERATOR tidak ada | cfacac702f967667c8e1e4f6dff18000fc105f68 |
+| RoleDashboardVerificationTest.php | Membuat role/account Admin, Operator, Proktor terpisah | 359ebbaeb817bf2d76d4137673a84eeedf237681 |
+| WebAdminAuthTest.php | Membuat akun Admin/Operator terpisah; redirect sama tetapi role berbeda | 93a822f44f7d21d4c25913599bda2bcfe7d32e34 |
+
+ADMIN tidak dibuat oleh DatabaseSeeder, tetapi diterima oleh LoginIdentityResolver, AcademicManagement, CurriculumManagement, KamadDashboard, OperatorDashboard. Preflight harus memeriksa apakah row/account ADMIN merupakan legacy Admin tenant-local; SUPER_ADMIN tidak dipetakan. KAMAD tidak dipetakan.
+
+
+
+
+## AUDIT
+- Baseline 6 November, B0 V50.7.4, V50.10, recovered mirror, worktree 533 file, backup, checkpoint, dan Project Files telah ditelusuri melalui laporan historis serta filesystem sesi.
+- Raw ZIP baseline dan raw workspace tidak tersedia pada runtime; hash historis tidak dihitung ulang. V50.10 recovered mirror bukan worktree 14-11 (0/38 target match).
+- GitHub tree: main 24 entries (10 files, 14 dirs), bukan 23. Main tidak memiliki source backend aktif.
+- Rekomendasi working source Web Admin: recovery/source-preservation-20261121 @ 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0. Ini bukan canonical seluruh CBT dan belum byte-verified terhadap baseline.
+- 23 kelompok ADM diperbarui dalam MATRIKS_AUDIT; seluruhnya memiliki status dan bukti source atau batas pencarian.
+- Role scan 338 file aktif menunjukkan ADMIN_MADRASAH/OPERATOR tidak identik pada source: seeder, bootstrapper, installer, login, routes, policies, dashboards, views dan tests masih membedakan. ADMIN juga alias runtime. Proktor permanen masih ada.
+- TenantScoped fail-closed dan one Tenant per DB ternyata sudah ada; laporan lama dikoreksi. Domain binding existing identity dan User model masih perlu hardening.
+
+## DESAIN
+- Satu role aktif Admin: ADMIN_MADRASAH. OPERATOR/ADMIN hanya legacy migration alias, tidak aktif. Semua akun lama dipetakan dan diuji permission/route parity 100%.
+- Satu madrasah satu instalasi satu DB; no shared operational DB/academic exchange. tenant_id/TenantContext tetap defense-in-depth.
+- Semua Guru aktif dapat menjadi Proktor sementara. Tidak ada role/portal Proktor.
+- Assignment mengikat exam+rombel+Guru; interval [start,end); overlap query locking/current read setelah lock Guru. Semua write satu lock order.
+- Reschedule API dan Livewire memakai satu service; NEEDS_REVIEW langsung memutus capability. Expired/revoked/needs-review/completed tidak memberi akses. Audit semua transisi.
+- W0–W10 direvisi berdasarkan dependency source; acceptance dan test tercantum di spec dan matriks.
+
+## IMPLEMENTASI
+Hanya enam dokumen yang diperbarui pada branch docs/source-canonical-design-closure-20261121. Tidak ada source aplikasi, migration, DB, .env, secret, PR, source branch, merge, atau deployment yang diubah. Tidak ada branch implementasi dibuat. W0 belum dimulai.
+
+## PENGUJIAN
+- Git tree/branch/commit/PR metadata dan source diff: diperiksa.
+- Pemindaian role 338 PHP/Blade aktif: diperiksa statis.
+- Source Proktor, tenant, installer, role dan policies: diperiksa statis.
+- PHPUnit, MySQL, concurrency, browser, migration, seeder, install lint, Android build, deployment, UAT: NOT RUN.
+
+## Rencana W0–W10
+| Tahap | Sasaran | Acceptance | Risiko | Test |
+|---|---|---|---|---|
+| W0 | Source manifest/tree, backup register, route/action matrix; no app patch | Branch SHA pin; 533 manifest dibandingkan atau mismatch ditutup; backup verified; branch implementasi terpisah | Salah source/overwrite | SHA-256, tree diff, git status, restore disposable |
+| W1 | Role consolidation, tenant guards, login/seeder/installer/policies | Satu ADMIN_MADRASAH; akun legacy parity; no OPERATOR/PROKTOR; tenant fail-closed | Account lockout, FK, stale grants | Role migration, idempotency, route parity, tenantless, two DB |
+| W2 | Admin dashboard/shell/sidebar/routes | Satu portal/dashboard/sidebar; no Operator/Proktor UI | Route lama, responsive | Route/UI/mobile/keyboard |
+| W3 | AcademicManagement, year/semester/class/rombel/subject | Master akademik dan histori lengkap | Duplicate/history | FK/unique/tenant/lifecycle |
+| W4 | UserManagement, User/Teacher/Student profiles, teacher assignments, active status | Lifecycle akun, Guru aktif terdefinisi | Escalation/duplicate identity | CRUD/status/assignment |
+| W5 | StudentRombel, promotion/repeat/graduation/history | Workflow transaksional, histori immutable | Lost history/concurrency | Idempotency/rollback/concurrent placement |
+| W6 | CurriculumManagement, CP/TP/ATP/Mulok/KBC/Panca Cinta/DPL | Version/source/effective date; no invented official data | Provenance | Seed/version/source tests |
+| W7 | Exam/ExamController/ExamManagement/ProctorAssignment/Policies/Schedule service | Admin metadata-only + assign; Guru owner; race/review/expiry safe | Race/stale schedule/IDOR | MySQL 8 concurrency, interval, API+Livewire reschedule, status, audit |
+| W8 | Importers and Admin reports | Preview/validation/idempotent commit; no exam result leak | Partial import/PII | Rollback/retry/export auth |
+| W9 | AuditService, health, backup/restore, profile/preferences | Full audit, checksum, disposable restore | Audit gaps/secret leak | Audit coverage/checksum/restore |
+| W10 | Integration/security/browser/performance/UAT | All acceptance PASS and user UAT | False ready claim | Full MySQL/browser/security/performance/restore/UAT |
+

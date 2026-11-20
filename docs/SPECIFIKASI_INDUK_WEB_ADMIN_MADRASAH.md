@@ -1894,3 +1894,45 @@ Akses Proktor divalidasi pada setiap request berdasarkan Guru aktif, tenant, ass
 ## 31.6 Rencana W0–W10
 
 Rencana rinci, file sasaran, dependensi, acceptance criteria, risiko, dan pengujian tercantum dalam dokumen AUDIT_REKONSILIASI_DESAIN_WEB_ADMIN_2026-11-21.md. Rencana tidak berarti pekerjaan telah dimulai. W0 tetap menunggu persetujuan desain eksplisit.
+
+
+
+# ADDENDUM 32 — SOURCE CANONICAL & DESIGN CLOSURE (21 NOVEMBER 2026)
+
+## 32.1 Identitas final: ADMIN_MADRASAH = OPERATOR
+
+ADMIN_MADRASAH dan OPERATOR adalah 100% sama persis. Hanya ada satu role aktif kanonis ADMIN_MADRASAH. Operator adalah nama/identifier lama, bukan role kedua, portal, kelompok permission, atau tingkat kewenangan.
+
+- Satu akun, satu login, satu portal, satu dashboard, satu sidebar, satu permission profile, satu kewenangan.
+- Semua akun yang sebelumnya memakai role OPERATOR dipetakan ke ADMIN_MADRASAH dengan mempertahankan user ID, password hash, tenant, profil, sesi/token sah, dan histori audit.
+- Tidak boleh ada runtime branching hasRole(OPERATOR) atau hasRole(ADMIN). Identifier legacy hanya boleh muncul pada preflight, migration, audit mapping, dan test migrasi.
+- ADMIN tenant-local yang ditemukan pada source diverifikasi dan dipetakan ke ADMIN_MADRASAH; jangan pernah memetakan SUPER_ADMIN.
+- Tidak ada role row/pivot OPERATOR aktif setelah migrasi. Jejak transisi disimpan sebagai migration/audit record, bukan role runtime.
+- KAMAD tetap role terpisah. PROKTOR bukan role; capability sementara berasal dari assignment Guru aktif.
+
+### Transisi data aman
+Preflight wajib memeriksa roles, role_user, permission_role, legacy users.role, akun aktif/deleted, tenant_id, TeacherProfile, sessions/tokens, audit history, dan semua FK yang mengacu ke roles.id. Konflik multi-role, orphan pivot, tenant mismatch, atau profile mismatch menghentikan migrasi untuk manual review. Backup dan restore test wajib dilakukan sebelum DML. Mapping OPERATOR/ADMIN ke ADMIN_MADRASAH dilakukan dalam transaksi tanpa menghapus akun atau password. Pivot/role legacy baru dibersihkan setelah semua akun terpetakan dan seluruh FK diverifikasi. Permission Admin di-sync tepat ke satu profile final; jangan union grant lama karena source saat ini memberi Admin dan Operator permission berbeda.
+
+Permission Admin dibatasi ke administrasi madrasah, katalog akademik/kurikulum, akun Guru/Siswa, metadata ujian read-only, assignment Proktor, laporan administratif, audit/health/backup/profil. Admin tidak mendapat exam.manage, exam.assign, exam.monitor, exam.close, exam.token, exam.grade, exam.reopen, question.manage, akses jawaban, detail nilai, atau hasil operasional Guru. Admin boleh mengelola katalog master mapel madrasah; pengaitan mapel pada ujian tetap milik Guru.
+
+## 32.2 Tenant dan instalasi
+Satu madrasah = satu instalasi = satu database sendiri. Tidak ada shared operational database atau pertukaran data akademik antarinstalasi. tenant_id, TenantContext, IdentifyTenant, TenantScoped, policies, audit, dan composite FK dipertahankan sebagai defense-in-depth internal.
+
+Source aktual sudah memeriksa tepat satu Tenant dan satu LocalInstallationIdentity per DB pada InstallationIdentityService; LoginIdentityResolver juga menolak kondisi selain satu. TenantScoped sudah fail-closed jika context kosong (query memakai whereRaw 1=0; create tanpa tenant melempar exception). IdentifyTenant mengabaikan X-Tenant-Override dan mengambil tenant dari user terautentikasi.
+
+Batas yang masih harus ditutup: SystemTenantSeeder tidak boleh dijalankan pada DB madrasah; User tidak menggunakan TenantScoped sehingga harus diuji eksplisit; InstallationIdentityService belum membandingkan registered_domain pada existing identity dengan APP_URL host. Tambahkan domain-binding check dan uji dua domain dengan dua DB terpisah.
+
+## 32.3 Source canonical kerja Web Admin
+Rekomendasi working source untuk Web Admin backend adalah branch recovery/source-preservation-20261121 pada SHA 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0. Source backend branch ini identik dengan source head PR #5; tujuh commit setelah PR #5 hanya menambahkan lima dokumen recovery/provenance. Branch main hanya 24 tree entries (10 files, 14 directories), tanpa backend source aktif.
+
+Ini hanya working source Web Admin. Raw ZIP baseline 6 November dan worktree 533 file tidak tersedia pada sesi ini untuk perbandingan byte baru. Karena itu lineage penuh ke baseline dan source canonical seluruh proyek (Android/Publisher/Web) belum dinyatakan terkunci. Tidak ada merge/branch implementasi dibuat.
+
+## 32.4 Proktor
+Tidak ada role/portal Proktor permanen. Semua Guru aktif dalam tenant dapat ditugaskan; capability berasal dari assignment yang terikat tenant, exam, rombel, Guru, waktu server, status, dan schedule revision. Guru aktif berarti user enabled, tidak deleted, memiliki role GURU dan TeacherProfile aktif; source sekarang belum memiliki flag users.is_active, sehingga perlu ditambahkan secara additive.
+
+Assignment memakai interval [starts_at, expires_at). Overlap: existing.starts_at < new.expires_at AND effective_existing_end > new.starts_at. Semua jalur write memakai transaksi InnoDB dan lock order exam → Guru row → assignment rows. Setelah mutex Guru didapat, query overlap harus locking/current read FOR UPDATE; dua Admin yang bersamaan menugaskan Guru yang sama akan terserialisasi, dan transaksi kedua melihat assignment commit pertama.
+
+Perubahan jadwal hanya lewat satu ExamScheduleChangeService dari API ExamController::update dan Livewire ExamManagement::saveExam. Perubahan memerlukan alasan, lock exam, belum ada attempt dimulai, increment schedule_revision, dan mengubah assignment terdampak menjadi NEEDS_REVIEW dalam transaksi yang sama. Direct update di luar service ditolak. NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED, atau waktu di luar interval tidak memberi capability. Admin mengonfirmasi ulang setelah validasi konflik; tidak ada pergeseran jadwal/pengawas diam-diam. Semua transisi masuk AuditService/event append-only.
+
+## 32.5 Prioritas dokumen
+Addendum 32 ini menggantikan pernyataan lama pada Addendum 31, Register, matriks, dan checkpoint yang masih menyebut OPERATOR sebagai role legacy aktif, TenantScoped tidak fail-closed, atau one-tenant-per-DB belum terbukti. Tidak ada keputusan arsitektur lain yang diubah.
