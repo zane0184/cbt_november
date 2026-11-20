@@ -319,3 +319,26 @@ Temuan ini harus masuk audit UI/UX Web Admin. Screenshot yang dilampirkan penggu
 9. Perbaikan diuji regresi agar tidak merusak navigasi, responsive layout, aksesibilitas keyboard, maupun halaman Admin lainnya.
 
 Temuan ini **belum dinyatakan sudah diperbaiki**. Agent harus mereproduksi dan mengaudit source dahulu, kemudian memasukkannya ke desain dan backlog implementasi. Jangan coding sebelum gerbang persetujuan desain umum yang sudah ditetapkan.
+
+
+## 12. KLARIFIKASI FINAL ROLE ADMIN = OPERATOR (SATU ROLE, BUKAN DUA)
+
+**Keputusan pengguna yang paling baru dan mengikat:** dalam produk ini, **Admin Madrasah adalah Operator Madrasah**. Keduanya menunjuk satu peran/akun dan satu portal yang sama. Jangan membuat dua role, dua dashboard, dua portal, dua menu, atau dua lapisan permission terpisah bernama Admin dan Operator.
+
+Aturan implementasi:
+1. Gunakan satu role kanonis di backend dan satu himpunan permission untuk peran pengelola madrasah tersebut. Audit source untuk mengetahui nama role/enum/permission yang sudah ada; jangan mengganti identifier database atau membuat migration hanya demi menyamakan label.
+2. Label UI utama yang disarankan adalah **“Admin Madrasah”** agar konsisten dengan spesifikasi Web Admin. “Operator Madrasah” boleh dipakai sebagai istilah penjelas/alias yang sudah dikenal pengguna, tetapi bukan role kedua.
+3. Brand sidebar gunakan **“Panel Admin Madrasah”**. Jangan gunakan “Panel Admin & Guru”.
+4. Jangan menampilkan dua menu/dashboard terpisah seperti “Dashboard Admin” dan “Dashboard Operator”. Keduanya satu dashboard yang sama.
+5. Bila source lama memiliki role `operator`, `admin`, atau nama permission yang tumpang tindih, jangan langsung membuat role baru atau menghapus role lama. Audit mapping aktual, data pengguna, seeder, policy, middleware, dan route. Usulkan satu pemetaan kanonis yang kompatibel, lalu minta persetujuan bila memerlukan perubahan data/schema/authorization.
+6. Badge role boleh menampilkan “Admin Madrasah” atau “Operator Madrasah” sesuai label UI yang diputuskan, tetapi jangan pernah menyiratkan bahwa keduanya dua jenis akun berbeda.
+7. Pemisahan yang tetap berlaku adalah **Admin/Operator Madrasah vs Guru**. Portal Guru tetap terpisah secara kewenangan dan navigasi. Penggabungan Admin dengan Operator tidak berarti Admin dan Guru digabung.
+8. Revisi requirement sebelumnya yang melarang kata “Operator” pada sesi Admin: larangan itu hanya berlaku untuk label yang menampilkan Operator seolah role/portal kedua atau salah konteks. Karena Admin = Operator, istilah Operator boleh muncul sebagai alias/penjelas, tanpa membuat identitas ganda.
+
+Acceptance criteria:
+- Hanya ada satu role/portal pengelola madrasah: Admin Madrasah (Operator).
+- Satu akun tidak perlu memilih antara Admin dan Operator.
+- Tidak ada duplikasi dashboard, sidebar, menu, atau permission Admin vs Operator.
+- Semua route dan action pengelola madrasah memakai authorization kanonis yang sama.
+- Guru tetap memiliki portal/role terpisah.
+- Migrasi atau konsolidasi role lama hanya dilakukan setelah audit data dan persetujuan eksplisit; tidak boleh merusak akun maupun histori.
