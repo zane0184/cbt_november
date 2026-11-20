@@ -1103,3 +1103,64 @@ Jangan langsung coding dan jangan melakukan deployment.
 12. Simpan checkpoint agar pekerjaan dapat dilanjutkan agent baru tanpa mengulang audit.
 
 **Prinsip akhir:** Web Admin harus menjadi pusat administrasi madrasah yang lengkap, bukan pusat operasional ujian. Semua operasional CBT tetap di luar ruang lingkup Admin. Kurikulum hanya Kurmer/KBC. Impor siswa, Guru, dan mata pelajaran dengan template Excel—termasuk Mulok—wajib tersedia.
+
+
+---
+
+# 23. PROFIL ADMIN DAN PENGELOLAAN KATA SANDI
+
+Web Admin wajib menyediakan halaman profil akun Admin yang dapat diakses dari menu profil pada header/topbar. Fitur ini merupakan bagian inti administrasi akun, bukan fitur opsional.
+
+## 23.1 Menu dan informasi profil
+
+Sediakan menu **Profil Saya** yang memuat:
+- Nama lengkap Admin.
+- Username.
+- Email atau kontak yang terdaftar, jika tersedia.
+- Role dan ringkasan permission yang relevan (read-only).
+- Status akun.
+- Foto/avatar jika fitur dan penyimpanan tersedia.
+- Informasi waktu terakhir login bila tersedia dan akurat.
+- Tanggal pembuatan akun bila tersedia.
+
+Admin hanya boleh mengubah field profil yang memang diizinkan oleh kebijakan akun. Role, permission, status privileged, tenant scope, dan identitas internal tidak boleh dapat dinaikkan atau diubah sendiri melalui form profil. Perubahan identitas penting harus divalidasi dan diaudit.
+
+## 23.2 Pergantian kata sandi
+
+Sediakan halaman atau tab **Keamanan Akun / Ganti Kata Sandi** dengan:
+- Kata sandi saat ini.
+- Kata sandi baru.
+- Konfirmasi kata sandi baru.
+- Tombol tampil/sembunyikan input password.
+- Indikator dan validasi kebijakan password.
+- Pesan sukses/gagal yang jelas dan tidak membocorkan detail sensitif.
+
+Persyaratan keamanan:
+1. Wajib memverifikasi kata sandi saat ini sebelum perubahan.
+2. Kata sandi baru harus memenuhi kebijakan panjang dan kompleksitas yang ditetapkan aplikasi.
+3. Konfirmasi harus cocok dengan kata sandi baru.
+4. Kata sandi disimpan hanya dalam bentuk hash menggunakan mekanisme hashing Laravel yang sesuai; tidak boleh disimpan atau dicatat sebagai plaintext.
+5. Jangan menampilkan, mengirim, atau mencatat password ke log, audit detail, analytics, atau pesan error.
+6. Terapkan rate limit pada percobaan sensitif dan validasi di server.
+7. Setelah perubahan berhasil, invalidasi sesi/token lain sesuai kebijakan keamanan; sesi saat ini boleh dipertahankan hanya jika mekanisme autentikasi dan rotasi session aman.
+8. Berikan notifikasi perubahan kata sandi tanpa menyertakan kata sandi.
+9. Catat peristiwa perubahan pada audit log dengan actor, waktu, dan hasil, tanpa menyimpan nilai password atau hash.
+10. Jangan menyediakan fitur melihat kata sandi lama atau memulihkannya dalam bentuk plaintext.
+
+## 23.3 Lupa kata sandi dan reset oleh Admin
+
+Alur lupa kata sandi harus menggunakan mekanisme reset yang aman, token sekali pakai, masa berlaku terbatas, dan respons yang tidak membocorkan apakah suatu akun terdaftar. Reset kata sandi milik pengguna lain oleh Admin harus menjadi aksi terpisah dengan permission khusus, alasan, audit log, dan prosedur pemberitahuan; jangan menyamakan reset oleh Admin dengan pergantian kata sandi mandiri.
+
+## 23.4 Pengujian penerimaan
+
+- Admin dapat membuka Profil Saya dan hanya melihat data sesuai haknya.
+- Admin dapat memperbarui field profil yang diizinkan.
+- Admin tidak dapat mengubah role/permission sendiri melalui profil.
+- Pergantian password gagal jika password saat ini salah.
+- Pergantian password gagal jika konfirmasi tidak cocok atau kebijakan tidak terpenuhi.
+- Pergantian password berhasil dengan password baru yang valid.
+- Password baru dapat digunakan untuk login dan password lama tidak lagi berlaku sesuai kebijakan sesi.
+- Password maupun hash tidak muncul pada log, audit, response, atau tampilan.
+- Rate limit dan proteksi CSRF/authorization berjalan.
+- Reset password pengguna lain memerlukan permission khusus dan tercatat.
+
