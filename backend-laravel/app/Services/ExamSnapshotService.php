@@ -24,6 +24,14 @@ class ExamSnapshotService
                 abort(409, 'Exam is locked and cannot be modified.');
             }
 
+            // Bind every snapshot to the subject fixed by this exam's assessment.
+            // Revalidate inside the same transaction as the exam lock; a caller-side
+            // validation alone is insufficient for tenant/subject integrity.
+            $assessmentSubjectId = $lockedExam->assessment()->value('subject_id');
+            if (!$assessmentSubjectId) {
+                abort(422, 'Exam assessment subject is missing; snapshots cannot be created.');
+            }
+
             // A draft should not normally have attempts, but fail closed for
             // legacy/inconsistent data instead of mutating an exam history.
             $existingSnapshotIds = $lockedExam->snapshots()->pluck('id')->all();
@@ -63,6 +71,10 @@ class ExamSnapshotService
                 $version = QuestionVersion::query()
                     ->where('tenant_id', $lockedExam->tenant_id)
                     ->whereKey($versionId)
+                    ->whereHas('question', function ($query) use ($lockedExam, $assessmentSubjectId) {
+                        $query->where('tenant_id', $lockedExam->tenant_id)
+                            ->where('subject_id', $assessmentSubjectId);
+                    })
                     ->lockForUpdate()
                     ->firstOrFail();
                 $options = $version->options()->orderBy('sequence')->get();
