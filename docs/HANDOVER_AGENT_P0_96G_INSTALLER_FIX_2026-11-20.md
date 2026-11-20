@@ -11,7 +11,8 @@ Pengguna meminta seluruh perbaikan dilakukan pada source GitHub agar paket ZIP y
 - Branch baseline yang sebelumnya dipakai untuk deployment P0.96F: `work/schema-dump-export-20261119`.
 - Commit baseline yang dipakai sebagai titik awal investigasi: `ff0393274891f7774511f09b59a1d8e97f6f745b`.
 - Branch patch saat ini: `fix/p0-96g-installer-private-db-config-20261120`.
-- HEAD terakhir saat checkpoint dibuat: `eecdf5ae404d0a6eadedecc6a4282f853d1967a1`.
+- HEAD source patch setelah dua commit escaping: `eecdf5ae404d0a6eadedecc6a4282f853d1967a1`.
+- Commit dokumen handover terbaru yang ditambahkan setelah itu: `c91723f2014d244ccf91d7de2d4ed6cf20a777bb` (branch HEAD sekarang).
 - Draft PR #4: https://github.com/zane0184/cbt_november/pull/4
 - PR #4 belum merge, masih Draft, mergeable=false, melaporkan 485 changed files dan 363 commits.
 - PENTING: PR #4 berasal dari branch yang diturunkan dari branch kerja lama, bukan branch bersih yang hanya berisi patch P0.96G. Jangan merge PR #4. Sebelum integrasi, buat branch bersih dari main dan cherry-pick/port hanya perubahan P0.96G yang diperlukan, setelah membandingkan main, baseline, dan branch aktual. Pastikan perubahan lama yang relevan tidak hilang dan tidak membawa 485 file yang tidak dimaksud.
