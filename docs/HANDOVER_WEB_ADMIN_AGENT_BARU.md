@@ -42,3 +42,6 @@ Proktor adalah **Guru yang ditugaskan Admin/Operator Madrasah** untuk mengawasi 
 
 ## Klarifikasi terbaru Proktor — otomatis berdasarkan jadwal
 Semua Guru otomatis menjadi Proktor saat mendapat jadwal pengawasan ujian yang berlaku. Admin/Operator mengelola jadwal; status/hak Proktor sementara berasal otomatis dari jadwal, bukan role permanen atau aktivasi manual. Semua Guru aktif dapat dijadwalkan tanpa pembatasan kategori Guru kelas/Wali Kelas/Guru Mapel. Lihat bagian 14 pada prompt agent dan bagian 28 pada spesifikasi. Pada tahap Web Admin hanya pengelolaan jadwal oleh Admin; UI/workflow Guru ditahan.
+
+## Modul baru: Pengaturan Jadwal Ujian & Pengawas
+Web Admin harus memiliki modul pengaturan kalender/jadwal ujian institusi dan roster Guru pengawas yang dikelola Admin/Operator sesuai edaran resmi terverifikasi. Semua Guru aktif dapat dijadwalkan; status/hak Proktor otomatis aktif dari roster saat jadwal berlaku, bukan role permanen. Guru tetap mengelola isi/konfigurasi akademik CBT, penerbitan, token, penilaian, dan hasil. Lihat bagian 15 prompt agent dan bagian 29 spesifikasi. Jangan mengarang aturan edaran.
