@@ -226,3 +226,18 @@ Klarifikasi terbaru: **semua Guru otomatis menjadi Proktor ketika mendapat jadwa
 - Pada tahap Web Admin, cakupan hanya administrasi jadwal pengawasan oleh Admin/Operator. Workflow Guru menunggu tahap berikutnya.
 
 **Koreksi atas bagian sebelumnya:** penyebutan Guru kelas/Wali Kelas/Guru Mapel hanya contoh kategori Guru, bukan daftar pembatas. Semua Guru dapat dijadwalkan.
+
+## 14. KEPUTUSAN BARU — ADMIN MENGATUR JADWAL UJIAN DAN ROSTER PENGAWAS
+
+Web Admin wajib memiliki modul **Pengaturan Jadwal Ujian / Jadwal Ujian & Pengawas**. Admin/Operator menetapkan kalender dan jadwal pelaksanaan ujian institusi, sesi, jam, ruang/lokasi, serta roster Guru yang mengawas. Penugasan mengikuti edaran/pedoman resmi yang berlaku dan sudah diverifikasi.
+
+Pembagian kewenangan:
+- Admin/Operator: kalender/jadwal institusi, sesi/ruang, roster pengawas, validasi benturan, perubahan/pembatalan, referensi edaran, rekap/cetak jadwal, audit trail.
+- Guru: bank soal, paket/asesmen/konfigurasi akademik CBT, snapshot, penerbitan ujian/token sesuai alur produk, penilaian, analisis, dan hasil.
+- Ujian CBT yang dibuat Guru harus ditautkan/divalidasi terhadap jadwal institusi yang ditetapkan Admin agar tidak ada dua sumber jadwal yang bertentangan.
+
+Semua Guru aktif dapat ditempatkan pada roster. Saat jadwal berlaku, status/hak Proktor sementara aktif otomatis hanya untuk ujian/sesi/ruang/waktu yang ditugaskan. Tidak ada role atau aktivasi Proktor permanen.
+
+**Kepatuhan edaran:** nomor, penerbit, tanggal, masa berlaku, syarat penugasan, jumlah pengawas, rasio, larangan, dan aturan lainnya hanya boleh diterapkan setelah sumber resmi diverifikasi. Jika edaran belum tersedia, tandai BELUM TERVERIFIKASI; jangan mengarang ketentuannya. Simpan versi dan periode berlaku.
+
+**Status:** requirement Web Admin baru; audit dan desain dahulu. Implementasi belum dimulai.
