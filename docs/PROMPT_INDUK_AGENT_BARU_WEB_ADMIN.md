@@ -367,3 +367,27 @@ Acceptance criteria:
 - Penugasan lintas madrasah/tenant ditolak.
 - Pencabutan/kedaluwarsa penugasan mengakhiri hak sementara.
 - Semua perubahan dan tindakan tercatat pada audit log.
+
+## 14. PENEGASAN FINAL — JADWAL PENGAWASAN OTOMATIS MEMBERI STATUS PROKTOR
+
+Klarifikasi terbaru pengguna mengikat dan menyempurnakan bagian 13: **semua Guru dapat menjadi Proktor secara otomatis ketika namanya tercantum pada jadwal pengawasan ujian yang berlaku.** Tidak perlu proses pengangkatan role Proktor, pendaftaran khusus, atau pemilihan kategori Guru secara terpisah.
+
+Aturan yang benar:
+1. Semua akun Guru aktif di madrasah merupakan calon pengawas yang dapat dimasukkan ke jadwal. Tidak dibatasi hanya Guru kelas, Wali Kelas, atau Guru Mata Pelajaran; seluruhnya adalah Guru dan dapat mendapat jadwal pengawasan.
+2. Admin/Operator Madrasah menyusun/mengelola jadwal pengawasan ujian dan menempatkan Guru pada sesi/ruang/waktu yang diperlukan.
+3. Ketika jadwal pengawasan yang sah berlaku dan Guru tercantum sebagai pengawas, sistem otomatis memberikan konteks/hak Proktor sementara untuk tugas tersebut. Guru tidak perlu mengaktifkan role Proktor atau meminta aktivasi manual.
+4. Di luar jadwal atau di luar sesi/ruang/ujian yang ditugaskan, Guru tetap hanya memiliki hak dasar Guru dan tidak memperoleh hak Proktor.
+5. Hak sementara mengikuti waktu dan status jadwal. Perubahan, penggantian pengawas, pembatalan, atau berakhirnya jadwal harus segera memperbarui hak akses.
+6. Assignment harus memeriksa benturan jadwal Guru, status akun, tenant/madrasah, sesi, ruang, dan periode. Cegah jadwal tumpang tindih yang tidak diizinkan.
+7. Role dasar tetap Guru. Status Proktor diturunkan dari jadwal pengawasan aktif (scheduled duty), bukan role permanen atau role global baru.
+8. Jangan buat workflow “promosikan Guru menjadi Proktor”, form aktivasi Proktor manual, daftar role Proktor permanen, atau portal Proktor terpisah.
+9. Pada Web Admin saat ini, implementasikan/audit pengelolaan jadwal pengawasan oleh Admin/Operator. Workflow tampilan Guru/Proktor tetap menunggu tahap Guru.
+10. Server-side authorization harus memeriksa jadwal pengawasan yang berlaku pada setiap aksi Proktor. Jangan percaya status dari client atau label UI saja.
+
+Acceptance criteria:
+- Semua Guru aktif dapat dipilih dalam jadwal pengawasan tanpa klasifikasi jabatan khusus.
+- Guru yang tercantum pada jadwal aktif otomatis memperoleh hak Proktor terbatas sesuai tugasnya.
+- Guru yang tidak tercantum, jadwal belum berlaku, sudah berakhir/dibatalkan, atau ditugaskan pada sesi lain tidak memperoleh hak tersebut.
+- Perubahan/penggantian jadwal langsung mengubah hak sementara secara konsisten.
+- Tidak ada role Proktor permanen atau proses aktivasi manual.
+- Konflik jadwal, tenant isolation, waktu server, dan audit log diuji.
