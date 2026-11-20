@@ -199,7 +199,7 @@ class ExamBuilderTest extends TestCase
 
     public function test_assign_rombel_api_does_not_reset_existing_participant_status()
     {
-        $context = app(\\App\\Contexts\\TenantContext::class);
+        $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenant->id);
         $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $student = User::create([
@@ -244,7 +244,7 @@ class ExamBuilderTest extends TestCase
 
     public function test_add_individual_participant_api_does_not_reset_existing_status()
     {
-        $context = app(\\App\\Contexts\\TenantContext::class);
+        $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenant->id);
         $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $student = User::create([
