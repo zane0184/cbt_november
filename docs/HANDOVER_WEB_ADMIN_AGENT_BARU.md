@@ -1,50 +1,55 @@
 # HANDOVER AGENT BARU — WEB ADMIN MADRASAH
 
-Dokumen ini adalah halaman masuk untuk agent baru.
+Dokumen ini adalah halaman masuk untuk agent baru. Gunakan [Paket Handover Terpadu](00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md) sebagai indeks utama.
 
 ## Baca berurutan
-1. [Prompt Induk Agent Baru Web Admin](PROMPT_INDUK_AGENT_BARU_WEB_ADMIN.md)
-2. [Spesifikasi Induk Web Admin Madrasah](SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md)
-3. [Checkpoint Web Admin 21 November 2026](CHECKPOINT_WEB_ADMIN_2026-11-21.md)
-4. [Prompt Induk Audit Menyeluruh CBT Madrasah](PROMPT_INDUK_AUDIT_MENYELURUH_CBT_MADRASAH.md) — sebagai aturan umum proyek, bukan izin memperluas scope.
+1. [Paket Handover Terpadu](00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md)
+2. [Prompt Induk Agent Baru Web Admin](PROMPT_INDUK_AGENT_BARU_WEB_ADMIN.md)
+3. [Spesifikasi Induk Web Admin Madrasah](SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md)
+4. [Checkpoint Web Admin 21 November 2026](CHECKPOINT_WEB_ADMIN_2026-11-21.md)
+5. [Register Keputusan Web Admin](REGISTER_KEPUTUSAN_WEB_ADMIN.md)
+6. [Matriks Audit Web Admin](MATRIKS_AUDIT_WEB_ADMIN_TEMPLATE.md)
+7. [Matriks Pengujian Web Admin](MATRIKS_PENGUJIAN_WEB_ADMIN.md)
+8. [Peta Dokumen dan Provenance CBT](PETA_DOKUMEN_PROVENANCE_CBT.md)
+9. [Prompt Induk Audit Menyeluruh CBT Madrasah](PROMPT_INDUK_AUDIT_MENYELURUH_CBT_MADRASAH.md), bila tersedia pada branch/source yang dipilih — aturan umum proyek, bukan izin memperluas scope.
 
-## Status singkat
-- Fokus sekarang hanya Web Admin Madrasah.
-- Belum ada audit source Web Admin menyeluruh berdasarkan spesifikasi baru.
-- Belum ada desain yang disetujui untuk implementasi.
-- Belum ada implementasi Web Admin yang boleh diklaim selesai.
-- Portal Guru dan Siswa ditahan sampai tahap sebelumnya selesai dan disetujui.
-- P0 database dan Device Lease/Fencing adalah pekerjaan terpisah; jangan disentuh sebagai bagian Web Admin.
+## Posisi terakhir yang tercatat
+- Fokus aktif hanya Web Admin Madrasah.
+- Spesifikasi induk sudah memuat kebutuhan sampai bagian 30.
+- Prompt agent sudah memuat instruksi sampai bagian 16.
+- Belum ada bukti audit source Web Admin menyeluruh berdasarkan spesifikasi final.
+- Belum ada desain hasil audit yang disetujui pengguna.
+- Belum boleh melakukan patch source sebelum pengguna menyetujui hasil audit, desain, dan urutan implementasi.
+- Portal Guru/Siswa ditahan.
+- P0 database dan Device Lease/Fencing tetap pekerjaan terpisah.
+- Tidak ada izin merge, deployment, perubahan VPS, atau migration produksi.
 
-## Perintah pertama
-Baca semua dokumen di atas, verifikasi status GitHub/PR/branch terkini, kemudian lakukan audit source Web Admin secara READ-ONLY. Serahkan laporan AUDIT dan DESAIN untuk persetujuan pengguna sebelum coding.
+## Keputusan alur ujian/proktor paling baru
+Guru membuat soal/ujian, memilih mapel dan jadwal akademik. Setelah disimpan, metadata ujian otomatis muncul di halaman **Daftar Ujian & Penugasan Proktor** Web Admin. Admin hanya menetapkan Guru pengawas dari list tersebut. Admin tidak membuat ulang jadwal/mapel dan tidak mengubah detail akademik ujian. Detail ujian read-only. Perubahan jadwal Guru harus tersinkron dan assignment terdampak ditandai perlu ditinjau ulang.
+
+Jika ada teks terdahulu yang menyebut Admin membuat kalender/jadwal ujian dari awal, ikuti bagian 30 spesifikasi, bagian 16 prompt, dan Register Keputusan; teks terdahulu itu telah dikoreksi.
+
+## Instruksi pertama agent
+1. Baca paket di atas sampai selesai.
+2. Periksa GitHub: default branch, semua branch relevan, PR #5/#6/#7, head/base SHA, checks, reviews, dan commit terbaru. Jangan mengandalkan status historis.
+3. Cari seluruh laporan audit, P0, provenance Device Lease, backup, manifest, checkpoint, dan source terkait.
+4. Pilih baseline Web Admin yang benar-benar ada; catat alasan dan commit SHA.
+5. Audit seluruh source Web Admin secara READ-ONLY.
+6. Periksa runtime aktual dan jalankan hanya pemeriksaan aman yang tidak mengubah DB/production.
+7. Isi matriks audit dan pengujian; tandai PASS/FAIL/BLOCKED/NOT RUN berdasarkan bukti.
+8. Serahkan laporan AUDIT + DESAIN kepada pengguna.
+9. Berhenti. Jangan coding sebelum persetujuan eksplisit.
+
+## Batas keselamatan
+Dokumentasi ini tidak mengizinkan:
+- merge PR #5/#6/#7;
+- mengubah source aplikasi sebelum gerbang persetujuan;
+- migration/eksperimen pada DB produksi;
+- mengubah .env, secret, APP_KEY, vhost/Nginx, VPS, storage produksi;
+- mengaktifkan Device Lease/Fencing;
+- mengerjakan Portal Guru/Siswa, Android, atau P0 database sebagai bagian Web Admin.
 
 ## Branch dokumentasi
 `docs/web-admin-agent-handover-20261121`
 
-Dokumentasi ini tidak mengubah source aplikasi, migration, database, .env, konfigurasi VPS, atau deployment.
-
-
-## Temuan UI terbaru yang wajib dibaca
-Pengguna melaporkan sidebar gelap tidak dapat di-scroll dan brand “Panel Admin & Guru” tidak konsisten untuk halaman Admin. Requirement lengkap dan acceptance criteria sudah ditambahkan pada:
-- Bagian 11 di `PROMPT_INDUK_AGENT_BARU_WEB_ADMIN.md`
-- Bagian 25 di `SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md`
-- Bagian 10 di `CHECKPOINT_WEB_ADMIN_2026-11-21.md`
-
-Statusnya masih temuan untuk diaudit; belum ada klaim perbaikan. Agent harus memperbaiki source setelah audit, desain, dan persetujuan pengguna.
-
-
-## Klarifikasi role terbaru (wajib)
-**Admin Madrasah = Operator Madrasah.** Ini satu role dan satu portal, bukan dua. Baca bagian 12 pada prompt agent dan bagian 26 pada spesifikasi. Gunakan “Admin Madrasah” sebagai label utama, “Operator Madrasah” hanya alias; Guru tetap portal terpisah. Jangan mengubah identifier role/data source lama sebelum audit kompatibilitas dan persetujuan.
-
-## Klarifikasi Proktor (wajib)
-Proktor adalah **Guru yang ditugaskan Admin/Operator Madrasah** untuk mengawasi ujian tertentu. Calon Proktor dapat berupa Guru kelas, Wali Kelas, atau Guru Mata Pelajaran. Status Proktor hanya assignment sementara dan terbatas pada ujian/waktu yang ditugaskan; bukan role atau portal permanen. Baca bagian 13 pada prompt agent dan bagian 27 pada spesifikasi. Pada tahap Web Admin hanya pengelolaan assignment oleh Admin; workflow Guru/Proktor ditahan sampai tahap Guru.
-
-## Klarifikasi terbaru Proktor — otomatis berdasarkan jadwal
-Semua Guru otomatis menjadi Proktor saat mendapat jadwal pengawasan ujian yang berlaku. Admin/Operator mengelola jadwal; status/hak Proktor sementara berasal otomatis dari jadwal, bukan role permanen atau aktivasi manual. Semua Guru aktif dapat dijadwalkan tanpa pembatasan kategori Guru kelas/Wali Kelas/Guru Mapel. Lihat bagian 14 pada prompt agent dan bagian 28 pada spesifikasi. Pada tahap Web Admin hanya pengelolaan jadwal oleh Admin; UI/workflow Guru ditahan.
-
-## Modul baru: Pengaturan Jadwal Ujian & Pengawas
-Web Admin harus memiliki modul pengaturan kalender/jadwal ujian institusi dan roster Guru pengawas yang dikelola Admin/Operator sesuai edaran resmi terverifikasi. Semua Guru aktif dapat dijadwalkan; status/hak Proktor otomatis aktif dari roster saat jadwal berlaku, bukan role permanen. Guru tetap mengelola isi/konfigurasi akademik CBT, penerbitan, token, penilaian, dan hasil. Lihat bagian 15 prompt agent dan bagian 29 spesifikasi. Jangan mengarang aturan edaran.
-
-## Alur integrasi ujian Guru → Admin (klarifikasi terbaru)
-Guru membuat soal, menentukan mapel dan jadwal ujian. Setelah tersimpan, ujian otomatis muncul di **Daftar Ujian & Penugasan Proktor** pada Web Admin. Admin tidak membuat ulang jadwal atau mapel; Admin memilih ujian dari list dan menetapkan Guru pengawas. Detail akademik ujian bersifat read-only bagi Admin. Perubahan jadwal Guru tersinkron ke list dan assignment yang terdampak ditandai perlu ditinjau ulang, tanpa mengubah roster diam-diam. Baca bagian 16 prompt agent dan bagian 30 spesifikasi.
+Semua perubahan di paket ini adalah dokumentasi. Source aplikasi tidak diubah.
