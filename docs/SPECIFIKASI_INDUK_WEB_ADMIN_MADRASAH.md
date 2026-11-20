@@ -1376,3 +1376,60 @@ Sumber yang diperiksa untuk rancangan:
 - Halaman Panduan Kurikulum Berbasis Cinta Kanwil Kemenag Sulawesi Tengah: https://sulteng.kemenag.go.id/informasi-penting/y2jy/28-07-2025-panduan-kurikulum-berbasis-cinta
 
 Sumber di atas menjadi baseline dokumentasi, bukan jaminan bahwa tidak ada perubahan setelah tanggal pemeriksaan. Sebelum merilis seed produksi, agent wajib memverifikasi status terkini melalui JDIH/penerbit resmi dan melampirkan dokumen CP MI per mapel/fase yang benar-benar dipakai. Bila suatu kode RDM atau rumusan CP/TP tidak dapat dibuktikan, jangan mengisinya dengan tebakan.
+
+
+---
+
+# 25. KONSISTENSI SHELL WEB ADMIN, SCROLL SIDEBAR, DAN IDENTITAS PORTAL
+
+## 25.1 Temuan review tampilan
+
+Pada screenshot dashboard yang ditinjau pengguna, ditemukan:
+1. Sidebar kiri berwarna gelap tidak dapat digulir sehingga menu di luar tinggi viewport tidak dapat dijangkau.
+2. Brand sidebar bertuliskan “Panel Admin & Guru”, padahal halaman tersebut merupakan halaman Admin. Label gabungan tersebut tidak konsisten dengan pemisahan portal Admin dan Guru.
+
+Temuan ini menjadi requirement UI/UX resmi. Screenshot adalah bukti gejala visual, bukan bukti root cause CSS/DOM. Root cause harus ditelusuri pada source aktual.
+
+## 25.2 Persyaratan scroll desktop
+
+- Sidebar harus mengikuti tinggi viewport (gunakan pendekatan `100dvh` dengan fallback kompatibel) dan memiliki area menu yang dapat di-scroll vertikal.
+- Scroll sidebar harus independen dari scroll konten utama.
+- Brand/header sidebar dapat tetap terlihat sementara daftar menu bergulir.
+- Implementasi flex/grid harus mengizinkan area menu menyusut dan overflow, termasuk pemeriksaan `min-height: 0`, `overflow-y: auto`, tinggi parent, dan positioning.
+- Pastikan tidak ada `overflow: hidden`, overlay, fixed height, atau elemen penutup yang mencegah wheel/touch/keyboard scrolling.
+- Jangan menghilangkan item navigasi atau hanya mengecilkan tipografi sebagai workaround.
+- Scrollbar dapat disesuaikan secara visual, tetapi affordance dan fungsi navigasi harus tetap dapat digunakan.
+
+## 25.3 Persyaratan mobile/tablet
+
+- Sidebar dapat berubah menjadi drawer/off-canvas sesuai breakpoint.
+- Daftar menu di dalam drawer tetap dapat di-scroll sampai item terakhir.
+- Drawer dapat dibuka/ditutup dengan kontrol yang jelas, mendukung Escape bila sesuai, focus management, dan navigasi keyboard.
+- Scroll halaman di belakang drawer tidak boleh mengganggu interaksi drawer; saat drawer terbuka, tangani scroll locking secara benar tanpa menghilangkan scroll internal drawer.
+
+## 25.4 Identitas portal Admin
+
+- Brand shell harus menggunakan **“Panel Admin Madrasah”** atau **“Admin Madrasah”**.
+- Dilarang menggunakan label gabungan “Panel Admin & Guru”, “Admin & Guru”, atau sebutan portal campuran lainnya pada shell Web Admin.
+- Heading dashboard, badge role, breadcrumb, menu, profil, dan bantuan harus konsisten menyebut konteks Admin.
+- Label seperti “Dashboard Operator” atau “Role: Operator Madrasah” tidak boleh ditampilkan pada sesi Admin kecuali role aktual memang Operator dan halaman tersebut memang berada dalam konteks role tersebut. Untuk Web Admin, identitas harus sesuai role Admin Madrasah yang terautentikasi.
+- Role label harus berasal dari data role/permission aktual, tidak boleh hard-coded atau disamakan untuk semua pengguna.
+- Navigasi Admin hanya memuat fitur yang menjadi kewenangan Admin. Jangan mencampurkan menu operasional Guru seperti Bank Soal, Manajemen Ujian, penerbitan ujian, monitoring pengerjaan, dan penilaian.
+- Jangan mengubah authorization backend demi menyamakan label UI; UI wajib mencerminkan keputusan server-side.
+
+## 25.5 Acceptance criteria dan bukti
+
+1. Pada viewport desktop 1366×768 dan viewport pendek, seluruh menu Admin dapat dijangkau.
+2. Scroll sidebar dan konten utama bekerja independen.
+3. Header brand tetap terlihat dan tidak ikut hilang tanpa alasan saat menu di-scroll.
+4. Mobile drawer dapat dibuka, ditutup, digulir, dan seluruh item dapat dipilih.
+5. Tidak ada string “Panel Admin & Guru” pada shell Web Admin.
+6. Sesi Admin tidak menampilkan “Dashboard Operator” atau role Operator yang salah.
+7. Tidak ada menu operasional Guru di navigasi Admin.
+8. Keyboard, fokus, Escape (bila diterapkan), touch, wheel, dan touchpad diuji.
+9. Sertakan screenshot sebelum/sesudah, ukuran viewport, browser, langkah reproduksi, dan hasil.
+10. Lakukan regression test pada seluruh halaman Admin yang memakai layout/sidebar bersama.
+
+## 25.6 Status
+
+Requirement ini baru dicatat dari review screenshot pengguna. **Belum ada klaim root cause, patch, atau perbaikan**. Agent wajib mereproduksi masalah dan mengaudit layout/CSS/DOM/komponen/role data secara read-only, memasukkannya ke laporan audit dan desain, lalu menunggu persetujuan sebelum implementasi.
