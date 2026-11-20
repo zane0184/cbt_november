@@ -418,3 +418,58 @@ Tanggal: 2026-11-20
 
 ## BATASAN
 - PR #5 tetap Draft/open/unmerged/undeployed. Fokus Web/backend; Android ditunda sampai Juni 2027. Tidak ada perubahan VPS/DB/.env/storage/installer-state/vhost.
+
+
+---
+
+# CHECKPOINT LANJUTAN — CI #687 DAN AUDIT INTERAKSI UI — 20 NOVEMBER 2026
+
+## AUDIT
+- Head source yang diuji CI #687: `9ce64c6060e0edf72d71038b18c9b6455c032cf1`.
+- GitHub Actions run #687, ID `44750193332`, job `laravel-mysql`, job ID `136335742247`: COMPLETED / SUCCESS.
+- Full PHPUnit: **480 passed, 1.942 assertions, 92,36 detik**, pada MySQL 8 disposable. Focused Web login/tenant smoke juga sukses.
+- Log mencatat warning deprecation metadata doc-comment untuk PHPUnit 12. Ini warning, bukan test failure pada toolchain saat ini.
+- Pemeriksaan statis interaksi dilakukan pada 4 view kritis dan komponen pasangannya. Hasil: seluruh wire:click/submit/change yang diekstrak mengarah ke method yang ada; seluruh wire:model yang diperiksa cocok dengan properti publik:
+  - Exam Management view SHA `5705d815cc3e2539d167b22a26d3508586a77439`, component SHA `478aaa170ee297b0c8399f049cd9b1ba56cbfb10`.
+  - Question Bank view SHA `72feaf1cc1be17253868c91861781dbb223b5aa9`, component SHA `a3013b528015daf4214dd1aa567eba950b03663a`.
+  - Result List view SHA `f9c8de95b18954379b0c1e93555e90acad246983`, component SHA `fd60539cb33bd33d0c183b980a84f567681a4d68`.
+  - Result Detail view SHA `c72c6b95703a105225a084ffab8344a83f9ec6dc`, component SHA `6f959b61eb04ca9d0ee8005009a5e82b3b98a016`.
+- Sidebar layout SHA `0163813cafc0226b9eae8af789223da0fb793f64`: link utama yang diperiksa memiliki path route pada routes/web.php. Ini belum membuktikan respons HTTP/browser.
+- Batas pemeriksaan: statis saja. Belum ada browser E2E, klik aktual, screenshot, staging runtime, atau pemeriksaan seluruh halaman.
+- PR #5 tetap OPEN/DRAFT/UNMERGED/UNDEPLOYED. Tidak ada perubahan VPS atau DB produksi.
+
+## DESAIN
+- Prioritas tidak berubah: menyelesaikan dan membuktikan fungsi seluruh UI Web yang sudah ada; tidak menambahkan fitur baru.
+- Keberadaan method tidak sama dengan bukti tombol berfungsi. Setiap aksi harus diperiksa bersama authorization, permission, tenant/assignment scope, validasi, transaksi, audit log, dan feedback UI.
+- Login acceptance pengguna ditunda sampai audit seluruh halaman dan browser runtime smoke staging disposable selesai.
+
+## IMPLEMENTASI
+- Tidak ada source aplikasi, migration, schema, konfigurasi VPS, DB produksi, .env, storage privat, installer state, atau vhost yang diubah.
+- Hanya dokumen handover yang diperbarui dengan addendum CI #687 dan hasil audit statis:
+  - File: `docs/HANDOVER_PROMPT_AGENT_BARU_WEB_CBT_20261120.md`
+  - Commit dokumen: `6eae6591c3b1c541d55b16220be726a753c3b70a`
+- Checkpoint ini diperbarui untuk merekam hasil audit dan urutan kerja berikutnya.
+
+## PENGUJIAN
+- CI #687: SUCCESS; 480 passed, 1.942 assertions, 92,36 detik.
+- Static method/property cross-check pada 4 pasangan view/Livewire: tidak ditemukan wire action tanpa method pasangan dan tidak ditemukan wire:model tanpa properti publik.
+- Sidebar route path cross-check: seluruh path menu yang diperiksa ditemukan dalam routes/web.php.
+- Tidak dijalankan browser E2E atau runtime staging. Karena itu UI belum dinyatakan siap diperiksa pengguna.
+
+## PEKERJAAN BERIKUTNYA
+1. Audit seluruh Blade/Livewire view dan semua menu/tombol/form/modal/filter/pagination/link.
+2. Buat matriks role × halaman × aksi × permission dan tenant/assignment scope.
+3. Periksa setiap tombol sampai ke method, policy, validasi, transaksi/idempotensi, audit log, dan pesan hasil.
+4. Tambahkan tes regression untuk aksi yang belum ter-cover.
+5. Jalankan browser E2E di staging disposable setelah source audit cukup; jangan gunakan produksi.
+6. Backup sebelum patch; focused test dan full CI disposable MySQL setelah patch.
+7. Perbarui checkpoint dan handover setelah setiap tahap.
+
+## BATAS KESELAMATAN
+- Fokus Web/backend saja; Android ditunda sampai Juni 2027.
+- Tidak ada fitur baru.
+- PR #5 tetap Draft dan belum merge/deploy.
+- Tidak ada deployment/migration/ubah DB/.env/storage/installer state/vhost produksi tanpa persetujuan eksplisit, backup terverifikasi, dan preflight.
+- Jangan nyatakan siap produksi/siap login acceptance hanya berdasarkan CI atau pemeriksaan statis.
+- Handover lengkap terbaru berada di commit `6eae6591c3b1c541d55b16220be726a753c3b70a`.
+- CI #687: https://github.com/zane0184/cbt_november/actions/runs/44750193332
