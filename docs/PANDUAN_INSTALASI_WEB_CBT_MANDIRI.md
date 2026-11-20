@@ -46,10 +46,22 @@ Pastikan versi PHP CLI yang dipakai saat menjalankan perintah sama dengan versi 
 5. Jalankan tes koneksi. Installer harus menyatakan database benar-benar kosong dan server MySQL 8+ menggunakan InnoDB.
 6. Jalankan migration melalui wizard. Jangan menjalankan `php artisan migrate` manual dan jangan melewati pemeriksaan installer.
 7. Buat profil madrasah dan akun Admin Madrasah awal dengan password kuat.
-8. Selesaikan langkah lisensi sesuai kredensial/artefak lisensi resmi publisher. Default `CBT_LICENSE_MODE=PUBLISHER` adalah mode ketat dan memerlukan endpoint publisher aktif serta lisensi sah. Jangan mengganti ke mode pilot/pre-activation tanpa persetujuan pemilik produk.
+8. Selesaikan aktivasi sesuai mode yang dipilih untuk instalasi ini:
+   - **Publisher (default):** pertahankan `CBT_LICENSE_MODE=PUBLISHER`. Mode ini memerlukan endpoint Publisher HTTPS dan lisensi/lease bertanda tangan yang sah.
+   - **Pra-Publisher 2026 (pilot yang telah disetujui):** hanya untuk instalasi madrasah baru yang memang ditetapkan sebagai pilot. Pada file `.env` instalasi tersebut saja, ubah menjadi `CBT_LICENSE_MODE=PRE_ACTIVATION_2026` sebelum wizard dijalankan. Jangan mengubah `.env.example`, konfigurasi instalasi lain, atau konfigurasi produksi yang sudah berjalan. Baca `PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md` yang disertakan dalam ZIP.
 9. Setelah installer menyatakan selesai, verifikasi halaman login dan dashboard. Installer dirancang terkunci setelah instalasi selesai.
 
 Jika migration gagal atau state installer menunjukkan kondisi parsial, hentikan. Jangan menghapus tabel, mengulang migration secara paksa, atau mengedit migration historis. Lakukan audit database dan recovery pada salinan terisolasi terlebih dahulu.
+
+## 4A. Ketentuan mode Pra-Publisher 2026
+
+- Mode ini adalah **pilot sementara**, bukan lisensi Publisher komersial dan bukan aktivasi bertanda tangan Publisher.
+- Penerbitan pilot ditutup pada **31 Desember 2026**.
+- Setiap instalasi mendapat masa berlaku maksimal **180 hari** sejak identitas pilot disiapkan pada wizard.
+- Masa berlaku disimpan pada state installer dan `installed.lock`, lalu diverifikasi pada setiap request aplikasi. Mengubah tanggal di salah satu file saja tidak memperpanjang pilot.
+- Setelah masa pilot berakhir, operasi baru diblokir. Attempt yang sudah berjalan sebelum batas waktu hanya diberi jalur pemulihan terbatas sampai waktu attempt itu sendiri habis. Data, jawaban, dan nilai tidak dihapus.
+- Jalur konversi pasca-instalasi dari pilot ke Publisher masih merupakan pekerjaan lanjutan yang wajib selesai sebelum pilot pertama kedaluwarsa. Jangan menunggu sampai hari terakhir.
+- Jangan mengaktifkan mode ini pada instalasi yang sudah berisi data atau mengganti mode pada instalasi berjalan tanpa rencana, backup, dan persetujuan tertulis.
 
 ## 5. Konfigurasi setelah instalasi
 
