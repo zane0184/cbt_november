@@ -574,7 +574,7 @@ class InstallerService
                             'action' => 'PRE_ACTIVATION_FINALIZED',
                             'entity_type' => 'installation',
                             'entity_id' => (string) $lockedState['installation_identity_id'],
-                            'old_values' => ['state' => 'PRE_ACTIVATION_READY'],
+                            'old_values' => ['state' => (string) ($state['state'] ?? 'PRE_ACTIVATION_READY')],
                             'new_values' => [
                                 'state' => 'LOCKED',
                                 'license_mode' => 'PRE_ACTIVATION_2026',
@@ -652,10 +652,18 @@ class InstallerService
                 if (!empty($state['license_id']) || !empty($state['license_revision'])) {
                     return ['success' => false, 'message' => 'State pra-aktivasi tidak boleh memuat klaim lisensi aktif.'];
                 }
+                $issuedRaw = $state['pre_activation_issued_at'] ?? null;
+                $expiresRaw = $state['pre_activation_expires_at'] ?? null;
+                $deadlineRaw = config('license.pre_activation_issue_deadline');
+                foreach ([$issuedRaw, $expiresRaw, $deadlineRaw] as $timestamp) {
+                    if (!is_string($timestamp) || trim($timestamp) === '') {
+                        return ['success' => false, 'message' => 'Tanggal penerbitan atau kedaluwarsa pilot tidak tersedia.'];
+                    }
+                }
                 try {
-                    $issuedAt = \Illuminate\Support\Carbon::parse((string) ($state['pre_activation_issued_at'] ?? ''))->utc();
-                    $expiresAt = \Illuminate\Support\Carbon::parse((string) ($state['pre_activation_expires_at'] ?? ''))->utc();
-                    $issueDeadline = \Illuminate\Support\Carbon::parse((string) config('license.pre_activation_issue_deadline'))->utc();
+                    $issuedAt = \Illuminate\Support\Carbon::parse($issuedRaw)->utc();
+                    $expiresAt = \Illuminate\Support\Carbon::parse($expiresRaw)->utc();
+                    $issueDeadline = \Illuminate\Support\Carbon::parse($deadlineRaw)->utc();
                 } catch (Throwable) {
                     return ['success' => false, 'message' => 'Jadwal pra-aktivasi tidak valid.'];
                 }
