@@ -1552,3 +1552,69 @@ Dalam tahap Web Admin saat ini:
 - Pencabutan/kedaluwarsa menghentikan hak sementara.
 - Tenant isolation, authorization, dan audit log diuji.
 - Admin tidak memperoleh hak operasional Guru hanya karena mengelola assignment.
+
+---
+
+# 28. STATUS PROKTOR OTOMATIS BERDASARKAN JADWAL PENGAWASAN
+
+## 28.1 Prinsip utama
+
+**Semua Guru otomatis menjadi Proktor ketika mendapat jadwal pengawasan ujian yang berlaku.** Proktor bukan role permanen, jabatan terpisah, atau status yang harus diaktifkan secara manual. Status Proktor merupakan konteks tugas sementara yang diturunkan dari jadwal pengawasan.
+
+## 28.2 Penyusunan jadwal oleh Admin/Operator
+
+Admin/Operator Madrasah mengelola jadwal pengawasan dan menempatkan Guru pada:
+- Ujian tertentu.
+- Sesi ujian.
+- Ruang/lokasi bila digunakan.
+- Tanggal dan rentang waktu tugas.
+- Peran/tanggung jawab pengawasan bila diperlukan.
+
+Semua Guru aktif dapat dijadwalkan. Tidak ada pembatasan hanya kepada Guru kelas, Wali Kelas, atau Guru Mata Pelajaran. Kategori tersebut hanyalah contoh latar penugasan Guru, bukan syarat khusus menjadi Proktor.
+
+## 28.3 Aktivasi hak secara otomatis
+
+Ketika jadwal pengawasan sah berlaku dan akun Guru tercantum sebagai pengawas, sistem otomatis memberikan konteks/hak Proktor sementara untuk ujian/sesi/ruang yang dijadwalkan. Guru tidak perlu:
+- Diubah role dasarnya menjadi Proktor.
+- Mengajukan aktivasi atau menerima role Proktor permanen.
+- Login ke portal Proktor terpisah.
+- Meminta Admin mengaktifkan hak Proktor secara manual di luar pembuatan jadwal.
+
+Role dasar Guru tetap sama. Hak Proktor bersifat contextual/temporary dan hanya berasal dari jadwal pengawasan yang sah.
+
+## 28.4 Batas akses dan siklus jadwal
+
+Hak Proktor hanya berlaku untuk ujian, sesi, ruang, dan rentang waktu yang ditugaskan. Di luar konteks tersebut, akun hanya memiliki hak dasar Guru.
+
+Perubahan jadwal, pergantian Guru, pembatalan, pencabutan, atau berakhirnya jadwal harus segera memengaruhi hak Proktor. Sistem harus mencegah akses jika:
+- Guru tidak tercantum pada jadwal.
+- Jadwal belum mulai atau sudah berakhir.
+- Jadwal dibatalkan/diganti.
+- Guru mencoba mengakses ujian/sesi/ruang lain.
+- Akun tidak aktif atau bukan berasal dari madrasah yang sama.
+
+Sistem wajib memeriksa benturan jadwal Guru dan konflik ruang/sesi sesuai kebijakan operasional. Gunakan waktu server sebagai acuan resmi.
+
+## 28.5 Keamanan dan audit
+
+Setiap aksi yang memakai konteks Proktor harus divalidasi server-side berdasarkan akun Guru, tenant, jadwal aktif, ujian, sesi/ruang, rentang waktu, status jadwal, dan permission aksi. Jangan mengandalkan flag dari browser/aplikasi.
+
+Audit log mencatat pembuatan, perubahan, penggantian, pembatalan, aktivasi otomatis berdasarkan waktu jadwal, penyelesaian, serta aksi penting Proktor. Perubahan jadwal harus memiliki actor dan timestamp yang jelas.
+
+## 28.6 Batas tahap Web Admin
+
+Untuk tahap Web Admin:
+- Audit dan kelola penyusunan jadwal pengawasan oleh Admin/Operator.
+- Pastikan seluruh Guru aktif dapat dipilih sebagai pengawas tanpa kategori khusus.
+- Jangan membangun portal atau workflow UI Guru/Proktor sekarang; itu menunggu tahap Guru.
+- Jangan membuat role Proktor permanen atau proses aktivasi manual.
+
+## 28.7 Acceptance criteria
+
+1. Semua Guru aktif dapat dimasukkan ke jadwal pengawasan.
+2. Guru yang jadwalnya aktif otomatis memperoleh konteks/hak Proktor terbatas.
+3. Tidak ada role Proktor permanen atau aktivasi manual.
+4. Hak hanya berlaku pada ujian/sesi/ruang dan rentang waktu yang ditugaskan.
+5. Jadwal yang belum mulai, berakhir, dibatalkan, atau diganti tidak memberi hak yang tidak sah.
+6. Penggantian pengawas memperbarui hak secara konsisten.
+7. Konflik jadwal, tenant isolation, validasi waktu server, dan audit log diuji.
