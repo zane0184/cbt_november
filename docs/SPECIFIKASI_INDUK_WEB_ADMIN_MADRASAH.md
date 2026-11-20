@@ -1433,3 +1433,53 @@ Temuan ini menjadi requirement UI/UX resmi. Screenshot adalah bukti gejala visua
 ## 25.6 Status
 
 Requirement ini baru dicatat dari review screenshot pengguna. **Belum ada klaim root cause, patch, atau perbaikan**. Agent wajib mereproduksi masalah dan mengaudit layout/CSS/DOM/komponen/role data secara read-only, memasukkannya ke laporan audit dan desain, lalu menunggu persetujuan sebelum implementasi.
+
+
+---
+
+# 26. KEPUTUSAN ROLE KANONIS — ADMIN MADRASAH = OPERATOR MADRASAH
+
+## 26.1 Satu peran dan satu portal
+
+**Admin Madrasah dan Operator Madrasah adalah satu peran yang sama dalam produk CBT Madrasah.** Tidak boleh ada dua role pengelola madrasah yang terpisah hanya karena perbedaan penyebutan.
+
+- Nama portal/label utama produk: **Admin Madrasah**.
+- Istilah **Operator Madrasah** adalah alias/istilah operasional yang dapat dipakai untuk menjelaskan peran yang sama.
+- Brand sidebar: **Panel Admin Madrasah**.
+- Hanya ada satu dashboard, satu navigasi, satu akun/peran, dan satu himpunan permission pengelola madrasah.
+- Pengguna tidak diminta memilih atau berpindah antara mode Admin dan Operator.
+- Jangan membuat dashboard Admin dan dashboard Operator secara terpisah.
+
+## 26.2 Batas pemisahan role
+
+Pemisahan role yang berlaku adalah:
+- **Admin/Operator Madrasah:** satu role pengelola administrasi madrasah sesuai seluruh kewenangan yang ditetapkan dalam spesifikasi ini.
+- **Guru:** role dan portal terpisah dengan kewenangan operasional pembelajaran/CBT sesuai assignment dan permission.
+
+Keputusan Admin = Operator tidak menggabungkan Admin/Operator dengan Guru. Karena itu brand “Panel Admin & Guru” tetap tidak tepat dan harus diganti menjadi “Panel Admin Madrasah”.
+
+## 26.3 Kompatibilitas source lama
+
+Source yang sudah ada mungkin menggunakan identifier seperti `admin`, `operator`, role enum, permission, atau route name yang berbeda. Agent wajib:
+1. Audit role model, tabel roles/permissions, seeder, user records, middleware, policies, gates, route groups, dan UI role labels.
+2. Identifikasi apakah `admin` dan `operator` saat ini dua identifier teknis untuk hak akses yang sama, atau memang memiliki perbedaan permission/data.
+3. Jangan menganggap dua identifier otomatis boleh digabung tanpa memeriksa pengguna, hak akses, audit trail, dan dependensinya.
+4. Jangan membuat role ketiga atau menambah pemisahan baru.
+5. Usulkan satu role kanonis dan strategi kompatibilitas/mapping. Pertahankan identifier lama sementara bila diperlukan agar tidak memutus akses atau histori.
+6. Perubahan data role, permission, seeder, migration, atau authorization harus disertai rencana rollback, test RBAC, dan persetujuan pengguna sebelum implementasi jika berdampak pada akun/akses.
+7. Semua label UI harus mengkomunikasikan satu peran yang sama. Gunakan “Admin Madrasah” sebagai label utama; “Operator Madrasah” hanya alias/istilah penjelas, bukan portal/role kedua.
+
+## 26.4 Acceptance criteria
+
+- Hanya satu portal pengelola madrasah.
+- Satu dashboard dan satu sidebar untuk Admin/Operator.
+- Tidak ada pilihan role atau login mode Admin vs Operator.
+- Tidak ada menu/permission duplikat yang memecah Admin dan Operator.
+- Role/permission aktual di backend tetap menjadi otoritas; label UI tidak menggantikan authorization.
+- Guru tetap terpisah dari Admin/Operator.
+- Tidak ada akun atau histori yang hilang akibat konsolidasi identifier.
+- Seluruh perubahan mapping diuji dan diaudit sebelum rilis.
+
+## 26.5 Status dan prioritas interpretasi
+
+Keputusan ini adalah klarifikasi terbaru dan mengesampingkan interpretasi sebelumnya yang seolah-olah melarang istilah “Operator” sepenuhnya. Yang dilarang adalah **dua role/portal Admin dan Operator yang terpisah**. Admin = Operator. Implementasi teknis tetap menunggu audit source dan gerbang persetujuan.
