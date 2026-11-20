@@ -228,3 +228,16 @@ Tanggal: 2026-11-20
 - Dokumen memuat arsitektur/keputusan yang tidak boleh berubah, batas keselamatan, status PR/CI, temuan audit, file yang harus dibaca, pekerjaan tertunda, status VPS, instruksi Android Studio, dan deliverables.
 - Commit prompt handover: dcaedd1a176675192d525db6a8aedb2b87762445.
 - Head branch setelah pembuatan dokumen perlu diverifikasi ulang sebelum handover final.
+
+
+## Audit pagination Manajemen Ujian
+### AUDIT
+- ExamManagement memiliki filter judul dan status. Hook updatingSearch sebelumnya mereset pagination, tetapi perubahan statusFilter tidak mereset halaman. Jika pengguna berada di halaman yang tinggi lalu memilih status dengan jumlah halaman lebih sedikit, tampilan dapat kosong meskipun data tersedia.
+### DESAIN
+- Reset pagination saat statusFilter berubah, mengikuti pola filter lain.
+### IMPLEMENTASI
+- Backup: backend-laravel/backup_before_patch/WEB_EXAM_STATUS_PAGINATION_20261120/ExamManagement.php.before
+- ExamManagement.php: menambahkan updatingStatusFilter(): void yang memanggil resetPage().
+- Commit: 5a46c0914533589706653b3b2f3aaad245b2d535.
+### PENGUJIAN
+- Source diff diperiksa; PHPUnit/Livewire belum dijalankan.
