@@ -54,6 +54,12 @@ jobs:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       MAIL_MAILER: array
+      CBT_INSTALLER_E2E: "1"
+      CBT_INSTALLER_E2E_DB_HOST: "127.0.0.1"
+      CBT_INSTALLER_E2E_DB_PORT: "3306"
+      CBT_INSTALLER_E2E_DB_DATABASE: "cbt_installer_test_pilot"
+      CBT_INSTALLER_E2E_DB_USERNAME: root
+      CBT_INSTALLER_E2E_DB_PASSWORD: root
 
     steps:
       - name: Checkout
@@ -110,6 +116,16 @@ jobs:
 
       - name: Prepare empty test environment file
         run: touch .env
+
+      - name: Create isolated disposable installer E2E database
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CBT_INSTALLER_E2E" = "1"
+          test "$CBT_INSTALLER_E2E_DB_DATABASE" = "cbt_installer_test_pilot"
+          test "$CBT_INSTALLER_E2E_DB_DATABASE" != "$DB_DATABASE"
+          mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USERNAME" --password="$DB_PASSWORD" \
+            --execute="CREATE DATABASE IF NOT EXISTS cbt_installer_test_pilot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
       - name: Run focused Web login and tenant identity smoke tests
         run: php artisan test --display-warnings --filter='WebAdminAuthTest|StudentWebLoginTest'
