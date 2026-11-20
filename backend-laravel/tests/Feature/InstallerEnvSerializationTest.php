@@ -57,4 +57,31 @@ class InstallerEnvSerializationTest extends TestCase
             }
         }
     }
+    public function test_finalization_runtime_override_disables_bootstrap_token_without_env_write(): void
+    {
+        $runtimePath = storage_path('app/private/installer-runtime.php');
+        $runtimeExisted = is_file($runtimePath);
+        $originalRuntime = $runtimeExisted ? file_get_contents($runtimePath) : null;
+
+        try {
+            if (!is_dir(dirname($runtimePath))) {
+                mkdir(dirname($runtimePath), 0700, true);
+            }
+            $runtime = ['bootstrap_token' => null];
+            file_put_contents($runtimePath, "<?php\\n\\nreturn " . var_export($runtime, true) . ";\\n", LOCK_EX);
+            @chmod($runtimePath, 0600);
+
+            $loadedConfig = require config_path('installer.php');
+            $this->assertArrayHasKey('bootstrap_token', $loadedConfig);
+            $this->assertNull($loadedConfig['bootstrap_token']);
+        } finally {
+            if ($runtimeExisted && $originalRuntime !== null) {
+                file_put_contents($runtimePath, $originalRuntime, LOCK_EX);
+                @chmod($runtimePath, 0600);
+            } elseif (is_file($runtimePath)) {
+                @unlink($runtimePath);
+            }
+        }
+    }
+
 }
