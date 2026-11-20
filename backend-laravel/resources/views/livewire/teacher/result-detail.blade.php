@@ -20,21 +20,25 @@
         </div>
 
         <div class="mt-6 flex flex-wrap gap-3 pt-4 border-t border-cardBorder">
-            @if($attempt->score && $attempt->score->grading_status !== 'FINALIZED')
+            @can('finalize', $attempt)
+                @if($attempt->score && $attempt->score->grading_status !== 'FINALIZED')
                 <button wire:click="finalize" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-sm text-xs">
                     Finalisasi Nilai
                 </button>
-            @endif
-            @if($attempt->score && $attempt->score->grading_status === 'FINALIZED')
-                @if(auth()->user()->hasRole('ADMIN_MADRASAH'))
+                @endif
+            @endcan
+            @can('reopen', $attempt)
+                @if($attempt->score && $attempt->score->grading_status === 'FINALIZED')
                     <button wire:click="openReopenModal" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-sm text-xs">
                         Buka Kembali Hasil (Reopen)
                     </button>
                 @endif
-            @endif
+            @endcan
+            @can('viewStudentResults', $attempt->participant->user)
             <a href="/students/{{ $attempt->participant->user_id }}/export/pdf" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-sm text-xs">
                 Cetak PDF Result
             </a>
+            @endcan
             <a href="/exams/{{ $exam->id }}/results" class="bg-navy-900 hover:bg-navy-800 text-white font-bold py-2.5 px-5 rounded-xl transition shadow-sm text-xs">
                 Kembali ke Daftar
             </a>
@@ -99,6 +103,7 @@
                         </div>
                     @endif
 
+                    @can('grade', $attempt)
                     @if($attempt->score && $attempt->score->grading_status !== 'FINALIZED')
                         <div class="mt-4 flex justify-end">
                             @if($editingScoreId === $qs->id)
@@ -124,6 +129,7 @@
                             @endif
                         </div>
                     @endif
+                    @endcan
                 </div>
             </div>
         @endforeach
