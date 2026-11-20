@@ -171,6 +171,27 @@ class QuestionBankTest extends TestCase
         $response->assertStatus(404);
     }
 
+    public function test_api_rejects_multiple_choice_without_exactly_one_correct_option()
+    {
+        $this->actingAs($this->userA);
+
+        $response = $this->postJson('/api/v1/questions', [
+            'question_type' => 'MULTIPLE_CHOICE',
+            'stem' => 'Pilih jawaban yang benar',
+            'owner_type' => 'PERSONAL',
+            'difficulty' => 'MEDIUM',
+            'default_points' => 1,
+            'subject_id' => $this->subjectA->id,
+            'options' => [
+                ['option_key' => 'A', 'content' => 'Pilihan A', 'is_correct' => false],
+                ['option_key' => 'B', 'content' => 'Pilihan B', 'is_correct' => false],
+            ],
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['options']);
+        $this->assertDatabaseCount('questions', 0);
+    }
+
     public function test_cannot_create_question_with_other_tenant_curriculum()
     {
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantB->id);
