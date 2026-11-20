@@ -27,8 +27,8 @@ class EnsureLicenseActive
 
         if ($request->is('up') || $request->is('install/*') || $request->is('license/status') || $request->is('api/v1/health')) return $next($request);
 
-        // Temporary pilot exception: only a finalized, locked installation explicitly configured
-        // for 2026 may run without Publisher artifacts. Default and all malformed states fail closed.
+        // Temporary pilot exception: only the exact finalized installation may run
+        // without Publisher artifacts, and only within its bounded pilot window.
         if (config('license.pre_activation_2026')) {
             try {
                 $install = $this->installerStateStore->read();
@@ -39,13 +39,22 @@ class EnsureLicenseActive
                 $databaseIdentityId = $identityId !== ''
                     ? LocalInstallationIdentity::query()->whereKey($identityId)->where('tenant_id', $tenantId)->value('id')
                     : null;
-                $pilotValid = app(PreActivationInstallationGuard::class)->allows(
-                    $install,
-                    is_array($lock) ? $lock : null,
-                    $request->user()?->tenant_id === null ? null : (string) $request->user()->tenant_id,
-                    $databaseIdentityId === null ? null : (string) $databaseIdentityId,
-                );
-                if ($pilotValid) return $next($request);
+                $userTenantId = $request->user()?->tenant_id === null ? null : (string) $request->user()->tenant_id;
+                $guard = app(PreActivationInstallationGuard::class);
+
+                if ($guard->allows($install, is_array($lock) ? $lock : null, $userTenantId, $databaseIdentityId)) {
+                    return $next($request);
+                }
+
+                if ($guard->isExpired($install, is_array($lock) ? $lock : null, $userTenantId, $databaseIdentityId)) {
+                    if ($this->allowExpiredPilotAttemptRecovery($request, $install)) return $next($request);
+                    return $this->blocked($request, 'PRE_ACTIVATION_EXPIRED');
+                }
+
+                if (($install['license_mode'] ?? null) === 'PRE_ACTIVATION_2026'
+                    || (is_array($lock) && ($lock['license_mode'] ?? null) === 'PRE_ACTIVATION_2026')) {
+                    return $this->blocked($request, 'PRE_ACTIVATION_INVALID');
+                }
             } catch (Throwable) {
                 // Fail closed and continue to Publisher verification path.
             }
@@ -113,6 +122,29 @@ class EnsureLicenseActive
                 if (! sodium_crypto_sign_verify_detached($this->decode($parts[2]), $parts[0].'.'.$parts[1], $publicKey)) return false;
             }
             return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /** Allow only a previously-started attempt to finish after the pilot window closes. */
+    private function allowExpiredPilotAttemptRecovery(Request $request, array $install): bool
+    {
+        try {
+            if (!$this->isAttemptRecoveryRequest($request) || !$request->user()) return false;
+            $match = [];
+            if (!preg_match('#^api/v1/exams/([^/]+)/attempts/([^/]+)/(?:answers(?:/[^/]+)?|submit|heartbeat)$#', $request->path(), $match)) return false;
+
+            $attempt = ExamAttempt::withoutGlobalScopes()->with('participant')->whereKey($match[2])->first();
+            if (!$attempt || $attempt->status !== 'IN_PROGRESS' || !$attempt->started_at || !$attempt->expires_at) return false;
+
+            $pilotExpiresAt = \\Illuminate\\Support\\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
+            return (string) $attempt->tenant_id === (string) ($install['tenant_id'] ?? '')
+                && (string) $attempt->exam_id === (string) $match[1]
+                && (string) $attempt->participant?->user_id === (string) $request->user()->id
+                && (string) $request->user()->tenant_id === (string) ($install['tenant_id'] ?? '')
+                && $attempt->started_at->lessThanOrEqualTo($pilotExpiresAt)
+                && $attempt->expires_at->isFuture();
         } catch (Throwable) {
             return false;
         }
