@@ -1,0 +1,76 @@
+# PEMULIHAN DAN PENGAMANAN ARTEFAK CBT — 21 NOVEMBER 2026
+
+## Status
+Dokumen ini merekam artefak yang berhasil ditemukan pada arsip `CBT_MADRASAH_HANDOVER_AGENT_BARU_2026-11-18(1).zip` dan menyiapkan agent berikutnya. Ini adalah **arsip bukti dan indeks pemulihan**, bukan klaim bahwa seluruh source runtime sudah pulih atau siap produksi.
+
+## AUDIT — identitas arsip
+- Nama: `CBT_MADRASAH_HANDOVER_AGENT_BARU_2026-11-18(1).zip`
+- Ukuran: 140,767,681 byte
+- Entri: 13,299
+- CRC: PASS (`testzip() = None`)
+- SHA-256: `c4af30179c4c941927f6d5d0c32dc592b22896f26d83a76403402c81d38445c4`
+- Dua ZIP bersarang yang diperiksa: ZIP handover 17 Nov revisi (3) dan `Audit Integritas Handover_files.zip`; CRC keduanya PASS.
+- Enam nama source runtime yang dicari tidak ditemukan dalam ZIP utama maupun dua ZIP bersarang: `CurriculumIntegrityPreflightCommand.php`, `2026_11_06_200002_enforce_curriculum_integrity_not_null.php`, `RegisteredDevice.php`, `DeviceLease.php`, `DeviceLeaseService.php`, `DeviceLeaseController.php`.
+
+## ARTEFAK SOURCE YANG DITEMUKAN
+Semua file di bawah ditemukan sebagai raw source di dalam ZIP utama, di bawah:
+`01_WORKSPACE/CBT_MADRASAH_RECONSTRUCTION/01_SOURCE_TENANT/backend-laravel/`
+
+| Path relatif | SHA-256 | Byte |
+|---|---|---:|
+| app/Http/Controllers/Api/V1/ExamAttemptController.php | `27caa27c6c59dd53a6ce36fb776c41d68a75ecbd065750ab2974b15fbc29f9b4` | 20,450 |
+| app/Http/Controllers/Api/V1/ExamAnswerController.php | `fb1b11703ae4b024d88f02f3f08120b591b6567c0a35f7932b0c4b0842ddc291` | 15,077 |
+| app/Http/Controllers/Api/V1/MonitoringController.php | `37aff3148a67742c1f3768d72deb0d465c3ad2af8804eb1da72aee283e7103e7` | 11,978 |
+| database/migrations/2026_11_05_190001_add_fencing_and_lease_to_exam_attempts_table.php | `ba3236ff4ac7e473c518d04567fbe6f38dc32965cc659ec6d1140093ddf5ba8f` | 2,153 |
+| database/migrations/2026_11_05_190002_create_registered_devices_table.php | `d4acb22d9fd5e1d038b9ac91665ac2666fa91b4c75b6f75e82ed67d77dc22c9e` | 1,740 |
+| database/migrations/2026_11_05_190003_create_device_leases_table.php | `4640f65441cc3ae7563c2c90de01f490f13fbbadd0889278b368b26f42c5a73f` | 1,615 |
+| database/migrations/2026_11_05_190008_create_question_multi_curriculum_mappings_table.php | `fd28beb8b2a77510c202877015df23c48f3c18a456ca6d646335e83304d9df32` | 1,674 |
+| database/migrations/2026_11_05_200001_fase1c_multi_curriculum_integrity.php | `f633830fbad94a1310bd63499a3f481821cd9ae921e2c65c81594378b75ed976` | 16,924 |
+
+**Penting:** hash di atas adalah hash raw file yang diekstrak dari ZIP 18 Nov (1). Jangan menyamakan otomatis dengan HEAD GitHub atau manifest 17 Nov. Bandingkan SHA-256 secara eksplisit sebelum mengadopsi file ke source aktif.
+
+## BUKTI HISTORIS DEVICE LEASE
+ZIP berisi dokumen:
+- `CHECKPOINT_DEVICE_LEASE_FENCING_INTEGRATION_2026-11-17(1).md` — SHA-256 `2803f078e390aad7bd4921f76430ae2c941334a92bb0c745a2ae7b400cd4580e`, 22,098 byte.
+- `MANIFEST_SHA256_DEVICE_LEASE_RUNTIME_2026-11-17(1).txt` — SHA-256 `483d50cb77d054dc2e8b1e4da8eec5c6d714bbccb376ddd749ffcee51daf958d`, 33,838 byte.
+
+Dokumen tersebut menyimpan klaim historis dan expected hashes untuk runtime files yang tidak ada sebagai raw file di arsip. Manifest hanya dapat memverifikasi file jika raw file ditemukan kembali; manifest bukan pengganti source.
+
+## STATUS AUDIT DAN BATASAN
+- Controller aktif dan backup controller ditemukan. Belum dinyatakan lulus fencing; perlu audit diff dan pencarian validasi lease token/generation pada semua jalur start/resume/answer/submit/heartbeat/release.
+- Migration 190001–190003 ditemukan sebagai schema. Keberadaan migration tidak membuktikan runtime service/controller enforcement.
+- Migration 190008 ditemukan. Audit sebelumnya menandai `Schema::dropIfExists()` di `up()` sebagai risiko kritis data-loss. Jangan jalankan migration dan jangan patch sebelum preflight/source canonical/disposable MySQL 8 tersedia.
+- Migration 200001 ditemukan. File 200002 tidak ditemukan.
+- Device Lease/Fencing tetap **HOLD — SCHEMA/HISTORICAL EVIDENCE ONLY — RUNTIME NOT VERIFIED**.
+- P0.1 yang disetujui user tetap satu-satunya lingkup implementasi berikutnya. P0.2 dan P0.3 belum disetujui untuk mulai.
+- Tidak ada database produksi yang disentuh; tidak ada migration dijalankan dalam proses penyelamatan ini.
+
+## DESAIN — cara menyimpan
+1. Pertahankan arsip asli lokal sampai agent berikutnya memverifikasi bahwa file raw yang diperlukan sudah ada di GitHub atau media cadangan lain.
+2. GitHub branch ini khusus recovery/docs; jangan merge otomatis ke branch source.
+3. Raw file yang belum disimpan di GitHub harus diunggah sebagai file terpisah dengan path dan hash yang sama persis. Jangan salin source dari laporan atau menebak implementasi.
+4. Agent baru wajib membandingkan hash source terhadap HEAD, memeriksa backup, dan baru membuat backup kerja sebelum perubahan.
+
+## IMPLEMENTASI
+- Branch recovery dibuat dari commit dokumentasi sebelumnya.
+- Dokumen ini dan indeks checksum di-commit terpisah dari source aplikasi.
+- Belum ada perubahan pada source aktif, database, atau konfigurasi deployment.
+
+## PENGUJIAN
+- Pemeriksaan CRC ZIP utama dan dua nested ZIP: PASS.
+- Ekstraksi file terpilih dan penghitungan SHA-256: PASS.
+- Test PHP, PHPUnit, migration, MySQL, integrasi, dan Android: TIDAK DIJALANKAN.
+- Tidak ada klaim runtime/produksi.
+
+## INSTRUKSI WAJIB UNTUK AGENT BERIKUTNYA
+1. Baca dokumen ini, checkpoint kontinuitas, dan handover pemulihan P0.1 yang sudah ada di `docs/handover/`.
+2. Verifikasi branch/commit dan status PR #5 sebelum mengubah source.
+3. Periksa seluruh file GitHub dan arsip yang masih tersedia; gunakan checksum tabel sebagai identitas artefak, bukan asumsi versi.
+4. Pulihkan raw file yang masih belum ada di GitHub ke direktori `docs/recovery/source-snapshots/2026-11-18-1/` atau direktori karantina setara; jangan menimpa source aktif.
+5. Audit migration 190008, 200001, controllers, dan migrations 190001–190003. Buat diff dengan backup controller dan bandingkan manifest Device Lease.
+6. Jangan merekonstruksi `RegisteredDevice`, `DeviceLease`, `DeviceLeaseService`, `DeviceLeaseController`, atau preflight command dari asumsi.
+7. Lanjutkan P0.1 hanya setelah source canonical dan runtime PHP 8.3 + Composer + MySQL 8/InnoDB disposable terverifikasi. P0.1 saja; tunggu persetujuan sebelum P0.2/P0.3.
+8. Jangan mengaktifkan Device Lease/Fencing, jangan jalankan migration pada produksi, jangan build Android via terminal, dan jangan menyatakan siap produksi.
+
+## PENGINGAT PENGHAPUSAN ZIP
+Dokumen ini **tidak menjamin** seluruh isi ZIP sudah tersimpan di GitHub. ZIP jangan dihapus dulu sebelum agent memverifikasi bahwa semua raw source, dokumen historis, backup, dan aset yang memang ingin dipertahankan telah memiliki salinan terverifikasi di GitHub atau media lain. Menghapus ZIP sekarang berisiko menghilangkan source/backup yang tidak termasuk daftar artefak terpilih di atas.
