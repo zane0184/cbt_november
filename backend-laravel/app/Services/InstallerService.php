@@ -638,7 +638,7 @@ class InstallerService
                 return ['success' => false, 'message' => 'Tenant/admin postcondition failed.'];
             }
 
-            $identity = \App\Models\LocalInstallationIdentity::query()->where('tenant_id', $tenant->id)->first();
+            $identity = \App\Models\LocalInstallationIdentity::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first();
             if (!$identity || (string) $identity->tenant_id !== (string) $tenant->id) return ['success' => false, 'message' => 'Identitas instalasi lokal tidak valid.'];
             $isPreActivation = ($state['license_mode'] ?? null) === 'PRE_ACTIVATION_2026';
             if ($isPreActivation) {
