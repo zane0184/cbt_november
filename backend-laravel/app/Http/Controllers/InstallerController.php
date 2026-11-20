@@ -156,7 +156,12 @@ class InstallerController extends Controller
     public function admin()
     {
         $state = $this->installerService->currentState();
-        if ($state === 'ADMIN_CREATED') return redirect()->route(config('license.pre_activation_2026') ? 'installer.complete' : 'installer.license');
+        if ($state === 'ADMIN_CREATED') {
+            if (config('license.pre_activation_2026')) {
+                return view('installer.admin')->with('warning', 'Akun Admin sudah tercatat. Lanjutkan kembali untuk menyelesaikan identitas pilot; jangan mengulang migration.');
+            }
+            return redirect()->route('installer.license');
+        }
         if (in_array($state, ['PRE_ACTIVATION_READY', 'LICENSE_ACTIVATED', 'INSTALL_VERIFIED'], true)) return redirect()->route('installer.complete');
         if (!in_array($state, ['SCHEMA_READY', 'TENANT_CREATED'], true)) {
             return redirect()->route($state === 'UNINITIALIZED' ? 'installer.database' : 'installer.migrations')
