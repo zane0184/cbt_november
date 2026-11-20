@@ -211,3 +211,18 @@ Status Proktor adalah penugasan operasional sementara, bukan role permanen atau 
 Admin/Operator mengelola penugasan. Backend wajib memvalidasi madrasah/tenant, status Guru, ujian, waktu, assignment, dan izin setiap aksi. Assignment dapat diubah/dicabut/kedaluwarsa dan seluruh siklusnya harus diaudit. Penugasan tidak memberi akses ke bank soal, pengaturan ujian, penilaian, jawaban/nilai, atau ujian lain kecuali ada permission terpisah yang sah.
 
 **Status:** keputusan produk final; pada tahap Web Admin hanya audit dan pengelolaan assignment oleh Admin. Portal/workflow Guru atau Proktor tidak dibangun sekarang.
+
+## 13. PENEGASAN FINAL JADWAL PENGAWASAN
+
+Klarifikasi terbaru: **semua Guru otomatis menjadi Proktor ketika mendapat jadwal pengawasan ujian yang berlaku.** Tidak ada seleksi role Proktor tersendiri dan tidak perlu aktivasi manual.
+
+- Admin/Operator menyusun jadwal pengawasan dan menempatkan Guru pada ujian/sesi/ruang/waktu.
+- Semua Guru aktif dapat dijadwalkan; tidak dibatasi kategori Guru kelas, Wali Kelas, atau Guru Mapel.
+- Saat jadwal berlaku dan Guru tercantum sebagai pengawas, sistem memberi konteks/hak Proktor sementara secara otomatis.
+- Hak Proktor hanya berlaku untuk tugas tersebut. Di luar jadwal, Guru tetap menggunakan hak dasar Guru.
+- Pembatalan, perubahan, penggantian, dan kedaluwarsa jadwal harus memperbarui hak sementara.
+- Role dasar tetap Guru. Jangan membuat role Proktor permanen, aktivasi manual, atau portal Proktor.
+- Server memvalidasi jadwal aktif, waktu server, ujian/sesi/ruang, tenant, status akun, dan permission setiap aksi.
+- Pada tahap Web Admin, cakupan hanya administrasi jadwal pengawasan oleh Admin/Operator. Workflow Guru menunggu tahap berikutnya.
+
+**Koreksi atas bagian sebelumnya:** penyebutan Guru kelas/Wali Kelas/Guru Mapel hanya contoh kategori Guru, bukan daftar pembatas. Semua Guru dapat dijadwalkan.
