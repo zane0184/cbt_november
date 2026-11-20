@@ -181,3 +181,60 @@ Mulai dengan membaca branch/PR/checkpoint terbaru dan periksa source aktual. Ver
 - Run #620 / ID 44732146599 mulai pada event push untuk commit tersebut. Status terakhir ketika addendum disusun masih in_progress; jangan anggap lulus. Periksa https://github.com/zane0184/cbt_november/actions/runs/44732146599 dan log lengkap.
 - Tes berjalan di disposable MySQL 8 GitHub Actions; bukan database VPS.
 - PR #5 tetap Draft dan belum merge/deploy.
+
+
+---
+
+# ADDENDUM AUDIT ROLE & PERMISSION — 20 NOVEMBER 2026 (LANJUTAN)
+
+## AUDIT AKTUAL
+- Branch kerja: `fix/web-portal-usability-rbac-20261120`.
+- Commit terakhir yang sudah diverifikasi dari GitHub: `de222d2e0fb986cde189233b7b0feadaaf0c70e7` (penghapusan hook pagination duplikat; hook existing tetap dipertahankan).
+- PR #5 tetap OPEN, DRAFT, UNMERGED, UNDEPLOYED.
+- CI run #676 / run ID `44745729601`, commit `641b87d67712b432e2c3cf2ff2a5f1922b2ffc79`, gagal sebelum PHPUnit berjalan karena patch menambahkan `updatingSearch()` duplikat. Patch duplikat telah dihapus pada commit setelahnya.
+- CI run terbaru untuk commit `de222d2e0fb986cde189233b7b0feadaaf0c70e7`, run ID `44745926681`, job ID `136321086285`, status terakhir saat addendum dibuat: IN_PROGRESS. Hasil terminal wajib diambil sebelum perubahan source selanjutnya.
+- Dua tes participant sebelumnya gagal karena konteks tenant dibersihkan sebelum User Siswa dibuat. Tes telah diperbaiki dengan mengatur TenantContext secara eksplisit sebelum pembuatan user dan membersihkannya sebelum request.
+- Tes pagination sebelumnya menguji properti `p` yang tidak tersedia. Assertion diubah ke `page`; wajib diverifikasi hasil CI, jangan anggap benar sebelum tes lulus.
+- Koreksi audit: komponen QuestionBank SEBENARNYA sudah memiliki hook `updatingSearch`, `updatingSubjectFilter`, dan `updatingStatusFilter` pada bagian bawah file. Patch percobaan yang menambahkan duplikat telah dihapus. Jangan mengulang patch hook tersebut.
+- RolePermissionBootstrapper saat ini memberi grant least-privilege secara additive dan mencabut beberapa stale grants secara selektif. Audit menemukan risiko permission legacy lain yang tidak termasuk daftar revoked tetap tertinggal. Ini belum diperbaiki. Evaluasi dan uji semua built-in permissions untuk Admin Madrasah, Kamad, Guru, Operator, dan Proktor; jangan melakukan revoke tanpa matriks yang benar.
+- Policy yang sudah diperiksa: QuestionPolicy, ExamPolicy, ReportPolicy, ExamAttemptPolicy. Temuan: QuestionPolicy viewAny bergantung pada tenant_id + question.view; komponen QuestionBank mount menambahkan role Admin/Guru. ExamAttemptPolicy view membatasi detail hasil kepada Guru assigned + report.view atau Admin/Kamad + report.view; Operator/Siswa ditolak. Siswa harus melalui hasil pribadi dengan current score pointer dan DTO terbatas.
+- RolePermissionBootstrapper grants: Admin Madrasah (administrasi, monitoring, close, proctor assignment, token/grade/reopen sesuai policy; tidak question.manage), Kamad (curriculum.view, exam.monitor, report.view), Guru (question/exam authoring sesuai assignment, grading, report), Operator (curriculum.view, academic.manage, exam.monitor, report.view), Proktor bukan role portal permanen dan akses monitoring bergantung penugasan aktif.
+- RoleDashboardVerificationTest dan RolePermissionBootstrapperTest tersedia. RBACEnforcementTest, StudentResultVisibilityTest, ProctorAssignmentSecurityTest juga tersedia. Namun coverage halaman/aksi detail hasil per matriks role/permission masih belum lengkap.
+
+## IMPLEMENTASI TERAKHIR DAN BACKUP
+- Backup dibuat sebelum patch:
+  - `backend-laravel/backup_before_patch/20261120_RBAC_DEEP_AUDIT/tests/Feature/ExamBuilderTest.php.before`
+  - `backend-laravel/backup_before_patch/20261120_RBAC_DEEP_AUDIT/tests/Feature/QuestionBankTest.php.before`
+  - `backend-laravel/backup_before_patch/20261120_RBAC_DEEP_AUDIT/app/Livewire/Admin/QuestionBank.php.before`
+- Backup dokumentasi:
+  - `docs/backup_before_patch/20261120_RBAC_DEEP_AUDIT/CHECKPOINT_WEB_AUDIT_20261120.md.before`
+  - `docs/backup_before_patch/20261120_RBAC_DEEP_AUDIT/HANDOVER_PROMPT_AGENT_BARU_WEB_CBT_20261120.md.before`
+- Commit perubahan tes konteks tenant: `c46f10d39a160f1a7ff41d183214df9253c2c391`.
+- Commit assertion pagination: `641b87d67712b432e2c3cf2ff2a5f1922b2ffc79`.
+- Commit hapus hook duplikat: `de222d2e0fb986cde189233b7b0feadaaf0c70e7`.
+- Commit backup sumber dan docs dicatat pada riwayat branch; jangan hapus folder backup.
+
+## PENGUJIAN
+- Run #673 sebelumnya: 477 passed, 3 failed; dua fixture tanpa tenant context, satu assertion pagination salah. Ini hasil sebelum patch lanjutan.
+- Run #676 gagal pada package discovery karena duplicate method; bukan hasil PHPUnit. Patch duplicate telah dihapus.
+- Run #677 / ID `44745926681`: status IN_PROGRESS saat dokumen ini disusun. Belum boleh dinyatakan lulus.
+- Semua test harus berjalan di MySQL 8 disposable CI; tidak ada pengujian diarahkan ke DB VPS.
+
+## PEKERJAAN WAJIB AGENT PENERUS
+1. Poll run #677 sampai terminal, ambil log lengkap dan hitung hasil PHPUnit. Jangan push saat run aktif karena concurrency cancel-in-progress.
+2. Jika CI gagal, klasifikasikan kegagalan dan backup file sebelum patch. Jangan melemahkan assertion tenant/RBAC untuk membuat CI hijau.
+3. Audit dan perbaiki RolePermissionBootstrapper agar stale built-in permissions tidak tertinggal; buat tes dengan pre-existing grants untuk seluruh role. Pertahankan custom permission di luar daftar built-in jika memang desainnya demikian. Cocokkan dengan role matrix resmi sebelum commit.
+4. Tambahkan matriks regression untuk ResultDetail: Admin tanpa/dengan report.view, Kamad tanpa/dengan report.view, Guru tanpa/dengan assignment, Operator, Siswa, tenant lain. Uji URL langsung dan aksi finalize/reopen/grade.
+5. Audit route/controller/policy/component/view untuk Question Bank, Exam Builder, result, report, analytics, export, monitoring, participant assignment, proctor assignment, user/academic/curriculum management. Periksa setiap GET/POST/API dan aksi Livewire.
+6. Audit stale permission dan multi-role accounts; tentukan apakah satu akun boleh memiliki lebih dari satu role. Jangan biarkan gabungan role memperluas hak secara tidak disengaja.
+7. Periksa Super Admin secara terpisah: platform-level access tidak boleh masuk ke tenant CBT tanpa jalur otorisasi eksplisit.
+8. Lanjutkan tenant isolation tests dan cross-tenant direct route/API tests; pastikan query/export/cache tidak bocor lintas tenant.
+9. Setelah test focused dan full suite lulus, jalankan browser/runtime smoke pada staging disposable, bukan production. Audit visual menu/landing role dan URL langsung.
+10. Update checkpoint dan handover setelah setiap tahap, dengan SHA aktual, file berubah, backup, CI run, hasil test, dan sisa gap.
+
+## BATAS LINGKUP DAN KESELAMATAN
+- Fokus saat ini HANYA Web CBT dan backend Laravel.
+- Pengembangan/pengujian aplikasi Android ditunda sampai JUNI 2027. Jangan meminta persiapan perangkat Android saat fase Web/backend.
+- PR #5 tetap Draft/unmerged/undeployed sampai semua gerbang lulus.
+- Tidak ada deployment VPS, migration produksi, perubahan DB/.env/storage/vhost, atau ZIP distribusi final tanpa prosedur dan persetujuan yang diwajibkan.
+- Jangan menyatakan sistem aman/siap ujian sebelum role matrix, tenant isolation, alur ujian, penilaian, pemulihan, dan validasi madrasah memiliki bukti pengujian.
