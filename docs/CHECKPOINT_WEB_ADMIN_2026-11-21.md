@@ -261,3 +261,38 @@ Batas kewenangan:
 UI Web Admin: **Daftar Ujian & Penugasan Proktor**, menampilkan nama ujian, mapel, Guru pembuat, kelas/rombel/peserta bila tersedia, tanggal, sesi/jam, status ujian, status penugasan pengawas, serta aksi “Atur/Tentukan Pengawas”. Informasi akademik ujian bersifat read-only untuk Admin.
 
 Koreksi terhadap catatan sebelumnya: Admin tidak menyusun kalender akademik ujian dari nol. Admin menetapkan pengawas berdasarkan jadwal ujian yang sudah dibuat Guru. Modul tidak boleh membuat dua sumber jadwal yang bertentangan.
+
+
+---
+
+## 16. CHECKPOINT KONSOLIDASI PAKET HANDOVER — 21 NOVEMBER 2026
+
+Paket handover diperluas untuk pergantian agent. Dokumen tambahan:
+- `docs/00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md` — indeks/pintu masuk tunggal.
+- `docs/REGISTER_KEPUTUSAN_WEB_ADMIN.md` — register keputusan kanonis.
+- `docs/MATRIKS_AUDIT_WEB_ADMIN_TEMPLATE.md` — template audit berbasis bukti.
+- `docs/MATRIKS_PENGUJIAN_WEB_ADMIN.md` — matriks tes dan acceptance.
+- `docs/PETA_DOKUMEN_PROVENANCE_CBT.md` — peta pencarian dokumen dan aturan provenance.
+
+### Hasil nyata pada GitHub
+Kelima file di atas berhasil dibuat pada branch dokumentasi `docs/web-admin-agent-handover-20261121`. Commit masing-masing:
+- Paket indeks: `a6b5caf37de0253fd150c00ff831c01dbfa5211d`
+- Register keputusan: `3faca4a3eb8370a6a6be42cde13b4d3c00fc7e19`
+- Matriks audit: `bc21ca0f5c0e5997ac7c846b6f052eaf7b55f7c4`
+- Matriks pengujian: `7c32c8d2662b577ecdb7066f631a44198c314116`
+- Peta provenance: `54104fdbb495b2505219aab55d7511f9f22f4479`
+
+### Koreksi prioritas alur jadwal ujian
+Bagian 14 checkpoint lama dan bagian 29 spesifikasi yang menggambarkan Admin membuat kalender/jadwal ujian dari awal adalah interpretasi terdahulu dan **tidak boleh dipakai sebagai alur final**. Gunakan:
+- Bagian 15 checkpoint;
+- Bagian 30 spesifikasi;
+- Bagian 16 prompt agent;
+- `docs/REGISTER_KEPUTUSAN_WEB_ADMIN.md`.
+
+Alur final: Guru membuat soal/ujian, mapel dan jadwal akademik; data ujian otomatis muncul di list Admin; Admin hanya menentukan Guru pengawas. Detail akademik read-only untuk Admin. Perubahan jadwal Guru memicu peninjauan assignment, bukan mutasi roster diam-diam.
+
+### Status pekerjaan
+Konsolidasi ini hanya dokumentasi. Tidak ada source aplikasi, migration, database, .env, secret, konfigurasi VPS, atau deployment yang diubah. Audit source Web Admin menyeluruh tetap BELUM DIBUKTIKAN selesai; desain belum disetujui; implementasi perbaikan total belum dimulai berdasarkan spesifikasi final.
+
+### Langkah agent berikutnya
+Ikuti bagian 1–2 pada prompt induk. Verifikasi status PR/branch/commit dan source terbaru; cari seluruh laporan terkait; lakukan audit READ-ONLY; serahkan AUDIT + DESAIN; berhenti menunggu persetujuan.
