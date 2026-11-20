@@ -45,6 +45,8 @@ class InstallerEndToEndTest extends TestCase
             storage_path('installed.lock'),
             app(InstallerStateStore::class)->statePath(),
             app(InstallerStateStore::class)->lockPath(),
+            storage_path('app/private/installer-database.php'),
+            storage_path('app/private/installer-runtime.php'),
             base_path('bootstrap/cache/config.php'),
         ];
         $originals = [];
