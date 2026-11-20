@@ -69,7 +69,7 @@ class AuthWebController extends Controller
     protected function redirectForUser(User $user)
     {
         if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) return redirect('/operator/dashboard');
-        if ($user->hasRole('KAMAD')) return redirect('/operator/dashboard');
+        if ($user->hasRole('KAMAD')) return redirect('/');
         if ($user->hasRole('PROKTOR')) return redirect('/proktor/assignments');
         if ($user->hasRole('GURU')) return redirect('/admin/exams');
         if ($user->hasRole('SISWA')) return redirect('/student/exams');
