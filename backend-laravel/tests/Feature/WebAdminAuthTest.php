@@ -153,12 +153,13 @@ class WebAdminAuthTest extends TestCase
     public function test_operator_dashboard_rejects_users_without_tenant_binding(): void
     {
         app(TenantContext::class)->setTenantId(null);
-        $orphan = User::create([
-            'tenant_id' => null,
+        $orphan = new User([
             'name' => 'Orphan Operator',
             'username' => 'orphan.operator',
             'password' => bcrypt($this->password),
         ]);
+        $orphan->tenant_id = null;
+        $orphan->saveQuietly();
         $orphan->roles()->attach(Role::where('name', 'OPERATOR')->firstOrFail());
 
         $this->withoutMiddleware(EnsureLicenseActive::class);
