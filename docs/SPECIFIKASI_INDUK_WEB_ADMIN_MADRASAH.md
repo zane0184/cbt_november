@@ -1483,3 +1483,72 @@ Source yang sudah ada mungkin menggunakan identifier seperti `admin`, `operator`
 ## 26.5 Status dan prioritas interpretasi
 
 Keputusan ini adalah klarifikasi terbaru dan mengesampingkan interpretasi sebelumnya yang seolah-olah melarang istilah “Operator” sepenuhnya. Yang dilarang adalah **dua role/portal Admin dan Operator yang terpisah**. Admin = Operator. Implementasi teknis tetap menunggu audit source dan gerbang persetujuan.
+
+---
+
+# 27. PROKTOR ADALAH GURU YANG DITUGASKAN ADMIN MADRASAH
+
+## 27.1 Definisi dan sumber personel
+
+**Proktor adalah Guru yang ditugaskan oleh Admin/Operator Madrasah untuk menjalankan tugas pengawasan pada ujian tertentu.** Proktor bukan role pegawai permanen dan bukan portal permanen.
+
+Guru yang dapat dipilih untuk penugasan Proktor meliputi:
+- Guru kelas.
+- Wali Kelas.
+- Guru Mata Pelajaran.
+
+Ketiga kategori tersebut merupakan sumber calon personel; jangan mengunci fitur hanya untuk Guru kelas atau hanya Guru Mata Pelajaran. Calon harus merupakan akun Guru aktif yang terdaftar pada madrasah yang sama.
+
+## 27.2 Penugasan oleh Admin/Operator
+
+Admin/Operator Madrasah mengelola penugasan Proktor pada konteks ujian. Data assignment sekurangnya mengikat:
+- Identitas Guru yang ditugaskan.
+- Ujian yang diawasi.
+- Sesi/ruang/lokasi bila digunakan.
+- Rentang waktu tugas atau jadwal yang berlaku.
+- Status: direncanakan/aktif/selesai/dicabut/kedaluwarsa sesuai lifecycle.
+- Admin/Operator yang membuat atau mengubah assignment.
+- Alasan dan timestamp perubahan/pencabutan jika relevan.
+
+Satu Guru dapat menerima penugasan pada ujian yang berbeda sesuai aturan konflik jadwal dan kebijakan madrasah. Sistem harus mencegah assignment ganda yang bertentangan pada sesi/waktu/ruang yang sama jika aturan operasional menetapkannya.
+
+## 27.3 Batas kewenangan Proktor
+
+- Guru tetap memiliki akun dan role dasar Guru.
+- Assignment Proktor memberi konteks/hak sementara hanya untuk ujian yang ditugaskan dan selama masa tugas yang berlaku.
+- Hak tersebut tidak otomatis memberikan kewenangan mengelola bank soal, mengubah konfigurasi atau jadwal ujian, menerbitkan ujian, melakukan penilaian, melihat jawaban/nilai yang tidak diperlukan, atau mengakses ujian lain.
+- Hak aksi Proktor harus dirinci dengan permission dan policy yang eksplisit. Jangan menganggap semua tindakan pengawasan otomatis diizinkan.
+- Ketika assignment dicabut, selesai, atau kedaluwarsa, akses sementara harus berhenti sesuai kebijakan.
+- Jangan membuat role Proktor global/permanen atau portal Proktor tersendiri.
+
+## 27.4 Keamanan dan audit
+
+Setiap permintaan yang menggunakan hak Proktor wajib divalidasi di server berdasarkan:
+1. Tenant/madrasah yang aktif.
+2. Akun Guru aktif dan berasal dari madrasah yang sama.
+3. Assignment Proktor yang sah.
+4. Ujian/sesi/ruang yang tepat.
+5. Rentang waktu dan status assignment.
+6. Permission untuk aksi yang diminta.
+
+Semua pembuatan, perubahan, pencabutan, aktivasi, penyelesaian, dan aksi penting Proktor wajib masuk audit log dengan actor, target, waktu, alasan bila relevan, dan hasil. Assignment lintas tenant harus ditolak.
+
+## 27.5 Batas scope tahap Web Admin
+
+Dalam tahap Web Admin saat ini:
+- Audit dan sediakan administrasi penugasan Proktor oleh Admin/Operator sesuai kewenangannya.
+- Data calon Proktor bersumber dari daftar Guru yang dikelola secara administratif oleh Admin.
+- Jangan membangun portal Proktor atau workflow operasional Guru/Proktor pada tahap ini.
+- Integrasi tindakan Guru/Proktor pada ujian menjadi bagian tahap Guru berikutnya setelah Web Admin disetujui selesai.
+
+## 27.6 Acceptance criteria
+
+- Admin dapat menugaskan Guru kelas, Wali Kelas, atau Guru Mata Pelajaran sebagai Proktor untuk ujian tertentu.
+- Hanya Guru aktif dalam madrasah yang sama yang dapat ditugaskan.
+- Assignment memiliki cakupan ujian dan periode yang jelas.
+- Assignment konflik dapat dicegah sesuai aturan jadwal/ruang.
+- Guru tanpa assignment tidak mendapat akses Proktor.
+- Assignment tidak menciptakan role atau portal permanen.
+- Pencabutan/kedaluwarsa menghentikan hak sementara.
+- Tenant isolation, authorization, dan audit log diuji.
+- Admin tidak memperoleh hak operasional Guru hanya karena mengelola assignment.
