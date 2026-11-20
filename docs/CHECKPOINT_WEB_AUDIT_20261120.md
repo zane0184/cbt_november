@@ -144,3 +144,43 @@ PR: #5 (Draft)
 - Tambahkan regression tests: filter rombel hanya menampilkan attempt siswa dari rombel terpilih; siswa multi-rombel tampil pada masing-masing filter yang sesuai; rombel tenant lain tidak dapat dipilih/digunakan; filter kosong menampilkan semua peserta ujian; pagination reset.
 - Jalankan CI pada branch PR dan perbaiki kegagalan yang ditemukan.
 - Audit root landing Kamad dan seluruh halaman analitik/ekspor per role; jangan menambah portal Proktor permanen atau memperluas permission tanpa dasar.
+
+
+## Regression test tambahan — integritas subject snapshot dan kunci opsi
+Tanggal: 2026-11-20
+
+### AUDIT
+- Pengetatan ExamSnapshotService pada commit 0ff72ab11fff907d9e70e4b0077e486a26f9212d mengharuskan setiap QuestionVersion berasal dari tenant dan subject yang sama dengan Assessment ujian.
+- Pemeriksaan ulang fixture ExamSnapshotTest.php menemukan beberapa fixture lama membuat Question tanpa subject_id. Fixture tersebut tidak lagi mewakili data valid setelah invariant subject diterapkan dan berpotensi membuat tes snapshot lama gagal bukan karena regresi layanan.
+- Tes QuestionBankTest.php sebelumnya mencakup PG Kompleks tanpa kunci, tetapi belum menguji kunci yang menunjuk opsi kosong untuk PG maupun PG Kompleks.
+- Audit ekspor: ReportController::exportExcel() dan exportPdf() memanggil policy viewExamResults; filter rombel Guru diperiksa terhadap penugasan aktif. Ekspor PDF hasil siswa memakai viewStudentResults dan validasi lingkup penugasan Guru. AnalyticsDashboard dan ItemAnalysis juga memanggil viewExamResults pada mount.
+- KamadDashboard memang ada sebagai komponen, tetapi tidak memiliki route aktif. Test RoleDashboardVerificationTest secara eksplisit mengunci keputusan bahwa Kamad tidak mempunyai dashboard permanen terpisah (/kamad/dashboard harus 404); tidak diaktifkan tanpa dasar keputusan yang lebih baru.
+
+### DESAIN
+- Fixture snapshot harus selalu menyertakan tenant dan subject yang sesuai dengan Assessment.
+- Tambahkan regresi untuk menolak soal satu tenant tetapi subject berbeda, dan pastikan tidak ada snapshot parsial yang tersimpan.
+- Tambahkan regresi validasi PG dan PG Kompleks yang menolak kunci pada opsi kosong.
+- Tidak mengubah skema database, route portal, atau keputusan role.
+
+### IMPLEMENTASI
+- Backup sebelum perubahan:
+  - backend-laravel/backup_before_patch/WEB_SNAPSHOT_SUBJECT_SCOPE_20261120/ExamSnapshotTest.php.before
+  - backend-laravel/backup_before_patch/WEB_QUESTION_OPTION_VALIDATION_20261120/QuestionBankTest.php.before
+- ExamSnapshotTest.php: menyimpan subject ujian pada fixture; menambahkan test penolakan soal same-tenant dengan subject berbeda; memperbaiki fixture soal lama termasuk fixture tenant lain dan helper mutasi agar memenuhi invariant subject.
+- QuestionBankTest.php: menambahkan test PG dan PG Kompleks untuk menolak correct key yang menunjuk opsi kosong.
+- Commit test snapshot: 7e782d484a5a54393175534ef95996d09d439d8a dan 71f63a9b4679c5767e6d18e895b7d0b570f4acee.
+- Commit test opsi: 28697bca9d7ec235ec7acac8246e0cfb5677adb9.
+- Skrip .github/workflows/build-web-deployment.yml mengecualikan backup_before_patch/ dari ZIP deployment. Backup tetap ada di branch untuk audit, tetapi tidak masuk paket deploy.
+
+### PENGUJIAN
+- Diff dan fixture test diperiksa melalui GitHub.
+- Belum menjalankan PHPUnit atau workflow; tidak menyatakan test lulus.
+- Tidak ada workflow run atau status check terdeteksi pada head PR terakhir saat checkpoint ini disusun.
+- Workflow tenant-backend-ci.yml saat ini memicu pull_request hanya untuk base branch main, sedangkan PR #5 menggunakan base fix/p0-96g-installer-private-db-config-20261120. Workflow juga menyediakan workflow_dispatch, tetapi pemicu manual belum dijalankan. Ini menjelaskan mengapa tidak muncul CI otomatis pada PR #5; bukan bukti bahwa kode lulus.
+
+### STATUS PR DAN PEKERJAAN TERTUNDA
+- PR #5 tetap Draft, belum merge. Pemeriksaan terbaru GitHub melaporkan mergeable=true, merged=false.
+- Lanjutkan audit seluruh aksi UI, alur edit/publish/participant, filter hasil, analytics, export, dan keamanan tenant.
+- Jalankan PHPUnit pada MySQL 8 disposable melalui workflow yang tepat; review hasil lengkap termasuk test yang sudah ada, bukan hanya test baru.
+- Setelah seluruh audit dan tes lulus, review diff akhir, perbarui checkpoint, dan siapkan keputusan merge secara terpisah.
+- Deployment VPS tetap belum dilakukan. Tidak ada perubahan database, .env, storage privat, installer state, atau vhost.
