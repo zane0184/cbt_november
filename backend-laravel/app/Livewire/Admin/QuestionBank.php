@@ -249,14 +249,40 @@ class QuestionBank extends Component
                 'optionB' => 'required|string',
                 'correctOption' => 'required|in:A,B,C,D',
             ]);
+
+            $availableOptionKeys = [
+                'A' => trim((string) $this->optionA) !== '',
+                'B' => trim((string) $this->optionB) !== '',
+                'C' => trim((string) $this->optionC) !== '',
+                'D' => trim((string) $this->optionD) !== '',
+            ];
+            if (!($availableOptionKeys[$this->correctOption] ?? false)) {
+                $this->addError('correctOption', 'Kunci jawaban harus menunjuk pada opsi yang benar-benar diisi.');
+                return;
+            }
         } elseif ($this->questionType === 'MULTIPLE_RESPONSE') {
             $this->validate([
                 'optionA' => 'required|string',
                 'optionB' => 'required|string',
+                'correctOptions' => 'required|array|min:1',
+                'correctOptions.*' => 'required|string|distinct|in:A,B,C,D',
             ]);
             if (empty($this->correctOptions) || !is_array($this->correctOptions) || count($this->correctOptions) < 1) {
                 $this->addError('correctOptions', 'Pilih setidaknya satu kunci jawaban benar untuk Pilihan Ganda Kompleks.');
                 return;
+            }
+
+            $availableOptionKeys = [
+                'A' => trim((string) $this->optionA) !== '',
+                'B' => trim((string) $this->optionB) !== '',
+                'C' => trim((string) $this->optionC) !== '',
+                'D' => trim((string) $this->optionD) !== '',
+            ];
+            foreach ($this->correctOptions as $key) {
+                if (!($availableOptionKeys[$key] ?? false)) {
+                    $this->addError('correctOptions', 'Setiap kunci jawaban harus menunjuk pada opsi yang benar-benar diisi.');
+                    return;
+                }
             }
         } elseif ($this->questionType === 'TRUE_FALSE') {
             $this->validate([
