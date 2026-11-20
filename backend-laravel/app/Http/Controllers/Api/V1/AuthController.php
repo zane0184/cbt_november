@@ -38,7 +38,7 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        $token = $user->createToken($validated['device_name'] ?: 'android-cbt')->plainTextToken;
+        $token = $user->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken;
 
         return response()->json(['success' => true, 'message' => 'Login berhasil', 'data' => [
             'token' => $token,
