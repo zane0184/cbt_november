@@ -532,9 +532,9 @@ class InstallerService
                 ]);
                 $this->stateStore->write($verifiedState);
 
-                $envPath = base_path('.env');
-                $envExisted = is_file($envPath);
-                $originalEnv = $envExisted ? file_get_contents($envPath) : null;
+                $runtimeConfigPath = storage_path('app/private/installer-runtime.php');
+                $runtimeConfigExisted = is_file($runtimeConfigPath);
+                $originalRuntimeConfig = $runtimeConfigExisted ? file_get_contents($runtimeConfigPath) : null;
                 $originalBootstrapToken = config('installer.bootstrap_token');
                 $lockPath = storage_path('installed.lock');
                 $lockContent = json_encode([
@@ -552,11 +552,10 @@ class InstallerService
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL;
 
                 try {
-                    $this->writeEnvValues([
-                        'APP_INSTALLED' => 'true',
-                        // The bootstrap secret is no longer needed after the installer locks.
-                        'CBT_INSTALLER_BOOTSTRAP_TOKEN' => '',
-                    ], false);
+                    // Disable the bootstrap token in a private writable runtime override; .env remains read-only.
+                    $runtimeConfig = ['bootstrap_token' => null];
+                    $runtimeContents = "<?php\\n\\nreturn " . var_export($runtimeConfig, true) . ";\\n";
+                    $this->writeAtomicFile($runtimeConfigPath, $runtimeContents, 0600);
                     config(['installer.bootstrap_token' => null]);
                     $configClearExit = Artisan::call('config:clear');
                     if ($configClearExit !== 0) {
