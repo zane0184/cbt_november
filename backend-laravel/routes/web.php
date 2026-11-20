@@ -18,9 +18,7 @@ use App\Livewire\Proktor\ProktorDashboard;
 Route::get('/', function () {
     if (auth()->check()) {
         $user = auth()->user();
-        if ($user->hasRole('KAMAD')) {
-            return redirect('/operator/dashboard');
-        } elseif ($user->hasRole('PROKTOR')) {
+        if ($user->hasRole('PROKTOR')) {
             return redirect('/proktor/assignments');
         } elseif ($user->hasRole('OPERATOR') || $user->hasRole('ADMIN_MADRASAH')) {
             return redirect('/operator/dashboard');
