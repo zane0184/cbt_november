@@ -454,6 +454,11 @@ class ExamManagement extends Component
         $this->resetPage();
     }
 
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $user = auth()->user();
