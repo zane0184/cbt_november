@@ -596,10 +596,15 @@ class InstallerService
                     } catch (Throwable) {
                         Log::critical('CBT installer state rollback failed after finalization error.');
                     }
-                    if ($envExisted && $originalEnv !== null) {
-                        $this->writeAtomicFile($envPath, $originalEnv, 0600);
-                    } elseif (is_file($envPath)) {
-                        @unlink($envPath);
+                    if ($runtimeConfigExisted && $originalRuntimeConfig !== null) {
+                        $this->writeAtomicFile($runtimeConfigPath, $originalRuntimeConfig, 0600);
+                    } elseif (is_file($runtimeConfigPath)) {
+                        @unlink($runtimeConfigPath);
+                    }
+                    try {
+                        Artisan::call('config:clear');
+                    } catch (Throwable) {
+                        Log::warning('CBT installer config cache cleanup failed during finalization rollback.');
                     }
                     config([
                         'app.installed' => false,
