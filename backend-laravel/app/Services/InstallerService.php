@@ -511,7 +511,11 @@ class InstallerService
     {
         try {
             return $this->stateStore->synchronized(function (array $state): bool {
-                $allowedStates = config('license.pre_activation_2026') ? ['PRE_ACTIVATION_READY', 'LICENSE_ACTIVATED', 'INSTALL_VERIFIED'] : ['LICENSE_ACTIVATED', 'INSTALL_VERIFIED'];
+                $isPreActivation = config('license.pre_activation_2026')
+                    && ($state['license_mode'] ?? null) === 'PRE_ACTIVATION_2026';
+                $allowedStates = $isPreActivation
+                    ? ['PRE_ACTIVATION_READY', 'INSTALL_VERIFIED']
+                    : ['LICENSE_ACTIVATED', 'INSTALL_VERIFIED'];
                 if (!in_array($state['state'], $allowedStates, true)) {
                     return false;
                 }
@@ -541,7 +545,9 @@ class InstallerService
                     'installation_identity_id' => $state['installation_identity_id'] ?? null,
                     'license_id' => $state['license_id'] ?? null,
                     'license_revision' => $state['license_revision'] ?? null,
-                    'license_mode' => (($state['state'] ?? null) === 'PRE_ACTIVATION_READY' && config('license.pre_activation_2026')) ? 'PRE_ACTIVATION_2026' : 'PUBLISHER',
+                    'license_mode' => $isPreActivation ? 'PRE_ACTIVATION_2026' : 'PUBLISHER',
+                    'pre_activation_issued_at' => $isPreActivation ? ($state['pre_activation_issued_at'] ?? null) : null,
+                    'pre_activation_expires_at' => $isPreActivation ? ($state['pre_activation_expires_at'] ?? null) : null,
                     'schema_fingerprint' => $verification['schema_fingerprint'],
                 ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL;
 
@@ -573,6 +579,8 @@ class InstallerService
                                 'state' => 'LOCKED',
                                 'license_mode' => 'PRE_ACTIVATION_2026',
                                 'schema_fingerprint' => $verification['schema_fingerprint'],
+                                'pre_activation_issued_at' => $lockedState['pre_activation_issued_at'] ?? null,
+                                'pre_activation_expires_at' => $lockedState['pre_activation_expires_at'] ?? null,
                                 'migration_count' => $verification['migration_count'],
                             ],
                             'created_at' => now(),
@@ -632,10 +640,34 @@ class InstallerService
 
             $identity = \App\Models\LocalInstallationIdentity::query()->where('tenant_id', $tenant->id)->first();
             if (!$identity || (string) $identity->tenant_id !== (string) $tenant->id) return ['success' => false, 'message' => 'Identitas instalasi lokal tidak valid.'];
-            if (($state['state'] ?? null) === 'PRE_ACTIVATION_READY') {
-                if ((string) ($state['installation_identity_id'] ?? '') !== (string) $identity->getKey()) return ['success' => false, 'message' => 'ID identitas instalasi tidak cocok dengan state installer.'];
-                if (!config('license.pre_activation_2026') || ($state['license_mode'] ?? null) !== 'PRE_ACTIVATION_2026') return ['success' => false, 'message' => 'Mode pra-aktivasi tidak diizinkan oleh konfigurasi server.'];
-                if (!empty($state['license_id']) || !empty($state['license_revision'])) return ['success' => false, 'message' => 'State pra-aktivasi tidak boleh memuat klaim lisensi aktif.'];
+            $isPreActivation = ($state['license_mode'] ?? null) === 'PRE_ACTIVATION_2026';
+            if ($isPreActivation) {
+                if (!config('license.pre_activation_2026')
+                    || !in_array(($state['state'] ?? null), ['PRE_ACTIVATION_READY', 'INSTALL_VERIFIED'], true)) {
+                    return ['success' => false, 'message' => 'Mode pra-aktivasi tidak diizinkan oleh konfigurasi server atau state installer.'];
+                }
+                if ((string) ($state['installation_identity_id'] ?? '') !== (string) $identity->getKey()) {
+                    return ['success' => false, 'message' => 'ID identitas instalasi tidak cocok dengan state installer.'];
+                }
+                if (!empty($state['license_id']) || !empty($state['license_revision'])) {
+                    return ['success' => false, 'message' => 'State pra-aktivasi tidak boleh memuat klaim lisensi aktif.'];
+                }
+                try {
+                    $issuedAt = \Illuminate\Support\Carbon::parse((string) ($state['pre_activation_issued_at'] ?? ''))->utc();
+                    $expiresAt = \Illuminate\Support\Carbon::parse((string) ($state['pre_activation_expires_at'] ?? ''))->utc();
+                    $issueDeadline = \Illuminate\Support\Carbon::parse((string) config('license.pre_activation_issue_deadline'))->utc();
+                } catch (Throwable) {
+                    return ['success' => false, 'message' => 'Jadwal pra-aktivasi tidak valid.'];
+                }
+                $maxDays = max(1, (int) config('license.pre_activation_duration_days', 180));
+                $now = \Illuminate\Support\Carbon::now('UTC');
+                if ($issuedAt->greaterThan($issueDeadline)
+                    || $issuedAt->greaterThan($now->copy()->addMinutes(5))
+                    || $expiresAt->lessThanOrEqualTo($now)
+                    || $expiresAt->lessThanOrEqualTo($issuedAt)
+                    || $expiresAt->greaterThan($issuedAt->copy()->addDays($maxDays)->addMinutes(5))) {
+                    return ['success' => false, 'message' => 'Masa berlaku pra-aktivasi tidak memenuhi batas pilot 2026.'];
+                }
             } else {
                 $licenseState = \App\Models\LocalLicenseState::query()->with('installation')->where('installation_identity_id', $identity->id)->first();
                 if (!$licenseState || $licenseState->status !== 'ACTIVE' || (string) $licenseState->license_id !== (string) ($state['license_id'] ?? '') || $licenseState->lease_expires_at?->isPast()) return ['success' => false, 'message' => 'Lisensi Publisher belum aktif atau lease telah kedaluwarsa.'];
