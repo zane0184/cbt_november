@@ -198,3 +198,16 @@ Keputusan yang berlaku:
 **Koreksi atas catatan sebelumnya:** kalimat yang melarang label “Dashboard Operator” atau “Role: Operator Madrasah” tidak boleh ditafsirkan sebagai larangan menyebut Operator sama sekali. Yang dilarang adalah menciptakan kesan Operator merupakan role/portal kedua yang berbeda dari Admin. Admin = Operator.
 
 Status: keputusan produk final; implementasi/mapping teknis menunggu audit source dan persetujuan desain.
+
+## 12. KLARIFIKASI PROKTOR
+
+Pengguna menegaskan bahwa Proktor adalah **Guru yang ditugaskan oleh Admin/Operator Madrasah** untuk mengawasi ujian tertentu. Guru yang dapat ditugaskan meliputi:
+- Guru kelas.
+- Wali Kelas.
+- Guru Mata Pelajaran.
+
+Status Proktor adalah penugasan operasional sementara, bukan role permanen atau portal tersendiri. Guru tetap memakai akun/identitas Guru; assignment memberikan hak terbatas hanya pada ujian, sesi/ruang (jika ada), dan rentang waktu yang ditentukan.
+
+Admin/Operator mengelola penugasan. Backend wajib memvalidasi madrasah/tenant, status Guru, ujian, waktu, assignment, dan izin setiap aksi. Assignment dapat diubah/dicabut/kedaluwarsa dan seluruh siklusnya harus diaudit. Penugasan tidak memberi akses ke bank soal, pengaturan ujian, penilaian, jawaban/nilai, atau ujian lain kecuali ada permission terpisah yang sah.
+
+**Status:** keputusan produk final; pada tahap Web Admin hanya audit dan pengelolaan assignment oleh Admin. Portal/workflow Guru atau Proktor tidak dibangun sekarang.
