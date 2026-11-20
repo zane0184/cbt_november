@@ -79,11 +79,11 @@ return new class extends Migration
         $preflight = [
             'registered_device_user_tenant_mismatch' => DB::table('registered_devices as rd')
                 ->join('users as u', 'u.id', '=', 'rd.user_id')
-                ->whereColumn('u.tenant_id', '<>', 'rd.tenant_id')->count(),
+                ->where(function ($query) { $query->whereNull('u.tenant_id')->orWhereColumn('u.tenant_id', '<>', 'rd.tenant_id'); })->count(),
             'registered_device_revoker_tenant_mismatch' => DB::table('registered_devices as rd')
                 ->join('users as u', 'u.id', '=', 'rd.revoked_by')
                 ->whereNotNull('rd.revoked_by')
-                ->whereColumn('u.tenant_id', '<>', 'rd.tenant_id')->count(),
+                ->where(function ($query) { $query->whereNull('u.tenant_id')->orWhereColumn('u.tenant_id', '<>', 'rd.tenant_id'); })->count(),
             'device_lease_attempt_tenant_mismatch' => DB::table('device_leases as dl')
                 ->join('exam_attempts as ea', 'ea.id', '=', 'dl.exam_attempt_id')
                 ->whereColumn('ea.tenant_id', '<>', 'dl.tenant_id')->count(),
@@ -93,7 +93,7 @@ return new class extends Migration
             'device_lease_releaser_tenant_mismatch' => DB::table('device_leases as dl')
                 ->join('users as u', 'u.id', '=', 'dl.released_by')
                 ->whereNotNull('dl.released_by')
-                ->whereColumn('u.tenant_id', '<>', 'dl.tenant_id')->count(),
+                ->where(function ($query) { $query->whereNull('u.tenant_id')->orWhereColumn('u.tenant_id', '<>', 'dl.tenant_id'); })->count(),
             'active_lease_without_expiry' => DB::table('device_leases')
                 ->where('status', 'ACTIVE')->whereNull('expires_at')->count(),
             'active_lease_generation_mismatch' => DB::table('device_leases as dl')
@@ -108,14 +108,14 @@ return new class extends Migration
                     $query->whereNull('ea.current_device_token')
                         ->orWhereColumn('ea.current_device_token', '<>', 'rd.device_token');
                 })->count(),
-            'active_lease_participant_user_mismatch' => DB::table('device_leases as dl')
+            'device_lease_participant_user_mismatch' => DB::table('device_leases as dl')
                 ->join('exam_attempts as ea', 'ea.id', '=', 'dl.exam_attempt_id')
                 ->join('exam_participants as ep', 'ep.id', '=', 'ea.participant_id')
                 ->join('registered_devices as rd', 'rd.id', '=', 'dl.registered_device_id')
-                ->where('dl.status', 'ACTIVE')
                 ->where(function ($query) {
                     $query->whereColumn('rd.user_id', '<>', 'ep.user_id')
-                        ->orWhereColumn('rd.tenant_id', '<>', 'ep.tenant_id');
+                        ->orWhereColumn('rd.tenant_id', '<>', 'ep.tenant_id')
+                        ->orWhereNull('ep.tenant_id');
                 })->count(),
         ];
 
