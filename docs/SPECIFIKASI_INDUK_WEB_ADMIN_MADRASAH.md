@@ -1164,3 +1164,177 @@ Alur lupa kata sandi harus menggunakan mekanisme reset yang aman, token sekali p
 - Rate limit dan proteksi CSRF/authorization berjalan.
 - Reset password pengguna lain memerlukan permission khusus dan tercatat.
 
+
+
+---
+
+# 24. MASTER KURIKULUM DEFAULT RESMI, DAPAT DIKONFIGURASI ADMIN
+
+## 24.1 Prinsip seed/default dan kewenangan Admin
+
+Master Kurikulum tidak boleh dimulai dari database kosong. Setiap instalasi madrasah harus menerima **paket data awal (seed/default) Kurikulum MI** yang telah diverifikasi terhadap regulasi dan dokumen resmi yang berlaku pada versi paket tersebut.
+
+Admin Madrasah boleh:
+- Menambahkan mata pelajaran Muatan Lokal (Mulok) sesuai karakteristik madrasah.
+- Menambahkan atau menyusun CP/TP/ATP lokal jika memang disusun/ditetapkan madrasah, dengan penanda jelas bahwa data tersebut adalah data lokal, bukan kutipan CP resmi.
+- Mengatur mata pelajaran yang digunakan, pilihan seni, alokasi/jadwal sesuai kewenangan dan ketentuan struktur kurikulum.
+- Menambahkan tag/indikator lokal untuk kebutuhan pemetaan pembelajaran dan asesmen.
+- Mengarsipkan/nonaktifkan konfigurasi yang tidak lagi digunakan, sepanjang tidak menghapus histori atau merusak referensi.
+
+Admin **tidak boleh mengubah diam-diam isi master resmi** sehingga tampak seolah-olah merupakan rumusan pemerintah. Master resmi harus read-only pada record sumbernya. Jika madrasah perlu penyesuaian, sistem membuat salinan/override lokal (customization layer) dengan label "Disesuaikan Madrasah", pencatat, tanggal, alasan, dan sumber. Record resmi tetap utuh.
+
+## 24.2 Registry regulasi dan versi default
+
+Seed awal wajib mempunyai registry sumber:
+- Jenis dokumen dan nomor.
+- Judul resmi.
+- Instansi penerbit.
+- Tanggal ditetapkan/berlaku jika tercantum.
+- URL sumber resmi.
+- Tanggal verifikasi.
+- Versi dataset seed.
+- Jenjang/fase/mapel yang dicakup.
+- Checksum file sumber yang diarsipkan secara sah.
+- Status berlaku/digantikan/perlu verifikasi.
+
+Baseline regulasi yang telah diverifikasi untuk rancangan ini:
+1. **KMA Nomor 1503 Tahun 2025**, perubahan atas KMA Nomor 450 Tahun 2024 tentang Pedoman Implementasi Kurikulum pada RA, MI, MTs, MA, dan MAK. KMA ini ditetapkan 22 September 2025 dan menjadi acuan implementasi kurikulum madrasah yang menekankan Pembelajaran Mendalam dan Kurikulum Berbasis Cinta.
+2. **Permendikdasmen Nomor 10 Tahun 2025** tentang Standar Kompetensi Lulusan pada PAUD, Pendidikan Dasar, dan Pendidikan Menengah, khususnya Pasal 4 mengenai 8 dimensi profil lulusan.
+3. **Keputusan Direktur Jenderal Pendidikan Islam Nomor 3302 Tahun 2024** atau dokumen CP PAI/Bahasa Arab yang berlaku, hanya boleh dipakai jika status keberlakuan dan keterkaitannya dengan KMA 1503/2025 telah diverifikasi. Jangan seed CP dari dokumen lama tanpa pemeriksaan perubahan/penggantinya.
+4. **Panduan Kurikulum Berbasis Cinta** dan/atau keputusan/panduan resmi Ditjen Pendidikan Islam yang berlaku, termasuk Keputusan Dirjen Pendis Nomor 6077 Tahun 2025 jika telah diverifikasi dokumen lengkapnya.
+
+KMA 1503/2025 adalah perubahan atas KMA 450/2024. Sistem harus menyimpan relasi perubahan tersebut, bukan menganggap dokumen lama otomatis hilang seluruhnya. Sebelum paket seed dirilis, lakukan pemeriksaan JDIH Kemenag/JDIH kementerian terkait untuk memastikan tidak ada perubahan regulasi yang lebih baru.
+
+## 24.3 Default mata pelajaran MI
+
+Seed awal menggunakan struktur mapel MI yang tercantum pada Lampiran KMA 1503 Tahun 2025, dengan konfigurasi per kelas/kelompok kelas dan periode berlaku. Jangan menyamakan seluruh daftar mapel untuk kelas I–VI karena tabel struktur dan alokasi dapat berbeda menurut kelompok kelas.
+
+Master awal sekurangnya memuat:
+- Al-Qur'an Hadis.
+- Akidah Akhlak.
+- Fikih.
+- Sejarah Kebudayaan Islam (SKI) sesuai kelas/struktur yang berlaku.
+- Bahasa Arab.
+- Pendidikan Pancasila.
+- Bahasa Indonesia.
+- Matematika.
+- Ilmu Pengetahuan Alam dan Sosial (IPAS) pada kelas yang ditentukan struktur.
+- Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK).
+- Seni dan Budaya, dengan pilihan jenis seni yang diakomodasi sesuai ketentuan.
+- Bahasa Inggris sesuai kelas/struktur yang berlaku.
+- Mata pelajaran pilihan Koding dan Kecerdasan Artifisial sesuai ketentuan dan kesiapan madrasah.
+- Muatan Lokal.
+
+Nama, kelas sasaran, kategori wajib/pilihan, dan alokasi waktu harus diambil dari tabel resmi per kelas dalam KMA yang berlaku. Jangan menyalin alokasi satu kelas ke kelas lain. Konfigurasi struktur dan alokasi harus memiliki periode efektif dan dapat diperbarui ketika regulasi berubah.
+
+**Catatan kode mapel/RDM:** KMA yang menjadi dasar struktur kurikulum tidak dengan sendirinya membuktikan bahwa suatu kode singkat (misalnya MTK/BIND/AQH) adalah kode resmi RDM. Karena itu:
+- Sistem memiliki internal stable ID yang tidak berubah.
+- Simpan kode tampilan/internal terpisah dari kode referensi eksternal.
+- Sediakan tabel alias/mapping RDM dengan sumber, versi format, dan tanggal verifikasi.
+- Jangan mengarang atau mengunci kode RDM berdasarkan singkatan umum.
+- Import/export RDM baru boleh dinyatakan kompatibel setelah diuji menggunakan format resmi RDM yang aktual.
+- Admin boleh mengatur alias lokal jika format integrasi mengizinkan, tetapi tidak boleh menimpa identitas internal atau histori.
+
+## 24.4 Default Muatan Lokal
+
+Mulok harus tersedia sebagai kategori yang dapat ditambahkan Admin. Seed kategori/contoh dapat meliputi ranah yang disebut dalam KMA 1503/2025, antara lain:
+- Keagamaan.
+- Seni budaya.
+- Prakarya.
+- Pendidikan jasmani, olahraga, dan kesehatan.
+- Bahasa.
+- Riset.
+- Teknologi.
+
+Contoh muatan keagamaan dalam lampiran KMA mencakup antara lain Al-Qur'an, Hadis, Qiro'ah Al-Qur'an, Tahfidz Al-Qur'an, Ilmu Tajwid, Imla, Nahwu, Shorof, Khat, dan Baca Tulis Al-Qur'an. Contoh ini adalah pilihan konteks, bukan daftar wajib untuk semua MI.
+
+KMA memperbolehkan Mulok diintegrasikan ke mata pelajaran lain, tema kokurikuler, dan/atau menjadi mata pelajaran tersendiri. Karena itu model data harus mendukung ketiga bentuk tersebut; jangan memaksa semua Mulok menjadi mata pelajaran berdiri sendiri.
+
+## 24.5 Default CP, TP, dan ATP
+
+CP/TP/ATP tidak boleh diisi dengan rumusan buatan agent. Prosedur seed:
+1. Temukan dokumen CP resmi yang berlaku untuk MI, mapel, dan fase terkait.
+2. Verifikasi penerbit, nomor/tahun, status berlaku, dan apakah ada revisi/pengganti.
+3. Ekstrak teks dengan pemeriksaan terhadap dokumen aslinya; simpan judul, elemen, fase, mapel, kode (jika resmi), rumusan, halaman, sumber, versi, dan tanggal berlaku.
+4. Seed CP resmi sebagai record sumber yang tidak dapat diedit langsung oleh Admin.
+5. Seed TP/ATP hanya jika ada dokumen resmi yang memang menetapkan daftar tersebut. Jika TP/ATP merupakan turunan/rancangan satuan pendidikan atau pendidik, jangan menyebutnya sebagai daftar TP/ATP nasional resmi.
+6. Jika belum tersedia dataset resmi yang terverifikasi, sistem harus menampilkan status "Belum tersedia—perlu konfigurasi madrasah", bukan mengisi konten palsu.
+7. Admin dapat menambahkan TP/ATP rancangan madrasah dengan label "Disusun Madrasah", nama penyusun, tanggal, versi, dan relasi ke CP sumber.
+8. Guru memilih CP/TP/ATP yang relevan melalui dropdown sesuai mapel, fase/kelas, tahun ajaran, versi aktif, dan assignment Guru. Guru tetap dapat mengusulkan tujuan pembelajaran baru sesuai kewenangan, tanpa mengubah record CP resmi.
+9. Snapshot asesmen/ujian menyimpan versi referensi yang digunakan sehingga revisi master tidak mengubah histori.
+
+## 24.6 Default 5 Pilar Panca Cinta (KBC)
+
+Seed default 5 Pilar Panca Cinta persis sesuai rumusan pada KMA 1503 Tahun 2025:
+1. Cinta Allah dan Rasul-Nya.
+2. Cinta Ilmu.
+3. Cinta Lingkungan.
+4. Cinta Diri dan Sesama Manusia.
+5. Cinta Tanah Air.
+
+Kelima pilar merupakan nilai yang menjiwai kurikulum dan pembelajaran, bukan lima mata pelajaran baru. Setiap pilar dapat memiliki uraian, indikator pembelajaran, contoh penerapan, sumber, dan versi hanya jika uraian tersebut diambil dari panduan resmi yang telah diverifikasi.
+
+Admin boleh menambahkan indikator/kegiatan/konteks lokal pada lapisan madrasah, tetapi nama dan urutan lima pilar sumber resmi tidak boleh ditimpa. Pemetaan soal ke Panca Cinta sebaiknya opsional dan kontekstual; jangan memaksa setiap soal memiliki label karakter jika tidak relevan.
+
+## 24.7 Default 8 Dimensi Profil Lulusan (DPL)
+
+Seed default 8 dimensi sesuai Pasal 4 Permendikdasmen Nomor 10 Tahun 2025:
+1. Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa.
+2. Kewargaan.
+3. Penalaran kritis.
+4. Kreativitas.
+5. Kolaborasi.
+6. Kemandirian.
+7. Kesehatan.
+8. Komunikasi.
+
+Deskripsi dimensi harus diambil dari pasal terkait dalam regulasi, bukan dibuat bebas. DPL adalah dimensi profil lulusan dan bukan label yang harus dipaksakan pada setiap butir soal. Pemetaan asesmen/survei karakter harus sesuai tujuan, usia, konteks, dan instrumen yang tervalidasi; CBT tidak boleh mengklaim mengukur karakter secara sahih hanya karena ada pilihan tag DPL.
+
+Admin boleh menambahkan indikator operasional lokal sebagai turunan dengan label lokal, tetapi tidak boleh mengganti nama atau definisi resmi DPL. Jika regulasi berubah, buat versi baru dan pertahankan versi lama untuk histori.
+
+## 24.8 Struktur data dan perilaku konfigurasi
+
+Setiap entitas master minimal menyimpan:
+- UUID/internal ID stabil.
+- Jenis: official_seed, madrasah_custom, atau imported_reference.
+- Nama/kode dan deskripsi.
+- Jenjang, fase, kelas, mapel, dan periode efektif jika relevan.
+- Source document, pasal/lampiran/halaman, URL, nomor/tahun, versi.
+- Status aktif/arsip.
+- Created/updated actor dan timestamp.
+- Parent/source record untuk override atau turunan lokal.
+- Version number dan changelog.
+
+Ketentuan:
+- Seed bersifat idempotent: instalasi ulang/update seed tidak menggandakan data dan tidak menimpa perubahan lokal.
+- Pembaruan paket resmi membuat versi baru, bukan overwrite record yang telah dipakai.
+- Admin dapat menambah dan mengarsipkan data lokal.
+- Data resmi tidak bisa dihapus dari UI Admin.
+- Data yang sudah direferensikan oleh CP/TP/ATP, soal, ujian, hasil, atau laporan tidak boleh dihapus secara fisik.
+- Perubahan konfigurasi yang memengaruhi pembelajaran/asesmen harus tercatat dalam audit log.
+- Dropdown Guru hanya menampilkan item yang sesuai mapel, fase/kelas, versi, periode, status, dan assignment.
+- Tidak ada kewajiban memberi tag Panca Cinta/DPL pada setiap soal; gunakan sesuai relevansi pedagogis.
+
+## 24.9 Acceptance criteria paket default
+
+- Fresh install memperoleh master awal yang benar dan berversi.
+- Seed dapat dijalankan berulang tanpa duplikasi atau menimpa data lokal.
+- Seluruh item official_seed memiliki sumber resmi yang dapat ditelusuri.
+- Tidak ada CP/TP/ATP yang dikarang atau diberi label resmi tanpa bukti.
+- Struktur mapel dan alokasi per kelas cocok dengan lampiran regulasi yang dipakai.
+- Lima Panca Cinta dan delapan DPL cocok persis dengan sumber regulasi.
+- Admin dapat menambah Mulok dan data turunan lokal.
+- Admin tidak dapat mengubah/menghapus record resmi sumber secara langsung.
+- Perubahan versi tidak merusak referensi atau snapshot historis.
+- Dropdown dan pemetaan hanya menampilkan referensi sesuai konteks.
+- Semua perubahan memiliki audit trail.
+- Uji dilakukan pada database disposable MySQL 8; tidak ada seed/migration eksperimental ke produksi tanpa persetujuan.
+
+## 24.10 Sumber regulasi dan verifikasi
+
+Sumber yang diperiksa untuk rancangan:
+- KMA Nomor 1503 Tahun 2025, salinan lampiran dan keputusan yang disampaikan Ditjen Pendidikan Islam: https://sulteng.kemenag.go.id/files/show/20251020162801surat-penyampaian-kma-kurikulum-2025%2Blampiran_compressed-tzR.pdf
+- Permendikdasmen Nomor 10 Tahun 2025, JDIH Kemendikdasmen: https://jdih.kemendikdasmen.go.id/sjdih/siperpu/dokumen/salinan/Permendikdasmen%20Nomor%2010%20Tahun%202025%20tentang%20Standar%20Kompetensi%20Lulusan%20pada%20Pendidikan%20Anak%20Usia%20Dini%2C%20Jenjang%20Pendidikan%20Dasar%2C%20dan%20Jenjang%20Pendidikan%20Menengah.pdf
+- Halaman Panduan Kurikulum Berbasis Cinta Kanwil Kemenag Sulawesi Tengah: https://sulteng.kemenag.go.id/informasi-penting/y2jy/28-07-2025-panduan-kurikulum-berbasis-cinta
+
+Sumber di atas menjadi baseline dokumentasi, bukan jaminan bahwa tidak ada perubahan setelah tanggal pemeriksaan. Sebelum merilis seed produksi, agent wajib memverifikasi status terkini melalui JDIH/penerbit resmi dan melampirkan dokumen CP MI per mapel/fase yang benar-benar dipakai. Bila suatu kode RDM atau rumusan CP/TP tidak dapat dibuktikan, jangan mengisinya dengan tebakan.
