@@ -278,3 +278,57 @@ Setiap keterangan lama di dokumen ini yang menyatakan run #684 masih berjalan, b
 - Web/backend saja sekarang; Android ditunda sampai Juni 2027.
 - Jangan deployment/migration/ubah DB/.env/storage/vhost/installer state produksi tanpa persetujuan eksplisit, backup terverifikasi, dan preflight.
 - Jangan menyebut siap produksi/siap ujian hanya karena CI lulus.
+
+
+---
+
+# HANDOVER ADDENDUM — 20 NOVEMBER 2026 — CI #687 DAN AUDIT INTERAKSI UI
+
+## Status terkini yang telah diverifikasi
+- Branch kerja: `fix/web-portal-usability-rbac-20261120`.
+- Checkpoint/head yang menjadi dasar pemeriksaan ini: `9ce64c6060e0edf72d71038b18c9b6455c032cf1`.
+- CI #687, run ID `44750193332`, job `laravel-mysql`, job ID `136335742247`: COMPLETED / SUCCESS.
+- Langkah CI yang terverifikasi sukses: isolated MySQL identity fail-closed; Composer lock/platform validation; locked dependency installation; Laravel package discovery; disposable installer E2E DB; focused Web login/tenant smoke; full PHPUnit.
+- Hasil full PHPUnit: **480 passed, 1.942 assertions, 92,36 detik**, MySQL 8 disposable (CI). Tidak ada test gagal.
+- Log menunjukkan warning deprecation PHPUnit terkait metadata doc-comment menuju PHPUnit 12. Bukan kegagalan pada PHPUnit 11 yang digunakan sekarang; catat sebagai pekerjaan pemeliharaan, jangan mengubah test secara massal tanpa rencana.
+- PR #5 tetap OPEN, DRAFT, UNMERGED, UNDEPLOYED. Jangan merge atau deploy.
+- Tidak ada source aplikasi, DB produksi, .env, storage privat, installer state, vhost, atau VPS yang diubah dalam pemeriksaan ini.
+
+## Audit interaksi UI statis — pemeriksaan terbatas
+Pemeriksaan dilakukan pada Blade dan pasangan komponen Livewire aktual di branch tersebut. Ini pemeriksaan konsistensi statis, bukan browser runtime.
+
+| View | SHA view | Komponen | SHA komponen | Hasil |
+|---|---|---|---|---|
+| `resources/views/livewire/admin/exam-management.blade.php` | `5705d815cc3e2539d167b22a26d3508586a77439` | `Admin/ExamManagement.php` | `478aaa170ee297b0c8399f049cd9b1ba56cbfb10` | Semua wire:click/submit yang diekstrak cocok dengan method komponen; semua wire:model yang diperiksa punya properti publik |
+| `resources/views/livewire/admin/question-bank.blade.php` | `72feaf1cc1be17253868c91861781dbb223b5aa9` | `Admin/QuestionBank.php` | `a3013b528015daf4214dd1aa567eba950b03663a` | Semua wire:click/submit cocok dengan method; wire:model cocok dengan properti publik |
+| `resources/views/livewire/teacher/result-list.blade.php` | `f9c8de95b18954379b0c1e93555e90acad246983` | `Teacher/ResultList.php` | `fd60539cb33bd33d0c183b980a84f567681a4d68` | Semua wire:click/submit cocok dengan method; wire:model cocok dengan properti publik |
+| `resources/views/livewire/teacher/result-detail.blade.php` | `c72c6b95703a105225a084ffab8344a83f9ec6dc` | `Teacher/ResultDetail.php` | `6f959b61eb04ca9d0ee8005009a5e82b3b98a016` | Semua wire:click/submit cocok dengan method; wire:model cocok dengan properti publik |
+
+Catatan:
+- Parser awal memasukkan wire:model sebagai action dan menghasilkan false positive; hasil final memakai hanya wire:click/submit/change untuk pemeriksaan method, dan memeriksa wire:model terpisah terhadap properti publik.
+- Empat layar ini tidak menunjukkan pemanggilan method Livewire yang tidak ditemukan atau properti model yang tidak dideklarasikan pada komponen.
+- Ini tidak membuktikan semua tombol berhasil secara browser, tidak membuktikan endpoint link sukses, dan tidak mencakup semua halaman/role. Belum ada browser E2E, screenshot, klik aktual, atau staging runtime dalam pemeriksaan ini.
+- Sidebar layout `resources/views/layouts/app.blade.php` SHA `0163813cafc0226b9eae8af789223da0fb793f64` menunjukkan link menu yang dicek memiliki pasangan route pada `routes/web.php`: /operator/dashboard, /proktor/assignments, /admin/proctor-assignments, /admin/exams, /admin/questions, /admin/curriculum, /admin/academic, /admin/rombel-students, /admin/users. Pemeriksaan ini hanya kecocokan path; belum menjalankan HTTP/browser.
+- RoleDashboardVerificationTest memuat coverage role dashboard, Kamad 404, Proktor assignment surface, Operator, Guru, monitoring tenant isolation. Tetap perlu perluasan untuk semua aksi/halaman.
+
+## Kesimpulan audit saat handover
+- Backend CI hijau dua run beruntun sebelumnya (#686 dan #687); #687 secara aktual 480/1.942.
+- Empat area UI kritis (Exam Management, Question Bank, Result List, Result Detail) lolos pemeriksaan statis konsistensi method/properties.
+- **Status Web CBT belum dinyatakan siap untuk login acceptance pengguna.** Masih diperlukan audit statis seluruh Blade/Livewire, role-action matrix, pemeriksaan link/route, browser runtime/E2E pada staging disposable, dan verifikasi interaksi tiap tombol.
+- Jangan menyimpulkan tombol berfungsi hanya dari keberadaan method; cek authorization, validasi, transaksi, feedback, dan efek data.
+- Tidak ada fitur baru ditambahkan. Prioritas hanya memperbaiki seluruh portal dan tombol yang sudah ada.
+
+## Pekerjaan wajib berikutnya
+1. Lanjutkan audit UI semua halaman, bukan hanya empat view di atas. Buat inventaris seluruh tombol, form, dropdown, pagination, filter, modal, link, dan aksi Livewire.
+2. Untuk setiap aksi: cocokkan dengan method, policy/Gate, permission, tenant/assignment scope, validasi, transaksi/idempotensi, audit log, loading/disabled state, error/success feedback.
+3. Audit semua route href dan route name terhadap routes/web.php, termasuk URL dinamis, parameter, middleware, serta akses langsung lintas tenant.
+4. Lengkapi regression test per role × halaman × aksi (Admin Madrasah, Guru, Operator, Kamad, Proktor sesuai assignment, Siswa, Super Admin terpisah) dan tenant silang.
+5. Audit halaman hasil/analitik/export, user, akademik, kurikulum, penugasan Proktor, monitoring, Exam Builder, Question Bank.
+6. Rencanakan dan jalankan browser E2E pada staging disposable (misalnya Playwright/Dusk jika toolchain proyek mendukung) untuk login per role, navigasi, klik semua tombol utama, submit form, filter, pagination, dan alur CRUD. Jangan menyebut runtime lulus sebelum bukti test benar-benar ada.
+7. Jika perlu patch: backup file sebelum perubahan, catat path dan hash; jangan patch spekulatif. Setelah patch jalankan focused test lalu full CI disposable MySQL.
+8. Setelah CI terminal, update checkpoint dan handover lagi. Jangan push saat workflow aktif karena concurrency.
+9. PR #5 tetap Draft. Deployment VPS, migration produksi, perubahan DB/.env/storage/vhost, serta ZIP distribusi final tetap ditahan sampai ada persetujuan dan seluruh gate terpenuhi.
+
+## Bukti CI
+- Run #687: https://github.com/zane0184/cbt_november/actions/runs/44750193332
+- Job ID: `136335742247`
