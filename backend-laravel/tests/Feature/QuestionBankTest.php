@@ -236,6 +236,46 @@ class QuestionBankTest extends TestCase
         $this->assertEquals(['A', 'B'], $newCorrectKeys);
     }
 
+    public function test_web_admin_multiple_choice_rejects_correct_key_for_empty_option()
+    {
+        $this->actingAs($this->userA);
+
+        Livewire::test(QuestionBank::class)
+            ->set('questionCode', 'MC-EMPTY-KEY')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('selectedSubjectId', $this->subjectA->id)
+            ->set('stem', 'Kunci tidak boleh menunjuk opsi kosong')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('optionC', '')
+            ->set('correctOption', 'C')
+            ->call('saveQuestion')
+            ->assertHasErrors(['correctOption']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'MC-EMPTY-KEY']);
+    }
+
+    public function test_web_admin_multiple_response_rejects_key_for_empty_option()
+    {
+        $this->actingAs($this->userA);
+
+        Livewire::test(QuestionBank::class)
+            ->set('questionCode', 'MR-EMPTY-KEY')
+            ->set('questionType', 'MULTIPLE_RESPONSE')
+            ->set('selectedSubjectId', $this->subjectA->id)
+            ->set('stem', 'Kunci kompleks tidak boleh menunjuk opsi kosong')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('optionC', '')
+            ->set('correctOptions', ['C'])
+            ->call('saveQuestion')
+            ->assertHasErrors(['correctOptions']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'MR-EMPTY-KEY']);
+    }
+
     public function test_web_admin_multiple_response_validation_fails_when_no_correct_option_selected()
     {
         $this->actingAs($this->userA);
