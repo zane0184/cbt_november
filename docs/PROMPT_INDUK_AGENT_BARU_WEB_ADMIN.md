@@ -511,3 +511,14 @@ Frasa “Admin mengatur kalender/jadwal ujian” harus ditafsirkan sebagai Admin
 
 ### Prioritas interpretasi alur ujian
 Jika bagian 15 sebelumnya menyatakan Admin mengatur kalender/jadwal ujian, baca bersama bagian 16: sumber jadwal akademik dan mapel adalah ujian yang dibuat Guru. Admin hanya melihat daftar terintegrasi dan menetapkan pengawas/Proktor. Jangan membuat duplikasi jadwal.
+
+
+---
+
+## 17. PAKET HANDOVER TERPADU DAN PRIORITAS DOKUMEN
+
+Sebelum mulai, baca `docs/00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md` dan seluruh dokumen yang ditautkan. Register keputusan kanonis: `docs/REGISTER_KEPUTUSAN_WEB_ADMIN.md`. Template audit: `docs/MATRIKS_AUDIT_WEB_ADMIN_TEMPLATE.md`. Matriks acceptance/test: `docs/MATRIKS_PENGUJIAN_WEB_ADMIN.md`. Peta sumber dan provenance: `docs/PETA_DOKUMEN_PROVENANCE_CBT.md`.
+
+Jika ada kontradiksi antarcatatan jadwal ujian, keputusan terbaru mengikat: Guru membuat soal/ujian, mapel, dan jadwal akademik; metadata ujian otomatis tampil di list Admin; Admin hanya menetapkan Guru pengawas. Bagian 30 spesifikasi, bagian 16 prompt, dan Register Keputusan mengoreksi interpretasi terdahulu pada bagian 29/15 yang menyatakan Admin menyusun kalender ujian dari awal.
+
+Paket ini tidak mengubah gerbang kerja. Agent wajib melakukan verifikasi GitHub/source dan audit READ-ONLY, menyerahkan AUDIT + DESAIN, lalu menunggu persetujuan sebelum patch.
