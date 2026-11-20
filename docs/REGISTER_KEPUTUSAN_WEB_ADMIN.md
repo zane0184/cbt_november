@@ -159,7 +159,7 @@ InstallationIdentityService sudah menegakkan tepat satu Tenant dan maksimal satu
 - Source canonical seluruh CBT belum terkunci karena raw baseline/workspace tidak tersedia; working source Web Admin yang direkomendasikan tercatat pada Section 19.
 
 ## 17. Koreksi final Admin Madrasah = Operator
-Keputusan final: satu role aktif ADMIN_MADRASAH. OPERATOR 100% sama dengan Admin Madrasah dan bukan role kedua. Satu akun/login/portal/dashboard/sidebar/permission profile/kewenangan. Tidak ada runtime branching untuk OPERATOR atau ADMIN. Legacy ADMIN tenant-local juga diverifikasi dan dipetakan ke ADMIN_MADRASAH; SUPER_ADMIN tidak dipetakan. KAMAD tetap terpisah.
+Keputusan final: satu role aktif ADMIN_MADRASAH. OPERATOR 100% sama dengan Admin Madrasah dan bukan role kedua. Satu role/portal/dashboard/sidebar/permission profile/kewenangan untuk setiap pengguna. Akun pengguna yang berbeda tetap terpisah; migrasi role tidak menggabungkan user record atau password. Tidak ada runtime branching untuk OPERATOR atau ADMIN. Legacy ADMIN tenant-local juga diverifikasi dan dipetakan ke ADMIN_MADRASAH; SUPER_ADMIN tidak dipetakan. KAMAD tetap terpisah.
 
 DatabaseSeeder, InstallerService, RolePermissionBootstrapper, AuthWebController, LoginIdentityResolver, LicenseStatusController, routes, policies, dashboard, layout, UserManagement, dan tests harus menghapus role aktif OPERATOR. Role migration wajib preflight roles, role_user, permission_role, users.role, account/profile/tenant, audit, sessions/tokens, dan seluruh FK. Preserve account ID/password/profile/history. Konflik multi-role menghentikan migrasi. Setelah mapping, tidak ada OPERATOR pivot/grant/role row aktif. Permission Admin di-sync ke satu exact profile; bukan union grant lama.
 

@@ -212,3 +212,7 @@ Semua test berikut NOT RUN. Runtime acceptance wajib memakai MySQL 8/InnoDB; SQL
 | T-128 | Audit log gagal ditulis | Transaksi assignment/reschedule rollback |
 | T-129 | Idempotency create/renew assignment | Retry tidak membuat duplikasi atau status ganda |
 
+
+| T-130 | Preserve distinct user accounts | Dua user lama (Admin dan Operator) dimiliki orang berbeda | Dua user ID/password tetap terpisah; hanya role/policy disatukan |
+| T-131 | UI naming | Login dengan akun Admin lama dan Operator lama setelah migrasi | UI hanya menampilkan Admin Madrasah; tidak ada label/menu/portal Operator |
+| T-132 | Installer terminology | Installer menampilkan istilah Operator Installer untuk token bootstrap | Tetap diperlakukan sebagai operator server/installer, bukan role Operator Madrasah |

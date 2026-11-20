@@ -413,3 +413,49 @@ Hanya enam dokumen yang diperbarui pada branch docs/source-canonical-design-clos
 - tests/TestCase.php
 
 Migrations (58 file), routes (3 file), seeders (2 file), views (34 file), tests (66 file), app (155 file), dan bootstrap/config/factories/public (20 file) telah dipindai. Migration roles mendefinisikan roles/permissions dan pivot; identifier role aktif berasal dari seeder/bootstrap/installer, bukan migration schema. Hasil ini statis dan tidak mengubah source.
+
+
+
+
+## Verifikasi jalur perubahan jadwal dan transaksi Proktor
+
+Pemeriksaan source kandidat mengidentifikasi dua jalur tulis jadwal ujian:
+1. API: app/Http/Controllers/Api/V1/ExamController.php, blob bf373858869b470b235e2256e5be6169fbb1f561. Validasi start_at/end_at/timezone pada baris sekitar 168–170, lalu update model pada baris 178.
+2. Livewire: app/Livewire/Admin/ExamManagement.php, blob 478aaa170ee297b0c8399f049cd9b1ba56cbfb10. Update start_at/end_at pada sekitar baris 240–245. Jalur create juga menyimpan jadwal, tetapi bukan perubahan jadwal existing.
+
+AssessmentController.php (blob 28e6f8fe07c8e2b3dad22ecd190e9aa108947e78) mengubah Assessment, bukan field jadwal Exam. Tidak ditemukan service reschedule khusus atau observer yang memaksa semua update jadwal melewati satu service pada source yang diperiksa.
+
+Bukti assignment:
+- ExamProctorAssignmentService.php blob e16ef5db308714aa98bf283dc5a1545608da0477: assign mengunci Exam dan User Guru, lalu mencari assignment untuk exam/proctor; belum menjalankan query overlap untuk seluruh assignment Guru. Revoke mengunci Exam dan assignment, tetapi tidak mengunci User Guru dengan urutan mutex yang sama.
+- ExamProctorAssignment.php blob dde7511ebb5035a76287d34dc75339a6a2bffdd8: scopeActiveNow memeriksa status ACTIVE, revoked_at null, starts_at <= waktu server, expires_at > waktu server.
+- Migration exam_proctor_assignments blob e51ef878e14d13078d81585fbbc10e1d00b76e25: unique key hanya (tenant_id, exam_id, proctor_user_id); tidak ada rombel_id, schedule revision, NEEDS_REVIEW, atau assignment event table.
+- AuditService dipanggil oleh service untuk create/renew/revoke; belum ada jalur event reschedule/review/confirm/expiry yang menyeluruh.
+
+Desain concurrency yang diterima untuk implementasi kelak:
+1. Semua writer memakai satu service dan transaksi InnoDB.
+2. Lock order selalu Exam → Guru User row → Assignment rows. Untuk banyak Guru, lock User rows dengan urutan ID menaik.
+3. Setelah memperoleh mutex Guru, jalankan locking/current read FOR UPDATE pada assignment overlap. Rumus overlap memakai effective end (revoked_at bila revoke lebih awal, selain itu expires_at).
+4. Transaksi Admin kedua menunggu lock Guru; setelah transaksi pertama commit, locking read melihat row baru dan menolak overlap. Plain consistent SELECT tidak cukup.
+5. Revoke, confirm, reschedule, dan deactivation harus memakai lock order yang sama. Gunakan deadlock retry terbatas. Semua direct update di luar service ditolak.
+6. NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED dan waktu di luar [start,end) tidak pernah menghasilkan capability. Expiry diperiksa pada setiap request dari waktu server; cron hanya menulis label/event.
+7. Audit event ditulis dalam transaksi yang sama; jika audit gagal, transaksi perubahan dibatalkan. Expiry memakai actor SYSTEM.
+
+## Lokasi role tambahan hasil scan 338 file
+
+Selain tabel utama, token role juga ditemukan pada:
+- app/Console/Commands/InventoryLegacySuperAdminCommand.php (SUPER_ADMIN; bukan Admin Madrasah).
+- app/Console/Commands/Phase7dBenchmarkCommand.php (ADMIN_MADRASAH untuk benchmark).
+- app/Http/Controllers/Api/V1/AuthController.php (SUPER_ADMIN).
+- app/Http/Controllers/Api/V1/CurriculumAnalyticsController.php (ADMIN_MADRASAH).
+- app/Http/Controllers/Api/V1/MediaController.php (ADMIN_MADRASAH).
+- app/Http/Controllers/Api/V1/QuestionController.php (ADMIN_MADRASAH).
+- app/Http/Controllers/Api/V1/TeacherSubjectAssignmentController.php (ADMIN_MADRASAH).
+- app/Livewire/Admin/QuestionBank.php, StudentRombelManagement.php (ADMIN_MADRASAH).
+- resources/views/livewire/admin/user-management.blade.php (filter OPERATOR/ADMIN_MADRASAH).
+- resources/views/livewire/admin/proctor-assignment-management.blade.php (label/pemilih Proktor).
+- resources/views/livewire/teacher/analytics-dashboard.blade.php (teks generik guru/admin).
+- resources/views/welcome.blade.php (Panel Guru & Admin).
+- resources/views/installer/complete.blade.php (ADMIN_MADRASAH).
+- resources/views/installer/authorize.blade.php memakai frasa Operator Installer untuk otorisasi operator server/bootstrap. Ini bukan role Operator Madrasah dan tidak boleh diubah menjadi permission Admin.
+
+Source paths lengkap untuk test role telah dicantumkan pada bagian Matriks lengkap hasil scan identifier. Tidak ada token OPERATOR/ADMIN yang ditemukan sebagai role literal dalam 58 migration schema; role records berasal dari seeder/bootstrap/installer. User model menggunakan relasi role/pivot, bukan alias runtime, sehingga migration role harus memindahkan pivot secara nyata.

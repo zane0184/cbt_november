@@ -185,7 +185,7 @@ Pengguna melaporkan dua masalah pada screenshot dashboard yang ditinjau:
 
 ## 11. KEPUTUSAN FINAL ROLE — ADMIN_MADRASAH = OPERATOR
 
-ADMIN_MADRASAH adalah satu-satunya role aktif Admin Madrasah. OPERATOR adalah nama/identifier lama, bukan role kedua, portal, permission profile, atau tingkat kewenangan. Semua akun lama OPERATOR/ADMIN tenant-local dipetakan ke ADMIN_MADRASAH melalui migration aman.
+ADMIN_MADRASAH adalah satu-satunya role aktif Admin Madrasah. OPERATOR adalah nama/identifier lama, bukan role kedua, portal, permission profile, atau tingkat kewenangan. Semua akun lama OPERATOR/ADMIN tenant-local dipetakan ke ADMIN_MADRASAH melalui migration aman. Jika pemilik akun berbeda, user record tidak digabung; hanya role dan permission profile yang disatukan.
 
 Setiap orang tetap memiliki user record sendiri. Akun Admin lama dan Operator lama tidak digabung jika pemiliknya berbeda; user ID, password hash, tenant, profile, sesi/token sah, dan histori dipertahankan. Setelah migration tidak ada role/pivot/grant aktif OPERATOR atau ADMIN, dan tidak ada runtime hasRole(OPERATOR)/hasRole(ADMIN). UI hanya memakai label Admin Madrasah.
 

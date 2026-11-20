@@ -1623,11 +1623,11 @@ Keputusan final:
 
 ## 31.3 Role dan kepemilikan data
 
-ADMIN_MADRASAH adalah satu-satunya identitas/permission profile Admin Madrasah dan Operator. OPERATOR dipertahankan sementara sebagai legacy alias sampai rekonsiliasi akun/pivot/grant aman. Satu dashboard, portal, sidebar, dan permission profile.
+ADMIN_MADRASAH adalah satu-satunya role aktif Admin Madrasah/Operator. OPERATOR dan ADMIN hanya identifier legacy migration-only; tidak boleh ada role/pivot/grant aktif atau runtime branch setelah transisi. Setiap orang tetap mempunyai user record sendiri; akun Admin lama dan Operator lama tidak digabung jika pemiliknya berbeda. Semua akun lama OPERATOR/ADMIN tenant-local dipetakan ke permission profile ADMIN_MADRASAH yang identik.
 
-Semua Guru aktif pada instalasi yang sama dapat ditugaskan sebagai Proktor. Tidak ada role atau portal Proktor permanen. Role PROKTOR lama tidak dihapus tanpa migrasi kompatibel, tetapi tidak menjadi sumber hak akses baru.
+Semua Guru aktif dapat ditugaskan sebagai Proktor sementara. Tidak ada role atau portal Proktor permanen. Legacy PROKTOR hanya dikonversi menjadi GURU jika TeacherProfile valid, akun aktif, dan tenant cocok; selain itu manual review. KAMAD dan SUPER_ADMIN tidak dipetakan.
 
-Guru tetap pemilik soal, bank soal, ujian, mapel yang tertaut pada ujian, jadwal akademik ujian, snapshot, token/penerbitan, jawaban, penilaian, analisis, dan hasil. Admin hanya membaca metadata ujian Guru dan mengatur assignment pengawas. Admin tidak boleh monitoring operasional, close, token, grading, jawaban, hasil, atau mengubah metadata akademik ujian. Admin dapat mengelola katalog master mapel madrasah sesuai modul administrasi; pilihan/pengaitan mapel pada ujian tetap milik Guru.
+Guru memiliki soal, bank soal, ujian, mapel yang digunakan pada ujian, jadwal akademik ujian, snapshot, token/penerbitan, jawaban, penilaian, analisis dan hasil. Admin Madrasah hanya membaca metadata ujian dan menetapkan/meninjau/mencabut assignment Proktor. Admin tidak memiliki monitoring, close, token, grading, answer/result detail atau perubahan akademik ujian.
 
 ## 31.4 Desain assignment Proktor
 
