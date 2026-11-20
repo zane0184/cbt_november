@@ -327,10 +327,28 @@ class QuestionBank extends Component
                 ]);
 
                 $version = $question->currentVersion;
-                if ($version) {
-                    if ($version->status === 'PUBLISHED') {
-                        abort(409, 'Versi terbit tidak boleh diubah. Buat versi baru untuk melakukan perubahan.');
-                    }
+                if ($version && $version->status === 'PUBLISHED') {
+                    // Published versions are immutable. Editing from Web creates
+                    // a new draft version and moves the question identity back to
+                    // DRAFT so the teacher can review and publish the new version.
+                    $previousVersion = $version;
+                    $question->versions()->update(['is_current' => false]);
+                    $version = $question->versions()->create([
+                        'major_version' => $previousVersion->major_version,
+                        'minor_version' => $previousVersion->minor_version + 1,
+                        'question_type' => $this->questionType,
+                        'stem' => $this->stem,
+                        'explanation' => $this->explanation,
+                        'default_points' => $this->defaultPoints,
+                        'difficulty' => $previousVersion->difficulty,
+                        'learning_outcome_id' => $this->selectedOutcomeId ?: null,
+                        'learning_objective_id' => $this->selectedObjectiveId ?: null,
+                        'status' => 'DRAFT',
+                        'is_current' => true,
+                        'created_by' => auth()->id(),
+                    ]);
+                    $question->update(['status' => 'DRAFT']);
+                } elseif ($version) {
                     $version->update([
                         'question_type' => $this->questionType,
                         'stem' => $this->stem,
@@ -340,7 +358,7 @@ class QuestionBank extends Component
                         'learning_objective_id' => $this->selectedObjectiveId ?: null,
                     ]);
 
-                    // Sync Options
+                    // Sync Options only for a mutable DRAFT version.
                     $version->options()->delete();
                 } else {
                     $version = QuestionVersion::create([
