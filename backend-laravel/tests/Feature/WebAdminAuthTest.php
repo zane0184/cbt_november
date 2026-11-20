@@ -142,6 +142,31 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->kamad);
     }
 
+    public function test_kamad_can_open_the_read_only_operator_dashboard(): void
+    {
+        $this->withoutMiddleware(EnsureLicenseActive::class);
+        $this->actingAs($this->kamad);
+
+        $this->get('/operator/dashboard')->assertOk();
+    }
+
+    public function test_operator_dashboard_rejects_users_without_tenant_binding(): void
+    {
+        app(TenantContext::class)->setTenantId(null);
+        $orphan = User::create([
+            'tenant_id' => null,
+            'name' => 'Orphan Operator',
+            'username' => 'orphan.operator',
+            'password' => bcrypt($this->password),
+        ]);
+        $orphan->roles()->attach(Role::where('name', 'OPERATOR')->firstOrFail());
+
+        $this->withoutMiddleware(EnsureLicenseActive::class);
+        $this->actingAs($orphan);
+
+        $this->get('/operator/dashboard')->assertForbidden();
+    }
+
     public function test_proktor_assignment_user_login_redirects_to_assignments(): void
     {
         $response = $this->post('/login', ['identifier' => 'proktor.uji', 'password' => $this->password]);
