@@ -83,6 +83,7 @@ class InstallerEndToEndTest extends TestCase
                 'madrasah_name' => 'CBT Installer E2E Test',
                 'madrasah_code' => 'CBTTEST' . $suffix,
                 'admin_name' => 'Installer E2E Admin',
+                'admin_username' => 'admin-e2e-' . strtolower($suffix),
                 'admin_email' => 'installer-e2e-' . strtolower($suffix) . '@example.test',
                 'admin_password' => 'E2E-Password-' . $suffix . '!',
             ]);
