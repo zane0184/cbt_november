@@ -239,6 +239,35 @@ class ExamBuilderTest extends TestCase
             ->count());
     }
 
+    public function test_add_individual_participant_api_does_not_reset_existing_status()
+    {
+        $studentRole = \\App\\Models\\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $student = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Sudah Selesai',
+            'email' => 'siswa-selesai-individu@m.com',
+            'password' => 'p',
+        ]);
+        $student->roles()->attach($studentRole);
+
+        $participant = \\App\\Models\\ExamParticipant::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'user_id' => $student->id,
+            'status' => 'COMPLETED',
+        ]);
+
+        $this->actingAs($this->teacher, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/participants", ['user_id' => $student->id])
+            ->assertOk();
+
+        $this->assertSame('COMPLETED', $participant->fresh()->status);
+        $this->assertSame(1, \\App\\Models\\ExamParticipant::query()
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $student->id)
+            ->count());
+    }
+
     public function test_cross_tenant_exam_access_denied()
     {
         $tenantB = Tenant::create(['name' => 'T2', 'code' => 'T2']);
