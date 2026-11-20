@@ -43,12 +43,21 @@ class PreActivationInstallationGuard
             return false;
         }
 
+        $issuedRaw = $install['pre_activation_issued_at'] ?? null;
+        $expiresRaw = $install['pre_activation_expires_at'] ?? null;
+        $lockIssuedRaw = $lock['pre_activation_issued_at'] ?? null;
+        $lockExpiresRaw = $lock['pre_activation_expires_at'] ?? null;
+        $deadlineRaw = config('license.pre_activation_issue_deadline');
+        foreach ([$issuedRaw, $expiresRaw, $lockIssuedRaw, $lockExpiresRaw, $deadlineRaw] as $timestamp) {
+            if (!is_string($timestamp) || trim($timestamp) === '') return false;
+        }
+
         try {
-            $issuedAt = Carbon::parse((string) ($install['pre_activation_issued_at'] ?? ''))->utc();
-            $expiresAt = Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
-            $lockIssuedAt = Carbon::parse((string) ($lock['pre_activation_issued_at'] ?? ''))->utc();
-            $lockExpiresAt = Carbon::parse((string) ($lock['pre_activation_expires_at'] ?? ''))->utc();
-            $issueDeadline = Carbon::parse((string) config('license.pre_activation_issue_deadline'))->utc();
+            $issuedAt = Carbon::parse($issuedRaw)->utc();
+            $expiresAt = Carbon::parse($expiresRaw)->utc();
+            $lockIssuedAt = Carbon::parse($lockIssuedRaw)->utc();
+            $lockExpiresAt = Carbon::parse($lockExpiresRaw)->utc();
+            $issueDeadline = Carbon::parse($deadlineRaw)->utc();
         } catch (\Throwable) {
             return false;
         }
