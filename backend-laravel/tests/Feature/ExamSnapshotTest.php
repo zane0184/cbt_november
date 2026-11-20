@@ -451,6 +451,8 @@ class ExamSnapshotTest extends TestCase
             'status' => 'DRAFT',
         ]);
         $otherQuestion = Question::create([
+            'tenant_id' => $otherTenant->id,
+            'subject_id' => $otherSubject->id,
             'owner_type' => 'TENANT',
             'owner_user_id' => $otherUser->id,
             'question_code' => 'OTHER-TENANT-Q1',
@@ -660,6 +662,8 @@ class ExamSnapshotTest extends TestCase
     private function createSnapshotForMutationTests()
     {
         $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'MUTATION-1',
