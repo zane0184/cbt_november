@@ -39,3 +39,6 @@ Statusnya masih temuan untuk diaudit; belum ada klaim perbaikan. Agent harus mem
 
 ## Klarifikasi Proktor (wajib)
 Proktor adalah **Guru yang ditugaskan Admin/Operator Madrasah** untuk mengawasi ujian tertentu. Calon Proktor dapat berupa Guru kelas, Wali Kelas, atau Guru Mata Pelajaran. Status Proktor hanya assignment sementara dan terbatas pada ujian/waktu yang ditugaskan; bukan role atau portal permanen. Baca bagian 13 pada prompt agent dan bagian 27 pada spesifikasi. Pada tahap Web Admin hanya pengelolaan assignment oleh Admin; workflow Guru/Proktor ditahan sampai tahap Guru.
+
+## Klarifikasi terbaru Proktor — otomatis berdasarkan jadwal
+Semua Guru otomatis menjadi Proktor saat mendapat jadwal pengawasan ujian yang berlaku. Admin/Operator mengelola jadwal; status/hak Proktor sementara berasal otomatis dari jadwal, bukan role permanen atau aktivasi manual. Semua Guru aktif dapat dijadwalkan tanpa pembatasan kategori Guru kelas/Wali Kelas/Guru Mapel. Lihat bagian 14 pada prompt agent dan bagian 28 pada spesifikasi. Pada tahap Web Admin hanya pengelolaan jadwal oleh Admin; UI/workflow Guru ditahan.
