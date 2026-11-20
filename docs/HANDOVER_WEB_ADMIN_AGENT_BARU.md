@@ -45,3 +45,6 @@ Semua Guru otomatis menjadi Proktor saat mendapat jadwal pengawasan ujian yang b
 
 ## Modul baru: Pengaturan Jadwal Ujian & Pengawas
 Web Admin harus memiliki modul pengaturan kalender/jadwal ujian institusi dan roster Guru pengawas yang dikelola Admin/Operator sesuai edaran resmi terverifikasi. Semua Guru aktif dapat dijadwalkan; status/hak Proktor otomatis aktif dari roster saat jadwal berlaku, bukan role permanen. Guru tetap mengelola isi/konfigurasi akademik CBT, penerbitan, token, penilaian, dan hasil. Lihat bagian 15 prompt agent dan bagian 29 spesifikasi. Jangan mengarang aturan edaran.
+
+## Alur integrasi ujian Guru → Admin (klarifikasi terbaru)
+Guru membuat soal, menentukan mapel dan jadwal ujian. Setelah tersimpan, ujian otomatis muncul di **Daftar Ujian & Penugasan Proktor** pada Web Admin. Admin tidak membuat ulang jadwal atau mapel; Admin memilih ujian dari list dan menetapkan Guru pengawas. Detail akademik ujian bersifat read-only bagi Admin. Perubahan jadwal Guru tersinkron ke list dan assignment yang terdampak ditandai perlu ditinjau ulang, tanpa mengubah roster diam-diam. Baca bagian 16 prompt agent dan bagian 30 spesifikasi.
