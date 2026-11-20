@@ -47,6 +47,7 @@ class ExamSnapshotTest extends TestCase
     private $role;
     private array $createdPermissionNames = [];
     private $exam;
+    private $subject;
     private $context;
 
     protected function setUp(): void
@@ -87,6 +88,7 @@ class ExamSnapshotTest extends TestCase
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024', 'is_active' => true]);
         $semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
         $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
+        $this->subject = $subject;
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
         $this->gradeLevel = $gradeLevel;
         $rombel = Rombel::create([
@@ -149,6 +151,8 @@ class ExamSnapshotTest extends TestCase
     {
         // 1. Create Question V1
         $q = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q1',
@@ -188,6 +192,47 @@ class ExamSnapshotTest extends TestCase
         $this->assertEquals($v1->id, $snapshot->source_question_version_id);
     }
 
+    public function test_exam_rejects_same_tenant_question_from_a_different_subject()
+    {
+        $otherSubject = Subject::create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'IPA',
+            'name' => 'Ilmu Pengetahuan Alam',
+            'short_name' => 'IPA',
+            'status' => 'ACTIVE',
+        ]);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $otherSubject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'Q-WRONG-SUBJECT',
+            'created_by' => $this->user->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Soal dari mapel yang berbeda',
+            'is_current' => true,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+
+        $response->assertNotFound();
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_id' => $question->id,
+        ]);
+    }
+
     public function test_exam_snapshot_media_remains_intact_when_original_media_deleted()
     {
         $media = MediaAsset::create([
@@ -202,7 +247,11 @@ class ExamSnapshotTest extends TestCase
             'uploaded_by' => $this->user->id
         ]);
 
-        $q = Question::create(['created_by' => $this->user->id]);
+        $q = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'created_by' => $this->user->id,
+        ]);
 
         $v = QuestionVersion::create([
             'question_id' => $q->id,
