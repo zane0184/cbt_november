@@ -51,6 +51,7 @@ class InstallerEndToEndTest extends TestCase
         foreach ($paths as $path) {
             $originals[$path] = is_file($path) ? file_get_contents($path) : null;
         }
+        $originalEnvHash = is_file(base_path('.env')) ? hash_file('sha256', base_path('.env')) : null;
         $originalDatabaseConfig = config('database.connections.mysql');
         $originalDefaultConnection = config('database.default');
         $originalAppKey = config('app.key');
@@ -74,6 +75,9 @@ class InstallerEndToEndTest extends TestCase
 
             $save = $service->saveDatabaseConfig(compact('host', 'port', 'database', 'username', 'password'));
             $this->assertTrue($save['success'], $save['message']);
+            if ($originalEnvHash !== null) {
+                $this->assertSame($originalEnvHash, hash_file('sha256', base_path('.env')), 'Database configuration must not rewrite .env.');
+            }
 
             $migration = $service->runMigrations();
             $this->assertTrue($migration['success'], $migration['message']);
@@ -112,6 +116,9 @@ class InstallerEndToEndTest extends TestCase
             $this->assertTrue($retryVerification['success'], $retryVerification['message'] ?? 'Pilot finalization retry verification failed.');
 
             $this->assertTrue($service->lockInstaller(), 'Final verification and installer lock must succeed.');
+            if ($originalEnvHash !== null) {
+                $this->assertSame($originalEnvHash, hash_file('sha256', base_path('.env')), 'Finalization must not rewrite .env.');
+            }
             $this->assertTrue($service->isInstalled());
             $this->assertFileExists(storage_path('installed.lock'));
             $lock = json_decode((string) file_get_contents(storage_path('installed.lock')), true, 32, JSON_THROW_ON_ERROR);
