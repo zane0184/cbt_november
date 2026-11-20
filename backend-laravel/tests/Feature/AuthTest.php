@@ -81,6 +81,46 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors(['identifier']);
     }
 
+    public function test_api_login_is_throttled_after_five_invalid_attempts(): void
+    {
+        $throttleKey = 'login:api:'.hash('sha256', 'test-user|127.0.0.1');
+        RateLimiter::clear($throttleKey);
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            $this->postJson('/api/v1/auth/login', [
+                'identifier' => 'test-user',
+                'password' => 'wrong-password',
+            ])->assertStatus(422)->assertJsonValidationErrors(['identifier']);
+        }
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'test-user',
+            'password' => 'password',
+        ])->assertStatus(429)->assertJsonPath('success', false);
+
+        RateLimiter::clear($throttleKey);
+    }
+
+    public function test_successful_api_login_clears_failed_attempt_bucket(): void
+    {
+        $throttleKey = 'login:api:'.hash('sha256', 'test-user|127.0.0.1');
+        RateLimiter::clear($throttleKey);
+
+        for ($attempt = 0; $attempt < 4; $attempt++) {
+            $this->postJson('/api/v1/auth/login', [
+                'identifier' => 'test-user',
+                'password' => 'wrong-password',
+            ])->assertStatus(422);
+        }
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'test-user',
+            'password' => 'password',
+        ])->assertOk();
+
+        $this->assertSame(0, RateLimiter::attempts($throttleKey));
+    }
+
     public function test_me_endpoint_requires_auth()
     {
         $response = $this->getJson('/api/v1/auth/me');
