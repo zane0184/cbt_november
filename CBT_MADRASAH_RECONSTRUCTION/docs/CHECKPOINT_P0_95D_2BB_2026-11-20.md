@@ -1,24 +1,24 @@
 # CHECKPOINT P0.95D.2BB — 20 November 2026
 
 ## Source
-- Repo: \`zane0184/cbt_november\`
-- Branch: \`work/schema-dump-export-20261119\`
-- Source code + workflow tested: \`9e2b9645cb4af67e9a257539460a888a74f40277\`
+- Repo: `zane0184/cbt_november`
+- Branch: `work/schema-dump-export-20261119`
+- Source code + workflow tested: `9e2b9645cb4af67e9a257539460a888a74f40277`
 - PR #3: OPEN + Draft
-- Base main: \`95736e338e517a087503adfb3e3a899709e0340c\`
+- Base main: `95736e338e517a087503adfb3e3a899709e0340c`
 - Main tidak berubah.
 
 ## P0.95D.2BB — status
 **PASS untuk penugasan Proktor sementara dan Fresh Chain.**
 
 ### Full backend CI
-- Run \`44666470173\`, job \`136056862050\`: SUCCESS.
+- Run `44666470173`, job `136056862050`: SUCCESS.
 - 445 passed, 1 skipped, 1.818 assertions.
-- Enam test \`ProctorAssignmentSecurityTest\` lulus.
-- Run duplikat \`44666477582\`: SUCCESS.
+- Enam test `ProctorAssignmentSecurityTest` lulus.
+- Run duplikat `44666477582`: SUCCESS.
 
 ### Fresh Chain
-- Run \`44666470165\`, job \`136056861967\`: SUCCESS.
+- Run `44666470165`, job `136056861967`: SUCCESS.
 - Migration exit code 0.
 - Schema dump replay 71 tabel / 57 migration ledger.
 - Tabel dan migration Proktor terdeteksi.
@@ -27,13 +27,13 @@
 - Cleanup dua database disposable PASS.
 
 ### File implementasi
-- Migration \`2026_11_20_100001_create_exam_proctor_assignments_table.php\`
+- Migration `2026_11_20_100001_create_exam_proctor_assignments_table.php`
 - Model/service assignment Proktor
 - Admin Livewire assignment management
 - Proktor assignment list
 - ExamPolicy authorization
 - Route dan sidebar
-- \`ProctorAssignmentSecurityTest.php\`
+- `ProctorAssignmentSecurityTest.php`
 - Fresh Chain workflow assertions diperbarui secara eksplisit untuk 71 tabel/57 migration.
 
 ### Backup
