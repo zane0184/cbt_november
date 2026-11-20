@@ -184,3 +184,40 @@ Tanggal: 2026-11-20
 - Jalankan PHPUnit pada MySQL 8 disposable melalui workflow yang tepat; review hasil lengkap termasuk test yang sudah ada, bukan hanya test baru.
 - Setelah seluruh audit dan tes lulus, review diff akhir, perbarui checkpoint, dan siapkan keputusan merge secara terpisah.
 - Deployment VPS tetap belum dilakukan. Tidak ada perubahan database, .env, storage privat, installer state, atau vhost.
+
+
+## Audit lanjutan hasil, rombel, dan ruang lingkup akademik
+Tanggal: 2026-11-20
+
+### AUDIT
+- Ditemukan opsi filter status penilaian NOT_SCORED pada halaman hasil, tetapi query ResultList sebelumnya selalu memakai whereHas('score'). Attempt yang belum memiliki record skor tidak mungkin lolos filter NOT_SCORED.
+- Dropdown rombel ResultList sebelumnya tidak membatasi tahun ajaran dan query filter rombel juga belum menyatakan tenant/tahun ajaran secara eksplisit, berbeda dengan ExamResultReportService yang membatasi tenant dan tahun ajaran asesmen.
+- ExamManagement sebelumnya memvalidasi selectedSubjectId hanya dengan exists:subjects,id; pemeriksaan semester sudah tenant-scoped. Untuk Admin Madrasah, validasi eksplisit subject tenant tidak terlihat pada jalur itu.
+- Pemeriksaan target rombel di saveExam hanya memastikan rombel ada pada tenant, belum memastikan rombel berasal dari tahun ajaran aktif. Dropdown rombel juga mengambil seluruh tahun pada tenant.
+
+### DESAIN
+- NOT_SCORED harus berarti attempt tanpa current score relation, sehingga query memakai whereDoesntHave('score').
+- Filter dan opsi rombel harus konsisten dengan tenant dan tahun ajaran yang terkait pada Assessment ujian.
+- Pembuatan/pengubahan ujian harus menolak subject dari tenant lain dan rombel dari tahun ajaran selain tahun aktif; pilihan UI harus mengikuti batasan yang sama.
+- Tidak mengubah schema atau migrasi.
+
+### IMPLEMENTASI
+- Backup ResultList.php: backend-laravel/backup_before_patch/WEB_RESULT_FILTER_CONSISTENCY_20261120/ResultList.php.before
+- ResultList.php: status NOT_SCORED sekarang menggunakan whereDoesntHave('score'); pilihan rombel dan filter rombel dibatasi tenant serta tahun ajaran Assessment.
+- Backup ExamManagement.php: backend-laravel/backup_before_patch/WEB_EXAM_ACADEMIC_SCOPE_20261120/ExamManagement.php.before
+- ExamManagement.php: subject harus ditemukan pada tenant aktif; target rombel harus berasal dari tahun ajaran aktif; dropdown rombel dibatasi tahun ajaran aktif.
+- Backup ResultWorkflowTest.php: backend-laravel/backup_before_patch/WEB_RESULT_NOT_SCORED_TEST_20261120/ResultWorkflowTest.php.before
+- ResultWorkflowTest.php: menambah regression test attempt tanpa skor harus muncul pada filter NOT_SCORED.
+- Commit implementasi ResultList: 8d29f26c3a854a7c185614bbfcd8cdc94c389061.
+- Commit implementasi ExamManagement: e267fcac1593673613094801a0b1bbe4a8b02a7d.
+- Commit test NOT_SCORED: f5140ba85f737c43a3b1645997ed952bbc88d494.
+
+### PENGUJIAN
+- Pemeriksaan source/diff dilakukan setelah perubahan.
+- PHPUnit/Livewire belum dijalankan; status belum lulus uji.
+- Head PR saat diperiksa: mergeable=true, draft=true, merged=false. Tidak ada status check pada commit implementasi terakhir.
+
+### TERTUNDA
+- Tambahkan/selesaikan regression coverage untuk batas tenant subject dan tahun ajaran rombel pada ExamManagement.
+- Jalankan test suite lengkap pada MySQL 8 disposable. Pastikan fixture ExamSnapshotTest dan test baru lolos.
+- Lanjutkan audit seluruh UI aksi, role/permission, tenant isolation, laporan, analytics, dan sinkronisasi sebelum menyatakan Web selesai.
