@@ -185,6 +185,9 @@ jobs:
           $engines = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND ENGINE<>'InnoDB'")->fetchColumn();
           $proctorTable = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='exam_proctor_assignments' AND table_type='BASE TABLE'")->fetchColumn();
           $proctorMigration = (int) $pdo->query("SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100001_create_exam_proctor_assignments_table'")->fetchColumn();
+          $deviceLeaseMigration = (int) $pdo->query("SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100002_harden_device_lease_tenant_constraints'")->fetchColumn();
+          $deviceLeaseForeignKeys = (int) $pdo->query("SELECT COUNT(DISTINCT CONSTRAINT_NAME) FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND CONSTRAINT_NAME IN ('registered_devices_tenant_fk','registered_devices_user_tenant_fk','registered_devices_revoker_tenant_fk','device_leases_tenant_fk','device_leases_attempt_tenant_fk','device_leases_device_tenant_fk','device_leases_releaser_tenant_fk')")->fetchColumn();
+          $deviceCandidateIndex = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='registered_devices' AND INDEX_NAME='registered_devices_id_tenant_unique' AND NON_UNIQUE=0")->fetchColumn();
           $result = [
               'database' => $db,
               'table_count' => $tables,
@@ -193,9 +196,12 @@ jobs:
               'non_innodb_count' => $engines,
               'exam_proctor_assignments_table_count' => $proctorTable,
               'exam_proctor_assignments_migration_count' => $proctorMigration,
+              'device_lease_integrity_migration_count' => $deviceLeaseMigration,
+              'device_lease_composite_foreign_key_count' => $deviceLeaseForeignKeys,
+              'registered_devices_id_tenant_unique_count' => $deviceCandidateIndex,
           ];
           echo json_encode($result, JSON_PRETTY_PRINT).PHP_EOL;
-          if ($tables !== 71 || $ledger !== 57 || $fk !== 1 || $engines !== 0 || $proctorTable !== 1 || $proctorMigration !== 1) {
+          if ($tables !== 71 || $ledger !== 58 || $fk !== 1 || $engines !== 0 || $proctorTable !== 1 || $proctorMigration !== 1 || $deviceLeaseMigration !== 1 || $deviceLeaseForeignKeys !== 7 || $deviceCandidateIndex !== 1) {
               exit(1);
           }
           PHP
@@ -258,6 +264,10 @@ jobs:
           $mappingExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='question_multi_curriculum_mappings'")->fetchColumn();
           $proctorTableExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='exam_proctor_assignments'")->fetchColumn();
           $proctorMigrationSeen = in_array('2026_11_20_100001_create_exam_proctor_assignments_table', array_column($ledger, 'migration'), true);
+          $deviceLeaseMigrationSeen = in_array('2026_11_20_100002_harden_device_lease_tenant_constraints', array_column($ledger, 'migration'), true);
+          $deviceLeaseForeignKeyNames = $pdo->query("SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND CONSTRAINT_NAME IN ('registered_devices_tenant_fk','registered_devices_user_tenant_fk','registered_devices_revoker_tenant_fk','device_leases_tenant_fk','device_leases_attempt_tenant_fk','device_leases_device_tenant_fk','device_leases_releaser_tenant_fk')")->fetchAll(PDO::FETCH_COLUMN);
+          $deviceLeaseFkPass = count(array_unique($deviceLeaseForeignKeyNames)) === 7;
+          $deviceCandidateIndex = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='registered_devices' AND INDEX_NAME='registered_devices_id_tenant_unique' AND NON_UNIQUE=0")->fetchColumn();
           $mappingCreate = null;
           if ($mappingExists) {
               $mappingCreate = $pdo->query("SHOW CREATE TABLE question_multi_curriculum_mappings")->fetch(PDO::FETCH_ASSOC);
@@ -294,13 +304,17 @@ jobs:
               'question_multi_curriculum_mappings_show_create' => $mappingCreate,
               'exam_proctor_assignments_table_exists' => $proctorTableExists,
               'exam_proctor_assignments_migration_seen' => $proctorMigrationSeen,
+              'device_lease_integrity_migration_seen' => $deviceLeaseMigrationSeen,
+              'device_lease_composite_foreign_key_count' => count(array_unique($deviceLeaseForeignKeyNames)),
+              'registered_devices_id_tenant_unique_count' => $deviceCandidateIndex,
               'migration_190008_seen_in_log' => $migration190008,
               'non_innodb_tables' => $nonInnoDb
           ];
           $rc = (int) @file_get_contents('../p095d-artifacts/migration-exit-code.txt');
           $result['migration_exit_code'] = $rc;
-          $result['schema_gate'] = ($rc === 0 && count($tables) === 71 && count($ledger) === 57
+          $result['schema_gate'] = ($rc === 0 && count($tables) === 71 && count($ledger) === 58
               && $mappingExists && $proctorTableExists && $proctorMigrationSeen
+              && $deviceLeaseMigrationSeen && $deviceLeaseFkPass && $deviceCandidateIndex === 1
               && count($nonInnoDb) === 0 && $targetFkPass) ? 'PASS' : 'NOT_PASS';
           file_put_contents('../p095d-artifacts/schema-audit.json', json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           echo json_encode([
@@ -310,6 +324,9 @@ jobs:
               'mapping_table_exists' => $mappingExists,
               'exam_proctor_assignments_table_exists' => $proctorTableExists,
               'exam_proctor_assignments_migration_seen' => $proctorMigrationSeen,
+              'device_lease_integrity_migration_seen' => $deviceLeaseMigrationSeen,
+              'device_lease_composite_foreign_key_pass' => $deviceLeaseFkPass,
+              'registered_devices_id_tenant_unique_count' => $deviceCandidateIndex,
               'migration_190008_seen_in_log' => $migration190008,
               'non_innodb_table_count' => count($nonInnoDb),
               'foreign_key_rows' => count($foreignKeys),
