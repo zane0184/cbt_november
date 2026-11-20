@@ -135,19 +135,19 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->operator);
     }
 
-    public function test_kamad_login_redirects_to_operator_dashboard(): void
+    public function test_kamad_login_redirects_to_welcome_landing(): void
     {
         $response = $this->post('/login', ['identifier' => 'kamad.uji', 'password' => $this->password]);
-        $response->assertRedirect('/operator/dashboard');
+        $response->assertRedirect('/');
         $this->assertAuthenticatedAs($this->kamad);
     }
 
-    public function test_kamad_can_open_the_read_only_operator_dashboard(): void
+    public function test_kamad_cannot_open_the_operator_dashboard(): void
     {
         $this->withoutMiddleware(EnsureLicenseActive::class);
         $this->actingAs($this->kamad);
 
-        $this->get('/operator/dashboard')->assertOk();
+        $this->get('/operator/dashboard')->assertForbidden();
     }
 
     public function test_operator_dashboard_rejects_users_without_tenant_binding(): void
@@ -223,10 +223,10 @@ class WebAdminAuthTest extends TestCase
         $this->assertStringContainsString('Terlalu banyak percobaan login', session('errors')->first('identifier'));
     }
 
-    public function test_authenticated_kamad_visiting_login_is_redirected_to_dashboard(): void
+    public function test_authenticated_kamad_visiting_login_is_redirected_to_welcome_landing(): void
     {
         $this->actingAs($this->kamad);
-        $this->get('/login')->assertRedirect('/operator/dashboard');
+        $this->get('/login')->assertRedirect('/');
     }
 
     public function test_logout_terminates_session_and_redirects_to_login(): void
