@@ -241,3 +241,23 @@ Semua Guru aktif dapat ditempatkan pada roster. Saat jadwal berlaku, status/hak 
 **Kepatuhan edaran:** nomor, penerbit, tanggal, masa berlaku, syarat penugasan, jumlah pengawas, rasio, larangan, dan aturan lainnya hanya boleh diterapkan setelah sumber resmi diverifikasi. Jika edaran belum tersedia, tandai BELUM TERVERIFIKASI; jangan mengarang ketentuannya. Simpan versi dan periode berlaku.
 
 **Status:** requirement Web Admin baru; audit dan desain dahulu. Implementasi belum dimulai.
+
+## 15. ALUR FINAL — UJIAN DIBUAT GURU, PROKTOR DITETAPKAN ADMIN DARI DAFTAR UJIAN
+
+Klarifikasi terbaru pengguna:
+- Guru membuat soal dan menyiapkan ujian, termasuk mata pelajaran dan jadwal ujian.
+- Setelah ujian tersimpan, data ujian beserta mapel dan jadwal otomatis muncul pada list Web Admin.
+- Admin/Operator memilih ujian dari list tersebut dan menentukan Guru yang bertugas sebagai pengawas/Proktor.
+
+Dengan demikian, Admin **tidak membuat ulang jadwal ujian** dan tidak mengetik ulang mapel. List Admin mengambil data dari ujian yang dibuat Guru. Admin bertanggung jawab pada penugasan pengawas.
+
+Batas kewenangan:
+- Guru memiliki soal, mapel ujian, jadwal akademik ujian, konfigurasi CBT, token, penilaian, dan hasil sesuai permission.
+- Admin melihat metadata/detail ujian secara read-only dan mengatur roster pengawas.
+- Perubahan jadwal/mapel oleh Guru harus tercermin di list Admin. Jika memengaruhi roster, tandai perlu ditinjau Admin; jangan mengubah atau menghapus assignment diam-diam.
+- Semua Guru aktif pada madrasah yang sama dapat dipilih sebagai pengawas sesuai edaran resmi terverifikasi.
+- Saat jadwal berlaku, Guru yang ditugaskan otomatis memiliki konteks/hak Proktor sementara untuk ujian tersebut.
+
+UI Web Admin: **Daftar Ujian & Penugasan Proktor**, menampilkan nama ujian, mapel, Guru pembuat, kelas/rombel/peserta bila tersedia, tanggal, sesi/jam, status ujian, status penugasan pengawas, serta aksi “Atur/Tentukan Pengawas”. Informasi akademik ujian bersifat read-only untuk Admin.
+
+Koreksi terhadap catatan sebelumnya: Admin tidak menyusun kalender akademik ujian dari nol. Admin menetapkan pengawas berdasarkan jadwal ujian yang sudah dibuat Guru. Modul tidak boleh membuat dua sumber jadwal yang bertentangan.
