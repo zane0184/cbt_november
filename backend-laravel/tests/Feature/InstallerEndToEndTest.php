@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Services\InstallerService;
 use App\Services\InstallerStateStore;
+use App\Services\Licensing\InstallationIdentityService;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -53,9 +55,22 @@ class InstallerEndToEndTest extends TestCase
         $originalDefaultConnection = config('database.default');
         $originalAppKey = config('app.key');
         $originalAppInstalled = config('app.installed');
+        $originalAppUrl = config('app.url');
+        $originalPilotMode = config('license.pre_activation_2026');
+        $originalPilotDeadline = config('license.pre_activation_issue_deadline');
+        $originalPilotDays = config('license.pre_activation_duration_days');
         $store = app(InstallerStateStore::class);
 
         try {
+            config([
+                'app.url' => 'https://cbt-installer-e2e.example.test',
+                'license.pre_activation_2026' => true,
+                'license.pre_activation_issue_deadline' => '2026-12-31T23:59:59+07:00',
+                'license.pre_activation_duration_days' => 180,
+            ]);
+            app('request')->server->set('HTTPS', 'on');
+            app('request')->server->set('SERVER_PORT', 443);
+
             $save = $service->saveDatabaseConfig(compact('host', 'port', 'database', 'username', 'password'));
             $this->assertTrue($save['success'], $save['message']);
 
@@ -72,9 +87,35 @@ class InstallerEndToEndTest extends TestCase
             ]);
             $this->assertTrue($created['success'], $created['message']);
 
+            $identity = app(InstallationIdentityService::class)->getOrCreate((string) $created['tenant_id']);
+            $issuedAt = Carbon::now('UTC');
+            $expiresAt = $issuedAt->copy()->addDays(180);
+            $pilotState = array_merge($store->read(), [
+                'state' => 'PRE_ACTIVATION_READY',
+                'license_mode' => 'PRE_ACTIVATION_2026',
+                'installation_identity_id' => (string) $identity->getKey(),
+                'pre_activation_issued_at' => $issuedAt->toIso8601String(),
+                'pre_activation_expires_at' => $expiresAt->toIso8601String(),
+            ]);
+            $store->write($pilotState);
+
+            $firstVerification = $service->verifyInstallationPostconditions($store->read());
+            $this->assertTrue($firstVerification['success'], $firstVerification['message'] ?? 'Initial pilot verification failed.');
+
+            // Simulate a failure after the state advanced to INSTALL_VERIFIED.
+            // A retry must remain on the pilot path rather than falling into Publisher verification.
+            $retryState = array_merge($store->read(), ['state' => 'INSTALL_VERIFIED']);
+            $store->write($retryState);
+            $retryVerification = $service->verifyInstallationPostconditions($store->read());
+            $this->assertTrue($retryVerification['success'], $retryVerification['message'] ?? 'Pilot finalization retry verification failed.');
+
             $this->assertTrue($service->lockInstaller(), 'Final verification and installer lock must succeed.');
             $this->assertTrue($service->isInstalled());
             $this->assertFileExists(storage_path('installed.lock'));
+            $lock = json_decode((string) file_get_contents(storage_path('installed.lock')), true, 32, JSON_THROW_ON_ERROR);
+            $this->assertSame('PRE_ACTIVATION_2026', $lock['license_mode'] ?? null);
+            $this->assertSame($expiresAt->toIso8601String(), $lock['pre_activation_expires_at'] ?? null);
+            $this->assertSame('LOCKED', $store->read()['state'] ?? null);
         } finally {
             DB::purge('mysql');
             config([
@@ -82,6 +123,10 @@ class InstallerEndToEndTest extends TestCase
                 'database.connections.mysql' => $originalDatabaseConfig,
                 'app.key' => $originalAppKey,
                 'app.installed' => $originalAppInstalled,
+                'app.url' => $originalAppUrl,
+                'license.pre_activation_2026' => $originalPilotMode,
+                'license.pre_activation_issue_deadline' => $originalPilotDeadline,
+                'license.pre_activation_duration_days' => $originalPilotDays,
             ]);
             DB::purge('mysql');
 
