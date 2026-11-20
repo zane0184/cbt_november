@@ -185,7 +185,10 @@ class InstallerController extends Controller
             }
         }
 
-        $result = $this->installerService->createInitialDataAndAdmin($validated);
+        $currentInstallState = $this->installerService->currentState();
+        $result = config('license.pre_activation_2026') && $currentInstallState === 'ADMIN_CREATED'
+            ? ['success' => true, 'message' => 'Melanjutkan persiapan identitas pilot untuk Admin Madrasah yang sudah tercatat.']
+            : $this->installerService->createInitialDataAndAdmin($validated);
         if (!$result['success']) {
             return back()->withInput()->with('error', $result['message']);
         }
