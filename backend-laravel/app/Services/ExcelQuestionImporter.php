@@ -80,7 +80,8 @@ class ExcelQuestionImporter implements QuestionImportService
             $correctCount = 0;
             foreach ($options as $option) {
                 $key = strtoupper(trim((string) ($option['option_key'] ?? '')));
-                if ($key === '' || !in_array($key, ['A', 'B', 'C', 'D'], true)
+                if ($key === '') $key = chr(65 + count($keys));
+                if (!in_array($key, ['A', 'B', 'C', 'D'], true)
                     || trim((string) ($option['content'] ?? '')) === ''
                     || in_array($key, $keys, true)) {
                     $results['errors'][] = ['row' => $rowNumber, 'error' => 'Setiap opsi wajib memiliki kunci A-D unik dan isi yang tidak kosong.'];
@@ -97,21 +98,20 @@ class ExcelQuestionImporter implements QuestionImportService
                 return;
             }
         } elseif ($row['type'] === 'MATCHING') {
-            $left = [];
-            $right = [];
+            $mappingKeys = [];
             foreach ($options as $option) {
                 $content = trim((string) ($option['content'] ?? ''));
                 $leftKey = trim((string) ($option['option_key'] ?? ''));
                 $rightKey = trim((string) ($option['matching_key'] ?? ''));
-                if ($content === '') {
-                    $results['errors'][] = ['row' => $rowNumber, 'error' => 'Isi setiap pasangan menjodohkan wajib tersedia.'];
+                if ($content === '' || ($leftKey === '' && $rightKey === '')) {
+                    $results['errors'][] = ['row' => $rowNumber, 'error' => 'Isi dan kunci setiap item menjodohkan wajib tersedia.'];
                     return;
                 }
-                if ($leftKey !== '') $left[$leftKey] = ($left[$leftKey] ?? 0) + 1;
-                if ($rightKey !== '') $right[$rightKey] = ($right[$rightKey] ?? 0) + 1;
+                if ($leftKey !== '') $mappingKeys[$leftKey] = true;
+                if ($rightKey !== '') $mappingKeys[$rightKey] = true;
             }
-            if (count($left) < 2 || $left !== $right) {
-                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Soal menjodohkan wajib memiliki minimal dua pasangan lengkap dan seimbang.'];
+            if (count($options) < 2 || count($mappingKeys) < 1) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Soal menjodohkan wajib memiliki minimal dua item dengan kunci pasangan.'];
                 return;
             }
         } elseif (in_array($row['type'], ['SHORT_ANSWER', 'ESSAY'], true) && $options !== []) {
