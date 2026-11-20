@@ -166,3 +166,9 @@ Buat prompt Android terpisah setelah source/checkpoint Android diverifikasi. Jan
 
 ### 12. Instruksi mulai kerja
 Mulai dengan membaca branch/PR/checkpoint terbaru dan periksa source aktual. Verifikasi head commit sudah berubah atau tidak. Jangan meminta pengguna mengulang keputusan atau mengirim file yang sudah tersedia. Lanjutkan audit tertunda pada bagian 7, buat backup sebelum setiap patch, perbaiki dan tambahkan regression tests, lalu jalankan CI di DB disposable. PR #5 tetap Draft sampai audit dan tes selesai. Jangan melakukan deployment VPS atau migration produksi pada tahap ini.
+
+
+### Addendum setelah prompt awal disusun
+- Audit lanjutan menemukan filter status ExamManagement tidak mereset pagination; ditambahkan updatingStatusFilter() dengan backup di backend-laravel/backup_before_patch/WEB_EXAM_STATUS_PAGINATION_20261120/ExamManagement.php.before.
+- Commit perbaikan pagination: 5a46c0914533589706653b3b2f3aaad245b2d535.
+- Periksa checkpoint docs/CHECKPOINT_WEB_AUDIT_20261120.md untuk commit terbaru dan status PR terkini. Prompt ini diperbarui sebelum handover final bila ada perubahan tambahan.
