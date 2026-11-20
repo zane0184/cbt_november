@@ -220,13 +220,41 @@ class ResultList extends Component
         session()->flash('message', $message);
     }
 
-    public function updatingSearch()
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingGradingStatus(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingRombelId(): void
     {
         $this->resetPage();
     }
 
     public function render()
     {
+        $participantUserIds = ExamParticipant::query()
+            ->where('exam_id', $this->exam->id)
+            ->pluck('user_id');
+
+        $rombels = Rombel::query()
+            ->whereHas('students', function ($studentQuery) use ($participantUserIds) {
+                $studentQuery->whereHas('user', function ($userQuery) use ($participantUserIds) {
+                    $userQuery->whereIn('id', $participantUserIds);
+                });
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         $query = ExamAttempt::where('exam_id', $this->exam->id)
             ->with(['participant.user', 'score'])
             ->when($this->search, function ($q) {
@@ -241,13 +269,18 @@ class ResultList extends Component
                 $q->whereHas('score', function ($sq) {
                     $sq->where('grading_status', $this->gradingStatus);
                 });
+            })
+            ->when($this->rombelId, function ($q) {
+                $q->whereHas('participant.user.studentProfile.rombels', function ($rombelQuery) {
+                    $rombelQuery->where('rombels.id', $this->rombelId);
+                });
             });
-            // Rombel filter would need joining with rombels if participants are assigned via rombel
 
         $attempts = $query->paginate(20);
 
         return view('livewire.teacher.result-list', [
             'attempts' => $attempts,
+            'rombels' => $rombels,
         ]);
     }
 }
