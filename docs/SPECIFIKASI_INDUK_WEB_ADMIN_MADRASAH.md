@@ -1832,3 +1832,65 @@ Tidak boleh ada form Admin untuk membuat ulang ujian atau mengubah mapel/jadwal 
 ## 30.9 Status
 
 Ini adalah klarifikasi alur produk dari pengguna. Requirement ini mengoreksi interpretasi sebelumnya: Admin bukan pembuat kalender akademik ujian dari awal, melainkan menetapkan pengawas dari daftar ujian yang dibuat Guru. Agent wajib mengaudit source dan alur integrasi aktual sebelum desain/implementasi. Tetap ikuti gerbang audit → desain → persetujuan → implementasi → pengujian.
+
+
+
+# ADDENDUM 31 — REKONSILIASI SOURCE, TENANT, ROLE, DAN PROKTOR
+Tanggal: 21 November 2026
+Status: rancangan untuk audit bersama; belum disetujui untuk implementasi.
+
+## 31.1 Source of truth dan branch
+
+Default branch main pada commit 91dae257b2210ef89c90534185a3cbdd8979ffe0 memiliki tree 24 entri dan tidak memuat source Laravel aktif. Branch base PR #5 fix/p0-96g-installer-private-db-config-20261120 pada 158227362eea82fc7ec7e9c232736596015739d2 memiliki 665 entri. Branch kandidat source fix/web-portal-usability-rbac-20261120 pada ade5daa6cf853c164c4f51ec6e25ca68be40b4f2 memiliki 761 entri dan sama dengan baseline audit 21 November. PR #5/#6/#7 tetap Open, Draft, Unmerged.
+
+Main tidak boleh dipakai untuk build/deployment sampai source aktif dipulihkan atau branch canonical ditetapkan. Jangan menggabungkan source hanya berdasarkan jumlah file; verifikasi provenance, backup, tree, commit, dan tests terlebih dahulu.
+
+## 31.2 Arsitektur instalasi madrasah
+
+Keputusan final:
+- Satu madrasah = satu instalasi mandiri = satu database sendiri.
+- Tidak ada shared operational database dan tidak ada pertukaran data akademik atau data operasional antarmadrasah.
+- Setiap instalasi mempunyai domain, .env, APP_KEY, kredensial DB, storage, secrets, backup, dan lifecycle deployment sendiri.
+- tenant_id, TenantContext, middleware, global scope, policy, audit, dan composite foreign key tetap dipertahankan sebagai pertahanan internal. tenant_id bukan mekanisme shared database.
+- TenantContext diturunkan dari identitas instalasi dan user yang sah; tidak ada tenant switching atau X-Tenant-Override.
+- Installer harus menegakkan satu tenant kanonis per database instalasi. Source saat ini membuat Tenant dan LocalInstallationIdentity, tetapi belum terbukti mencegah tenant kedua dalam database yang sama.
+- APP_URL dan DB_DATABASE sudah configurable pada .env.example; pemasangan pada beberapa domain tetap harus diuji dengan DB terpisah. LocalInstallationIdentity memiliki registered_domain, sehingga interaksi dengan aktivasi lisensi harus diverifikasi.
+- Web Super Admin/Publisher ditunda. Saat dibangun kelak, hanya mengelola lisensi, aktivasi, dan pembayaran; tidak menjadi shared academic database atau sarana pertukaran data akademik.
+
+## 31.3 Role dan kepemilikan data
+
+ADMIN_MADRASAH adalah satu-satunya identitas/permission profile Admin Madrasah dan Operator. OPERATOR dipertahankan sementara sebagai legacy alias sampai rekonsiliasi akun/pivot/grant aman. Satu dashboard, portal, sidebar, dan permission profile.
+
+Semua Guru aktif pada instalasi yang sama dapat ditugaskan sebagai Proktor. Tidak ada role atau portal Proktor permanen. Role PROKTOR lama tidak dihapus tanpa migrasi kompatibel, tetapi tidak menjadi sumber hak akses baru.
+
+Guru tetap pemilik soal, bank soal, ujian, mapel yang tertaut pada ujian, jadwal akademik ujian, snapshot, token/penerbitan, jawaban, penilaian, analisis, dan hasil. Admin hanya membaca metadata ujian Guru dan mengatur assignment pengawas. Admin tidak boleh monitoring operasional, close, token, grading, jawaban, hasil, atau mengubah metadata akademik ujian. Admin dapat mengelola katalog master mapel madrasah sesuai modul administrasi; pilihan/pengaitan mapel pada ujian tetap milik Guru.
+
+## 31.4 Desain assignment Proktor
+
+Tabel existing exam_proctor_assignments dipertahankan. Kolom existing: tenant_id, exam_id, proctor_user_id, assigned_by, starts_at, expires_at, status, reason, revoked_at/by/reason. Usulan perluasan additive: rombel_id wajib; session_id/room_id nullable hanya jika dipakai; exam_revision atau schedule_fingerprint; review_required_at; review_reason; event history append-only.
+
+Foreign key composite wajib mengikat exam, rombel, Guru, Admin assigner, dan revoker ke tenant yang sama. Index konflik memakai tenant_id, proctor_user_id, status, starts_at, expires_at.
+
+Interval assignment adalah [starts_at, expires_at): starts_at inklusif, expires_at eksklusif. Dua interval bertemu tepat pada batas akhir/batas awal tidak bentrok. Overlap ditentukan oleh existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at. Satu Guru tidak boleh memiliki assignment overlap pada kelas/rombel berbeda, termasuk lintas ujian.
+
+Dalam transaksi MySQL/InnoDB, lock exam lalu lock baris Guru sebagai mutex, kemudian query overlap sebagai locking/current read sebelum insert/update. Penguncian Guru sudah ada pada source saat ini; query overlap belum ada. Semua jalur assignment harus mengikuti urutan lock konsisten.
+
+Perubahan jadwal oleh Guru menandai assignment terdampak NEEDS_REVIEW/Perlu Ditinjau Ulang, menyimpan versi jadwal lama/baru dan audit. Tidak ada perpindahan jadwal atau pengawas diam-diam. Admin harus meninjau dan mengonfirmasi roster; konfirmasi menjalankan validasi konflik ulang. Assignment NEEDS_REVIEW tidak memberi akses.
+
+Akses Proktor divalidasi pada setiap request berdasarkan Guru aktif, tenant, assignment, exam, rombel, status, permission, dan waktu server. Akses hanya ketika starts_at <= now < expires_at dan status sah. Kedaluwarsa otomatis menolak akses tanpa menunggu cron. Pencabutan menghentikan akses pada request berikutnya.
+
+## 31.5 Koreksi source aktual yang wajib masuk audit
+
+- RolePermissionBootstrapper memisahkan ADMIN_MADRASAH dan OPERATOR serta memberi Admin grant exam.monitor, exam.close, exam.token, exam.grade, exam.reopen, exam.manage yang tidak sesuai batas final.
+- routes/web.php masih memiliki /proktor/assignments dan redirect role PROKTOR.
+- ProctorAssignmentManagement dan ExamProctorAssignmentService masih membatasi pemilih pada role PROKTOR.
+- ExamPolicy mengizinkan Admin monitoring dan close; Admin harus dibatasi ke metadata read-only dan assignment.
+- ExamProctorAssignmentService sudah mengunci baris Guru dengan lockForUpdate, tetapi belum mengecek overlap.
+- exam_proctor_assignments belum mengikat rombel/class.
+- scopeActiveNow sudah memakai batas starts_at <= now dan expires_at > now.
+- TenantScoped hanya menerapkan global scope bila TenantContext ada; jika context tidak ada, query tidak otomatis fail-closed. IdentifyTenant meneruskan request tanpa user/tenant. Guard dan test tenantless-context diperlukan.
+- Jadwal Guru belum memicu status NEEDS_REVIEW.
+
+## 31.6 Rencana W0–W10
+
+Rencana rinci, file sasaran, dependensi, acceptance criteria, risiko, dan pengujian tercantum dalam dokumen AUDIT_REKONSILIASI_DESAIN_WEB_ADMIN_2026-11-21.md. Rencana tidak berarti pekerjaan telah dimulai. W0 tetap menunggu persetujuan desain eksplisit.

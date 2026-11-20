@@ -100,3 +100,52 @@ Web Admin tidak boleh dinyatakan selesai jika:
 10. Pengguna belum memberi persetujuan penutupan.
 
 Build/CI pass tidak sama dengan siap produksi.
+
+
+
+# ADDENDUM TEST CASE — REKONSILIASI ROLE, TENANT, DAN PROKTOR
+
+Semua test baru berstatus NOT RUN sampai benar-benar dijalankan pada environment test MySQL 8/InnoDB. Tes concurrency wajib memakai koneksi/transaksi independen; SQLite tidak membuktikan locking MySQL.
+
+| ID | Kategori | Skenario | Expected result |
+|---|---|---|---|
+| T-039 | Role | Admin Madrasah login dengan permission profile kanonis | Satu dashboard/sidebar Admin; tidak ada portal Operator terpisah |
+| T-040 | Legacy role | Akun legacy OPERATOR login selama masa kompatibilitas | Dipetakan ke capability Admin yang sama; tidak mendapat grant lebih luas |
+| T-041 | Role Proktor | Akun legacy PROKTOR membuka /proktor/assignments | Ditolak; tidak ada portal permanen |
+| T-042 | Eligibility | Guru aktif tenant yang sama dipilih sebagai pengawas | Diterima tanpa role PROKTOR |
+| T-043 | Eligibility negatif | Guru nonaktif/deleted dipilih | Ditolak |
+| T-044 | Eligibility negatif | Akun non-Guru dipilih | Ditolak |
+| T-045 | Tenant | Guru aktif dan exam berasal dari instalasi yang sama | Assignment dapat dilanjutkan |
+| T-046 | Tenant negatif | ID Guru/exam/rombel dari tenant lain dimanipulasi | 403/404/validation failure; tidak ada data bocor |
+| T-047 | Interval | Assignment 07:00–09:00 lalu 09:00–11:00 untuk Guru sama | Keduanya boleh |
+| T-048 | Interval negatif | Assignment 07:00–09:00 lalu 08:00–10:00 pada exam berbeda | Assignment kedua ditolak |
+| T-049 | Kelas negatif | Guru sama ditugaskan pada rombel berbeda dengan waktu overlap | Assignment kedua ditolak |
+| T-050 | Non-overlap | Guru sama pada 07:00–09:00 dan 10:00–12:00 | Keduanya boleh |
+| T-051 | Race condition | Dua Admin bersamaan menugaskan Guru sama pada interval overlap dan exam berbeda | Tepat satu transaksi commit; transaksi lain ditolak |
+| T-052 | Race condition positif | Dua Admin bersamaan menugaskan Guru sama pada interval non-overlap | Keduanya commit tanpa duplicate/lost update |
+| T-053 | Locking | Request kedua menunggu lock Guru lalu membaca assignment terbaru | Konflik yang baru commit tetap terdeteksi |
+| T-054 | Waktu | Request sebelum starts_at | Akses Proktor ditolak |
+| T-055 | Waktu | Request tepat pada starts_at | Akses boleh jika status/permission sah |
+| T-056 | Waktu | Request tepat pada expires_at | Akses ditolak |
+| T-057 | Revoke | Assignment dicabut saat sesi berjalan | Request berikutnya langsung ditolak |
+| T-058 | Histori | Assignment dicabut/diganti | Riwayat lama tetap ada dan dapat diaudit |
+| T-059 | Schedule change | Guru mengubah jadwal exam yang memiliki assignment | Semua assignment terdampak menjadi NEEDS_REVIEW |
+| T-060 | Schedule review | Guru mencoba memakai assignment NEEDS_REVIEW | Akses ditolak sampai Admin konfirmasi |
+| T-061 | Review conflict | Admin mengonfirmasi jadwal baru yang bentrok dengan assignment Guru lain | Konfirmasi ditolak; status tetap NEEDS_REVIEW |
+| T-062 | No silent change | Jadwal Guru berubah | Jam/roster lama tidak digeser otomatis; before/after dan actor tercatat |
+| T-063 | Admin boundary | Admin memanggil action edit exam, close, monitor, token, grading, result | Ditolak |
+| T-064 | Guru ownership | Guru pemilik exam mengubah jadwal melalui jalur sah | Update tercatat dan memicu review assignment |
+| T-065 | IDOR | Assignment ID diganti dengan ID milik tenant lain | 404/403; tidak ada perubahan |
+| T-066 | Class tampering | rombel_id pada request diganti dengan kelas lain | Ditolak berdasarkan tenant dan scope assignment |
+| T-067 | Tenant context | Authenticated user tanpa tenant context melakukan query tenant-scoped | Fail-closed; tidak ada query lintas tenant |
+| T-068 | Isolasi instalasi | Dua instalasi/domain memakai database berbeda | Tidak ada query, user, atau data akademik silang |
+| T-069 | Domain portability | Paket yang sama dipasang pada dua domain dengan .env dan DB berbeda | Kedua instalasi berjalan terpisah; tidak ada domain hardcode |
+| T-070 | Idempotency | Request assignment yang sama dikirim ulang | Tidak membuat assignment ganda; hasil konsisten |
+| T-071 | Authorization cache | Hak Proktor dicabut saat session masih terbuka | Request berikutnya memeriksa ulang dan menolak |
+| T-072 | Cross-exam | Guru sama ditugaskan overlap pada dua ujian berbeda | Konflik ditolak |
+| T-073 | Cross-class | Guru sama ditugaskan pada dua kelas dengan waktu tepat bersinggungan | Sesuai [start,end): tidak overlap bila end pertama sama dengan start kedua |
+| T-074 | Audit | Create/change/replace/review/confirm/revoke | Actor, tenant, before/after, reason, timestamp tercatat |
+| T-075 | Admin metadata | Admin membuka detail ujian Guru | Hanya metadata read-only; tidak ada form edit akademik |
+| T-076 | Guru update | Guru mengubah mapel/jadwal exam melalui jalur yang diizinkan | Admin list membaca record sumber terbaru dan assignment terkait ditinjau ulang |
+
+Status semua T-039–T-076: NOT RUN. Acceptance tidak boleh dinyatakan PASS berdasarkan desain atau keberadaan test file saja.

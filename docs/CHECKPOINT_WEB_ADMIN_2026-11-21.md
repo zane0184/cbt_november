@@ -296,3 +296,48 @@ Konsolidasi ini hanya dokumentasi. Tidak ada source aplikasi, migration, databas
 
 ### Langkah agent berikutnya
 Ikuti bagian 1–2 pada prompt induk. Verifikasi status PR/branch/commit dan source terbaru; cari seluruh laporan terkait; lakukan audit READ-ONLY; serahkan AUDIT + DESAIN; berhenti menunggu persetujuan.
+
+
+
+# ADDENDUM CHECKPOINT — REKONSILIASI AUDIT 21 NOVEMBER 2026
+
+## Posisi source yang diverifikasi
+- main HEAD: 91dae257b2210ef89c90534185a3cbdd8979ffe0; tree 24 entri dan tidak memuat source Laravel aktif. Main bukan basis build/deployment yang aman saat ini.
+- Base PR #5: 158227362eea82fc7ec7e9c232736596015739d2; tree 665 entri.
+- Kandidat source Web Admin: fix/web-portal-usability-rbac-20261120, SHA ade5daa6cf853c164c4f51ec6e25ca68be40b4f2; tree 761 entri.
+- SHA kandidat source sama dengan baseline audit 21 November. Tidak ada source commit baru pada branch tersebut setelah audit.
+- PR #5/#6/#7 masih Open, Draft, Unmerged.
+- Source candidate tersedia di branch PR #5, tetapi belum masuk main.
+
+## Hasil rekonsiliasi
+- Mayoritas 23 temuan ADM masih berlaku.
+- Koreksi penting: service Proktor sudah mengunci row Guru, tetapi belum menjalankan query overlap; assignment konflik masih dapat tersimpan.
+- scopeActiveNow sudah menerapkan starts_at inklusif dan expires_at eksklusif.
+- Assignment belum memiliki rombel_id, status NEEDS_REVIEW, atau event perubahan jadwal.
+- Admin masih memiliki grant/policy monitoring dan close yang tidak sesuai batas final.
+- TenantScoped belum otomatis fail-closed bila TenantContext kosong; perlu guard dan tes.
+- Detail lengkap ada pada AUDIT_REKONSILIASI_DESAIN_WEB_ADMIN_2026-11-21.md.
+
+## Arsitektur/keputusan yang dipertahankan
+- Satu madrasah = satu instalasi = satu database sendiri; tidak ada shared operational DB dan tidak ada pertukaran data akademik antarmadrasah.
+- tenant_id/TenantContext/middleware/global scope/policy/composite FK dipertahankan sebagai pertahanan internal.
+- Admin Madrasah dan Operator satu identitas/profile; OPERATOR legacy dipertahankan sementara.
+- Semua Guru aktif dapat ditugaskan; tidak ada role/portal Proktor permanen.
+- Admin hanya membaca metadata ujian Guru dan menetapkan pengawas.
+- Guru memiliki soal, ujian, mapel yang dipakai pada ujian, dan jadwal akademik.
+- Super Admin/Publisher ditunda; kelak hanya lisensi dan pembayaran.
+
+## Rencana
+W0–W10 disusun dalam laporan rekonsiliasi. Tidak ada tahap yang dimulai. W0 menunggu persetujuan desain.
+
+## Perubahan aktual sesi ini
+Hanya dokumentasi pada branch docs/web-admin-audit-reconciliation-20261121:
+- docs/SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md
+- docs/REGISTER_KEPUTUSAN_WEB_ADMIN.md
+- docs/MATRIKS_AUDIT_WEB_ADMIN_TEMPLATE.md
+- docs/MATRIKS_PENGUJIAN_WEB_ADMIN.md
+- docs/CHECKPOINT_WEB_ADMIN_2026-11-21.md
+- docs/AUDIT_REKONSILIASI_DESAIN_WEB_ADMIN_2026-11-21.md
+
+Tidak ada source aplikasi, migration, database, .env, secret, PR existing, merge, deployment, atau test runtime yang diubah/dijalankan.
+Parent docs SHA sebelum rekonsiliasi: a7bef3dea2b1f57c79d34c775822bd5bde24998f. Final docs-only commit SHA dicantumkan pada laporan handover ChatGPT setelah branch diperbarui.

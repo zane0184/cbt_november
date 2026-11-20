@@ -119,3 +119,47 @@ Admin bukan operator authoring CBT Guru.
 - Tidak ada merge PR, deployment VPS, perubahan .env/secrets, DB produksi, Nginx, atau migration produksi tanpa persetujuan eksplisit terpisah.
 - Test yang tidak dijalankan wajib ditulis BLOCKED/NOT RUN, bukan PASS.
 - “Siap produksi” memerlukan integrasi, keamanan, stabilitas, pemulihan, dan validasi operasional; bukan sekadar UI atau CI.
+
+
+
+## 12. Source of truth branch dan baseline rekonsiliasi
+
+- Default branch main: 91dae257b2210ef89c90534185a3cbdd8979ffe0; tree 24 entri tanpa source Laravel aktif. Jangan jadikan main basis build/deployment saat ini.
+- Base PR #5: fix/p0-96g-installer-private-db-config-20261120, SHA 158227362eea82fc7ec7e9c232736596015739d2, tree 665 entri.
+- Kandidat source Web Admin PR #5: fix/web-portal-usability-rbac-20261120, SHA ade5daa6cf853c164c4f51ec6e25ca68be40b4f2, tree 761 entri.
+- PR #5/#6/#7 masih Open, Draft, Unmerged. Source candidate belum masuk main.
+- Pilihan branch canonical untuk implementasi harus menjadi gerbang W0 setelah persetujuan desain.
+
+## 13. Arsitektur instalasi mandiri
+
+1. Satu madrasah = satu instalasi = satu database sendiri.
+2. Tidak ada shared operational database atau pertukaran data akademik/operasional antarmadrasah.
+3. tenant_id, TenantContext, middleware, global scope, policy, audit, dan composite FK dipertahankan sebagai pertahanan internal; bukan untuk menyatukan database.
+4. TenantContext berasal dari identitas instalasi dan user sah; tidak ada tenant switching atau X-Tenant-Override.
+5. Installer wajib memastikan satu tenant kanonis pada DB instalasi. Source sekarang membuat tenant dan LocalInstallationIdentity, tetapi invariant satu tenant per DB belum dibuktikan.
+6. Setiap domain mempunyai .env, APP_KEY, DB credentials, storage, secrets, dan backup sendiri. .env.example configurable, tetapi uji install lintas domain dan interaksi registered_domain/lisensi belum dijalankan.
+7. Web Super Admin/Publisher ditunda; scope mendatang hanya lisensi, aktivasi, pembayaran, bukan data akademik.
+
+## 14. Role dan kepemilikan ujian
+
+- ADMIN_MADRASAH adalah satu permission profile untuk Admin Madrasah/Operator. OPERATOR legacy dipertahankan sementara untuk kompatibilitas.
+- Semua Guru aktif dalam instalasi yang sama dapat ditugaskan sebagai Proktor.
+- Tidak ada role atau portal Proktor permanen. Role PROKTOR lama tidak dihapus sebelum migrasi aman dan tidak menjadi dasar akses baru.
+- Guru memiliki soal, ujian, mapel dalam ujian, jadwal akademik ujian, snapshot, token/penerbitan, jawaban, penilaian, analisis, dan hasil.
+- Admin hanya membaca metadata ujian Guru dan menetapkan pengawas. Admin tidak boleh monitoring, close, token, grading, jawaban, hasil, atau mengubah metadata ujian.
+- Admin boleh mengelola master katalog mapel madrasah; mapel yang dipilih/ditautkan pada ujian tetap milik Guru.
+
+## 15. Aturan assignment Proktor
+
+- Assignment terikat ke tenant, exam, rombel/class, Guru, actor Admin, periode [starts_at, expires_at), status, alasan, versi/fingerprint jadwal, dan histori.
+- Interval setengah terbuka: starts_at <= now < expires_at.
+- Overlap: existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at.
+- Satu Guru tidak boleh mempunyai assignment overlap lintas kelas/rombel maupun lintas ujian.
+- Transaksi lock exam, lock baris Guru sebagai mutex, query overlap locking/current read, lalu simpan. Lock Guru sudah ada di source; pemeriksaan overlap belum ada.
+- Perubahan jadwal Guru memicu NEEDS_REVIEW; Admin mengonfirmasi ulang setelah validasi konflik. Tidak ada pergeseran roster diam-diam.
+- Expiry ditolak otomatis pada setiap request dengan waktu server. Revoke langsung memutus akses. NEEDS_REVIEW, REVOKED, dan COMPLETED tidak memberi hak.
+- Semua aksi create/change/replace/review/confirm/revoke/complete dicatat append-only.
+
+## 16. Koreksi audit
+
+Penguncian baris Guru pada ExamProctorAssignmentService sudah ada; temuan concurrency lama diperjelas: masalahnya bukan tidak ada mutex, tetapi tidak ada query overlap setelah mutex. TenantScoped juga belum otomatis fail-closed saat TenantContext kosong. Admin saat ini memiliki permission/policy monitoring dan close yang harus dicabut dari profile final.

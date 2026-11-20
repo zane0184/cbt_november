@@ -95,3 +95,69 @@ Untuk tiap fitur telusuri dan catat:
 - **P0:** kebocoran lintas tenant/PII, privilege escalation, kehilangan/korupsi data, destructive migration, bypass auth.
 - **P1:** alur akademik salah, import duplikat, histori hilang, konflik assignment, audit tidak lengkap.
 - **P2:** UX, performa, aksesibilitas, inkonsistensi visual yang tidak memblokir integritas.
+
+
+
+# REKONSILIASI STATUS AUDIT — SOURCE HEAD ade5daa6
+
+Semua status di bawah dibandingkan kembali dengan branch fix/web-portal-usability-rbac-20261120 pada SHA ade5daa6cf853c164c4f51ec6e25ca68be40b4f2. SHA source sama dengan baseline audit 21 November; tidak ada source commit baru pada branch tersebut.
+
+| ID | Modul | Status | Catatan pembuktian |
+|---|---|---|---|
+| ADM-001 | Dashboard | MASIH BERLAKU | OperatorDashboard dan label Operator masih digunakan; KPI/health belum lengkap. |
+| ADM-002 | Identitas Madrasah | MASIH BERLAKU | UI profil/kop madrasah belum ditemukan. |
+| ADM-003 | Tahun ajaran/semester | MASIH BERLAKU | Model dan fitur dasar ada; lifecycle/histori lengkap belum terbukti. |
+| ADM-004 | Kelas/fase/rombel/wali kelas | MASIH BERLAKU | Rombel dasar ada; fase MI/wali kelas/histori belum lengkap. |
+| ADM-005 | Data Guru | MASIH BERLAKU | UserManagement belum membuktikan lifecycle lengkap. |
+| ADM-006 | Penugasan Guru | MASIH BERLAKU | Backend model/API ada; UI Admin belum ditemukan. |
+| ADM-007 | Data Siswa | MASIH BERLAKU | Create dasar ada; lifecycle lengkap belum terbukti. |
+| ADM-008 | Penempatan/promosi/tinggal kelas | MASIH BERLAKU | Penempatan ada; promosi/tinggal kelas transaksional lintas tahun belum terbukti. |
+| ADM-009 | Kelulusan/alumni/histori | MASIH BERLAKU | Workflow Admin belum ditemukan. |
+| ADM-010 | Master mapel | MASIH BERLAKU | Tambah mapel dasar ada; lifecycle master belum lengkap. |
+| ADM-011 | Mulok | MASIH BERLAKU | UI Mulok belum ditemukan. |
+| ADM-012 | Kurmer/KBC/versioning | MASIH BERLAKU | Fondasi curriculum ada; versioning/provenance belum lengkap. |
+| ADM-013 | CP/TP/ATP | MASIH BERLAKU | CP/TP dasar ada; ATP/source/version/history belum lengkap. |
+| ADM-014 | Panca Cinta/Deep Learning/DPL | MASIH BERLAKU | Modul referensi Admin belum ditemukan. |
+| ADM-015 | Impor Siswa | MASIH BERLAKU | Importer master data belum ditemukan. |
+| ADM-016 | Impor Guru | MASIH BERLAKU | Importer master data belum ditemukan. |
+| ADM-017 | Impor Mapel | MASIH BERLAKU | Importer master data belum ditemukan. |
+| ADM-018 | Laporan administratif | MASIH BERLAKU | Laporan hasil ujian Guru bukan laporan Admin. |
+| ADM-019 | Backup/restore | MASIH BERLAKU | UI/workflow Admin belum ditemukan. |
+| ADM-020 | Profil/preferensi/notifikasi | MASIH BERLAKU | Modul Admin lengkap belum ditemukan. |
+| ADM-021 | Audit log/health | MASIH BERLAKU | Service ada; cakupan mutasi dan health belum lengkap. |
+| ADM-022 | Shell/sidebar | MASIH BERLAKU | Brand Admin & Guru, Dashboard Operator, menu lintas portal, sidebar mobile belum sesuai. |
+| ADM-023 | Daftar ujian/Proktor | MASIH BERLAKU + KOREKSI | Picker PROKTOR, portal Proktor, belum ada class/overlap/review. Interval akses sudah [start,end); service sudah lock row Guru, tetapi belum query overlap. |
+
+## Temuan keamanan yang direkonsiliasi
+
+| ID | Status | Hasil terkini |
+|---|---|---|
+| SEC-01 Admin/Operator terpisah | MASIH BERLAKU | ROLE_GRANTS ADMIN_MADRASAH dan OPTIONAL_ROLE_GRANTS OPERATOR berbeda. |
+| SEC-02 Portal/role Proktor | MASIH BERLAKU | Route /proktor/assignments, redirect, layout, dan ProktorDashboard masih ada. |
+| SEC-03 Picker Proktor | MASIH BERLAKU | Component dan service mensyaratkan role PROKTOR; bukan semua Guru aktif. |
+| SEC-04 Admin exam boundary | MASIH BERLAKU | UI ExamManagement gabungan; policy create/update Guru-only, tetapi Admin masih dapat monitor/close melalui permission/policy. |
+| SEC-05 Layout | MASIH BERLAKU | Sidebar dan label belum sesuai portal tunggal Admin. |
+| SEC-06 KPI | MASIH BERLAKU | Definisi aktif akademik belum lengkap. |
+| SEC-07 Audit | MASIH BERLAKU | AuditService ada; mutasi UserManagement/AcademicManagement belum konsisten. |
+| SEC-08 Teacher assignment UI | MASIH BERLAKU | Backend API/model ada; UI Admin belum ditemukan. |
+| SEC-09 Curriculum provenance | MASIH BERLAKU | Official/custom/source/version belum lengkap. |
+| SEC-10 Import master data | MASIH BERLAKU | Question importer bukan importer Guru/Siswa/mapel. |
+| SEC-11 Tenant fail-closed | BERUBAH/KOREKSI | IdentifyTenant menurunkan context dari user dan mengabaikan override; tetapi TenantScoped hanya menambah filter jika context ada. Tanpa context query tidak otomatis ditolak. Tambahkan fail-closed guard dan tes. |
+| SEC-12 Conflict concurrency | BERUBAH/KOREKSI | Service sudah lock exam dan row Guru. Tidak ada overlap query setelah lock, sehingga konflik tetap dapat tersimpan. |
+| SEC-13 Admin permission terlalu luas | MASIH BERLAKU | Grant exam.monitor/close/token/grade/reopen/manage belum sesuai batas final Admin. |
+
+Catatan: “belum ditemukan” berarti tidak ada bukti UI/route/service yang memadai pada tree branch yang ditelusuri; bukan klaim bahwa tidak ada kode eksternal atau branch lain.
+
+## Bukti source yang dipakai
+
+- routes/web.php — c22fed7d54871bf4971acf626514fc02c4a68ce9
+- ProctorAssignmentManagement.php — 4e8bd91dd54757aa863d35983aace718def2ca2c
+- ExamProctorAssignmentService.php — e16ef5db308714aa98bf283dc5a1545608da0477
+- ExamProctorAssignment.php — dde7511ebb5035a76287d34dc75339a6a2bffdd8
+- Proctor assignment migration — e51ef878e14d13078d81585fbbc10e1d00b76e25
+- ExamManagement.php — 478aaa170ee297b0c8399f049cd9b1ba56cbfb10
+- ExamPolicy.php — 350c1ddc6bed8738d1af17cacd6c95bc367b7c29
+- RolePermissionBootstrapper.php — fac82573de84c52b52867afbbf7e1637164835b4
+- TenantScoped.php — cf192a8ccb6ca530122cb105ed3086adb09a3c5a
+- IdentifyTenant.php — 376a4b2771c3d9a6b128ad847c150d47ac2977db
+- ProctorAssignmentSecurityTest.php — a5eca4ea2ce05d62d4fa76e6b9cd5a21a17dd668
