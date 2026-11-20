@@ -199,7 +199,7 @@ class ExamBuilderTest extends TestCase
 
     public function test_assign_rombel_api_does_not_reset_existing_participant_status()
     {
-        $studentRole = \\App\\Models\\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $student = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Siswa Selesai',
@@ -208,20 +208,20 @@ class ExamBuilderTest extends TestCase
         ]);
         $student->roles()->attach($studentRole);
 
-        $profile = \\App\\Models\\StudentProfile::create([
+        $profile = \App\Models\StudentProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $student->id,
             'full_name' => 'Siswa Selesai',
         ]);
         $rombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
-        \\Illuminate\\Support\\Facades\\DB::table('rombel_student')->insert([
+        \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),
             'tenant_id' => $this->tenant->id,
             'rombel_id' => $rombel->id,
             'student_id' => $profile->id,
         ]);
 
-        $participant = \\App\\Models\\ExamParticipant::create([
+        $participant = \App\Models\ExamParticipant::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'user_id' => $student->id,
@@ -233,7 +233,7 @@ class ExamBuilderTest extends TestCase
             ->assertOk();
 
         $this->assertSame('COMPLETED', $participant->fresh()->status);
-        $this->assertSame(1, \\App\\Models\\ExamParticipant::query()
+        $this->assertSame(1, \App\Models\ExamParticipant::query()
             ->where('exam_id', $this->exam->id)
             ->where('user_id', $student->id)
             ->count());
@@ -241,7 +241,7 @@ class ExamBuilderTest extends TestCase
 
     public function test_add_individual_participant_api_does_not_reset_existing_status()
     {
-        $studentRole = \\App\\Models\\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $student = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Siswa Sudah Selesai',
@@ -249,20 +249,20 @@ class ExamBuilderTest extends TestCase
             'password' => 'p',
         ]);
         $student->roles()->attach($studentRole);
-        $profile = \\App\\Models\\StudentProfile::create([
+        $profile = \App\Models\StudentProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $student->id,
             'full_name' => 'Siswa Sudah Selesai',
         ]);
         $assignedRombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
-        \\Illuminate\\Support\\Facades\\DB::table('rombel_student')->insert([
+        \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),
             'tenant_id' => $this->tenant->id,
             'rombel_id' => $assignedRombel->id,
             'student_id' => $profile->id,
         ]);
 
-        $participant = \\App\\Models\\ExamParticipant::create([
+        $participant = \App\Models\ExamParticipant::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'user_id' => $student->id,
@@ -274,7 +274,7 @@ class ExamBuilderTest extends TestCase
             ->assertOk();
 
         $this->assertSame('COMPLETED', $participant->fresh()->status);
-        $this->assertSame(1, \\App\\Models\\ExamParticipant::query()
+        $this->assertSame(1, \App\Models\ExamParticipant::query()
             ->where('exam_id', $this->exam->id)
             ->where('user_id', $student->id)
             ->count());
