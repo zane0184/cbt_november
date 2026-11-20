@@ -101,25 +101,46 @@ class ExamParticipantController extends Controller
     {
         $this->authorize('manageParticipants', $exam);
 
-        if ($participant->exam_id !== $exam->id || $participant->tenant_id !== $exam->tenant_id) abort(404);
-
-        if ($participant->attempts()->exists()) {
-            abort(409, 'Peserta tidak dapat dihapus setelah memiliki riwayat attempt ujian.');
+        if ($participant->exam_id !== $exam->id || $participant->tenant_id !== $exam->tenant_id) {
+            abort(404);
         }
 
-        if (request()->user()->hasRole('GURU')) {
-            $assessment = $exam->assessment;
-            abort_unless($assessment && $participant->user && TeacherAccess::canViewStudentInAssessmentScope(
-                request()->user(),
-                $participant->user,
-                $assessment->subject_id,
-                $assessment->academic_year_id,
-                $assessment->semester_id
-            ), 403);
-        }
+        DB::transaction(function () use ($exam, $participant) {
+            // Same parent-first order as attempt creation: Exam -> Participant -> Attempt.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $this->authorize('manageParticipants', $lockedExam);
 
-        $participant->delete();
-        $this->auditService->log('REMOVE_PARTICIPANT', 'Exam', $exam->id, ['user_id' => $participant->user_id], null);
+            $lockedParticipant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->whereKey($participant->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedParticipant->attempts()->exists()) {
+                abort(409, 'Peserta tidak dapat dihapus setelah memiliki riwayat attempt ujian.');
+            }
+
+            if (request()->user()->hasRole('GURU')) {
+                $assessment = $lockedExam->assessment;
+                abort_unless($assessment && $lockedParticipant->user
+                    && TeacherAccess::canViewStudentInAssessmentScope(
+                        request()->user(),
+                        $lockedParticipant->user,
+                        $assessment->subject_id,
+                        $assessment->academic_year_id,
+                        $assessment->semester_id
+                    ), 403);
+            }
+
+            $userId = $lockedParticipant->user_id;
+            $lockedParticipant->delete();
+            $this->auditService->log('REMOVE_PARTICIPANT', 'Exam', $lockedExam->id, ['user_id' => $userId], null);
+        });
 
         return response()->json(['success' => true]);
     }
