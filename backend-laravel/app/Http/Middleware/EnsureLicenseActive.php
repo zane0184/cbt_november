@@ -148,7 +148,7 @@ class EnsureLicenseActive
                 return false;
             }
 
-            $pilotExpiresAt = \\Illuminate\\Support\\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
+            $pilotExpiresAt = \Illuminate\Support\Carbon::parse((string) ($install['pre_activation_expires_at'] ?? ''))->utc();
             $path = $request->path();
 
             // A browser/client reloads the execution resource or POSTs the attempt
