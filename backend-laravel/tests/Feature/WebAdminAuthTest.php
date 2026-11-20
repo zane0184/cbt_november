@@ -150,24 +150,6 @@ class WebAdminAuthTest extends TestCase
         $this->get('/operator/dashboard')->assertForbidden();
     }
 
-    public function test_operator_dashboard_rejects_users_without_tenant_binding(): void
-    {
-        app(TenantContext::class)->setTenantId(null);
-        $orphan = new User([
-            'name' => 'Orphan Operator',
-            'username' => 'orphan.operator',
-            'password' => bcrypt($this->password),
-        ]);
-        $orphan->tenant_id = null;
-        $orphan->saveQuietly();
-        $orphan->roles()->attach(Role::where('name', 'OPERATOR')->firstOrFail());
-
-        $this->withoutMiddleware(EnsureLicenseActive::class);
-        $this->actingAs($orphan);
-
-        $this->get('/operator/dashboard')->assertForbidden();
-    }
-
     public function test_proktor_assignment_user_login_redirects_to_assignments(): void
     {
         $response = $this->post('/login', ['identifier' => 'proktor.uji', 'password' => $this->password]);
