@@ -18,7 +18,7 @@ Dokumen ini berlaku untuk paket Web CBT Madrasah pada commit yang tercantum di `
 - Ekstensi PHP: bcmath, ctype, curl, dom, fileinfo, filter, gd, hash, json, mbstring, openssl, pcre, pdo, pdo_mysql, session, tokenizer, xml, xmlwriter, zip, sodium.
 - Nginx melalui aaPanel, HTTPS aktif, dan PHP-FPM menggunakan PHP 8.3.
 - Composer dependencies sudah disertakan di folder `vendor/` dalam paket.
-- Akses tulis terbatas untuk `storage/` dan `bootstrap/cache/`; jangan gunakan permission 777.
+- Akses tulis terbatas untuk `storage/` dan `bootstrap/cache/`; jangan gunakan permission 777. Direktori source aplikasi dan file `.env` boleh tetap read-only bagi PHP-FPM.
 
 Pastikan versi PHP CLI yang dipakai saat menjalankan perintah sama dengan versi PHP-FPM pada website aaPanel.
 
@@ -35,7 +35,7 @@ Pastikan versi PHP CLI yang dipakai saat menjalankan perintah sama dengan versi 
 9. Isi `CBT_INSTALLER_BOOTSTRAP_TOKEN` dengan nilai acak rahasia minimal 32 karakter. Contoh membuat nilai acak di server: `openssl rand -hex 32`. Jangan masukkan token ke laporan publik atau chat.
 10. Pastikan `SESSION_DRIVER=file`, `CACHE_STORE=file`, dan `QUEUE_CONNECTION=sync` tetap digunakan pada proses instalasi awal. Ini menghindari ketergantungan pada tabel session/cache/queue sebelum skema database terbentuk. Jangan mengubah session ke database; paket ini belum menyediakan migration tabel sessions khusus.
 11. Jalankan `php artisan config:clear`, `php artisan route:clear`, dan `php artisan view:clear`.
-12. Pastikan folder `storage/` dan `bootstrap/cache/` dapat ditulis oleh user PHP-FPM.
+12. Pastikan folder `storage/` dan `bootstrap/cache/` dapat ditulis oleh user PHP-FPM. Direktori root aplikasi (`backend-laravel/`) dan `.env` tidak perlu writable oleh PHP-FPM.
 
 ## 4. Jalankan wizard installer
 
@@ -44,12 +44,13 @@ Pastikan versi PHP CLI yang dipakai saat menjalankan perintah sama dengan versi 
 3. Periksa seluruh persyaratan server pada halaman installer.
 4. Masukkan host, port, nama database, username, dan password database khusus madrasah.
 5. Jalankan tes koneksi. Installer harus menyatakan database benar-benar kosong dan server MySQL 8+ menggunakan InnoDB.
-6. Jalankan migration melalui wizard. Jangan menjalankan `php artisan migrate` manual dan jangan melewati pemeriksaan installer.
-7. Buat profil madrasah dan akun Admin Madrasah awal dengan password kuat.
-8. Selesaikan aktivasi sesuai mode yang dipilih untuk instalasi ini:
+6. Setelah konfigurasi database disimpan, installer menyimpan kredensial ke `storage/app/private/installer-database.php` dengan permission 0600. File `.env` tidak ditimpa oleh wizard; jangan mengubah permission direktori source menjadi writable hanya untuk mengatasi kegagalan penyimpanan.
+7. Jalankan migration melalui wizard. Jangan menjalankan `php artisan migrate` manual dan jangan melewati pemeriksaan installer.
+8. Buat profil madrasah dan akun Admin Madrasah awal dengan password kuat.
+9. Selesaikan aktivasi sesuai mode yang dipilih untuk instalasi ini:
    - **Publisher (default):** pertahankan `CBT_LICENSE_MODE=PUBLISHER`. Mode ini memerlukan endpoint Publisher HTTPS dan lisensi/lease bertanda tangan yang sah.
    - **Pra-Publisher 2026 (pilot yang telah disetujui):** hanya untuk instalasi madrasah baru yang memang ditetapkan sebagai pilot. Pada file `.env` instalasi tersebut saja, ubah menjadi `CBT_LICENSE_MODE=PRE_ACTIVATION_2026` sebelum wizard dijalankan. Jangan mengubah `.env.example`, konfigurasi instalasi lain, atau konfigurasi produksi yang sudah berjalan. Baca `PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md` yang disertakan dalam ZIP.
-9. Setelah installer menyatakan selesai, verifikasi halaman login dan dashboard. Installer dirancang terkunci setelah instalasi selesai.
+10. Setelah installer menyatakan selesai, verifikasi halaman login dan dashboard. Installer dirancang terkunci setelah instalasi selesai; token bootstrap dinonaktifkan melalui konfigurasi runtime privat.
 
 Jika migration gagal atau state installer menunjukkan kondisi parsial, hentikan. Jangan menghapus tabel, mengulang migration secara paksa, atau mengedit migration historis. Lakukan audit database dan recovery pada salinan terisolasi terlebih dahulu.
 
