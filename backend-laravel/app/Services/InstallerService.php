@@ -217,7 +217,7 @@ class InstallerService
         return !$inspection['success'] || !$inspection['is_empty'];
     }
 
-    /** Save a verified empty MySQL target into .env using atomic replacement. */
+    /** Save a verified empty MySQL target into private runtime storage using atomic replacement. */
     public function saveDatabaseConfig(array $params): array
     {
         if (!$this->checkRequirements()['is_ready']) {
@@ -266,7 +266,7 @@ class InstallerService
             });
         } catch (Throwable $exception) {
             Log::error('CBT installer failed to save database configuration.', ['exception' => get_class($exception)]);
-            return ['success' => false, 'message' => 'Konfigurasi database gagal disimpan secara aman. Periksa izin file .env dan storage.'];
+            return ['success' => false, 'message' => 'Konfigurasi database gagal disimpan secara aman. Periksa izin storage/app/private dan bootstrap/cache.'];
         }
     }
 
