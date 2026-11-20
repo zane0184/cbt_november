@@ -181,3 +181,20 @@ Pengguna melaporkan dua masalah pada screenshot dashboard yang ditinjau:
 **Acceptance criteria:** uji desktop 1366×768 dan viewport pendek; uji scroll sidebar vs konten utama secara independen; uji mobile drawer; cari seluruh string label yang salah; screenshot sebelum/sesudah dan bukti uji browser.
 
 **Status:** TEMUAN DICATAT — BELUM DIAUDIT ROOT CAUSE, BELUM DIIMPLEMENTASIKAN, BELUM DIUJI. Temuan ini masuk audit UI/UX dan backlog desain Web Admin. Tetap ikuti gerbang: audit read-only, desain, persetujuan pengguna, baru implementasi.
+
+
+## 11. KLARIFIKASI KEPUTUSAN ROLE — ADMIN = OPERATOR
+
+Pengguna menegaskan bahwa **Admin Madrasah dan Operator Madrasah adalah satu peran yang sama**, bukan dua role atau portal. Tidak perlu ada dua dashboard atau dua akun/identitas terpisah.
+
+Keputusan yang berlaku:
+- Satu role/portal pengelola madrasah.
+- Label utama UI: “Admin Madrasah”; “Operator Madrasah” boleh menjadi alias/istilah penjelas, bukan role kedua.
+- Brand sidebar: “Panel Admin Madrasah”.
+- Tidak ada dashboard/menu/permission terpisah antara Admin dan Operator.
+- Portal Guru tetap terpisah; keputusan ini tidak menggabungkan Admin/Operator dengan Guru.
+- Source role lama wajib diaudit dahulu. Jangan menghapus atau mengubah role identifier, data user, seeder, policy, middleware, atau schema tanpa pemetaan kompatibel dan persetujuan jika berdampak pada data/authorization.
+
+**Koreksi atas catatan sebelumnya:** kalimat yang melarang label “Dashboard Operator” atau “Role: Operator Madrasah” tidak boleh ditafsirkan sebagai larangan menyebut Operator sama sekali. Yang dilarang adalah menciptakan kesan Operator merupakan role/portal kedua yang berbeda dari Admin. Admin = Operator.
+
+Status: keputusan produk final; implementasi/mapping teknis menunggu audit source dan persetujuan desain.
