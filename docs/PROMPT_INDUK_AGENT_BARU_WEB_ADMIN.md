@@ -342,3 +342,28 @@ Acceptance criteria:
 - Semua route dan action pengelola madrasah memakai authorization kanonis yang sama.
 - Guru tetap memiliki portal/role terpisah.
 - Migrasi atau konsolidasi role lama hanya dilakukan setelah audit data dan persetujuan eksplisit; tidak boleh merusak akun maupun histori.
+
+## 13. KLARIFIKASI PROKTOR — PENUGASAN GURU OLEH ADMIN MADRASAH
+
+Keputusan pengguna: **Proktor adalah Guru yang ditugaskan oleh Admin/Operator Madrasah untuk menjalankan tugas pengawasan pada ujian tertentu.** Orang yang ditugaskan dapat berasal dari Guru kelas, Wali Kelas, atau Guru Mata Pelajaran.
+
+Ketentuan:
+1. Proktor bukan role pegawai permanen yang berdiri sendiri dan bukan portal permanen.
+2. Admin/Operator Madrasah memiliki kewenangan mengelola penugasan Proktor untuk ujian sesuai jadwal dan kebutuhan.
+3. Calon Proktor harus merupakan akun Guru yang terdaftar/aktif pada madrasah yang sama. Sumber kategori/penugasan Guru dapat berupa Guru kelas, Wali Kelas, maupun Guru Mata Pelajaran; jangan membatasi hanya salah satu kategori.
+4. Penugasan harus terikat pada ujian tertentu, sesi/ruang bila relevan, waktu mulai/selesai, dan status penugasan. Simpan siapa Admin yang menugaskan, kapan, serta perubahan/pencabutan penugasan.
+5. Hak Proktor bersifat sementara, terbatas pada ujian yang ditugaskan dan tindakan operasional yang memang diizinkan. Penugasan tidak otomatis memberi hak mengelola bank soal, mengubah konfigurasi ujian, menilai, melihat jawaban/nilai di luar kewenangan, atau mengakses ujian lain.
+6. Guru yang menjadi Proktor tetap memiliki identitas akun/role Guru; status Proktor adalah assignment/context tambahan, bukan role permanen baru. Setelah penugasan berakhir/dicabut, hak sementara tersebut tidak berlaku lagi.
+7. Validasi server-side wajib memeriksa tenant/madrasah, status Guru, ruang lingkup ujian, waktu, status assignment, dan permission setiap aksi. UI menyembunyikan menu saja tidak cukup.
+8. Audit log wajib merekam pembuatan, perubahan, pencabutan, mulai/selesai tugas, dan aksi penting Proktor.
+9. Jangan membuat portal Proktor permanen atau menambahkan role Proktor global hanya untuk mendukung assignment ini. Bila source lama memiliki role/permission Proktor, audit kompatibilitas dan batasi agar tidak menimbulkan portal/akses permanen.
+10. Pada scope Web Admin sekarang, audit dan implementasikan hanya administrasi/penugasan Proktor oleh Admin. Jangan membangun portal atau workflow Guru/Proktor sekarang karena tahapan Guru masih ditahan.
+
+Acceptance criteria:
+- Admin dapat memilih Guru kelas, Wali Kelas, atau Guru Mata Pelajaran yang memenuhi syarat sebagai Proktor ujian tertentu.
+- Penugasan hanya berlaku untuk ujian dan rentang waktu yang ditentukan.
+- Guru yang ditugaskan tidak berubah menjadi role Proktor permanen.
+- Guru yang tidak ditugaskan tidak memperoleh akses Proktor untuk ujian tersebut.
+- Penugasan lintas madrasah/tenant ditolak.
+- Pencabutan/kedaluwarsa penugasan mengakhiri hak sementara.
+- Semua perubahan dan tindakan tercatat pada audit log.
