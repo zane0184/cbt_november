@@ -3,7 +3,6 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 
 return new class extends Migration {
     public function up(): void
@@ -41,7 +40,7 @@ return new class extends Migration {
     public function down(): void
     {
         if (Schema::hasTable('exam_proctor_assignments') && DB::table('exam_proctor_assignments')->exists()) {
-            throw new RuntimeException('Rollback ditolak: riwayat penugasan Proktor sudah tersimpan. Gunakan prosedur retensi/arsip yang disetujui.');
+            throw new \RuntimeException('Rollback ditolak: riwayat penugasan Proktor sudah tersimpan. Gunakan prosedur retensi/arsip yang disetujui.');
         }
         Schema::dropIfExists('exam_proctor_assignments');
     }
