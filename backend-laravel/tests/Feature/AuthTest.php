@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
