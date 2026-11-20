@@ -108,3 +108,39 @@ PR: #5 (Draft)
 - Tambahkan regression test UI untuk memastikan pesan additive muncul saat edit dan label target muncul saat create.
 - Lanjutkan audit seluruh fitur dan aksi per role, termasuk filter rombel pada hasil ujian dan root landing Kamad (tanpa membuat portal permanen yang bertentangan dengan keputusan arsitektur).
 - Uji permission, tenant isolation, dan alur peserta dengan runtime disposable sebelum PR dapat dinaikkan dari Draft.
+
+
+## Audit & implementasi — filter rombel pada hasil ujian (2026-11-20)
+
+### AUDIT
+- `ResultList` sudah memiliki state `rombelId`, tetapi tidak ada selector pada Blade dan query hasil belum memakai state tersebut.
+- Relasi data yang sah tersedia melalui `ExamAttempt -> participant -> user -> studentProfile -> rombels`, dengan pivot `rombel_student` yang membawa `tenant_id`.
+- Model `StudentProfile` dan `Rombel` menggunakan `TenantScoped`; kedua arah relasi rombel juga menambahkan filter pivot tenant dan gagal tertutup jika tenant context tidak konsisten.
+- Filter harus menampilkan hanya rombel yang benar-benar memiliki siswa peserta ujian terkait, bukan semua rombel tenant atau rombel lintas tenant.
+
+### DESAIN
+- Opsi rombel diturunkan dari peserta ujian yang sudah ada, melalui relasi model resmi.
+- Query attempt difilter melalui relasi student profile ke rombels; tidak memakai raw join yang mengabaikan tenant.
+- Perubahan filter mengembalikan pagination ke halaman pertama.
+- Tidak mengubah data peserta, schema, migration, atau policy akses halaman hasil.
+
+### IMPLEMENTASI
+- Backup sebelum perubahan:
+  - `backend-laravel/backup_before_patch/RESULT_ROMBEL_FILTER_20261120/ResultList.php.before`
+  - `backend-laravel/backup_before_patch/RESULT_ROMBEL_FILTER_20261120/result-list.blade.php.before`
+- `ResultList.php`: opsi rombel dibatasi pada rombel yang memiliki peserta ujian; query attempt sekarang memakai filter `participant.user.studentProfile.rombels`; perubahan search/status/grading status/rombel reset pagination.
+- `result-list.blade.php`: menambahkan selector “Semua Rombel” beserta opsi rombel terkait ujian.
+- Commit implementasi:
+  - PHP: `310cb65dbe9a451aa58e87a5a4d63e3b3f49dafb`
+  - Blade: `4b46e15140a3da002ee27ad4c7b019ea81ae587c`
+
+### PENGUJIAN
+- Relasi model dan tenant guard diperiksa dari source; patch disimpan ke branch GitHub.
+- PHPUnit/Livewire runtime test belum dijalankan.
+- Belum ada bukti CI hijau untuk commit ini.
+- Status: BELUM LULUS UJI.
+
+### TERTUNDA
+- Tambahkan regression tests: filter rombel hanya menampilkan attempt siswa dari rombel terpilih; siswa multi-rombel tampil pada masing-masing filter yang sesuai; rombel tenant lain tidak dapat dipilih/digunakan; filter kosong menampilkan semua peserta ujian; pagination reset.
+- Jalankan CI pada branch PR dan perbaiki kegagalan yang ditemukan.
+- Audit root landing Kamad dan seluruh halaman analitik/ekspor per role; jangan menambah portal Proktor permanen atau memperluas permission tanpa dasar.
