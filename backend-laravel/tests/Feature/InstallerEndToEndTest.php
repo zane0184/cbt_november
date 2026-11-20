@@ -62,6 +62,7 @@ class InstallerEndToEndTest extends TestCase
         $store = app(InstallerStateStore::class);
 
         try {
+            Carbon::setTestNow(Carbon::parse('2026-11-20T12:00:00Z'));
             config([
                 'app.url' => 'https://cbt-installer-e2e.example.test',
                 'license.pre_activation_2026' => true,
@@ -117,6 +118,7 @@ class InstallerEndToEndTest extends TestCase
             $this->assertSame($expiresAt->toIso8601String(), $lock['pre_activation_expires_at'] ?? null);
             $this->assertSame('LOCKED', $store->read()['state'] ?? null);
         } finally {
+            Carbon::setTestNow();
             DB::purge('mysql');
             config([
                 'database.default' => $originalDefaultConnection,
