@@ -284,7 +284,7 @@ class QuestionBankTest extends TestCase
         Livewire::test(QuestionBank::class)
             ->call('gotoPage', 2)
             ->set('subjectFilter', $this->subjectA->id)
-            ->assertSet('p', 1)
+            ->assertSet('page', 1)
             ->call('gotoPage', 2)
             ->set('statusFilter', 'PUBLISHED')
             ->assertSet('p', 1);
