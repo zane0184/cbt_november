@@ -183,15 +183,19 @@ jobs:
           $ledger = (int) $pdo->query("SELECT COUNT(*) FROM migrations")->fetchColumn();
           $fk = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME='tenant_curriculum_registrations' AND CONSTRAINT_NAME='fk_tcr_mcv_id' AND REFERENCED_TABLE_NAME='multi_curriculum_versions'")->fetchColumn();
           $engines = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type='BASE TABLE' AND ENGINE<>'InnoDB'")->fetchColumn();
+          $proctorTable = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='exam_proctor_assignments' AND table_type='BASE TABLE'")->fetchColumn();
+          $proctorMigration = (int) $pdo->query("SELECT COUNT(*) FROM migrations WHERE migration='2026_11_20_100001_create_exam_proctor_assignments_table'")->fetchColumn();
           $result = [
               'database' => $db,
               'table_count' => $tables,
               'migration_ledger_count' => $ledger,
               'fk_tcr_mcv_id_count' => $fk,
               'non_innodb_count' => $engines,
+              'exam_proctor_assignments_table_count' => $proctorTable,
+              'exam_proctor_assignments_migration_count' => $proctorMigration,
           ];
           echo json_encode($result, JSON_PRETTY_PRINT).PHP_EOL;
-          if ($tables !== 70 || $ledger !== 56 || $fk !== 1 || $engines !== 0) {
+          if ($tables !== 71 || $ledger !== 57 || $fk !== 1 || $engines !== 0 || $proctorTable !== 1 || $proctorMigration !== 1) {
               exit(1);
           }
           PHP
@@ -252,6 +256,8 @@ jobs:
           $ledgerExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='migrations'")->fetchColumn();
           $ledger = $ledgerExists ? $pdo->query("SELECT migration, batch FROM migrations ORDER BY batch, migration")->fetchAll(PDO::FETCH_ASSOC) : [];
           $mappingExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='question_multi_curriculum_mappings'")->fetchColumn();
+          $proctorTableExists = (bool) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='exam_proctor_assignments'")->fetchColumn();
+          $proctorMigrationSeen = in_array('2026_11_20_100001_create_exam_proctor_assignments_table', array_column($ledger, 'migration'), true);
           $mappingCreate = null;
           if ($mappingExists) {
               $mappingCreate = $pdo->query("SHOW CREATE TABLE question_multi_curriculum_mappings")->fetch(PDO::FETCH_ASSOC);
@@ -286,18 +292,24 @@ jobs:
               'migration_ledger' => $ledger,
               'question_multi_curriculum_mappings_exists' => $mappingExists,
               'question_multi_curriculum_mappings_show_create' => $mappingCreate,
+              'exam_proctor_assignments_table_exists' => $proctorTableExists,
+              'exam_proctor_assignments_migration_seen' => $proctorMigrationSeen,
               'migration_190008_seen_in_log' => $migration190008,
               'non_innodb_tables' => $nonInnoDb
           ];
           $rc = (int) @file_get_contents('../p095d-artifacts/migration-exit-code.txt');
           $result['migration_exit_code'] = $rc;
-          $result['schema_gate'] = ($rc === 0 && count($ledger) === 56 && $mappingExists && count($nonInnoDb) === 0 && $targetFkPass) ? 'PASS' : 'NOT_PASS';
+          $result['schema_gate'] = ($rc === 0 && count($tables) === 71 && count($ledger) === 57
+              && $mappingExists && $proctorTableExists && $proctorMigrationSeen
+              && count($nonInnoDb) === 0 && $targetFkPass) ? 'PASS' : 'NOT_PASS';
           file_put_contents('../p095d-artifacts/schema-audit.json', json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
           echo json_encode([
               'schema_gate' => $result['schema_gate'],
               'table_count' => count($tables),
               'migration_ledger_count' => count($ledger),
               'mapping_table_exists' => $mappingExists,
+              'exam_proctor_assignments_table_exists' => $proctorTableExists,
+              'exam_proctor_assignments_migration_seen' => $proctorMigrationSeen,
               'migration_190008_seen_in_log' => $migration190008,
               'non_innodb_table_count' => count($nonInnoDb),
               'foreign_key_rows' => count($foreignKeys),
