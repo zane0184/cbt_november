@@ -12,22 +12,21 @@ class ExamAttemptPolicy
     {
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
+        // This policy protects the teacher/admin result-detail surface, which
+        // exposes answer payloads and per-question grading data. Student self-service
+        // uses the dedicated result endpoint and its restricted DTO instead.
         if ($user->hasRole('GURU')) {
-            return TeacherAccess::canViewExam($user, $attempt->exam);
+            return $user->hasPermission('report.view')
+                && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH') ||
-            $user->hasRole('OPERATOR') ||
-            $user->hasRole('KAMAD')) {
-            return true;
+        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) {
+            return $user->hasPermission('report.view');
         }
 
-        $participant = $attempt->participant;
-
-        return $participant
-            && $participant->tenant_id === $attempt->tenant_id
-            && $participant->exam_id === $attempt->exam_id
-            && $participant->user_id === $user->id;
+        // OPERATOR is limited to operational monitoring and must not receive
+        // answer-level or score-detail access. Students use their own result route.
+        return false;
     }
 
     public function viewScore(User $user, ExamAttempt $attempt): bool
