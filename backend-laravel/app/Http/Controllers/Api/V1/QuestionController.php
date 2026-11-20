@@ -294,6 +294,7 @@ class QuestionController extends Controller
 
                 $options = $validated['options'] ?? $current->options->toArray();
                 $this->saveOptions($newVersion, $options);
+                $lockedQuestion->update(['status' => 'DRAFT']);
 
                 $this->auditService->log('CREATE_VERSION', 'Question', $lockedQuestion->id, ['old_v' => $current->id], ['new_v' => $newVersion->id]);
             } else {
