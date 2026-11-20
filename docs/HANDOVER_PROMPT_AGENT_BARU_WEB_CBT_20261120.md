@@ -172,3 +172,12 @@ Mulai dengan membaca branch/PR/checkpoint terbaru dan periksa source aktual. Ver
 - Audit lanjutan menemukan filter status ExamManagement tidak mereset pagination; ditambahkan updatingStatusFilter() dengan backup di backend-laravel/backup_before_patch/WEB_EXAM_STATUS_PAGINATION_20261120/ExamManagement.php.before.
 - Commit perbaikan pagination: 5a46c0914533589706653b3b2f3aaad245b2d535.
 - Periksa checkpoint docs/CHECKPOINT_WEB_AUDIT_20261120.md untuk commit terbaru dan status PR terkini. Prompt ini diperbarui sebelum handover final bila ada perubahan tambahan.
+
+
+## Addendum 20 November 2026 — CI branch trigger
+- Temuan: workflow tenant-backend-ci.yml pull_request hanya target main, tidak mencakup base PR #5. Perbaikan aman: branch kerja fix/web-portal-usability-rbac-20261120 ditambahkan pada push trigger.
+- Backup: backend-laravel/backup_before_patch/WEB_CI_TRIGGER_20261120/tenant-backend-ci.yml.before (backup commit edbb229ebf479c40345c36a10528757f14b1d947).
+- Workflow commit: 7d9e0fbe92a8305daea56fc7c633705ea8d01a5b.
+- Run #620 / ID 44732146599 mulai pada event push untuk commit tersebut. Status terakhir ketika addendum disusun masih in_progress; jangan anggap lulus. Periksa https://github.com/zane0184/cbt_november/actions/runs/44732146599 dan log lengkap.
+- Tes berjalan di disposable MySQL 8 GitHub Actions; bukan database VPS.
+- PR #5 tetap Draft dan belum merge/deploy.
