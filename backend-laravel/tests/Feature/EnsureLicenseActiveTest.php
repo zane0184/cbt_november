@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureLicenseActive;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
 use App\Models\LocalInstallationIdentity;
 use App\Models\Tenant;
 use App\Models\User;
@@ -10,6 +13,7 @@ use App\Services\InstallerStateStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class EnsureLicenseActiveTest extends TestCase
@@ -106,6 +110,136 @@ class EnsureLicenseActiveTest extends TestCase
 
         $this->assertSame(423, $response->getStatusCode());
         $this->assertSame('PRE_ACTIVATION_EXPIRED', $response->getData(true)['code']);
+    }
+
+    public function test_expired_pilot_allows_execution_reload_for_one_active_attempt_started_before_expiry(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2027-05-19T11:00:00Z'));
+        $request = $this->expiredPilotRecoveryRequest('execution', 'GET');
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response()->json(['recovered' => true])
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(['recovered' => true], $response->getData(true));
+    }
+
+    public function test_expired_pilot_allows_attempt_collection_post_only_to_resume_existing_attempt(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2027-05-19T11:00:00Z'));
+        $request = $this->expiredPilotRecoveryRequest('attempts', 'POST');
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response()->json(['resumed' => true])
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    public function test_expired_pilot_allows_answer_recovery_for_the_same_active_attempt(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2027-05-19T11:00:00Z'));
+        $request = $this->expiredPilotRecoveryRequest('answers/00000000-0000-4000-8000-000000000001', 'PUT');
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response()->json(['saved' => true])
+        );
+
+        $this->assertSame(200, $response->getStatusCode());
+    }
+
+    public function test_expired_pilot_denies_execution_without_a_pre_expiry_active_attempt(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2027-05-19T11:00:00Z'));
+        $request = $this->expiredPilotRecoveryRequest('execution', 'GET', startedBeforeExpiry: false);
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response()->json(['unexpected' => true])
+        );
+
+        $this->assertSame(423, $response->getStatusCode());
+        $this->assertSame('PRE_ACTIVATION_EXPIRED', $response->getData(true)['code']);
+    }
+
+    public function test_expired_pilot_denies_execution_for_another_participant(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2027-05-19T11:00:00Z'));
+        $request = $this->expiredPilotRecoveryRequest('execution', 'GET', otherParticipant: true);
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response()->json(['unexpected' => true])
+        );
+
+        $this->assertSame(423, $response->getStatusCode());
+    }
+
+    public function test_expired_pilot_denies_ambiguous_multiple_active_attempts(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2027-05-19T11:00:00Z'));
+        $request = $this->expiredPilotRecoveryRequest('execution', 'GET', attemptCount: 2);
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response()->json(['unexpected' => true])
+        );
+
+        $this->assertSame(423, $response->getStatusCode());
+    }
+
+    private function expiredPilotRecoveryRequest(
+        string $suffix,
+        string $method,
+        int $attemptCount = 1,
+        bool $startedBeforeExpiry = true,
+        bool $otherParticipant = false,
+    ): Request {
+        $baseRequest = $this->pilotRequest('2027-05-19T11:00:00+00:00');
+        $user = $baseRequest->user();
+        Auth::login($user);
+
+        $exam = Exam::factory()->create();
+        $participantUser = $otherParticipant ? \App\Models\User::factory()->create() : $user;
+        $participant = ExamParticipant::query()->create([
+            'exam_id' => $exam->id,
+            'user_id' => $participantUser->id,
+            'status' => 'STARTED',
+        ]);
+
+        $firstAttempt = null;
+        for ($number = 1; $number <= $attemptCount; $number++) {
+            $attempt = ExamAttempt::query()->create([
+                'exam_id' => $exam->id,
+                'participant_id' => $participant->id,
+                'attempt_number' => $number,
+                'status' => 'IN_PROGRESS',
+                'device_fingerprint' => 'pilot-device-test',
+                'started_at' => $startedBeforeExpiry
+                    ? Carbon::now()->copy()->subMinutes(10)
+                    : Carbon::now()->copy()->addMinutes(1),
+                'expires_at' => Carbon::now()->copy()->addMinutes(30),
+                'last_activity_at' => Carbon::now(),
+            ]);
+            $firstAttempt ??= $attempt;
+        }
+
+        Auth::logout();
+
+        $path = match ($suffix) {
+            'execution' => '/api/v1/exams/'.$exam->id.'/execution',
+            'attempts' => '/api/v1/exams/'.$exam->id.'/attempts',
+            default => '/api/v1/exams/'.$exam->id.'/attempts/'.$firstAttempt->id.'/'.$suffix,
+        };
+        $request = Request::create($path, $method);
+        $request->headers->set('Accept', 'application/json');
+        $request->setUserResolver(fn () => $user);
+
+        return $request;
     }
 
     private function pilotRequest(string $expiresAt): Request
