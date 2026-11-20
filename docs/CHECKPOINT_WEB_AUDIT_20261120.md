@@ -76,3 +76,35 @@ PR: #5 (Draft)
 - Tambahkan regression test: versi soal dari subject berbeda pada tenant yang sama harus ditolak; versi soal dari tenant berbeda harus ditolak; subject yang sesuai harus berhasil; kegagalan tidak boleh meninggalkan snapshot parsial.
 - Uji race antara snapshot edit dan publish/lock.
 - Verifikasi constraint unik DB dan urutan sequence snapshot dari migration aktual.
+
+
+## Audit lanjutan — semantik peserta saat edit ujian (2026-11-20)
+
+### AUDIT
+- Pemeriksaan ulang `ExamManagement::openEditModal()`, `saveExam()`, model `ExamParticipant`, migration `create_exam_participants_table`, dan form Blade menemukan bahwa saat edit draf, `selectedRombelId` sengaja dikosongkan.
+- Jika operator memilih rombel pada mode edit, implementasi menggunakan `firstOrCreate` untuk menambah peserta yang belum terdaftar. Peserta lama tidak dihapus atau diganti.
+- Ini adalah perilaku additive yang aman terhadap data peserta, tetapi label form sebelumnya masih berbunyi “Rombel Target Peserta”, sehingga berpotensi disalahartikan sebagai penggantian seluruh daftar peserta.
+- Tidak ada kolom sumber rombel pada `exam_participants`; karena itu sistem saat ini tidak dapat merekonstruksi satu rombel asal dari seluruh peserta ujian secara andal. Tidak dilakukan sinkronisasi/detach otomatis.
+
+### DESAIN
+- Pertahankan perilaku additive yang tidak menghapus peserta lama.
+- Bedakan label pemilihan rombel pada mode buat dan mode edit.
+- Jelaskan secara eksplisit bahwa edit hanya menambahkan peserta yang belum ada; tidak mengganti/menghapus roster yang sudah tersimpan.
+- Pengelolaan penghapusan/pergantian peserta perlu desain terpisah dengan guard attempt/answer/score dan audit log, bukan disisipkan ke alur edit umum.
+
+### IMPLEMENTASI
+- Backup view sebelum perubahan dibuat di:
+  `backend-laravel/backup_before_patch/WEB_PARTICIPANT_EDIT_SEMANTICS_20261120/exam-management.blade.php.before`
+- View `exam-management.blade.php` diperbarui dengan label “Tambahkan Peserta dari Rombel” dan keterangan semantik additive saat edit; mode buat tetap menampilkan label target rombel.
+- Backup commit: `1d3343b2d082ba2db70d65ff435eb0482c616f8c`.
+- Patch commit: `fca6d222ac7f42b75923ab705a0054aa01273dca`.
+
+### PENGUJIAN
+- Source diff diperiksa pada saat patch dibuat.
+- PHPUnit/Livewire/browser test belum dijalankan; CI commit baru belum diverifikasi.
+- Status: BELUM LULUS UJI.
+
+### TERTUNDA
+- Tambahkan regression test UI untuk memastikan pesan additive muncul saat edit dan label target muncul saat create.
+- Lanjutkan audit seluruh fitur dan aksi per role, termasuk filter rombel pada hasil ujian dan root landing Kamad (tanpa membuat portal permanen yang bertentangan dengan keputusan arsitektur).
+- Uji permission, tenant isolation, dan alur peserta dengan runtime disposable sebelum PR dapat dinaikkan dari Draft.
