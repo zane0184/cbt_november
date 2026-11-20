@@ -15,6 +15,8 @@ class LicenseStatusController extends Controller
 {
     public function __invoke(Request $request): View
     {
+        abort_unless($request->user() && $request->user()->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists(), 403);
+
         $installState = [];
         try {
             $candidate = app(InstallerStateStore::class)->read();
