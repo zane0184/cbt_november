@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Exam;
+use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Support\Security\TeacherAccess;
 
@@ -176,9 +177,34 @@ class ExamPolicy
             ->exists();
     }
 
+    public function assignProctor(User $user, Exam $exam): bool
+    {
+        if ($user->tenant_id !== $exam->tenant_id) return false;
+        if (!$user->hasRole('ADMIN_MADRASAH') || !$user->hasPermission('exam.proctor.assign')) return false;
+        if ($exam->status !== 'PUBLISHED' || !$exam->locked_at || !$exam->end_at) return false;
+
+        return $exam->end_at->isFuture();
+    }
+
+    public function revokeProctor(User $user, Exam $exam): bool
+    {
+        return $user->tenant_id === $exam->tenant_id
+            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasPermission('exam.proctor.assign');
+    }
+
     public function monitor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id) return false;
+
+        if ($user->hasRole('PROKTOR')) {
+            return ExamProctorAssignment::query()
+                ->activeNow()
+                ->where('tenant_id', $user->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('proctor_user_id', $user->id)
+                ->exists();
+        }
 
         return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR') || $user->hasRole('KAMAD'))
             ? $user->hasPermission('exam.monitor')
