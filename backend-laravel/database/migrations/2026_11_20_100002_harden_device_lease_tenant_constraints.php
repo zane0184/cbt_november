@@ -34,10 +34,18 @@ return new class extends Migration
             );
         }
 
+        $serverVersion = (string) DB::selectOne('SELECT VERSION() AS version')->version;
+        $mysqlVersion = preg_replace('/[^0-9.].*$/', '', $serverVersion);
+        if (stripos($serverVersion, 'mariadb') !== false || !version_compare($mysqlVersion, '8.0.0', '>=')) {
+            throw new \RuntimeException("Device lease tenant hardening requires Oracle MySQL 8.0+; detected {$serverVersion}.");
+        }
+
         foreach ([
-            'registered_devices' => ['tenant_id', 'user_id', 'revoked_by', 'id'],
-            'device_leases' => ['tenant_id', 'exam_attempt_id', 'registered_device_id', 'released_by', 'fence_generation', 'status', 'expires_at'],
-            'exam_attempts' => ['id', 'tenant_id', 'participant_id', 'fence_generation', 'current_device_token'],
+            'tenants' => ['id'],
+            'exam_participants' => ['id', 'tenant_id', 'exam_id', 'user_id'],
+            'registered_devices' => ['tenant_id', 'user_id', 'revoked_by', 'id', 'device_token', 'device_token_hash', 'installation_uuid', 'status'],
+            'device_leases' => ['tenant_id', 'exam_attempt_id', 'registered_device_id', 'released_by', 'fence_generation', 'status', 'expires_at', 'leased_at'],
+            'exam_attempts' => ['id', 'tenant_id', 'participant_id', 'exam_id', 'fence_generation', 'current_device_token'],
             'users' => ['id', 'tenant_id'],
         ] as $table => $columns) {
             if (!Schema::hasTable($table)) {
@@ -48,6 +56,22 @@ return new class extends Migration
                     throw new \RuntimeException("Device lease hardening preflight: required column {$table}.{$column} is missing.");
                 }
             }
+        }
+
+        $engineRows = DB::select(
+            "SELECT TABLE_NAME, ENGINE FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME IN ('tenants', 'users', 'exam_attempts', 'exam_participants', 'registered_devices', 'device_leases')"
+        );
+        $engineMap = [];
+        foreach ($engineRows as $row) {
+            $engineMap[$row->TABLE_NAME] = $row->ENGINE;
+        }
+        if (count($engineMap) !== 6 || count(array_filter($engineMap, fn ($engine) => $engine !== 'InnoDB')) > 0) {
+            throw new \RuntimeException(
+                'Device lease tenant hardening requires all parent and child tables to use InnoDB. No DDL was attempted: '
+                . json_encode($engineMap, JSON_UNESCAPED_SLASHES)
+            );
         }
 
         $foreignKeys = $this->foreignKeyNames();
