@@ -74,3 +74,21 @@ Dokumen tersebut menyimpan klaim historis dan expected hashes untuk runtime file
 
 ## PENGINGAT PENGHAPUSAN ZIP
 Dokumen ini **tidak menjamin** seluruh isi ZIP sudah tersimpan di GitHub. ZIP jangan dihapus dulu sebelum agent memverifikasi bahwa semua raw source, dokumen historis, backup, dan aset yang memang ingin dipertahankan telah memiliki salinan terverifikasi di GitHub atau media lain. Menghapus ZIP sekarang berisiko menghilangkan source/backup yang tidak termasuk daftar artefak terpilih di atas.
+
+
+## PEMERIKSAAN LANJUTAN: PERBANDINGAN DENGAN SOURCE GITHUB
+Pada 21 November 2026, delapan path yang sama juga ditemukan pada branch recovery di source repository. Semua file dapat di-fetch dari GitHub, tetapi SHA-256 arsip dan Git blob SHA-1 GitHub tidak dapat dibandingkan langsung tanpa menghitung SHA-256 atas konten GitHub. Ukuran teks yang dikembalikan juga berbeda untuk delapan file tersebut, sehingga snapshot arsip tidak boleh dianggap identik dengan source GitHub.
+
+GitHub blob SHA-1 saat pemeriksaan:
+- ExamAttemptController.php: `ace6a83989375e067b3a7747bc4f320c21222c69`
+- ExamAnswerController.php: `333e37007c072243fe828ab038d738fc98d88e8e`
+- MonitoringController.php: `335a32029f4d5ab4788ea31fd81088dfdb5acde2`
+- migration 190001: `651a55c6c7e99fce7c355fb8906c0e633fb811c1`
+- migration 190002: `456dfdafbcb18bf2f36f9f405354bdf8220c1057`
+- migration 190003: `61614a0e1a8b9acf505211621d2948afd770dc2f`
+- migration 190008: `d0da49dd973959d05325da1068d18a69a5bcbdc2`
+- migration 200001: `d4a3de9169ea08ac99325acdebcae6bae9a97625`
+
+Arsip snapshots memiliki byte-length: 20,450; 15,077; 11,978; 2,153; 1,740; 1,615; 1,674; 16,924. GitHub fetch menghasilkan character-length: 20,746; 15,942; 13,521; 2,103; 1,700; 1,580; 1,638; 13,770. Ini menunjukkan perbedaan versi/representasi dan wajib diaudit sebagai dua snapshot terpisah.
+
+**Keputusan keselamatan:** source aktif GitHub tidak ditimpa. Snapshot arsip belum berhasil diunggah sebagai raw file tersendiri. ZIP tetap diperlukan sampai raw snapshot yang ingin dipertahankan benar-benar disimpan dan diverifikasi.
