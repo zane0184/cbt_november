@@ -60,30 +60,63 @@ class ExcelQuestionImporter implements QuestionImportService
             return;
         }
 
-        // 2. Type-Specific Validation
-        if (in_array($row['type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'])) {
-            if (empty($row['options']) || !is_array($row['options'])) {
-                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Options are required for this question type.'];
-                return;
-            }
-            $hasCorrect = collect($row['options'])->contains('is_correct', true);
-            if (!$hasCorrect) {
-                $results['errors'][] = ['row' => $rowNumber, 'error' => 'At least one correct option is required.'];
-                return;
-            }
+        // 2. Type-Specific Validation. Keep import integrity equivalent to
+        // the Question API and Livewire authoring rules.
+        $options = $row['options'] ?? [];
+        if (!is_array($options)) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Options must be an array.'];
+            return;
         }
 
-        if ($row['type'] === 'MATCHING') {
-            if (empty($row['options']) || !is_array($row['options'])) {
-                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Pairs are required for matching.'];
+        if (in_array($row['type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+            $min = 2;
+            $max = $row['type'] === 'TRUE_FALSE' ? 2 : 4;
+            if (count($options) < $min || count($options) > $max) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Jumlah opsi tidak sesuai dengan jenis soal.'];
                 return;
             }
-            // Check if there are left and right keys
-            $hasMapping = collect($row['options'])->every(fn($opt) => !empty($opt['option_key']) || !empty($opt['matching_key']));
-            if (!$hasMapping) {
-                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Matching items must have keys for pairing.'];
+
+            $keys = [];
+            $correctCount = 0;
+            foreach ($options as $option) {
+                $key = strtoupper(trim((string) ($option['option_key'] ?? '')));
+                if ($key === '') $key = chr(65 + count($keys));
+                if (!in_array($key, ['A', 'B', 'C', 'D'], true)
+                    || trim((string) ($option['content'] ?? '')) === ''
+                    || in_array($key, $keys, true)) {
+                    $results['errors'][] = ['row' => $rowNumber, 'error' => 'Setiap opsi wajib memiliki kunci A-D unik dan isi yang tidak kosong.'];
+                    return;
+                }
+                $keys[] = $key;
+                if ((bool) ($option['is_correct'] ?? false)) $correctCount++;
+            }
+
+            if (($row['type'] === 'TRUE_FALSE' && array_diff(['A', 'B'], $keys) !== [])
+                || (in_array($row['type'], ['MULTIPLE_CHOICE', 'TRUE_FALSE'], true) && $correctCount !== 1)
+                || ($row['type'] === 'MULTIPLE_RESPONSE' && $correctCount < 1)) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kunci jawaban tidak sesuai dengan aturan jenis soal.'];
                 return;
             }
+        } elseif ($row['type'] === 'MATCHING') {
+            $mappingKeys = [];
+            foreach ($options as $option) {
+                $content = trim((string) ($option['content'] ?? ''));
+                $leftKey = trim((string) ($option['option_key'] ?? ''));
+                $rightKey = trim((string) ($option['matching_key'] ?? ''));
+                if ($content === '' || ($leftKey === '' && $rightKey === '')) {
+                    $results['errors'][] = ['row' => $rowNumber, 'error' => 'Isi dan kunci setiap item menjodohkan wajib tersedia.'];
+                    return;
+                }
+                if ($leftKey !== '') $mappingKeys[$leftKey] = true;
+                if ($rightKey !== '') $mappingKeys[$rightKey] = true;
+            }
+            if (count($options) < 2 || count($mappingKeys) < 1) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Soal menjodohkan wajib memiliki minimal dua item dengan kunci pasangan.'];
+                return;
+            }
+        } elseif (in_array($row['type'], ['SHORT_ANSWER', 'ESSAY'], true) && $options !== []) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Soal jawaban singkat/esai tidak boleh memiliki opsi pilihan.'];
+            return;
         }
 
         // 3. Question & Versioning Logic
@@ -200,11 +233,15 @@ class ExcelQuestionImporter implements QuestionImportService
     {
         if (in_array($row['type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE', 'MATCHING'])) {
             foreach ($row['options'] as $idx => $opt) {
+                $optionKey = $opt['option_key'] ?? null;
+                if ($optionKey === null && in_array($row['type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+                    $optionKey = chr(65 + $idx);
+                }
                 $version->options()->create([
                     'tenant_id' => auth()->user()->tenant_id,
                     'content' => $opt['content'] ?? '',
                     'is_correct' => $opt['is_correct'] ?? false,
-                    'option_key' => $opt['option_key'] ?? null,
+                    'option_key' => $optionKey,
                     'matching_key' => $opt['matching_key'] ?? null,
                     'sequence' => $idx
                 ]);

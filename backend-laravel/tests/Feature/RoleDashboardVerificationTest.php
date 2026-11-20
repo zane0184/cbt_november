@@ -223,6 +223,18 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
+    public function operator_and_student_cannot_open_teacher_result_detail_surface()
+    {
+        $attempt = new ExamAttempt([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => (string) \Illuminate\Support\Str::uuid(),
+        ]);
+
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($this->operatorA)->allows('view', $attempt));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($this->siswaA)->allows('view', $attempt));
+    }
+
+    /** @test */
     public function kamad_cannot_manage_exams()
     {
         $this->actingAs($this->kamadA);

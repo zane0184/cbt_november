@@ -138,6 +138,11 @@ class ExamManagement extends Component
         $tenantId = (string) $user->tenant_id;
         $activeYear = AcademicYear::where('tenant_id', $tenantId)->where('is_active', true)->first();
         $semester = Semester::where('tenant_id', $tenantId)->where('id', $this->selectedSemesterId)->first();
+        $subject = Subject::query()->where('tenant_id', $tenantId)->whereKey($this->selectedSubjectId)->first();
+        if (!$subject) {
+            $this->addError('selectedSubjectId', 'Mata pelajaran tidak valid atau bukan milik madrasah ini.');
+            return;
+        }
         if (!$activeYear || !$semester || (string) $semester->academic_year_id !== (string) $activeYear->id || !$semester->is_active) {
             $this->addError('selectedSemesterId', 'Pilih semester aktif pada tahun akademik aktif madrasah.');
             return;
@@ -175,7 +180,10 @@ class ExamManagement extends Component
                 return;
             }
         } elseif ($this->selectedRombelId !== null && $this->selectedRombelId !== '') {
-            $rombelExists = Rombel::where('tenant_id', $tenantId)->where('id', $this->selectedRombelId)->exists();
+            $rombelExists = Rombel::where('tenant_id', $tenantId)
+                ->where('academic_year_id', $activeYear->id)
+                ->where('id', $this->selectedRombelId)
+                ->exists();
             if (!$rombelExists) {
                 $this->addError('selectedRombelId', 'Rombel yang dipilih tidak valid atau tidak terdaftar pada tenant ini.');
                 return;
@@ -446,6 +454,11 @@ class ExamManagement extends Component
         $this->resetPage();
     }
 
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $user = auth()->user();
@@ -463,7 +476,13 @@ class ExamManagement extends Component
             ->paginate(12);
 
         $subjects = Subject::query()->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('id', TeacherAccess::assignedSubjectIds($user)))->get();
-        $rombelsQuery = Rombel::with('gradeLevel')->where('tenant_id', $tenantId);
+        $rombelsQuery = Rombel::with('gradeLevel')
+            ->where('tenant_id', $tenantId)
+            ->when(
+                $activeYear,
+                fn ($query) => $query->where('academic_year_id', $activeYear->id),
+                fn ($query) => $query->whereRaw('1 = 0')
+            );
         if ($user->hasRole('GURU') && $activeYear && $activeSemester) {
             $assignedRombelIds = $this->selectedSubjectId
                 ? TeacherAccess::assignedRombelIdsForScope($user, (string) $this->selectedSubjectId, (string) $activeYear->id, (string) $activeSemester->id)

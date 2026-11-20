@@ -106,7 +106,7 @@ class ExamBuilderTest extends TestCase
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenant->id);
 
-        $q1 = new Question(['created_by' => $this->teacher->id]);
+        $q1 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
         $q1->save();
 
         $v1 = new QuestionVersion([
@@ -120,7 +120,7 @@ class ExamBuilderTest extends TestCase
         ]);
         $v1->save();
 
-        $q2 = new Question(['created_by' => $this->teacher->id]);
+        $q2 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
         $q2->save();
 
         $v2 = new QuestionVersion([
@@ -195,6 +195,95 @@ class ExamBuilderTest extends TestCase
 
         // Ensure no attempt was created
         $this->assertEquals(0, \App\Models\ExamAttempt::count());
+    }
+
+    public function test_assign_rombel_api_does_not_reset_existing_participant_status()
+    {
+        $context = app(\App\Contexts\TenantContext::class);
+        $context->setTenantId($this->tenant->id);
+        $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $student = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Selesai',
+            'email' => 'siswa-selesai@m.com',
+            'password' => 'p',
+        ]);
+        $student->roles()->attach($studentRole);
+
+        $profile = \App\Models\StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $student->id,
+            'full_name' => 'Siswa Selesai',
+        ]);
+        $rombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
+        \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $rombel->id,
+            'student_id' => $profile->id,
+        ]);
+
+        $participant = \App\Models\ExamParticipant::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'user_id' => $student->id,
+            'status' => 'COMPLETED',
+        ]);
+
+        $context->setTenantId(null);
+        $this->actingAs($this->teacher, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/assign-rombel", ['rombel_id' => $rombel->id])
+            ->assertOk();
+
+        $this->assertSame('COMPLETED', $participant->fresh()->status);
+        $this->assertSame(1, \App\Models\ExamParticipant::query()
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $student->id)
+            ->count());
+    }
+
+    public function test_add_individual_participant_api_does_not_reset_existing_status()
+    {
+        $context = app(\App\Contexts\TenantContext::class);
+        $context->setTenantId($this->tenant->id);
+        $studentRole = \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $student = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Sudah Selesai',
+            'email' => 'siswa-selesai-individu@m.com',
+            'password' => 'p',
+        ]);
+        $student->roles()->attach($studentRole);
+        $profile = \App\Models\StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $student->id,
+            'full_name' => 'Siswa Sudah Selesai',
+        ]);
+        $assignedRombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
+        \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $assignedRombel->id,
+            'student_id' => $profile->id,
+        ]);
+
+        $participant = \App\Models\ExamParticipant::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'user_id' => $student->id,
+            'status' => 'COMPLETED',
+        ]);
+
+        $context->setTenantId(null);
+        $this->actingAs($this->teacher, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/participants", ['user_id' => $student->id])
+            ->assertOk();
+
+        $this->assertSame('COMPLETED', $participant->fresh()->status);
+        $this->assertSame(1, \App\Models\ExamParticipant::query()
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $student->id)
+            ->count());
     }
 
     public function test_cross_tenant_exam_access_denied()

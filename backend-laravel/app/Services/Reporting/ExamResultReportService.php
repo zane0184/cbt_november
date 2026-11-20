@@ -34,6 +34,11 @@ class ExamResultReportService
                 $q->where('status', $status);
             })
             ->when($filters['grading_status'] ?? null, function (Builder $q, $gradingStatus) {
+                if ($gradingStatus === 'NOT_SCORED') {
+                    $q->whereDoesntHave('score');
+                    return;
+                }
+
                 $q->whereHas('score', function ($sq) use ($gradingStatus) {
                     $sq->where('grading_status', $gradingStatus);
                 });
@@ -70,6 +75,11 @@ class ExamResultReportService
                 $q->where('status', $status);
             })
             ->when($filters['grading_status'] ?? null, function (Builder $q, $gradingStatus) {
+                if ($gradingStatus === 'NOT_SCORED') {
+                    $q->whereDoesntHave('score');
+                    return;
+                }
+
                 $q->whereHas('score', function ($sq) use ($gradingStatus) {
                     $sq->where('grading_status', $gradingStatus);
                 });

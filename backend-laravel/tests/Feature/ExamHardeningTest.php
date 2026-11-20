@@ -9,6 +9,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\AcademicYear;
+use App\Models\Subject;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\QuestionOption;
@@ -46,7 +47,8 @@ class ExamHardeningTest extends TestCase
         );
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'Daily', 'assessment_type' => 'DAILY', 'created_by' => $this->admin->id]);
+        $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
+        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'academic_year_id' => $ay->id, 'title' => 'Daily', 'assessment_type' => 'DAILY', 'created_by' => $this->admin->id]);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -62,6 +64,7 @@ class ExamHardeningTest extends TestCase
 
         $question = Question::create([
             'tenant_id' => $this->tenant->id,
+            'subject_id' => $subject->id,
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->admin->id,
             'question_code' => 'HARD-01',

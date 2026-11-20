@@ -228,42 +228,62 @@ class ExamController extends Controller
             'rombel_id' => ['required', 'uuid', Rule::exists('rombels', 'id')->where('tenant_id', $exam->tenant_id)]
         ]);
 
-        $rombel = Rombel::query()->findOrFail($validated['rombel_id']);
+        DB::transaction(function () use ($request, $exam, $validated) {
+            // Serialize roster changes with exam lifecycle transitions.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $this->authorize('manageParticipants', $lockedExam);
 
-        if ($request->user()->hasRole('GURU')) {
-            $assessment = $exam->assessment;
-            if (!$assessment || !TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $assessment)) {
-                return response()->json(['success' => false, 'message' => 'Rombel tidak tercakup dalam satu penugasan aktif Guru yang cocok dengan mapel, tahun ajaran, dan semester asesmen ini.'], 403);
+            $rombel = Rombel::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->whereKey($validated['rombel_id'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $assessment = $lockedExam->assessment;
+            if (!$assessment || (string) $rombel->academic_year_id !== (string) $assessment->academic_year_id) {
+                abort(422, 'Rombel harus berasal dari tahun ajaran yang sama dengan asesmen ujian.');
             }
-        }
 
-        // Migration 2026_11_09_230003 adds tenant-aware pivot FKs; retain a runtime guard
-        // so legacy/corrupt roster data is rejected rather than partially assigned.
-        $validStudents = $rombel->students()
-            ->with('user')
-            ->where('student_profiles.tenant_id', $exam->tenant_id)
-            ->whereHas('user', fn ($query) => $query->where('tenant_id', $exam->tenant_id))
-            ->get();
-        $allStudentCount = $rombel->students()->count();
-        if ($validStudents->count() !== $allStudentCount || $validStudents->contains(
-            fn ($student) => !$student->user || !$student->user->hasRole('SISWA')
-        )) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Data keanggotaan rombel mengandung relasi lintas tenant atau profil yang tidak terhubung ke akun Siswa aktif. Perlu koreksi data akademik oleh Admin.',
-            ], 409);
-        }
+            if ($request->user()->hasRole('GURU')
+                && !TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $assessment)) {
+                abort(403, 'Rombel tidak tercakup dalam penugasan aktif Guru untuk mapel, tahun ajaran, dan semester asesmen ini.');
+            }
 
-        DB::transaction(function () use ($exam, $validStudents) {
+            // Reject corrupt/cross-tenant roster membership before creating any participant.
+            $validStudents = $rombel->students()
+                ->with('user')
+                ->where('student_profiles.tenant_id', $lockedExam->tenant_id)
+                ->whereHas('user', fn ($query) => $query->where('tenant_id', $lockedExam->tenant_id))
+                ->get();
+            $allStudentCount = $rombel->students()->count();
+            if ($validStudents->count() !== $allStudentCount || $validStudents->contains(
+                fn ($student) => !$student->user || !$student->user->hasRole('SISWA')
+            )) {
+                abort(409, 'Data keanggotaan rombel mengandung relasi lintas tenant atau profil yang tidak terhubung ke akun Siswa aktif.');
+            }
+
             foreach ($validStudents as $student) {
-                ExamParticipant::updateOrCreate(
-                    ['exam_id' => $exam->id, 'user_id' => $student->user_id],
-                    ['tenant_id' => $exam->tenant_id, 'status' => 'ASSIGNED']
+                // Add-only and idempotent: never reset STARTED/COMPLETED participant state.
+                ExamParticipant::firstOrCreate(
+                    [
+                        'tenant_id' => $lockedExam->tenant_id,
+                        'exam_id' => $lockedExam->id,
+                        'user_id' => $student->user_id,
+                    ],
+                    ['status' => 'ASSIGNED']
                 );
             }
-        });
 
-        $this->auditService->log('ASSIGN_ROMBEL', 'Exam', $exam->id, null, ['rombel_id' => $rombel->id]);
+            $this->auditService->log('ASSIGN_ROMBEL', 'Exam', $lockedExam->id, null, [
+                'rombel_id' => $rombel->id,
+                'participant_count' => $validStudents->count(),
+                'semantics' => 'ADD_ONLY',
+            ]);
+        });
 
         return response()->json(['success' => true, 'message' => 'Rombel students assigned.']);
     }

@@ -15,6 +15,9 @@ use App\Models\ExamAttemptAnswer;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamQuestionScore;
+use App\Livewire\Teacher\ResultList;
+use App\Services\Reporting\ExamResultReportService;
+use Livewire\Livewire;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
@@ -81,6 +84,32 @@ class ResultWorkflowTest extends TestCase
         $this->bootstrapCbtRolePermissions();
     }
 
+
+    public function test_result_list_not_scored_filter_includes_attempt_without_score()
+    {
+        $this->actingAs($this->teacher);
+
+        Livewire::test(ResultList::class, ['exam' => $this->exam])
+            ->set('gradingStatus', 'NOT_SCORED')
+            ->assertSee('Siswa')
+            ->assertSee('Belum Mulai');
+    }
+
+    public function test_not_scored_filter_is_consistent_for_result_list_and_exports(): void
+    {
+        $service = app(ExamResultReportService::class);
+
+        $page = $service->getResults($this->exam, ['grading_status' => 'NOT_SCORED']);
+        $exportRows = $service->getAllResultsForExport($this->exam, ['grading_status' => 'NOT_SCORED']);
+
+        $this->assertTrue($page->getCollection()->contains('id', $this->attempt->id));
+        $this->assertTrue($exportRows->contains('id', $this->attempt->id));
+
+        $this->assertFalse(
+            $service->getAllResultsForExport($this->exam, ['grading_status' => 'FINALIZED'])
+                ->contains('id', $this->attempt->id)
+        );
+    }
 
     public function test_score_relation_uses_current_pointer_not_highest_scoring_version(): void
     {

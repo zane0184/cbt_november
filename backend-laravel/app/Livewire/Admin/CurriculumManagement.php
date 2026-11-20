@@ -82,16 +82,27 @@ class CurriculumManagement extends Component
         $this->resetPage();
     }
 
+    public function updatingSubjectFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function render()
     {
         $outcomes = LearningOutcome::with(['subject', 'phase', 'currentVersion', 'objectives'])
             ->when($this->subjectFilter, fn($q) => $q->where('subject_id', $this->subjectFilter))
             ->when($this->search, function ($q) {
-                $q->where('code', 'like', '%' . $this->search . '%')
-                  ->orWhereHas('objectives', function ($sq) {
-                      $sq->where('title', 'like', '%' . $this->search . '%')
-                        ->orWhere('code', 'like', '%' . $this->search . '%');
-                  });
+                // Keep all search alternatives grouped so they cannot bypass
+                // the selected subject filter or other outer query constraints.
+                $q->where(function ($searchQuery) {
+                    $searchQuery->where('code', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('objectives', function ($objectiveQuery) {
+                            $objectiveQuery->where(function ($termQuery) {
+                                $termQuery->where('title', 'like', '%' . $this->search . '%')
+                                    ->orWhere('code', 'like', '%' . $this->search . '%');
+                            });
+                        });
+                });
             })
             ->latest()
             ->paginate(10);

@@ -3,11 +3,13 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-navy-900">Bank Soal & Modul Asesmen</h1>
-            <p class="text-xs text-textSecondary mt-1">Kelola dan publikasikan butir soal pilihan ganda, benar/salah, dan uraian/esai</p>
+            <p class="text-xs text-textSecondary mt-1">Kelola butir soal pilihan ganda, pilihan ganda kompleks, benar/salah, menjodohkan, jawaban singkat, dan uraian/esai</p>
         </div>
-        <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
-            <span>+</span> Buat Soal Baru
-        </button>
+        @can('create', \App\Models\Question::class)
+            <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                <span>+</span> Buat Soal Baru
+            </button>
+        @endcan
     </div>
 
     @if (session()->has('message'))
@@ -62,17 +64,21 @@
                             {{ $q->status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
                             {{ $q->status }}
                         </span>
-                        @if($q->status === 'DRAFT')
-                            <button wire:click="publishQuestion('{{ $q->id }}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm">
-                                Publikasikan
+                        @can('update', $q)
+                            @if($q->status === 'DRAFT')
+                                @can('publish', $q)
+                                    <button wire:click="publishQuestion('{{ $q->id }}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm">
+                                        Publikasikan
+                                    </button>
+                                @endcan
+                            @endif
+                            <button wire:click="openEditModal('{{ $q->id }}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm flex items-center gap-1">
+                                ✎ Edit
                             </button>
-                        @endif
-                        <button wire:click="openEditModal('{{ $q->id }}')" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm flex items-center gap-1">
-                            ✎ Edit
-                        </button>
-                        <button wire:click="confirmDeleteQuestion('{{ $q->id }}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm flex items-center gap-1">
-                            ✕ Hapus
-                        </button>
+                            <button wire:click="confirmDeleteQuestion('{{ $q->id }}')" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-1 px-2.5 rounded-lg shadow-sm flex items-center gap-1">
+                                ✕ Arsipkan
+                            </button>
+                        @endcan
                     </div>
                 </div>
 

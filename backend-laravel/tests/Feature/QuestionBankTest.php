@@ -20,6 +20,7 @@ use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\MediaAsset;
 use App\Livewire\Admin\QuestionBank;
+use App\Services\ExcelQuestionImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -143,6 +144,48 @@ class QuestionBankTest extends TestCase
             'stem' => 'New Stem',
             'is_current' => true
         ]);
+        $this->assertSame('DRAFT', $question->fresh()->status);
+    }
+
+    public function test_web_editing_published_question_creates_new_immutable_version()
+    {
+        $this->actingAs($this->userA);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'question_code' => 'WEB-VERSION-01',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->userA->id,
+        ]);
+        $published = $question->versions()->create([
+            'tenant_id' => $this->tenantA->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'SHORT_ANSWER',
+            'stem' => 'Stem lama',
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'created_by' => $this->userA->id,
+        ]);
+
+        Livewire::test(QuestionBank::class)
+            ->call('openEditModal', $question->id)
+            ->set('stem', 'Stem versi baru')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $published->refresh();
+        $question->refresh();
+        $current = $question->currentVersion;
+
+        $this->assertSame('Stem lama', $published->stem);
+        $this->assertFalse((bool) $published->is_current);
+        $this->assertSame('DRAFT', $question->status);
+        $this->assertSame('DRAFT', $current->status);
+        $this->assertSame('Stem versi baru', $current->stem);
+        $this->assertSame(1, (int) $current->minor_version);
     }
 
     public function test_tenant_isolation_on_media()
@@ -171,6 +214,47 @@ class QuestionBankTest extends TestCase
         $response->assertStatus(404);
     }
 
+    public function test_import_rejects_multiple_choice_with_multiple_correct_options()
+    {
+        $this->actingAs($this->userA);
+
+        $result = app(ExcelQuestionImporter::class)->import('unused', ['rows' => [[
+            'stem' => 'Pilih satu jawaban',
+            'type' => 'MULTIPLE_CHOICE',
+            'subject_id' => $this->subjectA->id,
+            'options' => [
+                ['option_key' => 'A', 'content' => 'A', 'is_correct' => true],
+                ['option_key' => 'B', 'content' => 'B', 'is_correct' => true],
+            ],
+        ]]]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(0, $result['imported']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertDatabaseCount('questions', 0);
+    }
+
+    public function test_api_rejects_multiple_choice_without_exactly_one_correct_option()
+    {
+        $this->actingAs($this->userA);
+
+        $response = $this->postJson('/api/v1/questions', [
+            'question_type' => 'MULTIPLE_CHOICE',
+            'stem' => 'Pilih jawaban yang benar',
+            'owner_type' => 'PERSONAL',
+            'difficulty' => 'MEDIUM',
+            'default_points' => 1,
+            'subject_id' => $this->subjectA->id,
+            'options' => [
+                ['option_key' => 'A', 'content' => 'Pilihan A', 'is_correct' => false],
+                ['option_key' => 'B', 'content' => 'Pilihan B', 'is_correct' => false],
+            ],
+        ]);
+
+        $response->assertStatus(422)->assertJsonValidationErrors(['options']);
+        $this->assertDatabaseCount('questions', 0);
+    }
+
     public function test_cannot_create_question_with_other_tenant_curriculum()
     {
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantB->id);
@@ -192,6 +276,19 @@ class QuestionBankTest extends TestCase
     }
 
     /** Web Admin Livewire Tests **/
+
+    public function test_question_bank_filters_reset_pagination()
+    {
+        $this->actingAs($this->userA);
+
+        Livewire::test(QuestionBank::class)
+            ->call('gotoPage', 2)
+            ->set('subjectFilter', $this->subjectA->id)
+            ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1)
+            ->call('gotoPage', 2)
+            ->set('statusFilter', 'PUBLISHED')
+            ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1);
+    }
 
     public function test_web_admin_create_and_update_multiple_response_question()
     {
@@ -234,6 +331,46 @@ class QuestionBankTest extends TestCase
         $version->refresh();
         $newCorrectKeys = $version->options->where('is_correct', true)->pluck('option_key')->toArray();
         $this->assertEquals(['A', 'B'], $newCorrectKeys);
+    }
+
+    public function test_web_admin_multiple_choice_rejects_correct_key_for_empty_option()
+    {
+        $this->actingAs($this->userA);
+
+        Livewire::test(QuestionBank::class)
+            ->set('questionCode', 'MC-EMPTY-KEY')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('selectedSubjectId', $this->subjectA->id)
+            ->set('stem', 'Kunci tidak boleh menunjuk opsi kosong')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('optionC', '')
+            ->set('correctOption', 'C')
+            ->call('saveQuestion')
+            ->assertHasErrors(['correctOption']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'MC-EMPTY-KEY']);
+    }
+
+    public function test_web_admin_multiple_response_rejects_key_for_empty_option()
+    {
+        $this->actingAs($this->userA);
+
+        Livewire::test(QuestionBank::class)
+            ->set('questionCode', 'MR-EMPTY-KEY')
+            ->set('questionType', 'MULTIPLE_RESPONSE')
+            ->set('selectedSubjectId', $this->subjectA->id)
+            ->set('stem', 'Kunci kompleks tidak boleh menunjuk opsi kosong')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('optionC', '')
+            ->set('correctOptions', ['C'])
+            ->call('saveQuestion')
+            ->assertHasErrors(['correctOptions']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'MR-EMPTY-KEY']);
     }
 
     public function test_web_admin_multiple_response_validation_fails_when_no_correct_option_selected()
