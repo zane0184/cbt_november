@@ -14,7 +14,7 @@ class OperatorDashboard extends Component
     public function mount()
     {
         $user = auth()->user();
-        if (!$user || !$user->tenant_id || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR', 'KAMAD'])->exists()) {
+        if (!$user || !$user->tenant_id || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR'])->exists()) {
             abort(403, 'Akses ditolak. Dashboard ini hanya tersedia untuk pengguna berwenang pada tenant madrasah aktif.');
         }
     }
