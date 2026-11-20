@@ -115,6 +115,8 @@ return new class extends Migration
                 ->where(function ($query) {
                     $query->whereColumn('rd.user_id', '<>', 'ep.user_id')
                         ->orWhereColumn('rd.tenant_id', '<>', 'ep.tenant_id')
+                        ->orWhereColumn('ea.tenant_id', '<>', 'ep.tenant_id')
+                        ->orWhereColumn('ea.exam_id', '<>', 'ep.exam_id')
                         ->orWhereNull('ep.tenant_id');
                 })->count(),
         ];
