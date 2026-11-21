@@ -201,7 +201,7 @@ class ExamRoomSessionManagementTest extends TestCase
         $this->assertDatabaseHas('exam_sessions', [
             'id' => $session->id,
             'exam_id' => $this->exam->id,
-            'schedule_revision' => 1,
+            'schedule_revision' => 3,
         ]);
         $this->assertDatabaseHas('exam_session_room_rombels', [
             'id' => $mapping->id,
@@ -302,7 +302,7 @@ class ExamRoomSessionManagementTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'exam_session_room_id' => $sessionRoom->id,
-            'schedule_revision' => 1,
+            'schedule_revision' => 2,
             'proctor_user_id' => $this->proctor->id,
             'assigned_by' => $this->admin->id,
             'starts_at' => now()->addMinutes(5),
@@ -319,11 +319,11 @@ class ExamRoomSessionManagementTest extends TestCase
             'Perubahan jadwal berdasarkan edaran madrasah'
         );
 
-        $this->assertSame(2, $updated->schedule_revision);
+        $this->assertSame(3, $updated->schedule_revision);
         $this->assertDatabaseHas('exam_proctor_assignments', [
             'id' => $assignment->id,
             'status' => 'NEEDS_REVIEW',
-            'schedule_revision' => 1,
+            'schedule_revision' => 2,
         ]);
         $this->assertDatabaseHas('audit_logs', [
             'tenant_id' => $this->tenant->id,
