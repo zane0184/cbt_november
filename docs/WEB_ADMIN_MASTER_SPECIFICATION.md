@@ -376,3 +376,32 @@ Addendum ini menjadi acuan aktif terbaru apabila ada kalimat terdahulu yang berb
 10. Semua temuan source yang masih memperlihatkan perilaku lama tetap OPEN sebagai gap implementasi. Addendum ini tidak menyatakan source sudah diperbaiki atau W0 selesai.
 
 Dokumen rinci, register, matriks audit, matriks tes, provenance, laporan, checkpoint, dan prompt penerus menjadi bagian dari paket kanonis. Lihat daftar navigasi pada bagian 12 dan checkpoint rekonsiliasi terbaru.
+
+
+## 14. Navigasi dokumentasi kanonis — rekonsiliasi 21 November 2026
+
+Branch konsolidasi dokumentasi: `docs/canonical-reconciliation-admin-guru-20261121`.
+
+| Urutan | Dokumen | Fungsi |
+|---|---|---|
+| 1 | [Spesifikasi Web Admin — Entry Point](WEB_ADMIN_MASTER_SPECIFICATION.md) | Pintu masuk, keputusan aktif, status dan navigasi |
+| 2 | [Spesifikasi Induk Web Admin Rinci](SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md) | Seluruh kebutuhan rinci; Addendum 33 menjadi precedence terbaru |
+| 3 | [Register Keputusan Web Admin](REGISTER_KEPUTUSAN_WEB_ADMIN.md) | DEC-WA-001 dst.; keputusan Admin/Guru terbaru DEC-WA-019–025 |
+| 4 | [Matriks Audit Web Admin](MATRIKS_AUDIT_WEB_ADMIN_TEMPLATE.md) | 23 modul ADM dan cross-cutting role/tenant/proktor controls |
+| 5 | [Matriks Pengujian Web Admin](MATRIKS_PENGUJIAN_WEB_ADMIN.md) | T-001–T-132 dipertahankan; T-133–T-168 tambahan |
+| 6 | [Peta Dokumen dan Provenance CBT](PETA_DOKUMEN_PROVENANCE_CBT.md) | Branch, commit, status dan sumber historis |
+| 7 | [Prompt Induk Agent Web Admin](PROMPT_INDUK_AGENT_BARU_WEB_ADMIN.md) | Mandat agent dan addendum keputusan terbaru |
+| 8 | [Paket Handover Web Admin](00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md) | Paket handover terdahulu; dibaca bersama checkpoint baru |
+| 9 | [Handover Web Admin](HANDOVER_WEB_ADMIN_AGENT_BARU.md) | Ringkasan transfer terdahulu; verifikasi ulang status |
+| 10 | [Rekonsiliasi Dokumentasi W0](REKONSILIASI_DOKUMENTASI_W0_2026-11-21.md) | Relasi branch, PR, SHA, konflik historis |
+| 11 | [Laporan Rekonsiliasi Admin/Guru](LAPORAN_REKONSILIASI_ADMIN_GURU_2026-11-21.md) | Audit, desain, perubahan dokumentasi dan batas bukti |
+| 12 | [Checkpoint Rekonsiliasi](CHECKPOINT_REKONSILIASI_2026-11-21.md) | Posisi terbaru dan gerbang berikutnya |
+| 13 | [Prompt Agent Penerus](PROMPT_AGENT_PENERUS_CBT_MADRASAH_2026-11-21.md) | Instruksi audit source sebelum implementasi |
+| 14 | [Audit Rekonsiliasi Desain Web Admin](AUDIT_REKONSILIASI_DESAIN_WEB_ADMIN_2026-11-21.md) | Bukti audit dan desain historis yang tetap dipertahankan |
+| 15 | [Checkpoint W0](CHECKPOINT_W0_WEB_ADMIN_2026-11-21.md) dan [Laporan Read-only W0](LAPORAN_AUDIT_READ_ONLY_W0_WEB_ADMIN_2026-11-21.md) | Bukti W0 historis; catatan ZIP-blocked telah superseded |
+| 16 | [Checkpoint Web Admin terdahulu](CHECKPOINT_WEB_ADMIN_2026-11-21.md) | Histori posisi proyek; keputusan yang konflik dibaca sesuai Addendum 33 |
+| 17 | [Checkpoint Kurmer-KBC W6](https://github.com/zane0184/cbt_november/blob/4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4/docs/CHECKPOINT_KURIKULUM_KURMER_KBC_W6_2026-11-21.md) | Dokumen W6 pada branch terpisah, commit-pinned |
+| 18 | [Supplemental Spec Kurmer-KBC W6](https://github.com/zane0184/cbt_november/blob/4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4/docs/SUPPLEMENTAL_SPEC_MASTER_KURIKULUM_KURMER_KBC_W6.md) | Spesifikasi kurikulum tambahan, branch terpisah |
+| 19 | [Register Keputusan Kurmer-KBC](https://github.com/zane0184/cbt_november/blob/4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4/docs/REGISTER_KEPUTUSAN_WEB_ADMIN_KURIKULUM.md) dan [Matriks W6](https://github.com/zane0184/cbt_november/blob/4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4/docs/MATRIKS_AUDIT_DAN_PENGUJIAN_MASTER_KURIKULUM_W6.md) | Register dan acceptance kurikulum |
+
+Dokumen W6 tetap berada pada branch terpisah dan ditautkan ke commit asal; belum ada merge. Dokumen lama tidak dihapus. Untuk konflik, keputusan pengguna terbaru dan Addendum 33 mengikat. Status implementasi source tetap OPEN; dokumen ini bukan bukti implementasi atau kesiapan produksi.
