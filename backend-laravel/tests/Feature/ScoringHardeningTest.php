@@ -294,10 +294,10 @@ class ScoringHardeningTest extends TestCase
     }
 
 
-    /** Reopening a finalized score is restricted to authorized administrators. */
-    public function test_reopen_score_is_denied_to_operator_teacher_proctor_and_student()
+    /** Reopening a finalized score is restricted to the assigned Guru, never Admin. */
+    public function test_reopen_score_is_denied_to_admin_operator_unassigned_teacher_proctor_and_student()
     {
-        $roles = ['SUPER_ADMIN', 'OPERATOR', 'GURU', 'PROKTOR', 'SISWA'];
+        $roles = ['SUPER_ADMIN', 'ADMIN_MADRASAH', 'OPERATOR', 'GURU', 'PROKTOR', 'SISWA'];
 
         foreach ($roles as $roleName) {
             $user = User::create([
@@ -310,29 +310,23 @@ class ScoringHardeningTest extends TestCase
             $user->roles()->syncWithoutDetaching($role->id);
 
             $this->assertFalse(
-                app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
-                "Role {$roleName} must not reopen a finalized score."
+                app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
+                "Role {$roleName} without the assigned teacher scope must not reopen a finalized score."
             );
         }
+
+        $this->assertFalse(
+            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($this->teacher, $this->attempt),
+            'This fixture teacher is checked separately by the positive assignment test.'
+        );
     }
 
-    public function test_reopen_score_is_allowed_only_for_admin_roles_in_same_tenant()
+    public function test_reopen_score_is_allowed_only_for_assigned_guru_in_same_tenant()
     {
-        foreach (['ADMIN_MADRASAH'] as $roleName) {
-            $user = User::create([
-                'tenant_id' => $this->tenant->id,
-                'name' => $roleName,
-                'email' => 'reopen-' . strtolower($roleName) . '@m.com',
-                'password' => 'p',
-            ]);
-            $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
-            $user->roles()->syncWithoutDetaching($role->id);
-
-            $this->assertTrue(
-                app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
-                "Role {$roleName} should be allowed to reopen a finalized score in its tenant."
-            );
-        }
+        $this->assertTrue(
+            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($this->teacher, $this->attempt),
+            'The assigned Guru with grading permission may reopen a finalized score in the same tenant.'
+        );
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Lain', 'code' => 'M2']);
         $tenantContext = app(TenantContext::class);
@@ -352,7 +346,7 @@ class ScoringHardeningTest extends TestCase
         $foreignAdmin->roles()->syncWithoutDetaching($adminRole->id);
 
         $this->assertFalse(
-            app(\App\Policies\ExamAttemptPolicy::class)->reopen($foreignAdmin, $this->attempt),
+            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($foreignAdmin, $this->attempt),
             'An administrator from another tenant must not reopen this score.'
         );
     }
