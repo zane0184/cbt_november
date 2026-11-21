@@ -1,25 +1,24 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Contexts\\TenantContext;
-use App\\Livewire\\Admin\\ProctorAssignmentManagement;
-use App\\Models\\AcademicYear;
-use App\\Models\\Assessment;
-use App\\Models\\Exam;
-use App\\Models\\ExamProctorAssignment;
-use App\\Models\\Permission;
-use App\\Models\\Role;
-use App\\Models\\TeacherProfile;
-use App\\Models\\Tenant;
-use App\\Models\\User;
-use Illuminate\\Database\\QueryException;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Str;
-use Illuminate\\Validation\\ValidationException;
-use Livewire\\Livewire;
-use Tests\\TestCase;
+use App\Contexts\TenantContext;
+use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Models\AcademicYear;
+use App\Models\Assessment;
+use App\Models\Exam;
+use App\Models\ExamProctorAssignment;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\TeacherProfile;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Database\QueryException;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Livewire\Livewire;
+use Tests\TestCase;
 
 class ProctorAssignmentSecurityTest extends TestCase
 {
@@ -82,8 +81,8 @@ class ProctorAssignmentSecurityTest extends TestCase
         Livewire::test(ProctorAssignmentManagement::class)
             ->set('selectedExamId', $this->exam->id)
             ->set('selectedProctorId', $this->guru->id)
-            ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
-            ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
+            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
             ->set('reason', 'Pengawasan ujian kelas enam')
             ->call('assign')
             ->assertHasNoErrors();
@@ -124,8 +123,8 @@ class ProctorAssignmentSecurityTest extends TestCase
         Livewire::test(ProctorAssignmentManagement::class)
             ->set('selectedExamId', $this->exam->id)
             ->set('selectedProctorId', $student->id)
-            ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
-            ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
+            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
             ->set('reason', 'Pengawasan ujian kelas enam')
             ->call('assign')
             ->assertNotFound();
@@ -149,8 +148,8 @@ class ProctorAssignmentSecurityTest extends TestCase
         Livewire::test(ProctorAssignmentManagement::class)
             ->set('selectedExamId', $this->exam->id)
             ->set('selectedProctorId', $inactiveGuru->id)
-            ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
-            ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
+            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
             ->set('reason', 'Pengawasan ujian kelas enam')
             ->call('assign')
             ->assertNotFound();
