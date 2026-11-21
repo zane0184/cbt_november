@@ -180,3 +180,16 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Audit read-only masih OPEN; patch plan final belum tersedia.
 - Lanjutkan audit semua route/controller/Livewire/policy/gate/middleware/service/model relation/query, export/download/media, cache invalidation, audit transaction, then prepare per-file patch plan with backup, DB impact, compatibility, tests, rollback, acceptance.
 - No source, DB, migration, config, role, permission, Web Guru, PR, deployment changes. Wait for explicit user approval before implementation.
+
+
+## Checkpoint audit phase 8 — route-by-route and Livewire hydration
+
+- P0-12: route inventory confirms Admin has access to result, monitoring, score, report, export, analytics, close, finalize/reopen paths through current policies.
+- P1-16: Livewire data-bearing render methods rely on mount-only authorization and do not recheck permissions on hydrated requests: AcademicManagement, CurriculumManagement, UserManagement, ProctorAssignmentManagement, ExamManagement, QuestionBank, ResultList/Detail, AnalyticsDashboard, ItemAnalysis, OperatorDashboard, ProktorDashboard. ExamManagement/QuestionBank render query may widen to all tenant data if role no longer matches a filter branch.
+- P1-17: AuditService coverage inconsistent across AcademicManagement, CurriculumManagement, UserManagement, TagController; no uniform mutation+audit transaction.
+- API route matrix and source method references are recorded in report §15.4.
+- Report commit `1be15f9bb0b12f39f8da1d8bba2ec4cb0f53bf1f`, blob `459ee8a2ee48f35a057283aa180c845a4ac7b2c5`.
+- Report backup `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase8-routes-livewire-recheck`, commit `a7eb842e3d3dc9d1d53af94118c76232871f9907`, blob `0c92b0551fbcb60236942d4c89fcbcdbf2889c56` (identical before update).
+- Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase8-routes-livewire-recheck`, commit `8b4e4dd6e8c18217a7bdb99fc8cae7d3c4f993fd`, blob `af93f97be75e0fbc6e3737cbfa3c2839fc6d286f` (identical before update).
+- Status: audit OPEN; patch plan final pending. No source/DB/migration/config/role/permission/Web Guru/PR/deployment change.
+- Next: finish all API response/resource/export/download/cache query review, test trace validation and per-file patch/rollback planning. No implementation before explicit approval.
