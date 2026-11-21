@@ -14,3 +14,7 @@
 - Backup ini hanya untuk dokumentasi.
 - Tidak ada source aplikasi/database/migration/seeder/role/permission/config yang diubah.
 - Source branch work/web-admin-w0-20261121 tidak diubah.
+
+| docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md | 055d571ec2aace7fea97325a787c35b01a52187f | dbbb61c471a020824afa52e49609ebadeeea43149a0690547bf715b1478466fc | 36010 | docs/backup/wa-01-preparation-2026-11-21/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md.before-test-provenance-refinement |
+
+Backup dibuat sebelum refinement provenance test; blob SHA sama dengan dokumen paket sebelum update.
