@@ -30,23 +30,21 @@ Ini adalah inventaris dan audit awal source Web Admin aktif, bukan pernyataan se
    - Tidak ditemukan route, controller, atau Livewire dashboard Super Admin di source aktif.
    - `InventoryLegacySuperAdminCommand` hanya melakukan inventaris read-only; belum menjadi portal pengelolaan tenant, lisensi, dan platform.
 
-2. **Kamad belum terhubung ke portal Admin**
-   - Login mengizinkan role `KAMAD`, tetapi root route hanya mengarahkan Admin Madrasah, Guru, dan Siswa.
-   - `KamadDashboard` ada sebagai komponen, tetapi tidak ditemukan route aktif yang menggunakannya.
-   - Role matrix memberi Kamad permission `curriculum.view`, `exam.monitor`, dan `report.view`, tetapi `CurriculumManagement` saat ini membatasi akses pada Admin Madrasah/role legacy ADMIN.
-   - Ini harus diselesaikan sebagai akses terbatas/read-only di portal Admin, bukan membuat portal keempat.
-
-3. **Admin belum mendapat monitoring read-only**
+2. **Batas kewenangan Admin Madrasah terhadap CBT**
    - `RolePermissionBootstrapper` memberi Admin `exam.proctor.assign`, tetapi secara eksplisit mencabut `exam.monitor` dan `report.view`.
    - `ExamPolicy::monitor` menolak Admin Madrasah.
-   - Route monitoring menggunakan policy tersebut, sehingga Admin dapat mengelola penugasan operasional tetapi tidak dapat memantau ujian.
-   - Ini tidak sesuai kewenangan Admin yang sudah ditetapkan: monitoring harus tersedia secara read-only tanpa membuka pengelolaan bank soal, ujian, jawaban, atau penilaian.
+   - Route monitoring menggunakan policy tersebut. Batas ini harus dipertahankan: Admin mengelola administrasi dan penugasan Proktor sementara saja, bukan monitoring CBT, bank soal, ujian, jawaban, peserta, atau penilaian.
+
+3. **Batas akses Guru dan Siswa harus diuji menyeluruh**
+   - Guru mengelola bank soal dan ujian berdasarkan role, permission, penugasan mata pelajaran/rombel, serta tenant aktif.
+   - Siswa hanya mengakses ujian dan hasil yang ditujukan kepadanya; tidak boleh mengakses data peserta lain.
+   - Seluruh batas harus diuji melalui URL langsung, Livewire action, API, serta relasi lintas tenant.
 
 4. **Penugasan Proktor belum konsisten sebagai penugasan sementara**
    - Source aktif tidak memiliki portal/dashboard Proktor permanen; ini sesuai keputusan proyek.
    - Namun `ExamProctorAssignmentService` dan `ProctorAssignmentManagement` masih mensyaratkan user dengan role permanen `PROKTOR`.
    - `LegacyRoleMigrationService` memetakan role legacy `PROKTOR` menjadi `GURU`; setelah migrasi, filter role permanen tersebut tidak lagi cocok.
-   - `ExamPolicy::monitor` tidak memeriksa record `ExamProctorAssignment`, sehingga record assignment belum menjadi sumber otorisasi monitoring.
+   - `ExamPolicy::monitor` belum memeriksa record `ExamProctorAssignment` sebagai capability monitoring yang terikat tenant, exam, dan waktu.
    - `ProctorAssignmentSecurityTest` masih mengimpor `App\\Livewire\\Proktor\\ProktorDashboard`, sedangkan komponen tersebut tidak ada di source aktif. Test ini juga belum dimasukkan ke workflow CI terpilih.
    - Tahap berikut harus mengikat capability proktor pada record assignment sementara, jadwal, tenant, dan exam; bukan portal/role permanen.
 
@@ -69,7 +67,6 @@ Ini adalah inventaris dan audit awal source Web Admin aktif, bukan pernyataan se
 8. **CurriculumManagement belum mewakili seluruh rancangan kurikulum**
    - UI saat ini berpusat pada LearningOutcome/CP dan LearningObjective/TP serta pembuatan TP.
    - Model fondasi multi-curriculum dan versioning ada, tetapi belum ditemukan alur UI Admin lengkap untuk registrasi/versi kurikulum, ATP/Learning Path, dan pemetaan Kurikulum Merdeka, KBC/Panca Cinta, serta Pembelajaran Mendalam.
-   - Akses read-only Kamad juga belum terhubung.
 
 9. **Administrasi platform dan dukungan**
    - AdminDashboard dan TenantProfileManagement sudah tersedia.
@@ -79,17 +76,17 @@ Ini adalah inventaris dan audit awal source Web Admin aktif, bukan pernyataan se
 
 ### Cakupan pengujian yang belum lengkap
 
-Workflow CI terpilih saat ini mencakup dashboard, academic periods, role migration, tenant profile, user scope, Import, autentikasi, isolasi tenant, dan regresi Guru/Siswa. Belum menjadi bukti kelulusan untuk CurriculumManagement, StudentRombelManagement, ProctorAssignmentManagement, Kamad, Super Admin, Admin monitoring, dan modul laporan/sinkronisasi.
 
 ## DESAIN DAN URUTAN PENYELESAIAN
 
-Urutan kerja berikut menjaga tiga portal yang ditetapkan: Super Admin, Admin Madrasah, dan Guru. Kamad menjadi role terbatas di portal Admin; Proktor hanya capability operasional sementara.
+Urutan kerja mengikuti portal aktif yang telah disepakati: Super Admin, Admin Madrasah, dan Guru; Siswa menggunakan antarmuka peserta. Proktor hanya penugasan operasional sementara kepada Guru yang memenuhi syarat.
 
-1. **Stage 4A — Portal/RBAC dan monitoring**
-   - Super Admin: tenant/platform administration dengan isolasi lintas tenant eksplisit.
-   - Kamad: routing ke ruang Admin read-only sesuai permission.
-   - Admin Madrasah: monitoring ujian read-only; tidak mendapat hak mengelola soal, ujian Guru, jawaban, atau penilaian.
-   - Proktor: capability sementara berbasis assignment, bukan role/portal permanen.
+1. **Stage 4A — Pemisahan portal dan RBAC**
+   - Pisahkan portal Admin Madrasah, Guru, dan antarmuka Siswa sesuai kewenangan.
+   - Admin Madrasah tidak boleh mengakses fitur maupun data CBT.
+   - Guru dibatasi role, permission, penugasan, tenant, dan kepemilikan data.
+   - Penugasan Proktor sementara diberikan kepada Guru aktif yang memenuhi syarat; tanpa role/portal Proktor permanen.
+   - Uji akses langsung URL/API, Livewire action, dan percobaan lintas tenant/kewenangan.
 
 2. **Stage 4B — Proctor assignment lifecycle**
    - Status operasional PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED.
@@ -105,7 +102,7 @@ Urutan kerja berikut menjaga tiga portal yang ditetapkan: Super Admin, Admin Mad
    - Perpindahan/kenaikan/tinggal kelas/kelulusan dengan histori akademik tetap terjaga.
 
 5. **Stage 4E — Curriculum Management**
-   - Versi kurikulum, CP/TP/ATP, Kurikulum Merdeka, KBC/Panca Cinta, Pembelajaran Mendalam dan akses role yang sesuai.
+   - Versi kurikulum, CP/TP/ATP, Kurikulum Merdeka, KBC/Panca Cinta, Pembelajaran Mendalam dan akses role Guru/Admin sesuai kewenangan.
 
 6. **Stage 4F — Operasional Admin**
    - Laporan administratif, monitoring sync, dukungan teknis, backup/restore, konfigurasi dan pusat pembaruan.
