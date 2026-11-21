@@ -139,7 +139,7 @@ class ExamRoomSessionManagementTest extends TestCase
             'semester_id' => $semester->id,
             'subject_id' => $subject->id,
             'title' => 'Asesmen Room Session',
-            'assessment_type' => 'SUMMATIVE',
+            'assessment_type' => 'DAILY',
             'created_by' => $this->proctor->id,
         ]);
         $this->exam = Exam::create([
