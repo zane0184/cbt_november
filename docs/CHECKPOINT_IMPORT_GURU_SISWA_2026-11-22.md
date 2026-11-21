@@ -95,3 +95,26 @@ GitHub Actions run 44944158355:
 - Fokus Stage 4A: pemisahan portal Admin Madrasah, Guru, dan Siswa; larangan akses Admin terhadap fitur/data CBT; kewenangan Guru berbasis role/permission/penugasan; penugasan Proktor sementara kepada Guru yang memenuhi syarat; dan pengujian URL/API langsung serta isolasi lintas tenant/kewenangan.
 - Proktor bukan portal atau role permanen.
 - Perubahan source yang sempat memasukkan Kamad telah dipulihkan dari backup dan keenam file aktif diverifikasi identik dengan salinan backup masing-masing.
+
+
+## CHECKPOINT IMPLEMENTASI STAGE 4A — KOREKSI PEMILIK PROYEK
+
+Status: IMPLEMENTASI PARSIAL; bukan klaim Stage 4A selesai.
+
+- Scope aktif: pemisahan Admin Madrasah, Guru, dan Siswa; Admin dilarang mengakses fitur/data CBT; Guru berdasarkan role/permission/penugasan/tenant; penugasan Proktor sementara hanya untuk Guru yang memenuhi syarat; pengujian URL/API langsung dan lintas kewenangan.
+- Kamad tidak termasuk Stage 4A dan tidak ada portal/route/fitur baru Kamad.
+- Kandidat Proktor sekarang wajib akun tenant-local, belum dihapus, tepat satu role GURU, serta mempunyai TeacherProfile tenant-local yang tidak soft-deleted. Filter UI dan validasi service sama-sama menerapkan syarat ini.
+- Admin CBT boundary ditambah tes API langsung GET /api/v1/questions dan GET /api/v1/exams.
+- Test ProctorAssignmentSecurityTest mencakup Guru aktif, Siswa, multi-role, profil Guru soft-deleted, revoke, akses halaman Admin oleh Guru, dan foreign key lintas tenant.
+- Backup sumber implementasi: docs/backup/stage4a-proctor-eligibility-2026-11-22/ (manifest tersedia).
+- Laporan implementasi: docs/IMPLEMENTASI_STAGE4A_PORTAL_RBAC_PROKTOR_GURU_2026-11-22.md.
+- CI 44946708332 pada SHA 6fdefb24ef5bc3acbd182fbc9f9a1366d19a0037: SUCCESS, 100 test / 516 assertion, PHP lint PASS.
+- CI terbaru 44946877772 pada SHA 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5 masih berjalan saat checkpoint diperbarui. Verifikasi ulang hasil akhirnya sebelum menyatakan source terbaru lulus.
+- Belum ada migration baru, perubahan DB produksi, deployment VPS, PR, atau merge.
+
+Pekerjaan selanjutnya:
+1. Verifikasi akhir CI 44946877772.
+2. Lengkapi pengujian URL/API langsung untuk monitoring, peserta, jawaban, nilai, dan report.
+3. Audit final portal Admin/Guru/Siswa dan isolasi akses.
+4. Lanjutkan lifecycle/capability assignment Proktor sementara (PENDING/CONFIRMED/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED), scope rombel dan schedule revision, konflik, serta pencabutan capability.
+5. Lanjutkan tahap berikut tanpa membuka hak CBT untuk Admin Madrasah.
