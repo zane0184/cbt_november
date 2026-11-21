@@ -369,6 +369,9 @@ class ImportWorkbookService
                 }
                 if (preg_match('/\.xml$/i', $name)) {
                     $xml = $zip->getFromIndex($i);
+                    if (is_string($xml) && preg_match('/<!DOCTYPE|<!ENTITY/i', $xml)) {
+                        throw new ImportWorkbookValidationException('DTD dan deklarasi entity XML tidak diizinkan pada workbook.');
+                    }
                     if (is_string($xml) && preg_match('/macroEnabled|vbaProject|oleObject|externalLink|connections|queryTable/i', $xml)) {
                         throw new ImportWorkbookValidationException('Workbook mengandung macro, objek tertanam, atau koneksi eksternal yang tidak diizinkan.');
                     }
