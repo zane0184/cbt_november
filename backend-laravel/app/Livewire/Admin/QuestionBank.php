@@ -23,13 +23,27 @@ class QuestionBank extends Component
     public $subjectFilter = '';
     public $statusFilter = '';
 
-    public function mount()
+    public function boot(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    public function mount(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    private function assertCanAccess(): void
     {
         $user = auth()->user();
-        if (!$user || !$user->hasPermission('question.view')
-            || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'GURU'])->exists()) {
-            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk melihat bank soal.');
-        }
+        abort_unless(
+            $user
+                && $user->tenant_id
+                && $user->hasRole('GURU')
+                && $user->hasPermission('question.view'),
+            403,
+            'Bank soal hanya dapat diakses Guru sesuai penugasan.'
+        );
     }
 
     // Modal Form State
