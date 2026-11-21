@@ -270,11 +270,11 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 
 ### Final GitHub publication ledger — 21 November 2026
 - Audit report final: blob fbf2f6cbe170eb308cee72eafbf066791f103a7a; commit 7edab832a5d3ed6f7fa1070b6cf1a230a5492b1a.
-- Patch plan final: blob cfd6d2c8c647a20ffbf3d5fef14968a26b18c846; commit f1d95cf49af56dce483583c563e8bf9fe148eea6.
+- Patch plan final: blob b747d70bd9ff0b2a85bda5bdee232c81ef1fcd86; commit 3fbadce8f162e94ed7b9a2d29960858115ef7bee.
 - Module matrix final: blob 24395c574086f7efbe4b1a2d14ab33958865f015; commit 8d2b9cae1d1f153e943510f17d2262f6cd1a0cde.
 - T-ID matrix final: blob 05759afbdaaf70f5ccf9d76175d992887932d37f; commit 6c3a5eace8cc499d1c9f5804f396d29199b69e32.
 - Tenant/query/relation matrix remains: blob f5e55a7e402351ada8778119077437e8fdfbb653.
-- Backup manifest: docs/backup/web-admin-final-review-2026-11-21/MANIFEST.md; blob e2cab6af00cadfda072646a581701645134e24f3; commit c06376ada4390575a4fda6f6263ad8acb4ad6015.
+- Backup manifest: docs/backup/web-admin-final-review-2026-11-21/MANIFEST.md; blob 1bb42513f6ff96556597bd775047b9163eab487a; commit 05aaad209aa5c3aae28b738ab072c52c7728d8a1.
 - Backup files were fetched after creation; each backup blob SHA equals the original pre-review document blob SHA. The manifest includes report, checkpoint, patch plan, module matrix and T-ID matrix backups.
 - Latest review did not modify source branch. Compare source branch against W0 source pin remains identical.
 - No PR action was performed.
