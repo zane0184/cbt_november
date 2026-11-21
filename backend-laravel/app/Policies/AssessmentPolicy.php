@@ -17,9 +17,7 @@ class AssessmentPolicy
     public function view(User $user, Assessment $assessment): bool
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $assessment->tenant_id
-            || $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('OPERATOR')) return false;
+        if ($user->tenant_id !== $assessment->tenant_id) return false;
         if ($user->hasRole('GURU')) {
             return TeacherAccess::canManageAssessment($user, $assessment);
         }
