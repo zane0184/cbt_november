@@ -6,7 +6,7 @@
                 <span class="w-2 h-2 rounded-full bg-indigo-600"></span> Executive View: Kepala Madrasah
             </div>
             <h1 class="text-2xl font-bold text-navy-900">Dashboard Eksekutif Kepala Madrasah</h1>
-            <p class="text-sm text-textSecondary">Ringkasan statistik pelaksanaan ujian, evaluasi hasil belajar, dan mutu akademik madrasah.</p>
+            <p class="text-sm text-textSecondary">Ringkasan pelaksanaan ujian dan hasil belajar dalam batas kewenangan baca saja.</p>
         </div>
         <div class="flex items-center gap-2 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200 px-3.5 py-2 rounded-xl">
             🔒 Mode Monitoring Eksekutif (Read-Only)
@@ -31,9 +31,9 @@
             <p class="text-xs text-gray-500 mt-1 font-semibold">Sedang Diikuti Siswa</p>
         </div>
         <div class="bg-white p-6 rounded-2xl border border-cardBorder shadow-sm">
-            <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Evaluasi Akademik</p>
-            <p class="text-3xl font-bold text-purple-600 mt-2">100%</p>
-            <p class="text-xs text-gray-500 mt-1 font-semibold">Integritas Kurikulum Merdeka</p>
+            <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Hak Akses</p>
+            <p class="text-3xl font-bold text-purple-600 mt-2">BACA SAJA</p>
+            <p class="text-xs text-gray-500 mt-1 font-semibold">Tanpa hak mengubah ujian atau nilai</p>
         </div>
     </div>
 
