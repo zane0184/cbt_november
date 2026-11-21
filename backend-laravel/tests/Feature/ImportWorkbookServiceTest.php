@@ -483,7 +483,7 @@ class ImportWorkbookServiceTest extends TestCase
         try {
             app(ImportWorkbookService::class)->preview($versionFile, 'GURU', $this->tenant->id, $this->admin->id);
             $this->fail('Versi template yang tidak dikenal harus ditolak.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('Versi atau jenis template', $exception->getMessage());
         }
 
@@ -494,7 +494,7 @@ class ImportWorkbookServiceTest extends TestCase
         try {
             app(ImportWorkbookService::class)->preview($headerFile, 'GURU', $this->tenant->id, $this->admin->id);
             $this->fail('Header template yang berubah harus ditolak.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('Header tidak sesuai', $exception->getMessage());
         }
 
