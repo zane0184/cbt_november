@@ -27,10 +27,11 @@ class ExamProctorAssignment extends Model
     public function assigner(): BelongsTo { return $this->belongsTo(User::class, 'assigned_by'); }
     public function revoker(): BelongsTo { return $this->belongsTo(User::class, 'revoked_by'); }
 
-    public function scopeActiveNow(Builder $query, $at = null): Builder
+    public function scopeConfirmedNow(Builder $query, $at = null): Builder
     {
         $at ??= now();
-        return $query->where('status', 'ACTIVE')
+
+        return $query->where('status', 'CONFIRMED')
             ->whereNull('revoked_at')
             ->where('starts_at', '<=', $at)
             ->where('expires_at', '>', $at);
