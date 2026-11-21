@@ -96,6 +96,8 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('=SemestersList', $guru->getSheetByName('Penugasan Guru')->getCell('E2')->getDataValidation()->getFormula1());
         $this->assertSame('=RombelsList', $siswa->getSheetByName('Data Siswa')->getCell('J2')->getDataValidation()->getFormula1());
         $this->assertSame('=AcademicYearsList', $siswa->getSheetByName('Data Siswa')->getCell('K2')->getDataValidation()->getFormula1());
+        $this->assertSame('=SubjectsList', $guru->getSheetByName('Penugasan Guru')->getCell('B5001')->getDataValidation()->getFormula1());
+        $this->assertSame('=RombelsList', $siswa->getSheetByName('Data Siswa')->getCell('J5001')->getDataValidation()->getFormula1());
     }
 
     public function test_admin_can_download_real_guru_and_student_xlsx_templates(): void
