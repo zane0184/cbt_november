@@ -213,6 +213,12 @@ class ExamRoomSessionService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if ($room->status !== 'ACTIVE') {
+                throw ValidationException::withMessages([
+                    'roomId' => 'Ruang yang dipasangkan harus berstatus aktif.',
+                ]);
+            }
+
             $session = ExamSession::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
