@@ -90,6 +90,8 @@ class ImportWorkbookServiceTest extends TestCase
         $resolver = app(LoginIdentityResolver::class);
         $this->assertSame('Guru PNS Contoh', $resolver->resolve('001234567890123456')?->name);
         $this->assertSame('Guru Honorer Contoh', $resolver->resolve('0012345678901234')?->name);
+        $this->assertSame('001234567890123456', TeacherProfile::query()->where('nip', '001234567890123456')->firstOrFail()->user->username);
+        $this->assertSame('0012345678901234', TeacherProfile::query()->where('nik', '0012345678901234')->firstOrFail()->user->username);
         $this->assertSame(2, $result['batch']->valid_rows);
         $this->assertDatabaseHas('import_activation_tokens', ['tenant_id' => $this->tenant->id]);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_PREVIEW_CREATED']);
@@ -140,6 +142,7 @@ class ImportWorkbookServiceTest extends TestCase
         $student = StudentProfile::query()->where('tenant_id', $this->tenant->id)->where('nisn', '0012345678')->firstOrFail();
         $this->assertSame('000123', $student->nis);
         $this->assertSame('Siswa Uji', app(LoginIdentityResolver::class)->resolve('0012345678')?->name);
+        $this->assertSame('0012345678', $student->user->username);
         $this->assertDatabaseHas('rombel_student', [
             'tenant_id' => $this->tenant->id,
             'rombel_id' => $rombel->id,
