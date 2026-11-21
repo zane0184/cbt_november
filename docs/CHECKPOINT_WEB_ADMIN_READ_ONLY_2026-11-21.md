@@ -136,3 +136,21 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Backup checkpoint sebelum fase 5: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase5-admin-ui-result-and-curriculum`, commit `297d10ae0b9b22d84cf7228f3aa577ab89f657fc`, blob `b5916ab1bc6b9b39a1b66e537e9bf69d217a264e` (identik dengan blob sebelum update).
 - Audit tetap OPEN; implementasi NOT STARTED; tidak ada perubahan source/database/migration/config/role/permission/PR.
 - Pekerjaan tersisa: audit seluruh relasi/serialisasi/resources/media/export/download/cache, User query/withoutGlobalScopes lengkap, ADM-001–023 detail, T-001–173 mapping, patch plan final.
+
+
+## Checkpoint audit phase 6 — 21 November 2026
+
+### Temuan tambahan
+- P0-09: QuestionController list/detail, QuestionPublication index, MediaController index/show expose content, answer keys/options/explanation and private media to Admin under QuestionPolicy/role grant.
+- P0-10: ExamController index/show and AssessmentController show serialize raw Exam fields/relations, including token and exam configuration; no Admin-safe DTO.
+- P0-11: Admin permitted through ExamPolicy.monitor, ExamAttemptPolicy.viewScore and ReportPolicy; monitoring, roster, attempt status, scores, question-level scores, reports, exports and analytics are exposed.
+- P1-13: Composite tenant FK gaps remain for student_profiles.user_id, exam_participants.user_id, answer.student_id, scoring student/grader/finalizer, achievement student/finalizer/rombel/semester and rombel_student pivots. TeacherProfile and Proctor assignment have positive composite FK controls.
+- P1-14: AuditLog not append-only; tenant/user attribution uses ON DELETE SET NULL; reason/correlation not consistent; mutation+audit transaction not consistent.
+- P1-15: User relations are unscoped by Eloquent; many write paths explicitly check tenant but DB gaps leave defense-in-depth exposure.
+
+### Publikasi
+- Laporan diperbarui: commit `912896dea999715e77a801ed8f8efd2ca9d2d09d`, blob `3d9f79eeaa003b2a0167c54915ca387d09fffc68`.
+- Backup report: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase6-model-relations-serialization`, commit `79695e904fd6d2f1c0fa7c2cf526ec9f10540b68`, blob `88e1feab55a41b36cdba73f18fd3a473e2327a86` (identik dengan report sebelum update).
+- Backup checkpoint: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase6-model-relations-serialization`, commit `a3d288a3d7c875251db2bcb273ef3d0bfc17abb5`, blob `e7a6cba4b508a3aa96f94e7b3fb871bf37633fe0` (identik dengan checkpoint sebelum update).
+- Status: audit belum final; implementasi NOT STARTED; no source/database/migration/config/role/permission changes.
+- Berikutnya: detail matriks 23 modul dan T-001–T-173, review all remaining query/export/cache/resource routes, patch plan final per file, and verification of docs branch/commit.
