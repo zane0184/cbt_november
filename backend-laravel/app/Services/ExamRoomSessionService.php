@@ -95,6 +95,11 @@ class ExamRoomSessionService
             }
 
             $maxAssigned = DB::table('exam_session_rooms as esr')
+                ->join('exam_sessions as es', function ($join) {
+                    $join->on('es.id', '=', 'esr.exam_session_id')
+                        ->on('es.tenant_id', '=', 'esr.tenant_id')
+                        ->on('es.exam_id', '=', 'esr.exam_id');
+                })
                 ->join('exam_participant_room_assignments as epa', function ($join) {
                     $join->on('epa.exam_session_room_id', '=', 'esr.id')
                         ->on('epa.tenant_id', '=', 'esr.tenant_id')
@@ -103,6 +108,8 @@ class ExamRoomSessionService
                 ->where('esr.tenant_id', $actor->tenant_id)
                 ->where('esr.exam_room_id', $room->id)
                 ->where('esr.status', 'ACTIVE')
+                ->whereIn('es.status', ['SCHEDULED', 'ACTIVE'])
+                ->where('es.ends_at', '>', now())
                 ->where('epa.status', 'ACTIVE')
                 ->groupBy('esr.id')
                 ->selectRaw('COUNT(epa.id) AS assigned_count')
