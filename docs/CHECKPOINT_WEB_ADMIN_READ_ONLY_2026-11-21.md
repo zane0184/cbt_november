@@ -270,7 +270,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 
 ### Final GitHub publication ledger — 21 November 2026
 - Audit report final: blob fbf2f6cbe170eb308cee72eafbf066791f103a7a; commit 7edab832a5d3ed6f7fa1070b6cf1a230a5492b1a.
-- Patch plan final: blob b747d70bd9ff0b2a85bda5bdee232c81ef1fcd86; commit 3fbadce8f162e94ed7b9a2d29960858115ef7bee.
+- Patch plan final: blob 7553ef0f46b2dd92a499c7bc6bfbd132dc7aada6; commit 35cdef25a42d7117080d5b1c4751afd8efcd6194.
 - Module matrix final: blob 24395c574086f7efbe4b1a2d14ab33958865f015; commit 8d2b9cae1d1f153e943510f17d2262f6cd1a0cde.
 - T-ID matrix final: blob 05759afbdaaf70f5ccf9d76175d992887932d37f; commit 6c3a5eace8cc499d1c9f5804f396d29199b69e32.
 - Tenant/query/relation matrix remains: blob f5e55a7e402351ada8778119077437e8fdfbb653.
@@ -290,3 +290,12 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - File metadata assignment yang sudah ada ProctorAssignmentManagement dan service terkait tidak diubah. Admin tetap memakai halaman /admin/proctor-assignments yang sudah ada sebagai satu-satunya metadata surface.
 - routes/api.php disimpan sebagai artefak referensi backup tetapi tidak masuk daftar file yang direncanakan berubah.
 - Tidak ada coding, source write, migration, seeder execution, DB write, deployment, source branch write atau PR action. Paket WA-01 belum disetujui.
+
+
+### WA-01 package publication ledger
+- Paket eksekusi WA-01: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md; commit 2ef53b77908f91caa2b216a6d24f29df4dce9cdb.
+- Patch plan setelah penyesuaian WA-01: blob 7553ef0f46b2dd92a499c7bc6bfbd132dc7aada6; commit 35cdef25a42d7117080d5b1c4751afd8efcd6194.
+- Backup source/test manifest: docs/backup/wa-01-source-2026-11-21/MANIFEST.md; commit 382af4dfe3505e13d941c8738d07ac83be996cf8.
+- Backup root contains 23 planned existing source files + 6 existing test files; all verified byte-identical against W0. The separate new test file is not yet created.
+- Backup copies of checkpoint and patch plan before this preparation are in docs/backup/wa-01-preparation-2026-11-21/.
+- Status: package ready for review, NOT APPROVED FOR CODING. Wait for explicit execution approval.
