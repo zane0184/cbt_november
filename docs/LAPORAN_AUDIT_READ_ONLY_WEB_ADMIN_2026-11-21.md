@@ -424,3 +424,34 @@ Status: P1 OPEN; no confirmed cross-tenant response from valid application-creat
 - No database connection, migration execution, HTTP request, browser test or concurrency test was performed.
 - Existing CI aggregate #692 remains 480 tests / 1,942 assertions on old source commit; no per-T-ID evidence and no direct Admin negative assertions for all newly mapped routes.
 - No source or database changed.
+
+
+---
+
+## 14. ADDENDUM AUDIT PHASE 7 — module and test matrix publication (21 November 2026)
+
+### Published detailed matrices
+
+1. `docs/MATRIKS_AUDIT_WEB_ADMIN_DETAIL_2026-11-21.md`
+   - 23/23 modules ADM-001–ADM-023 mapped to source paths/methods, audit status, test references and actual evidence limitation.
+   - Commit: `d7b290d9438e3f3a8a4d693faf61797a41907f6e`
+   - Blob SHA: `29d15bb18a550b70475dd0e2f7886b11148f2469`
+   - Backup: `docs/backup/web-admin-read-only-2026-11-21/MATRIKS_AUDIT_WEB_ADMIN_DETAIL_2026-11-21.md.pre-publication` (same blob SHA).
+
+2. `docs/MATRIKS_TEST_WEB_ADMIN_T001_T173_MAPPING_2026-11-21.md`
+   - 173/173 test IDs mapped to source area, candidate test file/method or explicit gap, and per-ID status.
+   - All IDs remain **NOT VERIFIED** per-ID. CI #692 aggregate 480/1,942 cannot be attributed to a specific T-ID.
+   - Commit: `cf6f84db5a43ea64d1c5aabea88be7b38cbe7f7c`
+   - Blob SHA: `10a7fe3dc32e522e94e80c5e39b3e1633685960c`
+   - Backup: `docs/backup/web-admin-read-only-2026-11-21/MATRIKS_TEST_WEB_ADMIN_T001_T173_MAPPING_2026-11-21.md.pre-publication` (same blob SHA).
+
+### Source branch verification
+- `work/web-admin-w0-20261121` was compared with source pin `2b4321ce032fd5e67cf022da8564a5287b8cef6f`: identical, 0 ahead/0 behind.
+- Compare `ade5daa6cf853c164c4f51ec6e25ca68ce40b4f2` → W0 branch: 25 commits ahead, 0 behind. Returned changed paths are documentation/workflow/manifest only; no application source path appeared. The verified source snapshot remains the W0 application source basis.
+- Documentation branch checkpoint HEAD at this publication point: `cf6f84db5a43ea64d1c5aabea88be7b38cbe7f7c`; branch compare identical to that SHA at verification time.
+
+### Audit status
+- ADM-001–ADM-023 mapping is published, but no module is accepted as complete based only on static source.
+- T-001–T-173 mapping is published; all per-ID runtime outcomes remain NOT VERIFIED. Existing candidate test methods include legacy expectations contradictory to final Admin/Proktor decisions.
+- Audit is still NOT COMPLETE: remaining query/relationship, cache/export/download, authorization matrix, source-to-test trace, and final patch-plan dependency/rollback review remain.
+- No source, DB, migration, config, role, permission, Web Guru, PR or deployment was changed.
