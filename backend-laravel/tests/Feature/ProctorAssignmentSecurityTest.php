@@ -113,7 +113,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'exam_id' => $this->exam->id,
             'proctor_user_id' => $this->proctorGuru->id,
             'assigned_by' => $this->admin->id,
-            'status' => 'ACTIVE',
+            'status' => 'PENDING',
         ]);
         $this->assertDatabaseHas('audit_logs', [
             'tenant_id' => $this->tenant->id,
@@ -128,6 +128,11 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->actingAs($this->proctorGuru)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
 
         $this->assignThroughUi();
+        $assignment = ExamProctorAssignment::query()->firstOrFail();
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->call('confirm', $assignment->id)
+            ->assertHasNoErrors();
 
         $this->actingAs($this->proctorGuru, 'sanctum')
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
@@ -153,6 +158,11 @@ class ProctorAssignmentSecurityTest extends TestCase
     public function test_admin_does_not_gain_monitoring_access_by_assigning_a_guru(): void
     {
         $this->assignThroughUi();
+        $assignment = ExamProctorAssignment::query()->firstOrFail();
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->call('confirm', $assignment->id)
+            ->assertHasNoErrors();
 
         $this->actingAs($this->admin, 'sanctum')
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
@@ -166,6 +176,10 @@ class ProctorAssignmentSecurityTest extends TestCase
     {
         $this->assignThroughUi();
         $assignment = ExamProctorAssignment::query()->firstOrFail();
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->call('confirm', $assignment->id)
+            ->assertHasNoErrors();
 
         Livewire::test(ProctorAssignmentManagement::class)
             ->set('revokeReason', 'Penugasan selesai lebih awal')
@@ -189,6 +203,11 @@ class ProctorAssignmentSecurityTest extends TestCase
     public function test_expired_assignment_does_not_authorize_monitoring(): void
     {
         $this->assignThroughUi();
+        $assignment = ExamProctorAssignment::query()->firstOrFail();
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->call('confirm', $assignment->id)
+            ->assertHasNoErrors();
         ExamProctorAssignment::query()->where('exam_id', $this->exam->id)
             ->update(['expires_at' => now()->subSecond()]);
 
@@ -222,7 +241,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'assigned_by' => $this->admin->id,
             'starts_at' => now()->subMinute(),
             'expires_at' => now()->addHour(),
-            'status' => 'ACTIVE',
+            'status' => 'PENDING',
             'assignment_reason' => 'Percobaan assignment lintas tenant',
             'created_at' => now(),
             'updated_at' => now(),
