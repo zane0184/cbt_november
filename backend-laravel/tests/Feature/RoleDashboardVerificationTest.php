@@ -360,7 +360,7 @@ class RoleDashboardVerificationTest extends TestCase
         Livewire::test(OperatorDashboard::class)
             ->assertViewHas('totalStudents', 1)
             ->assertViewHas('totalRombels', 1)
-            ->assertViewMissing('totalExams');
+            ->assertDontSee('Total Ujian');
 
         $this->actingAs($this->operatorA);
         Livewire::test(OperatorDashboard::class)->assertForbidden();
