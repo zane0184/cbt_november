@@ -205,3 +205,20 @@ Tidak ada migration atau DML yang dijalankan dalam rekonsiliasi ini. Preflight d
 
 ### 19.3 Status assignment
 Status minimum: PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED. PENDING/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED tidak memberikan capability. Capability hanya untuk assignment CONFIRMED yang valid dan berada pada interval server [starts_at, expires_at).
+
+
+## 19.4 DEC-WA-026 — Status assignment dan capability Proktor (KEPUTUSAN FINAL, ACTIVE)
+
+Tanggal: 21-11-2026
+Status: ACTIVE — ditegaskan eksplisit oleh pengguna.
+
+1. Status assignment yang sah hanya `PENDING`, `CONFIRMED`, `NEEDS_REVIEW`, `REVOKED`, `EXPIRED`, dan `COMPLETED`.
+2. `PENDING` tidak memberikan capability.
+3. Hanya `CONFIRMED` yang dapat memberikan capability, setelah seluruh validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/assignment scope, revoke/conflict, dan waktu server lulus.
+4. `ACTIVE` bukan status assignment dan tidak boleh ditambahkan sebagai enum atau status pemberi capability. Istilah ACTIVE tetap sah untuk status akun Guru dalam konteks terpisah.
+5. `NEEDS_REVIEW`, `REVOKED`, `EXPIRED`, dan `COMPLETED` tidak memberikan capability.
+6. Capability hanya berlaku selama interval setengah terbuka `starts_at <= serverNow < expires_at`; pada `serverNow >= expires_at` akses langsung ditolak tanpa menunggu cron.
+7. Setiap request memvalidasi ulang seluruh syarat. Reschedule oleh Guru melalui `ExamScheduleChangeService` mengubah assignment terdampak ke NEEDS_REVIEW secara atomik; setelah Admin melakukan review/konfirmasi sah, status kembali CONFIRMED, bukan ACTIVE.
+8. Source implementation dan seluruh runtime test tetap OPEN/NOT RUN sampai ada persetujuan implementasi terpisah dan bukti uji.
+
+**Menggantikan:** Nota Klarifikasi Status Assignment Proktor versi OPEN/PROPOSED dan Addendum 34 spesifikasi yang kini SUPERSEDED. Detail normatif berada pada Addendum 35 spesifikasi rinci.
