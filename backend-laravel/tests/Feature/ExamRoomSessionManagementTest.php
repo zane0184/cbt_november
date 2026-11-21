@@ -525,4 +525,86 @@ class ExamRoomSessionManagementTest extends TestCase
         $this->assertDatabaseHas('exam_proctor_assignments', ['id' => $assignment->id, 'status' => 'COMPLETED']);
     }
 
+    public function test_participant_cannot_be_placed_twice_and_reassignment_preserves_history(): void
+    {
+        $roomOne = $this->createRoom('HIST1');
+        $roomTwo = $this->createRoom('HIST2');
+        $sessionOne = $this->createSession($this->exam, 21, 5);
+        $sessionTwo = $this->createSession($this->exam, 22, 70);
+        $scopeOne = $this->service->attachRoom($this->admin, $this->exam->id, $sessionOne->id, $roomOne->id);
+        $scopeTwo = $this->service->attachRoom($this->admin, $this->exam->id, $sessionTwo->id, $roomTwo->id);
+
+        $firstMapping = $this->service->mapRombel($this->admin, $scopeOne->id, $this->rombel->id);
+
+        try {
+            $this->service->mapRombel($this->admin, $scopeTwo->id, $this->rombel->id);
+            $this->fail('The same rombel and participants cannot have two active room placements.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('rombel', $exception->errors());
+        }
+
+        $this->assertSame(1, ExamParticipantRoomAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('status', 'ACTIVE')
+            ->count());
+
+        $this->service->releaseRombelMapping(
+            $this->admin,
+            $firstMapping->id,
+            'Penataan ulang ruang ujian madrasah'
+        );
+
+        $secondMapping = $this->service->mapRombel($this->admin, $scopeTwo->id, $this->rombel->id);
+
+        $this->assertDatabaseHas('exam_session_room_rombels', [
+            'id' => $firstMapping->id,
+            'status' => 'RELEASED',
+            'released_by' => $this->admin->id,
+        ]);
+        $this->assertDatabaseHas('exam_session_room_rombels', [
+            'id' => $secondMapping->id,
+            'status' => 'ACTIVE',
+        ]);
+        $this->assertDatabaseHas('exam_participant_room_assignments', [
+            'exam_session_room_id' => $scopeOne->id,
+            'status' => 'RELEASED',
+            'released_by' => $this->admin->id,
+        ]);
+        $this->assertDatabaseHas('exam_participant_room_assignments', [
+            'exam_session_room_id' => $scopeTwo->id,
+            'status' => 'ACTIVE',
+        ]);
+        $this->assertSame(2, ExamParticipantRoomAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->count());
+    }
+
+    public function test_admin_cannot_attach_a_room_from_another_tenant(): void
+    {
+        $session = $this->createSession($this->exam, 31, 5);
+        $tenantB = Tenant::create(['name' => 'Tenant Room B', 'code' => 'ROOMB']);
+        app(TenantContext::class)->setTenantId($tenantB->id);
+        $foreignRoom = ExamRoom::create([
+            'tenant_id' => $tenantB->id,
+            'code' => 'FOREIGN-ROOM',
+            'name' => 'Ruang Tenant B',
+            'location' => 'Gedung B',
+            'capacity' => 20,
+            'status' => 'ACTIVE',
+        ]);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+
+        try {
+            $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $foreignRoom->id);
+            $this->fail('A tenant A Admin must not attach a room owned by tenant B.');
+        } catch (\\Illuminate\\Database\\Eloquent\\ModelNotFoundException $exception) {
+            $this->assertDatabaseMissing('exam_session_rooms', [
+                'exam_id' => $this->exam->id,
+                'exam_room_id' => $foreignRoom->id,
+            ]);
+        }
+    }
+
 }
