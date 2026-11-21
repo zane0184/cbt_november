@@ -631,4 +631,67 @@ class MonitoringDuplicationTest extends TestCase
         $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}")->assertForbidden();
     }
 
+    public function test_admin_cannot_access_operational_exam_endpoints_through_direct_api_or_web_url(): void
+    {
+        $participant = ExamParticipant::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $this->student->id)
+            ->firstOrFail();
+        $attempt = ExamAttempt::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'participant_id' => $participant->id,
+            'student_id' => $this->student->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+        ]);
+
+        $this->actingAs($this->admin, 'sanctum');
+        $forbiddenGetUrls = [
+            "/api/v1/exams/{$this->exam->id}/monitoring",
+            "/api/v1/exams/{$this->exam->id}/monitoring/participants",
+            "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$attempt->id}",
+            "/api/v1/exams/{$this->exam->id}/monitoring/events",
+            "/api/v1/exams/{$this->exam->id}/participants",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/answers",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/score",
+            "/api/v1/reports/exams/{$this->exam->id}/results",
+            "/api/v1/reports/exams/{$this->exam->id}/summary",
+            "/api/v1/reports/exams/{$this->exam->id}/questions",
+            "/api/v1/reports/exams/{$this->exam->id}/summary/export/pdf",
+            "/api/v1/reports/exams/{$this->exam->id}/export/excel",
+            "/api/v1/reports/exams/{$this->exam->id}/export/pdf",
+            "/api/v1/analytics/exams/{$this->exam->id}",
+            "/api/v1/analytics/exams/{$this->exam->id}/distribution",
+            "/api/v1/analytics/exams/{$this->exam->id}/items",
+        ];
+        foreach ($forbiddenGetUrls as $url) {
+            $this->getJson($url)->assertForbidden();
+        }
+
+        $forbiddenPostUrls = [
+            "/api/v1/exams/{$this->exam->id}/attempts",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/heartbeat",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/submit",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/score",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/recalculate",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/finalize",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/reopen",
+            "/api/v1/exams/{$this->exam->id}/token",
+            "/api/v1/exams/{$this->exam->id}/lock",
+            "/api/v1/exams/{$this->exam->id}/close",
+            "/api/v1/exams/{$this->exam->id}/assign-rombel",
+            "/api/v1/exams/{$this->exam->id}/publish-results",
+            "/api/v1/exams/{$this->exam->id}/participants",
+        ];
+        foreach ($forbiddenPostUrls as $url) {
+            $this->postJson($url)->assertForbidden();
+        }
+
+        $this->actingAs($this->admin);
+        $this->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
+    }
+
 }
