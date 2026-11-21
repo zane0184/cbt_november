@@ -95,6 +95,11 @@
                             <span class="text-amber-400">◷</span><span>Penugasan Pengawas</span>
                         </a>
                     @endif
+                    @if($currentUser->hasPermission('exam.proctor.assign'))
+                        <a href="/admin/exam-rooms-sessions" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/exam-rooms-sessions*') ? 'border-l-4 border-amber-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span class="text-amber-400">▦</span><span>Ruang & Sesi Ujian</span>
+                        </a>
+                    @endif
                 @elseif($isTeacher)
                     <p class="px-4 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Ruang Kerja Guru</p>
                     <a href="/admin/exams" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/exams*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
@@ -142,6 +147,7 @@
                                 @endif
                                 @if($currentUser->hasPermission('curriculum.view'))<a href="/admin/curriculum" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Master Kurikulum</a>@endif
                                 @if($currentUser->hasPermission('exam.proctor.assign'))<a href="/admin/proctor-assignments" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Penugasan Pengawas</a>@endif
+                                @if($currentUser->hasPermission('exam.proctor.assign'))<a href="/admin/exam-rooms-sessions" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Ruang & Sesi Ujian</a>@endif
                             @elseif($isTeacher)
                                 <a href="/admin/exams" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Manajemen Ujian</a>
                                 @if($currentUser->hasPermission('question.view'))<a href="/admin/questions" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Bank Soal</a>@endif
