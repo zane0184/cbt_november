@@ -44,6 +44,7 @@ jobs:
 
     steps:
       - name: Mask temporary MySQL root credential
+        working-directory: .
         shell: bash
         env:
           DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-alt-ephemeral-root
@@ -326,6 +327,7 @@ jobs:
 
       - name: Cleanup disposable database and app user
         if: always()
+        working-directory: .
         shell: bash
         env:
           DB_ROOT_HOST: 127.0.0.1
