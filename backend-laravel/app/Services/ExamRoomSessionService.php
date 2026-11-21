@@ -175,6 +175,8 @@ class ExamRoomSessionService
                 'status' => 'ACTIVE',
             ]);
 
+            $this->bumpScheduleRevision($actor, $session, 'Ruang ujian ditambahkan pada sesi.');
+
             $this->auditService->log('EXAM_SESSION_ROOM_ATTACH', 'ExamSessionRoom', $sessionRoom->id, null, [
                 'tenant_id' => $actor->tenant_id,
                 'exam_id' => $exam->id,
@@ -200,6 +202,17 @@ class ExamRoomSessionService
             $exam = Exam::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->whereKey($scope->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $roomId = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionRoomId)
+                ->value('exam_room_id');
+            $room = ExamRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($roomId)
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -258,6 +271,21 @@ class ExamRoomSessionService
                 ->lockForUpdate()
                 ->get();
 
+            $participantIds = $participants->pluck('id');
+            $conflictingPlacement = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('participant_id', $participantIds)
+                ->where('status', 'ACTIVE')
+                ->where('exam_session_room_id', '<>', $sessionRoom->id)
+                ->exists();
+
+            if ($conflictingPlacement) {
+                throw ValidationException::withMessages([
+                    'rombel' => 'Sebagian peserta sudah ditempatkan pada sesi-ruang lain. Selesaikan pemetaan lama terlebih dahulu.',
+                ]);
+            }
+
             $alreadyPlaced = ExamParticipantRoomAssignment::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
@@ -274,13 +302,14 @@ class ExamRoomSessionService
                     ->exists();
             });
 
-            $capacity = $sessionRoom->capacity_override ?: $sessionRoom->room()->value('capacity');
+            $capacity = $sessionRoom->capacity_override ?: $room->capacity;
             if ($alreadyPlaced + $unplaced->count() > (int) $capacity) {
                 throw ValidationException::withMessages([
                     'capacity' => 'Jumlah peserta melebihi kapasitas ruang untuk sesi ini.',
                 ]);
             }
 
+            $mappingCreated = !$existingMapping;
             $mapping = $existingMapping ?: ExamSessionRoomRombel::create([
                 'tenant_id' => $actor->tenant_id,
                 'exam_id' => $exam->id,
@@ -300,6 +329,10 @@ class ExamRoomSessionService
                     'assigned_by' => $actor->id,
                     'assigned_at' => now(),
                 ]);
+            }
+
+            if ($mappingCreated || $unplaced->isNotEmpty()) {
+                $this->bumpScheduleRevision($actor, $session, 'Pemetaan rombel/peserta ke ruang sesi berubah.');
             }
 
             $this->auditService->log('EXAM_SESSION_ROOM_ROMBEL_MAP', 'ExamSessionRoomRombel', $mapping->id, null, [
@@ -372,6 +405,9 @@ class ExamRoomSessionService
                 'released_by' => $actor->id,
                 'release_reason' => $reason,
             ]);
+
+            $session = $mapping->sessionRoom()->firstOrFail()->session()->lockForUpdate()->firstOrFail();
+            $this->bumpScheduleRevision($actor, $session, 'Pemetaan rombel dari ruang sesi dilepaskan.');
 
             $this->auditService->log('EXAM_SESSION_ROOM_ROMBEL_RELEASE', 'ExamSessionRoomRombel', $mapping->id, $old, [
                 'status' => 'RELEASED',
