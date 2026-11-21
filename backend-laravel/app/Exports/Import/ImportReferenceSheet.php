@@ -8,6 +8,7 @@ use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
+use PhpOffice\PhpSpreadsheet\NamedRange;
 
 class ImportReferenceSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
 {
@@ -33,7 +34,25 @@ class ImportReferenceSheet implements FromArray, WithTitle, ShouldAutoSize, With
     public function registerEvents(): array
     {
         return [AfterSheet::class => function (AfterSheet $event): void {
-            $event->sheet->getDelegate()->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+            $sheet = $event->sheet->getDelegate();
+            $sheet->setSheetState(Worksheet::SHEETSTATE_HIDDEN);
+            $workbook = $sheet->getParent();
+            $last = max(2, $sheet->getHighestRow());
+            foreach (['SubjectsList' => 'A', 'RombelsList' => 'B', 'AcademicYearsList' => 'C', 'SemestersList' => 'D'] as $name => $column) {
+                $workbook->addNamedRange(new NamedRange($name, $sheet, '
+        }];
+    }
+}
+.$column.'$2:
+        }];
+    }
+}
+.$column.'
+        }];
+    }
+}
+.$last));
+            }
         }];
     }
 }

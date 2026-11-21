@@ -43,6 +43,7 @@ class ImportTemplateExport implements WithMultipleSheets
                 $this->type === 'GURU' ? ['B','C','D'] : ['A','B'],
                 $this->type === 'SISWA' ? ['J' => $references['rombels'], 'K' => $references['years']] : [],
                 $this->type === 'GURU' ? ['A' => ['PNS','HONORER'], 'F' => ['L','P']] : ['D' => ['L','P']],
+                ['J' => 2, 'K' => 3],
             ),
         ];
 
@@ -54,6 +55,7 @@ class ImportTemplateExport implements WithMultipleSheets
                 ['A'],
                 ['B' => $references['subjects'], 'C' => $references['rombels'], 'D' => $references['years'], 'E' => $references['semesters']],
                 ['H' => ['ACTIVE','INACTIVE']],
+                ['B' => 1, 'C' => 2, 'D' => 3, 'E' => 4],
             );
         }
         $sheets[] = new ImportReferenceSheet($references);

@@ -23,6 +23,7 @@ class ImportDataSheet implements FromArray, WithTitle, ShouldAutoSize, WithStyle
         private readonly array $textColumns = [],
         private readonly array $referenceColumns = [],
         private readonly array $enumColumns = [],
+        private readonly array $referenceColumnIndexes = [],
     ) {}
 
     public function title(): string { return $this->sheetTitle; }
@@ -48,8 +49,9 @@ class ImportDataSheet implements FromArray, WithTitle, ShouldAutoSize, WithStyle
                 $lastRow = max(2000, count($this->examples) + 1);
                 foreach ($this->referenceColumns as $column => $options) {
                     if (!$options) continue;
-                    $index = Coordinate::columnIndexFromString($column);
-                    $formula = "='Referensi'!$".Coordinate::stringFromColumnIndex($this->referenceIndex($column)).'$2:$'.Coordinate::stringFromColumnIndex($this->referenceIndex($column)).'$'.(count($options) + 1);
+                    $index = $this->referenceColumnIndexes[$column] ?? 1;
+                    $rangeName = match ($index) { 1 => 'SubjectsList', 2 => 'RombelsList', 3 => 'AcademicYearsList', 4 => 'SemestersList', default => 'SubjectsList' };
+                    $formula = '='.$rangeName;
                     $this->applyValidation($sheet, $column, $lastRow, $formula);
                 }
                 foreach ($this->enumColumns as $column => $options) {
@@ -60,12 +62,6 @@ class ImportDataSheet implements FromArray, WithTitle, ShouldAutoSize, WithStyle
                 $sheet->setAutoFilter('A1:'.Coordinate::stringFromColumnIndex(count($this->headers)).'1');
             },
         ];
-    }
-
-    private function referenceIndex(string $column): int
-    {
-        static $map = ['B'=>1, 'C'=>2, 'D'=>3, 'E'=>4, 'J'=>5, 'K'=>6];
-        return $map[$column] ?? 1;
     }
 
     private function applyValidation(Worksheet $sheet, string $column, int $lastRow, string $formula): void
