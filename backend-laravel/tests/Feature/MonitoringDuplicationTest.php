@@ -124,6 +124,11 @@ class MonitoringDuplicationTest extends TestCase
             ->assertForbidden();
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/heartbeat")
             ->assertForbidden();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}")
+            ->assertOk();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/execution")->assertForbidden();
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts")->assertForbidden();
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/submit")->assertForbidden();
     }
 
     public function test_admin_is_denied_direct_monitoring_answers_score_and_report_urls_and_apis(): void
@@ -141,6 +146,8 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/exams/{$this->exam->id}/monitoring/participants",
             "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$this->attempt2->id}",
             "/api/v1/exams/{$this->exam->id}/monitoring/events",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}",
+            "/api/v1/exams/{$this->exam->id}/execution",
             "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/answers",
             "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/score",
             "/api/v1/reports/exams/{$this->exam->id}/results",
@@ -155,7 +162,8 @@ class MonitoringDuplicationTest extends TestCase
             $this->assertSame(403, $response->status(), 'Expected 403 for ' . $url . '; got ' . $response->status() . ': ' . $response->getContent());
         }
 
-        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/heartbeat")
-            ->assertForbidden();
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts")->assertForbidden();
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/submit")->assertForbidden();
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/heartbeat")->assertForbidden();
     }
 }
