@@ -252,6 +252,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f tests/Feature/AdminCbtBoundaryTest.php
+          test -f tests/Feature/MonitoringDuplicationTest.php
           test -f tests/Feature/ProctorAssignmentSecurityTest.php
           test -f tests/Feature/AuthTest.php
           test -f tests/Feature/MultiTenantAuthTest.php
@@ -322,6 +323,12 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/ProctorAssignmentSecurityTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-proctor-assignment.log"
+      - name: PHPUnit — Admin CBT direct monitoring/answers/score/report denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/MonitoringDuplicationTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-monitoring-boundary.log"
+
 
 
       - name: PHPUnit — Admin dashboard, tenant scope and CBT-free surface
