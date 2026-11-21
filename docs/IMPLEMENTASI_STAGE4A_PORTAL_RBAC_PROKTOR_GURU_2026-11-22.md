@@ -21,7 +21,7 @@ IMPLEMENTASI PARSIAL — batas Admin terhadap CBT diperkuat dengan uji API langs
 - Guru tetap pemilik operasional CBT; otorisasi harus berdasarkan role tunggal, permission, penugasan akademik, tenant, dan kepemilikan scope.
 - Kandidat Proktor sementara harus: tenant sama; akun tidak dihapus; tepat satu role GURU; TeacherProfile tenant-local tersedia dan tidak soft-deleted.
 - Tidak ada role/portal Proktor permanen.
-- Tidak ada penambahan role, route, portal, permission, fitur, atau alur Kamad. Enam file yang sempat diubah untuk percobaan Kamad telah dipulihkan dan blob SHA aktif cocok dengan backup masing-masing. Referensi Kamad yang sudah ada sebelum patch tidak diperluas dan tidak diberi route portal baru.
+- Tidak ada penambahan role, route, portal, permission, fitur, atau alur Kamad. Enam file dipulihkan dari backup setelah percobaan Kamad. Pada verifikasi akhir, lima file tetap identik dengan backup pemulihan. File AdminCbtBoundaryTest.php kemudian sengaja diperbarui untuk menambahkan uji API langsung; versi sebelum penambahan uji API tetap tersedia pada docs/backup/stage4a-proctor-eligibility-2026-11-22/AdminCbtBoundaryTest.php.before-guru-eligibility. Referensi Kamad yang sudah ada sebelum patch tidak diperluas dan tidak diberi route portal baru.
 
 ## IMPLEMENTASI
 1. `backend-laravel/app/Livewire/Admin/ProctorAssignmentManagement.php`
