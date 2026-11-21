@@ -37,6 +37,7 @@ class ExamRoomSessionManagement extends Component
     public string $selectedRombelId = '';
     public string $releaseReason = '';
     public string $rescheduleReason = '';
+    public string $cancelReason = '';
 
     public function boot(): void
     {
@@ -237,6 +238,26 @@ class ExamRoomSessionManagement extends Component
         );
         $this->reset('releaseReason');
         session()->flash('examRoomSessionMessage', 'Pemetaan rombel dilepaskan; histori tetap disimpan.');
+    }
+
+    public function cancelSession(string $sessionId): void
+    {
+        $this->assertCanManage();
+        $data = $this->validate([
+            'cancelReason' => ['required', 'string', 'min:10', 'max:500'],
+        ]);
+
+        app(ExamRoomSessionService::class)->cancelSession(
+            auth()->user(),
+            $sessionId,
+            $data['cancelReason']
+        );
+
+        $this->reset('cancelReason');
+        if ($this->selectedSessionId === $sessionId) {
+            $this->selectedSessionId = '';
+        }
+        session()->flash('examRoomSessionMessage', 'Sesi dibatalkan. Assignment Proktor dicabut dan histori penempatan dipertahankan.');
     }
 
     public function rescheduleSession(string $sessionId): void
