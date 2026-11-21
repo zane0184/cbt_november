@@ -204,3 +204,7 @@ Tidak ada klaim W0 selesai, source aman, atau siap produksi.
 
 ### E.1 Klarifikasi status assignment Proktor yang masih OPEN
 Nota `docs/NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md` menegaskan bahwa pengguna belum secara eksplisit menetapkan apakah PENDING memberi capability, apakah CONFIRMED satu-satunya status pemberi capability, dan apakah ACTIVE masih diperlukan. Rekomendasi fail-closed PENDING=no capability/CONFIRMED-only adalah PROPOSED, bukan keputusan pengguna. Test T-159/T-160 harus dianggap usulan acceptance sampai semantik dikonfirmasi. Nota ini ditautkan dari entry point master. Dua dokumen yang diperbarui setelah klarifikasi juga dibackup sebelum update.
+
+
+### E.2 Rekonsiliasi final setelah nota klarifikasi dan backup tambahan
+Setelah Nota Klarifikasi Status Assignment Proktor dan backup tambahan dibuat, compare final dari base W0-recheck `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch konsolidasi menunjukkan **24 path berubah/ditambahkan**, seluruhnya berada di `docs/`; tidak ada path aplikasi. Angka 18 pada pemeriksaan sebelumnya adalah hasil compare sebelum nota klarifikasi dan backup tambahan dibuat. Backup lanjutan untuk spesifikasi, master entry point, laporan, dan checkpoint disimpan pada subfolder `clarification/` dan `final/` dengan manifest terpisah.
