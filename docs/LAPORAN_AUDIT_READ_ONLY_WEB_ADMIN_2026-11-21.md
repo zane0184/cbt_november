@@ -194,3 +194,19 @@ Penilaian: ini adalah gap defense-in-depth integritas referensial tenant. Jalur 
 - Review User query: PARTIAL — explicit tenant filters ditemukan di query utama; User model global scope masih tidak ada; route/relationship negative tests belum dijalankan.
 - Cache/export/jobs: PARTIAL — tenant namespacing dan authorization caller terlihat; negative HTTP/export tests belum dijalankan; tidak ada job class ditemukan.
 - Test inventory: 64 test files, 433 conventional method declarations (static count); T-001–T-173 mapping belum dilakukan.
+
+
+---
+
+## 11. ADDENDUM AUDIT PHASE 4 — Assessment relation serialization (21 November 2026)
+
+### P0-06 — Endpoint detail Assessment memuat seluruh Exam beserta token untuk Admin
+
+Bukti:
+- `app/Policies/AssessmentPolicy.php` method `view()` mengizinkan ADMIN_MADRASAH pada tenant yang sama.
+- `app/Http/Controllers/Api/V1/AssessmentController.php` method `show()` menjalankan `$this->authorize('view', $assessment)`, lalu mengembalikan `$assessment->load('exams')` secara langsung.
+- `app/Models/Exam.php` memasukkan atribut `token` ke model fillable dan tidak mendefinisikan hidden attribute atau DTO resource yang menyaringnya.
+
+Dampak: Admin yang membaca detail Assessment dapat menerima koleksi seluruh Exam terkait, termasuk atribut token dan konfigurasi ujian, melalui serialisasi Eloquent. Jalur ini terpisah dari ExamController list/detail dan memperluas permukaan P0-03. Selain itu, policy view Assessment mengizinkan Admin; perlu DTO metadata minimum terpisah untuk kebutuhan Admin, bukan eager-load Exam mentah.
+
+Status: **P0 OPEN**. Belum ada HTTP response test yang dijalankan untuk mengukur payload aktual; kesimpulan berasal dari alur controller/policy/model yang dibaca statis. Perlu negative response assertions untuk token, instructions, snapshot, roster, attempt, score, dan metadata yang tidak termasuk allowlist Admin.
