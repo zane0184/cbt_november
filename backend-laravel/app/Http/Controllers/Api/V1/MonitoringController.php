@@ -302,6 +302,22 @@ class MonitoringController extends Controller
 
     public function heartbeat(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        // Authorize the student and exact tenant/attempt ownership before
+        // checking device headers so non-student roles receive a clear denial.
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+        if (!$user || !$user->tenant_id || count($roleNames) !== 1 || $roleNames[0] !== 'SISWA') {
+            abort(403);
+        }
+
+        if ($user->tenant_id !== $exam->tenant_id
+            || $attempt->exam_id !== $exam->id
+            || $attempt->tenant_id !== $exam->tenant_id
+            || $attempt->participant->tenant_id !== $exam->tenant_id
+            || $attempt->participant->user_id !== $user->id) {
+            abort(403);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -309,14 +325,6 @@ class MonitoringController extends Controller
                 'message' => 'Device binding identifier missing.',
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
-        }
-
-        // Student heartbeat
-        if ($attempt->exam_id !== $exam->id
-            || $attempt->tenant_id !== $exam->tenant_id
-            || $attempt->participant->tenant_id !== $exam->tenant_id
-            || $attempt->participant->user_id !== $request->user()->id) {
-            abort(403);
         }
 
         if ($attempt->device_fingerprint && $attempt->device_fingerprint !== $deviceId) {
