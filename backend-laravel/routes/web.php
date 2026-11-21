@@ -20,7 +20,7 @@ Route::get('/', function () {
         $user = auth()->user();
         if ($user->hasRole('PROKTOR')) {
             return redirect('/proktor/assignments');
-        } elseif ($user->hasRole('ADMIN_MADRASAH') && !$user->hasRole('ADMIN') && !$user->hasRole('OPERATOR')) {
+        } elseif ($user->hasRole('ADMIN_MADRASAH')) {
             return redirect('/operator/dashboard');
         } elseif ($user->hasRole('GURU')) {
             return redirect('/admin/exams');
