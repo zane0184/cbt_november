@@ -1,0 +1,495 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Exam;
+use App\Models\ExamParticipant;
+use App\Models\ExamParticipantRoomAssignment;
+use App\Models\ExamProctorAssignment;
+use App\Models\ExamRoom;
+use App\Models\ExamSession;
+use App\Models\ExamSessionRoom;
+use App\Models\ExamSessionRoomRombel;
+use App\Models\Rombel;
+use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class ExamRoomSessionService
+{
+    public function __construct(private readonly AuditService $auditService) {}
+
+    public function createRoom(User $actor, array $data): ExamRoom
+    {
+        $this->assertAdmin($actor);
+        $validated = validator($data, [
+            'code' => ['required', 'string', 'max:50'],
+            'name' => ['required', 'string', 'max:150'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $validated) {
+            $room = ExamRoom::create([
+                ...$validated,
+                'tenant_id' => $actor->tenant_id,
+                'status' => 'ACTIVE',
+            ]);
+
+            $this->auditService->log('EXAM_ROOM_CREATE', 'ExamRoom', $room->id, null, $room->only([
+                'tenant_id', 'code', 'name', 'location', 'capacity', 'status',
+            ]));
+
+            return $room;
+        });
+    }
+
+    public function createSession(
+        User $actor,
+        string $examId,
+        string $name,
+        int $sessionNumber,
+        CarbonInterface $startsAt,
+        CarbonInterface $endsAt
+    ): ExamSession {
+        $this->assertAdmin($actor);
+
+        return DB::transaction(function () use ($actor, $examId, $name, $sessionNumber, $startsAt, $endsAt) {
+            $exam = Exam::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($examId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertSchedulableExam($exam);
+            $this->validateSessionWindow($exam, $startsAt, $endsAt);
+
+            if ($sessionNumber < 1 || mb_strlen(trim($name)) < 1 || mb_strlen($name) > 120) {
+                throw ValidationException::withMessages([
+                    'session' => 'Nama sesi wajib diisi dan nomor sesi harus lebih besar dari nol.',
+                ]);
+            }
+
+            $session = ExamSession::create([
+                'tenant_id' => $actor->tenant_id,
+                'exam_id' => $exam->id,
+                'name' => trim($name),
+                'session_number' => $sessionNumber,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'schedule_revision' => 1,
+                'status' => 'SCHEDULED',
+            ]);
+
+            $this->auditService->log('EXAM_SESSION_CREATE', 'ExamSession', $session->id, null, $session->only([
+                'tenant_id', 'exam_id', 'name', 'session_number', 'starts_at', 'ends_at', 'schedule_revision', 'status',
+            ]));
+
+            return $session;
+        });
+    }
+
+    public function attachRoom(
+        User $actor,
+        string $examId,
+        string $sessionId,
+        string $roomId,
+        ?int $capacityOverride = null
+    ): ExamSessionRoom {
+        $this->assertAdmin($actor);
+
+        return DB::transaction(function () use ($actor, $examId, $sessionId, $roomId, $capacityOverride) {
+            $exam = Exam::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($examId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertSchedulableExam($exam);
+
+            // The room row is the mutex for cross-exam room-overlap checks.
+            $room = ExamRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($roomId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $session = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($room->status !== 'ACTIVE' || $session->status !== 'SCHEDULED') {
+                throw ValidationException::withMessages([
+                    'room' => 'Hanya ruang aktif yang dapat dipasang pada sesi terjadwal.',
+                ]);
+            }
+
+            if ($capacityOverride !== null
+                && ($capacityOverride < 1 || $capacityOverride > $room->capacity)) {
+                throw ValidationException::withMessages([
+                    'capacityOverride' => 'Kapasitas sesi harus antara 1 dan kapasitas maksimum ruang.',
+                ]);
+            }
+
+            $overlap = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_room_id', $room->id)
+                ->where('status', 'ACTIVE')
+                ->whereHas('session', function ($query) use ($session) {
+                    $query->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                        ->where('starts_at', '<', $session->ends_at)
+                        ->where('ends_at', '>', $session->starts_at);
+                })
+                ->lockForUpdate()
+                ->exists();
+
+            if ($overlap) {
+                throw ValidationException::withMessages([
+                    'room' => 'Ruang sudah digunakan pada sesi lain dengan waktu yang bertumpang tindih.',
+                ]);
+            }
+
+            $existing = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_session_id', $session->id)
+                ->where('exam_room_id', $room->id)
+                ->first();
+
+            if ($existing) {
+                if ($existing->status !== 'ACTIVE') {
+                    $existing->update(['status' => 'ACTIVE', 'capacity_override' => $capacityOverride]);
+                }
+                return $existing->fresh()->load(['room', 'session']);
+            }
+
+            $sessionRoom = ExamSessionRoom::create([
+                'tenant_id' => $actor->tenant_id,
+                'exam_id' => $exam->id,
+                'exam_session_id' => $session->id,
+                'exam_room_id' => $room->id,
+                'capacity_override' => $capacityOverride,
+                'status' => 'ACTIVE',
+            ]);
+
+            $this->auditService->log('EXAM_SESSION_ROOM_ATTACH', 'ExamSessionRoom', $sessionRoom->id, null, [
+                'tenant_id' => $actor->tenant_id,
+                'exam_id' => $exam->id,
+                'exam_session_id' => $session->id,
+                'exam_room_id' => $room->id,
+                'capacity_override' => $capacityOverride,
+            ]);
+
+            return $sessionRoom->load(['room', 'session']);
+        });
+    }
+
+    public function mapRombel(User $actor, string $sessionRoomId, string $rombelId): ExamSessionRoomRombel
+    {
+        $this->assertAdmin($actor);
+
+        return DB::transaction(function () use ($actor, $sessionRoomId, $rombelId) {
+            $scope = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($sessionRoomId)
+                ->firstOrFail();
+
+            $exam = Exam::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($scope->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $sessionRoom = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionRoomId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $session = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionRoom->exam_session_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $rombel = Rombel::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($rombelId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $assessment = $exam->assessment;
+            if (!$assessment || (string) $assessment->academic_year_id !== (string) $rombel->academic_year_id) {
+                throw ValidationException::withMessages([
+                    'rombel' => 'Rombel harus berasal dari tahun ajaran yang sama dengan asesmen ujian.',
+                ]);
+            }
+
+            if ($sessionRoom->status !== 'ACTIVE' || $session->status !== 'SCHEDULED') {
+                throw ValidationException::withMessages([
+                    'sessionRoom' => 'Pemetaan hanya dapat dilakukan pada pasangan sesi-ruang yang aktif dan belum berjalan.',
+                ]);
+            }
+
+            $existingMapping = ExamSessionRoomRombel::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('rombel_id', $rombel->id)
+                ->where('status', 'ACTIVE')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingMapping && (string) $existingMapping->exam_session_room_id !== (string) $sessionRoom->id) {
+                throw ValidationException::withMessages([
+                    'rombel' => 'Rombel sudah dipetakan ke sesi-ruang lain. Lepaskan pemetaan lama sebelum memindahkannya.',
+                ]);
+            }
+
+            $participants = ExamParticipant::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('rombel_id', $rombel->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $alreadyPlaced = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('exam_session_room_id', $sessionRoom->id)
+                ->where('status', 'ACTIVE')
+                ->count();
+
+            $unplaced = $participants->filter(function (ExamParticipant $participant) use ($actor, $exam) {
+                return !ExamParticipantRoomAssignment::query()
+                    ->where('tenant_id', $actor->tenant_id)
+                    ->where('exam_id', $exam->id)
+                    ->where('participant_id', $participant->id)
+                    ->where('status', 'ACTIVE')
+                    ->exists();
+            });
+
+            $capacity = $sessionRoom->capacity_override ?: $sessionRoom->room()->value('capacity');
+            if ($alreadyPlaced + $unplaced->count() > (int) $capacity) {
+                throw ValidationException::withMessages([
+                    'capacity' => 'Jumlah peserta melebihi kapasitas ruang untuk sesi ini.',
+                ]);
+            }
+
+            $mapping = $existingMapping ?: ExamSessionRoomRombel::create([
+                'tenant_id' => $actor->tenant_id,
+                'exam_id' => $exam->id,
+                'exam_session_room_id' => $sessionRoom->id,
+                'rombel_id' => $rombel->id,
+                'status' => 'ACTIVE',
+                'assigned_by' => $actor->id,
+            ]);
+
+            foreach ($unplaced as $participant) {
+                ExamParticipantRoomAssignment::create([
+                    'tenant_id' => $actor->tenant_id,
+                    'exam_id' => $exam->id,
+                    'participant_id' => $participant->id,
+                    'exam_session_room_id' => $sessionRoom->id,
+                    'status' => 'ACTIVE',
+                    'assigned_by' => $actor->id,
+                    'assigned_at' => now(),
+                ]);
+            }
+
+            $this->auditService->log('EXAM_SESSION_ROOM_ROMBEL_MAP', 'ExamSessionRoomRombel', $mapping->id, null, [
+                'tenant_id' => $actor->tenant_id,
+                'exam_id' => $exam->id,
+                'exam_session_room_id' => $sessionRoom->id,
+                'rombel_id' => $rombel->id,
+                'participant_count' => $unplaced->count(),
+            ]);
+
+            return $mapping->load(['sessionRoom', 'rombel']);
+        });
+    }
+
+    public function releaseRombelMapping(User $actor, string $mappingId, string $reason): void
+    {
+        $this->assertAdmin($actor);
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 500) {
+            throw ValidationException::withMessages(['reason' => 'Alasan pelepasan wajib berisi 10–500 karakter.']);
+        }
+
+        DB::transaction(function () use ($actor, $mappingId, $reason) {
+            $snapshot = ExamSessionRoomRombel::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($mappingId)
+                ->firstOrFail();
+
+            $exam = Exam::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($snapshot->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $mapping = ExamSessionRoomRombel::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($mappingId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($mapping->status === 'RELEASED') {
+                return;
+            }
+
+            $participantIds = ExamParticipant::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('rombel_id', $mapping->rombel_id)
+                ->pluck('id');
+
+            ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('participant_id', $participantIds)
+                ->where('exam_session_room_id', $mapping->exam_session_room_id)
+                ->where('status', 'ACTIVE')
+                ->update([
+                    'status' => 'RELEASED',
+                    'released_at' => now(),
+                    'released_by' => $actor->id,
+                    'release_reason' => $reason,
+                    'updated_at' => now(),
+                ]);
+
+            $old = $mapping->only(['status', 'released_at', 'released_by', 'release_reason']);
+            $mapping->update([
+                'status' => 'RELEASED',
+                'released_at' => now(),
+                'released_by' => $actor->id,
+                'release_reason' => $reason,
+            ]);
+
+            $this->auditService->log('EXAM_SESSION_ROOM_ROMBEL_RELEASE', 'ExamSessionRoomRombel', $mapping->id, $old, [
+                'status' => 'RELEASED',
+                'released_by' => $actor->id,
+                'release_reason' => $reason,
+            ]);
+        });
+    }
+
+    public function rescheduleSession(
+        User $actor,
+        string $sessionId,
+        CarbonInterface $startsAt,
+        CarbonInterface $endsAt,
+        string $reason
+    ): ExamSession {
+        $this->assertAdmin($actor);
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 500) {
+            throw ValidationException::withMessages(['reason' => 'Alasan perubahan jadwal wajib berisi 10–500 karakter.']);
+        }
+
+        return DB::transaction(function () use ($actor, $sessionId, $startsAt, $endsAt, $reason) {
+            $snapshot = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($sessionId)
+                ->firstOrFail();
+
+            $exam = Exam::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($snapshot->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $session = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $this->assertSchedulableExam($exam);
+            if ($session->status !== 'SCHEDULED') {
+                throw ValidationException::withMessages(['session' => 'Sesi yang sudah berjalan atau selesai tidak dapat dijadwalkan ulang.']);
+            }
+            $this->validateSessionWindow($exam, $startsAt, $endsAt);
+
+            $hasActiveAttempt = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('exam_session_room_id', $session->sessionRooms()->pluck('id'))
+                ->where('status', 'ACTIVE')
+                ->whereHas('participant.attempts', fn ($query) => $query->where('status', 'IN_PROGRESS'));
+            if ($hasActiveAttempt->exists()) {
+                throw ValidationException::withMessages(['session' => 'Jadwal tidak dapat diubah ketika peserta pada sesi ini sedang mengerjakan ujian.']);
+            }
+
+            $old = $session->only(['starts_at', 'ends_at', 'schedule_revision']);
+            $newRevision = (int) $session->schedule_revision + 1;
+            $session->update([
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'schedule_revision' => $newRevision,
+            ]);
+
+            ExamProctorAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('exam_session_room_id', $session->sessionRooms()->pluck('id'))
+                ->where('status', 'CONFIRMED')
+                ->whereNull('revoked_at')
+                ->update(['status' => 'NEEDS_REVIEW', 'updated_at' => now()]);
+
+            $allSessions = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('status', ['SCHEDULED', 'ACTIVE']);
+
+            $window = (clone $allSessions)->selectRaw('MIN(starts_at) AS starts_at, MAX(ends_at) AS ends_at')->first();
+            if ($window?->starts_at && $window?->ends_at) {
+                $exam->update(['start_at' => $window->starts_at, 'end_at' => $window->ends_at]);
+            }
+
+            $this->auditService->log('EXAM_SESSION_RESCHEDULE', 'ExamSession', $session->id, $old, [
+                'starts_at' => $session->starts_at,
+                'ends_at' => $session->ends_at,
+                'schedule_revision' => $newRevision,
+                'reason' => $reason,
+            ]);
+
+            return $session->fresh()->load('sessionRooms');
+        });
+    }
+
+    private function assertAdmin(User $actor): void
+    {
+        if (!$actor->tenant_id || !$actor->hasRole('ADMIN_MADRASAH') || !$actor->hasPermission('exam.proctor.assign')) {
+            abort(403, 'Hanya Admin Madrasah berizin yang dapat mengelola metadata ruang dan sesi ujian.');
+        }
+    }
+
+    private function assertSchedulableExam(Exam $exam): void
+    {
+        if ($exam->status !== 'PUBLISHED' || !$exam->locked_at || !$exam->start_at || !$exam->end_at) {
+            throw ValidationException::withMessages([
+                'exam' => 'Ruang dan sesi hanya dapat diatur untuk ujian yang sudah diterbitkan dan dikunci.',
+            ]);
+        }
+    }
+
+    private function validateSessionWindow(Exam $exam, CarbonInterface $startsAt, CarbonInterface $endsAt): void
+    {
+        if ($startsAt->greaterThanOrEqualTo($endsAt)
+            || $startsAt->lessThan($exam->start_at)
+            || $endsAt->greaterThan($exam->end_at)) {
+            throw ValidationException::withMessages([
+                'session' => 'Rentang sesi harus berada di dalam jadwal ujian dan waktu mulai harus sebelum waktu selesai.',
+            ]);
+        }
+    }
+}
