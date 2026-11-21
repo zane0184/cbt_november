@@ -14,7 +14,7 @@
 | **Branch kerja HEAD saat rekonsiliasi dimulai (ref dibaca langsung)** | `cbb7cda6ebfbd3792435d6dbfebed8b1cbc406af` |
 | Commit laporan rekonsiliasi W0 | `9e6e6f0e9693fb728ca8c0040b92463e15f58f0a` |
 | HEAD branch dokumentasi Kurmer-KBC saat rekonsiliasi dimulai | `4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4` |
-| Parent commit checkpoint ini | `9e6e6f0e9693fb728ca8c0040b92463e15f58f0a` |
+| Parent commit dari revisi checkpoint yang sedang diperbarui | `a412b672de6cf7c57fe22008b608fc8298854b31` |
 | Commit laporan audit revisi | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
 | Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 
