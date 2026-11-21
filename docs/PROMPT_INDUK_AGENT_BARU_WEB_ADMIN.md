@@ -522,3 +522,39 @@ Sebelum mulai, baca `docs/00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md` dan seluruh
 Jika ada kontradiksi antarcatatan jadwal ujian, keputusan terbaru mengikat: Guru membuat soal/ujian, mapel, dan jadwal akademik; metadata ujian otomatis tampil di list Admin; Admin hanya menetapkan Guru pengawas. Bagian 30 spesifikasi, bagian 16 prompt, dan Register Keputusan mengoreksi interpretasi terdahulu pada bagian 29/15 yang menyatakan Admin menyusun kalender ujian dari awal.
 
 Paket ini tidak mengubah gerbang kerja. Agent wajib melakukan verifikasi GitHub/source dan audit READ-ONLY, menyerahkan AUDIT + DESAIN, lalu menunggu persetujuan sebelum patch.
+
+
+---
+
+# ADDENDUM PROMPT — KEPUTUSAN TERBARU ADMIN/GURU (21 NOVEMBER 2026)
+
+Jika ada perbedaan dengan bagian prompt sebelumnya, addendum ini yang berlaku.
+
+## A. Role
+- Hanya ADMIN_MADRASAH role aktif untuk Admin.
+- OPERATOR tidak aktif, bukan alias runtime, bukan portal/dashboard/permission profile.
+- Legacy OPERATOR dipetakan melalui migrasi data yang aman, mempertahankan user ID, password hash, tenant, profil, histori dan audit; akun orang berbeda tidak digabung.
+- Tidak ada role/portal permanen PROKTOR. Proktor adalah assignment Guru aktif.
+
+## B. Admin — hanya administrasi dan assignment Proktor
+Admin dapat mengelola administrasi madrasah, master referensi akademik/kurikulum, data Guru/Siswa, dukungan administrasi, dan assignment Proktor. Admin hanya membaca metadata minimum ujian yang dibutuhkan untuk assignment.
+
+Admin dilarang mengakses/mengelola bank soal, isi soal/kunci, exam CRUD, mapel/jadwal/peserta ujian, publish/token/snapshot, Attempt/Answer/Score, grading/correction, jawaban/nilai/hasil, analitik ujian, monitoring operasional, close/finalize/reopen, reset Attempt, Force Submit, takeover perangkat, perpanjangan waktu, dan status pelaksanaan. Pengujian harus menguji endpoint langsung.
+
+## C. Guru — pemilik operasional CBT
+Guru mengelola bank soal, soal, media, asesmen, ujian, mapel/jadwal/peserta, konfigurasi, publikasi/token, pelaksanaan, penilaian, koreksi, hasil, analitik dan laporan sesuai assignment/permission. Tidak perlu approval Admin bila validasi sistem terpenuhi.
+
+## D. Proktor assignment
+Admin memilih Guru aktif tenant-local; assignment mencakup exam, rombel, interval, status, revision, actor, alasan, dan audit. Interval [start,end). Overlap ditolak menggunakan MySQL 8 InnoDB locking/current read dan lock order Exam → Guru → assignment. Status minimum PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED. Capability hanya untuk CONFIRMED yang valid dan waktunya memenuhi starts_at <= serverNow < expires_at. PENDING, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED tidak memberi hak.
+
+## E. Reschedule
+Jadwal ujian hanya diubah Guru. API dan Livewire wajib memakai ExamScheduleChangeService. Perubahan jadwal menandai assignment terdampak NEEDS_REVIEW dalam transaksi yang sama; Admin hanya review/confirm/revoke/reassign. Perubahan ditolak setelah attempt dimulai jika melanggar aturan CBT.
+
+## F. Handover dan gerbang
+1. Baca master entrypoint, spesifikasi rinci, register, matriks audit, matriks tes, provenance, laporan dan checkpoint terbaru.
+2. Verifikasi branch/commit/PR/source aktual; jangan memakai SHA lama tanpa verifikasi.
+3. Lakukan audit source read-only sebelum menyentuh source.
+4. Siapkan desain, daftar file, backup plan, migration plan, dan test plan.
+5. Tunggu persetujuan eksplisit pengguna sebelum implementasi.
+6. Tidak ada migration/database/production/VPS/merge/deployment/Android/Portal Guru/Siswa/Device Lease-Fencing dalam tahap dokumentasi ini.
+7. Jangan mengklaim W0 selesai, source aman, atau siap produksi berdasarkan dokumentasi saja.
