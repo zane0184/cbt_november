@@ -36,10 +36,18 @@ class ImportManagement extends Component
         $this->authorizeImport();
         $this->validate([
             'type' => ['required', 'in:GURU,SISWA'],
-            'upload' => ['required', 'file', 'mimes:xlsx', 'max:10240'],
+            'upload' => ['required', 'file', 'max:10240'],
         ]);
         if (strtolower($this->upload->getClientOriginalExtension()) !== 'xlsx') {
             $this->addError('upload', 'Hanya workbook .xlsx yang diterima.');
+            return;
+        }
+        $mime = $this->upload->getMimeType();
+        if (!in_array($mime, [
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'application/zip', 'application/x-zip', 'application/octet-stream',
+        ], true)) {
+            $this->addError('upload', 'Tipe berkas tidak dikenali sebagai workbook XLSX.');
             return;
         }
 
