@@ -350,7 +350,7 @@ class ExamRoomSessionManagementTest extends TestCase
     }
     public function test_room_update_is_guarded_by_active_session_and_assigned_capacity(): void
     {
-        $studentRole = \\App\\Models\\Role::where('name', 'SISWA')->firstOrFail();
+        $studentRole = \App\Models\Role::where('name', 'SISWA')->firstOrFail();
         $second = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Siswa Kapasitas',
