@@ -103,3 +103,14 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Backup checkpoint sebelum update: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase3-tenant-schema`, commit `80d4788dc762c78c0ecd5773d39cab38a0287669`, blob `a2f363b812b66e70c72195b08b66d02f863ee736` (sama dengan blob checkpoint sebelum update).
 - Audit read-only tetap berlangsung; implementasi NOT STARTED; tidak ada perubahan source/database/migration/role/permission/config.
 - Berikutnya: selesaikan pemeriksaan controller/Livewire/policy dan model/relasi tersisa; petakan ADM-001–ADM-023 dan T-001–T-173; finalisasi patch plan per file.
+
+
+## Checkpoint audit phase 4 — 21 November 2026
+
+- P0-06: AssessmentController.show mengizinkan AssessmentPolicy.view untuk Admin tenant-local, lalu serialize relasi exams mentah. Exam model tidak menyembunyikan token. Ini jalur tambahan token/config leakage pada detail Assessment.
+- Bukti source: app/Policies/AssessmentPolicy.php; app/Http/Controllers/Api/V1/AssessmentController.php; app/Models/Exam.php.
+- Laporan diperbarui pada commit `205e2fec2eb61511deec325c2e552ca08892a8ef`, blob `8f439894f6c15759d44231af6c528486581e5eff`.
+- Backup report: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase4-assessment-serialization`, commit `f0cba908e04b8456ca11093de7899c6f52daef33`, blob `7689d15e1d3074bb953a244c94dd77f988c9bfa1` (identik dengan report sebelum update).
+- Backup checkpoint: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase4-assessment-serialization`, commit `459eb9af688877b313dd0acf6997c90b06ea7ceb`, blob `8c9dd900c642d134b950e2f180c8e591638507fc` (identik dengan checkpoint sebelum update).
+- Status: P0-06 OPEN; audit read-only; implementasi NOT STARTED; tidak ada source/database/migration/role/permission/config yang diubah.
+- Berikutnya: inventaris semua response serialization/model hidden/API resources dan audit matriks ADM/T lengkap.
