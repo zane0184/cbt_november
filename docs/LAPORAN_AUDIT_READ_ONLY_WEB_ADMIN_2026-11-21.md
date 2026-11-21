@@ -145,3 +145,52 @@ Bukti:
 ### 9.5 Perubahan status audit
 
 Temuan P0-05 memperjelas jalur UI token dan data operasional Admin. P1-07/P1-08 menambah cakupan audit authorization API akademik dan role alias. Audit menyeluruh masih OPEN: seluruh controller, query User/relasi, export, cache, jobs, route binding, ADM-001–ADM-023 dan T-001–T-173 belum selesai dipetakan satu per satu.
+
+
+---
+
+## 10. ADDENDUM AUDIT PHASE 3 — tenant-boundary, query, cache, export, schema (21 November 2026)
+
+### 10.1 P1-09 — Foreign key tenant binding belum lengkap pada peserta/jawaban/skor ujian
+
+Bukti migration:
+- `database/migrations/2024_01_01_000017_create_exam_participants_table.php`: `exam_participants.user_id` memakai FK tunggal ke `users.id`; composite FK yang ada hanya `(exam_id, tenant_id)` → `exams(id, tenant_id)`.
+- `database/migrations/2024_01_01_000020_create_exam_attempt_answers_table.php`: `exam_attempt_answers.student_id` memakai FK tunggal ke `users.id`; composite FK yang ada mengikat exam dan attempt ke tenant, bukan student ke tenant.
+- `database/migrations/2024_01_01_000021_create_scoring_tables.php`: `exam_attempt_scores.student_id`, `exam_question_scores.student_id`, `grader_id`, dan `finalized_by` memakai FK tunggal ke users; composite FK mengikat exam/attempt, tetapi tidak mengikat user actor/student ke tenant.
+- `database/migrations/2026_11_07_210002_harden_teacher_assignment_tenant_foreign_keys.php` menambahkan unique candidate key `users(id, tenant_id)`, tetapi tidak menambahkan composite FK user-tenant untuk tabel ujian di atas.
+- `database/migrations/2026_11_20_100002_harden_device_lease_tenant_constraints.php` memeriksa beberapa mismatch perangkat/attempt, tetapi daftar constraint baru tidak mencakup `exam_participants.user_id + tenant_id` maupun student/grader pada tabel jawaban/skor.
+
+Penilaian: ini adalah gap defense-in-depth integritas referensial tenant. Jalur aplikasi yang ditinjau memiliki beberapa validasi tenant eksplisit (misalnya ExamParticipantController), sehingga belum ada bukti bahwa cross-tenant row telah berhasil dibuat atau dieksploitasi. Namun database belum menolak seluruh kombinasi user-tenant yang tidak cocok pada relasi peserta/jawaban/skor. Perlu inventaris data disposable dan rancangan migration terpisah; **tidak boleh dijalankan pada database produksi** tanpa preflight, backup, persetujuan dan rencana rollback yang disetujui.
+
+### 10.2 Review User query dan withoutGlobalScopes — hasil sementara
+
+- `User` tidak memakai `TenantScoped`; hook `creating` memaksa tenant context dan username unik per tenant, tetapi tidak membatasi query baca global secara default.
+- Direct query User yang diperiksa pada ReportController, ExamParticipantController, ExamProctorAssignmentService, Admin UserManagement dan ProctorAssignmentManagement menggunakan filter tenant eksplisit.
+- `LoginIdentityResolver` menggunakan `withoutGlobalScopes()`, tetapi query User/TeacherProfile/StudentProfile dan final user lookup difilter dengan tenant ID dari satu installation identity; kandidat harus unik dan role divalidasi.
+- `InstallerService` menggunakan unscoped lookup username/email saat recovery installer; postcondition mensyaratkan admin.tenant_id = tenant.id, nama/kode/username cocok dan password hash cocok. Ini jalur bootstrap khusus, tetap perlu test recovery conflict.
+- `EnsureLicenseActive` memakai unscoped ExamAttempt pada recovery attempt; jalur yang diperiksa memvalidasi tenant terhadap installation/user, exam ID pada path, status/expiry, serta identitas peserta. Satu cabang perlu negative test relasi participant tenant mismatch.
+- `CleanupOrphanedMediaCommand` memakai unscoped query untuk soft-deleted media, tetapi setiap row diikat ulang dengan tenant_id, lock, pemeriksaan referensi dan path tenant-safe sebelum file/row dihapus.
+- `LicenseStatusController` membatasi lookup identity berdasarkan tenant; LocalLicenseState dicari berdasarkan identity yang sudah dipastikan.
+- Tidak ditemukan `Route::bind`, `Route::model`, atau custom `resolveRouteBinding` di source app/routes yang diperiksa. Implicit binding menggunakan query model; untuk model TenantScoped scope fail-closed, tetapi User tidak memiliki scope tersebut.
+- Hasil sementara: tidak ada direct cross-tenant User query yang terkonfirmasi pada daftar query eksplisit yang diperiksa. Risiko defense-in-depth tetap OPEN karena User tidak scoped dan relasi User tidak otomatis membuktikan tenant pasangan.
+
+### 10.3 Cache, export, dan jobs
+
+- `AnalyticsController` membentuk cache key dengan prefix tenant ID untuk summary/distribution/item/rombel analytics; `AnalyticsCacheService` menghapus key dengan tenant ID.
+- Export yang ditemukan: `app/Exports/ExamResultsExport.php`. Caller pada `ReportController` menjalankan authorization `viewExamResults` dan membentuk hasil melalui report service sebelum export; tetap perlu test export negative Admin dan tenant mismatch.
+- Tidak ditemukan class di `app/Jobs` pada snapshot yang diperiksa.
+- Cache key tenant namespace adalah kontrol positif, bukan pengganti policy authorization atau pengujian invalidation.
+
+### 10.4 PENGUJIAN statis dan inventaris test
+
+- Ditemukan 64 file `*Test.php` di `tests/Feature` dan `tests/Unit`.
+- Scan nama method konvensional `test_*` / `test*` menghasilkan 433 deklarasi; angka ini adalah hasil grep statis, bukan jumlah test PHPUnit yang dieksekusi.
+- CI #692 tetap mencatat 480 test passed / 1,942 assertions pada commit lama; angka tersebut tidak boleh dianggap menjalankan T-001–T-173.
+- Belum ada mapping satu-per-satu T-001–T-173 ↔ test file/method/evidence run. Seluruh acceptance matrix tetap NOT VERIFIED sampai mapping dan run evidence dibuat.
+
+### 10.5 Status temuan tambahan
+
+- P1-09: OPEN — composite FK user-tenant untuk participant/answer/score belum lengkap.
+- Review User query: PARTIAL — explicit tenant filters ditemukan di query utama; User model global scope masih tidak ada; route/relationship negative tests belum dijalankan.
+- Cache/export/jobs: PARTIAL — tenant namespacing dan authorization caller terlihat; negative HTTP/export tests belum dijalankan; tidak ada job class ditemukan.
+- Test inventory: 64 test files, 433 conventional method declarations (static count); T-001–T-173 mapping belum dilakukan.
