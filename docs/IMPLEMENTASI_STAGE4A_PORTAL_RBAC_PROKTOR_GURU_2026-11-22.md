@@ -6,7 +6,7 @@ Branch: work/import-guru-siswa-implementation-20261122
 Source saat laporan: 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5
 
 ## STATUS
-IMPLEMENTASI PARSIAL — batas Admin terhadap CBT diperkuat dengan uji API langsung, dan pemilihan Proktor sementara kini diarahkan ke Guru aktif yang memenuhi syarat. Stage 4A belum dinyatakan selesai; validasi CI untuk source laporan terbaru masih berjalan.
+IMPLEMENTASI PARSIAL — batas Admin terhadap CBT diperkuat dengan uji API langsung, dan pemilihan Proktor sementara kini diarahkan ke Guru aktif yang memenuhi syarat. Stage 4A belum dinyatakan selesai; CI untuk source terbaru berstatus SUCCESS.
 
 ## AUDIT
 1. Portal Admin Madrasah, Guru, dan antarmuka peserta Siswa sudah memiliki jalur akses/komponen terpisah pada source aktif. AdminDashboard adalah ringkasan administrasi, bukan dashboard operasional CBT.
@@ -56,15 +56,15 @@ Backup:
 - Backup source Kamad yang dipulihkan ada pada `docs/backup/web-admin-stage4a-kamad-2026-11-22/`.
 
 ## PENGUJIAN
-- CI run 44946708332 — SUCCESS untuk source 6fdefb24ef5bc3acbd182fbc9f9a1366d19a0037.
+- CI run 44946877772 — SUCCESS untuk source 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5. Run sebelumnya 44946708332 juga SUCCESS.
 - Runtime: PHP 8.3, MySQL 8 disposable, GitHub Actions Ubuntu runner.
 - PHP lint: PASS.
-- 100 test / 516 assertion pada suite terpilih.
+- 100 test / 519 assertion pada suite terpilih.
 - AdminCbtBoundaryTest: 1 test / 29 assertion PASS, termasuk akses langsung API.
-- ProctorAssignmentSecurityTest: 7 test / 12 assertion PASS.
+- ProctorAssignmentSecurityTest: 7 test / 15 assertion PASS.
 - AdminDashboardAccessTest: 3 / 28 PASS.
 - Suite lainnya mencakup academic period, legacy role migration, tenant profile, user scope, import workbook, auth, multi-tenant, tenant isolation, Guru dan Siswa.
-- Source yang lebih baru (2ff3f3b6c671e12f25da941f50370bf1cc47eeb5) merapikan helper pengujian kandidat invalid agar menguji daftar UI dan service secara langsung. CI run 44946877772 untuk SHA tersebut masih berjalan saat laporan disusun; jangan menganggap validasi terbaru selesai sampai run itu berstatus SUCCESS.
+- Source 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5 merapikan helper pengujian kandidat invalid agar menguji daftar UI dan service secara langsung. CI run 44946877772 pada SHA tersebut telah selesai dengan status SUCCESS.
 - Tidak ada migration baru, perubahan DB produksi, deployment VPS, PR, atau merge.
 
 ## PEKERJAAN BERIKUTNYA
