@@ -14,6 +14,7 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Livewire\Admin\ExamRoomSessionManagement;
 use App\Http\Controllers\Admin\ImportTemplateController;
 use App\Livewire\Admin\ImportManagement;
 use App\Http\Controllers\Auth\ImportAccountActivationController;
@@ -98,6 +99,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/admin/questions', QuestionBank::class);
     Route::get('/admin/exams', ExamManagement::class);
     Route::get('/admin/proctor-assignments', ProctorAssignmentManagement::class)->name('admin.proctor-assignments');
+    Route::get('/admin/exam-rooms-sessions', ExamRoomSessionManagement::class)->name('admin.exam-rooms-sessions');
 
     // Teacher & Results Routes
     Route::get('/exams/{exam}/results', ResultList::class);
