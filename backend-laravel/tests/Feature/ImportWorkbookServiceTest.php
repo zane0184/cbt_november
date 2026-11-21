@@ -807,7 +807,7 @@ class ImportWorkbookServiceTest extends TestCase
         ]);
         $this->assertNull(ImportBatchRow::query()->whereKey($row->id)->value('encrypted_payload'));
         $this->assertDatabaseHas('audit_logs', [
-            'tenant_id' => $this->tenant->id, 'action' => 'IMPORT_PREVIEW_EXPIRED', 'entity_id' => $batch->id,
+            'tenant_id' => $this->tenant->id, 'action' => 'IMPORT_STAGING_EXPIRED', 'entity_id' => $batch->id,
         ]);
     }
 
