@@ -94,7 +94,7 @@ GitHub Actions run 44944158355:
 - Kamad tidak termasuk ruang lingkup Stage 4A maupun portal aktif proyek. Jangan menambah role, portal, fitur, route, permission, atau alur Kamad tanpa keputusan baru pemilik proyek.
 - Fokus Stage 4A: pemisahan portal Admin Madrasah, Guru, dan Siswa; larangan akses Admin terhadap fitur/data CBT; kewenangan Guru berbasis role/permission/penugasan; penugasan Proktor sementara kepada Guru yang memenuhi syarat; dan pengujian URL/API langsung serta isolasi lintas tenant/kewenangan.
 - Proktor bukan portal atau role permanen.
-- Perubahan source yang sempat memasukkan Kamad telah dipulihkan dari backup dan keenam file aktif diverifikasi identik dengan salinan backup masing-masing.
+- Perubahan source yang sempat memasukkan Kamad telah dipulihkan dari backup. Lima file tetap identik dengan backup pemulihan; AdminCbtBoundaryTest.php kemudian sengaja diperbarui untuk menambahkan uji API langsung. Versi sebelum uji API tersedia di docs/backup/stage4a-proctor-eligibility-2026-11-22/AdminCbtBoundaryTest.php.before-guru-eligibility.
 
 
 ## CHECKPOINT IMPLEMENTASI STAGE 4A — KOREKSI PEMILIK PROYEK
