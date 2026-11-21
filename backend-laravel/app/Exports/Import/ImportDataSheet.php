@@ -3,6 +3,7 @@
 namespace App\Exports\Import;
 
 use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithEvents;
@@ -10,11 +11,14 @@ use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Cell\DataValidation;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ImportDataSheet implements FromArray, WithTitle, ShouldAutoSize, WithStyles, WithColumnFormatting, WithEvents
+class ImportDataSheet extends DefaultValueBinder implements FromArray, WithTitle, ShouldAutoSize, WithStyles, WithColumnFormatting, WithEvents, WithCustomValueBinder
 {
     public function __construct(
         private readonly string $sheetTitle,
@@ -25,6 +29,17 @@ class ImportDataSheet implements FromArray, WithTitle, ShouldAutoSize, WithStyle
         private readonly array $enumColumns = [],
         private readonly array $referenceColumnIndexes = [],
     ) {}
+
+    public function bindValue(Cell $cell, $value): bool
+    {
+        $column = $cell->getColumn();
+        if ($cell->getRow() > 1 && is_string($value)
+            && (in_array($column, $this->textColumns, true) || array_key_exists($column, $this->referenceColumns))) {
+            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+            return true;
+        }
+        return parent::bindValue($cell, $value);
+    }
 
     public function title(): string { return $this->sheetTitle; }
 
