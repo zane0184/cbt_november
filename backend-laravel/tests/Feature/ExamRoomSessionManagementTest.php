@@ -23,6 +23,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ExamRoomSessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 use Livewire\Livewire;
