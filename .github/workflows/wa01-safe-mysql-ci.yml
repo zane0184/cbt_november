@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/wa01-safe-mysql-ci-20261121
+      - work/web-admin-w1-role-tenant-20261121
     paths:
       - "backend-laravel/**"
       - ".github/workflows/wa01-safe-mysql-ci.yml"
@@ -268,6 +269,18 @@ jobs:
             tee "$RUNNER_TEMP/wa01-safe/phpunit-auth-tenant-guru-siswa.log"
           php artisan test tests/Feature/WebAdminAuthTest.php --filter=test_teacher_can_login_using_nip --display-warnings 2>&1 |
             tee "$RUNNER_TEMP/wa01-safe/phpunit-guru-nip-login.log"
+
+      - name: Run W1 Admin role tenant and legacy migration tests
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test \
+            tests/Feature/AdminRoleTenantBoundaryTest.php \
+            tests/Feature/LegacyRoleConsolidationMigrationTest.php \
+            tests/Feature/RoleDashboardVerificationTest.php \
+            --display-warnings 2>&1 |
+            tee "$RUNNER_TEMP/wa01-safe/phpunit-w1-role-tenant.log"
 
       - name: Verify permissions tables remain empty after selected test
         working-directory: backend-laravel
