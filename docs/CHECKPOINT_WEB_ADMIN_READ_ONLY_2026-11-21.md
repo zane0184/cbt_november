@@ -49,3 +49,21 @@
 
 ## Referensi laporan
 Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
+
+## Publikasi dan verifikasi GitHub
+
+- Laporan resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`
+  - Commit pembuatan: `7dc7f80b721ea0e6e34cfedfcc5eefe6a290adaf`
+  - Blob SHA: `59d50a48720541ac41d9a6282ed066e60f62fe39`
+  - Backup sebelum publikasi: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.pre-publication`
+  - Backup blob SHA identik: `59d50a48720541ac41d9a6282ed066e60f62fe39`
+- Checkpoint resmi:
+  - Commit awal: `b17054b6e03220857d196110ebc7327fa358c7f4`
+  - Blob SHA sebelum verifikasi publikasi: `df0596686f50fa6a009838a1d835ac462bf0e5b8`
+  - Backup sebelum pembaruan ini: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-publication-verification`
+  - Backup commit: `cb009de2c3980d3befea980660f162e3e03e2120`
+  - Backup blob SHA: `df0596686f50fa6a009838a1d835ac462bf0e5b8` (identik dengan blob sebelum update).
+- Backup laporan awal: commit `6a4f19a90ab979922a9ec4ec00d2094567050fb0`; backup checkpoint awal: commit `2f3fc9c2cd4b6ca60a9871f07ca05b6005814dfb`.
+- SHA-256 file kerja lokal asal: laporan `6cdf47db1897aa7dc5976c5f4df2798054ef1834fe1ef9911f6e40bccdfb47f2`; checkpoint `f864125148dc034e85718cb4a2d087be4b2ee904984e02a9bacbe9dfd674e9b7`. Dokumen GitHub yang dipublikasikan merupakan edisi resmi ringkas yang mempertahankan temuan dan status; backup GitHub disamakan byte-for-byte dengan edisi resmi tersebut.
+- Branch target: `docs/canonical-reconciliation-admin-guru-20261121`; tidak ada branch source atau PR yang diubah, tidak ada PR dibuat/merge/close.
+- Verifikasi: backup dan file resmi memiliki Git blob SHA yang sama untuk masing-masing dokumen. Laporan dan checkpoint tersedia langsung pada GitHub branch target.
