@@ -157,7 +157,8 @@ class ExamProctorAssignmentService
                 ->where('starts_at', '<', $expiry)
                 ->where('expires_at', '>', $start)
                 ->lockForUpdate()
-                ->exists();
+                ->get()
+                ->isNotEmpty();
 
             if ($hasConflict) {
                 throw ValidationException::withMessages([
