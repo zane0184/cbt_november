@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'CBT Madrasah') }} - Panel Admin Madrasah</title>
+    <title>{{ config('app.name', 'CBT Madrasah') }} - {{ auth()->user() && auth()->user()->hasRole('KAMAD') && !auth()->user()->hasRole('ADMIN_MADRASAH') ? 'Ruang Kepala Madrasah' : 'Panel Madrasah' }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -43,7 +43,8 @@
     @php
         $currentUser = auth()->user();
         $isAdminMadrasah = $currentUser && $currentUser->hasRole('ADMIN_MADRASAH');
-        $isTeacher = $currentUser && $currentUser->hasRole('GURU') && !$isAdminMadrasah;
+        $isKamad = $currentUser && $currentUser->hasRole('KAMAD') && !$isAdminMadrasah;
+        $isTeacher = $currentUser && $currentUser->hasRole('GURU') && !$isAdminMadrasah && !$isKamad;
     @endphp
 
     <div class="flex min-h-screen">
@@ -54,7 +55,7 @@
                     <div class="min-w-0">
                         <h1 class="text-sm font-bold leading-tight">CBT MADRASAH</h1>
                         <p class="mt-0.5 truncate text-xs text-gray-400">
-                            {{ $isAdminMadrasah ? 'Panel Admin Madrasah' : ($isTeacher ? 'Portal Guru' : 'Madrasah') }}
+                            {{ $isAdminMadrasah ? 'Panel Admin Madrasah' : ($isKamad ? 'Ruang Kepala Madrasah' : ($isTeacher ? 'Portal Guru' : 'Madrasah')) }}
                         </p>
                     </div>
                 </div>
@@ -93,6 +94,16 @@
                     @if($currentUser->hasPermission('exam.proctor.assign'))
                         <a href="/admin/proctor-assignments" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/proctor-assignments*') ? 'border-l-4 border-amber-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span class="text-amber-400">◷</span><span>Penugasan Pengawas</span>
+                        </a>
+                    @endif
+                @elseif($isKamad)
+                    <p class="px-4 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Ruang Kepala Madrasah</p>
+                    <a href="/admin/kamad" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/kamad') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                        <span class="text-emerald-400">▦</span><span>Dashboard Kepala Madrasah</span>
+                    </a>
+                    @if($currentUser->hasPermission('curriculum.view'))
+                        <a href="/admin/curriculum" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/curriculum*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span class="text-emerald-400">▧</span><span>Referensi Kurikulum</span>
                         </a>
                     @endif
                 @elseif($isTeacher)
@@ -142,6 +153,9 @@
                                 @endif
                                 @if($currentUser->hasPermission('curriculum.view'))<a href="/admin/curriculum" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Master Kurikulum</a>@endif
                                 @if($currentUser->hasPermission('exam.proctor.assign'))<a href="/admin/proctor-assignments" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Penugasan Pengawas</a>@endif
+                            @elseif($isKamad)
+                                <a href="/admin/kamad" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Dashboard Kepala Madrasah</a>
+                                @if($currentUser->hasPermission('curriculum.view'))<a href="/admin/curriculum" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Referensi Kurikulum</a>@endif
                             @elseif($isTeacher)
                                 <a href="/admin/exams" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Manajemen Ujian</a>
                                 @if($currentUser->hasPermission('question.view'))<a href="/admin/questions" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Bank Soal</a>@endif
@@ -150,7 +164,7 @@
                         </div>
                     </details>
                     <div class="min-w-0">
-                        <h2 class="truncate text-base font-bold text-navy-900 md:text-lg">{{ $isAdminMadrasah ? 'Panel Admin Madrasah' : ($isTeacher ? 'Portal Guru' : 'CBT Madrasah') }}</h2>
+                        <h2 class="truncate text-base font-bold text-navy-900 md:text-lg">{{ $isAdminMadrasah ? 'Panel Admin Madrasah' : ($isKamad ? 'Ruang Kepala Madrasah' : ($isTeacher ? 'Portal Guru' : 'Portal Madrasah')) }}</h2>
                         <p class="hidden text-xs text-textSecondary sm:block">Administrasi dan layanan akademik madrasah</p>
                     </div>
                 </div>
