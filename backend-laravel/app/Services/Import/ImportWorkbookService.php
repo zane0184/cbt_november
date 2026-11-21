@@ -490,7 +490,7 @@ class ImportWorkbookService
         if ($this->loginUsernameExists($tenantId, $loginIdentifier)) throw new RuntimeException('Identitas login sudah digunakan sebagai username akun lain pada tenant ini.');
         $role = Role::query()->where('name','GURU')->firstOrFail();
         $temporaryPassword = Str::random(64);
-        $user = User::create(['name'=>$p['name'],'email'=>$p['email'] ?: null,'password'=>Hash::make($temporaryPassword)]);
+        $user = User::create(['name'=>$p['name'],'username'=>$loginIdentifier,'email'=>$p['email'] ?: null,'password'=>Hash::make($temporaryPassword)]);
         $user->roles()->sync([$role->id]);
         $profile = TeacherProfile::create([
             'user_id'=>$user->id,'nip'=>$p['nip'] ?: null,'nik'=>$p['nik'] ?: null,'nuptk'=>$p['nuptk'] ?: null,
@@ -510,7 +510,7 @@ class ImportWorkbookService
         $rombel = $this->resolveRombel($p['rombel'],$p['academic_year'],$tenantId);
         if (!$rombel) throw new RuntimeException('Rombel tidak lagi valid saat konfirmasi.');
         $role = Role::query()->where('name','SISWA')->firstOrFail();
-        $user = User::create(['name'=>$p['name'],'email'=>null,'password'=>Hash::make(Str::random(64))]);
+        $user = User::create(['name'=>$p['name'],'username'=>$p['nisn'],'email'=>null,'password'=>Hash::make(Str::random(64))]);
         $user->roles()->sync([$role->id]);
         $profile = StudentProfile::create([
             'user_id'=>$user->id,'nis'=>$p['nis'] ?: null,'nisn'=>$p['nisn'],'full_name'=>$p['name'],
