@@ -237,6 +237,15 @@ jobs:
           if (!$ok) exit(73);
           PHP
 
+      - name: Prepare empty test-only environment file after DB identity verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -s .env
+          touch .env
+          test -f .env
+          test ! -s .env
+
       - name: Static guard — selected test paths exclude seeders and permission writes
         shell: bash
         run: |
