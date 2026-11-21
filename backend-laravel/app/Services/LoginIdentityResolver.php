@@ -44,7 +44,7 @@ class LoginIdentityResolver
 
         if (in_array('SISWA', $roles, true)) return $matchesStudent ? $user : null;
         if (in_array('GURU', $roles, true)) return ($matchesTeacher || $matchesUsername) ? $user : null;
-        $staffRoles = ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR', 'KAMAD', 'PROKTOR'];
+        $staffRoles = ['ADMIN_MADRASAH', 'KAMAD'];
         if (count(array_intersect($roles, $staffRoles)) > 0) return $matchesUsername ? $user : null;
         return null;
     }
