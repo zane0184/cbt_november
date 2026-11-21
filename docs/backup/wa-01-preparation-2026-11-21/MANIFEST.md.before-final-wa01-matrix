@@ -1,0 +1,24 @@
+# Manifest backup dokumen persiapan WA-01
+
+- Repository: zane0184/cbt_november
+- Branch: docs/canonical-reconciliation-admin-guru-20261121
+- Dibuat sebelum pembaruan checkpoint dan patch plan untuk paket WA-01.
+- Seluruh file backup di-fetch ulang dan byte-identical dengan dokumen asli sebelum update.
+
+| Dokumen asli | Blob SHA sebelum update | SHA-256 backup | Bytes | Backup path |
+|---|---|---|---:|---|
+| docs/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md | 37f6fb7874be785db11dbd84e3d4a5639c63fa73 | 3d681a0ad6593d20dac07f3bd682c38b8d04578f232e845d184cc620bd9e15f3 | 30997 | docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-wa01-package |
+| docs/PATCH_PLAN_FINAL_WEB_ADMIN_2026-11-21.md | b747d70bd9ff0b2a85bda5bdee232c81ef1fcd86 | 9bee00860c5d96e06810b477d38a4eefeeb95cb3e76d8d78af54151b2dc1194f | 59836 | docs/backup/wa-01-preparation-2026-11-21/PATCH_PLAN_FINAL_WEB_ADMIN_2026-11-21.md.before-wa01-package |
+
+## Change-control
+- Backup ini hanya untuk dokumentasi.
+- Tidak ada source aplikasi/database/migration/seeder/role/permission/config yang diubah.
+- Source branch work/web-admin-w0-20261121 tidak diubah.
+
+| docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md | 055d571ec2aace7fea97325a787c35b01a52187f | dbbb61c471a020824afa52e49609ebadeeea43149a0690547bf715b1478466fc | 36010 | docs/backup/wa-01-preparation-2026-11-21/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md.before-test-provenance-refinement |
+
+Backup dibuat sebelum refinement provenance test; blob SHA sama dengan dokumen paket sebelum update.
+
+| docs/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md (before final ledger refresh) | 841cfe0694d3443e7828e1a3813b8baa736b4e15 | b1d378fe974cbe8c771df1400bdaecd55ddeb08ea9b82f235a1a489d55add447 | 33331 | docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-ledger-refresh |
+
+Backup dibuat dan diverifikasi byte-identical sebelum final ledger refresh checkpoint.
