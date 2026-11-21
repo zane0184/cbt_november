@@ -24,7 +24,7 @@
                 <label class="block text-sm font-semibold mb-1">Akun Proktor</label>
                 <select wire:model="selectedProctorId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
                     <option value="">Pilih Proktor tenant ini</option>
-                    @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }} — {{ $proctor->email }}</option>@endforeach
+                    @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }}</option>@endforeach
                 </select>
                 @error('selectedProctorId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
