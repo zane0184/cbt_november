@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -105,6 +106,19 @@ class UserManagement extends Component
             } elseif ($this->selectedRole === 'SISWA') {
                 StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
             }
+
+            app(AuditService::class)->log(
+                'USER_CREATED',
+                'User',
+                $user->id,
+                null,
+                [
+                    'name' => $user->name,
+                    'role' => $this->selectedRole,
+                    'username' => $user->username,
+                    'profile_type' => $this->selectedRole === 'GURU' ? 'TeacherProfile' : 'StudentProfile',
+                ]
+            );
         }, 3);
 
         $createdName = $this->name;
@@ -115,12 +129,23 @@ class UserManagement extends Component
     }
 
     public function updatingSearch(): void { $this->resetPage(); }
-    public function updatingRoleFilter(): void { $this->resetPage(); }
+    public function updatingRoleFilter(string $value): void
+    {
+        abort_unless($value === '' || in_array($value, ['GURU', 'SISWA'], true), 422);
+        $this->resetPage();
+    }
 
     public function render()
     {
+        $this->authorizeUserManagement();
         $tenantId = auth()->user()->tenant_id;
-        $users = User::query()->where('tenant_id', $tenantId)->with(['roles','teacherProfile','studentProfile'])
+        $users = User::query()
+            ->where('tenant_id', $tenantId)
+            ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', ['GURU', 'SISWA']))
+            ->whereDoesntHave('roles', fn ($roleQuery) => $roleQuery->whereNotIn('name', ['GURU', 'SISWA']))
+            ->withCount('roles')
+            ->having('roles_count', '=', 1)
+            ->with(['roles','teacherProfile','studentProfile'])
             ->when($this->search, function ($query): void {
                 $query->where(function ($sub): void {
                     $sub->where('name', 'like', '%'.$this->search.'%')

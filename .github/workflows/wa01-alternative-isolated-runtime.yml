@@ -261,6 +261,7 @@ jobs:
           test -f tests/Feature/AdminDashboardAccessTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
           test -f tests/Feature/TenantProfileManagementTest.php
+          test -f tests/Feature/AdminUserManagementScopeTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
           grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
           if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|Permission::(create|firstOrCreate|updateOrCreate)|permissions\(\)->(sync|attach|detach)|permission_role.*(insert|update|delete)'; then
@@ -285,6 +286,10 @@ jobs:
           fi
           if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/TenantProfileManagementTest.php; then
             echo "Tenant profile test contains prohibited permission table writes." >&2
+            exit 1
+          fi
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/AdminUserManagementScopeTest.php; then
+            echo "Admin user test contains prohibited permission table writes." >&2
             exit 1
           fi
           echo "Static guard PASS: selected Admin tests contain no permission writes; no seeder/bootstrapper is selected."
@@ -319,6 +324,12 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/TenantProfileManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-tenant-profile.log"
+
+      - name: PHPUnit — Admin user-management tenant scope and role restrictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AdminUserManagementScopeTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-users.log"
 
       - name: PHPUnit — API authentication and tenant isolation
         shell: bash
