@@ -186,6 +186,19 @@ class ExamRoomSessionManagementTest extends TestCase
         );
     }
 
+    public function test_admin_can_open_room_session_management_and_teacher_is_denied(): void
+    {
+        $this->actingAs($this->admin)
+            ->get('/admin/exam-rooms-sessions')
+            ->assertOk();
+
+        Livewire::test(ExamRoomSessionManagement::class)->assertOk();
+
+        $this->actingAs($this->proctor)
+            ->get('/admin/exam-rooms-sessions')
+            ->assertForbidden();
+    }
+
     public function test_admin_can_create_room_session_and_map_a_rombel_with_participant_snapshot(): void
     {
         $room = $this->createRoom('A1');
