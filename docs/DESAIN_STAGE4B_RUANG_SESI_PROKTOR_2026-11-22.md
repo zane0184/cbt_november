@@ -66,7 +66,9 @@ Pemetaan rombel yang dijadwalkan ke pasangan sesi-ruang:
 - id, tenant_id, exam_id, exam_session_room_id, rombel_id, status, assigned_by, timestamps.
 - Unique tenant_id + exam_id + rombel_id untuk mencegah satu rombel didistribusikan ganda secara tidak sengaja.
 - Service dapat menghasilkan participant-room assignment untuk seluruh peserta ujian yang memiliki rombel_id tersebut.
-- Bila diperlukan pemecahan rombel lintas ruang, gunakan participant-level reassignment dengan histori; jangan membuat mapping ganda aktif.
+- Admin Madrasah hanya memilih rombel dan pasangan sesi-ruang; Admin tidak mendapat daftar/nama peserta, data operasional peserta, atau UI penempatan peserta individual.
+- Sistem membentuk participant-room assignment secara otomatis dari snapshot rombel. Pemecahan satu rombel lintas ruang tidak menjadi capability Admin pada Stage 4B.
+- Jika kelak pemecahan rombel benar-benar diperlukan, implementasikan sebagai workflow terpisah yang dimiliki Guru pembuat ujian, dengan otorisasi, kapasitas, idempotensi, histori release/reassignment, dan audit tersendiri. Jangan membuka data peserta operasional kepada Admin.
 
 ### 3.7 exam_proctor_assignments
 Tambahkan scope:
