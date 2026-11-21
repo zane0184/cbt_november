@@ -119,6 +119,11 @@ class MonitoringDuplicationTest extends TestCase
         $response->assertOk();
         $this->assertCount(1, $response->json('data'));
         $this->assertEquals('IN_PROGRESS', $response->json('data.0.attempt.status'));
+
+        $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/answers")
+            ->assertForbidden();
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/heartbeat")
+            ->assertForbidden();
     }
 
     public function test_admin_is_denied_direct_monitoring_answers_score_and_report_urls_and_apis(): void
