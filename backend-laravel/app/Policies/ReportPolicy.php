@@ -39,7 +39,7 @@ class ReportPolicy
             return $user->hasPermission('report.view') && TeacherAccess::profileIds($user) !== [];
         }
 
-        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) && $user->hasPermission('report.view');
+        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
     }
 
     /**
