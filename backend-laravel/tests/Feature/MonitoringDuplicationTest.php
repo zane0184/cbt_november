@@ -139,8 +139,8 @@ class MonitoringDuplicationTest extends TestCase
             $this->exam->id,
             'Sesi Monitoring',
             1,
-            now()->subMinutes(10),
-            now()->addHour()
+            $this->exam->start_at,
+            $this->exam->end_at
         );
         $this->sessionRoom = $roomService->attachRoom(
             $this->admin,
@@ -270,8 +270,8 @@ class MonitoringDuplicationTest extends TestCase
             $this->exam->id,
             'Sesi Dua',
             2,
-            now()->subMinutes(10),
-            now()->addHour()
+            $this->exam->start_at,
+            $this->exam->end_at
         );
         $sessionRoomTwo = $roomService->attachRoom(
             $this->admin,
