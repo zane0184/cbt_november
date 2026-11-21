@@ -720,4 +720,51 @@ class MonitoringDuplicationTest extends TestCase
         $this->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
     }
 
+    public function test_nonconfirmed_lifecycle_states_and_revision_mismatch_never_grant_monitoring_scope(): void
+    {
+        $assignment = $this->createPendingTemporaryProctorAssignment();
+
+        foreach (['PENDING', 'NEEDS_REVIEW', 'REVOKED', 'EXPIRED', 'COMPLETED', 'ACTIVE'] as $status) {
+            $assignment->update([
+                'status' => $status,
+                'revoked_at' => $status === 'REVOKED' ? now() : null,
+                'expires_at' => $status === 'EXPIRED' ? now()->subSecond() : now()->addMinutes(30),
+            ]);
+
+            $this->actingAs($this->assignedGuru, 'sanctum')
+                ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+                ->assertForbidden();
+        }
+
+        $assignment->update([
+            'status' => 'CONFIRMED',
+            'revoked_at' => null,
+            'expires_at' => now()->addMinutes(30),
+        ]);
+
+        $sessionRoom = ExamSessionRoom::query()->whereKey($assignment->exam_session_room_id)->firstOrFail();
+        $revision = (int) \Illuminate\Support\Facades\DB::table('exam_sessions')
+            ->where('id', $sessionRoom->exam_session_id)
+            ->value('schedule_revision');
+        \Illuminate\Support\Facades\DB::table('exam_sessions')
+            ->where('id', $sessionRoom->exam_session_id)
+            ->update(['schedule_revision' => $revision + 1]);
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
+    public function test_mixed_role_guru_is_denied_even_with_confirmed_proctor_assignment(): void
+    {
+        $this->assignTemporaryProctor();
+        $studentRole = Role::where('name', 'SISWA')->firstOrFail();
+        $this->assignedGuru->roles()->attach($studentRole->id);
+        $this->assignedGuru->unsetRelation('roles');
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
 }
