@@ -13,6 +13,7 @@ class ReportPolicy
      */
     public function viewExamResults(User $user, Exam $exam): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if (!$exam || $user->tenant_id !== $exam->tenant_id) return false;
 
         if ($user->hasRole('GURU')) {
@@ -27,6 +28,7 @@ class ReportPolicy
      */
     public function viewStudentResults(User $user, User $student): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $student->tenant_id) return false;
 
         if ($user->id === $student->id) return true;
@@ -45,6 +47,7 @@ class ReportPolicy
      */
     public function viewSubjectResults(User $user, \App\Models\Subject $subject): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $subject->tenant_id) return false;
 
         // Subject aggregates currently span all rombels. A teacher assignment is
