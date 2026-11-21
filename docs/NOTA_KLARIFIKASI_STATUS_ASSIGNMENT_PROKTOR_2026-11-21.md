@@ -1,9 +1,9 @@
-# NOTA KLARIFIKASI DESAIN — STATUS ASSIGNMENT PROKTOR
-Tanggal: 21 November 2026
-Status: OPEN — memerlukan penegasan pengguna sebelum implementasi status/capability.
+# KEPUTUSAN FINAL — STATUS ASSIGNMENT PROKTOR
+Tanggal keputusan: 21 November 2026
+Status: ACTIVE — keputusan eksplisit pengguna; final, tidak menunggu klarifikasi.
 
-## 1. Yang sudah diputuskan pengguna
-Pengguna menetapkan status assignment minimum:
+## 1. Status assignment kanonis
+Status assignment yang diperbolehkan:
 - `PENDING`
 - `CONFIRMED`
 - `NEEDS_REVIEW`
@@ -11,35 +11,49 @@ Pengguna menetapkan status assignment minimum:
 - `EXPIRED`
 - `COMPLETED`
 
-Pengguna secara eksplisit menetapkan status yang tidak memberikan hak Proktor:
-- `NEEDS_REVIEW`
-- `REVOKED`
-- `EXPIRED`
-- `COMPLETED`
+Status `ACTIVE` **bukan** status assignment dan tidak boleh ditambahkan sebagai enum/status pengganti atau status capability.
 
-Pengguna juga menetapkan hak Proktor aktif hanya bila assignment valid dan waktu server memenuhi:
-`starts_at <= serverNow < expires_at`.
+## 2. Matriks capability final
 
-## 2. Hal yang belum dinyatakan secara eksplisit
-Instruksi pengguna belum secara eksplisit menjelaskan:
-1. Apakah `PENDING` memberikan capability atau tidak.
-2. Apakah `CONFIRMED` adalah satu-satunya status yang dapat memberikan capability.
-3. Apakah `ACTIVE` tetap diperlukan sebagai status tambahan, atau digantikan oleh `CONFIRMED`.
-4. Transisi status yang tepat: PENDING → CONFIRMED → COMPLETED/EXPIRED/REVOKED, serta kondisi masuk NEEDS_REVIEW.
+| Status | Memberikan capability Proktor? | Ketentuan |
+|---|---|---|
+| `PENDING` | Tidak | Menunggu konfirmasi; seluruh request Proktor ditolak |
+| `CONFIRMED` | Ya, bersyarat | Hanya setelah semua validasi di bagian 3 lulus dan waktu berada dalam interval |
+| `NEEDS_REVIEW` | Tidak | Capability assignment lama langsung tidak berlaku |
+| `REVOKED` | Tidak | Dicabut; request berikutnya langsung ditolak |
+| `EXPIRED` | Tidak | Kedaluwarsa; request ditolak berdasarkan waktu server |
+| `COMPLETED` | Tidak | Tugas selesai; tidak lagi memberi capability |
 
-Dokumen terdahulu yang menyatakan “hanya CONFIRMED memberi capability” dan “PENDING tidak memberi capability” harus dipahami sebagai rekomendasi fail-closed, bukan keputusan eksplisit pengguna. Jangan mengimplementasikannya sebagai keputusan final tanpa konfirmasi.
+Hanya `CONFIRMED` merupakan status assignment yang dapat memberikan capability. Status akun Guru `ACTIVE` tetap boleh digunakan dalam konteks akun, tetapi bukan status assignment Proktor.
 
-## 3. Rekomendasi keamanan sementara
-Sampai ada penegasan, rekomendasi paling aman adalah fail-closed: `PENDING` tidak memberi capability; capability baru aktif setelah assignment dikonfirmasi dan semua validasi tenant/Guru/exam/rombel/revision/waktu terpenuhi. Namun rekomendasi ini tetap berstatus PROPOSED, bukan ACTIVE.
+## 3. Validasi wajib setiap request
+Assignment `CONFIRMED` hanya memberikan capability jika seluruh kondisi berikut terpenuhi:
+1. User adalah Guru yang masih aktif.
+2. TeacherProfile valid dan aktif.
+3. Tenant Guru, assignment, ujian, dan rombel sesuai.
+4. Assignment mengacu pada ujian dan rombel yang benar.
+5. Schedule revision assignment sama dengan revision jadwal ujian terkini.
+6. Assignment belum dicabut dan tidak berada dalam kondisi konflik yang melarang.
+7. Permission dan lingkup penugasan sah.
+8. Waktu server memenuhi interval setengah terbuka:
 
-Status `ACTIVE` pada source/dokumen historis tidak boleh otomatis dipertahankan atau dihapus. Petakan transisinya setelah status kanonis disetujui.
+`starts_at <= serverNow < expires_at`
 
-## 4. Dampak
-- Jangan membuat migration enum/status.
-- Jangan mengubah model/service/policy/middleware/Livewire/API.
-- Jangan menulis test sebagai acceptance final untuk status PENDING/CONFIRMED sebelum keputusan status dikunci.
-- Test T-159 dan T-160 pada matriks pengujian adalah test usulan berbasis rekomendasi fail-closed; tandai PENDING DECISION sampai pengguna menegaskan semantik.
-- Semua status lain yang secara eksplisit dinyatakan tidak memberi hak tetap ditolak.
+Pemeriksaan dilakukan pada setiap request yang menggunakan capability. Jangan bergantung pada cron/scheduler untuk menentukan boleh atau tidaknya akses. Pada saat `serverNow >= expires_at`, akses harus ditolak walaupun label status database belum diperbarui menjadi `EXPIRED`.
 
-## 5. Pertanyaan keputusan yang spesifik
-Apakah Anda menetapkan `PENDING` tidak memberi hak Proktor dan hanya `CONFIRMED` yang dapat memberi capability (dengan syarat tenant, Guru aktif, exam/rombel, revision, dan interval waktu valid)? Atau ada status lain, misalnya `ACTIVE`, yang dimaksud sebagai status pemberi hak?
+## 4. Reschedule
+Perubahan jadwal hanya dilakukan Guru melalui `ExamScheduleChangeService`. Perubahan yang berdampak pada assignment membuat assignment terkait menjadi `NEEDS_REVIEW` secara atomik dan langsung mencabut capability lama. Admin hanya meninjau dan mengonfirmasi ulang assignment setelah semua validasi konflik/revision terpenuhi. Setelah konfirmasi ulang, status kanonisnya adalah `CONFIRMED`, bukan `ACTIVE`.
+
+## 5. Overlap dan concurrency
+- Interval setengah terbuka `[starts_at, expires_at)`.
+- Predikat overlap: `existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at`.
+- Interval bersebelahan diterima; interval yang bertumpang tindih ditolak.
+- Pemeriksaan lintas seluruh assignment Guru, ujian, dan rombel.
+- Lock order MySQL 8+ InnoDB konsisten: Exam → Guru row sebagai mutex → assignment terkait dengan locking/current read → validasi → simpan assignment/event/audit dalam satu transaksi.
+- Kegagalan audit menggagalkan transaksi.
+
+## 6. Status implementasi dan pengujian
+Keputusan desain di atas ACTIVE. Implementasi source masih OPEN sampai diubah dengan persetujuan terpisah. Test T-001–T-168 tetap memiliki status eksekusi sebelumnya; test baru untuk larangan status ACTIVE dan validasi capability CONFIRMED ditambahkan setelah T-168. Semua test yang belum dijalankan tetap NOT RUN.
+
+## 7. Riwayat klarifikasi
+Dokumen ini menggantikan status OPEN dan rekomendasi PROPOSED pada versi nota sebelumnya. Tidak ada pertanyaan keputusan yang tersisa untuk semantik status assignment Proktor. Addendum 34 pada spesifikasi rinci ditandai SUPERSEDED oleh Addendum 35.
