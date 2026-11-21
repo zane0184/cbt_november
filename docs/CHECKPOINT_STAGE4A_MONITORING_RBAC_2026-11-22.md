@@ -49,7 +49,7 @@ Perubahan kunci:
 
 ## BACKUP
 - Folder: docs/backup/stage4a-monitoring-rbac-2026-11-22/
-- 31 snapshot tersedia pada source aplikasi yang diuji; 2 snapshot tambahan dibuat sebelum pembaruan laporan/checkpoint.
+- 31 snapshot tersedia pada source aplikasi yang diuji; 4 snapshot tambahan dibuat pada pembaruan laporan/checkpoint/desain. Total saat ini: 35 snapshot.
 - Snapshot tambahan antar-patch mempertahankan state sebelum koreksi lanjutan tanpa menimpa backup sebelumnya.
 
 ## PENGUJIAN
