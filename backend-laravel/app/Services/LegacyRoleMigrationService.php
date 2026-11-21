@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -305,7 +304,8 @@ class LegacyRoleMigrationService
             $references = DB::table('information_schema.key_column_usage')
                 ->where('constraint_schema', DB::getDatabaseName())
                 ->where('referenced_table_name', 'roles')
-                ->get(['table_name', 'column_name']);
+                ->selectRaw('TABLE_NAME as table_name, COLUMN_NAME as column_name')
+                ->get();
 
             $allowed = ['role_user.role_id', 'permission_role.role_id'];
             $unexpected = $references->filter(
