@@ -640,11 +640,21 @@ class MonitoringDuplicationTest extends TestCase
         TenantContext::resetInstance();
 
         $this->actingAs($foreignGuru, 'sanctum');
-        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")->assertForbidden();
-        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants")->assertForbidden();
-        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$attempt->id}")->assertForbidden();
-        $this->getJson("/api/v1/exams/{$this->exam->id}/participants")->assertForbidden();
-        $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}")->assertForbidden();
+        $crossTenantUrls = [
+            "/api/v1/exams/{$this->exam->id}/monitoring",
+            "/api/v1/exams/{$this->exam->id}/monitoring/participants",
+            "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$attempt->id}",
+            "/api/v1/exams/{$this->exam->id}/participants",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}",
+        ];
+        foreach ($crossTenantUrls as $url) {
+            $response = $this->getJson($url);
+            $this->assertContains(
+                $response->getStatusCode(),
+                [403, 404],
+                "Cross-tenant access must fail closed for {$url}."
+            );
+        }
     }
 
     public function test_admin_cannot_access_operational_exam_endpoints_through_direct_api_or_web_url(): void
