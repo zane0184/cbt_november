@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\EnsureLicenseActive;
 use App\Contexts\TenantContext;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\QuestionBank;
@@ -124,6 +125,7 @@ class AdminCbtBoundaryWithoutPermissionFixturesTest extends TestCase
         $this->assertFalse($gate->allows('viewSubjectResults', $subject));
 
         $this->actingAs($admin);
+        $this->withoutMiddleware(EnsureLicenseActive::class);
         $this->get('/')->assertRedirect('/operator/dashboard');
         Livewire::test(QuestionBank::class)->assertForbidden();
         Livewire::test(ExamManagement::class)->assertForbidden();
