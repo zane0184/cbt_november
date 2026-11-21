@@ -53,6 +53,10 @@ class ImportManagement extends Component
             return;
         }
 
+        $this->activationLinks = [];
+        $this->batchId = null;
+        $this->notice = '';
+
         try {
             $batch = app(ImportWorkbookService::class)->preview(
                 $this->upload,
@@ -78,6 +82,7 @@ class ImportManagement extends Component
             return;
         }
 
+        $this->activationLinks = [];
         try {
             $result = app(ImportWorkbookService::class)->confirm(
                 $this->batchId,
@@ -110,7 +115,7 @@ class ImportManagement extends Component
             $this->activationLinks = [$link];
             $this->notice = 'Tautan aktivasi baru diterbitkan. Tautan lama telah dinonaktifkan; salin dan bagikan secara pribadi.';
         } catch (\Throwable $exception) {
-            $this->addError('upload', $exception->getMessage());
+            $this->addError('upload', $this->safeErrorMessage($exception));
         }
     }
 
