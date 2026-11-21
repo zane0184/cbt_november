@@ -183,3 +183,25 @@ Ini bukan bukti byte parity dengan ZIP asli 6 November atau worktree 533 file. S
 - API ExamController::update dan Livewire ExamManagement::saveExam harus menggunakan satu ExamScheduleChangeService. Direct update di luar service ditolak. Reschedule setelah attempt dimulai ditolak.
 - NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED tidak memberi capability. Expiry ditolak langsung dari waktu server; cron hanya label/event.
 - Semua transisi dicatat dalam AuditService dan event append-only dalam transaksi yang sama.
+
+
+## 19. Keputusan terbaru — role dan kewenangan Admin/Guru (ACTIVE)
+
+| ID | Tanggal | Keputusan | Alasan | Dampak | Status | Menggantikan |
+|---|---|---|---|---|---|---|
+| DEC-WA-019 | 21-11-2026 | Role aktif Admin hanya `ADMIN_MADRASAH`; `OPERATOR` dihapus dari role aktif dan tidak boleh menjadi alias runtime. | Satu identitas role/portal/permission yang tegas; mencegah duplikasi kewenangan. | Seeder, installer, bootstrapper, role/pivot, resolver, middleware, policy, route, UI, test, migrasi data. | ACTIVE | Kalimat lama “Admin Madrasah = Operator” bila dibaca sebagai role/alias aktif. |
+| DEC-WA-020 | 21-11-2026 | Akun legacy OPERATOR dipetakan ke ADMIN_MADRASAH secara aman; user ID, password hash, tenant, profil, histori dan audit dipertahankan; akun orang berbeda tidak digabung. | Menjaga kontinuitas identitas dan histori. | Preflight roles/pivot/FK/sesi/token; transaksi; backup dan restore test; manual review untuk konflik. | ACTIVE — migration belum dijalankan | Tidak ada penghapusan user atau alias runtime. |
+| DEC-WA-021 | 21-11-2026 | Admin hanya mengelola administrasi madrasah, master referensi sesuai kewenangan, serta assignment Proktor. | Memisahkan administrasi dari operasional CBT Guru. | Permission registry, policy, route/action, dashboard, UI, API, audit, test negatif. | ACTIVE | Permission Admin yang mengizinkan operasi CBT. |
+| DEC-WA-022 | 21-11-2026 | Guru memiliki seluruh operasional CBT: bank soal, soal, ujian, mapel/jadwal/peserta, publikasi/token, pelaksanaan, penilaian, hasil, analitik. Tidak perlu approval Admin bila permission dan assignment sah. | Kepemilikan akademik dan operasional berada pada Guru. | Portal Guru kelak; Web Admin hanya metadata minimum untuk assignment Proktor. | ACTIVE | Interpretasi Admin sebagai pengelola/approver ujian. |
+| DEC-WA-023 | 21-11-2026 | Proktor bukan role/portal permanen; Guru aktif menjadi Proktor melalui assignment sementara dari Admin. | Hak bersifat kontekstual dan terbatas. | Role migration, assignment model/service/policy, request authorization, audit, test. | ACTIVE | Role/portal PROKTOR permanen. |
+| DEC-WA-024 | 21-11-2026 | Jadwal akademik ujian diubah oleh Guru; seluruh jalur API/Livewire memakai ExamScheduleChangeService dan assignment terdampak menjadi NEEDS_REVIEW. | Mencegah assignment pengawasan stale atau bergeser diam-diam. | Shared service, transaction, revision, audit event, admin review/confirm, concurrency tests. | ACTIVE | Jalur jadwal terpisah atau perubahan jadwal oleh Admin. |
+| DEC-WA-025 | 21-11-2026 | Assignment Proktor memakai interval [start,end), overlap lintas kelas/ujian ditolak, locking/current read InnoDB, serta audit atomik. | Mencegah double-booking dan race condition. | MySQL 8 concurrency, lock order Exam→Guru→assignment, idempotency, revoke/reschedule/confirm. | ACTIVE — runtime proof NOT RUN | Pemeriksaan overlap yang hanya memakai SQLite/unit test. |
+
+### 19.1 Batas kewenangan Admin (larangan eksplisit)
+Admin tidak boleh mengelola bank soal/kunci jawaban, membuat/mengubah/menerbitkan ujian, mapel/jadwal/peserta ujian, snapshot/token, Attempt/Answer/Score, penilaian/koreksi, hasil/analitik ujian Guru, monitoring operasional, close/finalize/reopen, reset Attempt, Force Submit, takeover perangkat, perpanjangan waktu, atau status pelaksanaan. Admin hanya membaca metadata minimum untuk assignment Proktor.
+
+### 19.2 Status migrasi role
+Tidak ada migration atau DML yang dijalankan dalam rekonsiliasi ini. Preflight dan mapping harus fail-closed. Konflik identitas/tenant/pivot/FK menghentikan proses untuk manual review. `OPERATOR` hanya identifier legacy migration/test, bukan role runtime.
+
+### 19.3 Status assignment
+Status minimum: PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED. PENDING/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED tidak memberikan capability. Capability hanya untuk assignment CONFIRMED yang valid dan berada pada interval server [starts_at, expires_at).
