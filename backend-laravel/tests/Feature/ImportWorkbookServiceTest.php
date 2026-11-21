@@ -347,6 +347,46 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertStringContainsString('Tanggal lahir harus berformat YYYY-MM-DD', $studentBatch->rows->first()->reason);
     }
 
+    public function test_import_rejects_login_identifier_that_collides_with_another_username(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        User::create([
+            'name' => 'Akun Username Bentrok Guru',
+            'username' => '001234567890123456',
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $guruBatch = app(ImportWorkbookService::class)->preview(
+            $this->guruWorkbook([
+                ['PNS', '001234567890123456', '', '', 'Guru Bentrok', 'L', '', ''],
+            ]),
+            'GURU',
+            $this->tenant->id,
+            $this->admin->id
+        );
+        $this->assertSame(0, $guruBatch->valid_rows);
+        $this->assertSame(1, $guruBatch->failed_rows);
+        $this->assertStringContainsString('username akun lain', $guruBatch->rows->first()->reason);
+
+        Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        User::create([
+            'name' => 'Akun Username Bentrok Siswa',
+            'username' => '0012345678',
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $this->academicSetup();
+        $studentBatch = app(ImportWorkbookService::class)->preview(
+            $this->studentWorkbook([
+                ['000123', '0012345678', 'Siswa Bentrok', 'P', 'Jakarta', '2015-03-04', 'Orang Tua', '081234567890', 'Alamat', '1A — 2026/2027', '2026/2027'],
+            ]),
+            'SISWA',
+            $this->tenant->id,
+            $this->admin->id
+        );
+        $this->assertSame(0, $studentBatch->valid_rows);
+        $this->assertSame(1, $studentBatch->failed_rows);
+        $this->assertStringContainsString('username akun lain', $studentBatch->rows->first()->reason);
+    }
+
     public function test_livewire_admin_can_upload_preview_and_confirm_guru_workbook(): void
     {
         Role::create(['name' => 'GURU', 'label' => 'Guru']);
