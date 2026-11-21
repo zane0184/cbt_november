@@ -12,7 +12,9 @@ use Tests\TestCase;
 
 class ImportDeadlockRetryTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\DatabaseMigrations;
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
+
+    protected $connectionsToTransact = [];
 
     public function test_import_row_transaction_retries_a_mysql_deadlock_without_partial_duplicate_account(): void
     {
@@ -28,6 +30,7 @@ class ImportDeadlockRetryTest extends TestCase
         ]);
         $admin->roles()->attach($adminRole);
         $this->actingAs($admin);
+        $this->assertSame(0, \Illuminate\Support\Facades\DB::transactionLevel(), 'Deadlock retry test must run without an outer test transaction.');
         Role::create(['name' => 'GURU', 'label' => 'Guru']);
 
         $batch = \App\Models\ImportBatch::create([
