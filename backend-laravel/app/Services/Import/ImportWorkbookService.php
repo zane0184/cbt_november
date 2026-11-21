@@ -378,7 +378,7 @@ class ImportWorkbookService
         } else {
             if ($payload['nisn'] === '__NUMERIC_IDENTIFIER__' || $payload['nis'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'NIS/NISN harus disimpan sebagai teks agar nol di depan tidak hilang.';
             if (!preg_match('/^\d{10}$/', $payload['nisn'])) $errors[] = 'NISN wajib terdiri dari 10 digit teks.';
-            if ($payload['nis'] !== '' && !preg_match('/^\d{1,30}$/', $payload['nis'])) $errors[] = 'NIS harus berupa digit teks.';
+            if ($payload['nis'] !== '' && mb_strlen($payload['nis']) > 255) $errors[] = 'NIS maksimal 255 karakter.';
             if ($payload['birth_date'] !== '' && !$this->validDate($payload['birth_date'])) $errors[] = 'Tanggal lahir harus berformat YYYY-MM-DD.';
             if (mb_strlen($payload['birth_place']) > 255 || mb_strlen($payload['parent_name']) > 255 || mb_strlen($payload['phone']) > 255) $errors[] = 'Tempat lahir, nama wali, atau nomor HP terlalu panjang.';
             $existing = StudentProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($payload) {
