@@ -435,7 +435,7 @@ class ImportWorkbookServiceTest extends TestCase
         $rejected = false;
         try {
             app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $rejected = true;
         }
 
