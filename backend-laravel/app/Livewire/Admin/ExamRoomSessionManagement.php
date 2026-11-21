@@ -20,6 +20,8 @@ class ExamRoomSessionManagement extends Component
     public string $roomName = '';
     public string $roomLocation = '';
     public int $roomCapacity = 30;
+    public string $roomStatus = 'ACTIVE';
+    public string $editingRoomId = '';
 
     public string $selectedExamId = '';
     public string $sessionName = '';
@@ -77,24 +79,84 @@ class ExamRoomSessionManagement extends Component
 
     public function createRoom(): void
     {
+        $this->editingRoomId = '';
+        $this->saveRoom();
+    }
+
+    public function editRoom(string $roomId): void
+    {
+        $this->assertCanManage();
+        $room = ExamRoom::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->whereKey($roomId)
+            ->firstOrFail();
+
+        $this->editingRoomId = $room->id;
+        $this->roomCode = $room->code;
+        $this->roomName = $room->name;
+        $this->roomLocation = $room->location ?? '';
+        $this->roomCapacity = (int) $room->capacity;
+        $this->roomStatus = $room->status;
+    }
+
+    public function cancelRoomEdit(): void
+    {
+        $this->reset('editingRoomId', 'roomCode', 'roomName', 'roomLocation');
+        $this->roomCapacity = 30;
+        $this->roomStatus = 'ACTIVE';
+    }
+
+    public function saveRoom(): void
+    {
         $this->assertCanManage();
         $data = $this->validate([
             'roomCode' => ['required', 'string', 'max:50'],
             'roomName' => ['required', 'string', 'max:150'],
             'roomLocation' => ['nullable', 'string', 'max:255'],
             'roomCapacity' => ['required', 'integer', 'min:1', 'max:5000'],
+            'roomStatus' => ['required', Rule::in(['ACTIVE', 'INACTIVE'])],
         ]);
 
-        app(ExamRoomSessionService::class)->createRoom(auth()->user(), [
+        $payload = [
             'code' => trim($data['roomCode']),
             'name' => trim($data['roomName']),
-            'location' => trim($data['roomLocation']) ?: null,
-            'capacity' => $data['roomCapacity'],
+            'location' => filled($data['roomLocation']) ? trim($data['roomLocation']) : null,
+            'capacity' => (int) $data['roomCapacity'],
+            'status' => $data['roomStatus'],
+        ];
+
+        if ($this->editingRoomId !== '') {
+            app(ExamRoomSessionService::class)->updateRoom(auth()->user(), $this->editingRoomId, $payload);
+            session()->flash('examRoomSessionMessage', 'Metadata ruang berhasil diperbarui.');
+        } else {
+            app(ExamRoomSessionService::class)->createRoom(auth()->user(), $payload);
+            session()->flash('examRoomSessionMessage', 'Ruang ujian berhasil ditambahkan.');
+        }
+
+        $this->cancelRoomEdit();
+    }
+
+    public function setRoomStatus(string $roomId, string $status): void
+    {
+        $this->assertCanManage();
+        abort_unless(in_array($status, ['ACTIVE', 'INACTIVE'], true), 422);
+
+        $room = ExamRoom::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->whereKey($roomId)
+            ->firstOrFail();
+
+        app(ExamRoomSessionService::class)->updateRoom(auth()->user(), $room->id, [
+            'code' => $room->code,
+            'name' => $room->name,
+            'location' => $room->location,
+            'capacity' => (int) $room->capacity,
+            'status' => $status,
         ]);
 
-        $this->reset('roomCode', 'roomName', 'roomLocation');
-        $this->roomCapacity = 30;
-        session()->flash('examRoomSessionMessage', 'Ruang ujian berhasil ditambahkan.');
+        session()->flash('examRoomSessionMessage', $status === 'ACTIVE'
+            ? 'Ruang berhasil diaktifkan.'
+            : 'Ruang berhasil dinonaktifkan.');
     }
 
     public function createSession(): void
@@ -225,7 +287,7 @@ class ExamRoomSessionManagement extends Component
 
         $rooms = ExamRoom::query()
             ->where('tenant_id', $tenantId)
-            ->where('status', 'ACTIVE')
+            ->orderBy('status')
             ->orderBy('code')
             ->get();
 
