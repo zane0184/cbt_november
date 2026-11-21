@@ -233,6 +233,9 @@ Source branch: `work/web-admin-w0-20261121` @ `2b4321ce032fd5e67cf022da8564a5287
 | tests/Feature/Fase1cMultiCurriculumIntegrityTest.php | 98b40bc4e4f09088bda5938e03934df98ba79c44 |
 | tests/Feature/Analytics/SecurityTest.php | 0b6df17567c5f4c5244c46549f240fd711f68db5 |
 
+| tests/Feature/MediaAuthorizationTest.php | 75821e6554c0ceec1ff4b9e81f00913b4c9c2a9c |
+| tests/Feature/StudentResultVisibilityTest.php | fbbdd9617c90e77bc389ad7e785ccbf8705deb3a |
+
 ### Correction note
 - T-068 candidate is specifically `StudentWebLoginTest::test_student_login_fails_closed_if_installation_contains_multiple_tenants`.
 - T-084 candidate is specifically `InstallerEndToEndTest::test_clean_installation_runs_from_empty_database_to_locked_state`.
