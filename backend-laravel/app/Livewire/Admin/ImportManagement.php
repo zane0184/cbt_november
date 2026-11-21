@@ -111,7 +111,8 @@ class ImportManagement extends Component
             );
             session()->flash('import_activation_links', [$link]);
             session()->flash('import_notice', 'Tautan aktivasi baru diterbitkan. Tautan lama telah dinonaktifkan; salin dan bagikan secara pribadi.');
-            return redirect()->route('admin.import');
+            $this->redirectRoute('admin.import');
+            return;
         } catch (\Throwable $exception) {
             $this->addError('upload', $this->safeErrorMessage($exception));
         }
