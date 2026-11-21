@@ -310,8 +310,8 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$assignedAttempt->id}"
         );
         $monitoringAttemptDetail->assertOk();
-        $this->assertSame($assignedAttempt->id, $monitoringAttemptDetail->json('data.id'));
-        $this->assertArrayNotHasKey('answer_payload', $monitoringAttemptDetail->json('data'));
+        $this->assertSame($assignedAttempt->id, $monitoringAttemptDetail->json('data.attempt.id'));
+        $this->assertArrayNotHasKey('answer_payload', $monitoringAttemptDetail->json('data.attempt'));
         $this->assertArrayNotHasKey('answers', $monitoringAttemptDetail->json('data'));
 
         // The legacy participant index is a second route to the same operational
