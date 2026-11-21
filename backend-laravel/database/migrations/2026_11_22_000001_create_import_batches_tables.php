@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('import_batches', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignUuid('created_by')->constrained('users')->restrictOnDelete();
+            $table->foreignUuid('created_by');
             $table->string('type', 10);
             $table->string('template_version', 20);
             $table->char('file_sha256', 64);
@@ -26,6 +26,8 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['tenant_id', 'type', 'file_sha256'], 'import_batches_tenant_file_unique');
             $table->unique(['id', 'tenant_id'], 'import_batches_id_tenant_unique');
+            $table->foreign(['created_by', 'tenant_id'], 'import_batches_creator_tenant_fk')
+                ->references(['id', 'tenant_id'])->on('users')->restrictOnDelete();
             $table->index(['tenant_id', 'created_at'], 'import_batches_tenant_created_idx');
         });
 

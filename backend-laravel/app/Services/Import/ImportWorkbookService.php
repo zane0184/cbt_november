@@ -38,6 +38,7 @@ class ImportWorkbookService
 
     public function preview(UploadedFile $file, string $type, string $tenantId, string $userId): ImportBatch
     {
+        $this->assertAdminActor($tenantId, $userId);
         $type = strtoupper($type);
         if (!in_array($type, ['GURU', 'SISWA'], true)) throw new RuntimeException('Jenis import tidak dikenal.');
         $sha = hash_file('sha256', $file->getRealPath());
@@ -84,6 +85,7 @@ class ImportWorkbookService
 
     public function confirm(string $batchId, string $tenantId, string $userId): array
     {
+        $this->assertAdminActor($tenantId, $userId);
         return DB::transaction(function () use ($batchId, $tenantId, $userId): array {
             // Serialize all import confirmations for one tenant. This prevents two batches
             // from concurrently creating the same legacy identity without adding constraints
@@ -155,6 +157,7 @@ class ImportWorkbookService
 
     public function discard(string $batchId, string $tenantId, string $userId): void
     {
+        $this->assertAdminActor($tenantId, $userId);
         DB::transaction(function () use ($batchId, $tenantId, $userId): void {
             $batch = ImportBatch::query()->where('tenant_id', $tenantId)->whereKey($batchId)->lockForUpdate()->firstOrFail();
             if ($batch->status !== 'PREVIEW' || (string) $batch->created_by !== $userId) {
@@ -163,6 +166,14 @@ class ImportWorkbookService
             app(AuditService::class)->log('IMPORT_PREVIEW_DISCARDED', 'ImportBatch', $batch->id);
             $batch->delete();
         });
+    }
+
+    private function assertAdminActor(string $tenantId, string $userId): void
+    {
+        $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($userId)->firstOrFail();
+        if (!$actor->hasRole('ADMIN_MADRASAH')) {
+            throw new RuntimeException('Hanya Admin Madrasah pada tenant yang sama yang dapat menjalankan import.');
+        }
     }
 
     private function analyze(string $path, string $type, string $tenantId): array
