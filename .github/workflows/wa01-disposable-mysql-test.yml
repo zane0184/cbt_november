@@ -244,7 +244,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          php artisan test tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01/phpunit-api-authorization.log"
+          php artisan test tests/Feature/AuthTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01/phpunit-api-auth.log" && php artisan test tests/Feature/MultiTenantAuthTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01/phpunit-multi-tenant-auth.log"
 
       - name: PHPUnit — tenant isolation on MySQL 8
         if: inputs.phase == 'execute'
@@ -268,6 +268,42 @@ jobs:
           set -euo pipefail
           php artisan test tests/Feature/StudentWebLoginTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01/phpunit-siswa-login.log"
           php artisan test tests/Feature/StudentResultVisibilityTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01/phpunit-siswa-results.log"
+
+      - name: Verify all migrated tables use InnoDB
+        if: inputs.phase == 'execute'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01/database-post-test-engine.json"
+          <?php
+          $pdo = new PDO(
+              'mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE'),
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $rows = $pdo->query(
+              "SELECT ENGINE, COUNT(*) AS total FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY ENGINE"
+          )->fetchAll(PDO::FETCH_ASSOC);
+          $nonInnoDb = 0;
+          $total = 0;
+          foreach ($rows as $row) {
+              $total += (int) $row['total'];
+              if (strtoupper((string) $row['ENGINE']) !== 'INNODB') {
+                  $nonInnoDb += (int) $row['total'];
+              }
+          }
+          $report = [
+              'database' => getenv('DB_DATABASE'),
+              'base_table_count' => $total,
+              'non_innodb_table_count' => $nonInnoDb,
+              'all_tables_innodb' => $total > 0 && $nonInnoDb === 0,
+          ];
+          echo json_encode($report, JSON_PRETTY_PRINT) . PHP_EOL;
+          if ($total === 0 || $nonInnoDb !== 0) {
+              exit(1);
+          }
+          PHP
 
       - name: Record execution scope and exclusions
         if: inputs.phase == 'execute'
