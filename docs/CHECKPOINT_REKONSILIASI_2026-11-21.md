@@ -119,3 +119,11 @@ Compare lengkap dari base W0-recheck ke HEAD awal branch konsolidasi 55cfe325aef
 - Angka 49 pada catatan sebelumnya adalah snapshot sebelum backup tambahan checkpoint dibuat; 50 adalah angka terkini.
 - Laporan final compare diperbarui pada commit `30a1235584893626e236ade4ddc54ada171d5c6d`; provenance diperbarui pada commit `efa78bc9146ef4ec639b9924b7a4d6a1b624ea4a`.
 - Branch tetap tidak di-merge. Ref branch sesudah commit checkpoint ini harus dibaca langsung untuk HEAD terakhir.
+
+
+## Compare terkini setelah handover alignment
+- HEAD sebelum pembaruan laporan/provenance/checkpoint ini: `2de13d6aac153d133acd99a11cc9350966ad60c4`.
+- Compare base `fb058f05264b8d464d687583c53f06fbb7fe54f7` → HEAD tersebut: **54 path**, 42 added, 12 modified, 0 deleted; seluruhnya docs/, tidak ada source aplikasi.
+- Rincian: 18 dokumen kerja (6 baru, 12 diperbarui) dan 36 backup/manifest. Dua dokumen handover lama sudah diselaraskan dengan keputusan final dan ruang lingkup seluruh temuan OPEN; dua backup identik blob SHA dibuat sebelum update.
+- Angka 50 pada catatan sebelumnya adalah snapshot sebelum dua dokumen handover dan backup-nya dimasukkan; 54 menggantikannya.
+- Semua PR tidak diubah; source, database, migration, seeder, .env, dan deployment tidak disentuh.
