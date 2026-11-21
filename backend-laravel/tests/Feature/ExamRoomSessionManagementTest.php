@@ -316,6 +316,11 @@ class ExamRoomSessionManagementTest extends TestCase
         $session = $this->createSession($this->exam);
         $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
 
+        $teacherOwnedExamWindow = [
+            'start_at' => $this->exam->fresh()->start_at->copy(),
+            'end_at' => $this->exam->fresh()->end_at->copy(),
+        ];
+
         $assignment = ExamProctorAssignment::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
@@ -338,6 +343,8 @@ class ExamRoomSessionManagementTest extends TestCase
         );
 
         $this->assertSame(3, $updated->schedule_revision);
+        $this->assertEquals($teacherOwnedExamWindow['start_at'], $this->exam->fresh()->start_at);
+        $this->assertEquals($teacherOwnedExamWindow['end_at'], $this->exam->fresh()->end_at);
         $this->assertDatabaseHas('exam_proctor_assignments', [
             'id' => $assignment->id,
             'status' => 'NEEDS_REVIEW',
@@ -426,6 +433,11 @@ class ExamRoomSessionManagementTest extends TestCase
         $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
         $mapping = $this->service->mapRombel($this->admin, $sessionRoom->id, $this->rombel->id);
 
+        $teacherOwnedExamWindow = [
+            'start_at' => $this->exam->fresh()->start_at->copy(),
+            'end_at' => $this->exam->fresh()->end_at->copy(),
+        ];
+
         $proctorAssignment = ExamProctorAssignment::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
@@ -446,6 +458,8 @@ class ExamRoomSessionManagementTest extends TestCase
         );
 
         $this->assertSame('CANCELLED', $cancelled->status);
+        $this->assertEquals($teacherOwnedExamWindow['start_at'], $this->exam->fresh()->start_at);
+        $this->assertEquals($teacherOwnedExamWindow['end_at'], $this->exam->fresh()->end_at);
         $this->assertDatabaseHas('exam_session_rooms', [
             'id' => $sessionRoom->id,
             'status' => 'INACTIVE',
