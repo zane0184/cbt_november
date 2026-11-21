@@ -50,3 +50,11 @@ Source HEAD before test/runner changes: `58c47809bd977a723c7811e087f60dc1cc824dd
 New file: `backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php` — added as a new test file; no prior source existed to back up.
 
 The earlier endpoint-scope snapshots and original Stage 4B baseline snapshots remain unchanged.
+
+## Additional snapshot — MySQL concurrency test import correction
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-laravel-test-trait-import-fix | e7ff210a9bfaaf8881c3ff4f057504dfe640575c | 8590 |
+
+The source file was newly created for Stage 4B concurrency coverage; this snapshot preserves its exact pre-correction state. The current file imports `Illuminate\\Foundation\\Testing\\DatabaseMigrations`.
