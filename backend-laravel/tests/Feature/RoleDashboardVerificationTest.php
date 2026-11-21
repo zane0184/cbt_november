@@ -146,7 +146,7 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_dashboard_access_control()
+    public function admin_dashboard_access_control()
     {
         // Unauthenticated
         $this->get('/operator/dashboard')->assertRedirect('/login');
@@ -202,7 +202,7 @@ class RoleDashboardVerificationTest extends TestCase
         $response->assertSee('Manajemen Ujian');
         $response->assertSee('Bank Soal');
 
-        // Sidebar rendering verification for OPERATOR (Proktor Dashboard menu MUST NOT be present)
+        // Sidebar rendering verification for Admin Madrasah (CBT operational elements MUST NOT be present)
         $opResponse = $this->actingAs($this->adminA)->get('/operator/dashboard');
         $opResponse->assertDontSee('Dashboard Proktor');
         $opResponse->assertSee('Dashboard Operasional Madrasah');
