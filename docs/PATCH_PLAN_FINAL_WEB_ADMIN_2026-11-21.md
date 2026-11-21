@@ -188,7 +188,9 @@ Before editing:
 | `app/Services/RolePermissionBootstrapper.php` — `fac82573de84c52b52867afbbf7e1637164835b4` | Define one canonical permission matrix for Admin curriculum management and intended read-only/authoring roles. Do not grant broad curriculum write to all authenticated roles. | mirrored WA-05 path | Permission seeding | RBACEnforcementTest + AdminCurriculumAuthorizationTest |
 | **NEW** policies | Add GradeLevelPolicy, ElementPolicy, LearningObjectivePolicy, LearningPathPolicy, TagPolicy with explicit role/permission and tenant rules. | New files | None | All CRUD role matrix |
 
-### WA-06 — Livewire reauthorization and audit log integrity
+### WA-06 — Admin Livewire reauthorization and audit log integrity
+
+**Scope guard:** Tidak ada file `app/Livewire/Teacher/*` atau view Guru yang diubah. Admin denial pada halaman hasil/monitoring/analytics Guru dilakukan melalui policy/controller/route authorization. Pada cutover WA-01/02, session Admin lama dan Sanctum token Admin/legacy dicabut agar component state lama tidak dapat dihidrasi setelah hak akses dipersempit. Perubahan shared Livewire middleware atau komponen Guru untuk revocation real-time adalah cross-scope dan memerlukan persetujuan terpisah.
 
 | Source file (current Git blob SHA-1) | Planned change | Backup path | DB impact / dependency | Tests |
 |---|---|---|---|---|
@@ -197,10 +199,6 @@ Before editing:
 | `app/Livewire/Admin/UserManagement.php` — `5f90e3873cadeb77a1bcd5a6aa2134953e60beed` | Reauthorize every hydration/render/action; add audit event to createUser; preserve Admin-only creation of GURU/SISWA. | mirrored WA-06 path | None | UserManagement audit/hydration |
 | `app/Livewire/Admin/ProctorAssignmentManagement.php` — `4e8bd91dd54757aa863d35983aace718def2ca2c` | Reauthorize render and selected-exam updater; use new assignment service. | mirrored WA-06 path | WA-03 | Permission revocation and assignment tests |
 | `app/Livewire/Admin/StudentRombelManagement.php` — `0da3f15787fbaf1fe6ea6f0eaec1439f413231f1` | Reauthorize hydration; invalidate tenant/rombel analytics cache after membership changes. | mirrored WA-06 path | None | Cache invalidation test |
-| `app/Livewire/Teacher/ResultList.php` — `fd60539cb33bd33d0c183b980a84f567681a4d68` | Reauthorize every hydration/render/action; Admin deny enforced by ReportPolicy. Preserve Guru result/finalize workflows. | mirrored WA-06 path | None | ResultList Admin deny + Guru positive |
-| `app/Livewire/Teacher/ResultDetail.php` — `6f959b61eb04ca9d0ee8005009a5e82b3b98a016` | Reauthorize every hydration/render/action; Admin deny. | mirrored WA-06 path | None | ResultDetail Admin deny |
-| `app/Livewire/Teacher/AnalyticsDashboard.php` — `90cabf8c0b61775ac79ede8a6d2d6e5417dfa336` | Reauthorize every hydration/render; Admin exam analytics deny. | mirrored WA-06 path | None | Analytics Admin deny |
-| `app/Livewire/Teacher/ItemAnalysis.php` — `b82649219c0c32310b1ce4ea84a4a21d1fb071b9` | Reauthorize every hydration/render; Admin item analysis deny. | mirrored WA-06 path | None | ItemAnalysis Admin deny |
 | `app/Services/AuditService.php` — `e968cc401cdd8b04ab1322171d5f475332a55372` | Add reason/correlation/request ID support and enforce transaction use for sensitive mutations. | mirrored WA-06 path | Additive audit columns if approved | Audit atomicity tests |
 | `app/Models/AuditLog.php` — `c8789bc5b78b915dfbb8ade7cfd031ddf72c4a4c` | Make model append-only: reject update/delete; preserve actor/tenant snapshot. | mirrored WA-06 path | Audit table constraint/trigger migration | AuditLogAppendOnlyTest |
 | `database/migrations/2024_01_01_000003_create_audit_logs_table.php` — `95e443ea28c7a794e8b7f06c467dcca4e04c1688` | Do not edit historical migration. Add new migration for actor/tenant retention, reason/correlation and append-only DB guard. | Existing migration preserved; new migration separately | MySQL 8 trigger/constraint or restricted DB privileges; plan rollback carefully | MySQL audit tamper/rollback tests |
@@ -249,11 +247,11 @@ No migration is approved or run by this plan. Before any DB migration:
 
 ## 6. Compatibility and deployment considerations
 
-- API v1 payloads for Guru/Siswa must remain compatible. Admin receives a new metadata-only DTO/route contract; do not remove fields from Guru responses.
-- Existing Admin users with legacy ADMIN/OPERATOR roles must be inventoried before login restrictions. Do not delete/merge distinct accounts. Keep role mapping audit.
+- API v1 payloads for Guru/Siswa must remain compatible. Admin receives a new metadata-only DTO/route contract; do not remove fields from Guru responses. No Teacher Livewire component/view is changed in this Web Admin patch plan.
+- Existing Admin users with legacy ADMIN/OPERATOR roles must be inventoried before login restrictions. Do not delete/merge distinct accounts. Keep role mapping audit. Revoke legacy Admin sessions/tokens at cutover while preserving user records and history.
 - Existing Proktor role/token/assignment records must be preserved and moved to NEEDS_REVIEW/manual reconciliation; no permanent Proktor portal after cutover.
 - Admin requests to CBT results/monitoring/score/token/question routes will intentionally return 403/404 after WA-01.
-- Shared Exam schedule update path affects Guru. No Web Guru feature work is included; schedule service integration is blocked until explicit cross-scope approval.
+- Shared Exam schedule update path affects Guru. No Web Guru feature work is included; schedule service integration is blocked until explicit cross-scope approval. Any change to Teacher Livewire components or views is excluded.
 - MySQL 8/InnoDB is authoritative for locking/FK tests. SQLite is not acceptable for Proktor overlap/concurrency or production schema acceptance.
 - Cache keys are tenant-prefixed; deployment must clear relevant tenant analytics cache after changes and verify invalidation on student-rombel membership changes.
 - Build/runtime/deployment/VPS are outside this patch plan.
@@ -300,7 +298,7 @@ For every source file listed in §4:
 
 - `AdminCbtBoundaryTest.php`: direct API/Livewire deny coverage for questions, answer keys, media, token, roster, monitoring, attempt, answers, scores, results, analytics, export, close/finalize/reopen.
 - `AdminCurriculumAuthorizationTest.php`: Admin allow, Guru/Siswa deny/allow per approved permission, all GradeLevel/Element/Outcome/Objective/Path/Material/Tag methods.
-- `LivewirePermissionHydrationTest.php`: revoke role/permission after mount; subsequent render/action must deny and query fail closed.
+- `LivewirePermissionHydrationTest.php`: revoke role/permission after mount on Admin components only; subsequent render/action must deny and query fail closed. Do not modify Teacher Livewire components.
 - `TenantIdentityBindingTest.php`: null tenant, stale token, mismatched installation identity, multiple tenant rows, domain mismatch.
 - `TenantCompositeForeignKeyIntegrityTest.php`: attempt invalid cross-tenant inserts on MySQL 8; every composite FK must reject.
 - `ProctorAssignmentFinalStateTest.php`: Guru active + TeacherProfile, final status matrix, rombel/revision, interval boundary, overlap, two-connection concurrency, revoke/expiry and schedule review.
@@ -314,7 +312,7 @@ Every T-001–T-173 must record source commit, test file/method, MySQL 8 environ
 
 ## 9. Rollback plan
 
-- **Code:** revert only the approved patch commit or restore the per-file backup; no force-push. Keep the original W0 and recovery branches immutable.
+- **Code:** revert only the approved patch commit or restore the per-file backup; no force-push. Keep the original W0 and recovery branches immutable. Restore Admin sessions/tokens only if rollback is explicitly approved; do not affect Guru sessions.
 - **RBAC:** restore role grants from a pre-migration export; preserve user IDs and pivot history. Do not re-enable aliases silently.
 - **Proktor:** restore assignment records/status from DB backup; if new rows/status are invalid, place in NEEDS_REVIEW rather than granting capability.
 - **Tenant FKs:** rollback only after confirming no dependent writes rely on the new constraint; retain the backup DB and data reconciliation report. Never drop data to make rollback succeed.
