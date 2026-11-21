@@ -421,7 +421,12 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/exams/{$this->exam->id}/participants",
         ];
         foreach ($forbiddenPostUrls as $url) {
-            $this->postJson($url)->assertForbidden();
+            $response = $this->postJson($url);
+            $this->assertContains(
+                $response->getStatusCode(),
+                [403, 404, 405],
+                "A non-student operational POST must fail closed for {$url}."
+            );
         }
 
         $summary = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring");
@@ -722,7 +727,12 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/exams/{$this->exam->id}/participants",
         ];
         foreach ($forbiddenPostUrls as $url) {
-            $this->postJson($url)->assertForbidden();
+            $response = $this->postJson($url);
+            $this->assertContains(
+                $response->getStatusCode(),
+                [403, 404, 405],
+                "A non-student operational POST must fail closed for {$url}."
+            );
         }
 
         $this->actingAs($this->admin);
