@@ -832,6 +832,27 @@ class ImportWorkbookServiceTest extends TestCase
     }
 
 
+
+    public function test_processing_batch_can_be_resumed_from_admin_ui_by_its_creator(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $batch = app(ImportWorkbookService::class)->preview(
+            $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru UI Resume', 'L', '', '']]),
+            'GURU', $this->tenant->id, $this->admin->id
+        );
+        \Illuminate\Support\Facades\DB::table('import_batches')->where('id', $batch->id)
+            ->update(['status' => 'PROCESSING', 'confirmed_at' => now()]);
+
+        Livewire::test(ImportManagement::class)
+            ->call('showBatch', $batch->id)
+            ->assertSee('Lanjutkan Proses')
+            ->call('confirmImport')
+            ->assertRedirect(route('admin.import'));
+
+        $this->assertDatabaseHas('import_batches', ['id' => $batch->id, 'status' => 'COMPLETED']);
+    }
+
+
 }
 
 

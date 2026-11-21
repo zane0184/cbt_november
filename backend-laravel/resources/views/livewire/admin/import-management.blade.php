@@ -43,8 +43,15 @@
         <div class="rounded-2xl border border-cardBorder bg-white p-6 shadow-sm space-y-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div><h2 class="text-lg font-bold text-navy-900">Preview / Hasil Import</h2><p class="text-xs text-textSecondary">Batch {{ $batch->id }} · {{ $batch->original_filename }} · Status {{ $batch->status }}</p></div>
-                @if($batch->status === 'PREVIEW')
-                    <div class="flex gap-2"><button wire:click="discardPreview" class="rounded-xl border px-4 py-2 text-sm">Batalkan</button><button wire:click="confirmImport" wire:loading.attr="disabled" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white">Konfirmasi Import</button></div>
+                @if(in_array($batch->status, ['PREVIEW', 'PROCESSING'], true) && (string) $batch->created_by === (string) auth()->id())
+                    <div class="flex gap-2">
+                        @if($batch->status === 'PREVIEW')
+                            <button wire:click="discardPreview" class="rounded-xl border px-4 py-2 text-sm">Batalkan</button>
+                        @endif
+                        <button wire:click="confirmImport" wire:loading.attr="disabled" class="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
+                            {{ $batch->status === 'PROCESSING' ? 'Lanjutkan Proses' : 'Konfirmasi Import' }}
+                        </button>
+                    </div>
                 @endif
             </div>
             <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
