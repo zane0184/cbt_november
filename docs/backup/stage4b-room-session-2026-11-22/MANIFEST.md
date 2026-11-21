@@ -86,3 +86,11 @@ This snapshot predates the expanded assertions for in-scope monitoring attempt D
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-guru-assignment-concurrency-test | 04a87feafdb6ed4d130a74a39364607c2adb3cc1 | 9643 |
 
 These snapshots preserve the test sources before adding explicit assertions that session edits never overwrite the teacher-owned overall exam window and before adding the second-connection Guru assignment mutex test.
+
+## Additional snapshot — cross-tenant fail-closed expectation correction
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-cross-tenant-404-expectation-fix | e0a233a001b3100843bbd9fcf4b9121fe62539f7 | 31062 |
+
+The test now accepts either 403 (authorization denial) or 404 (tenant-scoped route binding concealment) as a fail-closed result. It never accepts a successful response.
