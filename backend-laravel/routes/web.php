@@ -26,7 +26,7 @@ Route::get('/', function () {
             return redirect('/admin/dashboard');
         }
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasRole('KAMAD') && !$user->hasRole('ADMIN_MADRASAH')) {\n            return redirect('/admin/kamad');\n        }\n\n        if ($user->hasRole('GURU')) {
             return redirect('/admin/exams');
         }
 
@@ -82,7 +82,7 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('stude
 
 Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
-    Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');
+    Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');\n    Route::get('/admin/kamad', KamadDashboard::class)->name('admin.kamad');
     Route::get('/admin/profile', TenantProfileManagement::class)->name('admin.profile');
 
     // Temporary URL compatibility only: the Operator dashboard itself is retired.
