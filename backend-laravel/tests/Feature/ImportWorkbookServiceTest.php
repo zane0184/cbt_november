@@ -729,6 +729,33 @@ class ImportWorkbookServiceTest extends TestCase
         }
     }
 
+
+    public function test_workbook_rejects_xml_doctype_and_entity_declarations(): void
+    {
+        $file = $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru XML Entity', 'L', '', '']]);
+        $zip = new \ZipArchive();
+        $this->assertSame(true, $zip->open($file->getRealPath()));
+        $xml = $zip->getFromName('xl/workbook.xml');
+        $this->assertIsString($xml);
+        $xml = preg_replace(
+            '/(<\?xml[^?]+\?>)/',
+            '$1<!DOCTYPE workbook [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>',
+            $xml,
+            1
+        );
+        $zip->deleteName('xl/workbook.xml');
+        $zip->addFromString('xl/workbook.xml', $xml);
+        $zip->close();
+
+        try {
+            app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('DOCTYPE and ENTITY declarations must be rejected before XML parsing.');
+        } catch (\App\Exceptions\ImportWorkbookValidationException $exception) {
+            $this->assertStringContainsString('DTD dan deklarasi entity XML', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
     public function test_workbook_rejects_zip_bomb_expansion_over_limit(): void
     {
         Role::create(['name' => 'GURU', 'label' => 'Guru']);
