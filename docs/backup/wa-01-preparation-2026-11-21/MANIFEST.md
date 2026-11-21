@@ -58,3 +58,19 @@ Backup manifest dibuat sebelum perubahan ledger ini; blob backup: f63d3b3bcfe6d1
 | docs/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md | 06b10dfe4dec872c73b502a3bb14793b5c3e5c76 | 9bd0626acf0d047663fdf2a53ce03e50bea6aff175f392de7de4881a40a83c7a | 38111 | docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-publication-ledger | Backup blob identik dengan checkpoint sebelum refresh |
 
 Backup manifest sebelum ledger refresh: docs/backup/wa-01-preparation-2026-11-21/MANIFEST.md.before-checkpoint-ledger-refresh; blob backup aa22f8b171a31e961bbf1e236cdded1f62716687; commit backup 5ca1a961c8ba111baf5230158c941baf67424453. Manifest ini hanya dokumentasi; source manifest dan source branch tidak diubah.
+
+
+## Backup matriks sebelum penambahan policy keenam (BasePolicy)
+
+| Dokumen | Blob SHA sebelum update | SHA-256 backup | Bytes | Backup path | Verifikasi |
+|---|---|---|---:|---|---|
+| docs/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md | 73aa8478816eb3c0672562fa17e6b84e54338dd9 | a66932c94e7bc2161024461c04258bd2c0d7713b17793e32ba440493a7d6c13c | 60680 | docs/backup/wa-01-preparation-2026-11-21/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md.before-basepolicy-completion | Backup blob identik dengan matriks sebelum update |
+
+Backup manifest sebelum ledger ini: docs/backup/wa-01-preparation-2026-11-21/MANIFEST.md.before-basepolicy-matrix-ledger; blob tersimpan pada commit b5686be557e9e5e62f21b6afcc34d146372b6466; backup manifest blob diverifikasi terpisah. Commit backup manifest: b5686be557e9e5e62f21b6afcc34d146372b6466.
+
+## Matriks final setelah policy keenam
+- Matriks final terkini mencakup BasePolicy.php sebagai policy keenam (parent class); source blob 788f68632ca55e71723c12a7f771cace621a7406.
+- BasePolicy tidak ditambahkan ke 23 source target karena perubahan parent generik berisiko lintas modul; deny Admin harus pada concrete CBT policy.
+- Matriks terbaru commit: b3fd43e112460cd97f47c0c9206644700a55e170; blob: 84a0bed82514cf301d7e470d9304dfefde1d6ed8.
+- Source branch tetap work/web-admin-w0-20261121; pin tetap 2b4321ce032fd5e67cf022da8564a5287b8cef6f; compare identical 0 ahead/behind.
+- Implementasi NOT STARTED; seluruh 69 test NOT RUN.
