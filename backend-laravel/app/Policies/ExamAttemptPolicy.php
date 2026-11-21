@@ -13,7 +13,7 @@ class ExamAttemptPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
-        // This policy protects the teacher/admin result-detail surface, which
+        // This policy protects the Guru/Kamad result-detail surface, which
         // exposes answer payloads and per-question grading data. Student self-service
         // uses the dedicated result endpoint and its restricted DTO instead.
         if ($user->hasRole('GURU')) {
@@ -39,7 +39,7 @@ class ExamAttemptPolicy
             return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) {
+        if ($user->hasRole('KAMAD')) {
             return $user->hasPermission('report.view');
         }
 
@@ -81,8 +81,7 @@ class ExamAttemptPolicy
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         // Manual question-level grading belongs to the assigned Guru only.
-        // Admin Madrasah may reopen/finalize under separate audited permissions,
-        // but cannot alter individual marks as a substitute for the assigned teacher.
+        // Admin Madrasah has no answer-level grading or result-finalization authority.
         return $this->score($user, $attempt);
     }
 
@@ -104,8 +103,8 @@ class ExamAttemptPolicy
 
     /**
      * Reopen applies to a FINALIZED SCORE, not to the student's exam attempt.
-     * Phase 7 Decision #17 restricts this action to ADMIN_MADRASAH
-     * within the authorized tenant scope.
+     * Reopening a finalized score is restricted to the assigned Guru
+     * within the authorized tenant and teaching-assignment scope.
      */
     public function reopen(User $user, ExamAttempt $attempt): bool
     {
