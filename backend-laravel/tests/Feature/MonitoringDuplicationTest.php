@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\Assessment;
 use App\Models\Curriculum;
 use App\Models\Exam;
@@ -283,11 +284,46 @@ class MonitoringDuplicationTest extends TestCase
 
         $this->assignTemporaryProctor();
 
+        $assignedParticipant = ExamParticipant::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $this->student->id)
+            ->firstOrFail();
+        $assignedAttempt = ExamAttempt::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'participant_id' => $assignedParticipant->id,
+            'student_id' => $this->student->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+        ]);
+
         $this->actingAs($this->assignedGuru, 'sanctum');
         $participants = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants");
         $participants->assertOk();
         $this->assertCount(1, $participants->json('data'));
         $this->assertSame('Siswa', $participants->json('data.0.student_name'));
+
+        // The legacy participant index is a second route to the same operational
+        // data and must use the exact same room/session allowlist.
+        $directParticipants = $this->getJson("/api/v1/exams/{$this->exam->id}/participants");
+        $directParticipants->assertOk();
+        $this->assertCount(1, $directParticipants->json('data.data'));
+        $this->assertSame('Siswa', $directParticipants->json('data.data.0.student_name'));
+        $this->assertSame(
+            ['id', 'student_name', 'status'],
+            array_keys($directParticipants->json('data.data.0'))
+        );
+
+        $assignedAttemptDetail = $this->getJson(
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}"
+        );
+        $assignedAttemptDetail->assertOk();
+        $this->assertSame($assignedAttempt->id, $assignedAttemptDetail->json('data.id'));
+        $this->assertSame(
+            ['id', 'status', 'attempt_number', 'started_at', 'expires_at', 'submitted_at'],
+            array_keys($assignedAttemptDetail->json('data'))
+        );
 
         $otherAttempt = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
@@ -300,6 +336,32 @@ class MonitoringDuplicationTest extends TestCase
 
         $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$otherAttempt->id}")
             ->assertNotFound();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$otherAttempt->id}")
+            ->assertNotFound();
+
+        AuditLog::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->assignedGuru->id,
+            'action' => 'ATTEMPT_HEARTBEAT',
+            'entity_type' => 'ExamAttempt',
+            'entity_id' => $assignedAttempt->id,
+            'new_values' => ['state' => 'in_scope'],
+            'created_at' => now(),
+        ]);
+        AuditLog::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->assignedGuru->id,
+            'action' => 'ATTEMPT_HEARTBEAT',
+            'entity_type' => 'ExamAttempt',
+            'entity_id' => $otherAttempt->id,
+            'new_values' => ['state' => 'out_of_scope'],
+            'created_at' => now()->addSecond(),
+        ]);
+
+        $events = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/events");
+        $events->assertOk();
+        $this->assertSame(1, $events->json('data.total'));
+        $this->assertSame($assignedAttempt->id, $events->json('data.data.0.entity_id'));
 
         $summary = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring");
         $summary->assertOk();
