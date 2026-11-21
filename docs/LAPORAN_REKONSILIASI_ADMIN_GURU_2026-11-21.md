@@ -197,14 +197,24 @@ Tidak ada klaim W0 selesai, source aman, atau siap produksi.
 - Matriks audit: 23 modul ADM-001–ADM-023 terdeteksi.
 - Matriks test: 168 ID unik; seluruh T-001–T-132 tetap ada dan T-133–T-168 tersedia.
 - Backup: 6/6 blob identik dengan file sumber sebelum perubahan; SHA-256 dicatat di MANIFEST.tsv.
-- Compare base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch hasil: 18 path dokumentasi; tidak ada file source aplikasi.
+- Compare base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch hasil: 28 path dokumentasi; tidak ada file source aplikasi.
 - Satu perubahan baris yang terdeteksi pada diff test matrix hanya menambahkan newline terminator ke baris T-132 yang sebelumnya tidak memiliki newline; isi test T-132 tidak diubah.
 - Tidak ada CI, PHPUnit, runtime, browser, MySQL concurrency, import/restore, atau UAT dijalankan.
 
 
-### E.1 Klarifikasi status assignment Proktor yang masih OPEN
-Nota `docs/NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md` menegaskan bahwa pengguna belum secara eksplisit menetapkan apakah PENDING memberi capability, apakah CONFIRMED satu-satunya status pemberi capability, dan apakah ACTIVE masih diperlukan. Rekomendasi fail-closed PENDING=no capability/CONFIRMED-only adalah PROPOSED, bukan keputusan pengguna. Test T-159/T-160 harus dianggap usulan acceptance sampai semantik dikonfirmasi. Nota ini ditautkan dari entry point master. Dua dokumen yang diperbarui setelah klarifikasi juga dibackup sebelum update.
+### E.1 Status keputusan Proktor — FINAL / ACTIVE
+Keputusan pengguna telah ditegaskan final: PENDING tidak memberi capability; hanya CONFIRMED yang dapat memberi capability setelah seluruh validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict dan waktu server terpenuhi; ACTIVE bukan status assignment; NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED tidak memberi capability; interval adalah starts_at <= serverNow < expires_at. Nota OPEN/PROPOSED sebelumnya telah diganti dengan keputusan final. Addendum 34 spesifikasi berstatus SUPERSEDED oleh Addendum 35. DEC-WA-026 tercatat di register.
 
 
 ### E.2 Rekonsiliasi final setelah nota klarifikasi dan backup tambahan
-Setelah Nota Klarifikasi Status Assignment Proktor dan backup tambahan dibuat, compare final dari base W0-recheck `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch konsolidasi menunjukkan **24 path berubah/ditambahkan**, seluruhnya berada di `docs/`; tidak ada path aplikasi. Angka 18 pada pemeriksaan sebelumnya adalah hasil compare sebelum nota klarifikasi dan backup tambahan dibuat. Backup lanjutan untuk spesifikasi, master entry point, laporan, dan checkpoint disimpan pada subfolder `clarification/` dan `final/` dengan manifest terpisah.
+Setelah Nota Klarifikasi Status Assignment Proktor dan backup tambahan dibuat, compare final dari base W0-recheck `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch konsolidasi menunjukkan **28 path berubah/ditambahkan**, seluruhnya berada di `docs/`; tidak ada path aplikasi. Angka 18 pada pemeriksaan sebelumnya adalah hasil compare sebelum nota klarifikasi dan backup tambahan dibuat. Backup lanjutan untuk spesifikasi, master entry point, laporan, dan checkpoint disimpan pada subfolder `clarification/` dan `final/` dengan manifest terpisah.
+
+
+## E.3 Rekonsiliasi final sesuai MASTER PROMPT FINAL
+- Branch konsolidasi: `docs/canonical-reconciliation-admin-guru-20261121`; HEAD pada awal pemeriksaan ulang adalah `55cfe325aef13abd4dae97c7d46e127a0ff47bbb`. HEAD berubah hanya oleh commit dokumentasi yang tercatat setelah pemeriksaan; source branch, recovery, W0, PR dan W6 tidak diubah.
+- PR #5 OPEN/Draft/Unmerged, #6 OPEN/Draft/Unmerged, #7 OPEN/Draft/Unmerged; tidak diubah. PR lain yang ditemukan: #1 OPEN/Draft, #2 CLOSED/Unmerged, #3 OPEN/Draft, #4 OPEN/Draft.
+- Compare final base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke HEAD awal `55cfe325aef13abd4dae97c7d46e127a0ff47bbb`: 28 path berubah/ditambahkan, 0 dihapus. Rinciannya: 12 dokumen kerja (6 added, 6 modified) dan 16 file backup/manifest; seluruh 28 berada di `docs/`, 0 file source aplikasi.
+- Perbedaan angka sebelumnya diselesaikan: 18 adalah compare parsial sebelum semua backup; 24 adalah compare setelah nota/backup klarifikasi tetapi sebelum backup finalization lengkap; angka 28 adalah compare lengkap pada HEAD `55cfe325...`.
+- Backup finalisasi baru untuk dokumen yang diperbarui pada putaran ini berada di `docs/backup/reconciliation-2026-11-21/finalization/`. Setiap salinan diverifikasi memiliki Git blob SHA yang sama dengan dokumen sumber sebelum perubahan. Backup adalah backup GitHub, bukan backup lokal.
+- Keputusan final Proktor ACTIVE pada Addendum 35/DEC-WA-026. Test T-169–T-173 ditambahkan; T-001–T-168 dipertahankan. T-114 dan T-160 diperbaiki. Semua test tetap NOT RUN sampai eksekusi nyata.
+- Temuan source Admin/role/tenant/assignment/schedule/Kurmer-KBC tetap OPEN. Tidak ada source, database, migration, seeder, .env, PR, merge, rebase, force-push, atau deployment diubah/dijalankan.
