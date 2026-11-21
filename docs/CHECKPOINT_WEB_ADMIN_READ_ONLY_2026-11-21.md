@@ -293,9 +293,17 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 
 
 ### WA-01 package publication ledger
-- Paket eksekusi WA-01: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md; commit 2ef53b77908f91caa2b216a6d24f29df4dce9cdb.
+- Paket eksekusi WA-01: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md; blob 636ac9c2c6b78e1b0fa34b767257e2a3932b1dbd; latest update commit dea039f0bf44fe32acb8d7113ac7550d83e79b01.
 - Patch plan setelah penyesuaian WA-01: blob 7553ef0f46b2dd92a499c7bc6bfbd132dc7aada6; commit 35cdef25a42d7117080d5b1c4751afd8efcd6194.
-- Backup source/test manifest: docs/backup/wa-01-source-2026-11-21/MANIFEST.md; commit 382af4dfe3505e13d941c8738d07ac83be996cf8.
+- Backup source/test manifest: docs/backup/wa-01-source-2026-11-21/MANIFEST.md; blob ad70462a1cce54ab535b5d3db0c6e6283d4a981a; creation commit 382af4dfe3505e13d941c8738d07ac83be996cf8.
 - Backup root contains 23 planned existing source files + 6 existing test files; all verified byte-identical against W0. The separate new test file is not yet created.
 - Backup copies of checkpoint and patch plan before this preparation are in docs/backup/wa-01-preparation-2026-11-21/.
 - Status: package ready for review, NOT APPROVED FOR CODING. Wait for explicit execution approval.
+
+
+### Final preparation ledger refresh
+- WA-01 package current blob: 636ac9c2c6b78e1b0fa34b767257e2a3932b1dbd; latest update commit dea039f0bf44fe32acb8d7113ac7550d83e79b01.
+- Source/test backup manifest current blob: ad70462a1cce54ab535b5d3db0c6e6283d4a981a.
+- Documentation preparation backup manifest current blob: f557b5007a732379a17021e8534a4d5a2e2c8efd; latest update commit 6fd9a49882f71aacf60d0094977acb9eb7c5fc8b.
+- Checkpoint before this ledger refresh has byte-identical backup at docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-ledger-refresh (commit 3b2126a8786038891a427904b67eae4cca691173).
+- Current state remains documentation-only; WAIT FOR EXPLICIT WA-01 EXECUTION APPROVAL.
