@@ -109,7 +109,7 @@ Status: IMPLEMENTASI PARSIAL; bukan klaim Stage 4A selesai.
 - Backup sumber implementasi: docs/backup/stage4a-proctor-eligibility-2026-11-22/ (manifest tersedia).
 - Laporan implementasi: docs/IMPLEMENTASI_STAGE4A_PORTAL_RBAC_PROKTOR_GURU_2026-11-22.md.
 - CI 44946708332 pada SHA 6fdefb24ef5bc3acbd182fbc9f9a1366d19a0037: SUCCESS, 100 test / 516 assertion, PHP lint PASS.
-- CI terbaru 44946877772 pada SHA 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5 masih berjalan saat checkpoint diperbarui. Verifikasi ulang hasil akhirnya sebelum menyatakan source terbaru lulus.
+- CI terbaru 44946877772 pada SHA 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5: SUCCESS. PHP lint PASS; 100 test / 519 assertion PASS, termasuk 1 AdminCbtBoundaryTest / 29 assertion dan 7 ProctorAssignmentSecurityTest / 15 assertion.
 - Belum ada migration baru, perubahan DB produksi, deployment VPS, PR, atau merge.
 
 Pekerjaan selanjutnya:
