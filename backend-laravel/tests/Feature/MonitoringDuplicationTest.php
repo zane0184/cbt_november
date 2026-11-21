@@ -144,6 +144,10 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/answers",
             "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/score",
             "/api/v1/reports/exams/{$this->exam->id}/results",
+            "/api/v1/reports/exams/{$this->exam->id}/summary",
+            "/api/v1/reports/exams/{$this->exam->id}/questions",
+            "/api/v1/reports/exams/{$this->exam->id}/export/pdf",
+            "/api/v1/reports/exams/{$this->exam->id}/export/excel",
         ];
 
         foreach ($apiUrls as $url) {
