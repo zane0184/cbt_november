@@ -7,7 +7,6 @@ use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\TeacherProfile;
 use App\Models\User;
-use Illuminate\Support\Collection;
 
 class LoginIdentityResolver
 {
@@ -36,16 +35,18 @@ class LoginIdentityResolver
         $user = User::withoutGlobalScopes()->with('roles')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($candidateIds->first())->first();
         if (! $user) return null;
         $roles = $user->roles->pluck('name')->all();
-        if (in_array('SUPER_ADMIN', $roles, true) || $roles === [] || (in_array('SISWA', $roles, true) && count($roles) > 1)) return null;
+        $allowedRoles = ['ADMIN_MADRASAH', 'KAMAD', 'GURU', 'SISWA'];
+        if (count($roles) !== 1 || !in_array($roles[0], $allowedRoles, true)) return null;
 
         $matchesUsername = $usernameUsers->contains(fn ($candidate) => (string) $candidate->id === (string) $user->id);
         $matchesTeacher = $teacherUserIds->contains(fn ($id) => (string) $id === (string) $user->id);
         $matchesStudent = $studentUserIds->contains(fn ($id) => (string) $id === (string) $user->id);
 
-        if (in_array('SISWA', $roles, true)) return $matchesStudent ? $user : null;
-        if (in_array('GURU', $roles, true)) return ($matchesTeacher || $matchesUsername) ? $user : null;
-        $staffRoles = ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR', 'KAMAD', 'PROKTOR'];
-        if (count(array_intersect($roles, $staffRoles)) > 0) return $matchesUsername ? $user : null;
-        return null;
+        return match ($roles[0]) {
+            'SISWA' => $matchesStudent ? $user : null,
+            'GURU' => ($matchesTeacher || $matchesUsername) ? $user : null,
+            'ADMIN_MADRASAH', 'KAMAD' => $matchesUsername ? $user : null,
+            default => null,
+        };
     }
 }

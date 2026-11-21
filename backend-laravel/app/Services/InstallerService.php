@@ -442,7 +442,7 @@ class InstallerService
                         $tenantId = $tenant->id;
                         app(TenantContext::class)->setTenantId($tenant->id);
                         $roleDefinitions = [
-                            'ADMIN_MADRASAH' => 'Admin Madrasah', 'OPERATOR' => 'Operator Madrasah',
+                            'ADMIN_MADRASAH' => 'Admin Madrasah',
                             'KAMAD' => 'Kepala Madrasah', 'GURU' => 'Guru / Pengajar', 'SISWA' => 'Siswa / Peserta Ujian',
                         ];
                         $roles = [];
@@ -689,6 +689,10 @@ class InstallerService
             $roleNames = $admin->roles->pluck('name')->sort()->values()->all();
             if ($roleNames !== ['ADMIN_MADRASAH']) {
                 return ['success' => false, 'message' => 'Admin role boundary failed.'];
+            }
+
+            if (Role::query()->whereIn('name', ['ADMIN', 'OPERATOR', 'PROKTOR'])->exists()) {
+                return ['success' => false, 'message' => 'Legacy ADMIN/OPERATOR/PROKTOR role rows remain active.'];
             }
 
             if (!$admin->hasPermission('curriculum.view') || !$admin->hasPermission('curriculum.manage') || !$admin->hasPermission('academic.manage') || !$admin->hasPermission('user.manage')) {
