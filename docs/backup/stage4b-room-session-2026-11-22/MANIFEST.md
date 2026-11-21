@@ -116,8 +116,6 @@ The Guru exam index is a teacher-scope listing: a Proktor without independent Te
 
 | Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
 |---|---|---|---:|
-| backend-laravel/app/Policies/ExamPolicy.php | docs/backup/stage4b-room-session-2026-11-22/ExamPolicy.php.before-guru-single-role-monitoring-guard | 839df41c82a5b45706072d60431706ca5861cc6c | 9423 |
-| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-nonconfirmed-and-role-double-tests | b1b0e2599d19ccbf6a50cd5e4cb28a6c5fe8acd9 | 31237 |
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-exam-and-question-api-denial-matrix | ff911ededb86ec39cc3f8a0d554d0eb501240b73 | 33268 |
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-proctor-empty-exam-index-assertion | 7944ae1543d024a5520580946f1ff8810aa1857f | 33644 |
 | docs/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md | docs/backup/stage4b-room-session-2026-11-22/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md.before-teacher-owned-exam-window-clarification | 920dbf3fc2fa1f32436694c23d36412c1242e28a | 9595 |
