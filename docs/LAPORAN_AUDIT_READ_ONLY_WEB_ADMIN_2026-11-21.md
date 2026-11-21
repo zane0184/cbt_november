@@ -97,3 +97,51 @@ Semua path di atas relatif terhadap `backend-laravel/` pada source snapshot W0. 
 ## 8. Riwayat publikasi GitHub
 
 Dokumen ini diterbitkan sebagai file baru pada branch dokumentasi yang tercantum di atas. Backup publikasi disimpan terpisah sebelum file resmi dibuat. Commit dan blob SHA publikasi harus dicatat dalam checkpoint setelah verifikasi GitHub. Tidak ada PR dibuat/diubah/di-merge.
+
+
+---
+
+## 9. ADDENDUM AUDIT PHASE 2 — Web Admin UI dan API akademik (21 November 2026)
+
+### 9.1 P0-05 — Halaman Admin Ujian menampilkan token dan data operasional
+
+Bukti:
+- `routes/web.php`: route `GET /admin/exams` dipetakan ke `App\\Livewire\\Admin\\ExamManagement` dalam middleware `auth, tenant, license`.
+- `app/Livewire/Admin/ExamManagement.php`: `mount()` menerima role `ADMIN_MADRASAH` maupun `GURU`; `render()` memuat `assessment.subject`, `participants`, `attempts`, dan `snapshots` untuk daftar ujian.
+- `resources/views/livewire/admin/exam-management.blade.php`: menampilkan jumlah snapshot (baris 74), jumlah peserta (baris 77), dan token ujian aktual untuk ujian PUBLISHED/locked (baris 87–101). Tautan Monitoring, Hasil & Finalisasi, dan Analisis ditampilkan pada baris 104–115.
+- `app/Policies/ExamPolicy.php`: `viewAny()` mengizinkan ADMIN_MADRASAH; `view()` juga mengizinkan Admin tenant yang sama. Policy `monitor()` memberi akses Admin jika memiliki `exam.monitor`.
+
+Kesimpulan: ini bukan sekadar metadata minimum untuk penugasan Proktor. Halaman Admin menampilkan token ujian dan statistik roster/snapshot serta memberi tautan ke jalur operasional. Ini menguatkan P0-03/P0-04 dan merupakan jalur UI langsung yang perlu negative test. `ExamPolicy::create/update` memang Guru-only; temuan ini khusus akses baca/list UI, bukan klaim Admin dapat membuat atau mengubah ujian lewat Gate tersebut.
+
+### 9.2 P1-07 — API master kurikulum tidak menerapkan authorization pada beberapa resource
+
+Bukti:
+- `routes/api.php` baris 27–36 menempatkan seluruh `apiResource` kurikulum di dalam middleware umum `auth:sanctum, tenant, license`, tanpa middleware role/permission per-resource.
+- `app/Http/Controllers/Api/V1/ElementController.php`: index/store/show/update/destroy tidak memanggil policy/Gate/permission check.
+- `GradeLevelController.php`: seluruh CRUD tidak memanggil authorization.
+- `LearningObjectiveController.php`: seluruh CRUD tidak memanggil authorization.
+- `LearningPathController.php`: seluruh CRUD tidak memanggil authorization.
+- `MaterialController.php`: seluruh CRUD tidak memanggil authorization.
+- `TagController.php`: index/store/destroy tidak memanggil authorization; store/destroy juga tidak menulis audit event.
+- `LearningOutcomeController.php`: store memakai `StoreLearningOutcomeRequest::authorize()` dengan `learning_outcome.manage`, tetapi index/show/update/destroy tidak memanggil policy. Dengan demikian kontrol store tidak melindungi operasi lain.
+- Model-model Element, GradeLevel, LearningObjective, LearningOutcome, LearningPath, Material dan Tag memakai `TenantScoped`, sehingga scope tenant membantu membatasi record; tetapi scope tenant bukan pengganti role/permission authorization.
+
+Dampak: setiap identitas yang lolos middleware autentikasi tenant berpotensi membaca/mengubah/menghapus data master akademik melalui endpoint tersebut, tergantung endpoint/model. Ini adalah temuan authorization/data-integrity dalam tenant; belum merupakan bukti akses lintas tenant. Prioritas P1 sampai test HTTP role-negatif dan policy review membuktikan batas aktual.
+
+### 9.3 P1-08 — Alias role ADMIN masih dipakai pada komponen administrasi akademik
+
+Bukti:
+- `app/Livewire/Admin/AcademicManagement.php` memeriksa `roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN'])`.
+- `app/Livewire/Admin/CurriculumManagement.php` memakai pemeriksaan yang sama pada operasi manage; `mount()` hanya memeriksa permission `curriculum.view`.
+- Ini bertentangan dengan keputusan final bahwa `ADMIN_MADRASAH` satu-satunya role Admin aktif dan `ADMIN` bukan alias runtime. Perlu audit grant/role dan test legacy-account denial; jangan menghapus atau menggabungkan akun legacy.
+
+### 9.4 PENGUJIAN statis tambahan
+
+- Daftar route Web Admin dan API dibaca langsung dari `routes/web.php` dan `routes/api.php`.
+- 14 Livewire components, 29 controller files, 11 policy files, dan 56 model files ditemukan pada snapshot source root (jumlah file kelas per direktori, bukan jumlah seluruh fitur).
+- Pemeriksaan authorization statis menemukan resource curriculum yang tidak memanggil policy/Gate/permission check sebagaimana dirinci pada P1-07.
+- Belum ada HTTP test yang dijalankan untuk membuktikan role Siswa/Guru/Admin ditolak pada endpoint tersebut; status runtime tetap NOT RUN.
+
+### 9.5 Perubahan status audit
+
+Temuan P0-05 memperjelas jalur UI token dan data operasional Admin. P1-07/P1-08 menambah cakupan audit authorization API akademik dan role alias. Audit menyeluruh masih OPEN: seluruh controller, query User/relasi, export, cache, jobs, route binding, ADM-001–ADM-023 dan T-001–T-173 belum selesai dipetakan satu per satu.
