@@ -495,7 +495,7 @@ class ImportWorkbookServiceTest extends TestCase
             app(ImportWorkbookService::class)->preview($headerFile, 'GURU', $this->tenant->id, $this->admin->id);
             $this->fail('Header template yang berubah harus ditolak.');
         } catch (\\RuntimeException $exception) {
-            $this->assertStringContainsString('Header sheet', $exception->getMessage());
+            $this->assertStringContainsString('Header tidak sesuai', $exception->getMessage());
         }
 
         $this->assertDatabaseCount('import_batches', 0);
