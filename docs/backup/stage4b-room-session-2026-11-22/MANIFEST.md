@@ -103,3 +103,11 @@ The test now accepts either 403 (authorization denial) or 404 (tenant-scoped rou
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-nonconfirmed-and-role-double-tests | b1b0e2599d19ccbf6a50cd5e4cb28a6c5fe8acd9 | 31237 |
 
 The policy now requires exactly one active GURU role for Guru author/temporary Proktor monitoring. New tests cover PENDING, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED, legacy ACTIVE, revision mismatch, and GURU+SISWA mixed-role denial.
+
+## Additional snapshot — Proktor exam index behavior
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-proctor-empty-exam-index-assertion | 7944ae1543d024a5520580946f1ff8810aa1857f | 33644 |
+
+The Guru exam index is a teacher-scope listing: a Proktor without independent TeacherAccess must receive an empty result, while direct exam details/questions/preview remain denied.
