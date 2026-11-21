@@ -253,7 +253,10 @@ jobs:
           grep -Fq 'class AssessmentPolicyTeacherCreateTest' tests/Feature/AssessmentPolicyTeacherCreateTest.php
           grep -Fq 'class StudentWebLoginTest' tests/Feature/StudentWebLoginTest.php
           grep -Fq 'class StudentResultVisibilityTest' tests/Feature/StudentResultVisibilityTest.php
-          awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | ! grep -E 'RolePermissionBootstrapper|bootstrapCbtRolePermissions'
+          if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|bootstrapCbtRolePermissions'; then
+            echo "Selected WA-01 test body references the prohibited permission bootstrapper" >&2
+            exit 1
+          fi
           if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder|\\->seed\\(|factory\\(' \\
             tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \\
             tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \\
@@ -261,7 +264,21 @@ jobs:
             echo "Forbidden bootstrapper/seeder/factory path found in selected test files" >&2
             exit 1
           fi
-          echo "Selected files and methods exist; selected test paths contain no explicit bootstrapper, seeder, or factory calls."
+          if grep -nF -- '->seed(' tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \
+            tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \
+            tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
+            echo "Seeder call found in selected test files" >&2
+            exit 1
+          fi
+          if sed -n '/protected function setUp()/,/^    }/p' tests/TestCase.php | grep -F 'bootstrapCbtRolePermissions'; then
+            echo "Base TestCase setUp invokes the prohibited helper" >&2
+            exit 1
+          fi
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions' app/Providers/AppServiceProvider.php; then
+            echo "Application service provider invokes the prohibited bootstrapper" >&2
+            exit 1
+          fi
+                    echo "Selected files and methods exist; selected test paths contain no explicit bootstrapper, seeder, or factory calls."
 
       - name: PHP lint — application, migrations and tests
         if: inputs.phase == 'execute'
