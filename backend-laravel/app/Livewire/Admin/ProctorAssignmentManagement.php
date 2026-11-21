@@ -1,8 +1,11 @@
 <?php
+
 namespace App\Livewire\Admin;
 
 use App\Models\Exam;
 use App\Models\ExamProctorAssignment;
+use App\Models\ExamSession;
+use App\Models\ExamSessionRoom;
 use App\Models\User;
 use App\Services\ExamProctorAssignmentService;
 use Illuminate\Support\Carbon;
@@ -12,7 +15,7 @@ use Livewire\Component;
 
 class ProctorAssignmentManagement extends Component
 {
-    public string $selectedExamId = '';
+    public string $selectedSessionRoomId = '';
     public string $selectedProctorId = '';
     public string $startsAt = '';
     public string $expiresAt = '';
@@ -30,26 +33,50 @@ class ProctorAssignmentManagement extends Component
         $this->startsAt = now()->format('Y-m-d\\TH:i');
     }
 
-    public function updatedSelectedExamId(string $examId): void
+    public function updatedSelectedSessionRoomId(string $sessionRoomId): void
     {
-        $exam = Exam::query()->where('tenant_id', auth()->user()->tenant_id)->whereKey($examId)->first();
-        if ($exam?->end_at) $this->expiresAt = $exam->end_at->format('Y-m-d\\TH:i');
+        $scope = ExamSessionRoom::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->whereKey($sessionRoomId)
+            ->with('session')
+            ->first();
+
+        if ($scope?->session) {
+            $start = $scope->session->starts_at;
+            $this->startsAt = ($start->isPast() ? now() : $start)->format('Y-m-d\\TH:i');
+            $this->expiresAt = $scope->session->ends_at->format('Y-m-d\\TH:i');
+        }
     }
 
     public function assign(ExamProctorAssignmentService $service): void
     {
         $this->assertCanManage();
+        $tenantId = auth()->user()->tenant_id;
         $data = $this->validate([
-            'selectedExamId' => ['required', 'uuid', Rule::exists('exams', 'id')->where('tenant_id', auth()->user()->tenant_id)],
-            'selectedProctorId' => ['required', 'uuid', Rule::exists('users', 'id')->where('tenant_id', auth()->user()->tenant_id)],
+            'selectedSessionRoomId' => [
+                'required',
+                'uuid',
+                Rule::exists('exam_session_rooms', 'id')->where('tenant_id', $tenantId),
+            ],
+            'selectedProctorId' => [
+                'required',
+                'uuid',
+                Rule::exists('users', 'id')->where('tenant_id', $tenantId),
+            ],
             'startsAt' => ['required', 'date'],
             'expiresAt' => ['required', 'date', 'after:startsAt'],
             'reason' => ['required', 'string', 'min:10', 'max:1000'],
         ]);
 
-        $tenantId = auth()->user()->tenant_id;
-        $exam = Exam::query()->where('tenant_id', $tenantId)->findOrFail($data['selectedExamId']);
-        $proctor = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+        $scope = ExamSessionRoom::query()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($data['selectedSessionRoomId'])
+            ->with('exam')
+            ->firstOrFail();
+
+        $proctor = User::query()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
             ->whereHas('teacherProfile', fn ($query) => $query->where('tenant_id', $tenantId)->whereNull('deleted_at'))
             ->find($data['selectedProctorId']);
@@ -60,9 +87,18 @@ class ProctorAssignmentManagement extends Component
             ]);
         }
 
-        $service->assign(auth()->user(), $exam, $proctor->id, Carbon::parse($data['startsAt']), Carbon::parse($data['expiresAt']), $data['reason']);
+        $service->assign(
+            auth()->user(),
+            $scope->exam,
+            $scope->id,
+            $proctor->id,
+            Carbon::parse($data['startsAt']),
+            Carbon::parse($data['expiresAt']),
+            $data['reason']
+        );
+
         $this->reset('reason');
-        session()->flash('proctorAssignmentMessage', 'Penugasan tersimpan dengan status PENDING. Capability monitoring belum aktif sampai Admin mengonfirmasi.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan tersimpan dengan status PENDING. Guru belum memperoleh capability monitoring sampai Admin mengonfirmasi.');
     }
 
     public function confirm(string $assignmentId, ExamProctorAssignmentService $service): void
@@ -77,7 +113,7 @@ class ProctorAssignmentManagement extends Component
             ->findOrFail($assignment->exam_id);
 
         $service->confirm(auth()->user(), $exam, $assignment);
-        session()->flash('proctorAssignmentMessage', 'Penugasan berhasil dikonfirmasi. Capability hanya berlaku selama interval tugas dan validasi tetap terpenuhi.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan dikonfirmasi untuk ruang-sesi dan revisi jadwal yang tercatat.');
     }
 
     public function revoke(string $assignmentId, ExamProctorAssignmentService $service): void
@@ -87,33 +123,55 @@ class ProctorAssignmentManagement extends Component
         $tenantId = auth()->user()->tenant_id;
         $assignment = ExamProctorAssignment::query()->where('tenant_id', $tenantId)->findOrFail($assignmentId);
         $exam = Exam::query()->where('tenant_id', $tenantId)->findOrFail($assignment->exam_id);
+
         $service->revoke(auth()->user(), $exam, $assignment, $data['revokeReason']);
         $this->reset('revokeReason');
-        session()->flash('proctorAssignmentMessage', 'Penugasan Proktor berhasil dicabut dan dicatat.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan Proktor dicabut dan histori tetap dipertahankan.');
     }
 
     private function assertCanManage(): void
     {
         $user = auth()->user();
-        abort_unless($user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.proctor.assign'),
-            403, 'Hanya Admin Madrasah berizin yang dapat mengelola penugasan Proktor.');
+        abort_unless(
+            $user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH')
+                && $user->hasPermission('exam.proctor.assign'),
+            403,
+            'Hanya Admin Madrasah berizin yang dapat mengelola penugasan Proktor.'
+        );
     }
 
     public function render()
     {
         $tenantId = auth()->user()->tenant_id;
-        $exams = Exam::query()->where('tenant_id', $tenantId)->where('status', 'PUBLISHED')
-            ->whereNotNull('locked_at')->whereNotNull('end_at')->where('end_at', '>', now())
-            ->orderBy('start_at')->get(['id', 'title', 'start_at', 'end_at']);
-        $proctors = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+
+        $sessionRooms = ExamSessionRoom::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'ACTIVE')
+            ->whereHas('session', fn ($query) => $query->whereIn('status', ['SCHEDULED', 'ACTIVE'])->where('ends_at', '>', now()))
+            ->whereHas('exam', fn ($query) => $query->where('status', 'PUBLISHED')->whereNotNull('locked_at')->where('end_at', '>', now()))
+            ->with([
+                'exam:id,title,status,start_at,end_at',
+                'session:id,exam_id,name,session_number,starts_at,ends_at,schedule_revision',
+                'room:id,code,name,capacity',
+            ])
+            ->orderBy('created_at')
+            ->get();
+
+        $proctors = User::query()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
             ->whereHas('teacherProfile', fn ($query) => $query->where('tenant_id', $tenantId)->whereNull('deleted_at'))
-            ->orderBy('name')->get(['id', 'name']);
-        $assignments = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
-            ->select(['id', 'tenant_id', 'exam_id', 'proctor_user_id', 'status', 'starts_at', 'expires_at', 'revoked_at', 'updated_at'])
-            ->with(['exam:id,title', 'proctor:id,name'])
-            ->orderByDesc('updated_at')->limit(100)->get();
+            ->orderBy('name')
+            ->get();
 
-        return view('livewire.admin.proctor-assignment-management', compact('exams', 'proctors', 'assignments'))->layout('layouts.app');
+        $assignments = ExamProctorAssignment::query()
+            ->where('tenant_id', $tenantId)
+            ->with(['exam:id,title', 'sessionRoom.session', 'sessionRoom.room', 'proctor:id,name', 'assigner:id,name', 'revoker:id,name'])
+            ->latest()
+            ->paginate(20);
+
+        return view('livewire.admin.proctor-assignment-management', compact('sessionRooms', 'proctors', 'assignments'))
+            ->layout('layouts.app');
     }
 }
