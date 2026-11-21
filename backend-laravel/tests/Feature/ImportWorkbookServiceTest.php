@@ -281,9 +281,10 @@ class ImportWorkbookServiceTest extends TestCase
     public function test_livewire_admin_can_upload_preview_and_confirm_guru_workbook(): void
     {
         Role::create(['name' => 'GURU', 'label' => 'Guru']);
-        $file = $this->guruWorkbook([
+        $sourceFile = $this->guruWorkbook([
             ['PNS', '001234567890123456', '', '', 'Guru Livewire', 'L', '', ''],
         ]);
+        $file = UploadedFile::fake()->createWithContent('import-fixture.xlsx', file_get_contents($sourceFile->getRealPath()));
 
         Livewire::test(ImportManagement::class)
             ->set('type', 'GURU')

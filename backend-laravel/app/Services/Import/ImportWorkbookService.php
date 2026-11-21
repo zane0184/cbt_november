@@ -18,7 +18,7 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AuditService;
-use Illuminate\Http\UploadedFile;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
