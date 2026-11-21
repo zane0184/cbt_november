@@ -89,7 +89,7 @@ class ImportManagement extends Component
             $this->upload = null;
             $this->batchId = (string) $result['batch']->id;
         } catch (\Throwable $exception) {
-            $this->addError('upload', $exception->getMessage());
+            $this->addError('upload', $this->safeErrorMessage($exception));
         }
     }
 
@@ -114,7 +114,7 @@ class ImportManagement extends Component
         }
     }
 
-    private function safeErrorMessage(\\Throwable $exception): string
+    private function safeErrorMessage(\Throwable $exception): string
     {
         if ($exception instanceof QueryException) {
             Log::error('Import operation failed at database layer.', [
