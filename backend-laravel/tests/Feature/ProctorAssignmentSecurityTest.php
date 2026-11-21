@@ -231,7 +231,10 @@ class ProctorAssignmentSecurityTest extends TestCase
 
     public function test_user_without_active_teacher_profile_cannot_be_assigned(): void
     {
+        // Soft-delete is tenant-scoped; establish the correct tenant context for fixture mutation.
+        $this->setTenantContext($this->tenant->id);
         $this->proctorGuru->teacherProfile()->delete();
+        $this->setTenantContext(null);
 
         $this->actingAs($this->admin);
         Livewire::test(ProctorAssignmentManagement::class)
