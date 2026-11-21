@@ -313,3 +313,54 @@ Untuk mencegah pembacaan ganda:
 - Ketentuan “GURU: read/select saja” pada bagian 4.3 hanya berlaku untuk **katalog referensi resmi global** (CP, fase, elemen, identitas mapel dan metadata sumber), bukan untuk rancangan TP/ATP milik Guru.
 - Acceptance criterion bagian 5 angka 7 dibaca sebagai larangan Guru mengubah **master referensi resmi global**, bukan larangan Guru membuat atau merevisi TP/ATP pembelajaran.
 - Admin dapat menyediakan template dan mengelola master/konfigurasi akademik tenant; Admin tidak mengambil alih kewenangan profesional Guru untuk merancang TP/ATP.
+
+
+## 10. KEPUTUSAN DESAIN TETAP — SATU KESATUAN KURIKULUM MERDEKA TERINTEGRASI KBC
+
+**Keputusan pengguna yang mengikat seluruh implementasi CBT Madrasah. Tidak boleh diubah atas inisiatif implementor/agent.** Bagian ini menjadi ketentuan tertinggi untuk desain kurikulum dan mengesampingkan rancangan atau istilah terdahulu yang dapat ditafsirkan sebagai dua sistem kurikulum atau pilihan alternatif.
+
+### 10.1 Keputusan arsitektur kurikulum
+
+CBT Madrasah hanya menggunakan **SATU KESATUAN SISTEM KURIKULUM**, yaitu **KURIKULUM MERDEKA yang TERINTEGRASI dengan KURIKULUM BERBASIS CINTA (KBC)**.
+
+Konsekuensi wajib:
+1. Tidak boleh ada pilihan kurikulum alternatif.
+2. Kurikulum Merdeka dan KBC tidak boleh dimodelkan, ditampilkan, atau dioperasikan sebagai dua sistem kurikulum terpisah.
+3. Panca Cinta merupakan nilai yang terintegrasi di dalam KBC.
+4. CP, TP, ATP, materi, bank soal, asesmen, ujian, dan hasil belajar terhubung dalam satu alur akademik.
+5. Pembelajaran Mendalam dan 8 Dimensi Profil Lulusan diakomodasi sebagai pendekatan/kerangka pendukung sesuai regulasi, bukan kurikulum tambahan.
+6. Tidak boleh ada menu, toggle, selector, wizard, tenant setting, API atau konfigurasi untuk mengaktifkan kurikulum lain.
+7. Keputusan ini tidak boleh diubah tanpa instruksi eksplisit pengguna.
+
+### 10.2 Representasi dalam aplikasi
+
+- Web Admin, Web Guru, dan Web Siswa wajib menggunakan model kurikulum tunggal yang sama dan konsisten.
+- Tidak boleh ada dropdown “pilih kurikulum”, aktivasi Kurikulum Merdeka vs KBC, atau pilihan kurikulum lain.
+- Antarmuka dapat menampilkan Kurikulum Merdeka terintegrasi KBC sebagai identitas/kerangka tunggal. Panca Cinta, Pembelajaran Mendalam, dan 8 Dimensi hanya ditampilkan pada konteks yang sesuai sebagai nilai, pendekatan, atau kerangka pendukung.
+- Konfigurasi kelas/fase, mapel, CP, TP, ATP, materi, asesmen dan pelaporan harus mengikuti satu struktur akademik yang terhubung.
+- Jika sistem perlu menyimpan versi kebijakan atau versi dokumen sumber, versioning tersebut adalah versi referensi/regulasi dalam satu kurikulum, bukan pilihan kurikulum alternatif.
+
+### 10.3 Kewenangan akademik
+
+- Guru dapat memilih referensi CP yang tersedia dan berlaku untuk mapel/fase/kelas yang ditugaskan.
+- Guru tetap berwenang profesional untuk mengembangkan, menyusun, mengurutkan, dan menyesuaikan TP/ATP sesuai CP serta kebutuhan/karakteristik peserta didik dan ketentuan yang berlaku.
+- Pengembangan TP/ATP tidak berarti membuat kurikulum baru atau mengubah CP resmi.
+- Sistem harus membedakan CP resmi yang berversi dari rancangan TP/ATP Guru yang juga memiliki histori dan versi.
+
+### 10.4 Dampak ke implementasi dan pengujian
+
+Paket implementasi Web Admin, Web Guru, dan Web Siswa wajib diaudit terhadap keputusan ini. Acceptance test minimal:
+1. Tidak ada UI, route, API, permission, setting tenant, seeder, atau tabel konfigurasi yang memberi pilihan mengaktifkan kurikulum alternatif.
+2. Kurikulum Merdeka dan KBC tidak muncul sebagai dua entitas kurikulum yang dapat dipilih atau diaktifkan terpisah.
+3. Panca Cinta terhubung sebagai nilai KBC; Pembelajaran Mendalam dan 8 Dimensi terhubung sebagai pendekatan/kerangka pendukung.
+4. CP -> TP -> ATP -> Materi -> Bank Soal -> Asesmen -> Ujian -> Hasil Belajar menggunakan satu alur dan referensi versi yang konsisten.
+5. Guru dapat memilih CP serta mengembangkan TP/ATP tanpa mengubah CP resmi.
+6. Perilaku konsisten pada Web Admin, Web Guru, Web Siswa, API, dan penyimpanan.
+7. Uji regresi membuktikan pengubahan konfigurasi atau data tenant tidak dapat mengaktifkan kurikulum alternatif.
+
+### 10.5 Status keputusan
+
+- DESAIN: **DIKUNCI / WAJIB DIPERTAHANKAN**.
+- IMPLEMENTASI: belum diverifikasi terhadap seluruh source dan UI aktual.
+- PENGUJIAN: acceptance test di atas belum dijalankan.
+- Paket 5 tidak boleh dinyatakan selesai sebelum keputusan ini dipenuhi dan dibuktikan pada Web Admin, Web Guru, Web Siswa, API, dan data layer.
