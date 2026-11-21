@@ -83,6 +83,7 @@ jobs:
           DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-safe-wa01-root
         run: |
           set -euo pipefail
+          rm -f .env
           DB_NAME="cbt_safe_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           DB_USER="safe_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           DB_PASSWORD="$(openssl rand -hex 24)"
@@ -216,6 +217,16 @@ jobs:
           ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
           if (!$ok) exit(73);
           PHP
+
+      - name: Create empty test-only environment placeholder
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .env
+          : > .env
+          chmod 600 .env
+          echo "Created an empty CI-only .env placeholder; all test configuration remains injected by the runner."
 
       - name: PHP lint for application and tests
         working-directory: backend-laravel
