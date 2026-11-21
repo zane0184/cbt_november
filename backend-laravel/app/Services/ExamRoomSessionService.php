@@ -140,7 +140,8 @@ class ExamRoomSessionService
                 ->where('exam_room_id', $room->id)
                 ->where('status', 'ACTIVE')
                 ->whereHas('session', function ($query) use ($session) {
-                    $query->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                    $query->where('id', '<>', $session->id)
+                        ->whereIn('status', ['SCHEDULED', 'ACTIVE'])
                         ->where('starts_at', '<', $session->ends_at)
                         ->where('ends_at', '>', $session->starts_at);
                 })
@@ -162,6 +163,7 @@ class ExamRoomSessionService
             if ($existing) {
                 if ($existing->status !== 'ACTIVE') {
                     $existing->update(['status' => 'ACTIVE', 'capacity_override' => $capacityOverride]);
+                    $this->bumpScheduleRevision($actor, $session, 'Ruang sesi yang sebelumnya nonaktif diaktifkan kembali.');
                 }
                 return $existing->fresh()->load(['room', 'session']);
             }
