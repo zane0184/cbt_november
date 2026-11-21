@@ -205,3 +205,19 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase9-auth-tenant-null`, commit `769192ca20c71d973e9345eb9f87bccefe2122a6`, blob `1b21b0e92601193356bdc88d156f2023a319271e` (identical before update).
 - Audit still OPEN; no source/config/database/role/permission/Web Guru/PR/deployment changed.
 - Remaining: full User query/relationship and unscoped review completion, exports/cache/resource serialization, test method evidence reconciliation, per-file patch plan and rollback/acceptance review.
+
+
+## Checkpoint audit phase 10 — tenant query inventory and data lifecycle
+
+- Tenant matrix published: `docs/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md`; commit `b3e4d5ef869b5179044500770b4e4d265a42f51e`; blob `f5e55a7e402351ada8778119077437e8fdfbb653`; backup path `docs/backup/web-admin-read-only-2026-11-21/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md.pre-publication` same blob.
+- Corrected counts: 56 models; 40 TenantScoped; 16 without trait. 30 withoutGlobalScope occurrences across 8 files (25 plural, 5 singular); preliminary 36/10 count superseded.
+- P1-20: normal license middleware does not compare authenticated user tenant with installation identity tenant; preactivation path does. Old Sanctum tokens/extra tenant rows could bypass login resolver's single-tenant guard; no exploit run.
+- P1-21: no explicit active/deactivated account state in User or TeacherProfile; Proctor service only checks not soft-deleted + role PROKTOR, not active Guru + TeacherProfile.
+- P1-22: curriculum CRUD permission inconsistency; learning_outcome.manage required but not defined; several other curriculum CRUD methods no authorization.
+- Audit event coverage/transaction matrix and export/cache/media/resource review documented in report §17.
+- Rombel analytics cache can remain stale after StudentRombelManagement adds membership because no rombel cache invalidation; cache TTL 1h.
+- Report commit `e963aed8fd56f45232738a2e8c11b795abf2e40f`, blob `b67f69b4480f418fadbd8900afbf4695b68a6f36`.
+- Report backup `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase10-query-inventory`, commit `46b179f3be839d1cd1e769f1c42a07eedcfe39d7`, blob `d6c3ae0e26f6af6bc53ff5a3c7c71f24284216f1` (identical before update).
+- Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase10-query-inventory`, commit `b78ed044b86861ca0fcb2dbfe15ce71e90dd2c69`, blob `b445cc2105dc1d229959c7358c0e7a2802aee5df` (identical before update).
+- Audit remains OPEN. No source/database/migration/config/role/permission/Web Guru/PR/deployment changes.
+- Remaining: final review of all source paths against exact test IDs, verify all file provenance, compose per-file patch plan and acceptance/rollback, then stop for explicit approval.
