@@ -322,6 +322,7 @@ class ExamRoomSessionManagement extends Component
             ->orderBy('status')
             ->orderBy('code')
             ->get();
+        $activeRooms = $rooms->where('status', 'ACTIVE');
 
         $sessions = ExamSession::query()
             ->where('tenant_id', $tenantId)
@@ -352,7 +353,7 @@ class ExamRoomSessionManagement extends Component
             ->get();
 
         return view('livewire.admin.exam-room-session-management', compact(
-            'exams', 'rooms', 'sessions', 'rombels', 'sessionRooms'
+            'exams', 'rooms', 'activeRooms', 'sessions', 'rombels', 'sessionRooms'
         ))->layout('layouts.app');
     }
 }
