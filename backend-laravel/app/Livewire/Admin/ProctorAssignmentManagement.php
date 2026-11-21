@@ -42,9 +42,15 @@ class ProctorAssignmentManagement extends Component
             ->first();
 
         if ($scope?->session) {
-            $start = $scope->session->starts_at;
-            $this->startsAt = ($start->isPast() ? now() : $start)->format('Y-m-d\\TH:i');
-            $this->expiresAt = $scope->session->ends_at->format('Y-m-d\\TH:i');
+            $sessionStart = $scope->session->starts_at;
+            $start = $sessionStart->isPast() ? now()->startOfMinute() : $sessionStart->copy()->startOfMinute();
+            if ($start->lessThan($sessionStart)) {
+                $start->addMinute();
+            }
+            $end = $scope->session->ends_at->copy()->startOfMinute();
+
+            $this->startsAt = $start->format('Y-m-d\\TH:i');
+            $this->expiresAt = $end->format('Y-m-d\\TH:i');
         }
     }
 
