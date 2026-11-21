@@ -1700,3 +1700,103 @@ Addendum 32 ini menggantikan pernyataan lama pada Addendum 31, Register, matriks
 
 ## 33. KETENTUAN PRECEDENCE SOURCE DAN ROLE
 Addendum 32 dan bagian 26–30 hasil revisi ini adalah keputusan terbaru. Bagian historis yang menyebut Operator sebagai role, Admin menyusun kalender/jadwal akademik ujian, atau role Proktor permanen telah digantikan. Source audit yang masih menemukan perilaku lama adalah temuan ketidaksesuaian implementasi, bukan perubahan keputusan desain.
+
+
+# ADDENDUM 33 — PENEGASAN ROLE OPERATOR, BATAS ADMIN/GURU, DAN PROKTOR
+Tanggal: 21 November 2026
+Status: KEPUTUSAN PENGGUNA — ACTIVE; implementasi source belum dilakukan.
+
+Addendum ini mengikat seluruh bagian spesifikasi sebelumnya. Jika ada kalimat lama yang berbeda, gunakan Addendum 33 dan keputusan pengguna terbaru. Dokumen historis tidak dihapus; konflik ditandai sebagai SUPERSEDED.
+
+## 33.1 Role Operator dihapus dari role aktif
+1. Satu-satunya role aktif pengelola madrasah adalah `ADMIN_MADRASAH`.
+2. Tidak ada role aktif `OPERATOR`, portal Operator, dashboard Operator, sidebar Operator, permission profile Operator, login mode Operator, atau alias runtime `OPERATOR`.
+3. Istilah Operator hanya boleh muncul sebagai identitas historis/identifier legacy dalam preflight, migration, audit mapping, laporan, dan test transisi.
+4. Seluruh akun lama ber-role OPERATOR dipetakan ke ADMIN_MADRASAH dengan mempertahankan user ID, password hash, tenant, profil, status akun, relasi, histori aktivitas, dan audit log.
+5. Jangan menggabungkan user record milik orang yang berbeda. Akun legacy yang ambigu, multi-role tidak sah, tenant mismatch, orphan pivot, FK bermasalah, atau identitas pemilik tidak jelas harus BLOCKED untuk manual review.
+6. Tidak boleh ada role row, user-role pivot, permission grant, atau runtime authorization aktif OPERATOR setelah migrasi. Tidak boleh membuat alias untuk menghindari migrasi data.
+7. Rencana migrasi wajib memeriksa DatabaseSeeder, InstallerService, RolePermissionBootstrapper, role/permission tables, pivot, legacy users.role, resolver login, middleware, policy, gate, controller, Livewire, routes, API, sidebar, dashboard, test, dan audit log.
+8. Tahap ini hanya dokumentasi dan rancangan migrasi. Tidak ada migration, DML, seeder, atau perubahan database yang dijalankan.
+
+## 33.2 Kewenangan Admin Madrasah
+Admin hanya mengelola:
+- Identitas/profil dan administrasi madrasah.
+- Data administrasi pengguna Guru/Siswa sesuai kewenangan.
+- Tahun ajaran, semester, kelas, fase, rombel, wali kelas, dan histori akademik.
+- Master mata pelajaran dan referensi akademik/kurikulum yang menjadi kewenangan administrasi.
+- Master CP/TP/ATP, Panca Cinta, DPL, versi, sumber resmi, dan histori sesuai desain kurikulum.
+- Pengaturan administrasi, dukungan teknis, laporan administratif, audit administratif, dan kesehatan instalasi.
+- Penugasan Proktor sementara kepada Guru aktif.
+
+Admin tidak memiliki kewenangan operasional CBT. Tidak boleh:
+1. Membuat/mengubah/menghapus/mengarsipkan bank soal atau soal milik Guru.
+2. Membaca isi soal atau kunci jawaban.
+3. Membuat, mengubah, menghapus, atau mengatur ujian Guru.
+4. Mengatur mata pelajaran yang tertaut pada ujian Guru.
+5. Mengatur/mengubah jadwal akademik ujian.
+6. Mengubah peserta/roster ujian.
+7. Menerbitkan ujian atau mengelola snapshot.
+8. Membuat, membaca, atau mengubah token ujian.
+9. Memulai ujian atas nama Guru.
+10. Mengakses/mengubah Attempt, Answer, Score, detail jawaban siswa, atau data penilaian.
+11. Melakukan penilaian/koreksi atau melihat nilai/hasil ujian Guru.
+12. Mengakses analitik ujian Guru atau monitoring operasional ujian.
+13. Menutup, memfinalisasi, membuka kembali, atau mengubah status pelaksanaan ujian.
+14. Reset Attempt, Force Submit, takeover perangkat, atau memperpanjang waktu ujian.
+
+Admin hanya boleh membaca metadata minimum ujian yang diperlukan untuk penugasan Proktor. Daftar tersebut bukan monitoring operasional, bukan dashboard hasil, dan bukan akses ke payload CBT. Tidak boleh menambahkan hak Admin berdasarkan alasan kemudahan atau dukungan teknis. Mekanisme darurat memerlukan desain terpisah dan persetujuan pengguna.
+
+## 33.3 Kewenangan Guru
+Guru adalah pemilik operasional CBT sesuai assignment, tenant, permission, dan kebijakan sistem:
+- Bank soal, soal, media soal, dan kunci jawaban.
+- Asesmen dan ujian.
+- Mata pelajaran ujian, kelas/peserta, konfigurasi, dan jadwal akademik.
+- Snapshot, publikasi, token otomatis setelah publikasi.
+- Pelaksanaan ujian, Attempt, Answer, Score.
+- Penilaian, koreksi, hasil, analitik, dan laporan pembelajaran/asesmen.
+
+Guru tidak memerlukan persetujuan Admin untuk membuat atau menerbitkan ujian jika permission, penugasan, dan validasi sistem terpenuhi. Admin bukan approver publikasi ujian.
+
+## 33.4 Proktor sebagai assignment sementara
+1. Tidak ada role permanen `PROKTOR`, akun Proktor khusus, portal Proktor, atau role login Proktor.
+2. Proktor adalah Guru aktif pada madrasah/instalasi yang sama yang menerima assignment dari Admin.
+3. Assignment mengikat ujian, kelas/rombel, Guru, interval waktu, status, revision jadwal, actor, alasan, dan audit history.
+4. Status minimum: `PENDING`, `CONFIRMED`, `NEEDS_REVIEW`, `REVOKED`, `EXPIRED`, `COMPLETED`.
+5. Status `NEEDS_REVIEW`, `REVOKED`, `EXPIRED`, dan `COMPLETED` tidak memberikan capability. `PENDING` juga belum memberikan capability; capability hanya dapat aktif pada assignment `CONFIRMED` yang lolos semua validasi dan waktu server berada dalam interval.
+6. Interval setengah terbuka: `[starts_at, expires_at)`; hak hanya aktif bila `starts_at <= serverNow < expires_at`.
+7. Guru yang sama tidak boleh mengawasi lebih dari satu kelas/ujian dalam interval yang bertabrakan.
+8. Semua request yang memakai capability harus memvalidasi ulang Guru aktif, tenant, exam, rombel, assignment, status, schedule revision, permission, dan waktu server. Cron tidak boleh menjadi satu-satunya penentu hak.
+
+## 33.5 Reschedule dan concurrency assignment
+1. Perubahan jadwal ujian hanya dilakukan Guru pemilik ujian.
+2. API dan Livewire wajib memakai satu service `ExamScheduleChangeService`; direct update di luar service harus ditolak.
+3. Perubahan jadwal mencatat nilai lama/baru, alasan, actor, waktu, revision, audit event, dan mengubah assignment terdampak menjadi `NEEDS_REVIEW` dalam transaksi yang sama.
+4. Admin hanya meninjau dan mengonfirmasi ulang assignment setelah pemeriksaan konflik; Admin tidak mengubah jadwal ujian.
+5. Reschedule ditolak setelah Attempt dimulai apabila perubahan bertentangan dengan aturan CBT yang telah disepakati.
+6. Predikat overlap: `existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at`.
+7. Urutan lock konsisten pada MySQL 8+ InnoDB: Lock Exam → Lock Guru User sebagai mutex → Lock/baca assignment terkait dengan locking/current read → validasi overlap → simpan assignment/event/audit atomik.
+8. Revoke, confirm, reschedule, dan deactivation memakai urutan lock konsisten. Kegagalan audit menggagalkan transaksi.
+9. SQLite/unit test biasa tidak cukup untuk menyatakan concurrency aman.
+
+## 33.6 Panca Cinta dan DPL
+Urutan Panca Cinta terbaru:
+1. Cinta Allah dan Rasul-Nya.
+2. Cinta Ilmu.
+3. Cinta Lingkungan.
+4. Cinta Diri dan Sesama Manusia.
+5. Cinta Tanah Air.
+
+Redaksi DPL yang digunakan dalam keputusan terbaru:
+1. Keimanan dan ketakwaan kepada Tuhan YME.
+2. Kewargaan.
+3. Penalaran kritis.
+4. Kreativitas.
+5. Kolaborasi.
+6. Kemandirian.
+7. Kesehatan.
+8. Komunikasi.
+
+Jika dokumen lama memakai urutan atau redaksi berbeda, jangan menghapus histori; tandai sebagai SUPERSEDED untuk tampilan produk. Nomenklatur resmi tetap wajib diverifikasi terhadap sumber primer yang berlaku sebelum seed/import. Jangan mengarang CP, TP, ATP, kode RDM, atau definisi resmi.
+
+## 33.7 Status implementasi
+Seluruh ketentuan pada Addendum 33 adalah desain/keputusan aktif. Temuan source yang masih memiliki role OPERATOR/PROKTOR permanen, permission Admin yang terlalu luas, jalur jadwal terpisah, atau assignment yang belum lengkap tetap OPEN sebagai gap implementasi. Tidak ada klaim bahwa source sudah diperbaiki, pengujian lulus, W0 ditutup, atau aplikasi siap produksi.
