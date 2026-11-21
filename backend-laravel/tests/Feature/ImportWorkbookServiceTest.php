@@ -7,6 +7,8 @@ use App\Models\AcademicYear;
 use App\Models\AuditLog;
 use App\Models\Curriculum;
 use App\Models\GradeLevel;
+use App\Models\ImportBatchRow;
+use App\Models\ImportActivationToken;
 use App\Models\LocalInstallationIdentity;
 use App\Models\Phase;
 use App\Models\Role;
