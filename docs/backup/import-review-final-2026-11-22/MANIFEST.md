@@ -57,3 +57,9 @@ Commit: f6f17ac966459461c908de496f92e560824887d3
 ## Follow-up backup before staging expiry audit assertion update
 Commit: 1a3cf1211faa227f4e787564e58501d9da8d00b6
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-staging-expiry-action-update | blob SHA 2445080aa2366776d2f4aaa3471562516db6495a
+
+
+## Follow-up backup before XML DTD/entity rejection regression patch
+Commit: 7ba6bc612e452d0ad6e7ddb8f7b61790b3e21c46
+- backend-laravel/app/Services/Import/ImportWorkbookService.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookService.php.before-xml-entity-hardening | blob SHA 6afeea475258289a46d7851a062c725c061b3711
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-xml-entity-hardening | blob SHA 34c20114e754c754f77e28429c96bc715d5a5da8
