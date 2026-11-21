@@ -69,6 +69,11 @@ class Exam extends Model
         return $this->hasMany(ExamAttempt::class);
     }
 
+    public function sessions(): HasMany
+    {
+        return $this->hasMany(ExamSession::class, 'exam_id');
+    }
+
     public function isLocked(): bool
     {
         return !is_null($this->locked_at);
