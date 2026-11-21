@@ -422,7 +422,10 @@ class ImportWorkbookServiceTest extends TestCase
             ->assertSee('Guru Livewire')
             ->call('confirmImport')
             ->assertSee('Tautan aktivasi satu kali')
-            ->assertSee('Guru Livewire');
+            ->assertSee('Guru Livewire')
+            ->assertSee('Riwayat Import Madrasah Ini')
+            ->assertSee('import-fixture.xlsx')
+            ->assertSee('COMPLETED');
 
         $this->assertDatabaseHas('teacher_profiles', [
             'tenant_id' => $this->tenant->id,
