@@ -10,6 +10,7 @@ class ExamAttemptPolicy
 {
     public function view(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
         // This policy protects the teacher/admin result-detail surface, which
@@ -31,6 +32,7 @@ class ExamAttemptPolicy
 
     public function viewScore(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
         if ($user->hasRole('GURU')) {
@@ -63,6 +65,7 @@ class ExamAttemptPolicy
 
     public function score(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
 
         $exam = $attempt->exam;
@@ -76,6 +79,7 @@ class ExamAttemptPolicy
 
     public function grade(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         // Manual question-level grading belongs to the assigned Guru only.
         // Admin Madrasah may reopen/finalize under separate audited permissions,
         // but cannot alter individual marks as a substitute for the assigned teacher.
@@ -84,6 +88,7 @@ class ExamAttemptPolicy
 
     public function finalize(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
         if (!$user->hasRole('GURU')) return false;
@@ -104,6 +109,7 @@ class ExamAttemptPolicy
      */
     public function reopen(User $user, ExamAttempt $attempt): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) {
             return false;
         }
