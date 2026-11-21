@@ -39,6 +39,26 @@ class ExamRoomSessionConcurrencyTest extends TestCase
             $this->markTestSkipped('Concurrency locking test requires MySQL 8/InnoDB.');
         }
 
+        $version = (string) DB::selectOne('SELECT VERSION() AS version')->version;
+        $this->assertGreaterThanOrEqual(8, (int) explode('.', $version)[0], 'MySQL 8 or newer is required.');
+        $engines = DB::table('information_schema.tables')
+            ->where('table_schema', DB::getDatabaseName())
+            ->whereIn('table_name', [
+                'exam_rooms',
+                'exam_sessions',
+                'exam_session_rooms',
+                'exam_session_room_rombels',
+                'exam_participant_room_assignments',
+                'exam_proctor_assignments',
+                'exams',
+            ])
+            ->pluck('engine')
+            ->map(fn ($engine) => strtolower((string) $engine))
+            ->unique()
+            ->values()
+            ->all();
+        $this->assertSame(['innodb'], $engines, 'All concurrency tables must use InnoDB.');
+
         $tenant = Tenant::create(['name' => 'Tenant Concurrency', 'code' => 'CONC1']);
         $this->tenantId = $tenant->id;
         app(TenantContext::class)->setTenantId($tenant->id);
