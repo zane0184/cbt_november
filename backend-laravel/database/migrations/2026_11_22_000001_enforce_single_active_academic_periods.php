@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use RuntimeException;
 
 return new class extends Migration
 {
@@ -26,7 +25,7 @@ return new class extends Migration
             ->value('tenant_id');
 
         if ($duplicateYearTenant || $duplicateSemesterTenant) {
-            throw new RuntimeException(
+            throw new \\RuntimeException(
                 'Academic period integrity preflight failed: multiple active years or semesters exist for a tenant. Reconcile explicitly before applying this migration; no period was changed automatically.'
             );
         }
@@ -82,8 +81,12 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::getDriverName() === 'mysql') {
-            DB::statement('DROP INDEX IF EXISTS academic_years_one_active_per_tenant_unique ON academic_years');
-            DB::statement('DROP INDEX IF EXISTS semesters_one_active_per_tenant_unique ON semesters');
+            if (DB::table('information_schema.statistics')->where('table_schema', DB::getDatabaseName())->where('table_name', 'academic_years')->where('index_name', 'academic_years_one_active_per_tenant_unique')->exists()) {
+                DB::statement('DROP INDEX academic_years_one_active_per_tenant_unique ON academic_years');
+            }
+            if (DB::table('information_schema.statistics')->where('table_schema', DB::getDatabaseName())->where('table_name', 'semesters')->where('index_name', 'semesters_one_active_per_tenant_unique')->exists()) {
+                DB::statement('DROP INDEX semesters_one_active_per_tenant_unique ON semesters');
+            }
 
             if (Schema::hasColumn('academic_years', 'active_tenant_id')) {
                 DB::statement('ALTER TABLE academic_years DROP COLUMN active_tenant_id');

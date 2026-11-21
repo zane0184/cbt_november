@@ -278,6 +278,10 @@ jobs:
             echo "Application provider invokes prohibited permission bootstrapper." >&2
             exit 1
           fi
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/AcademicPeriodManagementTest.php; then
+            echo "Academic period test contains prohibited permission table writes." >&2
+            exit 1
+          fi
           echo "Static guard PASS: selected Admin test has no permission writes; no seeder/bootstrapper is selected."
 
       - name: PHP lint — application, migrations, routes and tests
@@ -298,12 +302,6 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/AdminDashboardAccessTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-dashboard.log"
-
-      - name: PHPUnit — Academic period activation, audit and tenant boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          php artisan test tests/Feature/AcademicPeriodManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-academic-periods.log"
 
       - name: PHPUnit — Academic period activation, audit and tenant boundary
         shell: bash
@@ -356,7 +354,16 @@ jobs:
               'non_innodb_table_count' => $nonInnoDb,
               'all_tables_innodb' => $total > 0 && $nonInnoDb === 0
           ], JSON_PRETTY_PRINT) . PHP_EOL;
-          if ($total === 0 || $nonInnoDb !== 0) exit(1);
+          $requiredTables = ['tenants', 'users', 'academic_years', 'semesters', 'roles', 'permissions', 'permission_role', 'audit_logs', 'exams', 'exam_attempts'];
+          $missingTables = [];
+          foreach ($requiredTables as $table) {
+              $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? AND table_type = ?');
+              $stmt->execute([$table, 'BASE TABLE']);
+              if ((int) $stmt->fetchColumn() !== 1) $missingTables[] = $table;
+          }
+          $schemaReady = $total >= 60 && $missingTables === [];
+          echo json_encode(['required_schema_ready' => $schemaReady, 'missing_required_tables' => $missingTables], JSON_PRETTY_PRINT) . PHP_EOL;
+          if (!$schemaReady || $total === 0 || $nonInnoDb !== 0) exit(1);
           PHP
 
       - name: Cleanup disposable database and app user
