@@ -145,5 +145,8 @@ class MonitoringDuplicationTest extends TestCase
             $response = $this->getJson($url);
             $this->assertSame(403, $response->status(), 'Expected 403 for ' . $url . '; got ' . $response->status() . ': ' . $response->getContent());
         }
+
+        $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/heartbeat")
+            ->assertForbidden();
     }
 }
