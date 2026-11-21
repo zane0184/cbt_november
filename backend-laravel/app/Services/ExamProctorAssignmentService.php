@@ -22,7 +22,10 @@ class ExamProctorAssignmentService
 
             $proctor = User::query()->where('tenant_id', $tenantId)->whereKey($proctorUserId)
                 ->whereNull('deleted_at')->lockForUpdate()->first();
-            if (!$proctor || !$proctor->hasRole('GURU') || !$proctor->teacherProfile()->where('tenant_id', $tenantId)->exists()) {
+            if (!$proctor
+                || $proctor->roles()->count() !== 1
+                || $proctor->roles()->where('name', 'GURU')->count() !== 1
+                || !$proctor->teacherProfile()->where('tenant_id', $tenantId)->exists()) {
                 throw ValidationException::withMessages(['selectedProctorId' => 'Akun harus merupakan Guru aktif dengan profil Guru aktif pada tenant yang sama.']);
             }
 
