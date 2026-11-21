@@ -376,8 +376,9 @@ class MonitoringDuplicationTest extends TestCase
         // A temporary Proktor has operational monitoring capability only.
         // Answer payloads, scores, reports, analytics, and student execution
         // endpoints remain unavailable even when the attempt is in their room.
+        $this->getJson('/api/v1/exams')->assertOk()->assertJsonCount(0, 'data');
+
         $forbiddenGetUrls = [
-            "/api/v1/exams",
             "/api/v1/exams/{$this->exam->id}",
             "/api/v1/exams/{$this->exam->id}/questions",
             "/api/v1/exams/{$this->exam->id}/preview",
