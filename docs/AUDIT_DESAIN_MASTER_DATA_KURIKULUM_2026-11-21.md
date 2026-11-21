@@ -164,3 +164,42 @@ G. Update checkpoint dan laporan terpisah AUDIT/DESAIN/IMPLEMENTASI/PENGUJIAN.
 - IMPLEMENTASI: belum ada perubahan source aplikasi untuk Master Kurikulum pada audit ini.
 - PENGUJIAN: belum ada test runtime/database dijalankan.
 - Status: BELUM SELESAI / BELUM SIAP PRODUKSI.
+
+
+## 8. Koreksi kepatuhan regulasi sebelum Paket 5 (ditambahkan 2026-11-21)
+
+Daftar regulasi yang ditetapkan pengguna sebagai baseline wajib:
+1. UU Nomor 20 Tahun 2003 tentang Sistem Pendidikan Nasional.
+2. PP Nomor 57 Tahun 2021 tentang Standar Nasional Pendidikan sebagaimana diubah dengan PP Nomor 4 Tahun 2022.
+3. Permendikbudristek Nomor 12 Tahun 2024 tentang Kurikulum pada PAUD, Pendidikan Dasar dan Menengah sebagaimana diubah dengan Permendikdasmen Nomor 13 Tahun 2025.
+4. KMA Nomor 450 Tahun 2024 tentang Pedoman Implementasi Kurikulum pada RA/Madrasah sebagaimana diubah dengan KMA Nomor 1503 Tahun 2025.
+5. Keputusan Direktur Jenderal Pendidikan Islam Nomor 6077 Tahun 2025 tentang Panduan Kurikulum Berbasis Cinta.
+
+### 8.1 Hasil verifikasi awal sumber publik
+- UU 20/2003: metadata JDIH BPK menyatakan berlaku; halaman memuat catatan putusan MK yang memberi tafsir bersyarat pada Pasal 34 ayat (2). Implementasi yang merujuk pasal tersebut wajib mempertimbangkan putusan MK terkait. Sumber: https://peraturan.bpk.go.id/Home/Details/43920%20%20/uuno-20-tahun-2003
+- PP 57/2021: JDIH BPK mencatat diubah dengan PP 4/2022. Sumber: https://peraturan.bpk.go.id/Details/165024/pp-o-57-tahun-2021
+- PP 4/2022: JDIH BPK mencatat sebagai perubahan atas PP 57/2021. Sumber: https://peraturan.bpk.go.id/Details/196151/pp-no-4-tahun-2022
+- Permendikbudristek 12/2024: JDIH BPK menyatakan berlaku dan mencatat perubahan melalui Permendikdasmen 13/2025. Sumber: https://peraturan.bpk.go.id/Details/281847/permendikbudriset-no-12-tahun-2024
+- Permendikdasmen 13/2025: JDIH BPK menyatakan berlaku, tanggal berlaku 15 Juli 2025, dan merupakan perubahan atas Permendikbudristek 12/2024. Sumber: https://peraturan.bpk.go.id/Details/322506/permendikdasmen-no-13-tahun-2025
+- KMA 450/2024 jo KMA 1503/2025: publikasi resmi Kanwil Kemenag menyebut KMA 1503/2025 sebagai perubahan atas KMA 450/2024 dan menyatakan cakupan RA, MI, MTs, MA, MAK. Sumber: https://dki.kemenag.go.id/berita/kemenag-sosialisasikan-kma-1503-tahun-2025-perkuat-implementasi-kurikulum-madrasah-TQt3E . Salinan PDF KMA 1503 yang ditemukan pada penelusuran awal bukan host JDIH pusat; tetap wajib memperoleh/mengarsipkan salinan primer resmi dan memeriksa metadata penetapan serta seluruh lampirannya sebelum menjadikan rincian teknis sebagai aturan mesin.
+- Kepdirjen Pendis 6077/2025: PDF yang dipublikasikan pada domain Kanwil Kemenag memuat judul keputusan dan nomor 6077/2025. Sumber: https://sulteng.kemenag.go.id/files/show/panduan-kurikulum-berbasis-cinta-baT.pdf . Salinan ini harus diarsipkan, diberi checksum, dan dibandingkan dengan salinan resmi Ditjen Pendis bila tersedia.
+
+### 8.2 Prinsip penerjemahan regulasi ke desain sistem
+- KBC/Panca Cinta diperlakukan sebagai pendekatan/panduan yang mengintegrasikan nilai ke pembelajaran dan budaya madrasah; jangan memodelkannya otomatis sebagai mata pelajaran baru atau mengganti Kurikulum Merdeka.
+- Pembelajaran Mendalam dan KBC perlu tercermin pada perencanaan, pelaksanaan, asesmen, kokurikuler, dan laporan sesuai ketentuan dan panduan yang relevan.
+- Permendikdasmen 13/2025 tidak diperlakukan sebagai kurikulum baru; sistem menyimpan hubungan perubahan regulasi dan versi, bukan membuat identitas kurikulum baru tanpa dasar.
+- KMA 1503/2025 menjadi rujukan terbaru untuk implementasi kurikulum madrasah pada cakupan RA/MI/MTs/MA/MAK, dengan KMA 450/2024 tetap tercatat sebagai regulasi asal yang diubah.
+- Setiap ketentuan teknis yang akan diwujudkan sebagai validasi wajib ditautkan ke pasal/lampiran/halaman sumber, bukan hanya nama regulasi.
+
+### 8.3 Gate kepatuhan Paket 5
+Paket 5 tidak boleh mulai mengubah source aplikasi sampai:
+1. daftar regulasi dan status perubahannya diverifikasi terhadap JDIH/portal resmi;
+2. dokumen primer dan lampiran diarsipkan, checksum SHA-256 dicatat;
+3. matriks pasal/lampiran -> requirement sistem disetujui;
+4. cakupan MI, mapel umum, PAI/Bahasa Arab, struktur fase/kelas, intrakurikuler/kokurikuler, pembelajaran dan asesmen dipetakan;
+5. data katalog yang akan diimpor memiliki provenance yang dapat ditelusuri;
+6. tidak ada inferensi atau konten CP/TP/ATP buatan AI yang diberi label sebagai referensi resmi.
+
+Catatan kelengkapan pesan pengguna: daftar yang diterima dalam percakapan terpotong setelah butir 5 pada frasa "tentang Panduan Kurik...". Butir 1-5 di atas dicatat sesuai bagian yang terbaca; jika pengguna mengirim kelanjutan daftar, lampiran ini harus diperbarui sebelum Paket 5.
+
+Status: gate kepatuhan regulasi ditetapkan; verifikasi awal sumber publik dilakukan; pengarsipan dokumen primer lengkap, matriks pasal-requirement, dan implementasi belum dilakukan.
