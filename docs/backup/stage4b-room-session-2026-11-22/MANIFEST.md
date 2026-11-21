@@ -138,3 +138,11 @@ The design now makes explicit that Admin maps rombel to room-session only. Admin
 | backend-laravel/tests/Feature/ProctorAssignmentSecurityTest.php | docs/backup/stage4b-room-session-2026-11-22/ProctorAssignmentSecurityTest.php.before-proctor-livewire-test | 38d016f570e1449e020159d93371befd7d1dd495 | 13957 |
 
 The Admin room UI test exercises the Livewire edit/save/deactivation path. The Proktor assignment UI already had Livewire assignment/confirmation/revocation tests before this checkpoint.
+
+## Additional snapshot — monitoring attempt DTO assertion correction
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-monitoring-attempt-dto-path-fix | 00ea1d597aeac638018b981a1748482611ff28fa | 33697 |
+
+The monitoring endpoint returns the operational attempt under `data.attempt`; the test now asserts that exact response shape and verifies answer payloads are absent from that nested DTO.
