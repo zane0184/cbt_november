@@ -11,8 +11,8 @@
 | Source commit pin | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Source tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja | `work/web-admin-w0-20261121` |
-| **Branch kerja HEAD saat checkpoint ini** | **`a42cdbebec90dc9279160e5e062a4fbf98d85df1`** |
-| Parent HEAD | `9c6ce35a6db3edac5c2e57e4025d999e11422122` |
+| **Branch kerja HEAD sebelum pembaruan checkpoint** | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
+| Parent commit checkpoint ini | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
 | Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 
 Urutan commit branch kerja setelah source pin:
@@ -61,6 +61,8 @@ GitHub Actions run **W0 Source Snapshot SHA256 and Restore Verification #2**:
 - `RESTORE_VERIFICATION=PASS`.
 - Artifact snapshot dan manifest berhasil diunggah; artifact ID `14693289226`, ukuran 808.845 byte, digest ZIP artifact `efe94178561b17ccb956f8bcd373d01e28c28a90c42718bfdc2eb4c673cd0bd8`, retensi sampai 19 Februari 2027.
 - Manifest SHA-256 TSV SHA-256: `af72d7556d4c96c5ea9e6ec0db226870cdb19df076f4a6828dd7d07a22f45a02`.
+- Snapshot tar.gz SHA-256: `6fca2435b62f17dbbf339935083725540148fffeab943acd14d2a7db44b3bc46`.
+- Artifact ZIP SHA-256: `efe94178561b17ccb956f8bcd373d01e28c28a90c42718bfdc2eb4c673cd0bd8`.
 - Snapshot tar.gz SHA-256: `6fca2435b62f17dbbf339935083725540148fffeab943acd14d2a7db44b3bc46`.
 - Artifact ZIP SHA-256 diverifikasi ulang secara independen di runtime container. Snapshot tar.gz diekstrak lagi ke direktori terpisah; hasil independen: 531 file, missing 0, extra 0, changed 0, PASS.
 - Tidak ada database yang digunakan dalam uji restore.
