@@ -94,7 +94,9 @@ Buat satu service scope (misalnya ExamMonitoringScope) yang digunakan oleh semua
 - Perubahan starts_at, ends_at, room/session mapping, atau peserta yang mengubah lingkup tugas menaikkan schedule_revision.
 - Assignment CONFIRMED terdampak berubah menjadi NEEDS_REVIEW dalam transaksi yang sama; capability lama langsung dicabut.
 - Admin meninjau konflik dan mengonfirmasi ulang assignment menjadi CONFIRMED dengan revision terbaru.
-- Exam.start_at/end_at mencerminkan rentang keseluruhan sesi; perubahan dilakukan atomik agar startAttempt dan eligibility tetap konsisten.
+- `Exam.start_at/end_at` tetap menjadi jadwal keseluruhan yang dimiliki Guru. Operasi Admin pada sesi/ruang tidak boleh mengubah, menghitung ulang, atau mengambil alih rentang ujian tersebut.
+- Waktu sesi yang dibuat/diubah Admin wajib tetap berada di dalam rentang `Exam.start_at/end_at`. Jika kebutuhan operasional berada di luar rentang, Guru pemilik ujian harus mengubah jadwal keseluruhan melalui kewenangannya sendiri.
+- Reschedule/cancel sesi hanya mengubah metadata sesi, revision, mapping dan status assignment terkait; seluruh perubahan tetap atomik dan diaudit.
 
 ## 6. Conflict dan concurrency
 - Ruang tidak boleh digunakan pada dua sesi yang bertumpang tindih.
@@ -121,7 +123,7 @@ Buat satu service scope (misalnya ExamMonitoringScope) yang digunakan oleh semua
 6. Guru tanpa assignment dan bukan author tidak dapat monitoring.
 7. Peserta hanya masuk ke satu room-session aktif pada exam; rombel snapshot tetap benar walau membership akademik berubah setelahnya.
 8. Kapasitas ruang, overlap ruang, overlap Guru, dan konflik peserta ditolak.
-9. Reschedule mengubah revision dan mencabut capability lama secara atomik.
+9. Reschedule mengubah revision dan mencabut capability lama secara atomik, tanpa mengubah `Exam.start_at/end_at` milik Guru.
 10. Semua endpoint URL/API langsung memakai scope yang sama; tidak ada bypass melalui report/export/attempt/events.
 11. Test multi-koneksi MySQL 8 membuktikan tidak ada double assignment/race condition.
 12. CI MySQL 8 disposable lulus seluruh suite terkait.
