@@ -302,6 +302,15 @@ class MonitoringController extends Controller
 
     public function heartbeat(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+
+        abort_unless(
+            $user && $user->tenant_id && count($roleNames) === 1 && $roleNames[0] === 'SISWA',
+            403,
+            'Heartbeat ujian hanya tersedia untuk akun Siswa.'
+        );
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -315,7 +324,7 @@ class MonitoringController extends Controller
         if ($attempt->exam_id !== $exam->id
             || $attempt->tenant_id !== $exam->tenant_id
             || $attempt->participant->tenant_id !== $exam->tenant_id
-            || $attempt->participant->user_id !== $request->user()->id) {
+            || $attempt->participant->user_id !== $user->id) {
             abort(403);
         }
 
