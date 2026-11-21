@@ -73,3 +73,34 @@ Compare lengkap dari base W0-recheck ke HEAD awal branch konsolidasi 55cfe325aef
 - Matriks audit 23 modul dipertahankan. Matriks tes T-001–T-168 dipertahankan dan T-169–T-173 ditambahkan. T-114/T-160 diperbaiki. Seluruh tes belum dijalankan tetap NOT RUN.
 - Semua temuan source tetap OPEN. CI/runtime/browser/MySQL concurrency/import/restore/UAT: NOT RUN.
 - Source, migration, seeder, database, .env, PR, merge, rebase, force-push, dan deployment tidak diubah/dijalankan.
+
+
+## Verifikasi final terakhir — 21 November 2026
+
+### Branch dan compare
+- Branch: `docs/canonical-reconciliation-admin-guru-20261121`.
+- HEAD yang dibandingkan pada verifikasi akhir: `3ec270e98fe9e6dfaed5a4a2db3d8a88aae3701d`.
+- Base: `docs/web-admin-w0-recheck-20261121` @ `fb058f05264b8d464d687583c53f06fbb7fe54f7`.
+- Compare: **49 path** = 39 added + 10 modified + 0 deleted.
+- Seluruh 49 path berada di docs/. Tidak ada source aplikasi.
+- Rincian: 16 dokumen kerja (6 baru, 10 diperbarui) dan 33 backup/manifest.
+- Angka 18, 24, dan 28 adalah snapshot compare parsial sebelumnya; angka final 49 menggantikannya.
+
+### Konsistensi keputusan
+- DEC-WA-026 dan Addendum 35: ACTIVE.
+- Addendum 34 dan nota OPEN/PROPOSED sebelumnya: SUPERSEDED.
+- PENDING deny; CONFIRMED satu-satunya status assignment pemberi capability setelah semua validasi; ACTIVE bukan status assignment; NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED deny.
+- Interval `starts_at <= serverNow < expires_at`, divalidasi setiap request.
+- T-001–T-168 tetap utuh; T-169–T-173 ditambahkan; T-114/T-160 dikoreksi.
+- 23 modul audit ADM-001–ADM-023 tetap utuh.
+- Entry point: 21 referensi lokal, 18 path unik; 18/18 valid.
+- Backup finalization: 16/16 salinan cocok blob SHA sumber sebelum perubahan; manifest tersedia.
+
+### Status operasional dan batas
+- PR #5/#6/#7 OPEN/Draft/Unmerged; tidak diubah. PR #1/#3/#4 OPEN/Draft; PR #2 CLOSED/Unmerged.
+- Source audit read-only tetap menunjukkan gap role OPERATOR/ADMIN, permission Admin CBT, Proktor permanen, overlap, shared schedule service, dan User tenant isolation. Seluruh temuan tetap OPEN.
+- Test T-001–T-173 belum dijalankan pada tahap ini: NOT RUN.
+- CI, runtime, endpoint HTTP, browser, MySQL concurrency, import/restore, UAT: NOT RUN.
+- Source, migration, seeder, database, .env, PR, merge, rebase, force-push, deployment, Android dan W6 implementation tidak disentuh.
+
+**Checkpoint ini menggantikan semua status OPEN/PROPOSED sebelumnya terkait semantik status Proktor dan angka compare 18/24/28.**
