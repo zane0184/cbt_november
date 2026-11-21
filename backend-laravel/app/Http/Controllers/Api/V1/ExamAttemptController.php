@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
+use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,7 @@ class ExamAttemptController extends Controller
 
     public function store(Request $request, Exam $exam)
     {
+        $user = $this->requireSingleStudent($request);
         $this->authorize('startAttempt', $exam);
 
         $deviceId = $request->header('X-Device-Binding-ID');
@@ -29,8 +31,6 @@ class ExamAttemptController extends Controller
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
         }
-
-        $user = $request->user();
 
         return DB::transaction(function () use ($exam, $user, $request, $deviceId) {
             // Global lifecycle lock order: Exam -> Participant -> Attempt.
@@ -191,6 +191,7 @@ class ExamAttemptController extends Controller
 
     public function execution(Request $request, Exam $exam)
     {
+        $user = $this->requireSingleStudent($request);
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -199,8 +200,6 @@ class ExamAttemptController extends Controller
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
         }
-
-        $user = $request->user();
 
         $lockedState = DB::transaction(function () use ($exam, $user, $deviceId) {
             // Execution heartbeat/binding mutation follows lifecycle parent-first locks.
@@ -222,8 +221,6 @@ class ExamAttemptController extends Controller
                     'message' => 'Participant not found for this exam.'
                 ], 404);
             }
-
-            $this->authorize('view', $lockedExam);
 
             $eligibilityNow = now();
             if (($participant->eligible_from && $eligibilityNow->lt($participant->eligible_from))
@@ -367,8 +364,9 @@ class ExamAttemptController extends Controller
 
 
 
-        public function submit(Request $request, Exam $exam, ExamAttempt $attempt)
+    public function submit(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        $user = $this->requireSingleStudent($request);
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -378,14 +376,14 @@ class ExamAttemptController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
-
         return DB::transaction(function () use ($exam, $attempt, $user, $deviceId) {
             // Match Start: Exam -> Participant -> Attempt.
             $lockedExam = Exam::query()
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $this->authorize('view', $lockedExam);
 
             $this->authorize('view', $lockedExam);
 
@@ -482,31 +480,57 @@ class ExamAttemptController extends Controller
 
     public function show(Request $request, Exam $exam, ExamAttempt $attempt)
     {
-        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
-            abort(404);
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+
+        if (count($roleNames) !== 1 || !in_array($roleNames[0], ['SISWA', 'GURU'], true)) {
+            abort(403);
         }
 
-        if ($request->user()->hasRole('SISWA')) {
-            $participant = $attempt->participant;
-            abort_unless(
-                $participant
-                    && $participant->tenant_id === $exam->tenant_id
-                    && $participant->user_id === $request->user()->id,
-                404
-            );
+        if ($roleNames[0] === 'SISWA') {
+            abort_unless($user->tenant_id === $exam->tenant_id, 403);
             $this->authorize('view', $exam);
         } else {
             $this->authorize('monitor', $exam);
         }
 
+        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
+            abort(404);
+        }
+
+        if ($roleNames[0] === 'SISWA') {
+            $participant = $attempt->participant;
+            abort_unless(
+                $participant
+                    && $participant->tenant_id === $exam->tenant_id
+                    && $participant->user_id === $user->id,
+                404
+            );
+        }
+
         return response()->json(['success' => true, 'data' => $this->attemptResponseData($attempt)]);
     }
+
 
     /**
      * Public API representation for an attempt. Never serialize the Eloquent model:
      * it contains internal assignment order, device identity, lease/fencing state,
      * and other fields that must remain server-side.
      */
+    private function requireSingleStudent(Request $request): User
+    {
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+
+        abort_unless(
+            $user && $user->tenant_id && count($roleNames) === 1 && $roleNames[0] === 'SISWA',
+            403,
+            'Endpoint eksekusi ujian hanya tersedia untuk akun Siswa.'
+        );
+
+        return $user;
+    }
+
     private function attemptResponseData(ExamAttempt $attempt): array
     {
         return [
