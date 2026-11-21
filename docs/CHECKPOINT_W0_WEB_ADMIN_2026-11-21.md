@@ -1,8 +1,8 @@
 # CHECKPOINT W0 — WEB ADMIN MADRASAH
 **Tanggal:** 21 November 2026 (WIB)  
-**Status:** AUDIT STATIS SELESAI; GATE W0 PARTIAL/BLOCKED; W1 BELUM DIMULAI
+**Status:** AUDIT STATIS DITERIMA; SHA-256 DAN RESTORE PASS; PROVENANCE ZIP BASELINE TETAP BLOCKED; W1 BELUM DIMULAI
 
-## Posisi Git
+## Posisi Git dan klarifikasi commit head
 
 | Item | Nilai |
 |---|---|
@@ -11,57 +11,80 @@
 | Source commit pin | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Source tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja | `work/web-admin-w0-20261121` |
-| Branch kerja commit terakhir | `641aff0ad871d442395d0d5b6784f3ddfcac7f52` |
-| Parent branch kerja | `de2d82244150863e330c17e36345bee73c3907ac` |
-| Manifest path | `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv` |
-| Manifest Git blob SHA-1 | `f74b89d00015a15c04e4e062d46571afdd3074bc` |
-| Laporan audit | `docs/LAPORAN_AUDIT_W0_WEB_ADMIN_2026-11-21.md` |
+| **Branch kerja HEAD saat checkpoint ini** | **`a42cdbebec90dc9279160e5e062a4fbf98d85df1`** |
+| Parent HEAD | `9c6ce35a6db3edac5c2e57e4025d999e11422122` |
+| Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
+
+Urutan commit branch kerja setelah source pin:
+1. `de2d82244150863e330c17e36345bee73c3907ac` — parent `7fc45bf...`; menambahkan manifest Git tree.
+2. `641aff0ad871d442395d0d5b6784f3ddfcac7f52` — parent `de2d822...`; menambahkan laporan audit statis W0.
+3. `c708e9781515ec5ffe9b16ab96dc967e31863052` — parent `641aff0...`; menambahkan checkpoint W0 awal.
+4. `9c6ce35a6db3edac5c2e57e4025d999e11422122` — parent `c708e978...`; menambahkan workflow verifikasi snapshot. Percobaan workflow pertama gagal karena escape expression checkout.
+5. `a42cdbebec90dc9279160e5e062a4fbf98d85df1` — parent `9c6ce35...`; memperbaiki expression workflow. Run kedua berhasil.
+
+Klarifikasi: `641aff0...` adalah commit laporan audit dan parent dari checkpoint awal `c708e978...`; bukan HEAD terkini. HEAD saat ini adalah `a42cdb...`. Tidak ada commit di atas yang mengubah source aplikasi.
 
 ## AUDIT
 
-- Branch kerja dibuat dari SHA recovery yang disetujui. Sebelum manifest, branch kerja identik dengan source commit. Branch recovery tetap utuh pada SHA `7fc45bf...`.
-- Recursive Git tree diverifikasi `truncated=false`: 768 entries, 531 blobs, 347 backend aktif, dan 160 file backup_before_patch.
-- Manifest 531 blob records berhasil dibuat dan di-fetch ulang dengan blob SHA yang sama.
-- Source aplikasi recovery sama dengan source aplikasi PR #5 head `ade5daa...`; tambahan recovery adalah 5 file dokumentasi, bukan perubahan aplikasi.
-- Route/action-permission review selesai secara statis. Temuan kritis: role Admin/Operator terpisah; role/portal Proktor permanen; Admin masih dapat monitoring/close ujian, membaca bank soal termasuk kunci, membaca answer-level/result, finalize/reopen; picker Proktor mensyaratkan PROKTOR, bukan Guru aktif; overlap dan NEEDS_REVIEW reschedule belum tersedia.
-- Provenance ZIP baseline 6 November belum byte-verified. Raw archive belum dapat dibaca pada runtime ini.
+- Source pin tetap `7fc45bf...`; recursive tree `144364e...` berisi 768 entries: 531 file blobs (mode 100644) dan 237 directory entries. Tidak ada symlink atau submodule pada tree tersebut.
+- Branch kerja dibuat dari source pin. Branch recovery asli tetap pada SHA `7fc45bf...`.
+- Perbandingan recovery → working branch menunjukkan 5 commit tambahan dan hanya empat path baru: manifest Git, laporan, checkpoint, serta workflow verifikasi SHA/restore. Tiga dokumen W0 yang telah diterima tetap dipertahankan.
+- Route/action-permission static review tetap seperti temuan laporan W0; belum ada patch source.
+- ZIP baseline 6 November belum diperiksa raw bytes. Status tetap BLOCKED. Tidak ada arsip recovered yang dipakai untuk menggantikan baseline.
 
-## DESAIN
+## DESAIN — keputusan yang tidak berubah
 
-W0–W10 yang disetujui tetap menjadi baseline. Batas final:
-- ADMIN_MADRASAH adalah satu-satunya role aktif Admin; Admin dan Operator harus 100% satu akun/role/portal/dashboard/sidebar/permission.
-- Guru memegang operasional CBT.
-- Proktor hanya penugasan sementara kepada Guru aktif.
-- Admin hanya metadata ujian read-only dan penugasan Proktor.
-- Satu madrasah satu instalasi satu database.
+- ADMIN_MADRASAH adalah satu-satunya role aktif Admin.
+- Admin Madrasah dan Operator adalah satu dan sama: satu akun per pengguna, satu role, satu portal, satu dashboard, satu sidebar, satu permission profile, satu kewenangan. Tidak boleh ada role OPERATOR aktif atau percabangan Admin/Operator.
+- Guru memegang kewenangan operasional CBT.
+- Proktor adalah penugasan sementara kepada Guru aktif, bukan role/portal permanen.
+- Admin hanya membaca metadata ujian dan mengelola penugasan Proktor.
+- Satu madrasah = satu instalasi = satu database.
 
 ## IMPLEMENTASI
 
-- Dibuat branch kerja baru dan manifest sumber.
-- Laporan audit dan checkpoint ini disimpan pada branch kerja.
-- Tidak ada perubahan source aplikasi, route, policy, migration, seeder, database, .env/secret, PR merge, VPS, atau deployment.
+- Tiga dokumen W0 tetap berada pada branch kerja: manifest Git, laporan audit, checkpoint.
+- Ditambahkan workflow audit-only `.github/workflows/w0-source-snapshot-verify.yml` untuk checkout source commit pin, membuat manifest SHA-256, membuat arsip snapshot, restore ke direktori disposable, dan membandingkan setiap path/ukuran/hash.
+- Tidak ada source aplikasi, migration, route, policy, seeder, model, view, konfigurasi aplikasi, database, .env/secret, PR merge, VPS, atau deployment yang diubah.
+- Branch recovery tidak diubah.
 
-## PENGUJIAN
+## PENGUJIAN — SHA-256 dan restore
 
-- Git branch/commit/tree/manifest: diverifikasi.
-- CI Tenant Backend #692 pada commit `ade5daa...`: PHP 8.3.37, MySQL 8.0.46/InnoDB, focused smoke 23 passed/83 assertions, full PHPUnit 480 passed/1.942 assertions.
-- CI lama #668: parsing error saat PHPUnit discovery, full suite skipped.
-- CI lama #671: 18 failed/462 passed/1.866 assertions karena ParseError Blade question-bank; head #692 sudah lulus.
-- CI Web archive #64: sukses membangun arsip; bukan bukti siap produksi.
-- SHA-256 per-file: BLOCKED (manifest Git SHA-1).
-- Restore snapshot disposable, browser/responsive, concurrency Proktor, UAT: NOT RUN.
-- Acceptance matrix T-001 s.d. T-132 belum seluruhnya dibuktikan per ID.
+GitHub Actions run **W0 Source Snapshot SHA256 and Restore Verification #2**:
+- Run ID: `44870810068`
+- Workflow commit: `a42cdbebec90dc9279160e5e062a4fbf98d85df1`
+- Source yang di-checkout dan diarsipkan: `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`
+- Runner: Ubuntu 24.04 disposable.
+- SHA-256 dihitung dari byte isi setiap tracked file.
+- `TRACKED_FILES=531`
+- Restore test: `EXPECTED_FILES=531`, `RESTORED_FILES=531`, `MISSING=[]`, `EXTRA=[]`, `CHANGED=[]`.
+- `RESTORE_VERIFICATION=PASS`.
+- Artifact snapshot dan manifest berhasil diunggah; artifact ID `14693289226`, ukuran 808.845 byte, digest ZIP artifact `efe94178561b17ccb956f8bcd373d01e28c28a90c42718bfdc2eb4c673cd0bd8`, retensi sampai 19 Februari 2027.
+- Manifest SHA-256 TSV SHA-256: `af72d7556d4c96c5ea9e6ec0db226870cdb19df076f4a6828dd7d07a22f45a02`.
+- Snapshot tar.gz SHA-256: `6fca2435b62f17dbbf339935083725540148fffeab943acd14d2a7db44b3bc46`.
+- Artifact ZIP SHA-256 diverifikasi ulang secara independen di runtime container. Snapshot tar.gz diekstrak lagi ke direktori terpisah; hasil independen: 531 file, missing 0, extra 0, changed 0, PASS.
+- Tidak ada database yang digunakan dalam uji restore.
 
-## Gate dan kelanjutan
+Run #1 `44870798226` gagal di checkout karena expression workflow pertama tersimpan dengan escape yang keliru. Kesalahan workflow diperbaiki pada commit `a42cdb...`; run #2 yang menjadi bukti final berhasil.
+
+## Provenance ZIP baseline
+
+- Baseline ZIP asli 6 November tetap belum raw-byte verified.
+- Tidak ada klaim kesamaan byte, CRC, SHA-256, atau identitas source Git dengan ZIP baseline.
+- Arsip recovered tidak dipakai untuk mengganti baseline. Pekerjaan provenance tetap BLOCKED sampai raw ZIP asli dapat diperiksa.
+
+## Gate saat ini
 
 | Item | Status |
 |---|---|
-| Source pin + branch kerja terpisah | PASS |
-| Backup Git branch + manifest tree | PASS |
-| Static route-permission review | PASS |
-| Raw ZIP provenance / CRC / SHA recheck | BLOCKED |
-| SHA-256 per-file | BLOCKED |
-| Restore snapshot disposable | NOT RUN |
-| W1 | NOT STARTED — menunggu review/persetujuan pengguna |
+| Klarifikasi HEAD, parent, urutan commit | PASS |
+| Branch recovery tidak berubah | PASS |
+| Manifest Git tree | PASS |
+| SHA-256 seluruh 531 tracked files pada source pin | PASS |
+| Snapshot arsip dari source pin | PASS |
+| Restore snapshot disposable dan per-file compare | PASS |
+| ZIP baseline raw bytes / CRC / SHA | BLOCKED (sesuai instruksi) |
+| Source aplikasi diubah | TIDAK |
+| W1 | NOT APPROVED / NOT STARTED |
 
-**Instruksi agent berikutnya:** jangan mulai W1 sampai pengguna meninjau laporan/checkpoint dan menerima status gate W0 atau meminta penutupan item BLOCKED terlebih dahulu. Jangan mengubah branch recovery. Setiap patch W1 wajib memiliki backup sebelum perubahan. Tidak ada migration produksi, merge, atau deployment.
+**Instruksi agent berikutnya:** tunggu pemeriksaan akhir dan keputusan eksplisit pengguna untuk W1. Pertahankan source pin, branch recovery, serta batas role/permission. Jangan melakukan patch aplikasi, migration produksi, merge PR, database produksi, atau deployment tanpa persetujuan tersendiri.
