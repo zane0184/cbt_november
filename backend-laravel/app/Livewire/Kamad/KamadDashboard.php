@@ -1,12 +1,12 @@
 <?php
 
-namespace App\\Livewire\\Kamad;
+namespace App\Livewire\Kamad;
 
-use App\\Contexts\\TenantContext;
-use App\\Models\\Exam;
-use App\\Models\\ExamAttempt;
-use Illuminate\\Support\\Facades\\Gate;
-use Livewire\\Component;
+use App\Contexts\TenantContext;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Component;
 
 class KamadDashboard extends Component
 {
