@@ -13,11 +13,12 @@ use App\Models\Role;
 use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Services\ExamProctorAssignmentService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -89,21 +90,26 @@ class ProctorAssignmentSecurityTest extends TestCase
             ->assertHasNoErrors();
     }
 
-    private function assertCandidateRejectedThroughUi(User $candidate): void
+    private function assertCandidateRejected(User $candidate): void
     {
         $this->actingAs($this->admin);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->assertViewHas('proctors', fn ($proctors) => !$proctors->contains('id', $candidate->id));
 
         try {
-            Livewire::test(ProctorAssignmentManagement::class)
-                ->set('selectedExamId', $this->exam->id)
-                ->set('selectedProctorId', $candidate->id)
-                ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
-                ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
-                ->set('reason', 'Pengawasan ujian kelas enam')
-                ->call('assign');
+            app(ExamProctorAssignmentService::class)->assign(
+                $this->admin,
+                $this->exam,
+                $candidate->id,
+                now()->subMinute(),
+                now()->addHour(),
+                'Pengawasan ujian kelas enam'
+            );
 
             $this->fail('Kandidat yang tidak memenuhi syarat tidak boleh ditugaskan.');
-        } catch (ModelNotFoundException) {
+        } catch (ValidationException) {
             $this->assertDatabaseCount('exam_proctor_assignments', 0);
         }
     }
@@ -140,7 +146,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'tenant_id' => $this->tenant->id, 'user_id' => $student->id, 'full_name' => 'Siswa A',
         ]);
 
-        $this->assertCandidateRejectedThroughUi($student);
+        $this->assertCandidateRejected($student);
     }
 
     public function test_multi_role_user_cannot_be_selected_as_temporary_proctor(): void
@@ -161,7 +167,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'full_name' => 'Guru Multi Role',
         ]);
 
-        $this->assertCandidateRejectedThroughUi($multiRoleUser);
+        $this->assertCandidateRejected($multiRoleUser);
     }
 
     public function test_guru_without_active_teacher_profile_cannot_be_selected(): void
@@ -177,7 +183,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'tenant_id' => $this->tenant->id, 'user_id' => $inactiveGuru->id, 'full_name' => 'Guru Nonaktif',
         ])->delete();
 
-        $this->assertCandidateRejectedThroughUi($inactiveGuru);
+        $this->assertCandidateRejected($inactiveGuru);
     }
 
     public function test_revoked_assignment_is_audited_and_remains_in_history(): void
