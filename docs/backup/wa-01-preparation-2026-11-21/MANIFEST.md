@@ -49,3 +49,12 @@ Backup manifest dibuat sebelum perubahan ledger ini; blob backup: f63d3b3bcfe6d1
 - Implementation: NOT STARTED.
 - Tests: 69 IDs, all NOT RUN.
 - No source, database, migration, seeder, permission pivot, config, PR or deployment changes.
+
+
+## Tambahan backup checkpoint final publication ledger
+
+| Dokumen | Blob SHA sebelum update | SHA-256 backup | Bytes | Backup path | Verifikasi |
+|---|---|---|---:|---|---|
+| docs/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md | 06b10dfe4dec872c73b502a3bb14793b5c3e5c76 | 9bd0626acf0d047663fdf2a53ce03e50bea6aff175f392de7de4881a40a83c7a | 38111 | docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-publication-ledger | Backup blob identik dengan checkpoint sebelum refresh |
+
+Backup manifest sebelum ledger refresh: docs/backup/wa-01-preparation-2026-11-21/MANIFEST.md.before-checkpoint-ledger-refresh; blob backup undefined; commit backup 5ca1a961c8ba111baf5230158c941baf67424453. Manifest ini hanya dokumentasi; source manifest dan source branch tidak diubah.
