@@ -666,6 +666,7 @@ class ImportWorkbookServiceTest extends TestCase
         $zip = new \ZipArchive();
         $this->assertSame(true, $zip->open($external->getRealPath()));
         $rels = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        $zip->deleteName('xl/_rels/workbook.xml.rels');
         $zip->addFromString('xl/_rels/workbook.xml.rels', str_replace('</Relationships>',
             '<Relationship Id="rIdExternal" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://invalid.test/" TargetMode="External"/></Relationships>', $rels));
         $zip->close();
@@ -768,7 +769,10 @@ class ImportWorkbookServiceTest extends TestCase
             ->call('previewUpload')->assertHasNoErrors()->call('confirmImport')->assertRedirect(route('admin.import'));
         $this->assertFalse(property_exists($component->instance(), 'activationLinks'));
         $this->assertTrue(session()->has('import_activation_links'));
-        $this->assertCount(1, session()->get('import_activation_links'));
+        $rendered = $component->instance()->render();
+        $this->assertCount(1, $rendered->getData()['activationLinks']);
+        $this->assertSame([], session()->get('import_activation_links', []));
+        $this->assertSame([], $component->instance()->render()->getData()['activationLinks']);
     }
 
     public function test_admin_visible_row_failure_reason_does_not_expose_exception_details(): void
@@ -783,34 +787,6 @@ class ImportWorkbookServiceTest extends TestCase
     }
 
 
-
-    public function test_import_row_transaction_retries_a_mysql_deadlock_without_partial_duplicate_account(): void
-    {
-        Role::create(['name' => 'GURU', 'label' => 'Guru']);
-        $attempts = 0;
-        TeacherProfile::creating(function ($profile) use (&$attempts): void {
-            $attempts++;
-            if ($attempts === 1) {
-                $deadlock = new \PDOException('Deadlock found when trying to get lock; try restarting transaction', 1213);
-                throw new \Illuminate\Database\QueryException('mysql', 'insert into teacher_profiles', [], $deadlock);
-            }
-        });
-
-        try {
-            $batch = app(ImportWorkbookService::class)->preview(
-                $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Deadlock Retry', 'L', '', '']]),
-                'GURU', $this->tenant->id, $this->admin->id
-            );
-            $result = app(ImportWorkbookService::class)->confirm($batch->id, $this->tenant->id, $this->admin->id);
-        } finally {
-            TeacherProfile::flushEventListeners();
-        }
-
-        $this->assertGreaterThanOrEqual(2, $attempts, 'Deadlock harus memicu retry transaksi baris.');
-        $this->assertSame('COMPLETED', $result['batch']->status);
-        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('nip', '001234567890123456')->count());
-        $this->assertSame(1, User::query()->where('tenant_id', $this->tenant->id)->where('username', '001234567890123456')->count());
-    }
 
     public function test_abandoned_preview_staging_expires_after_retention_and_keeps_tenant_audit(): void
     {
@@ -836,4 +812,78 @@ class ImportWorkbookServiceTest extends TestCase
     }
 
 
+
+    public function test_import_service_rejects_mismatched_tenant_context_before_staging_any_data(): void
+    {
+        $otherTenant = Tenant::create(['name' => 'Madrasah Import B', 'code' => 'IMPB']);
+        $this->setTenantContext($otherTenant->id);
+        try {
+            app(ImportWorkbookService::class)->preview(
+                $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Tidak Boleh Bocor', 'L', '', '']]),
+                'GURU', $this->tenant->id, $this->admin->id
+            );
+            $this->fail('Mismatched tenant context must be rejected.');
+        } catch (\RuntimeException $exception) {
+            $this->assertStringContainsString('Tenant context', $exception->getMessage());
+        } finally {
+            $this->setTenantContext($this->tenant->id);
+        }
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
+
+}
+
+
+class ImportDeadlockRetryTest extends TestCase
+{
+    use \Illuminate\Foundation\Testing\DatabaseMigrations;
+
+    public function test_import_row_transaction_retries_a_mysql_deadlock_without_partial_duplicate_account(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Deadlock', 'code' => 'DLOCK']);
+        $this->setTenantContext($tenant->id);
+        $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $permission = Permission::create(['name' => 'user.manage', 'label' => 'Kelola Pengguna']);
+        $adminRole->permissions()->attach($permission->id);
+        $admin = User::create(['name' => 'Admin Deadlock', 'email' => 'admin.deadlock@madrasah.test', 'password' => \Illuminate\Support\Facades\Hash::make('StrongPassword123!')]);
+        $admin->roles()->attach($adminRole);
+        $this->actingAs($admin);
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+
+        $batch = \App\Models\ImportBatch::create([
+            'created_by' => $admin->id, 'type' => 'GURU', 'template_version' => \App\Exports\Import\ImportTemplateVersion::VERSION,
+            'file_sha256' => hash('sha256', 'deadlock-test'), 'original_filename' => 'deadlock-test.xlsx',
+            'status' => 'PREVIEW', 'total_rows' => 1, 'valid_rows' => 1,
+        ]);
+        $payload = [
+            'category' => 'PNS', 'nip' => '001234567890123456', 'nik' => '', 'nuptk' => '',
+            'name' => 'Guru Deadlock Retry', 'gender' => 'L', 'email' => '', 'phone' => '',
+        ];
+        \App\Models\ImportBatchRow::create([
+            'batch_id' => $batch->id, 'sheet_name' => 'Data Guru', 'row_number' => 2,
+            'status' => 'VALID', 'reason' => null, 'row_summary' => ['name' => $payload['name'], 'identity_suffix' => '3456'],
+            'encrypted_payload' => \Illuminate\Support\Facades\Crypt::encryptString(json_encode($payload, JSON_THROW_ON_ERROR)),
+        ]);
+
+        $attempts = 0;
+        \App\Models\TeacherProfile::creating(function ($profile) use (&$attempts): void {
+            $attempts++;
+            if ($attempts === 1) {
+                $deadlock = new \PDOException('Deadlock found when trying to get lock; try restarting transaction', 1213);
+                throw new \Illuminate\Database\QueryException('mysql', 'insert into teacher_profiles', [], $deadlock);
+            }
+        });
+
+        try {
+            $result = app(ImportWorkbookService::class)->confirm($batch->id, $tenant->id, $admin->id);
+        } finally {
+            \App\Models\TeacherProfile::flushEventListeners();
+        }
+
+        $this->assertGreaterThanOrEqual(2, $attempts, 'Deadlock harus memicu retry transaksi baris tingkat atas.');
+        $this->assertSame('COMPLETED', $result['batch']->status);
+        $this->assertSame(1, \App\Models\TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('nip', '001234567890123456')->count());
+        $this->assertSame(1, User::withoutGlobalScopes()->where('tenant_id', $tenant->id)->where('name', 'Guru Deadlock Retry')->count());
+    }
 }

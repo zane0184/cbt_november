@@ -17,6 +17,7 @@ use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Contexts\TenantContext;
 use App\Services\AuditService;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Illuminate\Support\Facades\Crypt;
@@ -220,6 +221,16 @@ class ImportWorkbookService
 
     private function assertAdminActor(string $tenantId, string $userId): void
     {
+        $authenticated = auth()->user();
+        if (!$authenticated || (string) $authenticated->id !== $userId || (string) $authenticated->tenant_id !== $tenantId) {
+            throw new RuntimeException('Aktor import harus merupakan Admin yang sedang login pada tenant yang sama.');
+        }
+        $contextTenantId = app()->bound(TenantContext::class) ? app(TenantContext::class)->getTenantId() : null;
+        $contextTenantId = $contextTenantId ?: TenantContext::getInstance()?->getTenantId();
+        if ($contextTenantId && (string) $contextTenantId !== $tenantId) {
+            throw new RuntimeException('Tenant context tidak cocok dengan Admin yang sedang login.');
+        }
+
         $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($userId)->firstOrFail();
         if (!$actor->hasRole('ADMIN_MADRASAH') || !$actor->hasPermission('user.manage')) {
             throw new RuntimeException('Hanya Admin Madrasah dengan izin Kelola Pengguna pada tenant yang sama yang dapat menjalankan import.');
@@ -233,12 +244,21 @@ class ImportWorkbookService
         $expectedSheets = $type === 'GURU' ? ['Petunjuk', 'Data Guru', 'Penugasan Guru', 'Referensi'] : ['Petunjuk', 'Data Siswa', 'Referensi'];
         if ($book->getSheetNames() !== $expectedSheets) throw new ImportWorkbookValidationException('Workbook harus menggunakan seluruh sheet template tanpa sheet tambahan atau perubahan nama.');
         foreach ($book->getAllSheets() as $sheet) {
-            $expectedState = $sheet->getTitle() === 'Referensi'
+            $sheetName = $sheet->getTitle();
+            $expectedState = $sheetName === 'Referensi'
                 ? \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN
                 : \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_VISIBLE;
             if ($sheet->getSheetState() !== $expectedState) throw new ImportWorkbookValidationException('Status tampilan sheet tidak sesuai template.');
+            $maxRows = $sheetName === 'Petunjuk' ? 20 : 5001;
+            $maxColumns = $sheetName === 'Petunjuk' ? 2 : ($sheetName === 'Referensi' ? 4 : 11);
+            if ($sheet->getHighestDataRow() > $maxRows
+                || Coordinate::columnIndexFromString($sheet->getHighestDataColumn()) > $maxColumns) {
+                throw new ImportWorkbookValidationException('Sheet '.$sheetName.' memiliki isi di luar batas template.');
+            }
             foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
-                if ($sheet->getCell($coordinate)->getDataType() === DataType::TYPE_FORMULA) throw new ImportWorkbookValidationException('Formula tidak diizinkan pada workbook import.');
+                $cell = $sheet->getCell($coordinate);
+                if ($cell->getDataType() === DataType::TYPE_FORMULA) throw new ImportWorkbookValidationException('Formula tidak diizinkan pada workbook import.');
+                if (mb_strlen((string) ($cell->getValue() ?? '')) > 5000) throw new ImportWorkbookValidationException('Isi sel terlalu panjang pada workbook import.');
             }
         }
         $instruction = $book->getSheetByName('Petunjuk');
@@ -332,6 +352,14 @@ class ImportWorkbookService
                 $isAllowed = false;
                 foreach ($allowed as $pattern) if (preg_match($pattern, $name)) { $isAllowed = true; break; }
                 if (!$isAllowed) throw new ImportWorkbookValidationException('Workbook berisi komponen tambahan yang tidak didukung.');
+
+                // Check central-directory expansion sizes before decompressing any XML payload.
+                $entrySize = (int) ($entry['size'] ?? 0);
+                $expandedBytes += $entrySize;
+                if ($expandedBytes > 50 * 1024 * 1024 || $entrySize > 30 * 1024 * 1024) {
+                    throw new ImportWorkbookValidationException('Ukuran isi workbook setelah ekstraksi melebihi batas aman 50 MB.');
+                }
+
                 if (preg_match('/\.rels$/i', $name)) {
                     $relationshipXml = $zip->getFromIndex($i);
                     if (!is_string($relationshipXml) || preg_match("/TargetMode\s*=\s*(?:\"External\"|'External')/i", $relationshipXml)) {
@@ -343,10 +371,6 @@ class ImportWorkbookService
                     if (is_string($xml) && preg_match('/macroEnabled|vbaProject|oleObject|externalLink|connections|queryTable/i', $xml)) {
                         throw new ImportWorkbookValidationException('Workbook mengandung macro, objek tertanam, atau koneksi eksternal yang tidak diizinkan.');
                     }
-                }
-                $expandedBytes += (int) ($entry['size'] ?? 0);
-                if ($expandedBytes > 50 * 1024 * 1024 || (int) ($entry['size'] ?? 0) > 30 * 1024 * 1024) {
-                    throw new ImportWorkbookValidationException('Ukuran isi workbook setelah ekstraksi melebihi batas aman 50 MB.');
                 }
                 $required[$name] = true;
             }
