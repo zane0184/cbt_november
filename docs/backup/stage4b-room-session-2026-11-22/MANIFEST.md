@@ -8,6 +8,7 @@ The immutable source commit above is the byte-exact pre-change backup for each t
 
 | Original path | Git blob SHA | UTF-8 bytes |
 |---|---|---:|
+| backend-laravel/app/Models/Exam.php | d3094eada3b2f54758af89e82987f09b4672f8d9 | 3009 |
 | backend-laravel/app/Models/ExamParticipant.php | ff9cbfbaab481ff54ba4f1b5ae21a11e73737bec | 1016 |
 | backend-laravel/app/Models/ExamProctorAssignment.php | 348116dfc447dea3eebc7e9271f442b3f159cca6 | 1348 |
 | backend-laravel/app/Services/ExamProctorAssignmentService.php | 1030018d797fac32ae2fe8bb067007ce1fb02049 | 11646 |
