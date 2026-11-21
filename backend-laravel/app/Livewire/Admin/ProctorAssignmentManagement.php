@@ -50,6 +50,7 @@ class ProctorAssignmentManagement extends Component
         $exam = Exam::query()->where('tenant_id', $tenantId)->findOrFail($data['selectedExamId']);
         $proctor = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', '!=', 'GURU'))
             ->whereHas('teacherProfile', fn ($query) => $query->where('tenant_id', $tenantId))
             ->findOrFail($data['selectedProctorId']);
 
@@ -85,6 +86,7 @@ class ProctorAssignmentManagement extends Component
             ->orderBy('start_at')->get(['id', 'title', 'start_at', 'end_at']);
         $proctors = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', '!=', 'GURU'))
             ->whereHas('teacherProfile', fn ($query) => $query->where('tenant_id', $tenantId))
             ->orderBy('name')->get(['id', 'name']);
         $assignments = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
