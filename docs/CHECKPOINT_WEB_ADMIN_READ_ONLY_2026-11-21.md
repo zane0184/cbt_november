@@ -66,7 +66,7 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Verifikasi: backup dan file resmi memiliki Git blob SHA yang sama untuk masing-masing dokumen. Laporan dan checkpoint tersedia langsung pada GitHub branch target.
 
 
-## Checkpoint audit phase 2 — 21 November 2026
+## Riwayat checkpoint audit phase 2 (historis; bukan status terkini) — 21 November 2026
 
 ### Temuan tambahan terverifikasi secara statis
 - P0-05: `/admin/exams` menampilkan token ujian untuk ujian PUBLISHED/locked, jumlah snapshot, jumlah peserta, serta tautan monitoring/hasil/analisis. Bukti: `app/Livewire/Admin/ExamManagement.php`, `resources/views/livewire/admin/exam-management.blade.php`, `app/Policies/ExamPolicy.php`.
@@ -85,7 +85,7 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Langkah berikutnya: audit semua query User/withoutGlobalScopes, route-model binding, export, cache, jobs, controller tersisa, lalu matriks modul/test dan patch plan final.
 
 
-## Checkpoint audit phase 3 — 21 November 2026
+## Riwayat checkpoint audit phase 3 (historis; bukan status terkini) — 21 November 2026
 
 ### Temuan tambahan
 - P1-09: composite FK tenant belum lengkap untuk exam_participants.user_id, exam_attempt_answers.student_id, dan student/grader/finalizer pada tabel scoring. Validasi aplikasi ada pada sebagian jalur, tetapi database belum menolak seluruh mismatch. Tidak ada migration dijalankan.
@@ -102,7 +102,7 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Berikutnya: selesaikan pemeriksaan controller/Livewire/policy dan model/relasi tersisa; petakan ADM-001–ADM-023 dan T-001–T-173; finalisasi patch plan per file.
 
 
-## Checkpoint audit phase 4 — 21 November 2026
+## Riwayat checkpoint audit phase 4 (historis; bukan status terkini) — 21 November 2026
 
 - P0-06: AssessmentController.show mengizinkan AssessmentPolicy.view untuk Admin tenant-local, lalu serialize relasi exams mentah. Exam model tidak menyembunyikan token. Ini jalur tambahan token/config leakage pada detail Assessment.
 - Bukti source: app/Policies/AssessmentPolicy.php; app/Http/Controllers/Api/V1/AssessmentController.php; app/Models/Exam.php.
@@ -113,7 +113,7 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Berikutnya: inventaris semua response serialization/model hidden/API resources dan audit matriks ADM/T lengkap.
 
 
-## Checkpoint audit phase 5 — 21 November 2026
+## Riwayat checkpoint audit phase 5 (historis; bukan status terkini) — 21 November 2026
 
 ### Temuan tambahan yang diverifikasi statis
 - P0-07: Admin dapat mengakses route ResultList/ResultDetail karena ReportPolicy/ExamAttemptPolicy mengizinkan Admin report.view; halaman menampilkan nama peserta, nilai, status, evaluated answer snapshot dan skor per soal.
@@ -135,7 +135,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Pekerjaan tersisa: audit seluruh relasi/serialisasi/resources/media/export/download/cache, User query/withoutGlobalScopes lengkap, ADM-001–023 detail, T-001–173 mapping, patch plan final.
 
 
-## Checkpoint audit phase 6 — 21 November 2026
+## Riwayat checkpoint audit phase 6 (historis; bukan status terkini) — 21 November 2026
 
 ### Temuan tambahan
 - P0-09: QuestionController list/detail, QuestionPublication index, MediaController index/show expose content, answer keys/options/explanation and private media to Admin under QuestionPolicy/role grant.
@@ -153,7 +153,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Berikutnya: detail matriks 23 modul dan T-001–T-173, review all remaining query/export/cache/resource routes, patch plan final per file, and verification of docs branch/commit.
 
 
-## Checkpoint audit phase 7 — matrix publication
+## Riwayat checkpoint audit phase 7 (historis; bukan status terkini) — matrix publication
 
 ### GitHub artifacts
 - Detailed module matrix: `docs/MATRIKS_AUDIT_WEB_ADMIN_DETAIL_2026-11-21.md`
@@ -179,7 +179,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - No source, DB, migration, config, role, permission, Web Guru, PR, deployment changes. Wait for explicit user approval before implementation.
 
 
-## Checkpoint audit phase 8 — route-by-route and Livewire hydration
+## Riwayat checkpoint audit phase 8 (historis; bukan status terkini) — route-by-route and Livewire hydration
 
 - P0-12: route inventory confirms Admin has access to result, monitoring, score, report, export, analytics, close, finalize/reopen paths through current policies.
 - P1-16: Livewire data-bearing render methods rely on mount-only authorization and do not recheck permissions on hydrated requests: AcademicManagement, CurriculumManagement, UserManagement, ProctorAssignmentManagement, ExamManagement, QuestionBank, ResultList/Detail, AnalyticsDashboard, ItemAnalysis, OperatorDashboard, ProktorDashboard. ExamManagement/QuestionBank render query may widen to all tenant data if role no longer matches a filter branch.
@@ -192,7 +192,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Next: finish all API response/resource/export/download/cache query review, test trace validation and per-file patch/rollback planning. No implementation before explicit approval.
 
 
-## Checkpoint audit phase 9 — auth and tenant fail-closed
+## Riwayat checkpoint audit phase 9 (historis; bukan status terkini) — auth and tenant fail-closed
 
 - P1-18: LoginIdentityResolver accepts legacy ADMIN/OPERATOR/PROKTOR staff roles; API AuthController issues Sanctum tokens without an active-role allowlist. Web login still accepts OPERATOR/PROKTOR. Other role branches remain in LicenseStatusController, Operator/Kamad/Proktor dashboards, Academic/Curriculum management, DatabaseSeeder, InstallerService, RolePermissionBootstrapper, ExamPolicy and AssessmentPolicy.
 - P1-19: IdentifyTenant does not abort authenticated user with null tenant_id; it leaves context null and proceeds. TenantScoped models fail closed, but User is not scoped and some route-bound relations depend on explicit tenant checks.
@@ -204,7 +204,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Remaining: full User query/relationship and unscoped review completion, exports/cache/resource serialization, test method evidence reconciliation, per-file patch plan and rollback/acceptance review.
 
 
-## Checkpoint audit phase 10 — tenant query inventory and data lifecycle
+## Riwayat checkpoint audit phase 10 (historis; bukan status terkini) — tenant query inventory and data lifecycle
 
 - Tenant matrix published: `docs/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md`; commit `b3e4d5ef869b5179044500770b4e4d265a42f51e`; blob `f5e55a7e402351ada8778119077437e8fdfbb653`; backup path `docs/backup/web-admin-read-only-2026-11-21/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md.pre-publication` same blob.
 - Corrected counts: 56 models; 40 TenantScoped; 16 without trait. 30 withoutGlobalScope occurrences across 8 files (25 plural, 5 singular); preliminary 36/10 count superseded.
@@ -220,7 +220,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Remaining: final review of all source paths against exact test IDs, verify all file provenance, compose per-file patch plan and acceptance/rollback, then stop for explicit approval.
 
 
-## Checkpoint audit phase 11 — raw queries, media and login/session
+## Riwayat checkpoint audit phase 11 (historis; bukan status terkini) — raw queries, media and login/session
 
 - P1-23: MonitoringController participants query joins users by user_id without users.tenant_id = participant.tenant_id; ExamParticipantController eager-loads unscoped User. App creation validates tenant, but missing composite FK leaves corruption/legacy-row exposure risk.
 - Raw query inventory: ExamController history checks, MediaController joins/pivots, TeacherAccess joins, ExamSnapshotService, CurriculumAchievementService, StudentRombelManagement, maintenance commands, benchmark isolation, legacy inventory and installer reads reviewed. Relevant request-path queries carry tenant predicates; maintenance scans are tenant-revalidated.
