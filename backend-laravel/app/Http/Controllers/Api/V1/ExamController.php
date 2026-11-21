@@ -268,14 +268,21 @@ class ExamController extends Controller
 
             foreach ($validStudents as $student) {
                 // Add-only and idempotent: never reset STARTED/COMPLETED participant state.
-                ExamParticipant::firstOrCreate(
+                $participant = ExamParticipant::firstOrCreate(
                     [
                         'tenant_id' => $lockedExam->tenant_id,
                         'exam_id' => $lockedExam->id,
                         'user_id' => $student->user_id,
                     ],
-                    ['status' => 'ASSIGNED']
+                    ['status' => 'ASSIGNED', 'rombel_id' => $rombel->id]
                 );
+
+                // Never infer the source rombel for a legacy participant with NULL
+                // snapshot, and never silently move an existing participant.
+                if ($participant->rombel_id !== null
+                    && (string) $participant->rombel_id !== (string) $rombel->id) {
+                    abort(409, 'Peserta sudah terdaftar pada snapshot rombel lain untuk ujian ini.');
+                }
             }
 
             $this->auditService->log('ASSIGN_ROMBEL', 'Exam', $lockedExam->id, null, [
