@@ -13,6 +13,8 @@ class ImportBatchRow extends Model
 
     protected $fillable = ['batch_id', 'sheet_name', 'row_number', 'status', 'reason', 'row_summary', 'encrypted_payload'];
 
+    protected $hidden = ['encrypted_payload'];
+
     protected $casts = ['row_summary' => 'array'];
 
     public function batch(): BelongsTo
