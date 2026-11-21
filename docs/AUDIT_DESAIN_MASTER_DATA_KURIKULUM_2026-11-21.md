@@ -304,3 +304,12 @@ Berdasarkan pemeriksaan statis terdahulu:
 - IMPLEMENTASI: tidak ada source aplikasi yang diubah dalam pembaruan dokumen ini.
 - PENGUJIAN: tidak ada test aplikasi/database dijalankan dalam pembaruan ini.
 - KEPUTUSAN: Paket 5 belum boleh dinyatakan selesai atau siap implementasi penuh sebelum dokumen primer, matriks regulasi, data aktual, desain model dan acceptance gate di atas diverifikasi.
+
+
+### 9.9 Penegasan supersesi atas rumusan lama
+
+Untuk mencegah pembacaan ganda:
+- Kalimat pada bagian 3 yang menyatakan keputusan pengguna adalah “Guru hanya memilih referensi yang telah disediakan Admin” dinyatakan **dicabut/digantikan** oleh bagian 9.3–9.4.
+- Ketentuan “GURU: read/select saja” pada bagian 4.3 hanya berlaku untuk **katalog referensi resmi global** (CP, fase, elemen, identitas mapel dan metadata sumber), bukan untuk rancangan TP/ATP milik Guru.
+- Acceptance criterion bagian 5 angka 7 dibaca sebagai larangan Guru mengubah **master referensi resmi global**, bukan larangan Guru membuat atau merevisi TP/ATP pembelajaran.
+- Admin dapat menyediakan template dan mengelola master/konfigurasi akademik tenant; Admin tidak mengambil alih kewenangan profesional Guru untuk merancang TP/ATP.
