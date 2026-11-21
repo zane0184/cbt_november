@@ -195,7 +195,7 @@ Semua test berikut NOT RUN. Runtime acceptance wajib memakai MySQL 8/InnoDB; SQL
 | T-111 | Reschedule setelah attempt dimulai | Ditolak; tidak mengubah jadwal/assignment |
 | T-112 | Reschedule sebelum attempt dimulai | Schedule revision naik; assignment NEEDS_REVIEW; audit before/after tercatat |
 | T-113 | Guru menggunakan assignment NEEDS_REVIEW | Ditolak pada request berikutnya |
-| T-114 | Admin mengonfirmasi assignment NEEDS_REVIEW yang tidak konflik | Status kembali ACTIVE dan schedule_revision diperbarui |
+| T-114 | Admin mengonfirmasi assignment NEEDS_REVIEW yang tidak konflik | Status kembali CONFIRMED dan schedule_revision diperbarui; tidak ada status assignment ACTIVE |
 | T-115 | Admin mengonfirmasi assignment yang konflik | Ditolak; status tetap NEEDS_REVIEW |
 | T-116 | Assignment tepat pada starts_at | Akses boleh bila semua status/permission sah |
 | T-117 | Assignment tepat pada expires_at | Akses ditolak |
@@ -250,7 +250,7 @@ Semua test berikut berstatus **NOT RUN** sampai dijalankan pada source commit ya
 | T-157 | Overlap lintas ujian/rombel | Assignment Guru yang overlap ditolak. | P0 | MySQL 8 |
 | T-158 | NEEDS_REVIEW capability | Assignment NEEDS_REVIEW tidak memberi hak Proktor. | P0 | Feature + HTTP |
 | T-159 | PENDING capability | Assignment PENDING tidak memberi hak Proktor. | P0 | Feature + HTTP |
-| T-160 | CONFIRMED capability | Assignment CONFIRMED memberi capability hanya pada tenant/exam/rombel dan interval yang benar. | P0 | Feature + HTTP |
+| T-160 | CONFIRMED capability | Assignment CONFIRMED memberi capability hanya jika Guru aktif, TeacherProfile valid/aktif, tenant, exam, rombel, schedule revision, permission/scope dan status valid, serta starts_at <= serverNow < expires_at. | P0 | Feature + HTTP |
 | T-161 | Revoke | Capability langsung dicabut pada request berikutnya. | P0 | Feature + HTTP |
 | T-162 | Expiry | Hak ditolak saat serverNow >= expires_at meski cron belum berjalan. | P0 | Feature + time control |
 | T-163 | Reschedule | Perubahan jadwal Guru menandai semua assignment terdampak NEEDS_REVIEW secara atomik. | P0 | MySQL 8 |
@@ -261,3 +261,18 @@ Semua test berikut berstatus **NOT RUN** sampai dijalankan pada source commit ya
 | T-168 | Direct schedule update bypass | Update jadwal di luar ExamScheduleChangeService ditolak/tidak dapat terjadi. | P0 | Feature + DB |
 
 Test T-001–T-132 dipertahankan. Penambahan ini tidak mengubah status eksekusi test sebelumnya. Tidak ada test pada addendum ini yang dianggap PASS hanya karena sudah didokumentasikan.
+
+
+## ADDENDUM TEST — FINAL STATUS ASSIGNMENT PROKTOR (DEC-WA-026)
+
+Keputusan desain ACTIVE; seluruh test di bawah **NOT RUN** sampai benar-benar dijalankan pada source commit yang disetujui. T-001–T-168 tetap dipertahankan. T-114 dan T-160 dikoreksi agar tidak menggunakan status assignment ACTIVE dan memuat validasi capability final.
+
+| Test ID | Skenario | Hasil yang diharapkan | Prioritas | Lingkungan |
+|---|---|---|---|---|
+| T-169 | Status assignment ACTIVE | Status ACTIVE ditolak sebagai status assignment; tidak ada enum/transition/capability ACTIVE. Status akun Guru ACTIVE tetap konteks berbeda. | P0 | Feature + DB schema |
+| T-170 | CONFIRMED dengan schedule revision stale | Capability ditolak jika assignment.schedule_revision berbeda dari revision ujian terkini. | P0 | Feature + HTTP |
+| T-171 | CONFIRMED dengan tenant/exam/rombel mismatch | Capability ditolak; tidak ada data lintas tenant atau lingkup tugas yang bocor. | P0 | MySQL 8 + HTTP |
+| T-172 | CONFIRMED dengan Guru nonaktif/TeacherProfile invalid | Capability ditolak pada setiap request. | P0 | Feature + HTTP |
+| T-173 | CONFIRMED tanpa permission/scope yang sah atau assignment telah dicabut | Capability ditolak. | P0 | Feature + HTTP |
+
+T-159 tetap menguji PENDING = DENY. T-160 menguji CONFIRMED = ALLOW hanya setelah seluruh validasi. T-161/T-162/T-163/T-164/T-165/T-166/T-167/T-168 tetap menguji revoke, expiry, reschedule, shared service, concurrency, audit atomicity dan direct update bypass.
