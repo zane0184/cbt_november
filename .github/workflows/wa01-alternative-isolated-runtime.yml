@@ -263,6 +263,8 @@ jobs:
           test -f tests/Feature/AcademicPeriodManagementTest.php
           test -f tests/Feature/TenantProfileManagementTest.php
           test -f tests/Feature/AdminUserManagementScopeTest.php
+          test -f tests/Feature/ImportTemplateGeneratorTest.php
+          test -f tests/Feature/ImportWorkbookServiceTest.php
           test -f tests/Feature/LegacyRoleMigrationServiceTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
           grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
@@ -342,6 +344,13 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/AdminUserManagementScopeTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-users.log"
+
+      - name: PHPUnit — Excel import template generation and workbook lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ImportTemplateGeneratorTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-import-template.log"
+          php artisan test tests/Feature/ImportWorkbookServiceTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-import-workbook.log"
 
       - name: PHPUnit — API authentication and tenant isolation
         shell: bash
