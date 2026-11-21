@@ -25,7 +25,7 @@ return new class extends Migration
             ->value('tenant_id');
 
         if ($duplicateYearTenant || $duplicateSemesterTenant) {
-            throw new \\RuntimeException(
+            throw new \RuntimeException(
                 'Academic period integrity preflight failed: multiple active years or semesters exist for a tenant. Reconcile explicitly before applying this migration; no period was changed automatically.'
             );
         }
