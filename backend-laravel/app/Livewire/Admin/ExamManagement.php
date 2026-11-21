@@ -29,12 +29,27 @@ class ExamManagement extends Component
     public $search = '';
     public $statusFilter = '';
 
-    public function mount()
+    public function boot(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    public function mount(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    private function assertCanAccess(): void
     {
         $user = auth()->user();
-        if (!$user || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'GURU'])->exists()) {
-            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk mengakses manajemen ujian.');
-        }
+        abort_unless(
+            $user
+                && $user->tenant_id
+                && $user->hasRole('GURU')
+                && $user->hasPermission('exam.manage'),
+            403,
+            'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.'
+        );
     }
 
     // Modal State
