@@ -132,7 +132,7 @@ jobs:
           );
           $identity = $pdo->query(
               'SELECT DATABASE() AS db, VERSION() AS version, @@hostname AS hostname, ' .
-              '@@port AS port, @@default_storage_engine AS engine, CURRENT_USER() AS db_user'
+              '@@port AS port, @@default_storage_engine AS engine, SUBSTRING_INDEX(CURRENT_USER(), '@', 1) AS db_user'
           )->fetch(PDO::FETCH_ASSOC);
           $tables = (int) $pdo->query(
               "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"
