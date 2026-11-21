@@ -222,6 +222,67 @@ class MonitoringDuplicationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_admin_direct_api_cannot_access_monitoring_attempt_answers_scores_or_reports(): void
+    {
+        $participant = ExamParticipant::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $this->student->id)
+            ->firstOrFail();
+
+        $attempt = ExamAttempt::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'participant_id' => $participant->id,
+            'student_id' => $this->student->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+        ]);
+
+        $this->actingAs($this->admin, 'sanctum');
+
+        $getUrls = [
+            "/api/v1/exams/{$this->exam->id}/monitoring",
+            "/api/v1/exams/{$this->exam->id}/monitoring/participants",
+            "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$attempt->id}",
+            "/api/v1/exams/{$this->exam->id}/monitoring/events",
+            "/api/v1/exams/{$this->exam->id}/participants",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/answers",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/score",
+            "/api/v1/reports/exams/{$this->exam->id}/results",
+            "/api/v1/reports/exams/{$this->exam->id}/summary",
+            "/api/v1/reports/exams/{$this->exam->id}/questions",
+            "/api/v1/reports/exams/{$this->exam->id}/export/pdf",
+            "/api/v1/reports/exams/{$this->exam->id}/export/excel",
+            "/api/v1/reports/exams/{$this->exam->id}/summary/export/pdf",
+            "/api/v1/exams/{$this->exam->id}/execution",
+        ];
+
+        foreach ($getUrls as $url) {
+            $this->getJson($url)->assertForbidden();
+        }
+
+        $postUrls = [
+            "/api/v1/exams/{$this->exam->id}/attempts",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/heartbeat",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/submit",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/score",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/recalculate",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/finalize",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/reopen",
+            "/api/v1/exams/{$this->exam->id}/token",
+            "/api/v1/exams/{$this->exam->id}/lock",
+            "/api/v1/exams/{$this->exam->id}/close",
+            "/api/v1/exams/{$this->exam->id}/assign-rombel",
+            "/api/v1/exams/{$this->exam->id}/publish-results",
+        ];
+
+        foreach ($postUrls as $url) {
+            $this->postJson($url)->assertForbidden();
+        }
+    }
+
     public function test_pending_assignment_does_not_grant_monitoring_until_admin_confirms(): void
     {
         $assignment = $this->createPendingTemporaryProctorAssignment();
