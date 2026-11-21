@@ -2,7 +2,7 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm">
         <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-bold border border-amber-200 mb-3">Kewenangan Admin Madrasah</div>
         <h1 class="text-2xl font-bold text-navy-900">Penugasan Proktor Sementara</h1>
-        <p class="text-sm text-textSecondary mt-2">Penugasan dibatasi pada ujian tertentu, tenant aktif, dan rentang waktu yang ditentukan. Proktor hanya memperoleh akses monitoring selama penugasan aktif; tidak memperoleh hak mengelola token, soal, peserta, atau nilai.</p>
+        <p class="text-sm text-textSecondary mt-2">Penugasan dibatasi pada ujian tertentu, tenant aktif, dan rentang waktu yang ditentukan. Guru hanya memperoleh capability monitoring setelah Admin mengonfirmasi assignment (CONFIRMED), selama interval waktu dan seluruh validasi masih terpenuhi. Assignment PENDING belum memberi akses; tidak ada hak mengelola token, soal, peserta, atau nilai.</p>
     </div>
 
     @if (session()->has('proctorAssignmentMessage'))
@@ -23,7 +23,7 @@
             <div>
                 <label class="block text-sm font-semibold mb-1">Akun Proktor</label>
                 <select wire:model="selectedProctorId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                    <option value="">Pilih Proktor tenant ini</option>
+                    <option value="">Pilih Guru dengan profil aktif</option>
                     @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }}</option>@endforeach
                 </select>
                 @error('selectedProctorId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
@@ -66,14 +66,33 @@
                         <td class="py-3 pr-3">{{ $assignment->proctor?->name ?? 'Akun tidak tersedia' }}</td>
                         <td class="py-3 pr-3 whitespace-nowrap">{{ $assignment->starts_at?->format('d/m/Y H:i') }} – {{ $assignment->expires_at?->format('d/m/Y H:i') }}</td>
                         <td class="py-3 pr-3">
-                            @if ($assignment->status === 'ACTIVE' && $assignment->expires_at?->isFuture())<span class="text-emerald-700 font-semibold">Aktif / terjadwal</span>
-                            @elseif ($assignment->status === 'REVOKED')<span class="text-red-700 font-semibold">Dicabut</span>
-                            @else<span class="text-textSecondary font-semibold">Kedaluwarsa</span>@endif
+                            @if ($assignment->status === 'PENDING')
+                                <span class="text-amber-700 font-semibold">Menunggu konfirmasi</span>
+                            @elseif ($assignment->status === 'CONFIRMED' && $assignment->expires_at?->isFuture() && !$assignment->revoked_at)
+                                <span class="text-emerald-700 font-semibold">Terkonfirmasi</span>
+                            @elseif ($assignment->status === 'CONFIRMED')
+                                <span class="text-textSecondary font-semibold">Waktu berakhir — akses ditolak</span>
+                            @elseif ($assignment->status === 'NEEDS_REVIEW')
+                                <span class="text-amber-700 font-semibold">Perlu ditinjau ulang</span>
+                            @elseif ($assignment->status === 'REVOKED')
+                                <span class="text-red-700 font-semibold">Dicabut</span>
+                            @elseif ($assignment->status === 'EXPIRED')
+                                <span class="text-textSecondary font-semibold">Kedaluwarsa</span>
+                            @elseif ($assignment->status === 'COMPLETED')
+                                <span class="text-textSecondary font-semibold">Selesai</span>
+                            @else
+                                <span class="text-red-700 font-semibold">Status tidak valid</span>
+                            @endif
                         </td>
-                        <td class="py-3">
-                            @if ($assignment->status === 'ACTIVE' && !$assignment->revoked_at)
+                        <td class="py-3 whitespace-nowrap">
+                            @if (in_array($assignment->status, ['PENDING', 'NEEDS_REVIEW'], true) && !$assignment->revoked_at)
+                                <button type="button" wire:click="confirm('{{ $assignment->id }}')" wire:loading.attr="disabled" class="text-emerald-700 font-semibold hover:underline mr-3">Konfirmasi</button>
+                            @endif
+                            @if (in_array($assignment->status, ['PENDING', 'CONFIRMED', 'NEEDS_REVIEW'], true) && !$assignment->revoked_at)
                                 <button type="button" wire:click="revoke('{{ $assignment->id }}')" wire:loading.attr="disabled" class="text-red-700 font-semibold hover:underline">Cabut</button>
-                            @else<span class="text-textSecondary">—</span>@endif
+                            @else
+                                <span class="text-textSecondary">—</span>
+                            @endif
                         </td>
                     </tr>
                 @empty
