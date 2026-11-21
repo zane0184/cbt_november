@@ -111,3 +111,11 @@ Compare lengkap dari base W0-recheck ke HEAD awal branch konsolidasi 55cfe325aef
 - Report final compare snapshot: base `fb058f05264b8d464d687583c53f06fbb7fe54f7` → compare HEAD `3ec270e98fe9e6dfaed5a4a2db3d8a88aae3701d`: 49 paths (39 added, 10 modified, 0 deleted), all docs/.
 - Checkpoint ini diperbarui setelah laporan dan provenance; branch HEAD aktual setelah commit checkpoint harus diverifikasi melalui ref branch, bukan ditebak dari SHA sebelumnya.
 - Backup checkpoint tepat sebelum refresh ini: `docs/backup/reconciliation-2026-11-21/finalization/CHECKPOINT_REKONSILIASI_2026-11-21.md.before-provenance-refresh`, blob SHA `e28aaa697433197e3969d69cdea9eb675a8d04a2`, cocok dengan sumber sebelum perubahan.
+
+
+## Koreksi final compare dan provenance (snapshot terakhir sebelum checkpoint ini)
+- Branch HEAD sebelum pembaruan checkpoint ini: `efa78bc9146ef4ec639b9924b7a4d6a1b624ea4a`.
+- Compare base `fb058f05264b8d464d687583c53f06fbb7fe54f7` → HEAD tersebut: **50 path**, 40 added, 10 modified, 0 deleted; seluruhnya docs/, tidak ada source aplikasi.
+- Angka 49 pada catatan sebelumnya adalah snapshot sebelum backup tambahan checkpoint dibuat; 50 adalah angka terkini.
+- Laporan final compare diperbarui pada commit `30a1235584893626e236ade4ddc54ada171d5c6d`; provenance diperbarui pada commit `efa78bc9146ef4ec639b9924b7a4d6a1b624ea4a`.
+- Branch tetap tidak di-merge. Ref branch sesudah commit checkpoint ini harus dibaca langsung untuk HEAD terakhir.
