@@ -12,6 +12,7 @@ class QuestionPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return $user->tenant_id !== null
             && $user->hasRole('GURU')
             && $user->hasPermission('question.view');
@@ -19,6 +20,7 @@ class QuestionPolicy extends BasePolicy
 
     public function view(User $user, $model): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if (!$model instanceof Question
             || !$user->tenant_id
             || $user->tenant_id !== $model->tenant_id
@@ -44,6 +46,7 @@ class QuestionPolicy extends BasePolicy
 
     public function create(User $user): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         // Question authoring is a Guru responsibility; Admin Madrasah does not
         // implicitly gain authoring rights merely by administering the tenant.
         return $user->tenant_id !== null
@@ -53,6 +56,7 @@ class QuestionPolicy extends BasePolicy
 
     public function update(User $user, $model): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if (!$model instanceof Question
             || $model->status === 'ARCHIVED'
             || $user->tenant_id === null
@@ -78,11 +82,13 @@ class QuestionPolicy extends BasePolicy
      */
     public function delete(User $user, $model): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return false;
     }
 
     public function publish(User $user, Question $question): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return $this->update($user, $question);
     }
 
