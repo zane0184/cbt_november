@@ -25,3 +25,15 @@ The immutable source commit above is the byte-exact pre-change backup for each t
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | 93e315fd93d34aa515b4a951805bcf827befcde9 | 15520 |
 
 Catatan: blob SHA adalah Git object SHA-1 (bukan SHA-256). Source HEAD tetap dapat dipulihkan persis dari commit tersebut.
+
+## Additional snapshots — before Proktor endpoint-scope correction
+
+Source HEAD: `58c47809bd977a723c7811e087f60dc1cc824dde`
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/app/Http/Controllers/Api/V1/ExamParticipantController.php | docs/backup/stage4b-room-session-2026-11-22/ExamParticipantController.php.before-proctor-monitoring-endpoint-scope | f7014ab069cc2c9548f9b238e0e7a4f1986cb421 | 5716 |
+| backend-laravel/app/Http/Controllers/Api/V1/ExamAttemptController.php | docs/backup/stage4b-room-session-2026-11-22/ExamAttemptController.php.before-proctor-monitoring-endpoint-scope | e915bf43118026ef8eace96338fa6cad44ee29e1 | 21232 |
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-proctor-monitoring-endpoint-scope | 10d967406b5ed4c2bebd183d10ec999c9c3a9b77 | 19765 |
+
+The three snapshots were created as separate files before changing their source counterparts. Earlier Stage 4B backups remain unchanged.
