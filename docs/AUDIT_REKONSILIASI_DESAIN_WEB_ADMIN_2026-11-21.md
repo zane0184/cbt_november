@@ -466,3 +466,8 @@ Library dipaginasi hingga tidak ada next_cursor (5 halaman). Tidak ditemukan raw
 
 ## Koreksi ketelitian test lama
 RolePermissionBootstrapperTest memakai fixture berbeda; satu test menguji pemberian optional grants jika role OPERATOR sudah ada, sedangkan test lain menguji bootstrap tidak membuat role optional jika tidak ada. Itu bukan kontradiksi logis langsung, tetapi test suite tetap tidak memenuhi keputusan final karena source seeder/installer masih membuat OPERATOR dan test belum membuktikan satu role aktif serta parity Admin/Operator 100%.
+
+
+
+## ADDENDUM PRECEDENCE — STATUS ASSIGNMENT PROKTOR (21-11-2026)
+Bagian audit yang mencatat source `ExamProctorAssignment::scopeActiveNow` memeriksa status `ACTIVE` adalah fakta source historis pada blob/commit yang dicantumkan, bukan keputusan desain kanonis. Pengguna telah menetapkan bahwa `ACTIVE` bukan status assignment. Status assignment sah: PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED. Hanya CONFIRMED yang dapat memberi capability setelah seluruh validasi dan interval server `starts_at <= serverNow < expires_at`; seluruh status lain menolak. Karena source masih mencerminkan pola lama, temuan tersebut tetap OPEN. Rujuk Addendum 35 dan DEC-WA-026.
