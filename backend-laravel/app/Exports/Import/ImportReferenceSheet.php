@@ -22,7 +22,7 @@ class ImportReferenceSheet implements FromArray, WithTitle, ShouldAutoSize, With
     public function array(): array
     {
         $rows = [['Mata Pelajaran', 'Rombel', 'Tahun Pelajaran', 'Semester']];
-        $max = max(1, ...array_map('count', $this->references));
+        $max = max(array_merge([1], array_values(array_map('count', $this->references))));
 
         for ($i = 0; $i < $max; $i++) {
             $rows[] = [
