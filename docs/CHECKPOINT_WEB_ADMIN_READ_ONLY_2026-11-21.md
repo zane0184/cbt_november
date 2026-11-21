@@ -114,3 +114,25 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Backup checkpoint: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase4-assessment-serialization`, commit `459eb9af688877b313dd0acf6997c90b06ea7ceb`, blob `8c9dd900c642d134b950e2f180c8e591638507fc` (identik dengan checkpoint sebelum update).
 - Status: P0-06 OPEN; audit read-only; implementasi NOT STARTED; tidak ada source/database/migration/role/permission/config yang diubah.
 - Berikutnya: inventaris semua response serialization/model hidden/API resources dan audit matriks ADM/T lengkap.
+
+
+## Checkpoint audit phase 5 — 21 November 2026
+
+### Temuan tambahan yang diverifikasi statis
+- P0-07: Admin dapat mengakses route ResultList/ResultDetail karena ReportPolicy/ExamAttemptPolicy mengizinkan Admin report.view; halaman menampilkan nama peserta, nilai, status, evaluated answer snapshot dan skor per soal.
+- P0-08: Admin dapat bulk finalize melalui ResultList::confirmFinalizeAll; ExamAttemptPolicy.finalize dan reopen mengizinkan Admin; ExamPolicy.close mengizinkan Admin; monitoring juga Admin allowed.
+- P1-10: GradeLevel, Element, LearningObjective, LearningPath, Material, Tag CRUD tanpa method-level authorization; LearningOutcome hanya store yang memakai FormRequest permission, index/show/update/destroy tidak. Curriculum/Phase sudah memakai BasePolicy.
+- P1-11: Audit event tidak konsisten pada AcademicManagement createRombel/createSubject, CurriculumManagement createTp, UserManagement createUser, Tag CRUD.
+- P1-12: AuthWebController, routes, layouts, AcademicManagement/CurriculumManagement, RolePermissionBootstrapper masih menerima alias ADMIN/OPERATOR dan portal PROKTOR.
+- Tenant middleware priority Authenticate → IdentifyTenant → SubstituteBindings. TenantScoped scope model membantu data isolation tetapi bukan role authorization; User model tetap tidak scoped.
+
+### Inventaris statis
+14 Livewire, 24 API controllers, 11 policies, 56 models, 34 Blade views, 64 test files.
+Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
+
+### Status dan publikasi
+- Laporan fase 5 commit `9a9ff60721945f03e875c0404916cc2851ecbf34`, blob `88e1feab55a41b36cdba73f18fd3a473e2327a86`.
+- Backup laporan sebelum fase 5: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase5-admin-ui-result-and-curriculum`, commit `856380599591ed56a8e9e1ce0b505cc52558b1df`, blob `8f439894f6c15759d44231af6c528486581e5eff` (identik dengan blob sebelum update).
+- Backup checkpoint sebelum fase 5: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase5-admin-ui-result-and-curriculum`, commit `297d10ae0b9b22d84cf7228f3aa577ab89f657fc`, blob `b5916ab1bc6b9b39a1b66e537e9bf69d217a264e` (identik dengan blob sebelum update).
+- Audit tetap OPEN; implementasi NOT STARTED; tidak ada perubahan source/database/migration/config/role/permission/PR.
+- Pekerjaan tersisa: audit seluruh relasi/serialisasi/resources/media/export/download/cache, User query/withoutGlobalScopes lengkap, ADM-001–023 detail, T-001–173 mapping, patch plan final.
