@@ -107,7 +107,7 @@ class ImportManagement extends Component
             );
             $this->activationLinks = [$link];
             $this->notice = 'Tautan aktivasi baru diterbitkan. Tautan lama telah dinonaktifkan; salin dan bagikan secara pribadi.';
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             $this->addError('upload', $exception->getMessage());
         }
     }
