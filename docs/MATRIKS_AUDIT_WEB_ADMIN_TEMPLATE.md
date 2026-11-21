@@ -155,3 +155,25 @@ Semua blob dari branch kandidat Web Admin ade5daa6cf853c164c4f51ec6e25ca68be40b4
 
 
 Catatan ketelitian: RolePermissionBootstrapperTest memakai fixture berbeda untuk optional role. Hasilnya bukan kontradiksi logis langsung; namun test tetap belum membuktikan keputusan final satu role aktif ADMIN_MADRASAH dan parity permission/route Admin lama vs Operator lama.
+
+
+## ADDENDUM AUDIT — KONTROL KANONIS ROLE DAN PEMISAHAN ADMIN/GURU (21-11-2026)
+
+Pertahankan 23 modul ADM-001 s.d. ADM-023 yang sudah ada. Addendum ini bukan penghapusan atau penggantian modul; ia menambahkan cross-cutting control yang harus diperiksa pada seluruh modul relevan.
+
+| Control ID | Area | Pemeriksaan wajib | Bukti source yang dicari | Status desain |
+|---|---|---|---|---|
+| AUD-RBAC-01 | Role lifecycle | Fresh install tidak membuat OPERATOR; tidak ada role aktif/pivot/grant OPERATOR setelah migrasi; tidak ada alias runtime. | DatabaseSeeder, InstallerService, RolePermissionBootstrapper, role tables, resolver, middleware, routes, policies, tests. | ACTIVE |
+| AUD-RBAC-02 | Legacy mapping | Pemetaan akun OPERATOR → ADMIN_MADRASAH mempertahankan user ID, password hash, tenant, profil, histori, audit; akun berbeda tidak digabung. | Migration plan, preflight, pivot/FK, sessions/tokens, deleted users, audit records. | ACTIVE |
+| AUD-RBAC-03 | Permission parity | Semua ADMIN_MADRASAH memiliki satu permission profile identik; tidak ada union grant dari profil legacy. | Permission registry, role-permission pivot, Gate/Policy, route-action matrix. | ACTIVE |
+| AUD-ADM-01 | Admin authorization | Admin hanya boleh mengelola administrasi, master referensi, dan assignment Proktor. | Route, controller, Livewire, API, policy, direct endpoint. | ACTIVE |
+| AUD-ADM-02 | Admin negative access | Direct request Admin ke bank soal, kunci jawaban, exam CRUD, jadwal, roster, publish/token, attempt/answer/score, grading, hasil/analitik, monitoring/close/finalize/reopen/reset/force-submit/takeover/extension ditolak. | Endpoint, policy, service, export, query scope, UI action. | ACTIVE |
+| AUD-GURU-01 | Guru ownership | Guru yang berwenang dapat melakukan operasional CBT tanpa approval Admin, sesuai assignment/permission. | Teacher route/action, ownership, subject/class assignment, exam service. | ACTIVE |
+| AUD-PRO-01 | Temporary Proktor | Semua Guru aktif tenant-local dapat dipilih; tidak ada role/portal PROKTOR permanen. | TeacherProfile, active status, role, assignment service/policy, routes/views. | ACTIVE |
+| AUD-PRO-02 | Assignment scope | Assignment mengikat exam, rombel, Guru, tenant, waktu, status, revision, actor, reason, audit. | Schema/model/service/foreign keys/events. | ACTIVE |
+| AUD-PRO-03 | Overlap | Interval [start,end); overlap ditolak lintas ujian/rombel; adjacent intervals diterima. | MySQL query, locking/current read, indexes, transaction. | ACTIVE |
+| AUD-PRO-04 | Schedule review | API dan Livewire memakai ExamScheduleChangeService; reschedule memicu NEEDS_REVIEW; Admin hanya confirm/revoke/reassign. | ExamController, Livewire, service, event, audit. | ACTIVE |
+| AUD-PRO-05 | Capability validation | Setiap request memeriksa Guru aktif, tenant, exam, rombel, status CONFIRMED, revision, waktu server; PENDING/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED ditolak. | Middleware/policy/service/request tests. | ACTIVE |
+| AUD-TEN-01 | Tenant and identity | Tenant isolation tetap fail-closed; User query, withoutGlobalScopes, installation identity, domain binding dan seeder khusus diuji. | User model, TenantContext, TenantScoped, IdentifyTenant, installation services, seeders. | ACTIVE |
+
+Temuan source lama yang masih menunjukkan OPERATOR/PROKTOR, Admin CBT permissions, route jadwal ganda, assignment tanpa overlap/review, atau tenant gap tetap OPEN. Pemeriksaan menu saja tidak cukup; semua penolakan Admin harus diuji pada endpoint langsung. Status matriks tetap audit statis sampai bukti runtime ditambahkan.
