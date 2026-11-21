@@ -407,3 +407,21 @@ Branch konsolidasi dokumentasi: `docs/canonical-reconciliation-admin-guru-202611
 Dokumen W6 tetap berada pada branch terpisah dan ditautkan ke commit asal; belum ada merge. Dokumen lama tidak dihapus. Untuk konflik, keputusan pengguna terbaru dan Addendum 33 mengikat. Status implementasi source tetap OPEN; dokumen ini bukan bukti implementasi atau kesiapan produksi.
 
 - [Nota Klarifikasi Status Assignment Proktor](NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md) — semantik PENDING/CONFIRMED/ACTIVE masih OPEN; rekomendasi fail-closed belum menjadi keputusan pengguna.
+
+
+## ADDENDUM MASTER — KEPUTUSAN FINAL PROKTOR DAN STATUS KONSOLIDASI (21 NOVEMBER 2026)
+
+Keputusan status assignment Proktor telah ditegaskan final oleh pengguna dan berstatus ACTIVE:
+- PENDING: DENY.
+- CONFIRMED: satu-satunya status yang dapat memberi capability setelah seluruh validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict dan waktu server lulus.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED: DENY.
+- ACTIVE bukan status assignment; hanya boleh digunakan untuk status akun Guru pada konteks terpisah.
+- Interval capability: `starts_at <= serverNow < expires_at`, diperiksa pada setiap request.
+
+Dokumen normatif: [Spesifikasi rinci Addendum 35](SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md), [Register DEC-WA-026](REGISTER_KEPUTUSAN_WEB_ADMIN.md), dan [Keputusan Final Status Assignment Proktor](NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md). Addendum 34 dan nota OPEN/PROPOSED lama berstatus SUPERSEDED.
+
+Matriks pengujian kini mempertahankan T-001–T-168 dan menambahkan T-169–T-173. Seluruh test yang belum benar-benar dijalankan tetap NOT RUN. Source Proktor/role/permission/tenant dan temuan lainnya tetap OPEN.
+
+**Branch konsolidasi dokumentasi:** `docs/canonical-reconciliation-admin-guru-20261121`. Branch ini berbeda dari working source `work/web-admin-w0-20261121`, source pin `recovery/source-preservation-20261121`, dan branch spesifikasi W6 `docs/curriculum-kbc-w6-requirements-20261121`. Tidak ada merge. HEAD dan compare final dicatat pada checkpoint/provenance setelah pemeriksaan akhir.
+
+Ruang lingkup finalisasi mencakup seluruh keputusan Admin/Guru, migrasi role legacy, permission, direct endpoint denial, Guru ownership, assignment Proktor, reschedule, concurrency, tenant/User isolation, Kurmer-KBC, provenance, backup, dan handover — bukan hanya Proktor.
