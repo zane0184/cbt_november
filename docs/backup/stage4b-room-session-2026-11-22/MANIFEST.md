@@ -129,3 +129,12 @@ The final source refinement enforces a single active GURU role for Guru monitori
 | docs/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md | docs/backup/stage4b-room-session-2026-11-22/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md.before-admin-participant-scope-clarification | 61acfc92a901a0f52e85cb8fe21455baa24b3c89 | 10078 |
 
 The design now makes explicit that Admin maps rombel to room-session only. Admin does not receive individual participant lists or participant-level placement controls; any future split-room workflow must be a separately authorized Guru-owner capability.
+
+## Additional snapshots — Admin Livewire room UI tests
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/ExamRoomSessionManagementTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionManagementTest.php.before-room-livewire-test | 5b82975b1f4db193f17c371e39d6900a2702fcfc | 24755 |
+| backend-laravel/tests/Feature/ProctorAssignmentSecurityTest.php | docs/backup/stage4b-room-session-2026-11-22/ProctorAssignmentSecurityTest.php.before-proctor-livewire-test | 38d016f570e1449e020159d93371befd7d1dd495 | 13957 |
+
+The Admin room UI test exercises the Livewire edit/save/deactivation path. The Proktor assignment UI already had Livewire assignment/confirmation/revocation tests before this checkpoint.
