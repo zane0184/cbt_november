@@ -18,3 +18,7 @@
 | docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md | 055d571ec2aace7fea97325a787c35b01a52187f | dbbb61c471a020824afa52e49609ebadeeea43149a0690547bf715b1478466fc | 36010 | docs/backup/wa-01-preparation-2026-11-21/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md.before-test-provenance-refinement |
 
 Backup dibuat sebelum refinement provenance test; blob SHA sama dengan dokumen paket sebelum update.
+
+| docs/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md (before final ledger refresh) | 841cfe0694d3443e7828e1a3813b8baa736b4e15 | b1d378fe974cbe8c771df1400bdaecd55ddeb08ea9b82f235a1a489d55add447 | 33331 | docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-ledger-refresh |
+
+Backup dibuat dan diverifikasi byte-identical sebelum final ledger refresh checkpoint.
