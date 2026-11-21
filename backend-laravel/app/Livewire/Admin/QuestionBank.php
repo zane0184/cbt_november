@@ -40,6 +40,7 @@ class QuestionBank extends Component
             $user
                 && $user->tenant_id
                 && $user->hasRole('GURU')
+                && !$user->hasRole('ADMIN_MADRASAH')
                 && $user->hasPermission('question.view'),
             403,
             'Bank soal hanya dapat diakses Guru sesuai penugasan.'
