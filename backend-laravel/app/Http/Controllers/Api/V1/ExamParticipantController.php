@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
 use App\Services\AuditService;
+use App\Services\ExamMonitoringScope;
 use App\Support\Security\TeacherAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,10 +18,27 @@ class ExamParticipantController extends Controller
     {
     }
 
-    public function index(Exam $exam)
+    public function index(Request $request, Exam $exam, ExamMonitoringScope $scope)
     {
         $this->authorize('monitor', $exam);
-        return response()->json(['success' => true, 'data' => $exam->participants()->with('user')->paginate()]);
+
+        // Temporary Proktor access is room/session scoped. Do not use the
+        // unfiltered exam->participants() relation on this operational endpoint.
+        $participants = $scope->participantQuery($request->user(), $exam)
+            ->whereHas('user', fn ($query) => $query->where('tenant_id', $exam->tenant_id))
+            ->with(['user' => fn ($query) => $query
+                ->where('tenant_id', $exam->tenant_id)
+                ->select(['id', 'name'])])
+            ->orderBy('id')
+            ->paginate(50);
+
+        $participants->getCollection()->transform(fn (ExamParticipant $participant) => [
+            'id' => $participant->id,
+            'student_name' => $participant->user?->name,
+            'status' => $participant->status,
+        ]);
+
+        return response()->json(['success' => true, 'data' => $participants]);
     }
 
     public function store(Request $request, Exam $exam)
