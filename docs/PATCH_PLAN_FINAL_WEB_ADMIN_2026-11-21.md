@@ -419,3 +419,7 @@ Urutan dapat disesuaikan hanya berdasarkan dependency hasil test; tidak ada taha
 
 ### Stop gate
 Dokumen ini adalah final review dan patch plan, bukan izin kerja. Tidak ada source, database, migration, seeder, role, permission, config, Web Guru, Android, VPS atau PR yang diubah. **Berhenti di sini dan tunggu persetujuan eksplisit pengguna.**
+
+
+### WA-03 cross-scope clarification — shared policy/service
+Untuk menghilangkan ambiguitas pada tabel file WA-03: perubahan ExamPolicy.monitor yang memberi capability kepada Guru melalui assignment CONFIRMED adalah perubahan shared authorization dan **CROSS-SCOPE BLOCKED** sampai approval terpisah. ExamProctorAssignmentService juga dianggap shared bila dipanggil dari alur selain Admin assignment; pemisahan adapter/service Admin harus dibuktikan sebelum perubahan. Perubahan pada ExamController, shared ExamManagement, routes/web.php, shared API/service/middleware, atau file lain yang memengaruhi schedule/capability Guru juga BLOCKED. Tabel file WA-03 adalah daftar kandidat yang perlu dibahas, bukan izin mengubah seluruh baris. Dalam approval Web Admin saja, hanya file/branch yang dapat dibuktikan eksklusif Admin boleh dipatch; file shared yang tidak dapat dipisahkan harus dikeluarkan dan menunggu approval lintas-scope.
