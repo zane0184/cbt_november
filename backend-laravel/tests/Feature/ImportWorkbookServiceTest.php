@@ -80,6 +80,10 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertSame(2, AuditLog::query()->where('tenant_id', $this->tenant->id)->where('action', 'USER_CREATED')->count());
 
         $activationUrl = $result['activation_links'][0]['url'];
+        $guruRow = $result['batch']->rows->firstWhere('sheet_name', 'Data Guru');
+        $reissued = $service->regenerateActivation($result['batch']->id, $guruRow->id, $this->tenant->id, $this->admin->id);
+        $this->get($activationUrl)->assertGone();
+        $activationUrl = $reissued['url'];
         $this->get($activationUrl)->assertOk()->assertHeader('Referrer-Policy', 'no-referrer');
         $this->post($activationUrl, [
             'password' => 'StrongPassword123!',
@@ -89,6 +93,7 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertTrue(Hash::check('StrongPassword123!', $activatedTeacher->user->password));
         $this->get($activationUrl)->assertGone();
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_ACCOUNT_ACTIVATED']);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_ACTIVATION_LINK_REISSUED']);
     }
 
     public function test_imports_student_and_links_tenant_owned_rombel_and_academic_year(): void
