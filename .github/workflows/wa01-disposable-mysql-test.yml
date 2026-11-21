@@ -29,11 +29,11 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: wa01-ephemeral-root-only
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-ephemeral-root
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pwa01-ephemeral-root-only"
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=20
@@ -50,12 +50,14 @@ jobs:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       MAIL_MAILER: array
-      DB_ROOT_HOST: 127.0.0.1
-      DB_ROOT_PORT: "3306"
-      DB_ROOT_USER: root
-      DB_ROOT_PASSWORD: wa01-ephemeral-root-only
 
     steps:
+      - name: Mask temporary MySQL root credential
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-ephemeral-root
+        run: echo "::add-mask::$DB_ROOT_PASSWORD"
+
       - name: Checkout exact implementation branch commit
         uses: actions/checkout@v4
         with:
@@ -109,11 +111,17 @@ jobs:
       - name: Create unique disposable database and restricted application user
         id: db
         shell: bash
+        env:
+          DB_ROOT_HOST: 127.0.0.1
+          DB_ROOT_PORT: "3306"
+          DB_ROOT_USER: root
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-ephemeral-root
         run: |
           set -euo pipefail
           DB_NAME="cbt_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           DB_USER="wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           DB_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$DB_PASSWORD"
           if [[ ! "$DB_NAME" =~ ^cbt_wa01_[0-9]+_[0-9]+$ || ! "$DB_USER" =~ ^wa01_[0-9]+_[0-9]+$ ]]; then
             echo "Refusing unexpected database/user identifier" >&2
             exit 70
@@ -219,10 +227,113 @@ jobs:
           }
           PHP
 
+      - name: Verify Laravel resolves only the restricted disposable MySQL account
+        id: laravel-db-config
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01/laravel-db-config.json"
+          <?php
+          require 'vendor/autoload.php';
+          $app = require 'bootstrap/app.php';
+          $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $mysql = config('database.connections.mysql');
+          $expected = [
+              'driver' => 'mysql',
+              'host' => getenv('DB_HOST'),
+              'port' => getenv('DB_PORT'),
+              'database' => getenv('DB_DATABASE'),
+              'username' => getenv('DB_USERNAME'),
+          ];
+          $actual = [
+              'driver' => $mysql['driver'] ?? null,
+              'host' => $mysql['host'] ?? null,
+              'port' => (string) ($mysql['port'] ?? ''),
+              'database' => $mysql['database'] ?? null,
+              'username' => $mysql['username'] ?? null,
+          ];
+          $unsafeOverride = is_file('storage/app/private/installer-database.php')
+              || is_file('bootstrap/cache/config.php')
+              || !empty($mysql['url'])
+              || !empty(getenv('DB_URL'));
+          $ok = config('database.default') === 'mysql'
+              && $actual === $expected
+              && $actual['username'] !== 'root'
+              && hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? ''))
+              && !$unsafeOverride;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'default_connection' => config('database.default'),
+              'resolved_connection' => $actual,
+              'application_user_is_root' => $actual['username'] === 'root',
+              'installer_database_override_present' => is_file('storage/app/private/installer-database.php'),
+              'cached_database_config_present' => is_file('bootstrap/cache/config.php'),
+              'database_url_override_present' => !empty($mysql['url']) || !empty(getenv('DB_URL')),
+              'password_matches_ephemeral_app_credential' => hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? '')),
+          ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+          if (!$ok) {
+              exit(73);
+          }
+          PHP
+
       - name: Preflight-only mode — stop before any database migration
         if: inputs.phase == 'preflight'
         run: |
           echo "PREFLIGHT_ONLY=PASS; no PHPUnit, migration, seeder or permission bootstrap was invoked." | tee "$RUNNER_TEMP/wa01/phase-result.txt"
+
+      - name: Verify selected test files and methods; reject bootstrapper and seeder paths
+        if: inputs.phase == 'execute'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tests/Feature/AdminCbtBoundaryTest.php
+          test -f tests/Feature/AuthTest.php
+          test -f tests/Feature/MultiTenantAuthTest.php
+          test -f tests/Feature/TenantIsolationTest.php
+          test -f tests/Feature/AssessmentPolicyTeacherCreateTest.php
+          test -f tests/Feature/WebAdminAuthTest.php
+          test -f tests/Feature/StudentWebLoginTest.php
+          test -f tests/Feature/StudentResultVisibilityTest.php
+          grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
+          grep -Fq 'function test_teacher_can_login_using_nip' tests/Feature/WebAdminAuthTest.php
+          grep -Fq 'class AuthTest' tests/Feature/AuthTest.php
+          grep -Fq 'class MultiTenantAuthTest' tests/Feature/MultiTenantAuthTest.php
+          grep -Fq 'class TenantIsolationTest' tests/Feature/TenantIsolationTest.php
+          grep -Fq 'class AssessmentPolicyTeacherCreateTest' tests/Feature/AssessmentPolicyTeacherCreateTest.php
+          grep -Fq 'class StudentWebLoginTest' tests/Feature/StudentWebLoginTest.php
+          grep -Fq 'class StudentResultVisibilityTest' tests/Feature/StudentResultVisibilityTest.php
+          if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|bootstrapCbtRolePermissions'; then
+            echo "Selected WA-01 test body references the prohibited permission bootstrapper" >&2
+            exit 1
+          fi
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder' \\
+            tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \\
+            tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \\
+            tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
+            echo "Forbidden bootstrapper/seeder/factory path found in selected test files" >&2
+            exit 1
+          fi
+          if grep -nF -- 'factory(' tests/Feature/AdminCbtBoundaryTest.php tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \\
+            tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \\
+            tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
+            echo "Factory call found in selected test files" >&2
+            exit 1
+          fi
+          if grep -nF -- '->seed(' tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \
+            tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \
+            tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
+            echo "Seeder call found in selected test files" >&2
+            exit 1
+          fi
+          if sed -n '/protected function setUp()/,/^    }/p' tests/TestCase.php | grep -F 'bootstrapCbtRolePermissions'; then
+            echo "Base TestCase setUp invokes the prohibited helper" >&2
+            exit 1
+          fi
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions' app/Providers/AppServiceProvider.php; then
+            echo "Application service provider invokes the prohibited bootstrapper" >&2
+            exit 1
+          fi
+                    echo "Selected files and methods exist; selected test paths contain no explicit bootstrapper, seeder, or factory calls."
 
       - name: PHP lint — application, migrations and tests
         if: inputs.phase == 'execute'
@@ -270,7 +381,7 @@ jobs:
           php artisan test tests/Feature/StudentResultVisibilityTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01/phpunit-siswa-results.log"
 
       - name: Verify all migrated tables use InnoDB
-        if: inputs.phase == 'execute'
+        if: always() && inputs.phase == 'execute' && steps.preflight.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
@@ -332,9 +443,15 @@ jobs:
           cat "$RUNNER_TEMP/wa01/test-scope.txt"
 
       - name: Cleanup disposable database and user
-        if: always() && steps.db.outcome == 'success'
+        if: always()
         shell: bash
+        env:
+          DB_ROOT_HOST: 127.0.0.1
+          DB_ROOT_PORT: "3306"
+          DB_ROOT_USER: root
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-ephemeral-root
         run: |
+          echo "::add-mask::$DB_ROOT_PASSWORD"
           set -euo pipefail
           DB_NAME="cbt_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           DB_USER="wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
