@@ -1,6 +1,6 @@
 # CHECKPOINT W0 — WEB ADMIN MADRASAH
 **Tanggal:** 21 November 2026 (WIB)  
-**Status:** AUDIT STATIS DITERIMA; SHA-256 DAN RESTORE PASS; PROVENANCE ZIP BASELINE TETAP BLOCKED; W1 BELUM DIMULAI
+**Status:** AUDIT STATIS DAN SHA-256/RESTORE PASS; ZIP 6 NOVEMBER ARSIP HISTORIS (BUKAN BLOCKER W0); W0 MENUNGGU PENILAIAN PENGGUNA; W1 BELUM DIMULAI
 
 ## Posisi Git dan klarifikasi commit head
 
@@ -11,8 +11,10 @@
 | Source commit pin | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Source tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja | `work/web-admin-w0-20261121` |
-| **Branch kerja HEAD sebelum pembaruan checkpoint ini** | `f0610e309c009789a3be50ff49c6f7dd7c5a1afd` |
-| Parent commit checkpoint ini | `f0610e309c009789a3be50ff49c6f7dd7c5a1afd` |
+| **Branch kerja HEAD saat rekonsiliasi dimulai (ref dibaca langsung)** | `cbb7cda6ebfbd3792435d6dbfebed8b1cbc406af` |
+| Commit laporan rekonsiliasi W0 | `9e6e6f0e9693fb728ca8c0040b92463e15f58f0a` |
+| HEAD branch dokumentasi Kurmer-KBC saat rekonsiliasi dimulai | `4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4` |
+| Parent commit checkpoint ini | `9e6e6f0e9693fb728ca8c0040b92463e15f58f0a` |
 | Commit laporan audit revisi | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
 | Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 
@@ -23,7 +25,7 @@ Urutan commit branch kerja setelah source pin:
 4. `9c6ce35a6db3edac5c2e57e4025d999e11422122` — parent `c708e978...`; menambahkan workflow verifikasi snapshot. Percobaan workflow pertama gagal karena escape expression checkout.
 5. `a42cdbebec90dc9279160e5e062a4fbf98d85df1` — parent `9c6ce35...`; memperbaiki expression workflow. Run kedua berhasil.
 
-Klarifikasi: `641aff0...` adalah commit laporan audit awal dan parent dari checkpoint awal `c708e978...`; bukan HEAD terkini. `c708e978...` adalah checkpoint awal dengan parent `641aff0...`. `a42cdb...` adalah commit perbaikan workflow yang menjalankan snapshot/restore dengan sukses. Setelah itu laporan dan checkpoint direvisi hanya untuk memperbarui bukti, status, dan riwayat commit. HEAD sebelum pembaruan checkpoint ini adalah `f0610e...`; checkpoint yang sekarang disimpan merupakan commit langsung di atasnya. Tidak ada source aplikasi yang diubah.
+Klarifikasi: `641aff0...` adalah commit laporan audit awal dan parent dari checkpoint awal `c708e978...`; bukan HEAD terkini. `c708e978...` adalah checkpoint awal dengan parent `641aff0...`. `a42cdb...` adalah commit perbaikan workflow yang menjalankan snapshot/restore dengan sukses. Setelah itu laporan dan checkpoint direvisi hanya untuk memperbarui bukti, status, dan riwayat commit. HEAD branch W0 saat rekonsiliasi dimulai adalah `cbb7cda...`. Laporan rekonsiliasi kemudian dikomit sebagai `9e6e6f...`, dan checkpoint ini dibuat langsung di atas commit laporan tersebut. SHA commit yang memuat checkpoint dibaca dari Git ref setelah commit dan dicatat pada handover; SHA tersebut tidak dapat ditanamkan ke dalam isi commit itu sendiri karena akan mengubah hash commit. Tidak ada source aplikasi yang diubah.
 
 ## AUDIT
 
@@ -31,7 +33,7 @@ Klarifikasi: `641aff0...` adalah commit laporan audit awal dan parent dari check
 - Branch kerja dibuat dari source pin. Branch recovery asli tetap pada SHA `7fc45bf...`.
 - Perbandingan recovery → working branch menunjukkan hanya empat path tambahan: manifest Git, laporan, checkpoint, serta workflow verifikasi SHA/restore. Tiga dokumen W0 yang telah diterima tetap dipertahankan.
 - Route/action-permission static review tetap seperti temuan laporan W0; belum ada patch source.
-- ZIP baseline 6 November belum diperiksa raw bytes. Status tetap BLOCKED. Tidak ada arsip recovered yang dipakai untuk menggantikan baseline.
+- ZIP 6 November adalah arsip historis saja sesuai keputusan terbaru; tidak perlu dibuka/dicocokkan dan bukan blocker W0. GitHub working source menjadi sumber kebenaran aktual.
 
 ## DESAIN — keputusan yang tidak berubah
 
@@ -70,11 +72,12 @@ GitHub Actions run **W0 Source Snapshot SHA256 and Restore Verification #2**:
 
 Run #1 `44870798226` gagal di checkout karena expression workflow pertama tersimpan dengan escape yang keliru. Kesalahan workflow diperbaiki pada commit `a42cdb...`; run #2 yang menjadi bukti final berhasil.
 
-## Provenance ZIP baseline
+## Status ZIP 6 November — arsip historis
 
-- Baseline ZIP asli 6 November tetap belum raw-byte verified.
-- Tidak ada klaim kesamaan byte, CRC, SHA-256, atau identitas source Git dengan ZIP baseline.
-- Arsip recovered tidak dipakai untuk mengganti baseline. Pekerjaan provenance tetap BLOCKED sampai raw ZIP asli dapat diperiksa.
+- ZIP 6 November bukan lagi acuan utama, blocker W0, atau syarat verifikasi source.
+- Tidak perlu membuka, mencocokkan, atau menghitung ulang raw-byte/CRC/SHA ZIP tersebut dalam pekerjaan pengembangan berikutnya.
+- GitHub working source dan keputusan proyek terbaru menjadi sumber kebenaran.
+- Perbedaan source GitHub dengan ZIP historis bukan defect dan tidak boleh digunakan untuk menurunkan/menimpa source terbaru.
 
 ## Gate saat ini
 
@@ -86,8 +89,71 @@ Run #1 `44870798226` gagal di checkout karena expression workflow pertama tersim
 | SHA-256 seluruh 531 tracked files pada source pin | PASS |
 | Snapshot arsip dari source pin | PASS |
 | Restore snapshot disposable dan per-file compare | PASS |
-| ZIP baseline raw bytes / CRC / SHA | BLOCKED (sesuai instruksi) |
+| ZIP 6 November sebagai blocker W0 | CLOSED BY DECISION — arsip historis saja |
 | Source aplikasi diubah | TIDAK |
 | W1 | NOT APPROVED / NOT STARTED |
 
-**Instruksi agent berikutnya:** tunggu pemeriksaan akhir dan keputusan eksplisit pengguna untuk W1. Pertahankan source pin, branch recovery, serta batas role/permission. Jangan melakukan patch aplikasi, migration produksi, merge PR, database produksi, atau deployment tanpa persetujuan tersendiri.
+**Instruksi agent berikutnya:** berhenti setelah rekonsiliasi read-only dan rencana dokumentasi. Tunggu pemeriksaan pengguna. W0 belum ditutup dan W1 belum disetujui/dimulai. Pertahankan seluruh temuan RBAC, Operator, Proktor, bank soal, jawaban/hasil, close/finalize/reopen, konflik jadwal, tenant isolation, dan gap Kurmer-KBC sebagai OPEN sampai implementasi dan tes membuktikan perbaikannya. Jangan melakukan patch aplikasi, migration, database, merge/rebase, deployment, atau perubahan branch source tanpa persetujuan tersendiri.
+
+
+## Addendum rekonsiliasi dokumentasi — 21 November 2026
+
+### Sumber kebenaran
+
+- Keputusan proyek terbaru: sumber kebenaran desain/persyaratan.
+- GitHub working source: sumber kebenaran kondisi source aktual.
+- Branch/commit/PR: riwayat perubahan.
+- Checkpoint/laporan GitHub: progres dan handover.
+- Backup/manifest/snapshot Actions: bukti integritas/pemulihan.
+
+### HEAD refs yang diperiksa langsung sebelum rekonsiliasi
+
+- `work/web-admin-w0-20261121`: `cbb7cda6ebfbd3792435d6dbfebed8b1cbc406af`.
+- `docs/curriculum-kbc-w6-requirements-20261121`: `4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4`.
+- `recovery/source-preservation-20261121`: `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`.
+
+Setelah update laporan dan checkpoint, SHA HEAD branch W0 yang aktual diverifikasi lagi dari Git ref dan dicantumkan pada handover akhir. Commit SHA tidak dapat menyebut dirinya sendiri di dalam file yang ikut membentuk hash tersebut; gunakan branch ref sebagai nilai final yang otoritatif.
+
+### Temuan keamanan yang tetap OPEN
+
+Tidak ada temuan berikut yang ditutup hanya karena backup/restore PASS:
+- role/permission Admin-Operator dan alias ADMIN;
+- role/portal Proktor permanen dan pemilihan target assignment;
+- akses Admin ke isi Bank Soal;
+- akses Admin ke jawaban, detail attempt, score, report/result;
+- close, finalize, dan reopen oleh Admin;
+- konflik jadwal Proktor dan review saat reschedule;
+- isolasi tenant dan jalur query User;
+- integritas multi_curriculums, registration, mapping soal, dan histori.
+
+### Audit read-only multi_curriculums/mapping
+
+- Migration `190004` mendefinisikan `MERDEKA`, `KBC`, `K13`, `CUSTOM` sebagai contoh code sejajar. Ini tidak sesuai keputusan Kurmer+KBC satu kesatuan.
+- Migration `190006` memiliki node generik `DIMENSI_CINTA` dan `PETA_KASIH`, bukan bukti katalog Panca Cinta/DPL resmi.
+- Migration `190007` memiliki tipe outcome generik CP/TP/ATP/KKTP/KBC_CINTA; `200001` menambah version link dan owner registration.
+- Migration `190008` dan `200001` menghubungkan question, tenant, curriculum version, outcome, dan owner. Beberapa foreign key mapping menggunakan cascade; perlindungan histori perlu desain ulang setelah audit data/provenance.
+- Model Question yang diperiksa belum menunjukkan relasi langsung ke CP/TP legacy atau mapping multi-curriculum.
+- Tidak ada query data runtime/database pada pekerjaan ini; temuan adalah audit struktur source/migration statis.
+
+### Rencana satu spesifikasi kerja Web Admin — belum diintegrasikan
+
+Path yang dipertahankan:
+1. `.github/workflows/w0-source-snapshot-verify.yml`
+2. `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv`
+3. `docs/LAPORAN_AUDIT_W0_WEB_ADMIN_2026-11-21.md`
+4. `docs/CHECKPOINT_W0_WEB_ADMIN_2026-11-21.md`
+5. `docs/SUPPLEMENTAL_SPEC_MASTER_KURIKULUM_KURMER_KBC_W6.md`
+6. `docs/REGISTER_KEPUTUSAN_WEB_ADMIN_KURIKULUM.md`
+7. `docs/MATRIKS_AUDIT_DAN_PENGUJIAN_MASTER_KURIKULUM_W6.md`
+8. `docs/CHECKPOINT_KURIKULUM_KURMER_KBC_2026-11-21.md`
+
+Rencana: buat entry point `docs/WEB_ADMIN_MASTER_SPECIFICATION.md` pada branch dokumentasi integrasi terpisah; tautkan spesifikasi induk, keputusan, matriks W0, addendum Kurmer-KBC, register, dan acceptance tests W6. Semua file sumber dipertahankan; tidak ada overwrite/delete. Branch tidak digabung otomatis. Sebelum integrasi, tampilkan path, asal branch, konflik, dan resolusi yang diusulkan untuk ditinjau.
+
+### Status akhir rekonsiliasi
+
+- ZIP 6 November: arsip historis; bukan blocker W0.
+- SHA-256 dan restore snapshot: PASS.
+- W0 formal closure: menunggu penilaian pengguna.
+- W1: NOT APPROVED / NOT STARTED.
+- W6: NOT STARTED.
+- Source aplikasi, migration, seeder, database, produksi, deployment, recovery branch, dan branch Kurmer-KBC: tidak diubah.
