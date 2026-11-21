@@ -74,3 +74,26 @@ Backup manifest sebelum ledger ini: docs/backup/wa-01-preparation-2026-11-21/MAN
 - Matriks terbaru commit: b3fd43e112460cd97f47c0c9206644700a55e170; blob: 84a0bed82514cf301d7e470d9304dfefde1d6ed8.
 - Source branch tetap work/web-admin-w0-20261121; pin tetap 2b4321ce032fd5e67cf022da8564a5287b8cef6f; compare identical 0 ahead/behind.
 - Implementasi NOT STARTED; seluruh 69 test NOT RUN.
+
+
+## Backup matrix final dan checkpoint enam-policy
+
+| Dokumen | Blob SHA sebelum update | SHA-256 backup | Bytes | Backup path | Verifikasi |
+|---|---|---|---:|---|---|
+| docs/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md | 73aa8478816eb3c0672562fa17e6b84e54338dd9 | 74c189b3c1e5f80ab2f9b72716b655de732d9ed0442eb369d23da26bf0b96ae7 | 60680 | docs/backup/wa-01-preparation-2026-11-21/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md.before-basepolicy-completion | Backup blob identik dengan source sebelum BasePolicy addendum |
+| docs/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md | bcfcebbad3727461aaecd15d295f0eaa7277fb60 | be9fb450a583158ad2f2f5f49af87ac8acb276e18a21631a0c48a73feafdfb0b | 38963 | docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-sixth-policy-final-ledger | Backup blob identik dengan source sebelum sixth-policy ledger |
+
+Backup manifest sebelum ledger final ini:
+- Path: docs/backup/wa-01-preparation-2026-11-21/MANIFEST.md.before-sixth-policy-checkpoint-ledger
+- Source blob: 0b224dc409ec3f5df7edd2bbf4e469123337466b
+- SHA-256: 97b9c7cf480355c99123b934fc5b3d77a6b27d1512a5f92886a5bb35dbf7b87f
+- Bytes: 6597
+- Backup blob: verifikasi file dilakukan setelah commit; lihat path backup
+- Commit backup: 65d6a5726033ebe59a28b0b1a8befd3d9c3250da
+
+## Publikasi matriks dan checkpoint final
+- Matrix commit: b3fd43e112460cd97f47c0c9206644700a55e170; blob: 84a0bed82514cf301d7e470d9304dfefde1d6ed8.
+- Checkpoint commit: 6e48b882966653d1038b964b47e4af2b033c5771; blob: d2d7300020fe7de9d3445c8124e0cb1c6ed262c7.
+- Package commit: 0174b955876a7c8ed5f2ee7148be4b6b57067292; blob: 5899473c44ded53c94de1a897cc1d2ea0a0a6bd5.
+- Source branch compare: identical; 0 ahead/behind.
+- Implementation: NOT STARTED; all 69 tests NOT RUN.
