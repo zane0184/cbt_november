@@ -11,7 +11,7 @@ class ImportBatchRow extends Model
 {
     use HasUuids, TenantScoped;
 
-    protected $fillable = ['batch_id', 'sheet_name', 'row_number', 'status', 'reason', 'row_summary'];
+    protected $fillable = ['batch_id', 'sheet_name', 'row_number', 'status', 'reason', 'row_summary', 'encrypted_payload'];
 
     protected $casts = ['row_summary' => 'array'];
 

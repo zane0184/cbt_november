@@ -40,6 +40,8 @@ Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login')
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
+Route::get('/activate-import-account/{token}', [ImportAccountActivationController::class, 'show'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.show');
+Route::post('/activate-import-account/{token}', [ImportAccountActivationController::class, 'store'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.store');
 Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
 Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
 
@@ -85,6 +87,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'));
 
     // Admin Operational Routes
+    Route::get('/admin/import', ImportManagement::class)->name('admin.import');
     Route::get('/admin/import/template/{type}', [ImportTemplateController::class, 'download'])->name('admin.import.template');
     Route::get('/admin/users', UserManagement::class);
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
