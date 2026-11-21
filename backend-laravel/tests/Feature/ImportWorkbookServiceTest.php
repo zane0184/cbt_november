@@ -463,6 +463,24 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertSame(0, $studentBatch->valid_rows);
         $this->assertSame(1, $studentBatch->failed_rows);
         $this->assertStringContainsString('username akun lain', $studentBatch->rows->first()->reason);
+
+        $deletedUsername = User::create([
+            'name' => 'Akun Terhapus',
+            'username' => '001234567890123458',
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $deletedUsername->delete();
+        $deletedBatch = app(ImportWorkbookService::class)->preview(
+            $this->guruWorkbook([
+                ['PNS', '001234567890123458', '', '', 'Guru Username Terhapus', 'L', '', ''],
+            ]),
+            'GURU',
+            $this->tenant->id,
+            $this->admin->id
+        );
+        $this->assertSame(0, $deletedBatch->valid_rows);
+        $this->assertSame(1, $deletedBatch->failed_rows);
+        $this->assertStringContainsString('username akun lain', $deletedBatch->rows->first()->reason);
     }
 
     public function test_encrypted_payload_and_activation_token_hash_are_hidden_from_serialization(): void

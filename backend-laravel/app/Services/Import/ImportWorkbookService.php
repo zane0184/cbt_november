@@ -212,7 +212,7 @@ class ImportWorkbookService
 
     private function loginUsernameExists(string $tenantId, string $identifier): bool
     {
-        return User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+        return User::withoutGlobalScopes()->where('tenant_id', $tenantId)
             ->whereRaw('LOWER(username) = ?', [mb_strtolower($identifier)])->exists();
     }
 
