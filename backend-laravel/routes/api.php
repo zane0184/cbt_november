@@ -41,7 +41,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/questions/{question}/versions', [\App\Http\Controllers\Api\V1\QuestionController::class, 'versions']);
         Route::post('/questions/{question}/publish', [\App\Http\Controllers\Api\V1\QuestionController::class, 'publish']);
 
-        Route::apiResource('question-publications', \App\Http\Controllers\Api\V1\QuestionPublicationController::class);
+        Route::apiResource('question-publications', \App\Http\Controllers\Api\V1\QuestionPublicationController::class)->only(['index', 'store', 'destroy']);
         Route::get('/media', [\App\Http\Controllers\Api\V1\MediaController::class, 'index']);
         Route::post('/media', [\App\Http\Controllers\Api\V1\MediaController::class, 'store']);
         Route::get('/media/{media}', [\App\Http\Controllers\Api\V1\MediaController::class, 'show']);
