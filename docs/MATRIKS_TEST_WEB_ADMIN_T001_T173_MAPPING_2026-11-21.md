@@ -84,7 +84,7 @@
 | T-065 | IDOR: Assignment ID diganti dengan ID milik tenant lain | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | ExamBuilderTest::test_cross_tenant_exam_access_denied | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-066 | Class tampering: rombel_id pada request diganti dengan kelas lain | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | Tidak ditemukan test method yang langsung membuktikan acceptance case ini. | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-067 | Tenant context: Authenticated user tanpa tenant context melakukan query tenant-scoped | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | TenantIsolationTest::test_missing_tenant_context_forces_fail_closed_on_queries | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
-| T-068 | Isolasi instalasi: Dua instalasi/domain memakai database berbeda | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | StudentWebLoginTest::test_student_login_fails_closed_if_installation_contains_multiple_tenants; InstallerEndToEndTest (installer identity) | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
+| T-068 | Isolasi instalasi: Dua instalasi/domain memakai database berbeda | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | StudentWebLoginTest::test_student_login_fails_closed_if_installation_contains_multiple_tenants | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-069 | Domain portability: Paket yang sama dipasang pada dua domain dengan .env dan DB berbeda | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | Tidak ditemukan test method yang langsung membuktikan acceptance case ini. | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-070 | Idempotency: Request assignment yang sama dikirim ulang | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | ExamBuilderTest::test_add_individual_participant_api_does_not_reset_existing_status | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-071 | Authorization cache: Hak Proktor dicabut saat session masih terbuka | app/Services/RolePermissionBootstrapper.php; app/Http/Controllers/AuthWebController.php; app/Policies/ExamPolicy.php; app/Services/ExamProctorAssignmentService.php; app/Livewire/Admin/ProctorAssignmentManagement.php | Tidak ditemukan test method yang langsung membuktikan acceptance case ini. | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
@@ -100,7 +100,7 @@
 | T-081 | Bandingkan seluruh route/action Admin untuk dua akun lama: HTTP/Gate result identik untuk setiap route/action | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | RolePermissionBootstrapperTest ada; tidak ada test migration role legacy dan preservation akun | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-082 | Postcondition role: Tidak ada role_user/permission_role/role aktif OPERATOR atau ADMIN; hanya ADMIN_MADRASAH | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | RolePermissionBootstrapperTest ada; tidak ada test migration role legacy dan preservation akun | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-083 | DatabaseSeeder: Tidak membuat OPERATOR atau PROKTOR role | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | SeederSafetyTest::test_database_seeder_creates_catalog_only_and_no_demo_accounts_or_proctor_portal_role | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
-| T-084 | InstallerService: Hanya membuat/menetapkan ADMIN_MADRASAH; tidak ada role Operator | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | InstallerEndToEndTest (installer role setup; no final ADMIN_MADRASAH-only migration acceptance) | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
+| T-084 | InstallerService: Hanya membuat/menetapkan ADMIN_MADRASAH; tidak ada role Operator | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | InstallerEndToEndTest::test_clean_installation_runs_from_empty_database_to_locked_state (installer role setup; no final ADMIN_MADRASAH-only migration acceptance) | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-085 | Static source scan: Tidak ada runtime hasRole(OPERATOR), hasRole(ADMIN), atau role branch Operator | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | Tidak ditemukan static scan acceptance/multi-role migration conflict test | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-086 | Akun multi-role/conflicting role: Migration berhenti sebelum perubahan; laporan konflik dibuat | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | Tidak ditemukan static scan acceptance/multi-role migration conflict test | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
 | T-087 | Legacy PROKTOR dengan TeacherProfile valid: Dipetakan menjadi GURU; assignment historis tetap terikat ke user yang sama | app/Services/RolePermissionBootstrapper.php; app/Services/InstallerService.php; app/Services/LoginIdentityResolver.php; app/Http/Controllers/AuthWebController.php; app/Policies/*; database/migrations | ProctorAssignmentSecurityTest (legacy PROKTOR fixture; no final TeacherProfile mapping) | **NOT VERIFIED** — tidak ada run evidence per-ID. CI #692 aggregate tidak diatribusikan ke ID ini. |
@@ -198,3 +198,43 @@
 - Kesenjangan tanpa test langsung yang teridentifikasi meliputi responsive/mobile/accessibility, master-data imports, promotion/alumni, backup/restore, Proktor overlap/concurrency, schedule review/shared service, final assignment CONFIRMED/revision/status matrix, audit append-only/failure rollback, dan Admin deny tests untuk semua endpoint.
 - Beberapa test yang ada secara eksplisit mengharapkan perilaku lama yang bertentangan dengan keputusan final: Admin dapat membuka seluruh Admin routes, Admin dapat monitoring, Admin boleh reopen score, login Operator/Proktor, assignment Proktor ACTIVE. Perlu diubah setelah approval implementasi, bukan sekarang.
 - Audit read-only belum selesai. Patch plan final belum dipublikasikan; pekerjaan harus diteruskan sampai seluruh source paths/relations and acceptance matrix reviewed.
+
+## Provenance test source files
+
+Source branch: `work/web-admin-w0-20261121` @ `2b4321ce032fd5e67cf022da8564a5287b8cef6f`. The following Git blob SHAs identify the exact test files used to confirm method names in the candidate mapping. They do not establish that an individual T-ID was executed or passed.
+
+| Test source path | Git blob SHA-1 |
+|---|---|
+| tests/Feature/AdminUiVerificationTest.php | ac81ef5841c98154558aa06765744e0f74949907 |
+| tests/Feature/AuthTest.php | 803f409f48b544d947039d0879d7e56c4c118336 |
+| tests/Feature/CurriculumIntegrityTest.php | fbfafe1fd95fa45e91ccc5e0607959527629595c |
+| tests/Feature/CurriculumVersioningTest.php | 1931c36b49052ccb973c924d79f5eb5dd93641b7 |
+| tests/Feature/ExamBuilderTest.php | 04d0c6ea49850be28208a9604bf06b5e5c35af3a |
+| tests/Feature/ExamHardeningTest.php | 4e6cb9fecfa26f1d5cd94f93b748ce957dc9a463 |
+| tests/Feature/ExamListContractTest.php | 4c3fb9b6cf344c39b69dedc35fdd63b1bc4c35fd |
+| tests/Feature/ExamManagementHardeningTest.php | 4b6fbf1efb8944965c1b2a5a4c3103a232e57b4f |
+| tests/Feature/MonitoringTest.php | 96edb92cc9bfe2322ef163d6c328528f13f9b152 |
+| tests/Feature/Phase7DReportingTest.php | 969c1541e0fcdedde84bbf1ebd47774c57459598 |
+| tests/Feature/ProctorAssignmentSecurityTest.php | a5eca4ea2ce05d62d4fa76e6b9cd5a21a17dd668 |
+| tests/Feature/QuestionBankTest.php | c55f217f14bfc4877d8e0fdc6c6f423c3ea697ec |
+| tests/Feature/QuestionImportTest.php | efbf0b482dafb05db41c84b5f1cd06f2989ed63f |
+| tests/Feature/RBACEnforcementTest.php | 55d15045fab1a77c905b9c5add832982584d18c2 |
+| tests/Feature/RoleDashboardVerificationTest.php | 359ebbaeb817bf2d76d4137673a84eeedf237681 |
+| tests/Feature/RolePermissionBootstrapperTest.php | cfacac702f967667c8e1e4f6dff18000fc105f68 |
+| tests/Feature/RombelStudentPivotTest.php | 928aaf20b52a60331cca4d26cc625479918198d0 |
+| tests/Feature/ScoringHardeningTest.php | c4d36a9663cf94caf5cc26eb1e4ac33870b63fc6 |
+| tests/Feature/Security/AnswerKeyLeakageTest.php | 13a3451aa67f1a124f066ce6288bb158e262ced9 |
+| tests/Feature/TenantIsolationTest.php | 7eb14caf4e71d56763e1c1a93a24f4b499ae82b5 |
+| tests/Feature/UserSecurityTest.php | c3bde5557a1e1e0f8be001f8e8b865aff9ef2d89 |
+| tests/Feature/WebAdminAuthTest.php | 93a822f44f7d21d4c25913599bda2bcfe7d32e34 |
+| tests/Feature/SeederSafetyTest.php | e11258890b4560099dba76ee49b610cb8f1b0ffc |
+| tests/Feature/StudentWebLoginTest.php | deb277b636798cdb9815bf03e988e92d2876ca7b |
+| tests/Feature/InstallerEndToEndTest.php | 84b6becad2a700c799b51a9a8f2e6e9ddf86b777 |
+| tests/Feature/Fase1cMultiCurriculumIntegrityTest.php | 98b40bc4e4f09088bda5938e03934df98ba79c44 |
+| tests/Feature/Analytics/SecurityTest.php | 0b6df17567c5f4c5244c46549f240fd711f68db5 |
+
+### Correction note
+- T-068 candidate is specifically `StudentWebLoginTest::test_student_login_fails_closed_if_installation_contains_multiple_tenants`.
+- T-084 candidate is specifically `InstallerEndToEndTest::test_clean_installation_runs_from_empty_database_to_locked_state`.
+- T-083 candidate `SeederSafetyTest::test_database_seeder_creates_catalog_only_and_no_demo_accounts_or_proctor_portal_role` was confirmed by reopening that exact source file.
+- These are candidate references only; all T-ID actual result statuses remain NOT VERIFIED.
