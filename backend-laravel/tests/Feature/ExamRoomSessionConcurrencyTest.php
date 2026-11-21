@@ -41,7 +41,7 @@ class ExamRoomSessionConcurrencyTest extends TestCase
 
         $version = (string) DB::selectOne('SELECT VERSION() AS version')->version;
         $this->assertGreaterThanOrEqual(8, (int) explode('.', $version)[0], 'MySQL 8 or newer is required.');
-        $engines = DB::table('information_schema.tables')
+        $engineRows = DB::table('information_schema.tables')
             ->where('table_schema', DB::getDatabaseName())
             ->whereIn('table_name', [
                 'exam_rooms',
@@ -52,7 +52,9 @@ class ExamRoomSessionConcurrencyTest extends TestCase
                 'exam_proctor_assignments',
                 'exams',
             ])
-            ->pluck('engine')
+            ->get(['table_name', 'engine']);
+        $this->assertCount(7, $engineRows, 'Every required concurrency table must exist.');
+        $engines = $engineRows->pluck('engine')
             ->map(fn ($engine) => strtolower((string) $engine))
             ->unique()
             ->values()
