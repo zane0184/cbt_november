@@ -218,3 +218,27 @@ Setelah Nota Klarifikasi Status Assignment Proktor dan backup tambahan dibuat, c
 - Backup finalisasi baru untuk dokumen yang diperbarui pada putaran ini berada di `docs/backup/reconciliation-2026-11-21/finalization/`. Setiap salinan diverifikasi memiliki Git blob SHA yang sama dengan dokumen sumber sebelum perubahan. Backup adalah backup GitHub, bukan backup lokal.
 - Keputusan final Proktor ACTIVE pada Addendum 35/DEC-WA-026. Test T-169–T-173 ditambahkan; T-001–T-168 dipertahankan. T-114 dan T-160 diperbaiki. Semua test tetap NOT RUN sampai eksekusi nyata.
 - Temuan source Admin/role/tenant/assignment/schedule/Kurmer-KBC tetap OPEN. Tidak ada source, database, migration, seeder, .env, PR, merge, rebase, force-push, atau deployment diubah/dijalankan.
+
+
+## E.4 Hasil compare final setelah seluruh addendum, backup, dan catatan historis
+
+Compare aktual dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch pada HEAD `3ec270e98fe9e6dfaed5a4a2db3d8a88aae3701d` menghasilkan **49 path**:
+- **39 added**
+- **10 modified**
+- **0 deleted**
+- **0 path di luar `docs/`**
+- **0 source aplikasi berubah**
+
+Rincian: 16 dokumen kerja (6 file baru dan 10 file yang diperbarui) serta 33 file backup/manifest. Ini angka final yang menggantikan snapshot 18, 24, dan 28 pada catatan pemeriksaan sebelumnya. Ketiga angka lama dipertahankan sebagai histori pemeriksaan parsial, bukan hasil final.
+
+Validasi akhir:
+- Master entry point: 21 referensi lokal, 18 path unik; **18/18 path unik berhasil di-fetch**.
+- Matriks audit: 23 ID unik ADM-001–ADM-023.
+- Matriks test: 173 ID unik T-001–T-173; seluruh T-001–T-168 dipertahankan, T-169–T-173 ditambahkan. T-114 dan T-160 sesuai keputusan final.
+- Nota Proktor final ACTIVE; Addendum 35 ACTIVE; Addendum 34 SUPERSEDED; DEC-WA-026 ACTIVE.
+- Backup finalization: 16 dokumen disalin; manifest mencatat Git blob SHA identik untuk 16/16. Seluruh backup adalah backup GitHub.
+- PR #1/#3/#4/#5/#6/#7 tetap OPEN/Draft/Unmerged; #2 CLOSED/Unmerged. Tidak ada PR disentuh.
+- Source read-only: 14 dari 15 path kunci pada pemeriksaan ulang berhasil di-fetch; path ExamScheduleChangeService tidak ditemukan pada ref recovery yang diperiksa. Temuan jalur jadwal tetap OPEN; ketiadaan file pada path itu bukan bukti bahwa seluruh jalur jadwal sudah aman.
+- Tidak ada PHPUnit, runtime, endpoint HTTP, browser, MySQL concurrency, import/restore, atau UAT yang dijalankan.
+
+Perubahan path seluruhnya dokumentasi. Tidak ada source, migration, seeder, database, .env, merge, rebase, force-push, deployment, atau branch source yang diubah.
