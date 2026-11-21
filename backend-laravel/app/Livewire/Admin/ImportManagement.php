@@ -64,7 +64,7 @@ class ImportManagement extends Component
                 : 'File ini sudah pernah diproses. Lihat status pada riwayat import.';
             $this->resetValidation('upload');
         } catch (\Throwable $exception) {
-            $this->addError('upload', $exception->getMessage());
+            $this->addError('upload', $this->safeErrorMessage($exception));
         }
     }
 
@@ -110,6 +110,20 @@ class ImportManagement extends Component
         } catch (\Throwable $exception) {
             $this->addError('upload', $exception->getMessage());
         }
+    }
+
+    private function safeErrorMessage(\\Throwable $exception): string
+    {
+        if ($exception instanceof QueryException) {
+            Log::error('Import operation failed at database layer.', [
+                'tenant_id' => auth()->user()?->tenant_id,
+                'user_id' => auth()->id(),
+                'exception_class' => get_class($exception),
+            ]);
+            return 'Operasi import gagal pada penyimpanan data. Tidak ada perubahan yang dapat dipastikan berhasil; periksa riwayat import atau hubungi dukungan teknis.';
+        }
+
+        return $exception->getMessage();
     }
 
     public function discardPreview(): void

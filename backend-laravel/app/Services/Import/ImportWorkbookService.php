@@ -122,9 +122,17 @@ class ImportWorkbookService
                         ];
                     }
                 } catch (Throwable $exception) {
+                    Log::warning('Import row failed.', [
+                        'batch_id' => $batch->id,
+                        'row_id' => $row->id,
+                        'exception_class' => get_class($exception),
+                    ]);
+                    $safeReason = $exception instanceof QueryException
+                        ? 'Gagal menyimpan baris karena konflik integritas data atau penyimpanan.'
+                        : mb_substr('Gagal menyimpan baris: '.$exception->getMessage(), 0, 500);
                     $row->update([
                         'status' => 'FAILED',
-                        'reason' => mb_substr('Gagal menyimpan baris: '.$exception->getMessage(), 0, 500),
+                        'reason' => $safeReason,
                         'encrypted_payload' => null,
                     ]);
                 }
