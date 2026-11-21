@@ -377,6 +377,10 @@ class MonitoringDuplicationTest extends TestCase
         // Answer payloads, scores, reports, analytics, and student execution
         // endpoints remain unavailable even when the attempt is in their room.
         $forbiddenGetUrls = [
+            "/api/v1/exams",
+            "/api/v1/exams/{$this->exam->id}",
+            "/api/v1/exams/{$this->exam->id}/questions",
+            "/api/v1/exams/{$this->exam->id}/preview",
             "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/answers",
             "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/score",
             "/api/v1/reports/exams/{$this->exam->id}/results",
@@ -675,6 +679,10 @@ class MonitoringDuplicationTest extends TestCase
 
         $this->actingAs($this->admin, 'sanctum');
         $forbiddenGetUrls = [
+            "/api/v1/exams",
+            "/api/v1/exams/{$this->exam->id}",
+            "/api/v1/exams/{$this->exam->id}/questions",
+            "/api/v1/exams/{$this->exam->id}/preview",
             "/api/v1/exams/{$this->exam->id}/monitoring",
             "/api/v1/exams/{$this->exam->id}/monitoring/participants",
             "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$attempt->id}",
