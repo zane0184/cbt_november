@@ -776,4 +776,30 @@ class MonitoringDuplicationTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_completed_session_revokes_monitoring_even_before_assignment_scheduler_transition(): void
+    {
+        $assignment = $this->assignTemporaryProctor();
+        $sessionRoom = ExamSessionRoom::query()
+            ->whereKey($assignment->exam_session_room_id)
+            ->firstOrFail();
+
+        \Illuminate\Support\Facades\DB::table('exam_sessions')
+            ->where('id', $sessionRoom->exam_session_id)
+            ->update(['status' => 'COMPLETED']);
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
+    public function test_soft_deleted_teacher_profile_revokes_confirmed_proctor_monitoring(): void
+    {
+        $this->assignTemporaryProctor();
+        $this->assignedGuru->teacherProfile()->firstOrFail()->delete();
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
 }
