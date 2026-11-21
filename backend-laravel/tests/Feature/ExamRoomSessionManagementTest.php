@@ -350,6 +350,28 @@ class ExamRoomSessionManagementTest extends TestCase
     }
     public function test_room_update_is_guarded_by_active_session_and_assigned_capacity(): void
     {
+        $studentRole = \\App\\Models\\Role::where('name', 'SISWA')->firstOrFail();
+        $second = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Kapasitas',
+            'email' => 'student-capacity@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $second->roles()->attach($studentRole->id);
+        $profile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $second->id,
+            'full_name' => 'Siswa Kapasitas',
+        ]);
+        $this->rombel->students()->attach($profile->id);
+        ExamParticipant::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'user_id' => $second->id,
+            'rombel_id' => $this->rombel->id,
+            'status' => 'ASSIGNED',
+        ]);
+
         $room = $this->createRoom('EDIT1', 2);
         $session = $this->createSession($this->exam);
         $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
@@ -371,6 +393,16 @@ class ExamRoomSessionManagementTest extends TestCase
                 'capacity' => 0, 'status' => 'ACTIVE',
             ]);
             $this->fail('Room capacity must remain positive.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('capacity', $exception->errors());
+        }
+
+        try {
+            $this->service->updateRoom($this->admin, $room->id, [
+                'code' => 'EDIT1', 'name' => 'Ruang EDIT1', 'location' => 'Lantai 1',
+                'capacity' => 1, 'status' => 'ACTIVE',
+            ]);
+            $this->fail('Room capacity cannot be lowered below active placements.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('capacity', $exception->errors());
         }
