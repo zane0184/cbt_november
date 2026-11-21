@@ -25,8 +25,7 @@ class ExamAttemptPolicy
             return $user->hasPermission('report.view');
         }
 
-        // OPERATOR is limited to operational monitoring and must not receive
-        // answer-level or score-detail access. Students use their own result route.
+        // Only Guru/Kamad result-detail access is handled here; students use their own route.
         return false;
     }
 
