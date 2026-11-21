@@ -218,7 +218,7 @@ class ExamPolicy
             ->where('tenant_id', $user->tenant_id)
             ->whereNull('deleted_at')
             ->exists()
-            && \\App\\Models\\ExamProctorAssignment::query()
+            && \App\Models\ExamProctorAssignment::query()
                 ->where('tenant_id', $exam->tenant_id)
                 ->where('exam_id', $exam->id)
                 ->where('proctor_user_id', $user->id)
