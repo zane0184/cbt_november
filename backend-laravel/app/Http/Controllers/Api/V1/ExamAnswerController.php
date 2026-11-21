@@ -35,6 +35,10 @@ class ExamAnswerController extends Controller
             return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
         }
 
+        if (!$user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH') || !$user->tenant_id) {
+            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
+        }
+
         // Security: Attempt must belong to the authenticated student
         if ($user->tenant_id !== $exam->tenant_id
             || $attempt->tenant_id !== $exam->tenant_id
