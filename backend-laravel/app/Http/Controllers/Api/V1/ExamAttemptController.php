@@ -8,6 +8,7 @@ use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\ExamMonitoringScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
@@ -479,23 +480,38 @@ class ExamAttemptController extends Controller
     }
 
 
-    public function show(Request $request, Exam $exam, ExamAttempt $attempt)
-    {
+    public function show(
+        Request $request,
+        Exam $exam,
+        ExamAttempt $attempt,
+        ExamMonitoringScope $scope
+    ) {
         if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
             abort(404);
         }
 
+        $participant = $attempt->participant;
+        if (!$participant
+            || $participant->tenant_id !== $exam->tenant_id
+            || $participant->exam_id !== $exam->id
+            || !$participant->user
+            || $participant->user->tenant_id !== $exam->tenant_id) {
+            abort(404);
+        }
+
         if ($request->user()->hasRole('SISWA')) {
-            $participant = $attempt->participant;
-            abort_unless(
-                $participant
-                    && $participant->tenant_id === $exam->tenant_id
-                    && $participant->user_id === $request->user()->id,
-                404
-            );
+            abort_unless($participant->user_id === $request->user()->id, 404);
             $this->authorize('view', $exam);
         } else {
             $this->authorize('monitor', $exam);
+
+            // Exam-level monitor permission is only the first gate. A temporary
+            // Proktor must also be authorized for this exact participant's
+            // room/session; exam authors retain their complete exam scope.
+            abort_unless(
+                $scope->allowsParticipant($request->user(), $exam, (string) $participant->id),
+                404
+            );
         }
 
         return response()->json(['success' => true, 'data' => $this->attemptResponseData($attempt)]);
