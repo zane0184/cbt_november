@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
+use App\Livewire\Admin\ExamRoomSessionManagement;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Curriculum;
@@ -24,6 +25,7 @@ use App\Services\ExamRoomSessionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
+use Livewire\Livewire;
 
 class ExamRoomSessionManagementTest extends TestCase
 {
