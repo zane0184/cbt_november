@@ -59,11 +59,18 @@ class ExamProctorAssignment extends Model
             ->whereNotNull('exam_session_room_id')
             ->where('starts_at', '<=', $at)
             ->where('expires_at', '>', $at)
+            ->whereHas('sessionRoom', function (Builder $roomQuery): void {
+                $roomQuery->where('exam_session_rooms.status', 'ACTIVE')
+                    ->whereColumn('exam_session_rooms.tenant_id', 'exam_proctor_assignments.tenant_id')
+                    ->whereColumn('exam_session_rooms.exam_id', 'exam_proctor_assignments.exam_id');
+            })
             ->whereHas('sessionRoom.session', function (Builder $sessionQuery): void {
-                $sessionQuery->whereColumn(
-                    'exam_sessions.schedule_revision',
-                    'exam_proctor_assignments.schedule_revision'
-                );
+                $sessionQuery->whereIn('exam_sessions.status', ['SCHEDULED', 'ACTIVE'])
+                    ->whereColumn('exam_sessions.schedule_revision', 'exam_proctor_assignments.schedule_revision')
+                    ->whereColumn('exam_proctor_assignments.starts_at', '>=', 'exam_sessions.starts_at')
+                    ->whereColumn('exam_proctor_assignments.expires_at', '<=', 'exam_sessions.ends_at')
+                    ->whereColumn('exam_sessions.tenant_id', 'exam_proctor_assignments.tenant_id')
+                    ->whereColumn('exam_sessions.exam_id', 'exam_proctor_assignments.exam_id');
             });
     }
 }
