@@ -152,9 +152,9 @@ return new class extends Migration
             $table->uuid('exam_session_room_id')->nullable()->after('exam_id');
             $table->unsignedInteger('schedule_revision')->nullable()->after('exam_session_room_id');
             $table->dropUnique('exam_proctor_assignment_unique');
-            $table->unique(
-                ['tenant_id', 'exam_session_room_id', 'proctor_user_id'],
-                'exam_proctor_assignment_scope_unique'
+            $table->index(
+                ['tenant_id', 'exam_session_room_id', 'proctor_user_id', 'status'],
+                'epa_room_proctor_lookup_idx'
             );
             $table->index(
                 ['tenant_id', 'exam_session_room_id', 'status', 'starts_at', 'expires_at'],
@@ -168,6 +168,12 @@ return new class extends Migration
             ->whereNull('exam_session_room_id')
             ->whereIn('status', ['ACTIVE', 'PENDING', 'CONFIRMED'])
             ->update(['status' => 'NEEDS_REVIEW']);
+
+        if ($driver === 'mysql') {
+            DB::statement("CREATE UNIQUE INDEX epa_one_open_assignment_scope_unique ON exam_proctor_assignments ((CASE WHEN exam_session_room_id IS NOT NULL AND revoked_at IS NULL AND status IN ('PENDING', 'CONFIRMED', 'NEEDS_REVIEW') THEN CONCAT(exam_session_room_id, ':', proctor_user_id) ELSE NULL END))");
+        } else {
+            DB::statement("CREATE UNIQUE INDEX epa_one_open_assignment_scope_unique ON exam_proctor_assignments (exam_session_room_id, proctor_user_id) WHERE exam_session_room_id IS NOT NULL AND revoked_at IS NULL AND status IN ('PENDING', 'CONFIRMED', 'NEEDS_REVIEW')");
+        }
     }
 
     public function down(): void
@@ -186,10 +192,18 @@ return new class extends Migration
             throw new RuntimeException('Stage 4B rollback refused: participant or proctor scope history is present.');
         }
 
+        if (DB::getDriverName() === 'mysql') {
+            if (DB::table('information_schema.statistics')->where('table_schema', DB::getDatabaseName())->where('table_name', 'exam_proctor_assignments')->where('index_name', 'epa_one_open_assignment_scope_unique')->exists()) {
+                DB::statement('DROP INDEX epa_one_open_assignment_scope_unique ON exam_proctor_assignments');
+            }
+        } else {
+            DB::statement('DROP INDEX IF EXISTS epa_one_open_assignment_scope_unique');
+        }
+
         Schema::table('exam_proctor_assignments', function (Blueprint $table): void {
             $table->dropForeign('epa_session_room_scope_fk');
             $table->dropIndex('epa_room_capability_idx');
-            $table->dropUnique('exam_proctor_assignment_scope_unique');
+            $table->dropIndex('epa_room_proctor_lookup_idx');
             $table->dropColumn(['exam_session_room_id', 'schedule_revision']);
             $table->unique(['tenant_id', 'exam_id', 'proctor_user_id'], 'exam_proctor_assignment_unique');
         });
