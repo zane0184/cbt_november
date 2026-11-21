@@ -243,6 +243,26 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertTrue($rejected, 'Workbook rusak seharusnya ditolak.');
     }
 
+    public function test_admin_can_discard_preview_without_importing_and_upload_again(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Batal', 'L', '', ''],
+        ]);
+        $service = app(ImportWorkbookService::class);
+        $first = $service->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+
+        $service->discard($first->id, $this->tenant->id, $this->admin->id);
+
+        $this->assertDatabaseMissing('import_batches', ['id' => $first->id, 'tenant_id' => $this->tenant->id]);
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_PREVIEW_DISCARDED']);
+        $this->assertSame(0, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->count());
+
+        $second = $service->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+        $this->assertNotSame($first->id, $second->id);
+        $this->assertSame('PREVIEW', $second->status);
+    }
+
     public function test_missing_role_causes_row_failure_without_partial_account_and_audits_batch(): void
     {
         $file = $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Tanpa Role', 'L', '', '']]);
