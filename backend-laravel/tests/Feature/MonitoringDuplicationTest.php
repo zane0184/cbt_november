@@ -228,6 +228,92 @@ class MonitoringDuplicationTest extends TestCase
         $this->assertSame('IN_PROGRESS', $response->json('data.0.attempt.status'));
     }
 
+    public function test_proctor_monitoring_is_limited_to_participants_in_the_assigned_room_session(): void
+    {
+        $otherRombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->exam->assessment->academic_year_id,
+            'grade_level_id' => $this->rombelIdForFixture(),
+            'name' => '1B-MON',
+            'status' => 'ACTIVE',
+        ]);
+
+        $siswaRole = Role::where('name', 'SISWA')->firstOrFail();
+        $otherStudent = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Ruang Dua',
+            'email' => 'siswa-ruang-dua@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $otherStudent->roles()->attach($siswaRole->id);
+        $otherProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $otherStudent->id,
+            'full_name' => 'Siswa Ruang Dua',
+        ]);
+        $otherRombel->students()->attach($otherProfile->id);
+        $otherParticipant = $this->exam->participants()->create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $otherStudent->id,
+            'rombel_id' => $otherRombel->id,
+        ]);
+
+        $roomService = app(ExamRoomSessionService::class);
+        $roomTwo = $roomService->createRoom($this->admin, [
+            'code' => 'MON-R2',
+            'name' => 'Ruang Monitoring 2',
+            'location' => 'Gedung B',
+            'capacity' => 30,
+        ]);
+        $sessionTwo = $roomService->createSession(
+            $this->admin,
+            $this->exam->id,
+            'Sesi Dua',
+            2,
+            now()->subMinutes(10),
+            now()->addHour()
+        );
+        $sessionRoomTwo = $roomService->attachRoom(
+            $this->admin,
+            $this->exam->id,
+            $sessionTwo->id,
+            $roomTwo->id
+        );
+        $roomService->mapRombel($this->admin, $sessionRoomTwo->id, $otherRombel->id);
+
+        $this->assignTemporaryProctor();
+
+        $this->actingAs($this->assignedGuru, 'sanctum');
+        $participants = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants");
+        $participants->assertOk();
+        $this->assertCount(1, $participants->json('data'));
+        $this->assertSame('Siswa', $participants->json('data.0.student_name'));
+
+        $otherAttempt = ExamAttempt::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'participant_id' => $otherParticipant->id,
+            'student_id' => $otherStudent->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+        ]);
+
+        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$otherAttempt->id}")
+            ->assertNotFound();
+
+        $summary = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring");
+        $summary->assertOk();
+        $this->assertSame(1, $summary->json('data.summary.total_participants'));
+    }
+
+    private function rombelIdForFixture(): string
+    {
+        return Rombel::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('name', '1A-MON')
+            ->value('grade_level_id');
+    }
+
     public function test_admin_cannot_monitor_even_after_admin_assigns_a_guru_as_temporary_proctor(): void
     {
         $this->assignTemporaryProctor();
