@@ -119,9 +119,9 @@ jobs:
             exit 70
           fi
           mysql --protocol=tcp --host="$DB_ROOT_HOST" --port="$DB_ROOT_PORT" --user="$DB_ROOT_USER" --password="$DB_ROOT_PASSWORD" <<SQL
-          CREATE DATABASE `$DB_NAME` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
           CREATE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
-          GRANT ALL PRIVILEGES ON `$DB_NAME`.* TO '$DB_USER'@'%';
+          GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'%';
           SQL
           {
             echo "DB_CONNECTION=mysql"
@@ -302,7 +302,7 @@ jobs:
           set -euo pipefail
           DB_NAME="cbt_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           DB_USER="wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
-          mysql --protocol=tcp --host="$DB_ROOT_HOST" --port="$DB_ROOT_PORT" --user="$DB_ROOT_USER" --password="$DB_ROOT_PASSWORD"             --execute="DROP DATABASE IF EXISTS `$DB_NAME`; DROP USER IF EXISTS '$DB_USER'@'%';"
+          mysql --protocol=tcp --host="$DB_ROOT_HOST" --port="$DB_ROOT_PORT" --user="$DB_ROOT_USER" --password="$DB_ROOT_PASSWORD"             --execute="DROP DATABASE IF EXISTS $DB_NAME; DROP USER IF EXISTS '$DB_USER'@'%';"
           echo "Disposable database and restricted user dropped; MySQL service will be destroyed with the job." | tee "$RUNNER_TEMP/wa01/cleanup.log"
 
       - name: Upload WA-01 runner logs and preflight evidence
