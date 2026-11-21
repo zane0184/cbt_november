@@ -31,11 +31,10 @@ Ini adalah inventaris dan audit awal source Web Admin aktif, bukan pernyataan se
    - Tidak ditemukan route, controller, atau Livewire dashboard Super Admin di source aktif.
    - `InventoryLegacySuperAdminCommand` hanya melakukan inventaris read-only; belum menjadi portal pengelolaan tenant, lisensi, dan platform.
 
-2. **Kamad belum terhubung ke portal Admin**
-   - Login mengizinkan role `KAMAD`, tetapi root route hanya mengarahkan Admin Madrasah, Guru, dan Siswa.
-   - `KamadDashboard` ada sebagai komponen, tetapi tidak ditemukan route aktif yang menggunakannya.
-   - Role matrix memberi Kamad permission `curriculum.view`, `exam.monitor`, dan `report.view`, tetapi `CurriculumManagement` saat ini membatasi akses pada Admin Madrasah/role legacy ADMIN.
-   - Ini harus diselesaikan sebagai akses terbatas/read-only di portal Admin, bukan membuat portal keempat.
+2. **Kamad berada di luar ruang lingkup pekerjaan aktif**
+   - Pemilik proyek secara eksplisit menetapkan bahwa Kamad tidak termasuk Stage 4A maupun portal aktif saat ini.
+   - Jangan menambahkan route, dashboard, role aktif, permission, fitur, atau alur Kamad tanpa keputusan baru pemilik proyek.
+   - Temuan lama tentang Kamad pada source dipertahankan sebagai catatan historis saja dan tidak menjadi pekerjaan lanjutan.
 
 3. **Admin Madrasah wajib ditolak dari seluruh permukaan CBT**
    - `RolePermissionBootstrapper` memberi Admin `exam.proctor.assign`, tetapi tidak memberi `exam.monitor` atau `report.view`.
@@ -84,19 +83,18 @@ Workflow CI terpilih saat ini mencakup dashboard, academic periods, role migrati
 
 ## DESAIN DAN URUTAN PENYELESAIAN
 
-Urutan kerja berikut menjaga tiga portal yang ditetapkan: Super Admin, Admin Madrasah, dan Guru. Kamad menjadi role terbatas di portal Admin; Proktor hanya capability operasional sementara.
+Urutan kerja mengikuti keputusan aktif terbaru: pemisahan area portal Admin Madrasah, Guru, dan Siswa; Proktor hanya capability operasional sementara bagi Guru. Kamad, Super Admin, Android, dan deployment tidak dikerjakan dalam rangkaian ini.
 
-1. **Stage 4A — Pemisahan portal dan RBAC Admin/Guru/Siswa**
-   - Pisahkan portal Admin Madrasah, Guru, dan Siswa.
-   - Admin Madrasah tidak dapat mengakses fitur atau data CBT, termasuk monitoring, URL langsung, dan API.
-   - Guru mengelola CBT sesuai role, permission, dan penugasan akademik.
-   - Proktor adalah capability sementara bagi Guru yang memenuhi syarat, berbasis assignment aktif; tidak ada role/portal Proktor permanen.
-   - Kamad, Super Admin, Android, dan deployment berada di luar ruang lingkup Stage 4A ini.
+1. **Stage 4A — Core monitoring RBAC**
+   - Fixture Guru pembuat ujian, Guru Proktor, Guru tanpa assignment, dan Admin telah direvisi dan diuji.
+   - Admin ditolak melalui URL/API langsung; status PENDING/legacy ACTIVE tidak memberi capability; CONFIRMED memberi capability sesuai exam dan interval.
+   - Stage 4A belum ditutup karena scope ruang/sesi dan pemetaan peserta belum tersedia.
 
-2. **Stage 4B — Proctor assignment lifecycle**
-   - Status operasional PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED.
-   - Validasi tenant, exam, rombel, jadwal, revisi jadwal, konflik, dan audit.
-   - Capability dicabut ketika assignment dicabut, kedaluwarsa, atau jadwal berubah.
+2. **Stage 4B — Ruang, sesi, dan Proktor lifecycle**
+   - Admin menentukan Guru Proktor, ruang, dan sesi; peserta berasal dari rombel.
+   - Buat model/relasi ruang-sesi dan mapping rombel/peserta ke ruang-sesi; Proktor hanya melihat peserta pada ujian, ruang, dan sesi tugasnya.
+   - Lengkapi NEEDS_REVIEW, EXPIRED, COMPLETED, schedule revision/reschedule, konflik multi-koneksi, dan audit.
+   - Tidak ada portal Proktor permanen.
 
 3. **Stage 4C — TeacherSubjectAssignment Management**
    - CRUD terkontrol tanpa menghapus histori; validasi teacher/subject/rombel/year/semester dan effective dates.
@@ -114,13 +112,14 @@ Urutan kerja berikut menjaga tiga portal yang ditetapkan: Super Admin, Admin Mad
 
 ## IMPLEMENTASI
 
-- Tidak ada source modul Web Admin selain Import yang diubah dalam audit awal.
-- Koreksi scope Stage 4A berikutnya dicatat pada `docs/IMPLEMENTASI_STAGE4A_MONITORING_RBAC_2026-11-22.md`.
-- Tidak ada migration, perubahan permission produksi, role migration produksi, PR, merge, atau deployment.
+- Implementasi Stage 4A core dicatat pada `docs/IMPLEMENTASI_STAGE4A_MONITORING_RBAC_2026-11-22.md` dan `docs/CHECKPOINT_STAGE4A_MONITORING_RBAC_2026-11-22.md`.
+- Source aplikasi terakhir teruji: 88f1510a7d1992f6cd8d4b727daf93fe28a3afd3; CI 44952383038 SUCCESS pada MySQL 8.0.46 disposable.
+- Belum ada migration produksi, perubahan permission produksi, role migration produksi, PR, merge, atau deployment.
 - Sebelum patch berikutnya: backup setiap file, catat blob SHA, buat regression test, jalankan MySQL 8 disposable CI.
 
 ## PENGUJIAN
 
-- Bukti CI Import dan baseline Admin tersedia di GitHub Actions #44944158355.
-- Temuan modul lain di atas adalah hasil inspeksi source aktif; belum dianggap lulus pengujian integrasi.
-- Stage 4A menjadi pekerjaan implementasi berikutnya.
+- Bukti Import tersedia di GitHub Actions #44944158355.
+- Bukti Stage 4A core tersedia di GitHub Actions #44952383038: 109 test / 578 assertions PASS.
+- Modul Web Admin lain tetap harus diaudit dan diuji; hasil audit tidak dianggap bukti kelulusan integrasi.
+- Lanjutkan Stage 4B ruang/sesi, kemudian Stage 4C–4G sampai seluruh Web Admin selesai.
