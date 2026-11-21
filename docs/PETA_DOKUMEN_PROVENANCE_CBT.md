@@ -171,3 +171,7 @@ Matriks audit 23 modul dipertahankan; test T-001–T-168 dipertahankan dan T-169
 Compare tree finalisasi dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` pada HEAD pemeriksaan akhir `3ec270e98fe9e6dfaed5a4a2db3d8a88aae3701d` menunjukkan 49 path: 39 added, 10 modified, 0 deleted. Semua berada di `docs/`; 0 source aplikasi. Rinciannya 16 dokumen kerja dan 33 backup/manifest. Angka 18/24/28 pada catatan sebelumnya adalah compare parsial dan sudah digantikan angka 49.
 
 Laporan akhir diperbarui pada commit `71cf460712c72dccbe0c7387faf4b6fc20dd7814`; checkpoint finalisasi diperbarui pada commit `312f9ba22bbe4195142ceac7bf4283e8daa73018`. Branch tetap tidak di-merge. Commit final yang menjadi HEAD branch harus dibaca dari branch ref aktual setelah update dokumentasi terakhir.
+
+
+## 7.8 Koreksi HEAD dan compare terkini
+Branch ref diperiksa ulang dan menunjukkan HEAD `f7912c207be8a4db8efba23100f8aab50283c47c`. Compare dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke HEAD tersebut: **50 path**, 40 added, 10 modified, 0 deleted; seluruhnya docs/, tidak ada source aplikasi. Angka 49 pada addendum 7.7 adalah snapshot sebelum backup tambahan checkpoint dibuat; 50 menggantikannya.
