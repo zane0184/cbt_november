@@ -104,42 +104,42 @@ Semua ID adalah test plan, bukan test yang sudah dijalankan. File AdminCbtBounda
 
 | ID | Test method yang akan dibuat | Target utama | Source commit | Environment rencana | Hasil aktual saat paket dibuat |
 |---|---|---|---|---|---|
-| WA01-N-001 | admin_cannot_read_question_content_versions_or_keys | QuestionController index/show/versions | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-002 | admin_cannot_import_publish_or_mutate_questions | QuestionController import/publish/store/update/delete | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-003 | admin_cannot_read_or_mutate_question_publications | QuestionPublicationController all routes | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-004 | admin_cannot_read_or_mutate_question_media | MediaController QUESTION owner paths | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + private storage fake | NOT RUN |
-| WA01-N-005 | admin_cannot_read_assessment_or_embedded_exam_relations | AssessmentController index/show | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-006 | admin_cannot_read_exam_index_detail_or_preview | ExamController index/show/preview | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-007 | admin_cannot_read_or_mutate_exam_snapshot_questions | ExamController question/snapshot methods | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-008 | admin_cannot_read_or_rotate_exam_token | ExamController token endpoint | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-009 | admin_cannot_lock_close_or_publish_exam | ExamController lock/close/publish lifecycle | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-010 | admin_cannot_read_or_mutate_exam_roster | ExamParticipantController index/store/destroy | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-011 | admin_cannot_read_attempts_execution_or_submit | ExamAttemptController execution/store/show/submit | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-012 | admin_cannot_read_or_write_exam_answers | ExamAnswerController index/update | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-013 | admin_cannot_access_monitoring_or_heartbeat_operations | MonitoringController summary/participants/attempt/events/heartbeat | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-014 | admin_cannot_score_recalculate_or_read_scores | ScoringController score/recalculate/show | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-015 | admin_cannot_grade_finalize_or_reopen_scores | Manual grading/finalize/reopen API + web action | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-016 | admin_cannot_read_exam_student_subject_question_reports | ReportController report methods | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB disposable | NOT RUN |
-| WA01-N-017 | admin_cannot_export_exam_or_student_results | PDF/Excel exports and headers | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + fake storage | NOT RUN |
-| WA01-N-018 | admin_cannot_read_exam_item_rombel_student_subject_analytics | AnalyticsController + prewarmed cache | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + cache test store | NOT RUN |
-| WA01-N-019 | admin_cannot_mount_or_hydrate_question_bank_livewire | QuestionBank mount/render/actions | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + Livewire test | NOT RUN |
-| WA01-N-020 | admin_cannot_mount_or_hydrate_exam_management_livewire | ExamManagement mount/render/actions | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + Livewire test | NOT RUN |
-| WA01-N-021 | admin_cannot_open_result_monitoring_or_analytics_web_routes | web routes + route middleware + policies | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB HTTP tests | NOT RUN |
-| WA01-N-022 | admin_assignment_page_exposes_only_allowlisted_exam_metadata | ProctorAssignmentManagement HTML/data fields | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + Livewire test | NOT RUN |
-| WA01-N-023 | admin_with_stale_permission_or_multirole_is_still_denied | Policies + direct grants + Admin+Siswa adversarial actor | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-N-024 | admin_cannot_read_cached_analytics_after_cache_preload | Cache prewarm then Admin request | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + cache store | NOT RUN |
-| WA01-N-025 | admin_role_bootstrapper_revokes_cbt_grants_idempotently | RolePermissionBootstrapper + permission pivot | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-001 | guru_question_bank_authoring_and_question_api_remain_allowed | Guru QuestionBank + QuestionController | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-002 | guru_publication_and_question_media_workflow_remains_allowed | Guru publication/media attach/detach/show | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + private storage | NOT RUN |
-| WA01-P-003 | guru_assessment_and_exam_authoring_remains_allowed | Assessment/Exam list/detail/create/update | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-004 | guru_token_lock_and_exam_lifecycle_remain_allowed | Guru token/lock/close/publish | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-005 | guru_participant_management_remains_assignment_scoped | ExamParticipantController | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-006 | guru_monitoring_remains_assignment_scoped | MonitoringController + web monitoring | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-007 | guru_scoring_manual_grading_and_finalization_remain_allowed | ScoringController + Teacher ResultDetail behavior | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-008 | guru_reports_exports_and_analytics_remain_scope_limited | ReportController/AnalyticsController | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-P-009 | guru_livewire_hydration_and_actions_remain_unchanged | Guru branches in shared Admin components | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB + Livewire | NOT RUN |
-| WA01-S-001 | student_exam_execution_answer_sync_and_submit_remain_unchanged | Student execution/answer/submit API | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
-| WA01-S-002 | student_own_published_result_dto_remains_minimal | Student current-score DTO and visibility | W0 2b4321c | PHP 8.3 + MySQL 8/InnoDB | NOT RUN |
+| WA01-N-001 | admin_cannot_read_question_content_versions_or_keys | QuestionController index/show/versions | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-002 | admin_cannot_import_publish_or_mutate_questions | QuestionController import/publish/store/update/delete | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-003 | admin_cannot_read_or_mutate_question_publications | QuestionPublicationController all routes | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-004 | admin_cannot_read_or_mutate_question_media | MediaController QUESTION owner paths | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + private storage fake | NOT RUN |
+| WA01-N-005 | admin_cannot_read_assessment_or_embedded_exam_relations | AssessmentController index/show | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-006 | admin_cannot_read_exam_index_detail_or_preview | ExamController index/show/preview | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-007 | admin_cannot_read_or_mutate_exam_snapshot_questions | ExamController question/snapshot methods | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-008 | admin_cannot_read_or_rotate_exam_token | ExamController token endpoint | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-009 | admin_cannot_lock_close_or_publish_exam | ExamController lock/close/publish lifecycle | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-010 | admin_cannot_read_or_mutate_exam_roster | ExamParticipantController index/store/destroy | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-011 | admin_cannot_read_attempts_execution_or_submit | ExamAttemptController execution/store/show/submit | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-012 | admin_cannot_read_or_write_exam_answers | ExamAnswerController index/update | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-013 | admin_cannot_access_monitoring_or_heartbeat_operations | MonitoringController summary/participants/attempt/events/heartbeat | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-014 | admin_cannot_score_recalculate_or_read_scores | ScoringController score/recalculate/show | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-015 | admin_cannot_grade_finalize_or_reopen_scores | Manual grading/finalize/reopen API + web action | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-016 | admin_cannot_read_exam_student_subject_question_reports | ReportController report methods | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB disposable | NOT RUN |
+| WA01-N-017 | admin_cannot_export_exam_or_student_results | PDF/Excel exports and headers | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + fake storage | NOT RUN |
+| WA01-N-018 | admin_cannot_read_exam_item_rombel_student_subject_analytics | AnalyticsController + prewarmed cache | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + cache test store | NOT RUN |
+| WA01-N-019 | admin_cannot_mount_or_hydrate_question_bank_livewire | QuestionBank mount/render/actions | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + Livewire test | NOT RUN |
+| WA01-N-020 | admin_cannot_mount_or_hydrate_exam_management_livewire | ExamManagement mount/render/actions | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + Livewire test | NOT RUN |
+| WA01-N-021 | admin_cannot_open_result_monitoring_or_analytics_web_routes | web routes + route middleware + policies | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB HTTP tests | NOT RUN |
+| WA01-N-022 | admin_assignment_page_exposes_only_allowlisted_exam_metadata | ProctorAssignmentManagement HTML/data fields | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + Livewire test | NOT RUN |
+| WA01-N-023 | admin_with_stale_permission_or_multirole_is_still_denied | Policies + direct grants + Admin+Siswa adversarial actor | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-N-024 | admin_cannot_read_cached_analytics_after_cache_preload | Cache prewarm then Admin request | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + cache store | NOT RUN |
+| WA01-N-025 | admin_role_bootstrapper_revokes_cbt_grants_idempotently | RolePermissionBootstrapper + permission pivot | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-001 | guru_question_bank_authoring_and_question_api_remain_allowed | Guru QuestionBank + QuestionController | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-002 | guru_publication_and_question_media_workflow_remains_allowed | Guru publication/media attach/detach/show | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + private storage | NOT RUN |
+| WA01-P-003 | guru_assessment_and_exam_authoring_remains_allowed | Assessment/Exam list/detail/create/update | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-004 | guru_token_lock_and_exam_lifecycle_remain_allowed | Guru token/lock/close/publish | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-005 | guru_participant_management_remains_assignment_scoped | ExamParticipantController | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-006 | guru_monitoring_remains_assignment_scoped | MonitoringController + web monitoring | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-007 | guru_scoring_manual_grading_and_finalization_remain_allowed | ScoringController + Teacher ResultDetail behavior | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-008 | guru_reports_exports_and_analytics_remain_scope_limited | ReportController/AnalyticsController | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-P-009 | guru_livewire_hydration_and_actions_remain_unchanged | Guru branches in shared Admin components | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB + Livewire | NOT RUN |
+| WA01-S-001 | student_exam_execution_answer_sync_and_submit_remain_unchanged | Student execution/answer/submit API | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
+| WA01-S-002 | student_own_published_result_dto_remains_minimal | Student current-score DTO and visibility | W0 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x + MySQL 8/InnoDB | NOT RUN |
 
 Setiap test saat dijalankan wajib menyimpan source commit aktual, file::method, MySQL server version dan InnoDB confirmation, PHP version, command, exit code, assertion count, stdout/stderr/log, response/serialization evidence, dan reviewer. Semua 36 test ID pada tabel saat ini NOT RUN.
 
@@ -279,3 +279,18 @@ Setiap WP memerlukan backup, checkpoint, test evidence dan approval gate sesuai 
 Paket ini BELUM disetujui untuk coding. Persetujuan eksplisit diperlukan atas daftar source/test files, batas shared component/policy yang menjaga Guru tetap tanpa perubahan perilaku, keputusan WA-01 tanpa migration dan dampak permission pivot saat bootstrapper kelak dieksekusi, serta test plan dan acceptance criteria.
 
 Sampai persetujuan diberikan, berhenti pada dokumentasi. Tidak ada source write, DB write, migration, seeder execution, deployment, source branch write atau PR action.
+
+
+## 6A. Provenance test existing dan bukti aktual
+
+| Test identity (file::method) | Source commit | Environment target | Hasil aktual | Evidence |
+|---|---|---|---|---|
+| tests/Feature/AdminUiVerificationTest.php::admin_can_access_all_admin_routes | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable, HTTP Feature + Livewire | NOT RUN | Belum ada run artifact |
+| tests/Feature/RoleDashboardVerificationTest.php::monitoring_access_control_and_tenant_isolation | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable, HTTP Feature + Livewire | NOT RUN | Belum ada run artifact |
+| tests/Feature/RolePermissionBootstrapperTest.php::test_role_permissions_are_granted_least_privilege_and_idempotently | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable | NOT RUN | Belum ada run artifact |
+| tests/Feature/ScoringHardeningTest.php::test_reopen_score_is_allowed_only_for_admin_roles_in_same_tenant | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable | NOT RUN | Belum ada run artifact |
+| tests/Feature/Security/AnswerKeyLeakageTest.php::test_non_teacher_staff_cannot_preview_answer_key | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable | NOT RUN | Belum ada run artifact |
+| tests/Feature/Security/AnswerKeyLeakageTest.php::test_guru_can_see_answer_key_in_preview | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable | NOT RUN | Belum ada run artifact |
+| tests/Feature/MediaAuthorizationTest.php::test_admin_cannot_access_question_media_but_can_access_own_user_media (planned) | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable + private storage fake | NOT RUN | Method belum dibuat; belum ada run artifact |
+
+Semua test baru WA01-N/P/S juga menggunakan source baseline W0 yang sama sampai source commit berubah melalui approval dan implementasi. Saat run kelak, kolom source commit wajib diperbarui ke commit implementasi aktual; environment harus mencatat versi patch yang tepat, bukan hanya target rencana. Tidak ada bukti test PASS pada tahap persiapan.
