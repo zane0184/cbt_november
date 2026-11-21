@@ -61,6 +61,20 @@ class ExamRoomSessionManagement extends Component
         }
     }
 
+    public function selectSessionForReschedule(string $sessionId): void
+    {
+        $this->assertCanManage();
+        $session = ExamSession::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->whereKey($sessionId)
+            ->firstOrFail();
+
+        $this->selectedSessionId = $session->id;
+        $this->sessionStartsAt = $session->starts_at->format('Y-m-d\\TH:i');
+        $this->sessionEndsAt = $session->ends_at->format('Y-m-d\\TH:i');
+        $this->rescheduleReason = '';
+    }
+
     public function createRoom(): void
     {
         $this->assertCanManage();
