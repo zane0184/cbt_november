@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('roles', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->string('name')->unique(); // Tenant roles only: ADMIN_MADRASAH, OPERATOR, KAMAD, GURU, SISWA
+            $table->string('name')->unique(); // Active tenant roles: ADMIN_MADRASAH, KAMAD, GURU, SISWA; legacy aliases are migrated separately.
             $table->string('label');
             $table->timestamps();
         });
