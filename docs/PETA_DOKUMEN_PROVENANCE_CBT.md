@@ -175,3 +175,7 @@ Laporan akhir diperbarui pada commit `71cf460712c72dccbe0c7387faf4b6fc20dd7814`;
 
 ## 7.8 Koreksi HEAD dan compare terkini
 Branch ref diperiksa ulang dan menunjukkan HEAD `f7912c207be8a4db8efba23100f8aab50283c47c`. Compare dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke HEAD tersebut: **50 path**, 40 added, 10 modified, 0 deleted; seluruhnya docs/, tidak ada source aplikasi. Angka 49 pada addendum 7.7 adalah snapshot sebelum backup tambahan checkpoint dibuat; 50 menggantikannya.
+
+
+## 7.9 Compare final setelah alignment dokumen handover
+Compare terbaru dari base W0-recheck `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch pada HEAD `73333d9592291ae37e1849306555a735f10e6717`: **54 path**, 42 added, 12 modified, 0 deleted; seluruhnya docs/, tidak ada source aplikasi. Rinciannya 18 dokumen kerja (6 baru, 12 diperbarui) dan 36 backup/manifest. Angka 50 pada catatan sebelumnya adalah snapshot sebelum dua dokumen handover diselaraskan dan dua backup handover ditambahkan.
