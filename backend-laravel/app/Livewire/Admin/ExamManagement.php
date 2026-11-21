@@ -46,6 +46,7 @@ class ExamManagement extends Component
             $user
                 && $user->tenant_id
                 && $user->hasRole('GURU')
+                && !$user->hasRole('ADMIN_MADRASAH')
                 && $user->hasPermission('exam.manage'),
             403,
             'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.'
