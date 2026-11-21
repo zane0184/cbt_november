@@ -40,7 +40,7 @@ class ImportTemplateExport implements WithMultipleSheets
                 $this->type === 'GURU'
                     ? [['PNS', '198001012005011001', '', '0012345678901234', 'CONTOH - HAPUS BARIS INI', 'L', '', '']]
                     : [['000123', '0012345678', 'CONTOH - HAPUS BARIS INI', 'P', 'Jakarta', '2015-01-01', 'Nama Wali Contoh', '081234567890', 'Alamat contoh', '', '']],
-                $this->type === 'GURU' ? ['B','C','D'] : ['A','B'],
+                $this->type === 'GURU' ? ['B','C','D','H'] : ['A','B','F','H'],
                 $this->type === 'SISWA' ? ['J' => $references['rombels'], 'K' => $references['years']] : [],
                 $this->type === 'GURU' ? ['A' => ['PNS','HONORER'], 'F' => ['L','P']] : ['D' => ['L','P']],
                 ['J' => 2, 'K' => 3],
@@ -52,7 +52,7 @@ class ImportTemplateExport implements WithMultipleSheets
                 'Penugasan Guru',
                 ['Identitas Guru (NIP/NIK)*', 'Mata Pelajaran*', 'Rombel*', 'Tahun Pelajaran*', 'Semester*', 'Tanggal Mulai (YYYY-MM-DD)', 'Tanggal Selesai (YYYY-MM-DD)', 'Status (ACTIVE/INACTIVE)'],
                 [['198001012005011001', '', '', '', '', '', '', 'ACTIVE']],
-                ['A'],
+                ['A','F','G'],
                 ['B' => $references['subjects'], 'C' => $references['rombels'], 'D' => $references['years'], 'E' => $references['semesters']],
                 ['H' => ['ACTIVE','INACTIVE']],
                 ['B' => 1, 'C' => 2, 'D' => 3, 'E' => 4],
