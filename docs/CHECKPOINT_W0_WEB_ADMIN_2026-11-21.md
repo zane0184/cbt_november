@@ -51,3 +51,8 @@ Tidak ada source aplikasi, migration, database, .env, secret, PR existing, merge
 
 ## Gerbang
 W0 belum dinyatakan selesai karena raw ZIP baseline belum diverifikasi dan persetujuan source candidate belum diberikan. W1 belum dimulai. Tidak boleh coding, merge, migration, deployment, atau aktivasi Device Lease/Fencing sebelum persetujuan.
+
+
+
+## CATATAN SUPERSESSION — KEPUTUSAN PROKTOR FINAL (21-11-2026)
+Dokumen ini adalah checkpoint W0 historis pada waktu pemeriksaan. Untuk desain assignment Proktor, gunakan keputusan final pengguna pada Addendum 35 spesifikasi dan DEC-WA-026 register: PENDING deny; CONFIRMED satu-satunya status yang dapat memberi capability setelah seluruh validasi; ACTIVE bukan status assignment; NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED deny; interval starts_at <= serverNow < expires_at. Catatan lama yang menggunakan ACTIVE sebagai status assignment adalah HISTORICAL/SUPERSEDED. Source tetap OPEN dan test runtime NOT RUN.
