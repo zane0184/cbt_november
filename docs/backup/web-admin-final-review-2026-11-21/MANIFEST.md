@@ -31,4 +31,4 @@ Seluruh backup berikut dibuat di GitHub sebelum file dokumen aslinya diperbarui.
 - Patch plan blob: cfd6d2c8c647a20ffbf3d5fef14968a26b18c846
 - Module matrix blob: 24395c574086f7efbe4b1a2d14ab33958865f015
 - T-ID matrix blob: 05759afbdaaf70f5ccf9d76175d992887932d37f
-- Checkpoint blob: 9a2ce8fef50016fd2a85ded2035ec8e44d6bc27c (akan diperbarui sekali lagi setelah manifest final ini)
+- Checkpoint blob 9a2ce8fef50016fd2a85ded2035ec8e44d6bc27c adalah checkpoint yang tercatat saat manifest pertama dipublikasikan; checkpoint terkini kemudian diperbarui untuk mencatat hash manifest final. Lihat HEAD checkpoint pada branch dokumentasi untuk blob terkini.
