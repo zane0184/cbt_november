@@ -177,3 +177,31 @@ Pertahankan 23 modul ADM-001 s.d. ADM-023 yang sudah ada. Addendum ini bukan pen
 | AUD-TEN-01 | Tenant and identity | Tenant isolation tetap fail-closed; User query, withoutGlobalScopes, installation identity, domain binding dan seeder khusus diuji. | User model, TenantContext, TenantScoped, IdentifyTenant, installation services, seeders. | ACTIVE |
 
 Temuan source lama yang masih menunjukkan OPERATOR/PROKTOR, Admin CBT permissions, route jadwal ganda, assignment tanpa overlap/review, atau tenant gap tetap OPEN. Pemeriksaan menu saja tidak cukup; semua penolakan Admin harus diuji pada endpoint langsung. Status matriks tetap audit statis sampai bukti runtime ditambahkan.
+
+
+## ADDENDUM AUDIT — KEPUTUSAN FINAL STATUS ASSIGNMENT PROKTOR (DEC-WA-026)
+
+Matriks 23 modul ADM-001–ADM-023 tetap dipertahankan tanpa penggantian ID. Kontrol AUD-PRO-05 diperjelas dengan keputusan final berikut:
+
+| Status assignment | Expected capability |
+|---|---|
+| PENDING | DENY |
+| CONFIRMED | ALLOW hanya jika seluruh validasi di bawah lulus |
+| NEEDS_REVIEW | DENY |
+| REVOKED | DENY |
+| EXPIRED | DENY |
+| COMPLETED | DENY |
+| ACTIVE | Bukan status assignment yang sah; jangan dibuat sebagai enum/status assignment |
+
+Validasi CONFIRMED wajib pada setiap request:
+- Guru aktif dan TeacherProfile valid/aktif.
+- Tenant assignment, Guru, exam, dan rombel cocok.
+- Exam dan rombel sesuai lingkup assignment.
+- Schedule revision assignment sama dengan revision jadwal terkini.
+- Assignment tidak dicabut dan tidak memiliki konflik yang melarang.
+- Permission/authorization serta scope sah.
+- Waktu server memenuhi `starts_at <= serverNow < expires_at`.
+
+Expiry harus menolak akses langsung berdasarkan waktu server walaupun cron belum mengubah label persisten menjadi EXPIRED. Reschedule Guru melalui ExamScheduleChangeService mengubah assignment terdampak menjadi NEEDS_REVIEW secara atomik; setelah review sah status konfirmasi adalah CONFIRMED, bukan ACTIVE.
+
+**Status desain kontrol: ACTIVE. Status source: OPEN. Status runtime test: NOT RUN.** Pemeriksaan static source lama yang menemukan scope/status ACTIVE adalah bukti perilaku source pada commit historis, bukan dasar untuk mengubah keputusan final.
