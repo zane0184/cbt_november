@@ -405,3 +405,5 @@ Branch konsolidasi dokumentasi: `docs/canonical-reconciliation-admin-guru-202611
 | 19 | [Register Keputusan Kurmer-KBC](https://github.com/zane0184/cbt_november/blob/4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4/docs/REGISTER_KEPUTUSAN_WEB_ADMIN_KURIKULUM.md) dan [Matriks W6](https://github.com/zane0184/cbt_november/blob/4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4/docs/MATRIKS_AUDIT_DAN_PENGUJIAN_MASTER_KURIKULUM_W6.md) | Register dan acceptance kurikulum |
 
 Dokumen W6 tetap berada pada branch terpisah dan ditautkan ke commit asal; belum ada merge. Dokumen lama tidak dihapus. Untuk konflik, keputusan pengguna terbaru dan Addendum 33 mengikat. Status implementasi source tetap OPEN; dokumen ini bukan bukti implementasi atau kesiapan produksi.
+
+- [Nota Klarifikasi Status Assignment Proktor](NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md) — semantik PENDING/CONFIRMED/ACTIVE masih OPEN; rekomendasi fail-closed belum menjadi keputusan pengguna.
