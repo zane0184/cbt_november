@@ -167,7 +167,7 @@
                             <p class="font-bold text-slate-900">{{ $session->exam?->title }} · Sesi {{ $session->session_number }} — {{ $session->name }}</p>
                             <p class="mt-1 text-xs text-slate-500">{{ $session->starts_at?->format('d/m/Y H:i') }}–{{ $session->ends_at?->format('H:i') }} · Revisi jadwal {{ $session->schedule_revision }} · {{ $session->status }}</p>
                         </div>
-                        <button type="button" wire:click="$set('selectedSessionId', '{{ $session->id }}')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">Pilih untuk ubah jadwal</button>
+                        <button type="button" wire:click="selectSessionForReschedule('{{ $session->id }}')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">Pilih untuk ubah jadwal</button>
                     </div>
                     @if($session->sessionRooms->isNotEmpty())
                         <div class="mt-3 grid gap-3 md:grid-cols-2">
@@ -179,7 +179,7 @@
                                         @foreach($scope->rombelMappings as $mapping)
                                             <span class="rounded-full {{ $mapping->status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600' }} px-2.5 py-1 text-xs">{{ $mapping->rombel?->name }} · {{ $mapping->status }}</span>
                                             @if($mapping->status === 'ACTIVE')
-                                                <button type="button" wire:click="$set('releaseReason', 'Pelepasan pemetaan rombel sesuai perubahan jadwal')" wire:click="$call('releaseMapping', '{{ $mapping->id }}')" class="text-xs font-semibold text-red-700 underline">Lepaskan</button>
+                                                <button type="button" wire:click="releaseMapping('{{ $mapping->id }}')" class="text-xs font-semibold text-red-700 underline">Lepaskan</button>
                                             @endif
                                         @endforeach
                                     </div>
@@ -194,6 +194,15 @@
                 <p class="text-sm text-slate-500">Belum ada sesi ujian.</p>
             @endforelse
         </div>
+
+        @if($sessions->isNotEmpty())
+            <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <label class="block max-w-xl text-sm font-medium text-slate-700">Alasan pelepasan pemetaan rombel
+                    <input wire:model="releaseReason" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="Minimal 10 karakter; digunakan saat tombol Lepaskan dipilih">
+                </label>
+                @error('releaseReason')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
+            </div>
+        @endif
 
         @if($selectedSessionId)
             <div class="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
