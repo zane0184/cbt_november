@@ -259,6 +259,8 @@ jobs:
           test -f tests/Feature/StudentWebLoginTest.php
           test -f tests/Feature/StudentResultVisibilityTest.php
           test -f tests/Feature/AdminDashboardAccessTest.php
+          test -f tests/Feature/AcademicPeriodManagementTest.php
+          test -f tests/Feature/AcademicPeriodManagementTest.php
           grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
           if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|Permission::(create|firstOrCreate|updateOrCreate)|permissions\(\)->(sync|attach|detach)|permission_role.*(insert|update|delete)'; then
             echo "Selected Admin boundary method contains a prohibited permission mutation/bootstrapper." >&2
@@ -296,6 +298,18 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/AdminDashboardAccessTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-dashboard.log"
+
+      - name: PHPUnit — Academic period activation, audit and tenant boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AcademicPeriodManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-academic-periods.log"
+
+      - name: PHPUnit — Academic period activation, audit and tenant boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AcademicPeriodManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-academic-periods.log"
 
       - name: PHPUnit — API authentication and tenant isolation
         shell: bash
