@@ -13,6 +13,7 @@ use App\Models\Role;
 use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -88,6 +89,25 @@ class ProctorAssignmentSecurityTest extends TestCase
             ->assertHasNoErrors();
     }
 
+    private function assertCandidateRejectedThroughUi(User $candidate): void
+    {
+        $this->actingAs($this->admin);
+
+        try {
+            Livewire::test(ProctorAssignmentManagement::class)
+                ->set('selectedExamId', $this->exam->id)
+                ->set('selectedProctorId', $candidate->id)
+                ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
+                ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+                ->set('reason', 'Pengawasan ujian kelas enam')
+                ->call('assign');
+
+            $this->fail('Kandidat yang tidak memenuhi syarat tidak boleh ditugaskan.');
+        } catch (ModelNotFoundException) {
+            $this->assertDatabaseCount('exam_proctor_assignments', 0);
+        }
+    }
+
     public function test_admin_can_assign_active_guru_as_temporary_proctor_and_assignment_is_audited(): void
     {
         $this->assignThroughUi();
@@ -120,17 +140,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'tenant_id' => $this->tenant->id, 'user_id' => $student->id, 'full_name' => 'Siswa A',
         ]);
 
-        $this->actingAs($this->admin);
-        Livewire::test(ProctorAssignmentManagement::class)
-            ->set('selectedExamId', $this->exam->id)
-            ->set('selectedProctorId', $student->id)
-            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
-            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
-            ->set('reason', 'Pengawasan ujian kelas enam')
-            ->call('assign')
-            ->assertStatus(404);
-
-        $this->assertDatabaseCount('exam_proctor_assignments', 0);
+        $this->assertCandidateRejectedThroughUi($student);
     }
 
     public function test_multi_role_user_cannot_be_selected_as_temporary_proctor(): void
@@ -151,17 +161,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'full_name' => 'Guru Multi Role',
         ]);
 
-        $this->actingAs($this->admin);
-        Livewire::test(ProctorAssignmentManagement::class)
-            ->set('selectedExamId', $this->exam->id)
-            ->set('selectedProctorId', $multiRoleUser->id)
-            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
-            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
-            ->set('reason', 'Pengawasan ujian kelas enam')
-            ->call('assign')
-            ->assertStatus(404);
-
-        $this->assertDatabaseCount('exam_proctor_assignments', 0);
+        $this->assertCandidateRejectedThroughUi($multiRoleUser);
     }
 
     public function test_guru_without_active_teacher_profile_cannot_be_selected(): void
@@ -177,17 +177,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'tenant_id' => $this->tenant->id, 'user_id' => $inactiveGuru->id, 'full_name' => 'Guru Nonaktif',
         ])->delete();
 
-        $this->actingAs($this->admin);
-        Livewire::test(ProctorAssignmentManagement::class)
-            ->set('selectedExamId', $this->exam->id)
-            ->set('selectedProctorId', $inactiveGuru->id)
-            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
-            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
-            ->set('reason', 'Pengawasan ujian kelas enam')
-            ->call('assign')
-            ->assertStatus(404);
-
-        $this->assertDatabaseCount('exam_proctor_assignments', 0);
+        $this->assertCandidateRejectedThroughUi($inactiveGuru);
     }
 
     public function test_revoked_assignment_is_audited_and_remains_in_history(): void
