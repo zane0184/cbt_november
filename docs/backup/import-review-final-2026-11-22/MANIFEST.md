@@ -40,3 +40,10 @@ Commit: 557dc01f24d3df23e1a1b0ee353dad70f704651e
 Commit: bf40163a004beb7d3e9f0432fa5a1ad7fa24b5f8
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-isolated-deadlock-test | blob SHA ff2294464973c2e9750f4c5a7f10e72acfd0ada3
 - .github/workflows/wa01-alternative-isolated-runtime.yml -> docs/backup/import-review-final-2026-11-22/wa01-alternative-isolated-runtime.yml.before-deadlock-test-registration | blob SHA 12bfb7e377bb6c431e981eca3af50edc2f63741a
+
+
+## Follow-up backup before PROCESSING staging retention patch
+Commit: 99befdc735bed48431895524ae63b1ffd3de5d71
+- backend-laravel/routes/console.php -> docs/backup/import-review-final-2026-11-22/console.php.before-processing-retention-heartbeat | blob SHA 6f5d1010f1a20f9b2408ec9690f9faac23c27f16
+- backend-laravel/app/Services/Import/ImportWorkbookService.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookService.php.before-processing-retention-heartbeat | blob SHA 5a9f9d79e3ada4af0fe1b95794c4ec5c975f7a55
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-processing-retention-heartbeat | blob SHA eda811a581e74109806af77ce0fb61391881b161
