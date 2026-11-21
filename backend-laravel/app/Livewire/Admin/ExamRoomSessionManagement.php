@@ -59,8 +59,14 @@ class ExamRoomSessionManagement extends Component
             ->first();
 
         if ($exam?->start_at && $exam?->end_at) {
-            $this->sessionStartsAt = $exam->start_at->format('Y-m-d\\TH:i');
-            $this->sessionEndsAt = $exam->end_at->format('Y-m-d\\TH:i');
+            $start = $exam->start_at->copy()->startOfMinute();
+            if ($start->lessThan($exam->start_at)) {
+                $start->addMinute();
+            }
+            $end = $exam->end_at->copy()->startOfMinute();
+
+            $this->sessionStartsAt = $start->format('Y-m-d\\TH:i');
+            $this->sessionEndsAt = $end->format('Y-m-d\\TH:i');
         }
     }
 
@@ -73,8 +79,13 @@ class ExamRoomSessionManagement extends Component
             ->firstOrFail();
 
         $this->selectedSessionId = $session->id;
-        $this->sessionStartsAt = $session->starts_at->format('Y-m-d\\TH:i');
-        $this->sessionEndsAt = $session->ends_at->format('Y-m-d\\TH:i');
+        $start = $session->starts_at->copy()->startOfMinute();
+        if ($start->lessThan($session->starts_at)) {
+            $start->addMinute();
+        }
+        $end = $session->ends_at->copy()->startOfMinute();
+        $this->sessionStartsAt = $start->format('Y-m-d\\TH:i');
+        $this->sessionEndsAt = $end->format('Y-m-d\\TH:i');
         $this->rescheduleReason = '';
     }
 
