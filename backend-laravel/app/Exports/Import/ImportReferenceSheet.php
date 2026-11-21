@@ -1,14 +1,14 @@
 <?php
 
-namespace App\\Exports\\Import;
+namespace App\Exports\Import;
 
-use Maatwebsite\\Excel\\Concerns\\FromArray;
-use Maatwebsite\\Excel\\Concerns\\ShouldAutoSize;
-use Maatwebsite\\Excel\\Concerns\\WithEvents;
-use Maatwebsite\\Excel\\Concerns\\WithTitle;
-use Maatwebsite\\Excel\\Events\\AfterSheet;
-use PhpOffice\\PhpSpreadsheet\\NamedRange;
-use PhpOffice\\PhpSpreadsheet\\Worksheet\\Worksheet;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\NamedRange;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class ImportReferenceSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
 {
