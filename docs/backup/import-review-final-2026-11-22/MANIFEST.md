@@ -34,3 +34,9 @@ Commit: 736fe35b029bf8e2a1c090be044af19cc3e4c892
 Commit: 557dc01f24d3df23e1a1b0ee353dad70f704651e
 - backend-laravel/resources/views/livewire/admin/import-management.blade.php -> docs/backup/import-review-final-2026-11-22/import-management.blade.php.before-processing-resume-ui | blob SHA 53de11a76f2feed9a147b5c0fea3a31b821ae466
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-processing-resume-ui | blob SHA ca7a89b5b89c2dcf10a69709d00c52a215e1994a
+
+
+## Follow-up backup before isolated deadlock test registration
+Commit: bf40163a004beb7d3e9f0432fa5a1ad7fa24b5f8
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-isolated-deadlock-test | blob SHA ff2294464973c2e9750f4c5a7f10e72acfd0ada3
+- .github/workflows/wa01-alternative-isolated-runtime.yml -> docs/backup/import-review-final-2026-11-22/wa01-alternative-isolated-runtime.yml.before-deadlock-test-registration | blob SHA 12bfb7e377bb6c431e981eca3af50edc2f63741a
