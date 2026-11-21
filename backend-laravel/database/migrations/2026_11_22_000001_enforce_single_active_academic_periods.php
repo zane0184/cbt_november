@@ -33,23 +33,13 @@ return new class extends Migration
         $driver = DB::getDriverName();
 
         if ($driver === 'mysql') {
-            if (!Schema::hasColumn('academic_years', 'active_tenant_id')) {
-                DB::statement(
-                    "ALTER TABLE academic_years ADD COLUMN active_tenant_id CHAR(36) GENERATED ALWAYS AS (CASE WHEN is_active = 1 AND deleted_at IS NULL THEN tenant_id ELSE NULL END) STORED"
-                );
-            }
-
             if (!DB::table('information_schema.statistics')
                 ->where('table_schema', DB::getDatabaseName())
                 ->where('table_name', 'academic_years')
                 ->where('index_name', 'academic_years_one_active_per_tenant_unique')
                 ->exists()) {
-                DB::statement('CREATE UNIQUE INDEX academic_years_one_active_per_tenant_unique ON academic_years (active_tenant_id)');
-            }
-
-            if (!Schema::hasColumn('semesters', 'active_tenant_id')) {
                 DB::statement(
-                    "ALTER TABLE semesters ADD COLUMN active_tenant_id CHAR(36) GENERATED ALWAYS AS (CASE WHEN is_active = 1 AND deleted_at IS NULL THEN tenant_id ELSE NULL END) STORED"
+                    'CREATE UNIQUE INDEX academic_years_one_active_per_tenant_unique ON academic_years ((CASE WHEN is_active = 1 AND deleted_at IS NULL THEN tenant_id ELSE NULL END))'
                 );
             }
 
@@ -58,7 +48,9 @@ return new class extends Migration
                 ->where('table_name', 'semesters')
                 ->where('index_name', 'semesters_one_active_per_tenant_unique')
                 ->exists()) {
-                DB::statement('CREATE UNIQUE INDEX semesters_one_active_per_tenant_unique ON semesters (active_tenant_id)');
+                DB::statement(
+                    'CREATE UNIQUE INDEX semesters_one_active_per_tenant_unique ON semesters ((CASE WHEN is_active = 1 AND deleted_at IS NULL THEN tenant_id ELSE NULL END))'
+                );
             }
 
             return;
@@ -86,14 +78,6 @@ return new class extends Migration
             }
             if (DB::table('information_schema.statistics')->where('table_schema', DB::getDatabaseName())->where('table_name', 'semesters')->where('index_name', 'semesters_one_active_per_tenant_unique')->exists()) {
                 DB::statement('DROP INDEX semesters_one_active_per_tenant_unique ON semesters');
-            }
-
-            if (Schema::hasColumn('academic_years', 'active_tenant_id')) {
-                DB::statement('ALTER TABLE academic_years DROP COLUMN active_tenant_id');
-            }
-
-            if (Schema::hasColumn('semesters', 'active_tenant_id')) {
-                DB::statement('ALTER TABLE semesters DROP COLUMN active_tenant_id');
             }
 
             return;
