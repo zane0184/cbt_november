@@ -34,10 +34,10 @@ Base: `docs/web-admin-w0-recheck-20261121` @ `fb058f05264b8d464d687583c53f06fbb7
 
 ## PENGUJIAN
 - Metadata GitHub, branch compare, pembacaan source, dan pembuatan backup telah dilakukan.
-- Link entry point 18/18 PASS.
+- Link entry point: jumlah akhir diperiksa ulang setelah pembaruan entry point; hasil dicatat pada final verification.
 - 23 modul audit tetap ada; T-001–T-132 dipertahankan; T-133–T-168 ditambahkan.
 - Backup 6/6 cocok dengan blob sumber; SHA-256 dicatat pada manifest.
-- Compare menunjukkan hanya 18 path docs/ yang berubah/ditambahkan; tidak ada source aplikasi.
+- Compare lengkap pada HEAD awal menunjukkan 28 path docs/ berubah/ditambahkan; tidak ada source aplikasi.
 - CI, runtime, browser, MySQL concurrency, import/restore, UAT: NOT RUN.
 
 ## Gerbang berikutnya
@@ -48,9 +48,28 @@ Base: `docs/web-admin-w0-recheck-20261121` @ `fb058f05264b8d464d687583c53f06fbb7
 5. W1/W6, Portal Guru/Siswa, Android, deployment, database dan Device Lease/Fencing tetap HOLD sesuai scope.
 
 
-## Klarifikasi desain yang masih OPEN
-Semantik capability untuk status PENDING/CONFIRMED/ACTIVE belum dinyatakan eksplisit. Rekomendasi fail-closed (PENDING tidak memberi hak; CONFIRMED-only) belum menjadi keputusan pengguna. Lihat `docs/NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md`. Jangan implementasikan transisi status sebelum pengguna mengonfirmasi.
+## Klarifikasi desain terdahulu — SUPERSEDED
+Catatan OPEN/PROPOSED tentang semantik PENDING/CONFIRMED/ACTIVE telah digantikan oleh keputusan final pengguna, Addendum 35, dan DEC-WA-026. Jangan gunakan catatan OPEN lama sebagai status keputusan saat ini.
 
 
 ## Verifikasi final pasca-klarifikasi
-Compare terakhir dari base W0-recheck ke branch konsolidasi: 24 path berubah/ditambahkan, semuanya docs/; tidak ada source aplikasi. Angka 18 pada catatan pengujian sebelumnya adalah snapshot sebelum nota klarifikasi dan backup tambahan. Backup final laporan/checkpoint tersedia di `docs/backup/reconciliation-2026-11-21/final/`.
+Compare lengkap dari base W0-recheck ke HEAD awal branch konsolidasi 55cfe325aef13abd4dae97c7d46e127a0ff47bbb: 28 path berubah/ditambahkan, semuanya docs/; tidak ada source aplikasi. Rincian: 12 dokumen kerja (6 added, 6 modified), 16 backup/manifest, 0 deleted, 0 source aplikasi. Angka 18 dan 24 adalah compare parsial sebelum seluruh backup finalization selesai. Backup final laporan/checkpoint tersedia di `docs/backup/reconciliation-2026-11-21/final/`.
+
+
+## Keputusan final Proktor — ACTIVE
+- PENDING: tidak memberikan capability.
+- CONFIRMED: satu-satunya status yang dapat memberi capability setelah validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict, dan waktu server terpenuhi.
+- ACTIVE bukan status assignment.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED: tidak memberikan capability.
+- Interval: `starts_at <= serverNow < expires_at`, divalidasi pada setiap request.
+- Dokumen normatif: Addendum 35 spesifikasi, DEC-WA-026 register, nota keputusan final. Addendum 34 dan nota OPEN sebelumnya SUPERSEDED.
+
+## Status finalisasi sesuai Master Prompt
+- Branch hasil tetap `docs/canonical-reconciliation-admin-guru-20261121`; tidak dibuat branch baru.
+- Branch HEAD awal yang dibandingkan: `55cfe325aef13abd4dae97c7d46e127a0ff47bbb`.
+- PR #5/#6/#7 OPEN/Draft/Unmerged; tidak disentuh. PR #1/#3/#4 OPEN/Draft; PR #2 CLOSED/Unmerged.
+- 28 path docs/ berubah/ditambahkan, 0 dihapus; 12 dokumen kerja dan 16 backup/manifest; 0 source aplikasi.
+- Backup finalisasi disimpan di `docs/backup/reconciliation-2026-11-21/finalization/`, blob salinan identik dengan blob file sumber sebelum update.
+- Matriks audit 23 modul dipertahankan. Matriks tes T-001–T-168 dipertahankan dan T-169–T-173 ditambahkan. T-114/T-160 diperbaiki. Seluruh tes belum dijalankan tetap NOT RUN.
+- Semua temuan source tetap OPEN. CI/runtime/browser/MySQL concurrency/import/restore/UAT: NOT RUN.
+- Source, migration, seeder, database, .env, PR, merge, rebase, force-push, dan deployment tidak diubah/dijalankan.
