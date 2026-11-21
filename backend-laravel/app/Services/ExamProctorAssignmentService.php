@@ -110,6 +110,12 @@ class ExamProctorAssignmentService
                 ->whereKey($assignment->id)
                 ->firstOrFail();
 
+            if (!$snapshot->exam_session_room_id) {
+                throw ValidationException::withMessages([
+                    'assignment' => 'Assignment legacy belum memiliki scope ruang-sesi dan tidak dapat dikonfirmasi.',
+                ]);
+            }
+
             [$lockedExam, $sessionRoom, $session] = $this->lockScope(
                 $actor,
                 $exam,
@@ -202,13 +208,22 @@ class ExamProctorAssignmentService
                 ->whereKey($assignment->id)
                 ->firstOrFail();
 
-            [$lockedExam, $sessionRoom] = $this->lockScope(
-                $actor,
-                $exam,
-                (string) $snapshot->exam_session_room_id,
-                'revokeProctor',
-                true
-            );
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            Gate::forUser($actor)->authorize('revokeProctor', $lockedExam);
+
+            if ($snapshot->exam_session_room_id) {
+                [$lockedExam, $sessionRoom] = $this->lockScope(
+                    $actor,
+                    $lockedExam,
+                    (string) $snapshot->exam_session_room_id,
+                    'revokeProctor',
+                    true
+                );
+            }
 
             User::query()
                 ->where('tenant_id', $tenantId)
@@ -219,7 +234,6 @@ class ExamProctorAssignmentService
             $lockedAssignment = ExamProctorAssignment::query()
                 ->where('tenant_id', $tenantId)
                 ->where('exam_id', $lockedExam->id)
-                ->where('exam_session_room_id', $sessionRoom->id)
                 ->whereKey($assignment->id)
                 ->lockForUpdate()
                 ->firstOrFail();
