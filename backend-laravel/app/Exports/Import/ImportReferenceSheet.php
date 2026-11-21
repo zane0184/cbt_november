@@ -5,14 +5,27 @@ namespace App\Exports\Import;
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\NamedRange;
+use PhpOffice\PhpSpreadsheet\Cell\Cell;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class ImportReferenceSheet implements FromArray, WithTitle, ShouldAutoSize, WithEvents
+class ImportReferenceSheet extends DefaultValueBinder implements FromArray, WithTitle, ShouldAutoSize, WithEvents, WithCustomValueBinder
 {
     public function __construct(private readonly array $references) {}
+
+    public function bindValue(Cell $cell, $value): bool
+    {
+        if ($value !== null) {
+            $cell->setValueExplicit((string) $value, DataType::TYPE_STRING);
+            return true;
+        }
+        return parent::bindValue($cell, $value);
+    }
 
     public function title(): string
     {
