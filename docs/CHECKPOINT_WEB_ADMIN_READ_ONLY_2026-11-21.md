@@ -9,43 +9,40 @@
 - Status: **AUDIT READ-ONLY COMPLETE; PATCH PLAN FINAL AWAITING USER APPROVAL**
 - Checkpoint ini diperbarui setelah commit laporan dan backup; isi final harus memuat commit/blob SHA terverifikasi.
 
-## Posisi pekerjaan
+## Posisi pekerjaan — STATUS TERKINI (21 November 2026)
 
 ### AUDIT
-- Snapshot W0 531/531 SHA-256 cocok.
-- Temuan P0: Admin dapat membaca Bank Soal/kunci/media, token, monitoring/roster/attempt, hasil/skor/analytics, dan melakukan close/finalize/reopen.
-- Temuan P1: role legacy runtime; Proktor masih role PROKTOR/status ACTIVE; belum ada status CONFIRMED/NEEDS_REVIEW, rombel/schedule revision/overlap guard; tenant User scope dan withoutGlobalScopes perlu audit; AuditLog belum append-only.
-- P2: 23 modul ADM-001–ADM-023 mayoritas PARTIAL/OPEN; import/master akademik/backup-restore/preferensi/responsif belum lengkap.
-- Audit seluruh komponen, query User, route binding, export, cache, job, 23 modul dan T-001–T-173 belum selesai.
+- **Audit source statis Web Admin: SELESAI** untuk seluruh source path dan access surface yang tercatat dalam laporan final.
+- Inventaris statis: 29 controllers (24 API), 14 Livewire, 11 policies, 56 models, 34 Blade views, 58 migrations, 64 test files; route/middleware, relation/query, raw SQL, serialization, export/media, cache dan audit paths telah ditinjau.
+- **ADM-001–ADM-023: 23/23 memiliki status aktual** pada matriks modul. Status statis tidak sama dengan acceptance; tidak ada modul yang dinyatakan complete.
+- **T-001–T-173: 173/173 dipetakan; seluruh 173 ID tetap NOT VERIFIED.** Tidak ada ID PASS.
+- Temuan P0/P1 tetap OPEN sampai patch disetujui, diterapkan dan diuji.
 
 ### DESAIN
-- W1-A tenant hardening.
-- W1-B Admin boundary dan metadata-only DTO.
-- W1-C role runtime ADMIN_MADRASAH saja; akun legacy dipertahankan untuk rencana terpisah.
-- W2 Proktor assignment Guru aktif + TeacherProfile, status final PENDING/CONFIRMED/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED, hanya CONFIRMED memberikan capability; integrasi reschedule melalui kontrak dengan pemilik alur Guru.
-- Patch plan masih awal, belum disetujui.
+- Patch plan final tersedia: WA-01 s.d. WA-07, dengan source file provenance, backup convention, dependency, DB impact, migration/preflight, test, rollback dan acceptance.
+- WA-03 dibatasi: Admin assignment core terpisah dapat direncanakan; shared schedule service, ExamController, shared ExamManagement, shared ExamPolicy/API/routes atau jalur Guru berstatus **CROSS-SCOPE BLOCKED** dan memerlukan persetujuan terpisah.
+- Definisi Guru aktif belum tersedia pada source. Soft-delete/ketiadaan soft-delete bukan bukti aktif. Pilihan desain status eksplisit User + TeacherProfile telah ditambahkan ke patch plan; belum dipilih/diterapkan.
+- SQLite tidak boleh menjadi dasar kesimpulan concurrency Proktor. Uji wajib menggunakan MySQL 8/InnoDB disposable dengan dua atau lebih koneksi.
 
 ### IMPLEMENTASI
-- NOT STARTED.
-- Tidak ada source/database/migration/seeder/config/.env/PR/W6/Web Guru/Android/deployment yang diubah.
-- Tidak ada merge/close PR.
+- **NOT STARTED — belum disetujui.**
+- Tidak ada source aplikasi, database, migration, seeder, role, permission, konfigurasi, Web Guru, Android, VPS atau PR yang diubah.
+- Source branch `work/web-admin-w0-20261121` dibandingkan dengan source pin `2b4321ce032fd5e67cf022da8564a5287b8cef6f`: **identical, 0 ahead / 0 behind**.
+- 71/71 source existing paths yang memiliki SHA pada WA-01–WA-06 telah diverifikasi ulang langsung dari source branch; semua cocok. SHA dokumentasi tidak dipakai sebagai source SHA.
 
 ### PENGUJIAN
-- PHP lint 338 file PASS.
-- CI #692: 480 passed / 1,942 assertions; focused tenant/auth 23 passed / 83 assertions.
-- W0 restore #2: 531/531 PASS.
-- PHPUnit lokal, Laravel boot, HTTP/browser, endpoint denial, concurrency Proktor, UAT: NOT RUN/BLOCKED.
-- T-001–T-173 belum dipetakan ke bukti run; jangan tandai PASS.
+- Bukti historis tetap dibatasi: PHP lint 338 file PASS dan CI #692 480 tests / 1,942 assertions pada commit lama; bukan acceptance W0 atau bukti T-ID individual.
+- W0 snapshot restore 531/531 exact PASS adalah bukti integritas snapshot, bukan acceptance aplikasi.
+- PHPUnit lokal, Laravel runtime, HTTP/browser, Livewire hydration, MySQL 8 FK/concurrency, restore/rollback migration, serta UAT Madrasah: **NOT RUN / BLOCKED**.
+- Semua T-001–T-173 tetap NOT VERIFIED. Test method yang ditemukan hanya kandidat; CI aggregate tidak boleh dikonversi menjadi PASS per ID.
 
-## Aturan penerus
-1. Lanjutkan audit read-only Web Admin; jangan mulai implementasi.
-2. Jangan kembangkan Web Guru.
-3. Periksa source aktual dan branch ref sebelum mengandalkan SHA historis.
-4. Periksa semua komponen/controllers/policies/routes/models/relations, User queries, withoutGlobalScopes, exports, cache, jobs, dan tests.
-5. Lengkapi matriks ADM-001–ADM-023 dan T-001–T-173 dengan evidence dan status aktual.
-6. Finalisasi patch plan per file: before/after, backup, compatibility, DB impact, tests, rollback, acceptance.
-7. Tunggu persetujuan eksplisit pengguna sebelum patch apa pun.
-8. Semua dokumentasi resmi, laporan, checkpoint, backup dan handover hanya di GitHub `docs/`; jangan simpan di Library ChatGPT.
+### Gate dan instruksi penerus
+1. Final review dokumentasi ini bukan persetujuan implementasi.
+2. Jangan mengubah source, database, migration, seeder, role, permission, konfigurasi, Web Guru, Android, VPS atau PR.
+3. Sebelum patch apa pun, minta approval eksplisit pengguna atas patch plan dan batas work package.
+4. Jika WA-03 menyentuh jalur bersama Guru, berhenti dan minta approval lintas-scope terpisah.
+5. Semua laporan, checkpoint, backup dan manifest resmi berada di branch dokumentasi ini; source branch tetap immutable.
+6. Tidak ada migration produksi. Semua migration yang kelak disetujui harus diuji pada clone MySQL 8/InnoDB terlebih dahulu.
 
 ## Referensi laporan
 Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
@@ -255,3 +252,17 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Backup blob SHA: `9c383cef4a7fb7c25f783e6da01a86e176b1e57d` (identik dengan checkpoint sebelum status refresh).
 - Branch target: `docs/canonical-reconciliation-admin-guru-20261121`.
 - Base checkpoint commit yang diverifikasi sebelum refresh: `b857553fe74482e35332d57708d7188f71104e40`.
+
+
+## Final review closure — 21 November 2026
+
+- Audit statis selesai; acceptance testing belum selesai; implementasi belum dimulai dan belum disetujui.
+- Patch plan final: docs/PATCH_PLAN_FINAL_WEB_ADMIN_2026-11-21.md.
+- Matriks modul: docs/MATRIKS_AUDIT_WEB_ADMIN_DETAIL_2026-11-21.md — 23/23 status statis, acceptance NOT VERIFIED/NOT RUN.
+- Matriks T-ID: docs/MATRIKS_TEST_WEB_ADMIN_T001_T173_MAPPING_2026-11-21.md — 173/173 mapping, setiap ID NOT VERIFIED.
+- Final review telah memverifikasi 71/71 source blob SHA dari source branch work/web-admin-w0-20261121 @ 2b4321ce032fd5e67cf022da8564a5287b8cef6f.
+- WA-03 shared Guru schedule integration: BLOCKED pending separate approval.
+- Guru active-state: undecided; no implicit active inference from soft-delete. Recommended explicit User account status + TeacherProfile employment status is design proposal only.
+- MySQL 8/InnoDB concurrency, FK, DDL, rollback and audit integrity tests remain mandatory and NOT RUN.
+- No source/DB/migration/seeder/role/permission/config/Web Guru/Android/VPS/PR changed.
+- Stop: wait for explicit user approval before implementation.
