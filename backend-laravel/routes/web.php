@@ -13,7 +13,6 @@ use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Operator\OperatorDashboard;
-use App\Livewire\Proktor\ProktorDashboard;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -71,8 +70,7 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('stude
 
 Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
-    Route::get('/operator/dashboard', OperatorDashboard::class);
-    Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
+    Route::get('/admin/dashboard', OperatorDashboard::class)->name('admin.dashboard');
 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);
