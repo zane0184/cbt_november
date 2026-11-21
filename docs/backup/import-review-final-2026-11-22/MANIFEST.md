@@ -47,3 +47,8 @@ Commit: 99befdc735bed48431895524ae63b1ffd3de5d71
 - backend-laravel/routes/console.php -> docs/backup/import-review-final-2026-11-22/console.php.before-processing-retention-heartbeat | blob SHA 6f5d1010f1a20f9b2408ec9690f9faac23c27f16
 - backend-laravel/app/Services/Import/ImportWorkbookService.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookService.php.before-processing-retention-heartbeat | blob SHA 5a9f9d79e3ada4af0fe1b95794c4ec5c975f7a55
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-processing-retention-heartbeat | blob SHA eda811a581e74109806af77ce0fb61391881b161
+
+
+## Follow-up backup before deadlock test transaction harness correction
+Commit: f6f17ac966459461c908de496f92e560824887d3
+- backend-laravel/tests/Feature/ImportDeadlockRetryTest.php -> docs/backup/import-review-final-2026-11-22/ImportDeadlockRetryTest.php.before-refresh-database-harness | blob SHA 396c1927a2610551fae46e9908f6bd468ae1bd15
