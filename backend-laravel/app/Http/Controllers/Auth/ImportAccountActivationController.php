@@ -44,7 +44,9 @@ class ImportAccountActivationController extends Controller
             $user = \App\Models\User::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)
                 ->whereKey($record->user_id)->lockForUpdate()->firstOrFail();
             abort_unless($user->roles()->whereIn('name', ['GURU', 'SISWA'])->count() === 1, 403);
-            abort_unless($user->teacherProfile || $user->studentProfile, 403);
+            $hasProfile = \\App\\Models\\TeacherProfile::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)->where('user_id', $user->id)->exists()
+                || \\App\\Models\\StudentProfile::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)->where('user_id', $user->id)->exists();
+            abort_unless($hasProfile, 403);
 
             $user->forceFill(['password' => Hash::make($validated['password'])])->save();
             $record->update(['used_at' => now()]);

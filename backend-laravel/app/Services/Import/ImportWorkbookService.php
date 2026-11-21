@@ -183,7 +183,10 @@ class ImportWorkbookService
             if ($this->isBlank($values)) continue;
             $payload = $type === 'GURU' ? $this->teacherPayload($values) : $this->studentPayload($values);
             $key = $type === 'GURU' ? ($payload['nip'] ?: $payload['nik']) : $payload['nisn'];
-            $identityMap[$key][] = count($rows);
+            $rowIndex = count($rows);
+            foreach ($type === 'GURU' ? ['nip', 'nik', 'nuptk'] : ['nis', 'nisn'] as $identityField) {
+                if (($payload[$identityField] ?? '') !== '') $identityMap[$payload[$identityField]][] = $rowIndex;
+            }
             $rows[] = $this->validateDataRow($type, $payload, $tenantId, $number);
         }
         foreach ($identityMap as $key => $indices) {
@@ -201,11 +204,21 @@ class ImportWorkbookService
             $this->assertHeaders($assignments, self::ASSIGNMENT_HEADERS);
             $newTeacherKeys = collect($rows)->filter(fn ($r) => $r['sheet'] === 'Data Guru' && $r['status'] === 'VALID')
                 ->map(fn ($r) => $r['payload']['nip'] ?: $r['payload']['nik'])->all();
+            $assignmentKeys = [];
             for ($number = 2; $number <= $assignments->getHighestDataRow(); $number++) {
                 $values = $this->readRow($assignments, count(self::ASSIGNMENT_HEADERS), $number, [1]);
                 if ($this->isBlank($values)) continue;
                 $payload = $this->assignmentPayload($values);
+                $rowIndex = count($rows);
                 $rows[] = $this->validateAssignmentRow($payload, $tenantId, $number, $newTeacherKeys);
+                $assignmentKey = implode('|', [$payload['identity'], $payload['subject'], $payload['rombel'], $payload['academic_year'], $payload['semester']]);
+                $assignmentKeys[$assignmentKey][] = $rowIndex;
+            }
+            foreach ($assignmentKeys as $indices) {
+                if (count($indices) > 1) foreach ($indices as $index) {
+                    $rows[$index]['status'] = 'INVALID';
+                    $rows[$index]['reason'] = 'Duplikat penugasan dalam workbook.';
+                }
             }
         }
         return $rows;
@@ -270,8 +283,9 @@ class ImportWorkbookService
             if ($payload['nuptk'] !== '' && !preg_match('/^\d{16}$/', $payload['nuptk'])) $errors[] = 'NUPTK harus 16 digit teks.';
             if ($payload['nip'] === '__NUMERIC_IDENTIFIER__' || $payload['nik'] === '__NUMERIC_IDENTIFIER__' || $payload['nuptk'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas harus disimpan sebagai teks agar nol di depan tidak hilang.';
             if ($payload['email'] !== '' && !filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
-            $existing = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($payload) {
-                foreach (['nip','nik','nuptk'] as $field) if ($payload[$field] !== '') $q->orWhere($field,$payload[$field]);
+            $identityValues = array_values(array_filter([$payload['nip'], $payload['nik'], $payload['nuptk']], fn ($v) => $v !== ''));
+            $existing = $identityValues && TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($identityValues) {
+                foreach ($identityValues as $value) $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value);
             })->exists();
             if ($existing) return $this->result('Data Guru',$number,'SKIPPED','Identitas Guru sudah terdaftar; data existing tidak diubah.',$payload);
             if ($payload['email'] !== '' && User::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('email',$payload['email'])->exists()) $errors[] = 'Email sudah digunakan pada tenant ini.';
@@ -318,7 +332,7 @@ class ImportWorkbookService
     private function result(string $sheet, int $row, string $status, ?string $reason, array $payload): array
     {
         $name = $payload['name'] ?? null;
-        $identity = $payload['nip'] ?? $payload['nik'] ?? $payload['nisn'] ?? $payload['identity'] ?? '';
+        $identity = ($payload['nip'] ?? '') ?: (($payload['nik'] ?? '') ?: (($payload['nisn'] ?? '') ?: ($payload['identity'] ?? '')));
         return ['sheet'=>$sheet,'row'=>$row,'status'=>$status,'reason'=>$reason,
             'summary'=>['name'=>$name,'identity_suffix'=>$identity !== '' ? substr($identity,-4) : null],
             'payload'=>$payload];
@@ -359,8 +373,9 @@ class ImportWorkbookService
 
     private function importTeacher(array $p, string $tenantId, string $userId): array
     {
-        $exists = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)
-            ->where(fn($q) => $q->where('nip',$p['nip'])->orWhere('nik',$p['nik'])->orWhere('nuptk',$p['nuptk']))->exists();
+        $identityValues = array_values(array_filter([$p['nip'], $p['nik'], $p['nuptk']], fn ($v) => $v !== ''));
+        $exists = $identityValues && TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)
+            ->where(fn($q) => collect($identityValues)->each(fn ($value) => $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value)))->exists();
         if ($exists) return ['status'=>'SKIPPED','reason'=>'Identitas sudah terdaftar sebelum konfirmasi.'];
         $role = Role::query()->where('name','GURU')->firstOrFail();
         $temporaryPassword = Str::random(64);
