@@ -11,8 +11,8 @@
 | Source commit pin | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Source tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja | `work/web-admin-w0-20261121` |
-| **Branch kerja HEAD sebelum checkpoint final ini** | `06efd155b2c9bfaeef82e4df95249c8899009bc7` |
-| Parent commit checkpoint final ini | `06efd155b2c9bfaeef82e4df95249c8899009bc7` |
+| **Branch kerja HEAD sebelum pembaruan checkpoint ini** | `f0610e309c009789a3be50ff49c6f7dd7c5a1afd` |
+| Parent commit checkpoint ini | `f0610e309c009789a3be50ff49c6f7dd7c5a1afd` |
 | Commit laporan audit revisi | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
 | Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 
@@ -23,7 +23,7 @@ Urutan commit branch kerja setelah source pin:
 4. `9c6ce35a6db3edac5c2e57e4025d999e11422122` — parent `c708e978...`; menambahkan workflow verifikasi snapshot. Percobaan workflow pertama gagal karena escape expression checkout.
 5. `a42cdbebec90dc9279160e5e062a4fbf98d85df1` — parent `9c6ce35...`; memperbaiki expression workflow. Run kedua berhasil.
 
-Klarifikasi: `641aff0...` adalah commit laporan audit dan parent dari checkpoint awal `c708e978...`; bukan HEAD terkini. HEAD saat ini adalah `a42cdb...`. Tidak ada commit di atas yang mengubah source aplikasi.
+Klarifikasi: `641aff0...` adalah commit laporan audit awal dan parent dari checkpoint awal `c708e978...`; bukan HEAD terkini. `c708e978...` adalah checkpoint awal dengan parent `641aff0...`. `a42cdb...` adalah commit perbaikan workflow yang menjalankan snapshot/restore dengan sukses. Setelah itu laporan dan checkpoint direvisi hanya untuk memperbarui bukti, status, dan riwayat commit. HEAD sebelum pembaruan checkpoint ini adalah `f0610e...`; checkpoint yang sekarang disimpan merupakan commit langsung di atasnya. Tidak ada source aplikasi yang diubah.
 
 ## AUDIT
 
