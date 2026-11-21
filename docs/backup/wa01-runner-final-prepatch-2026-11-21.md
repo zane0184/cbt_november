@@ -1,0 +1,1 @@
+Pre-patch workflow backup is the immutable Git blob eaa889065234bab93ffa5e98eb35b1019373a0be at .github/workflows/wa01-disposable-mysql-test.yml on branch work/wa01-package0-implementation-20261121. The complete prior file remains available at that Git object and can be retrieved from the branch history.

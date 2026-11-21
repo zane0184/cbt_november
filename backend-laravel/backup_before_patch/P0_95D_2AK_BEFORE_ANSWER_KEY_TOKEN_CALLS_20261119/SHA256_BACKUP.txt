@@ -1,0 +1,3 @@
+Original path: backend-laravel/tests/Feature/Security/AnswerKeyLeakageTest.php
+Original Git blob SHA: acf33b9ba4e8ec53f2ea365da46425892c894854
+Reason: Preserve pre-patch source before adding token payload to the remaining start-attempt security fixtures.

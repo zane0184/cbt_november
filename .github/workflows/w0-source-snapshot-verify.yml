@@ -1,0 +1,108 @@
+name: W0 Source Snapshot SHA256 and Restore Verification
+
+on:
+  push:
+    branches:
+      - work/web-admin-w0-20261121
+    paths:
+      - .github/workflows/w0-source-snapshot-verify.yml
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot-and-restore:
+    name: SHA-256 manifest and isolated restore
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      SOURCE_COMMIT: 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0
+    steps:
+      - name: Checkout pinned source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          fetch-depth: 0
+
+      - name: Create byte-level SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/w0"
+          python3 - <<'PY'
+          import hashlib, os, subprocess
+          root = os.getcwd()
+          names = subprocess.check_output(["git", "ls-files", "-z"]).split(b"\0")
+          names = [n for n in names if n]
+          rows = []
+          for raw in sorted(names):
+              rel = os.fsdecode(raw)
+              path = os.path.join(root, rel)
+              with open(path, "rb") as f:
+                  data = f.read()
+              rows.append((rel, len(data), hashlib.sha256(data).hexdigest()))
+          out = os.path.join(os.environ["RUNNER_TEMP"], "w0", "SOURCE_SHA256.tsv")
+          with open(out, "w", encoding="utf-8", newline="\n") as f:
+              f.write("PATH\tSIZE_BYTES\tSHA256\n")
+              for rel, size, digest in rows:
+                  f.write(f"{rel}\t{size}\t{digest}\n")
+          print(f"TRACKED_FILES={len(rows)}")
+          print(f"MANIFEST={out}")
+          PY
+
+      - name: Create portable snapshot archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/w0/snapshot"
+          git archive --format=tar "$SOURCE_COMMIT" | tar -xf - -C "$RUNNER_TEMP/w0/snapshot"
+          tar -czf "$RUNNER_TEMP/w0/source-$SOURCE_COMMIT.tar.gz" -C "$RUNNER_TEMP/w0/snapshot" .
+
+      - name: Restore in a separate disposable directory and verify every file
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/w0/restore"
+          tar -xzf "$RUNNER_TEMP/w0/source-$SOURCE_COMMIT.tar.gz" -C "$RUNNER_TEMP/w0/restore"
+          python3 - <<'PY'
+          import hashlib, os, sys
+          base = os.path.join(os.environ["RUNNER_TEMP"], "w0")
+          restored = os.path.join(base, "restore")
+          manifest = os.path.join(base, "SOURCE_SHA256.tsv")
+          expected = {}
+          with open(manifest, encoding="utf-8") as f:
+              next(f)
+              for line in f:
+                  rel, size, digest = line.rstrip("\n").split("\t")
+                  expected[rel] = (int(size), digest)
+          actual = {}
+          for current, dirs, files in os.walk(restored):
+              dirs.sort(); files.sort()
+              for name in files:
+                  full = os.path.join(current, name)
+                  rel = os.path.relpath(full, restored).replace(os.sep, "/")
+                  with open(full, "rb") as f:
+                      data = f.read()
+                  actual[rel] = (len(data), hashlib.sha256(data).hexdigest())
+          missing = sorted(set(expected) - set(actual))
+          extra = sorted(set(actual) - set(expected))
+          changed = sorted(p for p in set(expected) & set(actual) if expected[p] != actual[p])
+          print(f"EXPECTED_FILES={len(expected)}")
+          print(f"RESTORED_FILES={len(actual)}")
+          print(f"MISSING={missing}")
+          print(f"EXTRA={extra}")
+          print(f"CHANGED={changed}")
+          if missing or extra or changed:
+              sys.exit(1)
+          print("RESTORE_VERIFICATION=PASS")
+          PY
+
+      - name: Upload verified snapshot and SHA-256 manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: w0-source-snapshot-${{ env.SOURCE_COMMIT }}
+          path: |
+            ${{ runner.temp }}/w0/source-${{ env.SOURCE_COMMIT }}.tar.gz
+            ${{ runner.temp }}/w0/SOURCE_SHA256.tsv
+          if-no-files-found: error
+          retention-days: 90
