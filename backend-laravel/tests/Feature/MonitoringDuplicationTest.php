@@ -242,7 +242,7 @@ class MonitoringDuplicationTest extends TestCase
     public function test_legacy_active_status_never_grants_monitoring_capability(): void
     {
         $assignment = $this->createPendingTemporaryProctorAssignment();
-        \\Illuminate\\Support\\Facades\\DB::table('exam_proctor_assignments')
+        \Illuminate\Support\Facades\DB::table('exam_proctor_assignments')
             ->where('id', $assignment->id)
             ->update(['status' => 'ACTIVE']);
 
