@@ -345,3 +345,82 @@ Dampak: source runtime tidak sesuai keputusan final ADMIN_MADRASAH-only, no ADMI
 ### 12.9 Status
 
 Temuan P0-07/P0-08 dan P1-10/P1-11/P1-12 masih OPEN. Ini pemeriksaan statis mendalam atas jalur Admin UI, hasil, policy, dan API kurikulum. Belum merupakan audit menyeluruh akhir: seluruh relasi model, seluruh serialisasi/resource, query lintas domain, export/download/media, cache invalidation, test mapping 173 ID dan 23 modul harus dituntaskan.
+
+
+---
+
+## 13. ADDENDUM AUDIT PHASE 6 — model relations, response serialization, referential tenant integrity (21 November 2026)
+
+### 13.1 P0-09 — Admin read access to Question API/publication/media payloads
+
+Bukti tambahan:
+- `QuestionController::index()` and `::show()` call `QuestionPolicy::viewAny/view`, then eager-load `currentVersion.options`, learning outcome/version, objective, tags and serialize Eloquent models.
+- `QuestionOption` exposes `is_correct` and `score_weight`; `QuestionVersion` exposes `stem` and `explanation`; neither defines hidden attributes or a redacted resource DTO.
+- `QuestionPolicy::view()` permits Admin for tenant-local `owner_type=MADRASAH`; `RolePermissionBootstrapper` grants Admin `question.view`.
+- `QuestionPublicationController::index()` calls `viewAny` and loads `question.currentVersion`, exposing question content to Admin.
+- `MediaController::index()` explicitly allows ADMIN_MADRASAH and returns tenant QUESTION media metadata; `MediaController::show()` allows Admin when QuestionPolicy::view passes and returns the actual private file bytes. The storage path is hidden in index response and path safety/tenant checks exist, but authorization role remains too broad.
+
+Status: P0 OPEN. This is direct API exposure in addition to the Livewire Bank Soal screen. No direct HTTP request was run in this audit session.
+
+### 13.2 P0-10 — Exam and Assessment serialization expose raw operational fields
+
+- `ExamController::index()` uses `ExamPolicy::viewAny` and returns paginated Exam models. `ExamController::show()` uses `ExamPolicy::view` and returns Exam with Assessment; student response has a dedicated snapshot transform, but non-student Admin response serializes raw Exam.
+- `Exam` fillable/casts include `instructions`, `token`, token mode, scheduling, attempt settings, show-result flags, and other CBT configuration; model has no hidden list or resource DTO.
+- `AssessmentController::show()` returns `$assessment->load('exams')`; Admin is allowed by AssessmentPolicy::view. This serializes the associated raw Exam collection.
+- Admin list UI `ExamManagement::render()` and Blade also display token, snapshot count, participant count, and links to operational monitoring/results/analytics.
+
+Status: P0 OPEN. Raw serialization and UI both violate metadata-only Admin boundary.
+
+### 13.3 P0-11 — Monitoring and scoring endpoints are authorized for Admin
+
+- `ExamAttemptController::show()` routes non-student users through `authorize('monitor', $exam)`; its response DTO is minimal, but Admin still receives attempt operational status/timing.
+- `MonitoringController::summary/participants/attempt/events` call `authorize('monitor', $exam)`. Admin is permitted by `ExamPolicy::monitor()` with `exam.monitor`.
+- `MonitoringController::participants()` returns student name, participant ID, attempt status/timestamps, remaining time, answered/unanswered counts and sync health.
+- `MonitoringController::events()` serializes AuditLog records for Exam/ExamAttempt. Event old/new JSON and metadata are not passed through an Admin-safe DTO.
+- `ScoringController::show()` calls `authorize('viewScore', $attempt)`; ExamAttemptPolicy allows Admin with `report.view`, and returns score plus question-level score rows.
+- `ReportController` exam results, summary, question report, student results, subject results, Excel/PDF exports and AnalyticsController exam analytics use policies that allow Admin tenant-local with `report.view`.
+
+Status: P0 OPEN. Admin has direct API access to monitoring, roster, attempt, answer/score and report/analytics data that are reserved for Guru. Some response DTOs redact internal device/fencing fields, but redaction does not authorize the Admin access itself.
+
+### 13.4 P1-13 — Remaining tenant-aware foreign-key gaps across User relationships
+
+Positive controls:
+- `2026_11_07_210002_harden_teacher_assignment_tenant_foreign_keys.php` creates `users(id,tenant_id)` candidate key and composite FK for `teacher_profiles(user_id,tenant_id)`; TeacherSubjectAssignment relations also use composite tenant FKs.
+- Proctor assignment migration uses composite FK for exam, proctor_user_id, assigned_by, revoked_by against tenant.
+
+Gaps observed in schema:
+- `2024_01_01_000001_create_profiles_tables.php`: `student_profiles.user_id` is a single-column FK to users; no `(user_id,tenant_id)` composite FK.
+- `2024_01_01_000017_create_exam_participants_table.php`: `exam_participants.user_id` is single-column FK; only exam_id+tenant_id is composite.
+- `2024_01_01_000020_create_exam_attempt_answers_table.php`: `student_id` is single-column FK to users; exam/attempt are tenant composite.
+- `2024_01_01_000021_create_scoring_tables.php`: score student_id, finalized_by and question-score student_id/grader_id are single-column user FKs; exam/attempt are tenant composite.
+- `2026_09_13_110007_create_tp_achievements_table.php`, `110009_create_atp_achievements_table.php`, `110011_create_cp_achievements_table.php`: student_id and finalized_by are single-column User FKs; rombel_id and semester_id are not composite tenant FKs, while some academic-year/subject/learning-objective/path references are tenant composite.
+- `2024_01_01_000002_create_academic_tables.php`: `rombel_student` pivot has single-column FKs to rombels and student_profiles; no composite tenant FK pair.
+
+Impact: application methods perform explicit tenant checks on many write paths, but database integrity does not reject every mismatched User/profile/tenant or Rombel/student pivot. This is a defense-in-depth integrity risk; no cross-tenant row exploit was demonstrated. It requires disposable-data preflight and separately approved DB migration design; no DDL was run.
+
+### 13.5 P1-14 — AuditLog attribution and append-only guarantee
+
+- `AuditLog` model has no immutable/append-only guard, no guarded update/delete override, and no tenant global scope.
+- Migration `2024_01_01_000003_create_audit_logs_table.php` uses nullable tenant_id/user_id with ON DELETE SET NULL; hard deletion can erase tenant/actor attribution.
+- `AuditService::log()` writes actor, tenant, action, entity, old/new JSON, IP, user agent and timestamp, but no consistent reason/correlation ID parameter.
+- Mutations in CurriculumController/PhaseController/GradeLevelController/ElementController/LearningObjectiveController/LearningPathController/MaterialController and some Livewire Admin methods call AuditService after data write without wrapping both mutation and audit in one transaction. Some other flows do use DB::transaction.
+- No DB trigger/permission model proving append-only was found in migrations.
+
+Status: P1 OPEN. AuditService existence is not proof of tamper-resistant or transactionally complete audit history.
+
+### 13.6 P1-15 — Relation paths to User are not tenant-constrained by Eloquent global scope
+
+- User model does not use TenantScoped. Relationships such as ExamParticipant::user, ExamAttemptAnswer::student, ExamQuestionScore::student, ExamAttemptScore::student, StudentProfile::user, and achievement student/finalizer relations resolve User by primary key without automatic tenant predicate.
+- Most application creation flows validate tenant before insert; however schema gaps in §13.4 mean DB does not enforce all these pairs.
+- `RombelStudent` pivot boot validates pivot tenant against parent/context and StudentProfile::rombels filters pivot tenant; this is a positive application control, but migration lacks composite tenant FKs.
+- `MonitoringController::participants()` joins users through participant.user; it does not independently compare each user.tenant_id in the query projection. The controller's tenant-scoped participant relation plus application data integrity are relied upon.
+- Result/report flows often apply explicit tenant checks/TeacherAccess filters; negative HTTP tests for every relationship path remain absent.
+
+Status: P1 OPEN; no confirmed cross-tenant response from valid application-created rows, but User relations and FK gaps require hardening and tests.
+
+### 13.7 PENGUJIAN — scope hasil fase 6
+
+- Static review performed on model relation definitions, migrations, serializers/JSON response paths, media show/download, monitoring, scoring and reporting.
+- No database connection, migration execution, HTTP request, browser test or concurrency test was performed.
+- Existing CI aggregate #692 remains 480 tests / 1,942 assertions on old source commit; no per-T-ID evidence and no direct Admin negative assertions for all newly mapped routes.
+- No source or database changed.
