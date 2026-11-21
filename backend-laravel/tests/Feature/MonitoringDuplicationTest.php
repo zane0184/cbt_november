@@ -139,9 +139,9 @@ class MonitoringDuplicationTest extends TestCase
         return $guru->fresh();
     }
 
-    private function assignTemporaryProctor(): void
+    private function createPendingTemporaryProctorAssignment(): \\App\\Models\\ExamProctorAssignment
     {
-        app(ExamProctorAssignmentService::class)->assign(
+        return app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
             $this->assignedGuru->id,
@@ -149,6 +149,12 @@ class MonitoringDuplicationTest extends TestCase
             now()->addMinutes(30),
             'Penugasan sementara untuk pengawasan ujian'
         );
+    }
+
+    private function assignTemporaryProctor(): void
+    {
+        $assignment = $this->createPendingTemporaryProctorAssignment();
+        app(ExamProctorAssignmentService::class)->confirm($this->admin, $this->exam, $assignment);
     }
 
     public function test_exam_author_can_monitor_and_participant_rows_are_not_duplicated_by_attempts(): void
@@ -212,6 +218,21 @@ class MonitoringDuplicationTest extends TestCase
         $this->actingAs($this->admin)
             ->get("/exams/{$this->exam->id}/monitoring")
             ->assertForbidden();
+    }
+
+    public function test_pending_assignment_does_not_grant_monitoring_until_admin_confirms(): void
+    {
+        $assignment = $this->createPendingTemporaryProctorAssignment();
+        $this->assertSame('PENDING', $assignment->fresh()->status);
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+
+        app(ExamProctorAssignmentService::class)->confirm($this->admin, $this->exam, $assignment);
+        $this->assertSame('CONFIRMED', $assignment->fresh()->status);
+
+        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")->assertOk();
     }
 
     public function test_assigned_guru_can_monitor_only_the_exam_with_an_active_assignment(): void
