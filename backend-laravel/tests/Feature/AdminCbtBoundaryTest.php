@@ -97,6 +97,11 @@ class AdminCbtBoundaryTest extends TestCase
         Livewire::test(ExamManagement::class)->assertForbidden();
         $this->get('/student/exams')->assertForbidden();
 
+        // Direct API calls must enforce the same Admin-vs-CBT boundary as web/Livewire.
+        $this->actingAs($admin, 'sanctum');
+        $this->getJson('/api/v1/questions')->assertForbidden();
+        $this->getJson('/api/v1/exams')->assertForbidden();
+
         $this->assertSame($permissionRowsBefore, Permission::query()->count());
         $this->assertSame($permissionPivotRowsBefore, DB::table('permission_role')->count());
     }
