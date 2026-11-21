@@ -295,14 +295,18 @@ class ExamRoomSessionService
                 ->where('status', 'ACTIVE')
                 ->count();
 
-            $unplaced = $participants->filter(function (ExamParticipant $participant) use ($actor, $exam) {
-                return !ExamParticipantRoomAssignment::query()
-                    ->where('tenant_id', $actor->tenant_id)
-                    ->where('exam_id', $exam->id)
-                    ->where('participant_id', $participant->id)
-                    ->where('status', 'ACTIVE')
-                    ->exists();
-            });
+            $placedParticipantIds = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('participant_id', $participantIds)
+                ->where('status', 'ACTIVE')
+                ->pluck('participant_id')
+                ->map(fn ($id) => (string) $id)
+                ->all();
+
+            $unplaced = $participants->reject(
+                fn (ExamParticipant $participant) => in_array((string) $participant->id, $placedParticipantIds, true)
+            );
 
             $capacity = $sessionRoom->capacity_override ?: $room->capacity;
             if ($alreadyPlaced + $unplaced->count() > (int) $capacity) {
