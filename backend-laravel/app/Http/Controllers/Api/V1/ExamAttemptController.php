@@ -208,6 +208,8 @@ class ExamAttemptController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $this->authorize('view', $lockedExam);
+
             $participant = ExamParticipant::query()
                 ->where('exam_id', $lockedExam->id)
                 ->where('user_id', $user->id)
@@ -382,8 +384,6 @@ class ExamAttemptController extends Controller
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
-
-            $this->authorize('view', $lockedExam);
 
             $this->authorize('view', $lockedExam);
 
