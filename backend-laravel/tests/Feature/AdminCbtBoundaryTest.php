@@ -27,6 +27,7 @@ class AdminCbtBoundaryTest extends TestCase
         $tenant = Tenant::create(['name' => 'Madrasah Boundary', 'code' => 'BOUNDARY']);
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
 
         $admin = User::create([
             'tenant_id' => $tenant->id,
@@ -34,7 +35,7 @@ class AdminCbtBoundaryTest extends TestCase
             'email' => 'admin.multi@boundary.test',
             'password' => bcrypt('password'),
         ]);
-        $admin->roles()->attach([$adminRole->id, $guruRole->id]);
+        $admin->roles()->attach([$adminRole->id, $guruRole->id, $studentRole->id]);
 
         $stalePermissions = [
             'question.view', 'question.manage',
@@ -81,9 +82,11 @@ class AdminCbtBoundaryTest extends TestCase
         $this->assertFalse($gate->allows('viewStudentResults', $admin));
         $this->assertFalse($gate->allows('viewSubjectResults', $subject));
 
+        app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
         $this->actingAs($admin);
         Livewire::test(QuestionBank::class)->assertForbidden();
         Livewire::test(ExamManagement::class)->assertForbidden();
+        $this->get('/student/exams')->assertForbidden();
     }
 
     public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions(): void
