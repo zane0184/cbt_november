@@ -306,4 +306,30 @@ class ImportWorkbookServiceTest extends TestCase
         ]);
     }
 
+    public function test_two_previews_with_same_identity_do_not_create_duplicate_accounts(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $service = app(ImportWorkbookService::class);
+        $firstFile = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Batch Pertama', 'L', '', ''],
+        ]);
+        $secondFile = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Batch Kedua', 'L', '', ''],
+        ]);
+
+        $firstPreview = $service->preview($firstFile, 'GURU', $this->tenant->id, $this->admin->id);
+        $secondPreview = $service->preview($secondFile, 'GURU', $this->tenant->id, $this->admin->id);
+        $this->assertSame(1, $firstPreview->valid_rows);
+        $this->assertSame(1, $secondPreview->valid_rows);
+
+        $service->confirm($firstPreview->id, $this->tenant->id, $this->admin->id);
+        $secondResult = $service->confirm($secondPreview->id, $this->tenant->id, $this->admin->id);
+
+        $this->assertSame(1, $secondResult['batch']->skipped_rows);
+        $this->assertSame(0, $secondResult['batch']->valid_rows);
+        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('nip', '001234567890123456')->count());
+        $this->assertSame(1, User::query()->where('tenant_id', $this->tenant->id)->where('name', 'Guru Batch Pertama')->count());
+        $this->assertSame(0, User::query()->where('tenant_id', $this->tenant->id)->where('name', 'Guru Batch Kedua')->count());
+    }
+
 }
