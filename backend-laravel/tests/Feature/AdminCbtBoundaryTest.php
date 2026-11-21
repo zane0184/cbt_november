@@ -26,7 +26,7 @@ class AdminCbtBoundaryTest extends TestCase
     public function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces(): void
     {
         $tenant = Tenant::create(['name' => 'Madrasah Boundary', 'code' => 'BOUNDARY']);
-        app(\\App\\Contexts\\TenantContext::class)->setTenantId($tenant->id);
+        app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);

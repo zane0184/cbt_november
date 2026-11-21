@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - work/wa01-alt-runtime-verification-20261122
+    paths:
+      - 'backend-laravel/**'
+      - '.github/workflows/wa01-alternative-isolated-runtime.yml'
 
 permissions:
   contents: read
