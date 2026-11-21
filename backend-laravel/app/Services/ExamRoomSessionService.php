@@ -86,6 +86,8 @@ class ExamRoomSessionService
                 ->where('exam_room_id', $room->id)
                 ->where('status', 'ACTIVE')
                 ->where('capacity_override', '>', $validated['capacity'])
+                ->whereHas('session', fn ($query) => $query->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                    ->where('ends_at', '>', now()))
                 ->exists();
 
             if ($overrideExceedsCapacity) {
