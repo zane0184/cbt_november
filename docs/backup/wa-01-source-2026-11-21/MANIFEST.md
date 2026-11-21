@@ -1,0 +1,49 @@
+# Manifest backup source dan test WA-01 — sebelum implementasi
+
+- Repository: `zane0184/cbt_november`
+- Branch dokumentasi: `docs/canonical-reconciliation-admin-guru-20261121`
+- Source branch: `work/web-admin-w0-20261121`
+- Source commit/pin: `2b4321ce032fd5e67cf022da8564a5287b8cef6f`
+- Backup root: `docs/backup/wa-01-source-2026-11-21/backend-laravel/`
+- Status: seluruh backup adalah salinan UTF-8 byte-identical dari file W0 yang di-fetch; blob SHA backup cocok dengan blob SHA source. SHA-256 dihitung atas konten UTF-8 hasil fetch.
+- Tidak ada source yang diubah. Backup ini disiapkan sebelum approval coding.
+
+| # | Source path (relative backend-laravel) | Source/backup Git blob SHA-1 | SHA-256 | Bytes | Backup path |
+|---:|---|---|---|---:|---|
+| 1 | `app/Services/RolePermissionBootstrapper.php` | `fac82573de84c52b52867afbbf7e1637164835b4` | `9b5e61e5f6f6c9aa79c18bb2a57c733b8bca2de62b81e3a9cc188e64147fc1fd` | 4892 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Services/RolePermissionBootstrapper.php.before` |
+| 2 | `app/Policies/QuestionPolicy.php` | `af94614a2043206922149b0c44a8ec1e3d87767d` | `d0ab46e09239308f3392cf53875157acc6c6c13bbe68ecabb94cc741f7ae7103` | 3118 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Policies/QuestionPolicy.php.before` |
+| 3 | `app/Policies/AssessmentPolicy.php` | `79a0367c8c83723ae3cc9e581fb8dda8a6e2d02a` | `c44bfd9b87dcf48e876c343de245d508ef56cf11fbab83ce780be87d57b177cf` | 2021 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Policies/AssessmentPolicy.php.before` |
+| 4 | `app/Policies/ExamPolicy.php` | `350c1ddc6bed8738d1af17cacd6c95bc367b7c29` | `2b661a0ec952e5c837e7053a8e592356ba8fc5b6a559b550b33e32a88c03b9e8` | 8116 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Policies/ExamPolicy.php.before` |
+| 5 | `app/Policies/ExamAttemptPolicy.php` | `b19d6d39d34884d8be464f786340c1a2ab7108b6` | `611df1f77b8a3d2a34734893c6740a5950f64a501eb64e4c3b5b6ed10d186a9f` | 4369 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Policies/ExamAttemptPolicy.php.before` |
+| 6 | `app/Policies/ReportPolicy.php` | `e53be3994c52d067c1e31fe37edc450c24a0f4b6` | `6a897b375ce7ba14f5cba72e3f89b80648a441fde54abc85998c8138489964e7` | 1928 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Policies/ReportPolicy.php.before` |
+| 7 | `app/Http/Controllers/Api/V1/QuestionController.php` | `7ded53423dd4d96788123819e8039fd543ce4fba` | `6fae7d223fa7576db36bdaa938085abde77f233a30fb6a77b0e0a38317a6ccb2` | 23021 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/QuestionController.php.before` |
+| 8 | `app/Http/Controllers/Api/V1/QuestionPublicationController.php` | `b0c3f6501601af8c6254feb1ed9cbcab7eeaaff1` | `5a96f46445a182d53fad2790cc7dbff9b80d2afd479ca4223a120ae8efe72b10` | 3757 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/QuestionPublicationController.php.before` |
+| 9 | `app/Http/Controllers/Api/V1/MediaController.php` | `52254b81a55db8e2e45538158ef202b8ccf09b70` | `45a5e5568849096b63da0063a9af2ccebf496399e138d52bb4c245bae107f0cc` | 17994 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/MediaController.php.before` |
+| 10 | `app/Http/Controllers/Api/V1/AssessmentController.php` | `28e6f8fe07c8e2b3dad22ecd190e9aa108947e78` | `71f77f60f115cfb260992e58ecafdb655333c81106cf774b4ad4a9d904f757cc` | 5488 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/AssessmentController.php.before` |
+| 11 | `app/Http/Controllers/Api/V1/ExamController.php` | `bf373858869b470b235e2256e5be6169fbb1f561` | `1b531d9764a70a8287bc516d2dec09925ea3c6b33253ea1591a81cdf6150b6e6` | 25557 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/ExamController.php.before` |
+| 12 | `app/Http/Controllers/Api/V1/ExamParticipantController.php` | `f7014ab069cc2c9548f9b238e0e7a4f1986cb421` | `71834130ec01cb42c19a630ab5ddcf5ad0bc5d49bd02583ffc67fb6ddbddb11c` | 5716 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/ExamParticipantController.php.before` |
+| 13 | `app/Http/Controllers/Api/V1/ExamAttemptController.php` | `ace6a83989375e067b3a7747bc4f320c21222c69` | `676c209aae83ffba9c8f6300c4ec1df620031790b75cda0a59e3d742ed44e92b` | 20746 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/ExamAttemptController.php.before` |
+| 14 | `app/Http/Controllers/Api/V1/ExamAnswerController.php` | `333e37007c072243fe828ab038d738fc98d88e8e` | `adeb1e753db550c1342c71d437b5ddb00cf6d9aef8da520e1a70c6029a7242c7` | 15942 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/ExamAnswerController.php.before` |
+| 15 | `app/Http/Controllers/Api/V1/MonitoringController.php` | `335a32029f4d5ab4788ea31fd81088dfdb5acde2` | `8804039026a994cac54e5e0641ea8c80181c01ca48b10b61ba366969990deb11` | 13521 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/MonitoringController.php.before` |
+| 16 | `app/Http/Controllers/Api/V1/ScoringController.php` | `42b96176162a6e69e3661d468a6d3362b05f59c5` | `54c384d3987135164691409fd6011fc9aa960d5cb9f7286d3356b01db3cc0acf` | 16218 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/ScoringController.php.before` |
+| 17 | `app/Http/Controllers/Api/V1/ReportController.php` | `c78442de0f5b4b40a7773bb2af0cf0ffd852d055` | `878b0340fe385edd628919cd603a3cfd3605aba99da7c2405cd61b56d1918cbd` | 15437 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/ReportController.php.before` |
+| 18 | `app/Http/Controllers/Api/V1/AnalyticsController.php` | `3339103d64d06427896344c6e4f3bb45db8a680b` | `f4a24d4846f7e1d5d2c30d774e296a0acfd9768d928f9f155d97dd5f2443674f` | 5227 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Http/Controllers/Api/V1/AnalyticsController.php.before` |
+| 19 | `app/Livewire/Admin/QuestionBank.php` | `a3013b528015daf4214dd1aa567eba950b03663a` | `df658f545cd3f335cbd2d8de58c17482c607a3a731c4a6d172061009ce7a6fef` | 29354 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Livewire/Admin/QuestionBank.php.before` |
+| 20 | `app/Livewire/Admin/ExamManagement.php` | `478aaa170ee297b0c8399f049cd9b1ba56cbfb10` | `3e4c2d8008b7d093d7b092478bce8a296b4361d1282bbd7d105a5c1fda5c0946` | 23343 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/app/Livewire/Admin/ExamManagement.php.before` |
+| 21 | `resources/views/livewire/admin/question-bank.blade.php` | `72feaf1cc1be17253868c91861781dbb223b5aa9` | `e5ea5d159b00b23cd2e27e73b0497b5ed0ed85c854f6fef5ffb5685fe594df44` | 30953 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/resources/views/livewire/admin/question-bank.blade.php.before` |
+| 22 | `resources/views/livewire/admin/exam-management.blade.php` | `5705d815cc3e2539d167b22a26d3508586a77439` | `6c452d767b30815335c42a7532a57f8a63ef68017a8ad57ac85b9e647b29b0e3` | 21522 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/resources/views/livewire/admin/exam-management.blade.php.before` |
+| 23 | `routes/web.php` | `c22fed7d54871bf4971acf626514fc02c4a68ce9` | `2dab5208364afffc8c15771706b77686e743a09df73f1e60e9f52739c3d14acc` | 6151 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/routes/web.php.before` |
+| 24 | `tests/Feature/AdminUiVerificationTest.php` | `ac81ef5841c98154558aa06765744e0f74949907` | `90077693af0117b91dd1dd852466e5abfa6b62c9f990585009fa277b1f99b383` | 14552 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/AdminUiVerificationTest.php.before` |
+| 25 | `tests/Feature/RoleDashboardVerificationTest.php` | `359ebbaeb817bf2d76d4137673a84eeedf237681` | `d147b210ffb0e68492c50b78938e87fb90d085edeb29b1ec47a37eb1eda574b5` | 15873 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/RoleDashboardVerificationTest.php.before` |
+| 26 | `tests/Feature/RolePermissionBootstrapperTest.php` | `cfacac702f967667c8e1e4f6dff18000fc105f68` | `c12bd3c06ea82c0f03092b0e81afd96a4ace40962cac804c15431d178e370089` | 5038 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/RolePermissionBootstrapperTest.php.before` |
+| 27 | `tests/Feature/Security/AnswerKeyLeakageTest.php` | `13a3451aa67f1a124f066ce6288bb158e262ced9` | `05a94bca4f708ad56327f334c4fe22d8c1d0d0d9e59f41d5ae5684955a32f4e0` | 15366 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/Security/AnswerKeyLeakageTest.php.before` |
+| 28 | `tests/Feature/MediaAuthorizationTest.php` | `75821e6554c0ceec1ff4b9e81f00913b4c9c2a9c` | `6ac6e79f142095657651d381e785b77038891d167e8e485193fc24560a2a1acd` | 12621 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/MediaAuthorizationTest.php.before` |
+| 29 | `tests/Feature/ScoringHardeningTest.php` | `c4d36a9663cf94caf5cc26eb1e4ac33870b63fc6` | `06feefe8e3aaf5b7ed157cbf4e8676474b928465d82eea643d638cdb476db2bf` | 18909 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/ScoringHardeningTest.php.before` |
+
+## Verifikasi
+- Planned source/test files: 29.
+- Per file: source W0 blob SHA = backup blob SHA; konten hasil fetch dibandingkan byte-for-byte.
+- Tidak ada backup untuk file baru `tests/Feature/AdminCbtBoundaryTest.php`; file tersebut belum dibuat.
+- `routes/api.php` disalin juga sebagai artefak referensi read-only dari WA-01 draft awal, tetapi **tidak masuk daftar file yang direncanakan berubah**. API route definitions akan dipertahankan; controller/policy guards menjadi titik enforcement dan seluruh route tetap diuji.
+- `app/Livewire/Admin/ProctorAssignmentManagement.php`, view-nya dan `ExamProctorAssignmentService.php` adalah file referensi no-change: sudah dibaca dan tidak direncanakan berubah pada WA-01.
+- Backup file bukan bukti test PASS dan bukan izin implementasi.
