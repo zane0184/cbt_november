@@ -5,6 +5,13 @@ namespace Tests\Feature;
 use App\Exports\Import\ImportTemplateExport;
 use App\Exports\Import\ImportTemplateVersion;
 use App\Models\Tenant;
+use App\Models\Curriculum;
+use App\Models\Phase;
+use App\Models\GradeLevel;
+use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Rombel;
+use App\Models\Subject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -50,4 +57,35 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('@', $book->getSheetByName('Data Siswa')->getStyle('B2')->getNumberFormat()->getFormatCode());
         $this->assertSame('hidden', $book->getSheetByName('Referensi')->getSheetState());
     }
+
+    public function test_tenant_master_references_are_written_to_hidden_sheet_and_used_by_dropdowns(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Referensi', 'code' => 'REFX']);
+        $this->setTenantContext($tenant->id);
+        $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'KM', 'status' => 'ACTIVE', 'is_active' => true]);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A', 'status' => 'ACTIVE']);
+        $grade = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1, 'status' => 'ACTIVE']);
+        $year = AcademicYear::create(['name' => '2026/2027', 'is_active' => true]);
+        Semester::create(['academic_year_id' => $year->id, 'term' => 'GANJIL', 'is_active' => true]);
+        Rombel::create(['academic_year_id' => $year->id, 'grade_level_id' => $grade->id, 'name' => '1A', 'status' => 'ACTIVE']);
+        Subject::create(['code' => 'MTK', 'name' => 'Matematika', 'status' => 'ACTIVE']);
+        Storage::fake('local');
+
+        Excel::store(new ImportTemplateExport($tenant->id, 'GURU'), 'template-guru-ref.xlsx', 'local');
+        Excel::store(new ImportTemplateExport($tenant->id, 'SISWA'), 'template-siswa-ref.xlsx', 'local');
+        $guru = IOFactory::load(Storage::disk('local')->path('template-guru-ref.xlsx'));
+        $siswa = IOFactory::load(Storage::disk('local')->path('template-siswa-ref.xlsx'));
+
+        $this->assertSame('MTK — Matematika', $guru->getSheetByName('Referensi')->getCell('A2')->getValue());
+        $this->assertSame('1A — 2026/2027', $guru->getSheetByName('Referensi')->getCell('B2')->getValue());
+        $this->assertSame('2026/2027', $guru->getSheetByName('Referensi')->getCell('C2')->getValue());
+        $this->assertSame('GANJIL — 2026/2027', $guru->getSheetByName('Referensi')->getCell('D2')->getValue());
+        $this->assertSame('=SubjectsList', $guru->getSheetByName('Penugasan Guru')->getCell('B2')->getDataValidation()->getFormula1());
+        $this->assertSame('=RombelsList', $guru->getSheetByName('Penugasan Guru')->getCell('C2')->getDataValidation()->getFormula1());
+        $this->assertSame('=AcademicYearsList', $guru->getSheetByName('Penugasan Guru')->getCell('D2')->getDataValidation()->getFormula1());
+        $this->assertSame('=SemestersList', $guru->getSheetByName('Penugasan Guru')->getCell('E2')->getDataValidation()->getFormula1());
+        $this->assertSame('=RombelsList', $siswa->getSheetByName('Data Siswa')->getCell('J2')->getDataValidation()->getFormula1());
+        $this->assertSame('=AcademicYearsList', $siswa->getSheetByName('Data Siswa')->getCell('K2')->getDataValidation()->getFormula1());
+    }
+
 }
