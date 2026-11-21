@@ -43,7 +43,7 @@ Proktor adalah capability sementara untuk Guru aktif yang memiliki assignment sa
 7. Detail akademik ujian bersifat read-only bagi Admin.
 8. Admin tidak membuat ulang ujian, tidak mengetik ulang mapel/jadwal, tidak mengubah soal, konfigurasi CBT, snapshot, token, penilaian, jawaban, analisis, atau hasil.
 9. Perubahan jadwal/mapel oleh Guru harus tercermin di list Admin. Jika assignment terdampak, tandai **Perlu Ditinjau Ulang**; jangan mengubah/menghapus roster diam-diam.
-10. Status Proktor sementara aktif otomatis ketika jadwal pengawasan berlaku.
+10. Capability Proktor tersedia otomatis hanya untuk assignment berstatus CONFIRMED setelah seluruh validasi terpenuhi dan selama starts_at <= serverNow < expires_at; tidak ada status assignment ACTIVE.
 
 **Prioritas:** Bagian 30 spesifikasi dan bagian 16 prompt agent adalah klarifikasi terbaru. Bagian 29 yang terdahulu harus dibaca sesuai koreksi ini: Admin hanya mengelola roster pengawas dari ujian Guru, bukan pemilik kalender akademik ujian.
 
