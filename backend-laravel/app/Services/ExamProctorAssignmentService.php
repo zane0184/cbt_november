@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Exam;
 use App\Models\ExamProctorAssignment;
+use App\Models\ExamRoom;
+use App\Models\ExamSession;
+use App\Models\ExamSessionRoom;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -17,29 +20,22 @@ class ExamProctorAssignmentService
     public function assign(
         User $actor,
         Exam $exam,
+        string $sessionRoomId,
         string $proctorUserId,
         CarbonInterface $startsAt,
         CarbonInterface $expiresAt,
         string $reason
     ): ExamProctorAssignment {
-        return DB::transaction(function () use ($actor, $exam, $proctorUserId, $startsAt, $expiresAt, $reason) {
-            $tenantId = (string) $actor->tenant_id;
-            $lockedExam = Exam::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($exam->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        return DB::transaction(function () use ($actor, $exam, $sessionRoomId, $proctorUserId, $startsAt, $expiresAt, $reason) {
+            [$lockedExam, $sessionRoom, $session] = $this->lockScope($actor, $exam, $sessionRoomId, 'assignProctor');
 
-            Gate::forUser($actor)->authorize('assignProctor', $lockedExam);
-
-            // Lock order: exam -> Guru mutex -> assignment row.
             $proctor = User::query()
-                ->where('tenant_id', $tenantId)
+                ->where('tenant_id', $actor->tenant_id)
                 ->whereKey($proctorUserId)
                 ->lockForUpdate()
                 ->first();
 
-            if (!$this->isEligibleGuru($proctor, $tenantId)) {
+            if (!$this->isEligibleGuru($proctor, (string) $actor->tenant_id)) {
                 throw ValidationException::withMessages([
                     'selectedProctorId' => 'Penugasan hanya dapat diberikan kepada Guru dengan profil aktif pada tenant ini.',
                 ]);
@@ -50,30 +46,36 @@ class ExamProctorAssignmentService
                 throw ValidationException::withMessages(['reason' => 'Alasan penugasan wajib berisi 10–1.000 karakter.']);
             }
 
-            [$start, $expiry] = $this->validatedWindow($lockedExam, $startsAt, $expiresAt);
+            [$start, $expiry] = $this->validatedWindow($session, $startsAt, $expiresAt);
 
+            // Only one open assignment is allowed per Guru and session-room.
+            // Terminal assignments remain immutable history rows.
             $assignment = ExamProctorAssignment::query()
-                ->where('tenant_id', $tenantId)
+                ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $lockedExam->id)
+                ->where('exam_session_room_id', $sessionRoom->id)
                 ->where('proctor_user_id', $proctor->id)
+                ->whereNull('revoked_at')
+                ->whereIn('status', ['PENDING', 'CONFIRMED', 'NEEDS_REVIEW'])
                 ->lockForUpdate()
                 ->first();
 
             $isNew = !$assignment;
             $oldValues = $assignment?->only([
-                'status', 'starts_at', 'expires_at', 'assignment_reason', 'assigned_by',
-                'revoked_at', 'revoked_by', 'revoke_reason',
+                'status', 'starts_at', 'expires_at', 'schedule_revision',
+                'assignment_reason', 'assigned_by',
             ]);
 
             $assignment ??= new ExamProctorAssignment();
             $assignment->fill([
-                'tenant_id' => $tenantId,
+                'tenant_id' => $actor->tenant_id,
                 'exam_id' => $lockedExam->id,
+                'exam_session_room_id' => $sessionRoom->id,
+                'schedule_revision' => $session->schedule_revision,
                 'proctor_user_id' => $proctor->id,
                 'assigned_by' => $actor->id,
                 'starts_at' => $start,
                 'expires_at' => $expiry,
-                // Assignment baru/perubahan jadwal selalu menunggu konfirmasi eksplisit.
                 'status' => 'PENDING',
                 'assignment_reason' => $reason,
                 'revoked_at' => null,
@@ -88,12 +90,13 @@ class ExamProctorAssignmentService
                 $assignment->id,
                 $oldValues,
                 $assignment->only([
-                    'tenant_id', 'exam_id', 'proctor_user_id', 'assigned_by',
-                    'starts_at', 'expires_at', 'status', 'assignment_reason',
+                    'tenant_id', 'exam_id', 'exam_session_room_id', 'schedule_revision',
+                    'proctor_user_id', 'assigned_by', 'starts_at', 'expires_at',
+                    'status', 'assignment_reason',
                 ])
             );
 
-            return $assignment->fresh()->load(['exam', 'proctor', 'assigner']);
+            return $assignment->fresh()->load(['exam', 'sessionRoom.session', 'sessionRoom.room', 'proctor', 'assigner']);
         });
     }
 
@@ -101,24 +104,22 @@ class ExamProctorAssignmentService
     {
         return DB::transaction(function () use ($actor, $exam, $assignment) {
             $tenantId = (string) $actor->tenant_id;
-            $lockedExam = Exam::query()
+            $snapshot = ExamProctorAssignment::query()
                 ->where('tenant_id', $tenantId)
-                ->whereKey($exam->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            Gate::forUser($actor)->authorize('confirmProctor', $lockedExam);
-
-            // Read the immutable target ID, then lock Guru before locking assignment.
-            $assignmentSnapshot = ExamProctorAssignment::query()
-                ->where('tenant_id', $tenantId)
-                ->where('exam_id', $lockedExam->id)
+                ->where('exam_id', $exam->id)
                 ->whereKey($assignment->id)
                 ->firstOrFail();
 
+            [$lockedExam, $sessionRoom, $session] = $this->lockScope(
+                $actor,
+                $exam,
+                (string) $snapshot->exam_session_room_id,
+                'confirmProctor'
+            );
+
             $proctor = User::query()
                 ->where('tenant_id', $tenantId)
-                ->whereKey($assignmentSnapshot->proctor_user_id)
+                ->whereKey($snapshot->proctor_user_id)
                 ->lockForUpdate()
                 ->first();
 
@@ -131,6 +132,7 @@ class ExamProctorAssignmentService
             $lockedAssignment = ExamProctorAssignment::query()
                 ->where('tenant_id', $tenantId)
                 ->where('exam_id', $lockedExam->id)
+                ->where('exam_session_room_id', $sessionRoom->id)
                 ->whereKey($assignment->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -142,8 +144,14 @@ class ExamProctorAssignmentService
                 ]);
             }
 
+            if ((int) $lockedAssignment->schedule_revision !== (int) $session->schedule_revision) {
+                throw ValidationException::withMessages([
+                    'assignment' => 'Revisi jadwal berubah. Perbarui penugasan dan tinjau ulang sebelum konfirmasi.',
+                ]);
+            }
+
             [$start, $expiry] = $this->validatedWindow(
-                $lockedExam,
+                $session,
                 $lockedAssignment->starts_at,
                 $lockedAssignment->expires_at
             );
@@ -166,7 +174,7 @@ class ExamProctorAssignmentService
                 ]);
             }
 
-            $oldValues = $lockedAssignment->only(['status', 'starts_at', 'expires_at', 'revoked_at']);
+            $oldValues = $lockedAssignment->only(['status', 'starts_at', 'expires_at', 'schedule_revision']);
             $lockedAssignment->update(['status' => 'CONFIRMED']);
 
             $this->auditService->log(
@@ -175,12 +183,12 @@ class ExamProctorAssignmentService
                 $lockedAssignment->id,
                 $oldValues,
                 $lockedAssignment->fresh()->only([
-                    'tenant_id', 'exam_id', 'proctor_user_id', 'status',
-                    'starts_at', 'expires_at', 'assigned_by',
+                    'tenant_id', 'exam_id', 'exam_session_room_id', 'proctor_user_id',
+                    'status', 'schedule_revision', 'starts_at', 'expires_at', 'assigned_by',
                 ])
             );
 
-            return $lockedAssignment->fresh()->load(['exam', 'proctor', 'assigner']);
+            return $lockedAssignment->fresh()->load(['exam', 'sessionRoom.session', 'sessionRoom.room', 'proctor', 'assigner']);
         });
     }
 
@@ -188,35 +196,36 @@ class ExamProctorAssignmentService
     {
         return DB::transaction(function () use ($actor, $exam, $assignment, $reason) {
             $tenantId = (string) $actor->tenant_id;
-            $lockedExam = Exam::query()
+            $snapshot = ExamProctorAssignment::query()
                 ->where('tenant_id', $tenantId)
-                ->whereKey($exam->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            Gate::forUser($actor)->authorize('revokeProctor', $lockedExam);
-
-            $assignmentSnapshot = ExamProctorAssignment::query()
-                ->where('tenant_id', $tenantId)
-                ->where('exam_id', $lockedExam->id)
+                ->where('exam_id', $exam->id)
                 ->whereKey($assignment->id)
                 ->firstOrFail();
 
+            [$lockedExam, $sessionRoom] = $this->lockScope(
+                $actor,
+                $exam,
+                (string) $snapshot->exam_session_room_id,
+                'revokeProctor',
+                true
+            );
+
             User::query()
                 ->where('tenant_id', $tenantId)
-                ->whereKey($assignmentSnapshot->proctor_user_id)
+                ->whereKey($snapshot->proctor_user_id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
             $lockedAssignment = ExamProctorAssignment::query()
                 ->where('tenant_id', $tenantId)
                 ->where('exam_id', $lockedExam->id)
+                ->where('exam_session_room_id', $sessionRoom->id)
                 ->whereKey($assignment->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
             if ($lockedAssignment->status === 'REVOKED' || $lockedAssignment->revoked_at !== null) {
-                return $lockedAssignment->fresh()->load(['exam', 'proctor', 'assigner', 'revoker']);
+                return $lockedAssignment->fresh()->load(['exam', 'sessionRoom.session', 'sessionRoom.room', 'proctor', 'assigner', 'revoker']);
             }
 
             if (!in_array($lockedAssignment->status, ['PENDING', 'CONFIRMED', 'NEEDS_REVIEW'], true)) {
@@ -246,18 +255,76 @@ class ExamProctorAssignmentService
                 $lockedAssignment->id,
                 $oldValues,
                 $lockedAssignment->fresh()->only([
-                    'tenant_id', 'exam_id', 'proctor_user_id', 'status',
-                    'revoked_at', 'revoked_by', 'revoke_reason',
+                    'tenant_id', 'exam_id', 'exam_session_room_id', 'proctor_user_id',
+                    'status', 'revoked_at', 'revoked_by', 'revoke_reason',
                 ])
             );
 
-            return $lockedAssignment->fresh()->load(['exam', 'proctor', 'assigner', 'revoker']);
+            return $lockedAssignment->fresh()->load(['exam', 'sessionRoom.session', 'sessionRoom.room', 'proctor', 'assigner', 'revoker']);
         });
+    }
+
+    private function lockScope(
+        User $actor,
+        Exam $exam,
+        string $sessionRoomId,
+        string $ability,
+        bool $allowInactiveSession = false
+    ): array {
+        $tenantId = (string) $actor->tenant_id;
+        $lockedExam = Exam::query()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($exam->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        Gate::forUser($actor)->authorize($ability, $lockedExam);
+
+        $roomId = ExamSessionRoom::query()
+            ->where('tenant_id', $tenantId)
+            ->where('exam_id', $lockedExam->id)
+            ->whereKey($sessionRoomId)
+            ->value('exam_room_id');
+
+        $room = ExamRoom::query()
+            ->where('tenant_id', $tenantId)
+            ->whereKey($roomId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $sessionRoom = ExamSessionRoom::query()
+            ->where('tenant_id', $tenantId)
+            ->where('exam_id', $lockedExam->id)
+            ->whereKey($sessionRoomId)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $session = ExamSession::query()
+            ->where('tenant_id', $tenantId)
+            ->where('exam_id', $lockedExam->id)
+            ->whereKey($sessionRoom->exam_session_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($sessionRoom->status !== 'ACTIVE'
+            || (!$allowInactiveSession && !in_array($session->status, ['SCHEDULED', 'ACTIVE'], true))) {
+            throw ValidationException::withMessages([
+                'assignment' => 'Ruang atau sesi tidak lagi aktif untuk penugasan Proktor.',
+            ]);
+        }
+
+        if ($lockedExam->status !== 'PUBLISHED' || !$lockedExam->locked_at) {
+            throw ValidationException::withMessages([
+                'exam' => 'Penugasan Proktor hanya tersedia untuk ujian yang sudah diterbitkan dan dikunci.',
+            ]);
+        }
+
+        return [$lockedExam, $sessionRoom, $session, $room];
     }
 
     private function isEligibleGuru(?User $guru, string $tenantId): bool
     {
-        if (!$guru || (string) $guru->tenant_id !== $tenantId) {
+        if (!$guru || (string) $guru->tenant_id !== $tenantId || $guru->deleted_at !== null) {
             return false;
         }
 
@@ -272,23 +339,19 @@ class ExamProctorAssignmentService
     }
 
     /**
-     * Assignment interval is bounded by the published exam window and server time.
-     *
      * @return array{0: \Illuminate\Support\Carbon, 1: \Illuminate\Support\Carbon}
      */
-    private function validatedWindow(Exam $exam, CarbonInterface $startsAt, CarbonInterface $expiresAt): array
+    private function validatedWindow(ExamSession $session, CarbonInterface $startsAt, CarbonInterface $expiresAt): array
     {
         $start = \Illuminate\Support\Carbon::parse($startsAt);
         $expiry = \Illuminate\Support\Carbon::parse($expiresAt);
-        $examEnd = $exam->end_at;
 
-        if (!$examEnd
-            || $start->greaterThanOrEqualTo($expiry)
+        if ($start->greaterThanOrEqualTo($expiry)
             || $expiry->lessThanOrEqualTo(now())
-            || $start->greaterThanOrEqualTo($examEnd)
-            || $expiry->greaterThan($examEnd)) {
+            || $start->lessThan($session->starts_at)
+            || $expiry->greaterThan($session->ends_at)) {
             throw ValidationException::withMessages([
-                'expiresAt' => 'Masa penugasan harus berada sebelum batas akhir ujian dan masih berlaku.',
+                'expiresAt' => 'Masa penugasan harus berada di dalam jadwal sesi dan masih berlaku.',
             ]);
         }
 
