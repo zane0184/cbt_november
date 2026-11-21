@@ -23,3 +23,12 @@ Seluruh backup berikut dibuat di GitHub sebelum file dokumen aslinya diperbarui.
 - Tidak ada file source aplikasi, database, migration, seeder, role, permission, konfigurasi, Web Guru, Android, VPS atau PR yang diubah.
 - Source branch work/web-admin-w0-20261121 tidak diubah.
 - Backup ini adalah dokumentasi pre-review; tidak mengandung backup source aplikasi karena tidak ada source yang diubah.
+
+| docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md | 21e1724ecd797214fb162809f73f7fa026a28cf5 | docs/backup/web-admin-final-review-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-final-review | 21e1724ecd797214fb162809f73f7fa026a28cf5 | 959d1eface8e0159f2b69fa18818c08762960064 |
+
+## Dokumen final setelah penutupan audit
+- Audit report blob: fbf2f6cbe170eb308cee72eafbf066791f103a7a (commit 7edab832a5d3ed6f7fa1070b6cf1a230a5492b1a)
+- Patch plan blob: cfd6d2c8c647a20ffbf3d5fef14968a26b18c846
+- Module matrix blob: 24395c574086f7efbe4b1a2d14ab33958865f015
+- T-ID matrix blob: 05759afbdaaf70f5ccf9d76175d992887932d37f
+- Checkpoint blob: 9a2ce8fef50016fd2a85ded2035ec8e44d6bc27c (akan diperbarui sekali lagi setelah manifest final ini)
