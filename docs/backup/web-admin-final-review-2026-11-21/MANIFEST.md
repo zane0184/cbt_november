@@ -28,7 +28,7 @@ Seluruh backup berikut dibuat di GitHub sebelum file dokumen aslinya diperbarui.
 
 ## Dokumen final setelah penutupan audit
 - Audit report blob: fbf2f6cbe170eb308cee72eafbf066791f103a7a (commit 7edab832a5d3ed6f7fa1070b6cf1a230a5492b1a)
-- Patch plan blob: cfd6d2c8c647a20ffbf3d5fef14968a26b18c846
+- Patch plan blob: b747d70bd9ff0b2a85bda5bdee232c81ef1fcd86 (WA-03 shared policy/service cross-scope clarification; commit 3fbadce8f162e94ed7b9a2d29960858115ef7bee)
 - Module matrix blob: 24395c574086f7efbe4b1a2d14ab33958865f015
 - T-ID matrix blob: 05759afbdaaf70f5ccf9d76175d992887932d37f
 - Checkpoint blob 9a2ce8fef50016fd2a85ded2035ec8e44d6bc27c adalah checkpoint yang tercatat saat manifest pertama dipublikasikan; checkpoint terkini kemudian diperbarui untuk mencatat hash manifest final. Lihat HEAD checkpoint pada branch dokumentasi untuk blob terkini.
