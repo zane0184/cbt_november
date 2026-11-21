@@ -167,6 +167,7 @@ class ImportWorkbookService
 
     private function analyze(string $path, string $type, string $tenantId): array
     {
+        $this->assertXlsxArchive($path);
         $book = IOFactory::load($path);
         $instruction = $book->getSheetByName('Petunjuk');
         $data = $book->getSheetByName($type === 'GURU' ? 'Data Guru' : 'Data Siswa');
@@ -177,6 +178,7 @@ class ImportWorkbookService
         }
 
         $expected = $type === 'GURU' ? self::GURU_HEADERS : self::SISWA_HEADERS;
+        $this->assertSheetBounds($data, count($expected));
         $this->assertHeaders($data, $expected);
         $rows = [];
         $identityMap = [];
@@ -203,6 +205,7 @@ class ImportWorkbookService
         if ($type === 'GURU') {
             $assignments = $book->getSheetByName('Penugasan Guru');
             if (!$assignments) throw new RuntimeException('Sheet Penugasan Guru wajib tersedia pada template Guru.');
+            $this->assertSheetBounds($assignments, count(self::ASSIGNMENT_HEADERS));
             $this->assertHeaders($assignments, self::ASSIGNMENT_HEADERS);
             $newTeacherKeys = collect($rows)->filter(fn ($r) => $r['sheet'] === 'Data Guru' && $r['status'] === 'VALID')
                 ->map(fn ($r) => $r['payload']['nip'] ?: $r['payload']['nik'])->all();
@@ -226,6 +229,42 @@ class ImportWorkbookService
         return $rows;
     }
 
+
+    private function assertXlsxArchive(string $path): void
+    {
+        if (!is_file($path) || filesize($path) > 10 * 1024 * 1024) {
+            throw new RuntimeException('File tidak ditemukan atau melebihi batas 10 MB.');
+        }
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) throw new RuntimeException('File bukan arsip XLSX yang valid atau file rusak.');
+        try {
+            if ($zip->numFiles > 100) throw new RuntimeException('Workbook berisi terlalu banyak komponen.');
+            $expandedBytes = 0;
+            $required = [];
+            for ($i = 0; $i < $zip->numFiles; $i++) {
+                $entry = $zip->statIndex($i);
+                if (!$entry) continue;
+                $expandedBytes += (int) ($entry['size'] ?? 0);
+                if ($expandedBytes > 50 * 1024 * 1024) throw new RuntimeException('Ukuran isi workbook setelah ekstraksi melebihi 50 MB.');
+                $required[$entry['name']] = true;
+            }
+            if (empty($required['[Content_Types].xml']) || empty($required['xl/workbook.xml'])) {
+                throw new RuntimeException('Struktur arsip XLSX tidak lengkap.');
+            }
+        } finally {
+            $zip->close();
+        }
+    }
+
+    private function assertSheetBounds($sheet, int $expectedColumns): void
+    {
+        $rows = $sheet->getHighestDataRow();
+        $columns = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
+        if ($rows > 5001 || $columns > $expectedColumns) {
+            throw new RuntimeException('Workbook melebihi batas 5.000 baris data atau memiliki kolom tambahan yang tidak didukung pada sheet '.$sheet->getTitle().'.');
+        }
+    }
+
     private function assertHeaders($sheet, array $expected): void
     {
         foreach ($expected as $index => $header) {
@@ -243,6 +282,7 @@ class ImportWorkbookService
             $letter = Coordinate::stringFromColumnIndex($column);
             $cell = $sheet->getCell($letter.$row);
             if ($cell->getDataType() === DataType::TYPE_FORMULA) throw new RuntimeException('Formula tidak diizinkan pada sheet '.$sheet->getTitle().' baris '.$row.'.');
+            if (mb_strlen((string) ($cell->getValue() ?? '')) > 5000) throw new RuntimeException('Isi sel terlalu panjang pada sheet '.$sheet->getTitle().' baris '.$row.'.');
             if (in_array($column, $textColumns, true) && $cell->getValue() !== null && $cell->getDataType() === DataType::TYPE_NUMERIC) {
                 $values[] = '__NUMERIC_IDENTIFIER__';
             } else {
@@ -277,6 +317,7 @@ class ImportWorkbookService
         $errors = [];
         if (str_contains($payload['name'], 'CONTOH')) $errors[] = 'Baris contoh harus dihapus sebelum upload.';
         if ($payload['name'] === '') $errors[] = 'Nama lengkap wajib diisi.';
+        if (mb_strlen($payload['name']) > 255) $errors[] = 'Nama lengkap maksimal 255 karakter.';
         if (!in_array($payload['gender'], ['L','P',''], true)) $errors[] = 'Jenis kelamin harus L atau P.';
         if ($type === 'GURU') {
             if (!in_array($payload['category'], ['PNS','HONORER'], true)) $errors[] = 'Kategori kepegawaian harus PNS atau HONORER.';
@@ -285,6 +326,7 @@ class ImportWorkbookService
             if ($payload['nuptk'] !== '' && !preg_match('/^\d{16}$/', $payload['nuptk'])) $errors[] = 'NUPTK harus 16 digit teks.';
             if ($payload['nip'] === '__NUMERIC_IDENTIFIER__' || $payload['nik'] === '__NUMERIC_IDENTIFIER__' || $payload['nuptk'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas harus disimpan sebagai teks agar nol di depan tidak hilang.';
             if ($payload['email'] !== '' && !filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
+            if (mb_strlen($payload['email']) > 255 || mb_strlen($payload['phone']) > 255) $errors[] = 'Email atau nomor HP terlalu panjang.';
             $identityValues = array_values(array_filter([$payload['nip'], $payload['nik'], $payload['nuptk']], fn ($v) => $v !== ''));
             $existing = $identityValues && TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($identityValues) {
                 foreach ($identityValues as $value) $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value);
@@ -296,6 +338,7 @@ class ImportWorkbookService
             if (!preg_match('/^\d{10}$/', $payload['nisn'])) $errors[] = 'NISN wajib terdiri dari 10 digit teks.';
             if ($payload['nis'] !== '' && !preg_match('/^\d{1,30}$/', $payload['nis'])) $errors[] = 'NIS harus berupa digit teks.';
             if ($payload['birth_date'] !== '' && !$this->validDate($payload['birth_date'])) $errors[] = 'Tanggal lahir harus berformat YYYY-MM-DD.';
+            if (mb_strlen($payload['birth_place']) > 255 || mb_strlen($payload['parent_name']) > 255 || mb_strlen($payload['phone']) > 255) $errors[] = 'Tempat lahir, nama wali, atau nomor HP terlalu panjang.';
             $existing = StudentProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($payload) {
                 if ($payload['nis'] !== '') $q->orWhere('nis',$payload['nis']);
                 $q->orWhere('nisn',$payload['nisn']);
@@ -362,7 +405,7 @@ class ImportWorkbookService
     {
         $parts = explode(' — ', $label, 2);
         if (count($parts) !== 2 || $parts[1] !== $yearName) return null;
-        $year = AcademicYear::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('name',$yearName)->first();
+        $year = AcademicYear::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')->where('name',$yearName)->first();
         if (!$year) return null;
         return Semester::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')->where('academic_year_id',$year->id)->where('term',$parts[0])->first();
     }
