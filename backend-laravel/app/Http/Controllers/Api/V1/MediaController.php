@@ -66,7 +66,7 @@ class MediaController extends Controller
             $ownerId = $user->id;
         } else {
             abort_unless(
-                $user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'),
+                $user->hasRole('GURU'),
                 ResponseCode::HTTP_FORBIDDEN
             );
 
@@ -138,7 +138,7 @@ class MediaController extends Controller
         $user = $request->user();
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
 
         $result = DB::transaction(function () use ($questionId, $versionId, $validated, $user, $tenantId) {
             // Consistent lock order: Question -> QuestionVersion -> MediaAsset.
@@ -213,7 +213,7 @@ class MediaController extends Controller
         $user = $request->user();
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
 
         DB::transaction(function () use ($questionId, $versionId, $mediaId, $user, $tenantId) {
             // Keep the same lock order as attach to reduce deadlock risk.
