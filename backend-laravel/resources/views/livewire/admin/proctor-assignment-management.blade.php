@@ -70,7 +70,13 @@
                     <tr class="border-b border-slate-100 align-top">
                         <td class="py-3 pr-3">
                             <p class="font-semibold text-slate-800">{{ $assignment->exam?->title ?? 'Ujian tidak tersedia' }}</p>
-                            <p class="text-xs text-slate-500">Sesi {{ $assignment->sessionRoom?->session?->session_number }} · {{ $assignment->sessionRoom?->session?->name }} · {{ $assignment->sessionRoom?->room?->code }}</p>
+                            <p class="text-xs text-slate-500">
+                                @if($assignment->sessionRoom)
+                                    Sesi {{ $assignment->sessionRoom->session?->session_number }} · {{ $assignment->sessionRoom->session?->name }} · {{ $assignment->sessionRoom->room?->code }}
+                                @else
+                                    Scope legacy belum dipetakan; tidak memberi capability monitoring
+                                @endif
+                            </p>
                         </td>
                         <td class="py-3 pr-3">{{ $assignment->proctor?->name ?? 'Akun tidak tersedia' }}</td>
                         <td class="whitespace-nowrap py-3 pr-3">{{ $assignment->starts_at?->format('d/m/Y H:i') }} – {{ $assignment->expires_at?->format('d/m/Y H:i') }}</td>
@@ -95,7 +101,7 @@
                             @endif
                         </td>
                         <td class="whitespace-nowrap py-3">
-                            @if (in_array($assignment->status, ['PENDING', 'NEEDS_REVIEW'], true) && !$assignment->revoked_at)
+                            @if ($assignment->exam_session_room_id && in_array($assignment->status, ['PENDING', 'NEEDS_REVIEW'], true) && !$assignment->revoked_at)
                                 <button type="button" wire:click="confirm('{{ $assignment->id }}')" wire:loading.attr="disabled" class="mr-3 font-semibold text-emerald-700 hover:underline">Konfirmasi</button>
                             @endif
                             @if (in_array($assignment->status, ['PENDING', 'CONFIRMED', 'NEEDS_REVIEW'], true) && !$assignment->revoked_at)
