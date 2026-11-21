@@ -110,6 +110,7 @@ class ProctorAssignmentSecurityTest extends TestCase
     public function test_user_without_guru_role_cannot_be_selected_as_temporary_proctor(): void
     {
         $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $student = User::create([
             'tenant_id' => $this->tenant->id, 'name' => 'Siswa A',
             'email' => 'siswa-a@example.test', 'password' => bcrypt('password'),
@@ -136,6 +137,7 @@ class ProctorAssignmentSecurityTest extends TestCase
     {
         $guruRole = Role::where('name', 'GURU')->firstOrFail();
         $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $multiRoleUser = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Guru Multi Role',
@@ -165,6 +167,7 @@ class ProctorAssignmentSecurityTest extends TestCase
     public function test_guru_without_active_teacher_profile_cannot_be_selected(): void
     {
         $teacherRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $inactiveGuru = User::create([
             'tenant_id' => $this->tenant->id, 'name' => 'Guru Nonaktif',
             'email' => 'guru-inactive@example.test', 'password' => bcrypt('password'),
