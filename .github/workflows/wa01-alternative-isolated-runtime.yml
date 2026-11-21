@@ -272,6 +272,7 @@ jobs:
           test -f tests/Feature/MonitoringDuplicationTest.php
           test -f tests/Feature/ProctorAssignmentSecurityTest.php
           test -f tests/Feature/ExamRoomSessionManagementTest.php
+          test -f tests/Feature/ExamRoomSessionConcurrencyTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
           grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
           if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|Permission::(create|firstOrCreate|updateOrCreate)|permissions\(\)->(sync|attach|detach)|permission_role.*(insert|update|delete)'; then
@@ -432,6 +433,13 @@ jobs:
           echo json_encode(['required_schema_ready' => $schemaReady, 'missing_required_tables' => $missingTables], JSON_PRETTY_PRINT) . PHP_EOL;
           if (!$schemaReady || $total === 0 || $nonInnoDb !== 0) exit(1);
           PHP
+
+      - name: PHPUnit — MySQL 8 InnoDB concurrent room conflict
+        if: steps.preflight.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ExamRoomSessionConcurrencyTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-room-session-concurrency.log"
 
       - name: Cleanup disposable database and app user
         if: always()
