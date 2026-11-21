@@ -9,6 +9,7 @@ use App\Models\Assessment;
 use App\Models\Curriculum;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
+use App\Models\ExamParticipantRoomAssignment;
 use App\Models\ExamProctorAssignment;
 use App\Models\ExamRoom;
 use App\Models\GradeLevel;
@@ -530,7 +531,7 @@ class ExamRoomSessionManagementTest extends TestCase
         $roomOne = $this->createRoom('HIST1');
         $roomTwo = $this->createRoom('HIST2');
         $sessionOne = $this->createSession($this->exam, 21, 5);
-        $sessionTwo = $this->createSession($this->exam, 22, 70);
+        $sessionTwo = $this->createSession($this->exam, 22, 40);
         $scopeOne = $this->service->attachRoom($this->admin, $this->exam->id, $sessionOne->id, $roomOne->id);
         $scopeTwo = $this->service->attachRoom($this->admin, $this->exam->id, $sessionTwo->id, $roomTwo->id);
 
