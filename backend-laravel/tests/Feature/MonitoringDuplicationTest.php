@@ -1,20 +1,20 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Contexts\\TenantContext;
-use App\\Models\\AcademicYear;
-use App\\Models\\Assessment;
-use App\\Models\\Exam;
-use App\\Models\\ExamAttempt;
-use App\\Models\\ExamParticipant;
-use App\\Models\\Permission;
-use App\\Models\\Role;
-use App\\Models\\Tenant;
-use App\\Models\\User;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Tests\\Support\\CreatesTeacherExamScope;
-use Tests\\TestCase;
+use App\Contexts\TenantContext;
+use App\Models\AcademicYear;
+use App\Models\Assessment;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\CreatesTeacherExamScope;
+use Tests\TestCase;
 
 class MonitoringDuplicationTest extends TestCase
 {
