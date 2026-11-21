@@ -1,3 +1,0 @@
-Original path: backend-laravel/tests/Feature/TeacherPracticeWorkflowTest.php
-Original Git blob SHA: a6c2d396a06fe29af7073f56907b853aa0820ba1
-Reason: Preserve pre-patch source before correcting stale test fixture references.
