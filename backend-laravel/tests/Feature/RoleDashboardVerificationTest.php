@@ -152,8 +152,8 @@ class RoleDashboardVerificationTest extends TestCase
         $this->get('/operator/dashboard')->assertRedirect('/login');
 
         // Authorized roles
-        $this->actingAs($this->operatorA)->get('/operator/dashboard')->assertStatus(200);
         $this->actingAs($this->adminA)->get('/operator/dashboard')->assertStatus(200);
+        $this->actingAs($this->operatorA)->get('/operator/dashboard')->assertForbidden();
         $this->actingAs($this->superAdmin)->get('/operator/dashboard')->assertStatus(403);
 
         // Unauthorized roles
@@ -203,9 +203,11 @@ class RoleDashboardVerificationTest extends TestCase
         $response->assertSee('Bank Soal');
 
         // Sidebar rendering verification for OPERATOR (Proktor Dashboard menu MUST NOT be present)
-        $opResponse = $this->actingAs($this->operatorA)->get('/operator/dashboard');
+        $opResponse = $this->actingAs($this->adminA)->get('/operator/dashboard');
         $opResponse->assertDontSee('Dashboard Proktor');
-        $opResponse->assertSee('Dashboard Operator');
+        $opResponse->assertSee('Dashboard Operasional Madrasah');
+        $opResponse->assertDontSee('Total Ujian');
+        $opResponse->assertDontSee('Administrasi Ujian');
 
         // Sidebar rendering verification for PROCTOR (Proktor Dashboard menu MUST be present)
         $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/assignments');
@@ -354,11 +356,14 @@ class RoleDashboardVerificationTest extends TestCase
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
 
         // Test Operator Dashboard for Tenant A
-        $this->actingAs($this->operatorA);
+        $this->actingAs($this->adminA);
         Livewire::test(OperatorDashboard::class)
             ->assertViewHas('totalStudents', 1)
             ->assertViewHas('totalRombels', 1)
-            ->assertViewHas('totalExams', 1);
+            ->assertViewMissing('totalExams');
+
+        $this->actingAs($this->operatorA);
+        Livewire::test(OperatorDashboard::class)->assertForbidden();
 
         // Test Kamad Dashboard for Tenant A
         $this->actingAs($this->kamadA);
