@@ -18,6 +18,11 @@ Artisan::command('inspire', function () {
     ->everyMinute()
     ->withoutOverlapping(5);
 
+// Advance room-session and temporary proctor assignment lifecycle using server time.
+\Illuminate\Support\Facades\Schedule::command('exams:sync-room-session-lifecycle')
+    ->everyMinute()
+    ->withoutOverlapping(2);
+
 // Refresh the signed Publisher lease daily; the command skips until the configured interval is due.
 \Illuminate\Support\Facades\Schedule::command('cbt:license:refresh')
     ->everySixHours()
