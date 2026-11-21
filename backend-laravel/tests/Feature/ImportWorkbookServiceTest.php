@@ -344,6 +344,13 @@ class ImportWorkbookServiceTest extends TestCase
         return new UploadedFile($path, 'import-numeric.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
 
+    private function mutateWorkbookCell(UploadedFile $file, string $sheetName, string $cell, string $value): UploadedFile
+    {
+        $book = IOFactory::load($file->getRealPath());
+        $book->getSheetByName($sheetName)->setCellValueExplicit($cell, $value, DataType::TYPE_STRING);
+        return $this->saveWorkbook($book);
+    }
+
     private function guruWorkbook(array $dataRows, array $assignmentRows = []): UploadedFile
     {
         $headers = ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika PNS', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)'];
@@ -465,6 +472,101 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertStringContainsString('username akun lain', $studentBatch->rows->first()->reason);
 
 
+    }
+
+    public function test_template_version_and_header_mismatches_are_rejected_before_staging(): void
+    {
+        $versionFile = $this->mutateWorkbookCell($this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Versi Salah', 'L', '', ''],
+        ]), 'Petunjuk', 'B2', '99.0');
+
+        try {
+            app(ImportWorkbookService::class)->preview($versionFile, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('Versi template yang tidak dikenal harus ditolak.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('Versi atau jenis template', $exception->getMessage());
+        }
+
+        $headerFile = $this->mutateWorkbookCell($this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Header Salah', 'L', '', ''],
+        ]), 'Data Guru', 'A1', 'Kolom Tidak Dikenal');
+
+        try {
+            app(ImportWorkbookService::class)->preview($headerFile, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('Header template yang berubah harus ditolak.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('Header sheet', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
+    public function test_invalid_calendar_date_is_rejected_as_a_row_error(): void
+    {
+        Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $this->academicSetup();
+        $file = $this->studentWorkbook([
+            ['000123', '0012345678', 'Siswa Tanggal Tidak Valid', 'P', 'Jakarta', '2015-02-30', 'Orang Tua', '081234567890', 'Alamat', '1A — 2026/2027', '2026/2027'],
+        ]);
+
+        $batch = app(ImportWorkbookService::class)->preview($file, 'SISWA', $this->tenant->id, $this->admin->id);
+
+        $this->assertSame(0, $batch->valid_rows);
+        $this->assertSame(1, $batch->failed_rows);
+        $this->assertStringContainsString('Tanggal lahir harus berformat YYYY-MM-DD', $batch->rows->first()->reason);
+    }
+
+    public function test_livewire_rejects_oversized_and_non_xlsx_uploads(): void
+    {
+        $oversized = UploadedFile::fake()->create(
+            'oversized.xlsx',
+            10241,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        );
+        Livewire::test(ImportManagement::class)
+            ->set('upload', $oversized)
+            ->call('previewUpload')
+            ->assertHasErrors(['upload' => 'max']);
+
+        $invalidMime = UploadedFile::fake()->createWithContent('not-a-workbook.xlsx', 'plain text, not an XLSX archive');
+        Livewire::test(ImportManagement::class)
+            ->set('upload', $invalidMime)
+            ->call('previewUpload')
+            ->assertHasErrors('upload');
+
+        $invalidExtension = UploadedFile::fake()->createWithContent('not-a-workbook.csv', 'plain text');
+        Livewire::test(ImportManagement::class)
+            ->set('upload', $invalidExtension)
+            ->call('previewUpload')
+            ->assertHasErrors('upload');
+
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
+    public function test_batch_can_import_valid_rows_and_report_invalid_rows_without_partial_row_data(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Valid', 'L', '', '081234567890'],
+            ['ASN-LAIN', '001234567890123457', '', '', 'Guru Kategori Salah', 'P', '', '081234567891'],
+        ]);
+
+        $service = app(ImportWorkbookService::class);
+        $preview = $service->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+        $this->assertSame(1, $preview->valid_rows);
+        $this->assertSame(1, $preview->failed_rows);
+
+        $result = $service->confirm($preview->id, $this->tenant->id, $this->admin->id);
+        $rows = $result['batch']->rows->where('sheet_name', 'Data Guru')->keyBy('row_number');
+
+        $this->assertSame('PARTIAL', $result['batch']->status);
+        $this->assertSame(1, $result['batch']->valid_rows);
+        $this->assertSame(1, $result['batch']->failed_rows);
+        $this->assertSame('IMPORTED', $rows[2]->status);
+        $this->assertSame('INVALID', $rows[3]->status);
+        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->count());
+        $this->assertSame(1, User::query()->where('tenant_id', $this->tenant->id)->where('name', 'Guru Valid')->count());
+        $this->assertSame(0, User::query()->where('tenant_id', $this->tenant->id)->where('name', 'Guru Kategori Salah')->count());
     }
 
     public function test_encrypted_payload_and_activation_token_hash_are_hidden_from_serialization(): void
