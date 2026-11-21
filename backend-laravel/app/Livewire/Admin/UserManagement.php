@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Role;
 use App\Models\StudentProfile;
+use App\Models\Tenant;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\AuditService;
@@ -86,6 +87,10 @@ class UserManagement extends Component
         }
         $tenantId = auth()->user()->tenant_id;
         DB::transaction(function () use ($tenantId): void {
+            // Share the same tenant-level serialization lock used by bulk imports.
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+            // Re-run unique identity validation while holding the tenant lock to close the race with imports.
+            $this->validate();
             $user = User::create([
                 'tenant_id' => $tenantId,
                 'name' => trim($this->name),
