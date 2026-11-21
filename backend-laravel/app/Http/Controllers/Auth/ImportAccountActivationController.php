@@ -25,7 +25,7 @@ class ImportAccountActivationController extends Controller
         return response()->view('auth.activate-import-account', [
             'token' => $token,
             'action' => $request->fullUrl(),
-        ]);
+        ])->header('Referrer-Policy', 'no-referrer')->header('Cache-Control', 'no-store, private');
     }
 
     public function store(Request $request, string $token): Response
