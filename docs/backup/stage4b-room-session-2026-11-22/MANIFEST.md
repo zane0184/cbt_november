@@ -121,3 +121,11 @@ The Guru exam index is a teacher-scope listing: a Proktor without independent Te
 | docs/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md | docs/backup/stage4b-room-session-2026-11-22/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md.before-teacher-owned-exam-window-clarification | 920dbf3fc2fa1f32436694c23d36412c1242e28a | 9595 |
 
 The final source refinement enforces a single active GURU role for Guru monitoring and expands denial tests to exam/question/preview routes. The Stage 4B design now explicitly preserves `Exam.start_at/end_at` as Guru-owned and confines Admin schedule edits to the session window.
+
+## Additional snapshot — Admin participant-data boundary clarification
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| docs/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md | docs/backup/stage4b-room-session-2026-11-22/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md.before-admin-participant-scope-clarification | 61acfc92a901a0f52e85cb8fe21455baa24b3c89 | 10078 |
+
+The design now makes explicit that Admin maps rombel to room-session only. Admin does not receive individual participant lists or participant-level placement controls; any future split-room workflow must be a separately authorized Guru-owner capability.
