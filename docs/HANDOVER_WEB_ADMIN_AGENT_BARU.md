@@ -53,3 +53,17 @@ Dokumentasi ini tidak mengizinkan:
 `docs/web-admin-agent-handover-20261121`
 
 Semua perubahan di paket ini adalah dokumentasi. Source aplikasi tidak diubah.
+
+
+
+## ADDENDUM HANDOVER — KEPUTUSAN FINAL STATUS PROKTOR (21-11-2026)
+Keputusan pengguna final dan ACTIVE:
+- PENDING tidak memberikan capability.
+- Hanya CONFIRMED yang dapat memberikan capability setelah Guru aktif, TeacherProfile valid/aktif, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict dan waktu server tervalidasi.
+- ACTIVE bukan status assignment.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED tidak memberikan capability.
+- Capability hanya pada starts_at <= serverNow < expires_at; validasi setiap request, tidak bergantung cron.
+- Reschedule oleh Guru melalui ExamScheduleChangeService mengubah assignment terdampak menjadi NEEDS_REVIEW; setelah review sah status kembali CONFIRMED.
+Rujukan normatif: Addendum 35 spesifikasi, DEC-WA-026 register, nota keputusan final. Addendum 34 dan nota OPEN/PROPOSED lama SUPERSEDED.
+
+Agent penerus wajib melanjutkan seluruh temuan yang masih OPEN, bukan hanya Proktor: role OPERATOR/ADMIN legacy dan migrasi identitas, exact permission Admin, penolakan endpoint CBT Admin, Guru ownership, Proktor eligibility/assignment, overlap/concurrency/audit, shared schedule service, tenant/User isolation, domain/installation identity, Kurmer-KBC provenance, dan seluruh test matrix. Semua test yang belum dijalankan tetap NOT RUN. Dokumen ini tidak memberi izin mengubah source, database, migration, atau melakukan merge.
