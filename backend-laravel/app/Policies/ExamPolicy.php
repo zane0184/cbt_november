@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Exam;
+use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Support\Security\TeacherAccess;
 
@@ -191,6 +192,17 @@ class ExamPolicy
         return $exam->end_at->isFuture();
     }
 
+    public function confirmProctor(User $user, Exam $exam): bool
+    {
+        return $user->tenant_id === $exam->tenant_id
+            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasPermission('exam.proctor.assign')
+            && $exam->status === 'PUBLISHED'
+            && $exam->locked_at !== null
+            && $exam->end_at !== null
+            && $exam->end_at->isFuture();
+    }
+
     public function revokeProctor(User $user, Exam $exam): bool
     {
         return $user->tenant_id === $exam->tenant_id
@@ -218,11 +230,11 @@ class ExamPolicy
             ->where('tenant_id', $user->tenant_id)
             ->whereNull('deleted_at')
             ->exists()
-            && \App\Models\ExamProctorAssignment::query()
+            && ExamProctorAssignment::query()
                 ->where('tenant_id', $exam->tenant_id)
                 ->where('exam_id', $exam->id)
                 ->where('proctor_user_id', $user->id)
-                ->activeNow()
+                ->confirmedNow()
                 ->exists();
 
         return $isExamAuthor || $hasActiveTemporaryProctorAssignment;
