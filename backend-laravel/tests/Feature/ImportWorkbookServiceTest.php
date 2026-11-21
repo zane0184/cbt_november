@@ -425,6 +425,24 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertContains('token_hash', (new ImportActivationToken())->getHidden());
     }
 
+    public function test_admin_without_user_manage_permission_cannot_call_import_service(): void
+    {
+        $this->admin->roles()->firstOrFail()->permissions()->detach();
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Tanpa Izin', 'L', '', ''],
+        ]);
+
+        $rejected = false;
+        try {
+            app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+        } catch (\\RuntimeException $exception) {
+            $rejected = true;
+        }
+
+        $this->assertTrue($rejected, 'Admin tanpa permission user.manage harus ditolak di service.');
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
     public function test_livewire_admin_can_upload_preview_and_confirm_guru_workbook(): void
     {
         Role::create(['name' => 'GURU', 'label' => 'Guru']);

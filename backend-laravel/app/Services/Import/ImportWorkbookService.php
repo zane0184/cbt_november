@@ -219,8 +219,8 @@ class ImportWorkbookService
     private function assertAdminActor(string $tenantId, string $userId): void
     {
         $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($userId)->firstOrFail();
-        if (!$actor->hasRole('ADMIN_MADRASAH')) {
-            throw new RuntimeException('Hanya Admin Madrasah pada tenant yang sama yang dapat menjalankan import.');
+        if (!$actor->hasRole('ADMIN_MADRASAH') || !$actor->hasPermission('user.manage')) {
+            throw new RuntimeException('Hanya Admin Madrasah dengan izin Kelola Pengguna pada tenant yang sama yang dapat menjalankan import.');
         }
     }
 
