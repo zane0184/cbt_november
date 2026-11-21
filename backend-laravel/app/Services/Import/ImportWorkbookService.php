@@ -227,7 +227,7 @@ class ImportWorkbookService
         $identityMap = [];
         $last = $data->getHighestDataRow();
         for ($number = 2; $number <= $last; $number++) {
-            $values = $this->readRow($data, count($expected), $number, $type === 'GURU' ? [2,3,4] : [1,2]);
+            $values = $this->readRow($data, count($expected), $number, $type === 'GURU' ? [2,3,4,8] : [1,2,6,8]);
             if ($this->isBlank($values)) continue;
             $payload = $type === 'GURU' ? $this->teacherPayload($values) : $this->studentPayload($values);
             $key = $type === 'GURU' ? ($payload['nip'] ?: $payload['nik']) : $payload['nisn'];
@@ -254,7 +254,7 @@ class ImportWorkbookService
                 ->map(fn ($r) => $r['payload']['nip'] ?: $r['payload']['nik'])->all();
             $assignmentKeys = [];
             for ($number = 2; $number <= $assignments->getHighestDataRow(); $number++) {
-                $values = $this->readRow($assignments, count(self::ASSIGNMENT_HEADERS), $number, [1]);
+                $values = $this->readRow($assignments, count(self::ASSIGNMENT_HEADERS), $number, [1,6,7]);
                 if ($this->isBlank($values)) continue;
                 $payload = $this->assignmentPayload($values);
                 $rowIndex = count($rows);
@@ -370,6 +370,7 @@ class ImportWorkbookService
             if ($payload['nip'] === '__NUMERIC_IDENTIFIER__' || $payload['nik'] === '__NUMERIC_IDENTIFIER__' || $payload['nuptk'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas harus disimpan sebagai teks agar nol di depan tidak hilang.';
             if ($payload['email'] !== '' && !filter_var($payload['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Format email tidak valid.';
             if (mb_strlen($payload['email']) > 255 || mb_strlen($payload['phone']) > 255) $errors[] = 'Email atau nomor HP terlalu panjang.';
+            if ($payload['phone'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Nomor HP harus disimpan sebagai teks.';
             $identityValues = array_values(array_filter([$payload['nip'], $payload['nik'], $payload['nuptk']], fn ($v) => $v !== ''));
             $existing = $identityValues && TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($identityValues) {
                 foreach ($identityValues as $value) $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value);
@@ -382,6 +383,7 @@ class ImportWorkbookService
             if ($payload['nis'] !== '' && mb_strlen($payload['nis']) > 255) $errors[] = 'NIS maksimal 255 karakter.';
             if ($payload['birth_date'] !== '' && !$this->validDate($payload['birth_date'])) $errors[] = 'Tanggal lahir harus berformat YYYY-MM-DD.';
             if (mb_strlen($payload['birth_place']) > 255 || mb_strlen($payload['parent_name']) > 255 || mb_strlen($payload['phone']) > 255) $errors[] = 'Tempat lahir, nama wali, atau nomor HP terlalu panjang.';
+            if ($payload['phone'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Nomor HP orang tua/wali harus disimpan sebagai teks.';
             $existing = StudentProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($payload) {
                 if ($payload['nis'] !== '') $q->orWhere('nis',$payload['nis']);
                 $q->orWhere('nisn',$payload['nisn']);
