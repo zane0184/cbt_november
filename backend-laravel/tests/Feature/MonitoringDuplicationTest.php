@@ -363,6 +363,46 @@ class MonitoringDuplicationTest extends TestCase
         $this->assertSame(1, $events->json('data.total'));
         $this->assertSame($assignedAttempt->id, $events->json('data.data.0.entity_id'));
 
+        // A temporary Proktor has operational monitoring capability only.
+        // Answer payloads, scores, reports, analytics, and student execution
+        // endpoints remain unavailable even when the attempt is in their room.
+        $forbiddenGetUrls = [
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/answers",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/score",
+            "/api/v1/reports/exams/{$this->exam->id}/results",
+            "/api/v1/reports/exams/{$this->exam->id}/summary",
+            "/api/v1/reports/exams/{$this->exam->id}/questions",
+            "/api/v1/reports/exams/{$this->exam->id}/export/pdf",
+            "/api/v1/reports/exams/{$this->exam->id}/export/excel",
+            "/api/v1/reports/exams/{$this->exam->id}/summary/export/pdf",
+            "/api/v1/analytics/exams/{$this->exam->id}",
+            "/api/v1/analytics/exams/{$this->exam->id}/distribution",
+            "/api/v1/analytics/exams/{$this->exam->id}/items",
+            "/api/v1/exams/{$this->exam->id}/execution",
+        ];
+        foreach ($forbiddenGetUrls as $url) {
+            $this->getJson($url)->assertForbidden();
+        }
+
+        $forbiddenPostUrls = [
+            "/api/v1/exams/{$this->exam->id}/attempts",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/heartbeat",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/submit",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/score",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/recalculate",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/finalize",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$assignedAttempt->id}/reopen",
+            "/api/v1/exams/{$this->exam->id}/token",
+            "/api/v1/exams/{$this->exam->id}/lock",
+            "/api/v1/exams/{$this->exam->id}/close",
+            "/api/v1/exams/{$this->exam->id}/assign-rombel",
+            "/api/v1/exams/{$this->exam->id}/publish-results",
+            "/api/v1/exams/{$this->exam->id}/participants",
+        ];
+        foreach ($forbiddenPostUrls as $url) {
+            $this->postJson($url)->assertForbidden();
+        }
+
         $summary = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring");
         $summary->assertOk();
         $this->assertSame(1, $summary->json('data.summary.total_participants'));
