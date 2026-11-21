@@ -101,6 +101,23 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('=RombelsList', $siswa->getSheetByName('Data Siswa')->getCell('J5001')->getDataValidation()->getFormula1());
     }
 
+    public function test_guru_cannot_download_admin_import_templates(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Guru No Import', 'code' => 'GNOI']);
+        $this->setTenantContext($tenant->id);
+        $role = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guru = User::create([
+            'name' => 'Guru Bukan Admin',
+            'email' => 'guru.noimport@madrasah.test',
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $guru->roles()->attach($role);
+        $this->actingAs($guru);
+
+        $this->get('/admin/import/template/GURU')->assertForbidden();
+        $this->get('/admin/import/template/SISWA')->assertForbidden();
+    }
+
     public function test_admin_can_download_real_guru_and_student_xlsx_templates(): void
     {
         $tenant = Tenant::create(['name' => 'Madrasah Download', 'code' => 'DWNX']);
