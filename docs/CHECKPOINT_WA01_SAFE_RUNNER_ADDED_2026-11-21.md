@@ -58,3 +58,21 @@ Branch baru dibuat dari baseline WA-01; tidak ada file baseline yang ditimpa.
 5. Setelah bukti WA-01 memadai, lanjut Paket 1 Web Admin sesuai urutan dan checkpoint; jangan kembali mengulang audit statis yang sama.
 
 Tidak ada perubahan pada baseline, branch dokumentasi sebelumnya, PR existing, database produksi, .env, secret, VPS, atau deployment.
+
+
+## ADDENDUM STATUS EKSEKUSI — PEMBARUAN
+
+- Test tambahan diperkuat untuk mensimulasikan 10 capability/grant CBT lama melalui test-double `StalePermissionSimulationUser::hasPermission()` yang mengembalikan true untuk nama permission CBT yang diuji.
+- Simulasi ini dilakukan di memori; tidak membuat row pada tabel `permissions` dan tidak menulis pivot `permission_role`. Test juga memeriksa kedua tabel tetap kosong sebelum dan sesudah pemeriksaan.
+- Karena itu, pengujian stale grant tidak memerlukan persetujuan mutasi permission fixture. Batasnya: ini menguji prioritas deny pada authorization ketika hasil pemeriksaan permission bernilai true, bukan integrasi persistensi permission-role DB.
+- Run #1–#3: kegagalan awal saat package discovery karena `bootstrap/cache` belum tersedia/writable. Runner diperbaiki dengan membuat direktori runtime.
+- Run #4: preflight menemukan format `CURRENT_USER()` berisi user@host; pemeriksaan identitas diperbaiki dengan mengambil username saja.
+- Run #5–#6: log menunjukkan parse error pada ekspresi SQL string PHP untuk pemisah `@`; diperbaiki memakai `CHAR(64)`.
+- Run #7: gerbang identitas MySQL PASS, tetapi bootstrap Laravel config gagal karena FQCN Kernel masih memiliki separator namespace ganda. Workflow diperbaiki dengan FQCN eksplisit `\\Illuminate\\Contracts\\Console\\Kernel`.
+- Run terbaru setelah perbaikan FQCN: [WA-01 Safe Disposable MySQL Test #8](https://github.com/zane0184/cbt_november/actions/runs/44925731947), status QUEUED pada saat addendum ditulis.
+- Bukti awal run #7: PHP 8.3.37, Composer 2.11.2, MySQL 8.0.46; disposable DB berhasil dibuat, gate MySQL identity/schema/grants PASS, dan cleanup disposable DB/user PASS. Laravel config gate belum PASS; lint dan PHPUnit belum dijalankan.
+- HEAD branch alternatif saat addendum: `6835741059b2d887909cdbed17a79fbf18649063`.
+- File test terakhir: `backend-laravel/tests/Feature/AdminCbtBoundaryWithoutPermissionFixturesTest.php`, blob `35ff266fe125aa3ef656222beb5e26e008a15af9`.
+- Workflow terakhir: `.github/workflows/wa01-safe-mysql-ci.yml`, blob `f3d6f99154f60b1bef27c76c9931363c3d0273e6`.
+
+**Status saat addendum:** runner alternatif sudah berjalan sampai MySQL preflight pada run #7, tetapi WA-01 tetap NOT PASS karena bootstrap Laravel config gate belum lulus. Belum ada migration/test yang berjalan. Run #8 harus menjadi bukti untuk gerbang Laravel config, lint dan PHPUnit. Semua database yang dibuat pada run gagal telah dihapus oleh cleanup step; MySQL service runner dihentikan.
