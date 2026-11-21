@@ -209,8 +209,10 @@
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         @foreach($scope->rombelMappings as $mapping)
                                             <span class="rounded-full {{ $mapping->status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600' }} px-2.5 py-1 text-xs">{{ $mapping->rombel?->name }} · {{ $mapping->status }}</span>
-                                            @if($mapping->status === 'ACTIVE')
+                                            @if($mapping->status === 'ACTIVE' && $session->status === 'SCHEDULED')
                                                 <button type="button" wire:click="releaseMapping('{{ $mapping->id }}')" class="text-xs font-semibold text-red-700 underline">Lepaskan</button>
+                                            @elseif($mapping->status !== 'ACTIVE')
+                                                <span class="text-xs text-slate-500">{{ $mapping->status }}</span>
                                             @endif
                                         @endforeach
                                     </div>
