@@ -1,7 +1,8 @@
 # AUDIT AWAL — WEB ADMIN STAGE 4: ROLE DAN PENUGASAN PROKTOR
 Tanggal: 22 November 2026
 Repository: zane0184/cbt_november
-Branch audit: work/import-guru-siswa-implementation-20261122
+Branch audit: work/stage4a-monitoring-rbac-20261122
+Source baseline: 17c20c66284deb7a18e3a6dde2b3d47f9c966bd9
 
 ## STATUS
 AUDIT selesai untuk source yang diperiksa. Belum ada patch Stage 4 pada file aplikasi. Tidak ada migration produksi, PR, merge, atau deployment.
@@ -25,25 +26,23 @@ AUDIT selesai untuk source yang diperiksa. Belum ada patch Stage 4 pada file apl
    - AcademicManagement: master data rombel/mapel/tahun/semester tersedia, tetapi lifecycle akademik dan penugasan Guru masih perlu audit lanjutan.
 
 ## DESAIN YANG HARUS DIPERTAHANKAN
-- Admin hanya membuat dan mengelola penugasan Proktor sementara; Guru tetap pemilik operasional CBT.
+- Admin hanya membuat/mengelola penugasan Proktor sementara. Admin tidak memperoleh hak monitoring atau data CBT setelah membuat assignment.
 - Target assignment adalah Guru aktif dengan TeacherProfile aktif, bukan role Proktor permanen.
-- Assignment baru PENDING; aksi konfirmasi terpisah oleh Admin mengubahnya menjadi CONFIRMED.
-- Hanya CONFIRMED yang dapat memberi capability, setelah validasi tenant, exam, rombel, schedule revision, konflik, status Guru, permission, dan waktu server.
-- Status yang menolak capability: PENDING, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED. Tidak ada ACTIVE.
-- Interval capability: starts_at <= serverNow < expires_at.
-- Perubahan jadwal oleh Guru harus menaikkan schedule revision dan mengubah assignment terdampak menjadi NEEDS_REVIEW; capability dicabut langsung.
-- Overlap/conflict ditolak. Transisi yang diizinkan: PENDING→CONFIRMED; CONFIRMED→NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED; NEEDS_REVIEW→CONFIRMED/REVOKED.
+- Assignment lifecycle PENDING/CONFIRMED/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED adalah desain lanjutan yang belum diimplementasikan pada baseline ini; status ACTIVE yang ada belum memenuhi desain final.
+- Hanya assignment yang telah dikonfirmasi, masih berlaku, belum dicabut/kedaluwarsa, dan valid pada tenant serta ruang lingkup tugasnya yang dapat memberi capability.
+- Ruang dan sesi harus menjadi bagian dari scope capability setelah entitas dan relasinya tersedia. Source baseline belum memiliki model/tabel ExamRoom/ExamSession atau kolom relasi assignment ke keduanya; tidak boleh mengklaim pembatasan ruang/sesi telah selesai.
+- Perubahan jadwal harus mencabut capability sampai assignment ditinjau ulang; conflict/overlap harus ditolak secara transaksional.
+- Kamad, Super Admin, portal Proktor permanen, Android, dan deployment bukan bagian dari pekerjaan ini.
 
 ## RENCANA IMPLEMENTASI
-1. Audit seluruh jalur monitoring/API dan data peserta untuk memastikan Guru Proktor hanya melihat peserta pada rombel yang ditugaskan.
-2. Rancang migration terisolasi untuk rombel_id dan schedule_revision, serta backfill fail-closed: data assignment lama ACTIVE menjadi NEEDS_REVIEW sampai dikonfirmasi ulang; jangan memberi capability otomatis.
-3. Implementasikan state transition PENDING/CONFIRMED/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED dan konfirmasi terpisah oleh Admin.
-4. Ganti pemilihan kandidat dari PROKTOR ke Guru aktif + TeacherProfile tenant-local.
-5. Tambahkan conflict/overlap locking dan audit log.
-6. Buat ExamScheduleChangeService dan sambungkan semua jalur perubahan jadwal; revisi jadwal langsung mencabut capability melalui NEEDS_REVIEW.
-7. Tambahkan policy/API test untuk monitoring terbatas rombel dan penolakan token, soal, peserta, nilai, serta operasi CBT lain bagi assignment Proktor.
-8. Perbarui ProctorAssignmentSecurityTest dan masukkan ke workflow MySQL 8 disposable.
-9. Setelah Stage 4 lulus, lanjutkan UserManagement, StudentRombelManagement, CurriculumManagement, laporan, konfigurasi, dan UAT.
+1. Selesaikan fixture monitoring dengan Guru pembuat ujian; Admin wajib ditolak melalui URL/API termasuk saat memiliki stale Guru role/permission.
+2. Ubah kandidat penugasan menjadi Guru dengan TeacherProfile aktif; Admin hanya mengelola assignment.
+3. Terapkan policy capability dari assignment aktif dan tenant-local, tanpa memberi akses CBT kepada Admin.
+4. Rancang model/relasi ruang dan sesi setelah inventaris domain dikonfirmasi; jangan menciptakan relasi berbasis asumsi.
+5. Implementasikan lifecycle PENDING/CONFIRMED/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED, scope ruang/sesi, schedule revision, konflik, dan audit sebagai tahap terpisah.
+6. Tambahkan pengujian URL/API langsung, multi-tenant, revoke/expiry, serta penolakan akses ke token, soal, peserta, jawaban, nilai, dan laporan.
+7. Jalankan seluruh suite relevan pada MySQL 8 disposable.
+8. Setelah Stage 4A/assignment lulus, lanjutkan UserManagement, StudentRombelManagement, CurriculumManagement, laporan administratif, konfigurasi, backup/restore, dan UAT Web Admin.
 
 ## PENGUJIAN
 - Tahap ini hanya audit source dan test yang tersedia; belum menjalankan suite khusus Proktor yang direvisi.
