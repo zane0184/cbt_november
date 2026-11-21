@@ -83,3 +83,39 @@ Untuk setiap klaim implementasi:
 - status PASS/FAIL/BLOCKED/NOT RUN.
 
 Jika salah satu tidak tersedia, tulis batas bukti secara eksplisit.
+
+
+## 6. Addendum provenance — konsolidasi 21 November 2026
+
+### 6.1 Branch HEAD yang diverifikasi
+| Branch | HEAD SHA | Peran |
+|---|---|---|
+| recovery/source-preservation-20261121 | 7fc45bf71ac1ebd375eba44fd57c983bf18d66e0 | Snapshot preservasi source kandidat |
+| work/web-admin-w0-20261121 | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | W0 dokumentasi/snapshot |
+| docs/curriculum-kbc-w6-requirements-20261121 | 4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4 | Paket spesifikasi W6 Kurmer-KBC |
+| docs/web-admin-master-spec-20261121 | 8956906c9f0750ba9c6ce845582ae279c9f68e74 | Entry point master 360 baris |
+| docs/admin-web-spec-20261121 | 3e0b9195c9768c0d892322f926f25a6b9c4fb135 | Versi spesifikasi awal |
+| docs/web-admin-agent-handover-20261121 | a7bef3dea2b1f57c79d34c775822bd5bde24998f | Paket handover |
+| docs/web-admin-audit-reconciliation-20261121 | 7617bf07e0e7f83935d5be880652cc65c355566a | Rekonsiliasi audit |
+| docs/source-canonical-design-closure-20261121 | 59aa76ae60de396216e9754d200cb1b6d806e9e0 | Spesifikasi rinci + addendum 32 |
+| docs/web-admin-w0-recheck-20261121 | fb058f05264b8d464d687583c53f06fbb7fe54f7 | Addendum dua dokumen W0 recheck |
+| docs/project-continuity-policy-20261121 | c3efd541d1f7d321f2d2f6ba1495c346c9992785 | Kebijakan kontinuitas |
+| docs/prompt-induk-audit-20261120 | 396b06aaaa0a84b0cef355441fc39b93bd170126 | Prompt audit historis |
+
+### 6.2 Dokumen kanonis dan sumber branch
+- Entry point: `docs/WEB_ADMIN_MASTER_SPECIFICATION.md`.
+- Spesifikasi rinci: `docs/SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md` (Addendum 33 menjadi precedence terbaru).
+- Register: `docs/REGISTER_KEPUTUSAN_WEB_ADMIN.md`.
+- Audit: `docs/MATRIKS_AUDIT_WEB_ADMIN_TEMPLATE.md` (23 modul dipertahankan).
+- Test: `docs/MATRIKS_PENGUJIAN_WEB_ADMIN.md` (T-001–T-132 dipertahankan; T-133–T-168 ditambahkan).
+- Kurikulum: empat dokumen W6 dari branch `docs/curriculum-kbc-w6-requirements-20261121` pada SHA di atas. Jangan menyatakan telah merge; branch tetap terpisah dan referensi ini commit-pinned.
+- W0 report/checkpoint lama dipertahankan sebagai histori dan diberi status superseded jika bertentangan.
+
+### 6.3 Label status dokumen
+- ACTIVE: keputusan yang berlaku dan telah ditetapkan pengguna.
+- HISTORICAL: bukti/catatan yang benar untuk waktu pemeriksaan sebelumnya.
+- SUPERSEDED: ketentuan lama yang digantikan oleh keputusan lebih baru.
+- PENDING VERIFICATION: fakta yang belum dapat dibuktikan ulang dari source/commit atau sumber primer.
+
+### 6.4 Batas bukti
+Branch/commit/PR dibaca melalui GitHub. Tidak ada local worktree yang diperiksa. SHA-256 backup dihitung atas teks UTF-8 hasil fetch dan salinan backup dibuat di branch dokumentasi baru; ini bukan backup lokal. Tidak ada ZIP baseline dibuka. Tidak ada CI, runtime, browser, MySQL concurrency, import/restore, atau UAT baru dijalankan.
