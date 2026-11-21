@@ -67,3 +67,22 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - SHA-256 file kerja lokal asal: laporan `6cdf47db1897aa7dc5976c5f4df2798054ef1834fe1ef9911f6e40bccdfb47f2`; checkpoint `f864125148dc034e85718cb4a2d087be4b2ee904984e02a9bacbe9dfd674e9b7`. Dokumen GitHub yang dipublikasikan merupakan edisi resmi ringkas yang mempertahankan temuan dan status; backup GitHub disamakan byte-for-byte dengan edisi resmi tersebut.
 - Branch target: `docs/canonical-reconciliation-admin-guru-20261121`; tidak ada branch source atau PR yang diubah, tidak ada PR dibuat/merge/close.
 - Verifikasi: backup dan file resmi memiliki Git blob SHA yang sama untuk masing-masing dokumen. Laporan dan checkpoint tersedia langsung pada GitHub branch target.
+
+
+## Checkpoint audit phase 2 — 21 November 2026
+
+### Temuan tambahan terverifikasi secara statis
+- P0-05: `/admin/exams` menampilkan token ujian untuk ujian PUBLISHED/locked, jumlah snapshot, jumlah peserta, serta tautan monitoring/hasil/analisis. Bukti: `app/Livewire/Admin/ExamManagement.php`, `resources/views/livewire/admin/exam-management.blade.php`, `app/Policies/ExamPolicy.php`.
+- P1-07: Element, GradeLevel, LearningObjective, LearningPath, Material dan Tag API belum menerapkan authorization pada method CRUD; LearningOutcome hanya melindungi store melalui FormRequest, sementara index/show/update/destroy belum memanggil policy. Bukti: controller di `app/Http/Controllers/Api/V1/`, route group umum di `routes/api.php`.
+- P1-08: AcademicManagement dan CurriculumManagement masih menerima role legacy ADMIN; tidak sesuai keputusan ADMIN_MADRASAH-only.
+- Jumlah struktur yang diinventarisasi: 14 Livewire, 29 controller, 11 policy, 56 model files.
+
+### Status
+- Audit source masih OPEN; penambahan ini bukan audit final.
+- Implementasi NOT STARTED; source/database/migration/role/permission/config tidak diubah.
+- Web Guru tidak dikembangkan.
+- T-001–T-173 dan ADM-001–ADM-023 belum selesai dipetakan satu per satu.
+- Laporan audit diperbarui pada commit `f6d1d51199cf4fd776e2429bb102f05417012ecf`, blob `62908d92411504e3223be54929433825cbf342f9`.
+- Backup report sebelum update: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase2-rbac-curriculum`, commit `1bd059264bee7843fe6c7e4d5db9dde10ab2eb23`, blob `59d50a48720541ac41d9a6282ed066e60f62fe39` (identik dengan blob report sebelum update).
+- Backup checkpoint sebelum update: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase2-findings`, commit `7fb9f8cb2e137951dc320e747509ba83c4d2c48e`, blob `3e6184568f20d9b735d903d39d58ffbe8f437654` (identik dengan blob checkpoint sebelum update).
+- Langkah berikutnya: audit semua query User/withoutGlobalScopes, route-model binding, export, cache, jobs, controller tersisa, lalu matriks modul/test dan patch plan final.
