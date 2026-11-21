@@ -20,7 +20,7 @@ class ExamAttemptPolicy
                 && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) {
+        if ($user->hasRole('KAMAD')) {
             return $user->hasPermission('report.view');
         }
 
@@ -86,10 +86,6 @@ class ExamAttemptPolicy
     {
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return $user->hasPermission('exam.grade');
-        }
-
         if (!$user->hasRole('GURU')) return false;
 
         $exam = $attempt->exam;
@@ -112,6 +108,11 @@ class ExamAttemptPolicy
             return false;
         }
 
-        return $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.reopen');
+        return $user->hasRole('GURU')
+            && $user->hasPermission('exam.grade')
+            && $attempt->exam
+            && $attempt->exam->assessment
+            && TeacherAccess::canManageAssessment($user, $attempt->exam->assessment)
+            && TeacherAccess::canViewExam($user, $attempt->exam);
     }
 }
