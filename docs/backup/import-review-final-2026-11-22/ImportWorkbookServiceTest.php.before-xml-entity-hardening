@@ -687,6 +687,35 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertDatabaseCount('import_batches', 0);
     }
 
+    public function test_workbook_rejects_xml_dtd_and_external_entity_declarations(): void
+    {
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru XML Entity', 'L', '', ''],
+        ]);
+        $zip = new \ZipArchive();
+        $this->assertSame(true, $zip->open($file->getRealPath()));
+        $xml = $zip->getFromName('xl/worksheets/sheet1.xml');
+        $this->assertIsString($xml);
+        $xml = preg_replace(
+            '/(<\?xml[^?]+\?>)/',
+            '$1<!DOCTYPE worksheet [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>',
+            $xml,
+            1
+        );
+        $zip->deleteName('xl/worksheets/sheet1.xml');
+        $zip->addFromString('xl/worksheets/sheet1.xml', $xml);
+        $zip->close();
+
+        try {
+            app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('DTD/entity declarations must be rejected before XML parsing.');
+        } catch (\App\Exceptions\ImportWorkbookValidationException $exception) {
+            $this->assertStringContainsString('DTD dan deklarasi entity XML tidak diizinkan', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
     public function test_workbook_rejects_formula_in_instruction_or_hidden_reference_sheet(): void
     {
         $book = IOFactory::load($this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Formula', 'L', '', '']])->getRealPath());

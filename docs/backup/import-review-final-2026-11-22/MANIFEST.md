@@ -63,3 +63,8 @@ Commit: 1a3cf1211faa227f4e787564e58501d9da8d00b6
 Commit: 7ba6bc612e452d0ad6e7ddb8f7b61790b3e21c46
 - backend-laravel/app/Services/Import/ImportWorkbookService.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookService.php.before-xml-entity-hardening | blob SHA 6afeea475258289a46d7851a062c725c061b3711
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-xml-entity-hardening | blob SHA 34c20114e754c754f77e28429c96bc715d5a5da8
+
+
+## Follow-up backup before XML DTD/ENTITY regression test
+Commit: 95991b62ea9d157320ab8767aa5102a113d9cd7f
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-xml-entity-hardening | blob SHA dd3b9b87344e88cd6002dcffb2cb36910506c595
