@@ -141,6 +141,8 @@ class MonitoringDuplicationTest extends TestCase
 
     private function createPendingTemporaryProctorAssignment(): \App\Models\ExamProctorAssignment
     {
+        $this->actingAs($this->admin);
+
         return app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
