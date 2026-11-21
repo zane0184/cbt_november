@@ -253,6 +253,10 @@ jobs:
           set -euo pipefail
           test -f tests/Feature/AdminCbtBoundaryTest.php
           test -f tests/Feature/MonitoringDuplicationTest.php
+          test -f tests/Feature/ExamExecutionHardeningTest.php
+          test -f tests/Feature/ParticipantAuthorizationAndAttemptLimitTest.php
+          test -f tests/Feature/ExamAnswerTest.php
+          test -f tests/Feature/MonitoringTest.php
           test -f tests/Feature/ProctorAssignmentSecurityTest.php
           test -f tests/Feature/AuthTest.php
           test -f tests/Feature/MultiTenantAuthTest.php
@@ -328,6 +332,30 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/MonitoringDuplicationTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-monitoring-boundary.log"
+      - name: PHPUnit — student attempt execution hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ExamExecutionHardeningTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-exam-execution-hardening.log"
+
+      - name: PHPUnit — participant authorization and attempt limits
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ParticipantAuthorizationAndAttemptLimitTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-participant-authorization.log"
+
+      - name: PHPUnit — student answer device binding and payload security
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ExamAnswerTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-exam-answer.log"
+
+      - name: PHPUnit — Guru monitoring and student heartbeat
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/MonitoringTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-monitoring-regression.log"
+
 
 
 
