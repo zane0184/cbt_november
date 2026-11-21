@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\Exam;
-use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Support\Security\TeacherAccess;
 
