@@ -37,17 +37,23 @@ class AdminCbtBoundaryTest extends TestCase
         ]);
         $admin->roles()->attach([$adminRole->id, $guruRole->id, $studentRole->id]);
 
+        // Simulate legacy/stale grants only in Eloquent's in-memory relations.
+        // This deliberately performs no INSERT/UPDATE/DELETE on permissions or permission_role.
+        $permissionRowsBefore = Permission::query()->count();
+        $permissionPivotRowsBefore = DB::table('permission_role')->count();
+
         $stalePermissions = [
             'question.view', 'question.manage',
             'exam.manage', 'exam.assign', 'exam.monitor',
             'exam.close', 'exam.token', 'exam.grade', 'exam.reopen',
             'report.view',
         ];
-        foreach ($stalePermissions as $name) {
-            $permission = Permission::firstOrCreate(['name' => $name], ['label' => $name]);
-            $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
-            $guruRole->permissions()->syncWithoutDetaching([$permission->id]);
-        }
+        $stalePermissionModels = collect($stalePermissions)->map(
+            fn (string $name): Permission => new Permission(['name' => $name, 'label' => $name])
+        );
+        $adminRole->setRelation('permissions', $stalePermissionModels);
+        $guruRole->setRelation('permissions', $stalePermissionModels);
+        $admin->setRelation('roles', collect([$adminRole, $guruRole, $studentRole]));
 
         $question = new Question(['tenant_id' => $tenant->id, 'owner_type' => 'MADRASAH']);
         $assessment = new Assessment(['tenant_id' => $tenant->id, 'created_by' => $admin->id]);
@@ -88,6 +94,9 @@ class AdminCbtBoundaryTest extends TestCase
         Livewire::test(QuestionBank::class)->assertForbidden();
         Livewire::test(ExamManagement::class)->assertForbidden();
         $this->get('/student/exams')->assertForbidden();
+
+        $this->assertSame($permissionRowsBefore, Permission::query()->count());
+        $this->assertSame($permissionPivotRowsBefore, DB::table('permission_role')->count());
     }
 
     public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions(): void
