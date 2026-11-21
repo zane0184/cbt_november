@@ -1800,3 +1800,8 @@ Jika dokumen lama memakai urutan atau redaksi berbeda, jangan menghapus histori;
 
 ## 33.7 Status implementasi
 Seluruh ketentuan pada Addendum 33 adalah desain/keputusan aktif. Temuan source yang masih memiliki role OPERATOR/PROKTOR permanen, permission Admin yang terlalu luas, jalur jadwal terpisah, atau assignment yang belum lengkap tetap OPEN sebagai gap implementasi. Tidak ada klaim bahwa source sudah diperbaiki, pengujian lulus, W0 ditutup, atau aplikasi siap produksi.
+
+
+# ADDENDUM 34 — KLARIFIKASI STATUS ASSIGNMENT PROKTOR
+
+Semantik hak untuk status `PENDING`, `CONFIRMED`, dan kemungkinan `ACTIVE` belum diputuskan secara eksplisit. Gunakan [Nota Klarifikasi Status Assignment Proktor](NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md). Rekomendasi fail-closed bahwa PENDING tidak memberi capability dan CONFIRMED-only sebagai pemberi capability adalah PROPOSED, bukan keputusan ACTIVE. Jangan implementasikan status enum/transisi sebelum pengguna mengonfirmasi. Status NEEDS_REVIEW, REVOKED, EXPIRED, dan COMPLETED tetap secara eksplisit tidak memberi hak sesuai keputusan pengguna.
