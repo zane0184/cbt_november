@@ -161,7 +161,7 @@ class ExamProctorAssignmentService
                 ->where('proctor_user_id', $proctor->id)
                 ->where('status', 'CONFIRMED')
                 ->whereNull('revoked_at')
-                ->whereKeyNot($lockedAssignment->id)
+                ->where('id', '<>', $lockedAssignment->id)
                 ->where('starts_at', '<', $expiry)
                 ->where('expires_at', '>', $start)
                 ->lockForUpdate()
@@ -313,7 +313,7 @@ class ExamProctorAssignmentService
             ]);
         }
 
-        if ($lockedExam->status !== 'PUBLISHED' || !$lockedExam->locked_at) {
+        if (!$allowInactiveSession && ($lockedExam->status !== 'PUBLISHED' || !$lockedExam->locked_at)) {
             throw ValidationException::withMessages([
                 'exam' => 'Penugasan Proktor hanya tersedia untuk ujian yang sudah diterbitkan dan dikunci.',
             ]);
