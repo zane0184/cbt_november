@@ -77,3 +77,12 @@ Both source files were snapshotted before the corresponding test-only changes. N
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-complete-proctor-data-surface-matrix | 186f338d6861a38ec418539d8080820f55a49626 | 29962 |
 
 This snapshot predates the expanded assertions for in-scope monitoring attempt DTOs, answer-payload exclusion, and the complete report/analytics endpoint denial matrix.
+
+## Additional snapshots — final schedule ownership and concurrent Guru assignment tests
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/ExamRoomSessionManagementTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionManagementTest.php.before-teacher-owned-exam-window-assertions | 36c8b2f4514b2537c5157c978d32987b8ee2f4b5 | 24019 |
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-guru-assignment-concurrency-test | 04a87feafdb6ed4d130a74a39364607c2adb3cc1 | 9643 |
+
+These snapshots preserve the test sources before adding explicit assertions that session edits never overwrite the teacher-owned overall exam window and before adding the second-connection Guru assignment mutex test.
