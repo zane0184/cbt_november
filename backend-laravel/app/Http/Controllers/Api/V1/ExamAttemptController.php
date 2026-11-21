@@ -208,8 +208,6 @@ class ExamAttemptController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $this->authorize('view', $lockedExam);
-
             $participant = ExamParticipant::query()
                 ->where('exam_id', $lockedExam->id)
                 ->where('user_id', $user->id)
@@ -223,6 +221,8 @@ class ExamAttemptController extends Controller
                     'message' => 'Participant not found for this exam.'
                 ], 404);
             }
+
+            $this->authorize('view', $lockedExam);
 
             $eligibilityNow = now();
             if (($participant->eligible_from && $eligibilityNow->lt($participant->eligible_from))
@@ -385,8 +385,6 @@ class ExamAttemptController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            $this->authorize('view', $lockedExam);
-
             $participant = ExamParticipant::query()
                 ->where('exam_id', $lockedExam->id)
                 ->where('user_id', $user->id)
@@ -400,6 +398,8 @@ class ExamAttemptController extends Controller
                     'message' => 'Unauthorized submission.'
                 ], 403);
             }
+
+            $this->authorize('view', $lockedExam);
 
             $lockedAttempt = ExamAttempt::query()
                 ->whereKey($attempt->id)
@@ -488,24 +488,26 @@ class ExamAttemptController extends Controller
         }
 
         if ($roleNames[0] === 'SISWA') {
-            abort_unless($user->tenant_id === $exam->tenant_id, 403);
-            $this->authorize('view', $exam);
-        } else {
-            $this->authorize('monitor', $exam);
-        }
+            if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
+                abort(404);
+            }
 
-        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
-            abort(404);
-        }
-
-        if ($roleNames[0] === 'SISWA') {
             $participant = $attempt->participant;
             abort_unless(
-                $participant
+                $user->tenant_id === $exam->tenant_id
+                    && $participant
                     && $participant->tenant_id === $exam->tenant_id
                     && $participant->user_id === $user->id,
                 404
             );
+
+            $this->authorize('view', $exam);
+        } else {
+            $this->authorize('monitor', $exam);
+
+            if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
+                abort(404);
+            }
         }
 
         return response()->json(['success' => true, 'data' => $this->attemptResponseData($attempt)]);
