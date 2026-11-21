@@ -170,7 +170,7 @@ Manifest mencatat path asli, Git blob SHA, SHA-256 konten UTF-8, path backup, da
 - `docs/PETA_DOKUMEN_PROVENANCE_CBT.md` ditambah branch/status provenance; blob baru `e4c1b0260c902e62da2e92e849cd3c7f8359d0b9`, commit `4c2250dc86c9398506f81f1e1fd8078e36683071`.
 - `docs/PROMPT_INDUK_AGENT_BARU_WEB_ADMIN.md` ditambah addendum keputusan terbaru; blob baru `d793878e3d566a8e0a664e8cf6f2e6d67b6d9057`, commit `d288296e388a7d271c50550e056abf8aa7ffa093`.
 
-Checkpoint, laporan rekonsiliasi, dan prompt penerus baru dibuat setelah pemeriksaan link/diff final.
+Checkpoint, laporan rekonsiliasi, dan prompt penerus dibuat sebagai deliverable; pemeriksaan link/diff final dilakukan setelah seluruh dokumen tersedia.
 
 Tidak ada file source aplikasi, migration, seeder, database, .env, secret, konfigurasi VPS, Android, atau Device Lease/Fencing yang diubah.
 
@@ -182,10 +182,21 @@ Status saat laporan ini disusun:
 - Source read-only: PASS — 15 file source kunci berhasil dibaca; temuan dicatat.
 - Backup dokumen: PASS — salinan GitHub branch dan manifest dibuat; bukan backup lokal.
 - SHA-256: PASS — dihitung atas konten UTF-8 yang diambil dari GitHub sebelum perubahan.
-- Link lintas dokumen: NOT RUN — menunggu pemeriksaan akhir setelah semua dokumen baru dibuat.
-- Konsistensi dokumen: NOT RUN — menunggu pemeriksaan akhir.
-- Diff hanya dokumentasi: NOT RUN — menunggu perbandingan commit final.
+- Link lintas dokumen: PASS — 17/17 tautan lokal pada entry point berhasil di-fetch dari branch konsolidasi.
+- Konsistensi dokumen: PASS — matriks audit mempertahankan ADM-001–ADM-023; test matrix mempertahankan T-001–T-132 dan menambah T-133–T-168; register memuat DEC-WA-019–025; spesifikasi memuat Addendum 33 dan urutan Panca Cinta terbaru.
+- Backup: PASS — keenam salinan memiliki Git blob SHA identik dengan dokumen sumber; MANIFEST.tsv memuat SHA-256 konten UTF-8.
+- Diff hanya dokumentasi: PASS — compare dari base W0-recheck menunjukkan 18 path berubah/ditambahkan dan seluruhnya berada di docs/; tidak ada path source aplikasi.
 - CI/runtime/browser/MySQL concurrency/import/restore/UAT: NOT RUN.
 - Source aplikasi berubah: NO CHANGE — perubahan yang dilakukan melalui contents API hanya path docs.
 
 Tidak ada klaim W0 selesai, source aman, atau siap produksi.
+
+
+## E. Verifikasi penutupan dokumentasi
+- Entry point lokal: 17/17 tautan valid.
+- Matriks audit: 23 modul ADM-001–ADM-023 terdeteksi.
+- Matriks test: 168 ID unik; seluruh T-001–T-132 tetap ada dan T-133–T-168 tersedia.
+- Backup: 6/6 blob identik dengan file sumber sebelum perubahan; SHA-256 dicatat di MANIFEST.tsv.
+- Compare base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch hasil: 18 path dokumentasi; tidak ada file source aplikasi.
+- Satu perubahan baris yang terdeteksi pada diff test matrix hanya menambahkan newline terminator ke baris T-132 yang sebelumnya tidak memiliki newline; isi test T-132 tidak diubah.
+- Tidak ada CI, PHPUnit, runtime, browser, MySQL concurrency, import/restore, atau UAT dijalankan.
