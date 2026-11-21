@@ -74,3 +74,8 @@ Persetujuan eksplisit diperlukan untuk:
 
 ## 8. Status akhir
 AUDIT STATIS READ-ONLY: selesai sebagian dan memiliki bukti source/branch. BASELINE RAW: BLOCKED. RUNTIME: BLOCKED. DESAIN: diajukan untuk persetujuan. IMPLEMENTASI: belum dimulai. PENGUJIAN: belum dijalankan pada head source terkini.
+
+
+
+## CATATAN PRECEDENCE — KEPUTUSAN PROKTOR FINAL (21-11-2026)
+Laporan ini merekam audit source read-only pada commit/branch yang disebut di dalamnya dan berstatus HISTORICAL. Desain assignment yang mengikat saat ini adalah Addendum 35 dan DEC-WA-026: PENDING tidak memberi capability; hanya CONFIRMED yang dapat memberi capability setelah semua validasi; ACTIVE bukan status assignment; NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED tidak memberi capability; waktu server wajib memenuhi starts_at <= serverNow < expires_at. Source yang masih menggunakan status ACTIVE adalah gap implementasi OPEN, bukan dasar desain. Tidak ada pengujian runtime baru yang diklaim.
