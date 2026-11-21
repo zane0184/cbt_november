@@ -81,9 +81,17 @@ GitHub Actions run 44944158355:
 - Belum dilakukan uji stress multi-proses, pengujian UI browser manual, uji filesystem staging di VPS, dan UAT madrasah.
 
 ## PEKERJAAN BERIKUTNYA
-1. Lanjutkan Web Admin Stage 4: audit dan rekonstruksi assignment Proktor sementara berbasis Guru aktif, termasuk PENDING → CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED; scope tenant/exam/rombel/schedule revision; conflict check; dan pencabutan capability ketika jadwal berubah.
-2. Lanjutkan UserManagement: edit, status aktif/nonaktif, reset password, dan audit lifecycle.
-3. Lanjutkan StudentRombelManagement: perpindahan/kenaikan/tinggal kelas/kelulusan tanpa menghapus histori akademik.
-4. Lengkapi CurriculumManagement untuk versi kurikulum, CP/TP/ATP, Kurikulum Merdeka, KBC/Panca Cinta, Pembelajaran Mendalam.
-5. Lengkapi laporan administratif, konfigurasi, backup/restore, dan UAT Web Admin.
-6. Tidak ada merge, PR, migration produksi, atau deployment VPS tanpa persetujuan eksplisit.
+1. Lanjutkan Stage 4A sesuai koreksi pemilik proyek: pisahkan portal Admin Madrasah, Guru, dan antarmuka Siswa; Admin tidak boleh mengakses fitur/data CBT; Guru dibatasi role, permission, penugasan, dan tenant; Proktor hanya penugasan sementara kepada Guru yang memenuhi syarat, tanpa role/portal permanen. Uji URL/API langsung dan akses lintas kewenangan/tenant. Tidak ada ruang lingkup Kamad.
+2. Setelah batas Stage 4A terdefinisi dan teruji, lanjutkan lifecycle assignment Proktor sementara: PENDING → CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED; scope tenant/exam/rombel/schedule revision; conflict check; pencabutan capability ketika jadwal berubah.
+3. Lanjutkan TeacherSubjectAssignment Management agar kewenangan Guru benar-benar mengikuti penugasan aktif.
+4. Lanjutkan UserManagement: edit, status aktif/nonaktif, reset password, dan audit lifecycle.
+5. Lanjutkan StudentRombelManagement: perpindahan rombel, kenaikan kelas, tinggal kelas, dan kelulusan tanpa menghapus histori akademik.
+6. Lengkapi CurriculumManagement untuk versi kurikulum, CP/TP/ATP, Kurikulum Merdeka, KBC/Panca Cinta, Pembelajaran Mendalam.
+7. Lengkapi laporan administratif, konfigurasi, backup/restore, dan UAT Web Admin.
+8. Tidak ada merge, PR, migration produksi, atau deployment VPS tanpa persetujuan eksplisit.
+
+## KOREKSI RUANG LINGKUP STAGE 4A — PEMILIK PROYEK (22 NOVEMBER 2026)
+- Kamad tidak termasuk ruang lingkup Stage 4A maupun portal aktif proyek. Jangan menambah role, portal, fitur, route, permission, atau alur Kamad tanpa keputusan baru pemilik proyek.
+- Fokus Stage 4A: pemisahan portal Admin Madrasah, Guru, dan Siswa; larangan akses Admin terhadap fitur/data CBT; kewenangan Guru berbasis role/permission/penugasan; penugasan Proktor sementara kepada Guru yang memenuhi syarat; dan pengujian URL/API langsung serta isolasi lintas tenant/kewenangan.
+- Proktor bukan portal atau role permanen.
+- Perubahan source yang sempat memasukkan Kamad telah dipulihkan dari backup dan keenam file aktif diverifikasi identik dengan salinan backup masing-masing.
