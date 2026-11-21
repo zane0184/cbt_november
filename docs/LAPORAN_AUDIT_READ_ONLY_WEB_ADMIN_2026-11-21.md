@@ -455,3 +455,95 @@ Status: P1 OPEN; no confirmed cross-tenant response from valid application-creat
 - T-001–T-173 mapping is published; all per-ID runtime outcomes remain NOT VERIFIED. Existing candidate test methods include legacy expectations contradictory to final Admin/Proktor decisions.
 - Audit is still NOT COMPLETE: remaining query/relationship, cache/export/download, authorization matrix, source-to-test trace, and final patch-plan dependency/rollback review remain.
 - No source, DB, migration, config, role, permission, Web Guru, PR or deployment was changed.
+
+
+---
+
+## 15. ADDENDUM AUDIT PHASE 8 — route-by-route access and Livewire hydration authorization (21 November 2026)
+
+### 15.1 P0-12 — API and Web Admin/Guru route matrix confirms broad Admin CBT access
+
+Route evidence:
+- `routes/api.php` line group 27–122 protects endpoints with only `auth:sanctum, tenant, license`; no role middleware is attached per route. Authorization is delegated to controller/policy methods.
+- `routes/web.php` lines 61–100 uses `auth, tenant, license` for monitoring, Admin Livewire pages, Teacher result pages, exports and analytics; role authorization is in Livewire mount/action or policy, not route middleware.
+- Web routes `/exams/{exam}/results`, `/results/{attempt}`, `/exams/{exam}/analytics`, `/exams/{exam}/analytics/items`, `/exams/{exam}/monitoring`, and export paths are reachable by Admin under current ReportPolicy/ExamPolicy/ExamAttemptPolicy.
+- API routes `/exams/{exam}/monitoring*`, `/exams/{exam}/attempts/{attempt}`, `/attempts/{attempt}/score`, `/finalize`, `/reopen`, `/close`, `/reports/*`, and `/analytics/exams/*` similarly pass Admin policies.
+- Student execution/answer routes contain self/participant checks; Guru-only question/exam authoring is generally policy-guarded. This does not compensate for the Admin read/close/finalize/reopen grants.
+
+### 15.2 P1-16 — Livewire permission checks are mount-only on several data-bearing render surfaces
+
+Livewire calls mount only on initial component creation; subsequent requests hydrate the component and call public actions/render. The following render paths do not re-run the permission/role assertion before reading data:
+- `AcademicManagement::render()`: mount calls `authorizeAcademicManagement()`; render reads rombels, subjects, grade levels and academic years without repeating it.
+- `CurriculumManagement::render()`: mount checks curriculum.view; render reads outcomes, versions, objectives and subjects without aborting if view permission is later revoked.
+- `UserManagement::render()`: mount calls `authorizeUserManagement()`; render lists tenant users, role names, TeacherProfile and StudentProfile without rechecking user.manage.
+- `ProctorAssignmentManagement::render()`: mount calls `assertCanManage()`; render lists exams, Proktor accounts and assignment/assigner/revoker records without rechecking exam.proctor.assign. `updatedSelectedExamId()` also has no repeated permission check.
+- `ExamManagement::render()`: mount checks allowed role; render loads exams with participants, attempts, snapshots, question data and token-bearing Exam models. It does not repeat role/policy check. When current user no longer has either Admin/Guru role, its query has no role-specific filter and still starts from all tenant Exams.
+- `QuestionBank::render()`: mount checks question.view and Admin/Guru role; render does not repeat authorization. If neither role condition matches after a role change, its query has no owner-type restriction and can enumerate all tenant questions/options.
+- `ResultList::render()`, `ResultDetail::render()`, `AnalyticsDashboard::render()`, and `ItemAnalysis::render()`: mount authorizes viewExamResults/view analytics, but render does not reauthorize each hydrated request. ResultDetail includes answer snapshots and question-level scores; ResultList includes participant names and scores.
+- `OperatorDashboard::render()` and `ProktorDashboard::render()` likewise depend on mount checks for their role surfaces.
+
+Mutation actions in many components do recheck authorization (e.g. UserManagement::createUser, ProctorAssignmentManagement::assign/revoke, QuestionBank::saveQuestion/publish/delete, ExamManagement::saveExam/generateToken/lock, ResultList finalization/publish, ResultDetail grading/finalize/reopen). The finding is specifically stale read authorization/render and some state-updater actions, not a claim that all mutation actions bypass policy.
+
+Dampak: if role/permission is revoked or changed while a Livewire component remains active, subsequent hydrated requests can continue returning data. In ExamManagement and QuestionBank, missing role filters in the render query can widen the data set to the entire tenant. This needs per-request reauthorization and fail-closed query filters, with regression tests for role revocation during an active Livewire session. Status P1 OPEN; severity may be escalated if HTTP reproduction demonstrates access after revocation.
+
+### 15.3 P1-17 — Some Admin data mutations lack consistent AuditService coverage
+
+Reconfirmed:
+- AcademicManagement createRombel/createSubject and CurriculumManagement createTp persist data without AuditService.
+- UserManagement createUser creates user/profile/role transactionally but does not write AuditService event.
+- TagController CRUD does not call AuditService.
+- Proctor assignment and StudentRombel membership do log events; other API curriculum controllers log some mutations but transaction/audit atomicity varies.
+
+### 15.4 API route access matrix — concise result
+
+| Route family | Authorization observed | Admin result under current source | Audit status |
+|---|---|---|---|
+| `/api/v1/curricula`, `/phases` | CurriculumPolicy/PhasePolicy via BasePolicy | Allowed according to curriculum permissions | PARTIAL; policy method reviewed |
+| `/grade-levels`, `/elements`, `/learning-outcomes`, `/learning-objectives`, `/learning-paths`, `/materials`, `/tags` | No consistent method-level policy; LearningOutcome store FormRequest only | Admin allowed; other authenticated tenant roles can also mutate several endpoints | P1 OPEN |
+| `/questions`, versions, publish/import | QuestionPolicy | Admin view/list/detail allowed for MADRASAH-owned; create/update/publish denied | P0 read exposure |
+| `/question-publications` | viewAny/update Question policy | Admin index allowed; mutation denied | P0 read exposure |
+| `/media` | role check + QuestionPolicy | Admin can list and read tenant QUESTION media file; cannot attach/update question due update policy | P0 read exposure |
+| `/teacher-subject-assignments` | controller canManage + tenant context | Admin_Madrasah with academic.manage allowed | PARTIAL |
+| `/assessments` | AssessmentPolicy | Admin list/detail allowed; detail serializes related Exams | P0 |
+| `/exams` | ExamPolicy | Admin list/detail allowed; raw Exam token/config serialized | P0 |
+| `/exams/{exam}/monitoring*` | ExamPolicy.monitor | Admin with exam.monitor allowed | P0 |
+| `/exams/{exam}/participants` GET | monitor policy | Admin can read roster | P0 |
+| `/exams/{exam}/participants` POST/DELETE | manageParticipants/update policy | Admin denied; Guru owner only | POSITIVE |
+| `/exams/{exam}/attempts/{attempt}` GET | monitor policy for non-student | Admin can read operational attempt DTO | P0 |
+| `/answers` GET/PUT, execution, submit | student self/participant/device checks | Admin denied | POSITIVE |
+| `/score` GET | ExamAttemptPolicy.viewScore | Admin report.view allowed | P0 |
+| `/score` POST/recalculate/manual grading | score/grade policy | Guru assignment only; Admin denied | POSITIVE |
+| `/finalize`, `/reopen` | ExamAttemptPolicy | Admin exam.grade/exam.reopen allowed | P0 |
+| `/close` | ExamPolicy.close | Admin exam.close allowed | P0 |
+| `/reports/*`, exports | ReportPolicy | Admin report.view allowed for exam/student/subject results | P0 |
+| `/analytics/exams/*` | ReportPolicy/ExamPolicy | Admin report.view allowed | P0 |
+| `/analytics/curriculum/*` | controller checks tenant and role scope | Admin can read curriculum achievement analytics; distinguish from exam analytics | REVIEW/likely Admin academic reporting |
+| `/tags` | auth/tenant/license only | All authenticated tenant roles can create/delete tags | P1 |
+
+### 15.5 Test evidence and gap
+
+- Existing methods that demonstrate current legacy expectations:
+  - `AdminUiVerificationTest::admin_can_access_all_admin_routes`
+  - `RoleDashboardVerificationTest::monitoring_access_control_and_tenant_isolation` (expects Admin monitoring allowed)
+  - `ScoringHardeningTest::test_reopen_score_is_allowed_only_for_admin_roles_in_same_tenant`
+  - `WebAdminAuthTest::test_admin_madrasah_login_redirects_to_operator_dashboard`
+- No test method found for Livewire permission revocation after mount/hydration and no direct Admin-denial test covering the complete route families.
+- No HTTP/browser/Livewire tests executed in this phase. Existing method references are source inspection only.
+
+### 15.6 Blob SHA source evidence — Livewire
+
+| Path | Git blob SHA-1 |
+|---|---|
+| app/Livewire/Admin/AcademicManagement.php | 5afd0780fa642354c11954fce307d8e6f7e4576f |
+| app/Livewire/Admin/CurriculumManagement.php | e3422650ea71709cba5ae07cd2b887cf812166a8 |
+| app/Livewire/Admin/ProctorAssignmentManagement.php | 4e8bd91dd54757aa863d35983aace718def2ca2c |
+| app/Livewire/Admin/UserManagement.php | 5f90e3873cadeb77a1bcd5a6aa2134953e60beed |
+| app/Livewire/Admin/StudentRombelManagement.php | 0da3f15787fbaf1fe6ea6f0eaec1439f413231f1 |
+| app/Livewire/Teacher/AnalyticsDashboard.php | 90cabf8c0b61775ac79ede8a6d2d6e5417dfa336 |
+| app/Livewire/Teacher/ItemAnalysis.php | b82649219c0c32310b1ce4ea84a4a21d1fb071b9 |
+| app/Livewire/Operator/OperatorDashboard.php | 75ef8da79896994c98b00b9941f6f976a36b671c |
+| app/Livewire/Proktor/ProktorDashboard.php | 172fff1aa4a101193aad9061a729cc17ccb11ecc |
+
+### 15.7 Status
+
+Audit route-by-route and Livewire hydration review adds P0-12/P1-16/P1-17. Audit remains OPEN; no source or configuration changed. Patch plan final remains pending full query/export/cache/resource review and final per-file dependency analysis.
