@@ -49,12 +49,13 @@ class ProctorAssignmentManagement extends Component
         $tenantId = auth()->user()->tenant_id;
         $exam = Exam::query()->where('tenant_id', $tenantId)->findOrFail($data['selectedExamId']);
         $proctor = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereHas('roles', fn ($query) => $query->where('name', 'PROKTOR'))
+            ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
+            ->whereHas('teacherProfile')
             ->findOrFail($data['selectedProctorId']);
 
         $service->assign(auth()->user(), $exam, $proctor->id, Carbon::parse($data['startsAt']), Carbon::parse($data['expiresAt']), $data['reason']);
         $this->reset('reason');
-        session()->flash('proctorAssignmentMessage', 'Penugasan Proktor berhasil disimpan dan dicatat.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan Guru pengawas berhasil disimpan dan dicatat.');
     }
 
     public function revoke(string $assignmentId, ExamProctorAssignmentService $service): void
@@ -66,14 +67,14 @@ class ProctorAssignmentManagement extends Component
         $exam = Exam::query()->where('tenant_id', $tenantId)->findOrFail($assignment->exam_id);
         $service->revoke(auth()->user(), $exam, $assignment, $data['revokeReason']);
         $this->reset('revokeReason');
-        session()->flash('proctorAssignmentMessage', 'Penugasan Proktor berhasil dicabut dan dicatat.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan Guru pengawas berhasil dicabut dan dicatat.');
     }
 
     private function assertCanManage(): void
     {
         $user = auth()->user();
         abort_unless($user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.proctor.assign'),
-            403, 'Hanya Admin Madrasah berizin yang dapat mengelola penugasan Proktor.');
+            403, 'Hanya Admin Madrasah berizin yang dapat mengelola penugasan Guru pengawas.');
     }
 
     public function render()
