@@ -84,6 +84,7 @@ class AdminCbtBoundaryTest extends TestCase
 
         app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
         $this->actingAs($admin);
+        $this->get('/')->assertRedirect('/operator/dashboard');
         Livewire::test(QuestionBank::class)->assertForbidden();
         Livewire::test(ExamManagement::class)->assertForbidden();
         $this->get('/student/exams')->assertForbidden();
