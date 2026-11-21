@@ -11,14 +11,9 @@ use RuntimeException;
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
+        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'],
         'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
         'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
-    ];
-
-    /** Optional legacy operational role sharing the Admin Madrasah portal, without exam authoring rights. */
-    private const OPTIONAL_ROLE_GRANTS = [
-        'OPERATOR' => ['curriculum.view', 'academic.manage', 'exam.monitor', 'report.view'],
     ];
 
     public function bootstrap(): void
@@ -64,20 +59,12 @@ class RolePermissionBootstrapper
                 $roles->get($roleName)->permissions()->syncWithoutDetaching($ids);
             }
 
-            foreach (self::OPTIONAL_ROLE_GRANTS as $roleName => $permissionNames) {
-                $role = Role::query()->where('name', $roleName)->first();
-                if ($role) {
-                    $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
-                    $role->permissions()->syncWithoutDetaching($ids);
-                }
-            }
-
             // Revoke stale grants that contradict the current tenant role matrix.
             $revokedGrants = [
-                'ADMIN_MADRASAH' => ['question.manage'],
+                'ADMIN_MADRASAH' => ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
                 'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
                 'GURU' => ['curriculum.manage'],
-                'OPERATOR' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
+                'OPERATOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.view', 'question.manage', 'user.manage', 'report.view'],
                 'PROKTOR' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'exam.monitor', 'question.manage'],
             ];
 
