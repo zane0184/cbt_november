@@ -46,6 +46,7 @@ class ImportWorkbookService
         if ($existing) return $existing;
 
         $analysis = $this->analyze($file->getRealPath(), $type, $tenantId);
+        if (!$analysis) throw new RuntimeException('Workbook tidak memiliki baris data untuk diimpor.');
         return DB::transaction(function () use ($analysis, $type, $tenantId, $userId, $sha, $file): ImportBatch {
             Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
             $duplicate = ImportBatch::query()->where('tenant_id', $tenantId)->where('type', $type)->where('file_sha256', $sha)->lockForUpdate()->first();
@@ -473,7 +474,7 @@ class ImportWorkbookService
             'employee_identifier'=>$p['nip'] ?: $p['nik'],'full_name'=>$p['name'],
             'gender'=>$p['gender'] === 'L' ? 'M' : ($p['gender'] === 'P' ? 'F' : null),'phone'=>$p['phone'] ?: null,
         ]);
-        app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'GURU','profile_id'=>$profile->id,'login_identifier'=>$p['nip'] ?: $p['nik']]);
+        app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'GURU','profile_id'=>$profile->id,'login_identifier_suffix'=>substr($p['nip'] ?: $p['nik'], -4)]);
         return $this->createActivation($user,$p['name'],$p['nip'] ?: $p['nik'],$tenantId);
     }
 
@@ -497,7 +498,7 @@ class ImportWorkbookService
             'id'=>(string) Str::uuid(),'tenant_id'=>$tenantId,'rombel_id'=>$rombel->id,'student_id'=>$profile->id,
             'created_at'=>now(),'updated_at'=>now(),
         ]);
-        app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'SISWA','profile_id'=>$profile->id,'login_identifier'=>$p['nisn'],'rombel_id'=>$rombel->id]);
+        app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'SISWA','profile_id'=>$profile->id,'login_identifier_suffix'=>substr($p['nisn'], -4),'rombel_id'=>$rombel->id]);
         return $this->createActivation($user,$p['name'],$p['nisn'],$tenantId);
     }
 
