@@ -10,16 +10,14 @@ class AssessmentPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('ADMIN_MADRASAH') ||
-               $user->hasRole('OPERATOR') ||
-               $user->hasRole('KAMAD') ||
-               $user->hasRole('GURU') ||
-               $user->hasRole('SISWA');
+        return $user->hasRole('KAMAD') || $user->hasRole('GURU') || $user->hasRole('SISWA');
     }
 
     public function view(User $user, Assessment $assessment): bool
     {
-        if ($user->tenant_id !== $assessment->tenant_id) return false;
+        if ($user->tenant_id !== $assessment->tenant_id
+            || $user->hasRole('ADMIN_MADRASAH')
+            || $user->hasRole('OPERATOR')) return false;
         if ($user->hasRole('GURU')) {
             return TeacherAccess::canManageAssessment($user, $assessment);
         }
@@ -30,9 +28,7 @@ class AssessmentPolicy
                 ->exists();
         }
 
-        return $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('OPERATOR')
-            || $user->hasRole('KAMAD');
+        return $user->hasRole('KAMAD');
     }
 
     public function create(User $user): bool
