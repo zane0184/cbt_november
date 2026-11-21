@@ -41,9 +41,13 @@
 | 29 | `tests/Feature/ScoringHardeningTest.php` | `c4d36a9663cf94caf5cc26eb1e4ac33870b63fc6` | `06feefe8e3aaf5b7ed157cbf4e8676474b928465d82eea643d638cdb476db2bf` | 18909 | `docs/backup/wa-01-source-2026-11-21/backend-laravel/tests/Feature/ScoringHardeningTest.php.before` |
 
 ## Verifikasi
-- Planned source/test files: 29.
+- Planned source/test files: 29 (23 source + 6 existing test files); one additional route file is preserved as reference-only and is not a patch target.
 - Per file: source W0 blob SHA = backup blob SHA; konten hasil fetch dibandingkan byte-for-byte.
 - Tidak ada backup untuk file baru `tests/Feature/AdminCbtBoundaryTest.php`; file tersebut belum dibuat.
 - `routes/api.php` disalin juga sebagai artefak referensi read-only dari WA-01 draft awal, tetapi **tidak masuk daftar file yang direncanakan berubah**. API route definitions akan dipertahankan; controller/policy guards menjadi titik enforcement dan seluruh route tetap diuji.
 - `app/Livewire/Admin/ProctorAssignmentManagement.php`, view-nya dan `ExamProctorAssignmentService.php` adalah file referensi no-change: sudah dibaca dan tidak direncanakan berubah pada WA-01.
 - Backup file bukan bukti test PASS dan bukan izin implementasi.
+
+| R | routes/api.php (reference-only; not a planned change) | f7e08e9080f4d492b374d5783a67304bfe975f94 | fc5fc6233f135b4a328b3a39c4373c8a06f19423e4439f2f1a952121c92158b4 | 10106 | docs/backup/wa-01-source-2026-11-21/backend-laravel/routes/api.php.before |
+
+Reference-only copy was also fetched and verified byte-identical to source W0. It is not part of the 23-file change list.
