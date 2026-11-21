@@ -32,13 +32,7 @@ class MediaController extends Controller
 
         $query = MediaAsset::query()->where('tenant_id', $user->tenant_id);
 
-        if ($user->hasRole('GURU')) {
-            // A teacher's library is limited to assets uploaded by that teacher.
-            $query->where('uploaded_by', $user->id);
-        } else {
-            // Admins can manage tenant question media, but USER media remains private.
-            $query->where('owner_type', 'QUESTION');
-        }
+        $query->where('uploaded_by', $user->id);
 
         $assets = $query->latest()->paginate(30);
         $assets->getCollection()->each(fn (MediaAsset $asset) => $asset->makeHidden(['storage_path']));
@@ -66,7 +60,7 @@ class MediaController extends Controller
             $ownerId = $user->id;
         } else {
             abort_unless(
-                $user->hasRole('GURU'),
+                $user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH'),
                 ResponseCode::HTTP_FORBIDDEN
             );
 
@@ -213,7 +207,7 @@ class MediaController extends Controller
         $user = $request->user();
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH'), ResponseCode::HTTP_FORBIDDEN);
 
         DB::transaction(function () use ($questionId, $versionId, $mediaId, $user, $tenantId) {
             // Keep the same lock order as attach to reduce deadlock risk.
