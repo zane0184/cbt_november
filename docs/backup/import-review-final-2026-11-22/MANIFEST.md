@@ -52,3 +52,8 @@ Commit: 99befdc735bed48431895524ae63b1ffd3de5d71
 ## Follow-up backup before deadlock test transaction harness correction
 Commit: f6f17ac966459461c908de496f92e560824887d3
 - backend-laravel/tests/Feature/ImportDeadlockRetryTest.php -> docs/backup/import-review-final-2026-11-22/ImportDeadlockRetryTest.php.before-refresh-database-harness | blob SHA 396c1927a2610551fae46e9908f6bd468ae1bd15
+
+
+## Follow-up backup before staging expiry audit assertion update
+Commit: 1a3cf1211faa227f4e787564e58501d9da8d00b6
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-staging-expiry-action-update | blob SHA 2445080aa2366776d2f4aaa3471562516db6495a
