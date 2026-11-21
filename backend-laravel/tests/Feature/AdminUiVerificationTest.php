@@ -126,7 +126,7 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_access_all_admin_routes()
+    public function admin_can_access_administrative_routes_but_not_cbt_authoring()
     {
         $this->actingAs($this->admin);
 
@@ -134,14 +134,15 @@ class AdminUiVerificationTest extends TestCase
             '/admin/users',
             '/admin/academic',
             '/admin/curriculum',
-            '/admin/questions',
-            '/admin/exams',
         ];
 
         foreach ($routes as $route) {
             $response = $this->get($route);
             $response->assertStatus(200);
         }
+
+        $this->get('/admin/questions')->assertForbidden();
+        $this->get('/admin/exams')->assertForbidden();
     }
 
     /** @test */
@@ -407,9 +408,8 @@ class AdminUiVerificationTest extends TestCase
     {
         $this->actingAs($this->admin);
 
-        Livewire::test(ExamManagement::class)
-            ->call('openCreateModal')
-            ->assertForbidden();
+        Livewire::test(QuestionBank::class)->assertForbidden();
+        Livewire::test(ExamManagement::class)->assertForbidden();
 
         $this->assertDatabaseMissing('exams', [
             'tenant_id' => $this->tenant->id,
