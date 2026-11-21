@@ -2,8 +2,9 @@
 
 Tanggal: 22 November 2026  
 Repository: zane0184/cbt_november  
-Branch pemeriksaan: work/import-guru-siswa-implementation-20261122  
-Source aktif diperiksa sampai commit: a3522e1c8be02224ef9b369051105f05b2704e39
+Branch pemeriksaan lanjutan: work/stage4a-monitoring-rbac-20261122  
+Source dasar: 17c20c66284deb7a18e3a6dde2b3d47f9c966bd9  
+Catatan: temuan awal direkonsiliasi terhadap keputusan pemilik proyek terbaru.
 
 ## STATUS
 
@@ -36,11 +37,11 @@ Ini adalah inventaris dan audit awal source Web Admin aktif, bukan pernyataan se
    - Role matrix memberi Kamad permission `curriculum.view`, `exam.monitor`, dan `report.view`, tetapi `CurriculumManagement` saat ini membatasi akses pada Admin Madrasah/role legacy ADMIN.
    - Ini harus diselesaikan sebagai akses terbatas/read-only di portal Admin, bukan membuat portal keempat.
 
-3. **Admin belum mendapat monitoring read-only**
-   - `RolePermissionBootstrapper` memberi Admin `exam.proctor.assign`, tetapi secara eksplisit mencabut `exam.monitor` dan `report.view`.
+3. **Admin Madrasah wajib ditolak dari seluruh permukaan CBT**
+   - `RolePermissionBootstrapper` memberi Admin `exam.proctor.assign`, tetapi tidak memberi `exam.monitor` atau `report.view`.
    - `ExamPolicy::monitor` menolak Admin Madrasah.
-   - Route monitoring menggunakan policy tersebut, sehingga Admin dapat mengelola penugasan operasional tetapi tidak dapat memantau ujian.
-   - Ini tidak sesuai kewenangan Admin yang sudah ditetapkan: monitoring harus tersedia secara read-only tanpa membuka pengelolaan bank soal, ujian, jawaban, atau penilaian.
+   - Route URL monitoring dan API monitoring memakai policy `monitor`; akses langsung tetap harus menghasilkan 403.
+   - Keputusan pemilik proyek terbaru menegaskan Admin tidak boleh mengakses fitur maupun data CBT, termasuk monitoring. Admin hanya mengelola penugasan Proktor sementara dan administrasi madrasah; penugasan tersebut tidak memberi capability operasional CBT kepada Admin.
 
 4. **Penugasan Proktor belum konsisten sebagai penugasan sementara**
    - Source aktif tidak memiliki portal/dashboard Proktor permanen; ini sesuai keputusan proyek.
@@ -85,11 +86,12 @@ Workflow CI terpilih saat ini mencakup dashboard, academic periods, role migrati
 
 Urutan kerja berikut menjaga tiga portal yang ditetapkan: Super Admin, Admin Madrasah, dan Guru. Kamad menjadi role terbatas di portal Admin; Proktor hanya capability operasional sementara.
 
-1. **Stage 4A — Portal/RBAC dan monitoring**
-   - Super Admin: tenant/platform administration dengan isolasi lintas tenant eksplisit.
-   - Kamad: routing ke ruang Admin read-only sesuai permission.
-   - Admin Madrasah: monitoring ujian read-only; tidak mendapat hak mengelola soal, ujian Guru, jawaban, atau penilaian.
-   - Proktor: capability sementara berbasis assignment, bukan role/portal permanen.
+1. **Stage 4A — Pemisahan portal dan RBAC Admin/Guru/Siswa**
+   - Pisahkan portal Admin Madrasah, Guru, dan Siswa.
+   - Admin Madrasah tidak dapat mengakses fitur atau data CBT, termasuk monitoring, URL langsung, dan API.
+   - Guru mengelola CBT sesuai role, permission, dan penugasan akademik.
+   - Proktor adalah capability sementara bagi Guru yang memenuhi syarat, berbasis assignment aktif; tidak ada role/portal Proktor permanen.
+   - Kamad, Super Admin, Android, dan deployment berada di luar ruang lingkup Stage 4A ini.
 
 2. **Stage 4B — Proctor assignment lifecycle**
    - Status operasional PENDING, CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED.
@@ -112,7 +114,8 @@ Urutan kerja berikut menjaga tiga portal yang ditetapkan: Super Admin, Admin Mad
 
 ## IMPLEMENTASI
 
-- Tidak ada source modul Web Admin selain Import yang diubah dalam audit ini.
+- Tidak ada source modul Web Admin selain Import yang diubah dalam audit awal.
+- Koreksi scope Stage 4A berikutnya dicatat pada `docs/IMPLEMENTASI_STAGE4A_MONITORING_RBAC_2026-11-22.md`.
 - Tidak ada migration, perubahan permission produksi, role migration produksi, PR, merge, atau deployment.
 - Sebelum patch berikutnya: backup setiap file, catat blob SHA, buat regression test, jalankan MySQL 8 disposable CI.
 
