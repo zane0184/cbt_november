@@ -347,4 +347,149 @@ class ExamRoomSessionManagementTest extends TestCase
             'entity_id' => $session->id,
         ]);
     }
+    public function test_room_update_is_guarded_by_active_session_and_assigned_capacity(): void
+    {
+        $room = $this->createRoom('EDIT1', 2);
+        $session = $this->createSession($this->exam);
+        $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
+        $this->service->mapRombel($this->admin, $sessionRoom->id, $this->rombel->id);
+
+        try {
+            $this->service->updateRoom($this->admin, $room->id, [
+                'code' => 'EDIT1', 'name' => 'Ruang EDIT1', 'location' => 'Lantai 1',
+                'capacity' => 2, 'status' => 'INACTIVE',
+            ]);
+            $this->fail('A room used by a scheduled session cannot be deactivated.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('status', $exception->errors());
+        }
+
+        try {
+            $this->service->updateRoom($this->admin, $room->id, [
+                'code' => 'EDIT1', 'name' => 'Ruang EDIT1', 'location' => 'Lantai 1',
+                'capacity' => 0, 'status' => 'ACTIVE',
+            ]);
+            $this->fail('Room capacity must remain positive.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('capacity', $exception->errors());
+        }
+
+        $updated = $this->service->updateRoom($this->admin, $room->id, [
+            'code' => 'EDIT1-UPDATED', 'name' => 'Ruang Diperbarui', 'location' => 'Lantai 2',
+            'capacity' => 2, 'status' => 'ACTIVE',
+        ]);
+
+        $this->assertSame('EDIT1-UPDATED', $updated->code);
+        $this->assertSame('Ruang Diperbarui', $updated->name);
+        $this->assertSame('ACTIVE', $updated->status);
+    }
+
+    public function test_cancelling_scheduled_session_releases_participant_and_proctor_assignments_with_history(): void
+    {
+        $room = $this->createRoom('CANCEL1');
+        $session = $this->createSession($this->exam);
+        $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
+        $mapping = $this->service->mapRombel($this->admin, $sessionRoom->id, $this->rombel->id);
+
+        $proctorAssignment = ExamProctorAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_session_room_id' => $sessionRoom->id,
+            'schedule_revision' => 3,
+            'proctor_user_id' => $this->proctor->id,
+            'assigned_by' => $this->admin->id,
+            'starts_at' => $session->starts_at,
+            'expires_at' => $session->ends_at,
+            'status' => 'CONFIRMED',
+            'assignment_reason' => 'Penugasan sesi yang akan dibatalkan',
+        ]);
+
+        $cancelled = $this->service->cancelSession(
+            $this->admin,
+            $session->id,
+            'Perubahan jadwal resmi dari madrasah'
+        );
+
+        $this->assertSame('CANCELLED', $cancelled->status);
+        $this->assertDatabaseHas('exam_session_rooms', [
+            'id' => $sessionRoom->id,
+            'status' => 'INACTIVE',
+        ]);
+        $this->assertDatabaseHas('exam_session_room_rombels', [
+            'id' => $mapping->id,
+            'status' => 'RELEASED',
+        ]);
+        $this->assertDatabaseHas('exam_participant_room_assignments', [
+            'exam_session_room_id' => $sessionRoom->id,
+            'status' => 'RELEASED',
+        ]);
+        $this->assertDatabaseHas('exam_proctor_assignments', [
+            'id' => $proctorAssignment->id,
+            'status' => 'REVOKED',
+            'revoked_by' => $this->admin->id,
+        ]);
+    }
+
+    public function test_lifecycle_command_activates_sessions_and_expires_assignments(): void
+    {
+        $session = $this->service->createSession(
+            $this->admin,
+            $this->exam->id,
+            'Sesi Aktif',
+            11,
+            now()->subMinutes(5),
+            now()->addMinutes(30)
+        );
+        $room = $this->createRoom('LIFE1');
+        $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
+
+        $assignment = ExamProctorAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_session_room_id' => $sessionRoom->id,
+            'schedule_revision' => 2,
+            'proctor_user_id' => $this->proctor->id,
+            'assigned_by' => $this->admin->id,
+            'starts_at' => now()->subMinutes(4),
+            'expires_at' => now()->subSecond(),
+            'status' => 'CONFIRMED',
+            'assignment_reason' => 'Penugasan yang sudah melewati masa berlaku',
+        ]);
+
+        $this->assertSame(0, Artisan::call('exams:sync-room-session-lifecycle'));
+        $this->assertDatabaseHas('exam_sessions', ['id' => $session->id, 'status' => 'ACTIVE']);
+        $this->assertDatabaseHas('exam_proctor_assignments', ['id' => $assignment->id, 'status' => 'EXPIRED']);
+    }
+
+    public function test_lifecycle_command_completes_ended_sessions_and_assignments(): void
+    {
+        $session = $this->service->createSession(
+            $this->admin,
+            $this->exam->id,
+            'Sesi Selesai',
+            12,
+            now()->subMinutes(5),
+            now()->subMinute()
+        );
+        $room = $this->createRoom('LIFE2');
+        $sessionRoom = $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $room->id);
+
+        $assignment = ExamProctorAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_session_room_id' => $sessionRoom->id,
+            'schedule_revision' => 2,
+            'proctor_user_id' => $this->proctor->id,
+            'assigned_by' => $this->admin->id,
+            'starts_at' => now()->subMinutes(4),
+            'expires_at' => now()->subSeconds(90),
+            'status' => 'CONFIRMED',
+            'assignment_reason' => 'Penugasan sesi yang telah berakhir',
+        ]);
+
+        $this->assertSame(0, Artisan::call('exams:sync-room-session-lifecycle'));
+        $this->assertDatabaseHas('exam_sessions', ['id' => $session->id, 'status' => 'COMPLETED']);
+        $this->assertDatabaseHas('exam_proctor_assignments', ['id' => $assignment->id, 'status' => 'COMPLETED']);
+    }
+
 }
