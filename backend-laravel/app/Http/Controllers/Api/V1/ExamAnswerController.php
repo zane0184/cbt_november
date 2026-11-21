@@ -31,8 +31,13 @@ class ExamAnswerController extends Controller
 
         $user = $request->user();
 
+        if (!$user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH') || !$user->tenant_id) {
+            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
+        }
+
         // Security: Attempt must belong to the authenticated student
-        if ($attempt->tenant_id !== $exam->tenant_id
+        if ($user->tenant_id !== $exam->tenant_id
+            || $attempt->tenant_id !== $exam->tenant_id
             || $attempt->participant->tenant_id !== $exam->tenant_id
             || $attempt->participant->user_id !== $user->id
             || $attempt->exam_id !== $exam->id) {
@@ -90,7 +95,8 @@ class ExamAnswerController extends Controller
         $user = $request->user();
 
         // 1. Basic Authorization & Integrity Checks
-        if ($attempt->tenant_id !== $exam->tenant_id
+        if ($user->tenant_id !== $exam->tenant_id
+            || $attempt->tenant_id !== $exam->tenant_id
             || $attempt->participant->tenant_id !== $exam->tenant_id
             || $snapshot->tenant_id !== $exam->tenant_id
             || $attempt->exam_id !== $exam->id
