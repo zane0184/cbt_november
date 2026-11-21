@@ -11,11 +11,7 @@ class ExamPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('ADMIN_MADRASAH') ||
-               $user->hasRole('OPERATOR') ||
-               $user->hasRole('KAMAD') ||
-               $user->hasRole('GURU') ||
-               $user->hasRole('SISWA');
+        return $user->hasRole('KAMAD') || $user->hasRole('GURU') || $user->hasRole('SISWA') || $user->hasRole('PROKTOR');
     }
 
     public function view(User $user, Exam $exam): bool
@@ -28,9 +24,11 @@ class ExamPolicy
             return TeacherAccess::canManageExam($user, $exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH') ||
-            $user->hasRole('OPERATOR') ||
-            $user->hasRole('KAMAD')) {
+        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) {
+            return false;
+        }
+
+        if ($user->hasRole('KAMAD')) {
             return true;
         }
 
@@ -137,10 +135,6 @@ class ExamPolicy
             return false;
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return $user->hasPermission('exam.close');
-        }
-
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
@@ -206,9 +200,17 @@ class ExamPolicy
                 ->exists();
         }
 
-        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR') || $user->hasRole('KAMAD'))
-            ? $user->hasPermission('exam.monitor')
-            : ($user->hasRole('GURU') && $user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam));
+        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) {
+            return false;
+        }
+
+        if ($user->hasRole('KAMAD')) {
+            return $user->hasPermission('exam.monitor');
+        }
+
+        return $user->hasRole('GURU')
+            && $user->hasPermission('exam.monitor')
+            && TeacherAccess::canViewExam($user, $exam);
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
