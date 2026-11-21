@@ -12,6 +12,10 @@ use App\Models\AcademicYear;
 use App\Models\Semester;
 use App\Models\Rombel;
 use App\Models\Subject;
+use App\Models\Role;
+use App\Models\Permission;
+use App\Models\User;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Maatwebsite\Excel\Facades\Excel;
@@ -86,6 +90,26 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('=SemestersList', $guru->getSheetByName('Penugasan Guru')->getCell('E2')->getDataValidation()->getFormula1());
         $this->assertSame('=RombelsList', $siswa->getSheetByName('Data Siswa')->getCell('J2')->getDataValidation()->getFormula1());
         $this->assertSame('=AcademicYearsList', $siswa->getSheetByName('Data Siswa')->getCell('K2')->getDataValidation()->getFormula1());
+    }
+
+    public function test_admin_can_download_real_guru_and_student_xlsx_templates(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Download', 'code' => 'DWNX']);
+        $this->setTenantContext($tenant->id);
+        $role = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $permission = Permission::create(['name' => 'user.manage', 'label' => 'Kelola Pengguna']);
+        $role->permissions()->attach($permission->id);
+        $admin = User::create(['name' => 'Admin Download', 'email' => 'admin.download@madrasah.test', 'password' => Hash::make('StrongPassword123!')]);
+        $admin->roles()->attach($role);
+        $this->actingAs($admin);
+
+        $guru = $this->get('/admin/import/template/GURU');
+        $guru->assertOk();
+        $this->assertStringContainsString('Template%20Import%20Guru.xlsx', (string) $guru->headers->get('content-disposition'));
+
+        $siswa = $this->get('/admin/import/template/SISWA');
+        $siswa->assertOk();
+        $this->assertStringContainsString('Template%20Import%20Siswa.xlsx', (string) $siswa->headers->get('content-disposition'));
     }
 
 }

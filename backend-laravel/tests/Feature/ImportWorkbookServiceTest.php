@@ -73,6 +73,17 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_PREVIEW_CREATED']);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_BATCH_CONFIRMED']);
         $this->assertSame(2, AuditLog::query()->where('tenant_id', $this->tenant->id)->where('action', 'USER_CREATED')->count());
+
+        $activationUrl = $result['activation_links'][0]['url'];
+        $this->get($activationUrl)->assertOk()->assertHeader('Referrer-Policy', 'no-referrer');
+        $this->post($activationUrl, [
+            'password' => 'StrongPassword123!',
+            'password_confirmation' => 'StrongPassword123!',
+        ])->assertOk();
+        $activatedTeacher = TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('nip', '001234567890123456')->firstOrFail();
+        $this->assertTrue(Hash::check('StrongPassword123!', $activatedTeacher->user->password));
+        $this->get($activationUrl)->assertGone();
+        $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_ACCOUNT_ACTIVATED']);
     }
 
     public function test_imports_student_and_links_tenant_owned_rombel_and_academic_year(): void
