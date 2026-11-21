@@ -399,6 +399,12 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertStringContainsString('username akun lain', $studentBatch->rows->first()->reason);
     }
 
+    public function test_encrypted_payload_and_activation_token_hash_are_hidden_from_serialization(): void
+    {
+        $this->assertContains('encrypted_payload', (new ImportBatchRow())->getHidden());
+        $this->assertContains('token_hash', (new ImportActivationToken())->getHidden());
+    }
+
     public function test_livewire_admin_can_upload_preview_and_confirm_guru_workbook(): void
     {
         Role::create(['name' => 'GURU', 'label' => 'Guru']);

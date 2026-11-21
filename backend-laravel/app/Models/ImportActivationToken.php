@@ -13,6 +13,8 @@ class ImportActivationToken extends Model
 
     public $timestamps = false;
 
+    protected $hidden = ['token_hash'];
+
     protected $fillable = ['user_id', 'token_hash', 'expires_at', 'used_at', 'created_at'];
 
     protected $casts = ['expires_at' => 'datetime', 'used_at' => 'datetime', 'created_at' => 'datetime'];
