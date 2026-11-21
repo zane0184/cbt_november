@@ -51,7 +51,7 @@ class ImportTemplateExport implements WithMultipleSheets
             $sheets[] = new ImportDataSheet(
                 'Penugasan Guru',
                 ['Identitas Guru (NIP/NIK)*', 'Mata Pelajaran*', 'Rombel*', 'Tahun Pelajaran*', 'Semester*', 'Tanggal Mulai (YYYY-MM-DD)', 'Tanggal Selesai (YYYY-MM-DD)', 'Status (ACTIVE/INACTIVE)'],
-                [['198001012005011001', '', '', '', '', '', '', 'ACTIVE']],
+                [['CONTOH - HAPUS BARIS INI', '', '', '', '', '', '', 'ACTIVE']],
                 ['A','F','G'],
                 ['B' => $references['subjects'], 'C' => $references['rombels'], 'D' => $references['years'], 'E' => $references['semesters']],
                 ['H' => ['ACTIVE','INACTIVE']],
