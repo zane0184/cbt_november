@@ -204,6 +204,21 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertSame(2, $result['batch']->failed_rows);
     }
 
+    public function test_duplicate_teacher_email_rows_are_rejected_during_preview(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Email Satu', 'L', 'guru.sama@madrasah.test', '081234567890'],
+            ['PNS', '001234567890123457', '', '', 'Guru Email Dua', 'P', 'guru.sama@madrasah.test', '081234567891'],
+        ]);
+
+        $batch = app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+
+        $this->assertSame(0, $batch->valid_rows);
+        $this->assertSame(2, $batch->failed_rows);
+        $this->assertStringContainsString('email dalam workbook', $batch->rows->first()->reason);
+    }
+
     public function test_unknown_rombel_and_cross_tenant_reference_are_invalid(): void
     {
         Role::create(['name' => 'SISWA', 'label' => 'Siswa']);

@@ -250,13 +250,16 @@ class ImportWorkbookService
             $rowIndex = count($rows);
             $identityValues = array_unique(array_filter(array_map(fn ($field) => $payload[$field] ?? '', $type === 'GURU' ? ['nip', 'nik', 'nuptk'] : ['nis', 'nisn']), fn ($value) => $value !== ''));
             foreach ($identityValues as $identityValue) $identityMap[$identityValue][] = $rowIndex;
+            if ($type === 'GURU' && ($payload['email'] ?? '') !== '') {
+                $identityMap['EMAIL:'.mb_strtolower($payload['email'])][] = $rowIndex;
+            }
             $rows[] = $this->validateDataRow($type, $payload, $tenantId, $number);
         }
         foreach ($identityMap as $key => $indices) {
             if ($key !== '' && count($indices) > 1) {
                 foreach ($indices as $index) {
                     $rows[$index]['status'] = 'INVALID';
-                    $rows[$index]['reason'] = 'Duplikat identitas dalam workbook.';
+                    $rows[$index]['reason'] = 'Duplikat identitas atau email dalam workbook.';
                 }
             }
         }
