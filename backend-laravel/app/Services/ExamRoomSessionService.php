@@ -572,6 +572,182 @@ class ExamRoomSessionService
         });
     }
 
+    public function cancelSession(User $actor, string $sessionId, string $reason): ExamSession
+    {
+        $this->assertAdmin($actor);
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 10 || mb_strlen($reason) > 500) {
+            throw ValidationException::withMessages([
+                'reason' => 'Alasan pembatalan wajib berisi 10–500 karakter.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($actor, $sessionId, $reason) {
+            $snapshot = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($sessionId)
+                ->firstOrFail();
+
+            $exam = Exam::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($snapshot->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $sessionRoomIds = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('exam_session_id', $sessionId)
+                ->where('status', 'ACTIVE')
+                ->orderBy('exam_room_id')
+                ->pluck('id');
+
+            $roomIds = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereIn('id', $sessionRoomIds)
+                ->orderBy('exam_room_id')
+                ->pluck('exam_room_id')
+                ->unique()
+                ->values();
+
+            $lockedRooms = ExamRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereIn('id', $roomIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($lockedRooms->count() !== $roomIds->count()) {
+                throw ValidationException::withMessages([
+                    'room' => 'Salah satu ruang sesi tidak lagi tersedia pada tenant ini.',
+                ]);
+            }
+
+            $session = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($session->status !== 'SCHEDULED') {
+                throw ValidationException::withMessages([
+                    'session' => 'Hanya sesi yang belum dimulai yang dapat dibatalkan.',
+                ]);
+            }
+
+            $hasActiveAttempt = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('exam_session_room_id', $sessionRoomIds)
+                ->where('status', 'ACTIVE')
+                ->whereHas('participant.attempts', fn ($query) => $query->where('status', 'IN_PROGRESS'))
+                ->exists();
+
+            if ($hasActiveAttempt) {
+                throw ValidationException::withMessages([
+                    'session' => 'Sesi tidak dapat dibatalkan ketika masih ada peserta yang sedang mengerjakan ujian.',
+                ]);
+            }
+
+            $assignments = ExamProctorAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('exam_session_room_id', $sessionRoomIds)
+                ->whereNull('revoked_at')
+                ->whereIn('status', ['PENDING', 'CONFIRMED', 'NEEDS_REVIEW'])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($assignments as $assignment) {
+                $old = $assignment->only(['status', 'revoked_at', 'revoked_by', 'revoke_reason']);
+                $assignment->update([
+                    'status' => 'REVOKED',
+                    'revoked_at' => now(),
+                    'revoked_by' => $actor->id,
+                    'revoke_reason' => $reason,
+                ]);
+                $this->auditService->log('EXAM_PROCTOR_ASSIGNMENT_REVOKE', 'ExamProctorAssignment', $assignment->id, $old, [
+                    'status' => 'REVOKED',
+                    'revoked_by' => $actor->id,
+                    'revoke_reason' => $reason,
+                    'source' => 'SESSION_CANCELLED',
+                ]);
+            }
+
+            $participantAssignments = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('exam_session_room_id', $sessionRoomIds)
+                ->where('status', 'ACTIVE')
+                ->orderBy('participant_id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($participantAssignments as $assignment) {
+                $assignment->update([
+                    'status' => 'RELEASED',
+                    'released_at' => now(),
+                    'released_by' => $actor->id,
+                    'release_reason' => $reason,
+                ]);
+            }
+
+            $mappings = ExamSessionRoomRombel::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('exam_session_room_id', $sessionRoomIds)
+                ->where('status', 'ACTIVE')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($mappings as $mapping) {
+                $mapping->update([
+                    'status' => 'RELEASED',
+                    'released_at' => now(),
+                    'released_by' => $actor->id,
+                    'release_reason' => $reason,
+                ]);
+            }
+
+            ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('id', $sessionRoomIds)
+                ->where('status', 'ACTIVE')
+                ->update(['status' => 'INACTIVE']);
+
+            $oldSession = $session->only(['status', 'schedule_revision']);
+            $session->update([
+                'status' => 'CANCELLED',
+                'schedule_revision' => (int) $session->schedule_revision + 1,
+            ]);
+
+            $window = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                ->selectRaw('MIN(starts_at) AS starts_at, MAX(ends_at) AS ends_at')
+                ->first();
+
+            if ($window?->starts_at && $window?->ends_at) {
+                $exam->update(['start_at' => $window->starts_at, 'end_at' => $window->ends_at]);
+            }
+
+            $this->auditService->log('EXAM_SESSION_CANCEL', 'ExamSession', $session->id, $oldSession, [
+                'status' => 'CANCELLED',
+                'schedule_revision' => $session->schedule_revision,
+                'reason' => $reason,
+                'released_participant_count' => $participantAssignments->count(),
+                'revoked_proctor_assignment_count' => $assignments->count(),
+            ]);
+
+            return $session->fresh()->load('sessionRooms');
+        }, 3);
+    }
+
     public function rescheduleSession(
         User $actor,
         string $sessionId,
