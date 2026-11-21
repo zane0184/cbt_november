@@ -740,17 +740,6 @@ class ExamRoomSessionService
                 'schedule_revision' => (int) $session->schedule_revision + 1,
             ]);
 
-            $window = ExamSession::query()
-                ->where('tenant_id', $actor->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->whereIn('status', ['SCHEDULED', 'ACTIVE'])
-                ->selectRaw('MIN(starts_at) AS starts_at, MAX(ends_at) AS ends_at')
-                ->first();
-
-            if ($window?->starts_at && $window?->ends_at) {
-                $exam->update(['start_at' => $window->starts_at, 'end_at' => $window->ends_at]);
-            }
-
             $this->auditService->log('EXAM_SESSION_CANCEL', 'ExamSession', $session->id, $oldSession, [
                 'status' => 'CANCELLED',
                 'schedule_revision' => $session->schedule_revision,
