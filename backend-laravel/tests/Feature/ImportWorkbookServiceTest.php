@@ -813,6 +813,31 @@ class ImportWorkbookServiceTest extends TestCase
 
 
 
+
+    public function test_stale_processing_batch_expires_and_marks_unfinished_rows_failed(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $batch = app(ImportWorkbookService::class)->preview(
+            $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Processing Retention', 'L', '', '']]),
+            'GURU', $this->tenant->id, $this->admin->id
+        );
+        $row = ImportBatchRow::query()->where('batch_id', $batch->id)->firstOrFail();
+        \Illuminate\Support\Facades\DB::table('import_batches')->where('id', $batch->id)
+            ->update(['status' => 'PROCESSING', 'updated_at' => now()->subDays(8)]);
+        \Illuminate\Support\Facades\Artisan::call('imports:expire-staging', ['--days' => 7]);
+
+        $this->assertDatabaseHas('import_batches', [
+            'id' => $batch->id, 'tenant_id' => $this->tenant->id, 'status' => 'EXPIRED', 'failed_rows' => 1,
+        ]);
+        $expiredRow = ImportBatchRow::query()->whereKey($row->id)->firstOrFail();
+        $this->assertSame('FAILED', $expiredRow->status);
+        $this->assertNull($expiredRow->encrypted_payload);
+        $this->assertStringContainsString('kedaluwarsa', $expiredRow->reason);
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id, 'action' => 'IMPORT_STAGING_EXPIRED', 'entity_id' => $batch->id,
+        ]);
+    }
+
     public function test_import_service_rejects_mismatched_tenant_context_before_staging_any_data(): void
     {
         $otherTenant = Tenant::create(['name' => 'Madrasah Import B', 'code' => 'IMPB']);

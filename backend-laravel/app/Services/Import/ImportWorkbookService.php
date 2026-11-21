@@ -120,6 +120,7 @@ class ImportWorkbookService
                     $summary = $row->row_summary ?? [];
                     if (!empty($result['user_id'])) $summary['created_user_id'] = $result['user_id'];
                     $row->update(['status' => $result['status'], 'reason' => $result['reason'], 'encrypted_payload' => null, 'row_summary' => $summary]);
+                    ImportBatch::query()->where('tenant_id', $tenantId)->whereKey($batchId)->update(['updated_at' => now()]);
                     return $result;
                 }, 3);
                 if (!empty($result['activation_url'])) $activationLinks[] = ['name' => $result['name'], 'identity' => $result['identity'], 'url' => $result['activation_url']];
