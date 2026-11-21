@@ -41,6 +41,7 @@ jobs:
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
       MAIL_MAILER: array
+      CBT_LICENSE_TEST_BYPASS: "true"
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: "3306"
