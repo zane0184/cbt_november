@@ -156,3 +156,11 @@ The monitoring endpoint returns the operational attempt under `data.attempt`; th
 | backend-laravel/tests/Feature/ExamRoomSessionManagementTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionManagementTest.php.before-admin-participant-data-assertion | c3d9732eeb7b25a2e994b4cfa48e81c5d3e9fc7f | 25663 |
 
 The Admin Livewire component no longer eager-loads participant room assignments, and the view no longer exposes an operational participant count. Capacity remains a room metadata field. A regression assertion prevents participant names/counts from appearing in this Admin UI.
+
+## Additional snapshot — completed-session and inactive-profile revocation coverage
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-session-completion-and-profile-revocation-tests | dbd5fb28758a23d08a5ac6c78da4935481fe60ce | 33713 |
+
+Added fail-closed tests for a completed session and a soft-deleted TeacherProfile while a Proktor assignment is otherwise confirmed.
