@@ -317,11 +317,12 @@ jobs:
           set -euo pipefail
           php artisan test tests/Feature/AdminCbtBoundaryTest.php             --filter='test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces'             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-cbt-boundary.log"
 
-       - name: PHPUnit — temporary Proctor assignment to eligible Guru
-         shell: bash
-         run: |
-           set -euo pipefail
-           php artisan test tests/Feature/ProctorAssignmentSecurityTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-proctor-assignment.log"
+      - name: PHPUnit — temporary Proctor assignment to eligible Guru
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ProctorAssignmentSecurityTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-proctor-assignment.log"
+
 
       - name: PHPUnit — Admin dashboard, tenant scope and CBT-free surface
         shell: bash
