@@ -119,3 +119,49 @@ Jika salah satu tidak tersedia, tulis batas bukti secara eksplisit.
 
 ### 6.4 Batas bukti
 Branch/commit/PR dibaca melalui GitHub. Tidak ada local worktree yang diperiksa. SHA-256 backup dihitung atas teks UTF-8 hasil fetch dan salinan backup dibuat di branch dokumentasi baru; ini bukan backup lokal. Tidak ada ZIP baseline dibuka. Tidak ada CI, runtime, browser, MySQL concurrency, import/restore, atau UAT baru dijalankan.
+
+
+## 7. Addendum provenance — finalisasi dokumentasi dan keputusan Proktor (21-11-2026)
+
+### 7.1 Branch konsolidasi aktual
+- Branch konsolidasi: `docs/canonical-reconciliation-admin-guru-20261121`.
+- HEAD pada awal pemeriksaan ulang: `55cfe325aef13abd4dae97c7d46e127a0ff47bbb`. Commit dokumentasi finalisasi setelah SHA ini tercatat pada riwayat branch; checkpoint final mencatat HEAD sesudah rangkaian perubahan.
+- Branch source pin: `recovery/source-preservation-20261121` @ `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`.
+- Branch W0: `work/web-admin-w0-20261121` @ `2b4321ce032fd5e67cf022da8564a5287b8cef6f`.
+- Branch W6: `docs/curriculum-kbc-w6-requirements-20261121` @ `4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4`.
+- Branch main @ `91dae257b2210ef89c90534185a3cbdd8979ffe0`; bukan otomatis working source.
+- Branch recovery, W0, W6, main, dan PR head tidak diubah.
+
+### 7.2 Status PR pada verifikasi ulang
+| PR | Status | Draft | Head | Base | Tindakan |
+|---|---|---|---|---|---|
+| #1 | OPEN | Ya | hotfix/fase1c-mysql8-fk-name-20261119 | p0-95d-migration-gate-20261118 | Tidak diubah |
+| #2 | CLOSED, unmerged | Ya | work/schema-dump-export-20261119 | main | Tidak diubah |
+| #3 | OPEN | Ya | work/schema-dump-export-20261119 | main | Tidak diubah |
+| #4 | OPEN | Ya | fix/p0-96g-installer-private-db-config-20261120 | work/schema-dump-export-20261119 | Tidak diubah |
+| #5 | OPEN | Ya | fix/web-portal-usability-rbac-20261120 | fix/p0-96g-installer-private-db-config-20261120 | Tidak diubah |
+| #6 | OPEN | Ya | docs/admin-web-spec-20261121 | fix/web-portal-usability-rbac-20261120 | Tidak diubah |
+| #7 | OPEN | Ya | docs/web-admin-agent-handover-20261121 | docs/admin-web-spec-20261121 | Tidak diubah |
+
+### 7.3 Rekonsiliasi jumlah path
+Compare dari base W0-recheck `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch pada HEAD awal `55cfe325aef13abd4dae97c7d46e127a0ff47bbb`: 28 path berubah/ditambahkan, 0 deleted, semuanya `docs/`, tidak ada source aplikasi. Rincian: 12 dokumen kerja (6 added, 6 modified) dan 16 backup/manifest. Angka 18 dan 24 dalam laporan/checkpoint versi sebelumnya adalah hasil compare parsial sebelum backup finalisasi lengkap.
+
+### 7.4 Backup finalisasi
+- Folder: `docs/backup/reconciliation-2026-11-21/finalization/`.
+- Manifest: `MANIFEST.tsv`.
+- Sebanyak 16 file dokumentasi sebelum perubahan disalin dan diverifikasi blob SHA backup identik dengan blob sumber.
+- Backup dibuat di branch GitHub, bukan backup lokal. Backup historis sebelumnya tetap dipertahankan.
+
+### 7.5 Keputusan final Proktor
+DEC-WA-026 / Addendum 35 berstatus ACTIVE:
+- PENDING: DENY.
+- CONFIRMED: satu-satunya status assignment yang dapat memberikan capability setelah seluruh validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict, dan waktu server.
+- ACTIVE bukan status assignment.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED: DENY.
+- Capability hanya pada `starts_at <= serverNow < expires_at`, diverifikasi pada setiap request.
+- Nota OPEN/PROPOSED lama dan Addendum 34 SUPERSEDED.
+
+### 7.6 Source dan test provenance
+Pada pemeriksaan ulang, 14 dari 15 path source kunci yang dipilih berhasil di-fetch pada recovery branch; path `backend-laravel/app/Services/ExamScheduleChangeService.php` tidak ditemukan pada ref tersebut. Source blob yang ditemukan tetap sesuai audit sebelumnya, termasuk seeder, role bootstrapper, resolver login, question bank, policy ujian/attempt/question, API ExamController, Livewire ExamManagement, ProctorAssignmentManagement, User, TenantScoped, IdentifyTenant dan ExamProctorAssignmentService. Ini pemeriksaan statis saja. Tidak ada PHPUnit/runtime/HTTP/MySQL concurrency/browser/UAT dijalankan.
+
+Matriks audit 23 modul dipertahankan; test T-001–T-168 dipertahankan dan T-169–T-173 ditambahkan. Seluruh test yang belum dijalankan tetap NOT RUN.
