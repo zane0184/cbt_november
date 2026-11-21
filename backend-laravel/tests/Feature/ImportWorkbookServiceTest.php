@@ -174,12 +174,13 @@ class ImportWorkbookServiceTest extends TestCase
         file_put_contents($corruptPath, 'not an xlsx archive');
         $this->temporaryFiles[] = $corruptPath;
         $corrupt = new UploadedFile($corruptPath, 'corrupt.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+        $rejected = false;
         try {
             $service->preview($corrupt, 'GURU', $this->tenant->id, $this->admin->id);
-            $this->fail('Workbook rusak seharusnya ditolak.');
         } catch (\Throwable $exception) {
-            $this->assertNotSame($first->id, $exception->getMessage());
+            $rejected = true;
         }
+        $this->assertTrue($rejected, 'Workbook rusak seharusnya ditolak.');
     }
 
     public function test_missing_role_causes_row_failure_without_partial_account_and_audits_batch(): void
