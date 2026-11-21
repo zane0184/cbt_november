@@ -76,7 +76,7 @@ GitHub Actions run 44944158355:
 - MySQL 8.0.46 disposable, PHP 8.3, Ubuntu runner.
 - 75 base tables; 0 tabel non-InnoDB; required schema tersedia.
 - Disposable database dan user aplikasi berhasil dihapus setelah tes.
-- Artifact: wa01-alternative-runtime-44944158355-1, ID 14723455279, SHA-256 fc? — digest resmi: 680a4db83b9f51a004e623e747230ddbb5523cccfc6be7d1058d8e4051f540cf, retensi sampai 21 Desember 2026.
+- Artifact: wa01-alternative-runtime-44944158355-1, ID 14723455279, SHA-256: 680a4db83b9f51a004e623e747230ddbb5523cccfc6be7d1058d8e4051f540cf, retensi sampai 21 Desember 2026.
 - Cakupan deadlock: test menyuntikkan QueryException dengan kode MySQL 1213 untuk memverifikasi retry transaksi. Ini belum merupakan simulasi deadlock multi-koneksi yang benar-benar terbentuk oleh dua transaksi bersamaan.
 - Belum dilakukan uji stress multi-proses, pengujian UI browser manual, uji filesystem staging di VPS, dan UAT madrasah.
 
