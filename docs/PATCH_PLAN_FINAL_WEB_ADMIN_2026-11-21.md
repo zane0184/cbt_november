@@ -79,35 +79,46 @@ Before editing:
 5. Patch only in a dedicated source work branch after approval. Never edit the original ZIP/recovery branch.
 6. New files are marked **NEW** and have no pre-change backup; their creation is recorded in the same manifest.
 
-### WA-01 — Admin CBT boundary and metadata-only exam assignment
+### WA-01 — Admin CBT boundary and metadata-only Proktor assignment
 
-| Source file (current Git blob SHA-1) | Planned change | Backup path | DB impact / dependency | Tests |
-|---|---|---|---|---|
-| `app/Services/RolePermissionBootstrapper.php` — `fac82573de84c52b52867afbbf7e1637164835b4` | Remove Admin grants for question.view, exam.monitor, exam.close, exam.grade, exam.reopen, report.view and other Guru-only CBT operations. Preserve exam.proctor.assign and academic/user/curriculum permissions required by Admin. | `backup_before_patch/WA-01/app/Services/RolePermissionBootstrapper.php.before` | Permission seeding only; ensure bootstrap is idempotent and does not delete legacy account records. | RolePermissionBootstrapperTest; AdminCbtBoundaryTest |
-| `app/Policies/QuestionPolicy.php` — `af94614a2043206922149b0c44a8ec1e3d87767d` | Deny Admin viewAny/view for question content. Guru authoring policy remains unchanged. | mirrored WA-01 path | None | Admin direct Question API deny; Guru positive regression |
-| `app/Policies/AssessmentPolicy.php` — `79a0367c8c83723ae3cc9e581fb8dda8a6e2d02a` | Remove Admin raw Assessment/Exam relation read. Use a separate metadata-only capability for assignment context. | mirrored WA-01 path | None | Assessment detail payload allowlist |
-| `app/Policies/ExamPolicy.php` — `350c1ddc6bed8738d1af17cacd6c95bc367b7c29` | Deny Admin viewAny/view/monitor/close; preserve only Admin assignProctor/revokeProctor capability. Remove OPERATOR/PROKTOR aliases in WA-02, not silently in this patch. | mirrored WA-01 path | None | Direct list/detail/monitor/close deny; assignment positive |
-| `app/Policies/ExamAttemptPolicy.php` — `b19d6d39d34884d8be464f786340c1a2ab7108b6` | Deny Admin view/viewScore/finalize/reopen. Guru grading remains governed by TeacherAccess. | mirrored WA-01 path | None | Attempt/score/finalize/reopen negative tests |
-| `app/Policies/ReportPolicy.php` — `e53be3994c52d067c1e31fe37edc450c24a0f4b6` | Deny Admin exam/student/subject result and exam analytics. Keep separately approved administrative reports outside CBT result policies. | mirrored WA-01 path | None | Reports/export/analytics direct deny |
-| `app/Http/Controllers/Api/V1/QuestionController.php` — `7ded53423dd4d96788123819e8039fd543ce4fba` | Enforce deny via QuestionPolicy on every list/detail/version/import/mutation route; ensure no alternate method bypass. | mirrored WA-01 path | None | Admin question list/detail/version/import/media negative |
-| `app/Http/Controllers/Api/V1/QuestionPublicationController.php` — `b0c3f6501601af8c6254feb1ed9cbcab7eeaaff1` | Deny Admin publication index/read; Guru publication flow preserved. | mirrored WA-01 path | None | Publication index/read deny |
-| `app/Http/Controllers/Api/V1/MediaController.php` — `52254b81a55db8e2e45538158ef202b8ccf09b70` | Deny Admin listing/show of QUESTION media. Preserve own USER media access and Guru question media authoring. | mirrored WA-01 path | None | Admin media list/show deny; private storage path tests |
-| `app/Http/Controllers/Api/V1/AssessmentController.php` — `28e6f8fe07c8e2b3dad22ecd190e9aa108947e78` | Do not serialize raw exams for Admin. Add metadata-only assignment resource/endpoint with explicit allowlist. | mirrored WA-01 path | None | Assessment/Exam token and config absence assertions |
-| `app/Http/Controllers/Api/V1/ExamController.php` — `bf373858869b470b235e2256e5be6169fbb1f561` | Deny Admin raw index/show/monitor/close; add metadata-only Admin assignment read method or dedicated controller. Guru lifecycle remains unchanged. | mirrored WA-01 path | None | Admin API allowlist; Guru API regression |
-| `app/Http/Controllers/Api/V1/ExamParticipantController.php` — `f7014ab069cc2c9548f9b238e0e7a4f1986cb421` | Deny Admin roster index; preserve Guru participant management. Add explicit users.tenant_id equality in user joins/relations. | mirrored WA-01 path | Composite FK in WA-04 | Roster deny; tenant mismatch negative |
-| `app/Http/Controllers/Api/V1/ExamAttemptController.php` — `ace6a83989375e067b3a7747bc4f320c21222c69` | Deny Admin attempt monitoring/detail. Student self-service DTO remains unchanged. | mirrored WA-01 path | None | Admin attempt detail deny; student DTO regression |
-| `app/Http/Controllers/Api/V1/MonitoringController.php` — `335a32029f4d5ab4788ea31fd81088dfdb5acde2` | Deny Admin all monitor endpoints; redact event payload for remaining authorized operational roles; add tenant equality to User join. | mirrored WA-01 path | WA-04 FK hardening | Admin summary/participants/attempt/events deny |
-| `app/Http/Controllers/Api/V1/ScoringController.php` — `42b96176162a6e69e3661d468a6d3362b05f59c5` | Deny Admin score read/finalize/reopen; preserve Guru scoring/manual grading. | mirrored WA-01 path | None | Admin score/finalize/reopen deny; Guru grading positive |
-| `app/Http/Controllers/Api/V1/ReportController.php` — `c78442de0f5b4b40a7773bb2af0cf0ffd852d055` | Deny Admin exam/student/subject/question reports and all CBT exports. Add separate Admin administrative-report routes later. | mirrored WA-01 path | None | Excel/PDF direct deny; teacher export positive |
-| `app/Http/Controllers/Api/V1/AnalyticsController.php` — `3339103d64d06427896344c6e4f3bb45db8a680b` | Deny Admin exam/item/rombel/student result analytics. Curriculum achievement analytics remain a distinct academic-report scope. | mirrored WA-01 path | None | Exam analytics deny; curriculum analytics matrix |
-| `app/Livewire/Admin/QuestionBank.php` — `a3013b528015daf4214dd1aa567eba950b03663a` | Deny Admin mount and every hydrated render/action; retain Guru functionality only. Query must fail closed if role/permission absent. | mirrored WA-01 path | None | Admin Livewire mount/action/hydration deny |
-| `app/Livewire/Admin/ExamManagement.php` — `478aaa170ee297b0c8399f049cd9b1ba56cbfb10` | Separate Admin metadata-only branch from Guru branch. Admin query must not load participants, attempts, snapshots, question data or token. Reauthorize every hydration. | mirrored WA-01 path | None | Admin payload allowlist; Guru regression |
-| `resources/views/livewire/admin/question-bank.blade.php` — `72feaf1cc1be17253868c91861781dbb223b5aa9` | Remove Admin navigation/action rendering; do not rely on hidden buttons for security. | mirrored WA-01 path | None | UI visibility plus direct API deny |
-| `resources/views/livewire/admin/exam-management.blade.php` — `5705d815cc3e2539d167b22a26d3508586a77439` | Admin view only minimum exam metadata and assignment controls; remove token/snapshot/roster counts/monitoring/results/analytics links. Guru branch remains. | mirrored WA-01 path | None | HTML response contains no forbidden field |
-| `routes/web.php` — `c22fed7d54871bf4971acf626514fc02c4a68ce9` | Add route-level policy middleware/guards for monitoring/results/analytics/exports; retain Guru routes. Keep Admin metadata assignment route separate. | mirrored WA-01 path | None | HTTP route matrix Admin deny/Guru allow |
-| `routes/api.php` — `f7e08e9080f4d492b374d5783a67304bfe975f94` | Add explicit route-level policy middleware as defense-in-depth for CBT result/monitoring/score operations; retain controller checks. | mirrored WA-01 path | None | API route matrix |
-| **NEW** `app/Http/Resources/Api/V1/AdminExamAssignmentResource.php` | Allowlist only exam ID/title/subject label/schedule/status and assignment-required metadata. Never include token, instructions, questions, roster, attempt, score or result. | New file; record creation in manifest | None | DTO allowlist test |
-| **NEW** `tests/Feature/AdminCbtBoundaryTest.php` | Direct HTTP tests for every P0 Admin read/write route and response-field absence. | New file | Test DB only | Must pass on MySQL 8 CI |
+Paket eksekusi rinci dan status persetujuan: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md. Paket itu supersedes daftar file/test WA-01 draft yang lebih lama.
+
+**Perubahan source yang direncanakan: 23 existing files** (SHA harus cocok dengan W0 saat eksekusi):
+1. app/Services/RolePermissionBootstrapper.php — fac82573de84c52b52867afbbf7e1637164835b4
+2. app/Policies/QuestionPolicy.php — af94614a2043206922149b0c44a8ec1e3d87767d
+3. app/Policies/AssessmentPolicy.php — 79a0367c8c83723ae3cc9e581fb8dda8a6e2d02a
+4. app/Policies/ExamPolicy.php — 350c1ddc6bed8738d1af17cacd6c95bc367b7c29
+5. app/Policies/ExamAttemptPolicy.php — b19d6d39d34884d8be464f786340c1a2ab7108b6
+6. app/Policies/ReportPolicy.php — e53be3994c52d067c1e31fe37edc450c24a0f4b6
+7. app/Http/Controllers/Api/V1/QuestionController.php — 7ded53423dd4d96788123819e8039fd543ce4fba
+8. app/Http/Controllers/Api/V1/QuestionPublicationController.php — b0c3f6501601af8c6254feb1ed9cbcab7eeaaff1
+9. app/Http/Controllers/Api/V1/MediaController.php — 52254b81a55db8e2e45538158ef202b8ccf09b70
+10. app/Http/Controllers/Api/V1/AssessmentController.php — 28e6f8fe07c8e2b3dad22ecd190e9aa108947e78
+11. app/Http/Controllers/Api/V1/ExamController.php — bf373858869b470b235e2256e5be6169fbb1f561
+12. app/Http/Controllers/Api/V1/ExamParticipantController.php — f7014ab069cc2c9548f9b238e0e7a4f1986cb421
+13. app/Http/Controllers/Api/V1/ExamAttemptController.php — ace6a83989375e067b3a7747bc4f320c21222c69
+14. app/Http/Controllers/Api/V1/ExamAnswerController.php — 333e37007c072243fe828ab038d738fc98d88e8e (added after final route review)
+15. app/Http/Controllers/Api/V1/MonitoringController.php — 335a32029f4d5ab4788ea31fd81088dfdb5acde2
+16. app/Http/Controllers/Api/V1/ScoringController.php — 42b96176162a6e69e3661d468a6d3362b05f59c5
+17. app/Http/Controllers/Api/V1/ReportController.php — c78442de0f5b4b40a7773bb2af0cf0ffd852d055
+18. app/Http/Controllers/Api/V1/AnalyticsController.php — 3339103d64d06427896344c6e4f3bb45db8a680b
+19. app/Livewire/Admin/QuestionBank.php — a3013b528015daf4214dd1aa567eba950b03663a
+20. app/Livewire/Admin/ExamManagement.php — 478aaa170ee297b0c8399f049cd9b1ba56cbfb10
+21. resources/views/livewire/admin/question-bank.blade.php — 72feaf1cc1be17253868c91861781dbb223b5aa9
+22. resources/views/livewire/admin/exam-management.blade.php — 5705d815cc3e2539d167b22a26d3508586a77439
+23. routes/web.php — c22fed7d54871bf4971acf626514fc02c4a68ce9
+
+**Perubahan target:** Admin deny eksplisit pada Question/Assessment/Exam/Attempt/Report policies; controllers menolak sebelum query/service/cache/export/serialization sensitif; Admin QuestionBank dan ExamManagement Livewire ditolak pada mount/hydration/action/render. Guru branch dipertahankan tanpa perubahan perilaku. ExamAnswerController ditambahkan agar Admin multi-role tidak dapat melewati answer ownership guard.
+
+**Metadata assignment:** Tidak dibuat AdminExamAssignmentResource atau endpoint baru. Admin hanya menggunakan halaman existing /admin/proctor-assignments, yang sudah memuat kolom Exam id/title/start_at/end_at dan assignment history minimum. ProctorAssignmentManagement, view-nya dan ExamProctorAssignmentService tidak diubah pada WA-01.
+
+**Routing:** routes/web.php mendapat route-level guards untuk question/exam authoring dan result/detail/analytics surfaces; policy tetap mengizinkan Guru yang sah. routes/api.php tidak diubah; semua API routes diuji dan enforcement berada pada policy/controller. Tidak ada Teacher Livewire/view changes.
+
+**Database:** tidak ada schema migration. Ketika RolePermissionBootstrapper kelak dijalankan, hanya CBT grants role ADMIN_MADRASAH pada role_permission yang dicabut; exam.proctor.assign dan permission administratif tetap. Export/snapshot pivot wajib sebelum bootstrap. Tidak ada akun/role/user-role/history yang dihapus atau digabung.
+
+**Test files:** revisi 6 existing files: AdminUiVerificationTest.php, RoleDashboardVerificationTest.php, RolePermissionBootstrapperTest.php, ScoringHardeningTest.php, Security/AnswerKeyLeakageTest.php, MediaAuthorizationTest.php; tambah 1 file baru AdminCbtBoundaryTest.php. Semua backup byte-identical dan SHA-256 tercatat di manifest. Test IDs WA01-N-001..025, WA01-P-001..009, WA01-S-001..002 berstatus NOT RUN sampai bukti aktual tersedia.
+
+**Gate:** paket eksekusi WA-01 disiapkan, belum disetujui untuk coding.
 
 ### WA-02 — ADMIN_MADRASAH-only runtime and legacy account preservation
 
@@ -143,59 +154,9 @@ Before editing:
 | `app/Livewire/Admin/ExamManagement.php` — `478aaa170ee297b0c8399f049cd9b1ba56cbfb10` | If this shared component still handles Guru schedule saves, call shared schedule service. This is **BLOCKED** under current no-Web-Guru scope until separately approved. | mirrored WA-03 path | None | API/Livewire schedule parity |
 | **NEW** migration | Add rombel_id, schedule_revision, confirmed_at/by, needs_review_at/by as needed; add composite tenant FKs; add indexes for tenant+Guru+interval+status. | New migration | Preflight invalid/ambiguous assignments; old ACTIVE records preserved as NEEDS_REVIEW; no destructive delete | Two-connection MySQL 8 overlap/concurrency tests |
 
-**Open dependency — status Guru aktif BELUM TERDEFINISI dan tidak boleh disimpulkan dari soft-delete.** Source snapshot W0 menunjukkan User tidak mendeklarasikan SoftDeletes dan tidak memiliki field status aktif yang terlihat pada model; TeacherProfile memakai SoftDeletes, tetapi tidak memiliki field status kepegawaian/aktif. Karena itu, “tidak soft-deleted” bukan bukti Guru aktif. Predicate final harus menunggu keputusan desain dan pemeriksaan skema database aktual.
+**DESAIN TERPILIH oleh pengguna — belum diimplementasikan:** users.account_status = ACTIVE/SUSPENDED/INACTIVE dan teacher_profiles.employment_status = ACTIVE/ON_LEAVE/INACTIVE/ENDED. Guru eligible untuk Proktor hanya jika kedua status ACTIVE, role GURU, tepat satu TeacherProfile valid dan tenant-local, tidak dihapus, serta permission/scope/assignment checks lolos.
 
-Pilihan desain (belum dipilih/diterapkan):
-1. **Dua status eksplisit (direkomendasikan):** users.account_status (ACTIVE, SUSPENDED, INACTIVE) untuk akses akun, dan teacher_profiles.employment_status (ACTIVE, ON_LEAVE, INACTIVE, ENDED) untuk status penugasan Guru. Guru eligible hanya jika kedua status ACTIVE, akun dan profil tidak dihapus/ditutup, role tepat GURU, tepat satu TeacherProfile tenant-local, serta permission dan scope penugasan valid. Dampak DB: dua kolom/status domain baru, indeks tenant/status yang sesuai, aturan transisi dan audit; migration additive setelah pemeriksaan schema, data profiling, serta keputusan nilai legacy. Tidak boleh auto-backfill semua baris menjadi ACTIVE.
-2. **Satu status akun + status profil minimal:** users.is_active dan teacher_profiles.is_active boolean. Lebih sederhana tetapi kurang ekspresif untuk cuti/berakhir; tetap perlu dua kolom dan aturan backfill/review. Tidak direkomendasikan dibanding enum status.
-3. **Turunan dari keberadaan profil/soft-delete saja:** tidak memerlukan kolom baru, tetapi tidak dapat membedakan akun dinonaktifkan, Guru cuti, Guru berhenti, dan profil yang sekadar dihapus sementara. **Ditolak sebagai definisi aktif**; tidak boleh digunakan untuk memberi capability.
-
-Rekomendasi pilihan 1 tetap merupakan usulan desain, bukan keputusan implementasi. Sebelum approval, audit harus memeriksa seluruh migration/schema User dan TeacherProfile di database salinan MySQL 8, memetakan akun/profil legacy ke NEEDS_REVIEW, dan menyiapkan kebijakan transisi. Tidak ada akun atau profil yang diaktifkan otomatis.
-
-### WA-04 — tenant identity, User scoping and composite foreign keys
-
-| Source file (current Git blob SHA-1) | Planned change | Backup path | DB impact / dependency | Tests |
-|---|---|---|---|---|
-| `app/Http/Middleware/IdentifyTenant.php` — `376a4b2771c3d9a6b128ad847c150d47ac2977db` | Abort authenticated user with null tenant_id; verify user tenant matches local installation identity tenant; keep X-Tenant-Override ignored. | mirrored WA-04 path | None | TenantIdentityBindingTest |
-| `app/Http/Middleware/EnsureLicenseActive.php` — `6b2ea236c4afdbf5efc1031637eb8c9e5e0877c2` | In normal active-license path, compare request user tenant_id with LocalLicenseState.installation.tenant_id; fail closed on mismatch. | mirrored WA-04 path | None | Stale token/tenant mismatch tests |
-| `app/Services/Licensing/LicenseArtifactVerifier.php` — `ad264899644b50129e6db9130fda13b20a4bd868` | Expose/verify installation tenant binding to middleware; preserve signature verification. | mirrored WA-04 path | None | License tenant binding tests |
-| `app/Models/User.php` — `74dd080f703d7ef3256b406176e53dad5786a937` | Add fail-closed tenant scope or equivalent; keep explicit unscoped bootstrap/login exceptions and immutable tenant_id. | mirrored WA-04 path | No new column if tenant_id remains | User query, login and relation tests |
-| `app/Traits/TenantScoped.php` — `cf192a8ccb6ca530122cb105ed3086adb09a3c5a` | Ensure context/user tenant mismatch fails closed; no override from arbitrary request state. | mirrored WA-04 path | None | TenantContext missing/mismatch tests |
-| `app/Services/Licensing/InstallationIdentityService.php` — `66115b340189581b34bcf027f73c1049281560e5` | Compare existing registered_domain with current host on every relevant resolve; preserve one-tenant/identity guard. | mirrored WA-04 path | None | Domain mismatch tests |
-| `app/Http/Controllers/Api/V1/MonitoringController.php` — `335a32029f4d5ab4788ea31fd81088dfdb5acde2` | Add `users.tenant_id = exam_participants.tenant_id` to roster join. | mirrored WA-04 path | FK migration | Corrupt relation negative test |
-| `app/Http/Controllers/Api/V1/ExamParticipantController.php` — `f7014ab069cc2c9548f9b238e0e7a4f1986cb421` | Add explicit User tenant constraints in eager load/DTO; retain teacher scope checks. | mirrored WA-04 path | FK migration | Participant/User mismatch tests |
-| `app/Models/StudentProfile.php` — `4237e764cf722817cd1ce27b4ffa134ad2d776c7` | Add tenant-aware user relation or enforce via composite DB FK. | mirrored WA-04 path | Composite FK | StudentProfile/User mismatch |
-| `app/Models/RombelStudent.php` — `6e9badd9e09b96da163a814a09749a771e026d42` | Keep pivot tenant boot checks; add strict relation consistency and tests. | mirrored WA-04 path | Composite FK pair | Rombel/student mismatch |
-| `app/Models/ExamParticipant.php` — `ff9cbfbaab481ff54ba4f1b5ae21a11e73737bec` | Tenant-aware User relation/validation. | mirrored WA-04 path | Composite FK user_id+tenant_id | Participant/User mismatch |
-| `app/Models/ExamAttempt.php` — `341c8d00337ad8761dca94602da7acfbdc769fb0` | Enforce participant_id + exam_id + tenant consistency. | mirrored WA-04 path | Composite/consistency constraint | Attempt/Participant mismatch |
-| `app/Models/ExamAttemptAnswer.php` — `9765f2750ef500c2a0477882794ca0461fa7f1f2` | Ensure student_id matches attempt participant and tenant. | mirrored WA-04 path | Composite FK/check | Answer/Student mismatch |
-| `app/Models/ExamAttemptScore.php` — `2fdceaa21b1b0ce2f4524630c8fe02cddc2f2f73` | Ensure student/finalizer User tenant matches score tenant. | mirrored WA-04 path | Composite FKs | Score/Student/Finalizer mismatch |
-| `app/Models/ExamQuestionScore.php` — `34f9802f81e84c51c84f63f464aceb301f8ceb5f` | Ensure student/grader User tenant matches score tenant. | mirrored WA-04 path | Composite FKs | Question score mismatch |
-| `app/Models/TpAchievement.php` — `821ba275dbf716a2d9bdef8d66c591383dd15a52` | Enforce student/finalizer/rombel/semester tenant consistency. | mirrored WA-04 path | Composite FKs | Achievement mismatch |
-| `app/Models/AtpAchievement.php` — `fa87505aefd0561bac2ae663018d3b0013b8424a` | Same tenant relation enforcement. | mirrored WA-04 path | Composite FKs | Achievement mismatch |
-| `app/Models/CpAchievement.php` — `bc0cc4ea75a1d66f260621c2f33d0c0602804868` | Same tenant relation enforcement. | mirrored WA-04 path | Composite FKs | Achievement mismatch |
-| **NEW** migration | Add composite FKs for student_profiles.user_id, rombel_student rombel/student, exam_participants.user_id, exam_attempts.participant_id consistency, answer/student, score student/grader/finalizer, achievement student/finalizer/rombel/semester. | New additive migration | Preflight every mismatch on restored disposable MySQL 8; add parent unique indexes where necessary; fail before DDL if any invalid row | TenantCompositeForeignKeyIntegrityTest |
-
-### WA-05 — curriculum CRUD authorization and audit consistency
-
-| Source file (current Git blob SHA-1) | Planned change | Backup path | DB impact / dependency | Tests |
-|---|---|---|---|---|
-| `app/Http/Controllers/Api/V1/GradeLevelController.php` — `8d063a89445fbce767e88caf9931e5a8d7c5c2dd` | Authorize index/store/show/update/destroy using Admin curriculum permission; no authenticated-role-only mutation. | mirrored WA-05 path | None | AdminCurriculumAuthorizationTest |
-| `app/Http/Controllers/Api/V1/ElementController.php` — `b503b903fd7ce8e85ecb466a209e0ff8bad960c2` | Add policy checks for all methods. | mirrored WA-05 path | None | Element CRUD role matrix |
-| `app/Http/Controllers/Api/V1/LearningObjectiveController.php` — `97c0f8cc1da01567d2ca2092421652bfb89d94e6` | Add policy checks for all methods. | mirrored WA-05 path | None | TP CRUD role matrix |
-| `app/Http/Controllers/Api/V1/LearningOutcomeController.php` — `bddb5db70fa2f6bccd12f00505a8be4acca84791` | Authorize index/show/update/destroy; reconcile store permission with canonical curriculum.manage instead of undefined learning_outcome.manage, unless a separate permission is approved. | mirrored WA-05 path | None | CP CRUD role matrix |
-| `app/Http/Controllers/Api/V1/LearningPathController.php` — `6b4d1762697bea60fe25ad856c091a37a1fc4e10` | Add policy checks to all CRUD methods. | mirrored WA-05 path | None | ATP/path CRUD role matrix |
-| `app/Http/Controllers/Api/V1/MaterialController.php` — `abdbcb845089e57e1b6f98dde5978e6e35df317d` | Call MaterialPolicy or approved curriculum policy on every method. | mirrored WA-05 path | None | Material CRUD role matrix |
-| `app/Http/Controllers/Api/V1/TagController.php` — `a9d5101ac2e63a047d0527d0c82d141ee5bb5301` | Add authorization and AuditService events; no unguarded create/delete. | mirrored WA-05 path | None | Tag CRUD role + audit tests |
-| `app/Http/Requests/Api/V1/StoreLearningOutcomeRequest.php` — `87c9cb21532a219b1e03eb5bbafcfc16654ef542` | Align FormRequest authorization with approved permission name; keep tenant validation. | mirrored WA-05 path | None | Request authorization test |
-| `app/Policies/LearningOutcomePolicy.php` — `252b01640f3b4a060933283a21d65a08afb58af3` | Use consistently from controller; align permission with RolePermissionBootstrapper. | mirrored WA-05 path | None | Policy matrix |
-| `app/Policies/MaterialPolicy.php` — `d393453c7f960b003db58afd965cc450fa28a8eb` | Use consistently from controller; align permission. | mirrored WA-05 path | None | Policy matrix |
-| `app/Policies/BasePolicy.php` — `788f68632ca55e71723c12a7f771cace621a7406` | Ensure viewAny/create/update/delete all require explicit permission and tenant match; no null-tenant permissive branch. | mirrored WA-05 path | None | BasePolicy tenant/role tests |
-| `app/Providers/AppServiceProvider.php` — `9cb0fa0b9e9db7a338741e14a7c0798d635e9bc6` | Explicitly register new GradeLevel/Element/LearningObjective/LearningPath/Tag policies or verify auto-discovery; avoid incorrect User→ReportPolicy policy confusion. | mirrored WA-05 path | None | Policy discovery tests |
-| `app/Services/RolePermissionBootstrapper.php` — `fac82573de84c52b52867afbbf7e1637164835b4` | Define one canonical permission matrix for Admin curriculum management and intended read-only/authoring roles. Do not grant broad curriculum write to all authenticated roles. | mirrored WA-05 path | Permission seeding | RBACEnforcementTest + AdminCurriculumAuthorizationTest |
-| **NEW** policies | Add GradeLevelPolicy, ElementPolicy, LearningObjectivePolicy, LearningPathPolicy, TagPolicy with explicit role/permission and tenant rules. | New files | None | All CRUD role matrix |
-
-### WA-06 — Admin Livewire reauthorization and audit log integrity
+Tidak ada migration/database write yang diizinkan sekarang. Default aman untuk data lama dan akun/profil baru adalah INACTIVE; tidak ada auto-activation. Record ambigu, role ganda, missing/duplicate profile, tenant mismatch, deleted profile, atau identitas tidak terverifikasi tetap INACTIVE/NEEDS_REVIEW. Indeks kandidat users(tenant_id,account_status,id) dan teacher_profiles(tenant_id,employment_status,deleted_at,user_id); unique tenant/user profile dan composite FK harus dikoordinasikan dengan WA-04 setelah duplicate/orphan preflight. CHECK constraints memerlukan MySQL 8.0.16+ atau revisi desain constraint. Detail transition mapping, preflight, backup, compatibility dan rollback ada pada paket WA-01 section 13; berlaku sebagai dependency desain WA-03, bukan izin migration.
 
 **Scope guard:** Tidak ada file `app/Livewire/Teacher/*` atau view Guru yang diubah. Admin denial pada halaman hasil/monitoring/analytics Guru dilakukan melalui policy/controller/route authorization. Pada cutover WA-01/02, session Admin lama dan Sanctum token Admin/legacy dicabut agar component state lama tidak dapat dihidrasi setelah hak akses dipersempit. Perubahan shared Livewire middleware atau komponen Guru untuk revocation real-time adalah cross-scope dan memerlukan persetujuan terpisah.
 
@@ -423,3 +384,15 @@ Dokumen ini adalah final review dan patch plan, bukan izin kerja. Tidak ada sour
 
 ### WA-03 cross-scope clarification — shared policy/service
 Untuk menghilangkan ambiguitas pada tabel file WA-03: perubahan ExamPolicy.monitor yang memberi capability kepada Guru melalui assignment CONFIRMED adalah perubahan shared authorization dan **CROSS-SCOPE BLOCKED** sampai approval terpisah. ExamProctorAssignmentService juga dianggap shared bila dipanggil dari alur selain Admin assignment; pemisahan adapter/service Admin harus dibuktikan sebelum perubahan. Perubahan pada ExamController, shared ExamManagement, routes/web.php, shared API/service/middleware, atau file lain yang memengaruhi schedule/capability Guru juga BLOCKED. Tabel file WA-03 adalah daftar kandidat yang perlu dibahas, bukan izin mengubah seluruh baris. Dalam approval Web Admin saja, hanya file/branch yang dapat dibuktikan eksklusif Admin boleh dipatch; file shared yang tidak dapat dipisahkan harus dikeluarkan dan menunggu approval lintas-scope.
+
+
+## 14. WA-01 execution package — preparation only
+
+- Paket eksekusi: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md
+- Commit publikasi paket: 2ef53b77908f91caa2b216a6d24f29df4dce9cdb
+- Backup source/test manifest: docs/backup/wa-01-source-2026-11-21/MANIFEST.md
+- Backup root: docs/backup/wa-01-source-2026-11-21/backend-laravel/
+- 23 source files dan 6 existing test files telah disalin byte-identical dari source W0; file baru AdminCbtBoundaryTest.php belum dibuat.
+- 36 test IDs sudah direncanakan; semua hasil aktual NOT RUN.
+- Desain dua status Guru telah dipilih; tidak ada migration, seeder execution atau DB change.
+- WA-01 belum mendapat persetujuan coding. Stop gate tetap berlaku.
