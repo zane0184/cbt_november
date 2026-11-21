@@ -1,6 +1,6 @@
 # LAPORAN AUDIT W0 — WEB ADMIN MADRASAH
 **Tanggal:** 21 November 2026 (WIB)  
-**Status:** AUDIT STATIS W0 SELESAI; GATE INTEGRITAS W0 MASIH MEMILIKI ITEM BLOCKED  
+**Status:** AUDIT STATIS SELESAI; SHA-256 DAN RESTORE SNAPSHOT PASS; PROVENANCE ZIP BASELINE TETAP BLOCKED  
 **Scope:** Web Admin Madrasah saja  
 **Tidak termasuk:** Portal Guru/Siswa, Android, Publisher/Super Admin, licensing, VPS/deployment, Device Lease/Fencing
 
@@ -36,6 +36,17 @@ W0 telah membuat branch kerja baru, memverifikasi titik awalnya, membuat manifes
 | Manifest | `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv` |
 
 Branch kerja dibuat dari SHA yang disetujui, bukan dari `main`, PR base, atau branch recovery yang berbeda. Perbandingan awal sebelum manifest menunjukkan branch kerja identik dengan commit recovery (ahead 0, behind 0). Setelah manifest ditambahkan, perbandingan recovery → branch kerja menunjukkan ahead 1, behind 0, dengan tepat satu file tambahan: manifest. Branch recovery tetap pada SHA `7fc45bf...`.
+
+### 2.1.1 Klarifikasi riwayat commit
+
+Perbedaan yang ditanyakan berasal dari checkpoint awal yang mencatat commit `641aff0...` sebagai commit terakhir, padahal commit tersebut adalah commit laporan audit dan menjadi parent dari commit checkpoint `c708e978...`. Pemeriksaan API GitHub terhadap seluruh parent chain membuktikan urutan setelah source pin:
+1. `de2d822...` (parent `7fc45bf...`) — manifest Git tree.
+2. `641aff0...` (parent `de2d822...`) — laporan audit statis.
+3. `c708e978...` (parent `641aff0...`) — checkpoint awal.
+4. `9c6ce35...` (parent `c708e978...`) — workflow SHA-256/restore versi pertama.
+5. `a42cdb...` (parent `9c6ce35...`) — perbaikan workflow; HEAD branch kerja yang benar saat laporan revisi ini.
+
+Jadi `641aff0...` bukan HEAD terbaru. Branch recovery tetap pada `7fc45bf...`. Perbandingan recovery → branch kerja: ahead 5, behind 0; path tambahan hanya empat file: tiga dokumen W0 dan satu workflow verifikasi. Tidak ada source aplikasi berubah.
 
 ### 2.2 Inventaris dan manifest source
 
@@ -137,8 +148,10 @@ Desain ini tidak memberi izin merge, migration produksi, atau deployment. Implem
 
 Perubahan yang benar-benar dilakukan pada sesi W0:
 1. Membuat branch `work/web-admin-w0-20261121` dari commit recovery yang disetujui.
-2. Menambahkan manifest `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv`.
-3. Menambahkan laporan audit dan checkpoint W0 pada branch kerja ini.
+2. Menambahkan manifest Git tree `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv`.
+3. Menambahkan laporan audit dan checkpoint W0.
+4. Menambahkan workflow audit-only `.github/workflows/w0-source-snapshot-verify.yml` untuk menghitung SHA-256, membuat arsip dari commit pin, restore disposable, dan membandingkan seluruh file. Workflow tidak mengubah source aplikasi.
+5. Mengunduh artifact untuk verifikasi independen dan menyalin manifest/snapshot hasil verifikasi ke ruang kerja laporan.
 
 Tidak ada file source aplikasi, migration, route, policy, seeder, model, view, atau konfigurasi aplikasi yang diubah. Branch recovery asli tidak diubah. Tidak ada PR baru, merge, database write, migration, .env/secret, VPS, atau deployment.
 
@@ -172,7 +185,25 @@ Source aplikasi pada recovery branch sama dengan source aplikasi pada `ade5daa..
 3. Perbandingan `d264...` → `ade5...` menunjukkan perubahan satu baris pada `question-bank.blade.php` serta perubahan test terkait. Pada `ade5...`, class reference Blade menggunakan namespace PHP dengan satu leading backslash yang benar.
 4. **Run #692** pada `ade5...` kemudian menjalankan full suite dan lulus 480/1.942. Jadi kegagalan lama telah ditangani pada head source yang diuji, bukan sekadar diasumsikan selesai.
 
-### 5.3 Batas pengujian
+### 5.3 SHA-256 snapshot dan uji restore disposable
+
+Workflow `W0 Source Snapshot SHA256 and Restore Verification #2` dijalankan pada commit workflow `a42cdbebec90dc9279160e5e062a4fbf98d85df1` dengan source checkout yang dipatok ke `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`.
+
+Bukti run #2:
+- Run ID `44870810068`; conclusion SUCCESS; runner Ubuntu 24.04.
+- Source tree: 531 tracked file blobs, 237 directory entries, tidak ada symlink/submodule.
+- SHA-256 dihitung atas byte aktual setiap tracked file; manifest memuat PATH, SIZE_BYTES, SHA256.
+- Restore ke direktori disposable terpisah: expected 531, restored 531, missing 0, extra 0, changed 0; `RESTORE_VERIFICATION=PASS`.
+- Artifact ID `14693289226`, nama `w0-source-snapshot-7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`, ukuran 808.845 byte, retention 90 hari (sampai 19 Februari 2027).
+- SHA-256 manifest: `af72d7556d4c96c5ea9e6ec0db226870cdb19df076f4a6828dd7d07a22f45a02`.
+- SHA-256 snapshot tar.gz: `6fca2435b62f17dbbf339935083725540148fffeab943acd14d2a7db44b3bc46`.
+- SHA-256 artifact ZIP: `efe94178561b17ccb956f8bcd373d01e28c28a90c42718bfdc2eb4c673cd0bd8`.
+- Artifact diunduh dan diuji lagi secara independen di container: 531 manifest rows, 531 restored files, missing=[], extra=[], changed=[]; PASS.
+- Tidak ada database yang digunakan.
+
+Percobaan workflow #1 (run `44870798226`) gagal karena expression checkout masih memiliki karakter escape yang keliru. Workflow diperbaiki pada commit `a42cdb...`; run #2 di atas adalah hasil final yang lulus.
+
+### 5.4 Batas pengujian
 
 - CI PHP 8.3/MySQL 8 disposable benar-benar dijalankan oleh GitHub Actions.
 - Tidak ada PHPUnit lokal pada runtime sesi ini; PHP lokal yang tersedia bukan PHP 8.3 dan Composer/MySQL/Docker tidak tersedia.
