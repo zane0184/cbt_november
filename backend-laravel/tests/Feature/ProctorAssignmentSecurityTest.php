@@ -97,8 +97,8 @@ class ProctorAssignmentSecurityTest extends TestCase
             Livewire::test(ProctorAssignmentManagement::class)
                 ->set('selectedExamId', $this->exam->id)
                 ->set('selectedProctorId', $candidate->id)
-                ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
-                ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+                ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
+                ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
                 ->set('reason', 'Pengawasan ujian kelas enam')
                 ->call('assign');
 
