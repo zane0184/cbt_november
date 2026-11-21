@@ -3,7 +3,7 @@
 Tanggal: 22 November 2026  
 Repository: zane0184/cbt_november  
 Branch: work/import-guru-siswa-implementation-20261122  
-Source saat laporan: 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5
+Source teruji terbaru: 4c2804a50d7d48b3760c7df3cab0f311d309143f
 
 ## STATUS
 IMPLEMENTASI PARSIAL — batas Admin terhadap CBT diperkuat dengan uji API langsung, dan pemilihan Proktor sementara kini diarahkan ke Guru aktif yang memenuhi syarat. Stage 4A belum dinyatakan selesai; CI untuk source terbaru berstatus SUCCESS.
@@ -56,20 +56,21 @@ Backup:
 - Backup source Kamad yang dipulihkan ada pada `docs/backup/web-admin-stage4a-kamad-2026-11-22/`.
 
 ## PENGUJIAN
-- CI run 44946877772 — SUCCESS untuk source 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5. Run sebelumnya 44946708332 juga SUCCESS.
+- CI run 44948376979 — SUCCESS untuk source 4c2804a50d7d48b3760c7df3cab0f311d309143f. CI run 44946877772 pada source sebelumnya juga SUCCESS.
 - Runtime: PHP 8.3, MySQL 8 disposable, GitHub Actions Ubuntu runner.
 - PHP lint: PASS.
-- 100 test / 519 assertion pada suite terpilih.
+- 102 test / 539 assertion pada suite terpilih.
 - AdminCbtBoundaryTest: 1 test / 29 assertion PASS, termasuk akses langsung API.
 - ProctorAssignmentSecurityTest: 7 test / 15 assertion PASS.
+- MonitoringDuplicationTest: 2 test / 20 assertion PASS; Guru yang memiliki scope akademik sah dapat monitoring dan peserta tidak terduplikasi; Admin ditolak pada URL monitoring/hasil dan API monitoring, jawaban, score, report, heartbeat; Guru tidak dapat memakai endpoint jawaban/heartbeat Siswa.
 - AdminDashboardAccessTest: 3 / 28 PASS.
 - Suite lainnya mencakup academic period, legacy role migration, tenant profile, user scope, import workbook, auth, multi-tenant, tenant isolation, Guru dan Siswa.
-- Source 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5 merapikan helper pengujian kandidat invalid agar menguji daftar UI dan service secara langsung. CI run 44946877772 pada SHA tersebut telah selesai dengan status SUCCESS.
+- Source 4c2804a50d7d48b3760c7df3cab0f311d309143f menambahkan matriks pengujian Admin direct monitoring/answer/score/report/heartbeat, uji URL hasil, dan memastikan Guru tidak mendapat endpoint khusus Siswa. CI run 44948376979 pada SHA tersebut selesai SUCCESS.
 - Tidak ada migration baru, perubahan DB produksi, deployment VPS, PR, atau merge.
 
 ## PEKERJAAN BERIKUTNYA
 1. Tunggu dan verifikasi CI run 44946877772 pada SHA 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5.
-2. Selesaikan matriks pengujian URL/API negatif untuk seluruh permukaan CBT Admin, termasuk monitoring, participant, answer, score, dan report.
+2. Perluas pengujian negatif ke endpoint CBT tambahan yang belum dicakup, termasuk mutation answer, score mutation, token/lock, dan ekspor laporan; audit ulang controller mana yang memvalidasi input sebelum otorisasi.
 3. Audit ulang pemisahan UI Admin/Guru/Siswa beserta redirect login, menu, route langsung, dan API.
 4. Lanjutkan lifecycle assignment sementara: PENDING → CONFIRMED, NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED; tenant/exam/rombel/schedule revision; conflict locking; capability hanya pada CONFIRMED.
 5. Hubungkan capability monitoring terbatas kepada assignment yang sah tanpa memberi Guru akses ke token, soal, jawaban, penilaian, atau data di luar rombel/exam yang ditugaskan.
