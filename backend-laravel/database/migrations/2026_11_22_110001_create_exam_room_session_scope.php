@@ -201,8 +201,17 @@ return new class extends Migration
             $table->dropColumn('rombel_id');
         });
 
-        DB::statement('DROP INDEX IF EXISTS esrr_one_active_rombel_unique');
-        DB::statement('DROP INDEX IF EXISTS epra_one_active_participant_unique');
+        if (DB::getDriverName() === 'mysql') {
+            if (DB::table('information_schema.statistics')->where('table_schema', DB::getDatabaseName())->where('table_name', 'exam_session_room_rombels')->where('index_name', 'esrr_one_active_rombel_unique')->exists()) {
+                DB::statement('DROP INDEX esrr_one_active_rombel_unique ON exam_session_room_rombels');
+            }
+            if (DB::table('information_schema.statistics')->where('table_schema', DB::getDatabaseName())->where('table_name', 'exam_participant_room_assignments')->where('index_name', 'epra_one_active_participant_unique')->exists()) {
+                DB::statement('DROP INDEX epra_one_active_participant_unique ON exam_participant_room_assignments');
+            }
+        } else {
+            DB::statement('DROP INDEX IF EXISTS esrr_one_active_rombel_unique');
+            DB::statement('DROP INDEX IF EXISTS epra_one_active_participant_unique');
+        }
 
         foreach ([
             'exam_participant_room_assignments',
@@ -264,7 +273,7 @@ return new class extends Migration
                 throw new RuntimeException('Stage 4B partial state: participant/proctor scope columns already exist; no DDL executed.');
             }
             if (! Schema::hasIndex('rombels', 'rombels_id_tenant_unique')
-                || ! Schema::hasIndex('exams', 'exams_id_tenant_unique')
+                || ! Schema::hasIndex('exams', 'exams_id_tenant_id_unique')
                 || ! Schema::hasIndex('users', 'users_id_tenant_unique')
                 || ! Schema::hasIndex('exam_proctor_assignments', 'exam_proctor_assignment_unique')) {
                 throw new RuntimeException('Stage 4B required composite candidate key or legacy assignment index is missing.');
