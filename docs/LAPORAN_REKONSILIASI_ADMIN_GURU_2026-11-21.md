@@ -246,3 +246,7 @@ Perubahan path seluruhnya dokumentasi. Tidak ada source, migration, seeder, data
 
 ## E.5 Koreksi compare final setelah checkpoint provenance refresh
 Pemeriksaan branch ref terbaru menunjukkan HEAD `f7912c207be8a4db8efba23100f8aab50283c47c`. Compare dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke HEAD tersebut menghasilkan **50 path**: **40 added, 10 modified, 0 deleted**. Seluruh path berada di `docs/`; tidak ada source aplikasi. Angka 49 pada E.4 adalah snapshot tepat sebelum backup tambahan untuk checkpoint provenance refresh dibuat; angka 50 ini menggantikannya sebagai hasil compare terkini.
+
+
+## E.6 Final compare setelah seluruh handover diselaraskan
+Compare terbaru dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch pada HEAD `73333d9592291ae37e1849306555a735f10e6717` menghasilkan **54 path**: **42 added, 12 modified, 0 deleted**. Semua path berada di `docs/`; 0 source aplikasi. Perincian path yang berubah mencakup 18? dokumen kerja yang baru/diperbarui dan file backup/manifest yang terkait. Rincian yang otoritatif adalah daftar compare GitHub; dua handover lama juga kini diberi addendum keputusan final dan seluruh cakupan temuan OPEN. Angka 50 pada E.5 adalah snapshot sebelum dua handover dan dua backup tambahannya; angka 54 menggantikannya.
