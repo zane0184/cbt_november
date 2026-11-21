@@ -8,6 +8,9 @@ use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamProctorAssignment;
+use App\Models\ExamRoom;
+use App\Models\ExamSessionRoom;
+use App\Services\ExamRoomSessionService;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\TeacherProfile;
@@ -29,6 +32,7 @@ class ProctorAssignmentSecurityTest extends TestCase
     private User $examAuthor;
     private User $proctorGuru;
     private Exam $exam;
+    private ExamSessionRoom $sessionRoom;
 
     protected function setUp(): void
     {
@@ -69,6 +73,28 @@ class ProctorAssignmentSecurityTest extends TestCase
             'locked_at' => now(),
         ]);
 
+        $roomService = app(ExamRoomSessionService::class);
+        $room = $roomService->createRoom($this->admin, [
+            'code' => 'PROK-A1',
+            'name' => 'Ruang Proktor A1',
+            'location' => 'Gedung A',
+            'capacity' => 30,
+        ]);
+        $session = $roomService->createSession(
+            $this->admin,
+            $this->exam->id,
+            'Sesi 1',
+            1,
+            now()->subMinutes(5),
+            now()->addHours(2)
+        );
+        $this->sessionRoom = $roomService->attachRoom(
+            $this->admin,
+            $this->exam->id,
+            $session->id,
+            $room->id
+        );
+
         app(TenantContext::class)->setTenantId(null);
         TenantContext::resetInstance();
     }
@@ -95,7 +121,7 @@ class ProctorAssignmentSecurityTest extends TestCase
     {
         $this->actingAs($this->admin);
         Livewire::test(ProctorAssignmentManagement::class)
-            ->set('selectedExamId', $this->exam->id)
+            ->set('selectedSessionRoomId', $this->sessionRoom->id)
             ->set('selectedProctorId', $this->proctorGuru->id)
             ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
             ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
@@ -238,8 +264,25 @@ class ProctorAssignmentSecurityTest extends TestCase
             'locked_at' => now(),
         ]);
 
+        $roomService = app(ExamRoomSessionService::class);
+        $otherRoom = $roomService->createRoom($this->admin, [
+            'code' => 'PROK-B1',
+            'name' => 'Ruang Proktor B1',
+            'location' => 'Gedung B',
+            'capacity' => 30,
+        ]);
+        $otherSession = $roomService->createSession(
+            $this->admin,
+            $otherExam->id,
+            'Sesi 1',
+            1,
+            now()->subMinutes(5),
+            now()->addHours(2)
+        );
+        $otherSessionRoom = $roomService->attachRoom($this->admin, $otherExam->id, $otherSession->id, $otherRoom->id);
+
         Livewire::test(ProctorAssignmentManagement::class)
-            ->set('selectedExamId', $otherExam->id)
+            ->set('selectedSessionRoomId', $otherSessionRoom->id)
             ->set('selectedProctorId', $this->proctorGuru->id)
             ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
             ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
