@@ -373,3 +373,10 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Preparation backup manifest commit: eb014a495d07ca0e99911d6b07e28a106f6c0e47; blob: aa22f8b171a31e961bbf1e236cdded1f62716687.
 - Backup checkpoint sebelum refresh ledger ini: docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-publication-ledger; blob identik dengan checkpoint sebelum refresh: 06b10dfe4dec872c73b502a3bb14793b5c3e5c76; backup commit: e614ed3fb29eca7c5d2dad8333fa7ac7114be587.
 - Source branch tetap tidak berubah; implementasi NOT STARTED; semua 69 test NOT RUN.
+
+
+### Matriks policy inventory final
+- Matriks mencakup keenam policy: BasePolicy, QuestionPolicy, AssessmentPolicy, ExamPolicy, ExamAttemptPolicy, ReportPolicy.
+- BasePolicy source blob: 788f68632ca55e71723c12a7f771cace621a7406. BasePolicy tidak masuk 23 source target karena parent generik berisiko lintas modul; Admin deny ditempatkan pada concrete CBT policies.
+- Matriks final commit: b3fd43e112460cd97f47c0c9206644700a55e170; blob: 84a0bed82514cf301d7e470d9304dfefde1d6ed8.
+- Backup checkpoint sebelum refresh: docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-sixth-policy-final-ledger; blob backup sama dengan checkpoint sebelum update: bcfcebbad3727461aaecd15d295f0eaa7277fb60; commit backup: 8cfea062396fe0a884ea330175c1d48554d41388.
