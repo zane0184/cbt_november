@@ -23,6 +23,7 @@ use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ExamRoomSessionService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Validation\ValidationException;
@@ -600,7 +601,7 @@ class ExamRoomSessionManagementTest extends TestCase
         try {
             $this->service->attachRoom($this->admin, $this->exam->id, $session->id, $foreignRoom->id);
             $this->fail('A tenant A Admin must not attach a room owned by tenant B.');
-        } catch (\\Illuminate\\Database\\Eloquent\\ModelNotFoundException $exception) {
+        } catch (ModelNotFoundException $exception) {
             $this->assertDatabaseMissing('exam_session_rooms', [
                 'exam_id' => $this->exam->id,
                 'exam_room_id' => $foreignRoom->id,
