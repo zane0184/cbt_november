@@ -219,6 +219,35 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertStringContainsString('email dalam workbook', $batch->rows->first()->reason);
     }
 
+    public function test_legacy_employee_identifier_is_treated_as_existing_without_overwrite(): void
+    {
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $legacyUser = User::create([
+            'name' => 'Guru Legacy',
+            'email' => 'guru.legacy@madrasah.test',
+            'password' => Hash::make('StrongPassword123!'),
+        ]);
+        $legacyUser->roles()->attach($guruRole);
+        TeacherProfile::create([
+            'user_id' => $legacyUser->id,
+            'employee_identifier' => '001234567890123456',
+            'full_name' => 'Guru Legacy',
+        ]);
+
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Import Baru', 'L', '', ''],
+        ]);
+        $service = app(ImportWorkbookService::class);
+        $preview = $service->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+        $this->assertSame(1, $preview->skipped_rows);
+        $this->assertSame('SKIPPED', $preview->rows->first()->status);
+
+        $result = $service->confirm($preview->id, $this->tenant->id, $this->admin->id);
+        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('employee_identifier', '001234567890123456')->count());
+        $this->assertSame('Guru Legacy', TeacherProfile::query()->where('user_id', $legacyUser->id)->value('full_name'));
+        $this->assertSame(1, $result['batch']->skipped_rows);
+    }
+
     public function test_unknown_rombel_and_cross_tenant_reference_are_invalid(): void
     {
         Role::create(['name' => 'SISWA', 'label' => 'Siswa']);

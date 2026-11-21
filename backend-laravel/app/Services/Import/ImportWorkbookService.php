@@ -392,7 +392,7 @@ class ImportWorkbookService
             if ($payload['phone'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Nomor HP harus disimpan sebagai teks.';
             $identityValues = array_values(array_filter([$payload['nip'], $payload['nik'], $payload['nuptk']], fn ($v) => $v !== ''));
             $existing = $identityValues && TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->where(function($q) use($identityValues) {
-                foreach ($identityValues as $value) $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value);
+                foreach ($identityValues as $value) $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value)->orWhere('employee_identifier',$value);
             })->exists();
             if ($existing) return $this->result('Data Guru',$number,'SKIPPED','Identitas Guru sudah terdaftar; data existing tidak diubah.',$payload);
             $loginIdentifier = $payload['nip'] ?: $payload['nik'];
@@ -422,7 +422,7 @@ class ImportWorkbookService
         $errors = [];
         if ($p['identity'] === '' || $p['identity'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas Guru wajib berupa teks.';
         $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')
-            ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity']))->first();
+            ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity'])->orWhere('employee_identifier',$p['identity']))->first();
         if (!$teacher && !in_array($p['identity'], $newTeacherKeys, true)) $errors[] = 'Guru tidak ditemukan pada tenant ini atau belum ada di sheet Data Guru yang valid.';
         $subject = $this->resolveSubject($p['subject'], $tenantId);
         if (!$subject) $errors[] = 'Mata pelajaran tidak dikenal pada tenant ini.';
@@ -532,7 +532,7 @@ class ImportWorkbookService
     private function importAssignment(array $p, string $tenantId, string $userId): array
     {
         $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')
-            ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity']))->firstOrFail();
+            ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity'])->orWhere('employee_identifier',$p['identity']))->firstOrFail();
         $subject = $this->resolveSubject($p['subject'],$tenantId) ?? throw new RuntimeException('Mata pelajaran tidak lagi valid.');
         $rombel = $this->resolveRombel($p['rombel'],$p['academic_year'],$tenantId) ?? throw new RuntimeException('Rombel tidak lagi valid.');
         $semester = $this->resolveSemester($p['semester'],$p['academic_year'],$tenantId) ?? throw new RuntimeException('Semester tidak lagi valid.');
