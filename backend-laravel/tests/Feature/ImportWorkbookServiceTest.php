@@ -63,6 +63,17 @@ class ImportWorkbookServiceTest extends TestCase
             ['HONORER', '', '0012345678901234', '', 'Guru Honorer Contoh', 'P', '', '081234567891'],
         ]);
 
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => '00000000-0000-4000-8000-000000000001',
+            'key_id' => 'test-import-key',
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => str_repeat('a', 64),
+            'registered_domain' => 'madrasah.test',
+            'product_code' => 'CBT_MADRASAH',
+            'product_version' => 'test',
+        ]);
         $service = app(ImportWorkbookService::class);
         $batch = $service->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
         $this->assertSame(2, $batch->valid_rows);
@@ -73,6 +84,9 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertCount(2, $result['activation_links']);
         $this->assertDatabaseHas('teacher_profiles', ['tenant_id' => $this->tenant->id, 'nip' => '001234567890123456']);
         $this->assertDatabaseHas('teacher_profiles', ['tenant_id' => $this->tenant->id, 'nik' => '0012345678901234']);
+        $resolver = app(LoginIdentityResolver::class);
+        $this->assertSame('Guru PNS Contoh', $resolver->resolve('001234567890123456')?->name);
+        $this->assertSame('Guru Honorer Contoh', $resolver->resolve('0012345678901234')?->name);
         $this->assertSame(2, $result['batch']->valid_rows);
         $this->assertDatabaseHas('import_activation_tokens', ['tenant_id' => $this->tenant->id]);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'IMPORT_PREVIEW_CREATED']);
@@ -104,6 +118,17 @@ class ImportWorkbookServiceTest extends TestCase
             ['000123', '0012345678', 'Siswa Uji', 'P', 'Jakarta', '2015-03-04', 'Orang Tua', '081234567890', 'Alamat Siswa', '1A — 2026/2027', '2026/2027'],
         ]);
 
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => '00000000-0000-4000-8000-000000000001',
+            'key_id' => 'test-import-key',
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => str_repeat('a', 64),
+            'registered_domain' => 'madrasah.test',
+            'product_code' => 'CBT_MADRASAH',
+            'product_version' => 'test',
+        ]);
         $service = app(ImportWorkbookService::class);
         $batch = $service->preview($file, 'SISWA', $this->tenant->id, $this->admin->id);
         $this->assertSame(1, $batch->valid_rows);
@@ -111,6 +136,7 @@ class ImportWorkbookServiceTest extends TestCase
 
         $student = StudentProfile::query()->where('tenant_id', $this->tenant->id)->where('nisn', '0012345678')->firstOrFail();
         $this->assertSame('000123', $student->nis);
+        $this->assertSame('Siswa Uji', app(LoginIdentityResolver::class)->resolve('0012345678')?->name);
         $this->assertDatabaseHas('rombel_student', [
             'tenant_id' => $this->tenant->id,
             'rombel_id' => $rombel->id,
