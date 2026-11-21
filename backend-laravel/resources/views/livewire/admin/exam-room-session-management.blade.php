@@ -157,7 +157,7 @@
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <h2 class="text-lg font-bold text-slate-900">Petakan Rombel</h2>
-            <p class="mb-4 text-sm text-slate-500">Peserta ditempatkan berdasarkan snapshot rombel pada saat Guru menambahkan peserta ke ujian.</p>
+            <p class="mb-4 text-sm text-slate-500">Penempatan kelas mengikuti snapshot rombel yang sudah ditetapkan untuk ujian oleh Guru.</p>
             <form wire:submit="mapRombel" class="space-y-3">
                 <label class="block text-sm font-medium text-slate-700">Pasangan sesi-ruang
                     <select wire:model="selectedSessionRoomId" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2">
@@ -205,7 +205,7 @@
                             @foreach($session->sessionRooms as $scope)
                                 <div class="rounded-lg bg-slate-50 p-3">
                                     <p class="font-semibold text-slate-800">{{ $scope->room?->code }} · {{ $scope->room?->name }}</p>
-                                    <p class="text-xs text-slate-500">Kapasitas {{ $scope->capacity_override ?: $scope->room?->capacity }} · {{ $scope->participantAssignments->where('status', 'ACTIVE')->count() }} peserta ditempatkan</p>
+                                    <p class="text-xs text-slate-500">Kapasitas {{ $scope->capacity_override ?: $scope->room?->capacity }} peserta</p>
                                     <div class="mt-2 flex flex-wrap gap-2">
                                         @foreach($scope->rombelMappings as $mapping)
                                             <span class="rounded-full {{ $mapping->status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600' }} px-2.5 py-1 text-xs">{{ $mapping->rombel?->name }} · {{ $mapping->status }}</span>
