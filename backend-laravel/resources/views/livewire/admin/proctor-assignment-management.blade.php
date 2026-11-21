@@ -2,7 +2,7 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm">
         <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-bold border border-amber-200 mb-3">Kewenangan Admin Madrasah</div>
         <h1 class="text-2xl font-bold text-navy-900">Penugasan Proktor Sementara</h1>
-        <p class="text-sm text-textSecondary mt-2">Penugasan dibatasi pada ujian tertentu, tenant aktif, dan rentang waktu yang ditentukan. Proktor hanya memperoleh akses monitoring selama penugasan aktif; tidak memperoleh hak mengelola token, soal, peserta, atau nilai.</p>
+        <p class="text-sm text-textSecondary mt-2">Penugasan dibatasi pada ujian tertentu, tenant aktif, dan rentang waktu yang ditentukan. Penugasan ini diberikan kepada Guru aktif untuk ujian tertentu. Penugasan tidak membuat role atau portal Proktor permanen; kewenangan akses tetap diperiksa oleh policy dan status assignment.</p>
     </div>
 
     @if (session()->has('proctorAssignmentMessage'))
@@ -21,9 +21,9 @@
                 @error('selectedExamId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="block text-sm font-semibold mb-1">Akun Proktor</label>
+                <label class="block text-sm font-semibold mb-1">Guru yang ditugaskan sementara</label>
                 <select wire:model="selectedProctorId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                    <option value="">Pilih Proktor tenant ini</option>
+                    <option value="">Pilih Guru aktif dengan profil Guru</option>
                     @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }}</option>@endforeach
                 </select>
                 @error('selectedProctorId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
@@ -77,7 +77,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-6 text-center text-textSecondary">Belum ada penugasan Proktor.</td></tr>
+                    <tr><td colspan="5" class="py-6 text-center text-textSecondary">Belum ada penugasan Guru sebagai Proktor sementara.</td></tr>
                 @endforelse
                 </tbody>
             </table>
