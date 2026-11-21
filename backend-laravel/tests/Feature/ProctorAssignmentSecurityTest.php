@@ -85,8 +85,8 @@ class ProctorAssignmentSecurityTest extends TestCase
             $this->exam->id,
             'Sesi 1',
             1,
-            now()->subMinutes(5),
-            now()->addHours(2)
+            $this->exam->start_at,
+            $this->exam->end_at
         );
         $this->sessionRoom = $roomService->attachRoom(
             $this->admin,
@@ -276,8 +276,8 @@ class ProctorAssignmentSecurityTest extends TestCase
             $otherExam->id,
             'Sesi 1',
             1,
-            now()->subMinutes(5),
-            now()->addHours(2)
+            $otherExam->start_at,
+            $otherExam->end_at
         );
         $otherSessionRoom = $roomService->attachRoom($this->admin, $otherExam->id, $otherSession->id, $otherRoom->id);
 
