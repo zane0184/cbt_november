@@ -804,3 +804,71 @@ Patch plan final:
 No source file, database, migration, role, permission, configuration, Web Guru feature, Android, VPS, PR, merge, deployment or production environment was changed. No PR was created/modified/merged/closed.
 
 Next action is not coding: wait for explicit user approval of the final patch plan and any separately identified cross-scope dependencies. The next agent must start from the latest GitHub checkpoint and verify source branch/commit/blob SHAs again before any patch.
+
+
+---
+
+## 20. FINAL REVIEW CLOSURE — 21 November 2026
+
+Bagian ini adalah status final yang berlaku dan mengungguli setiap narasi fase historis pada bagian sebelumnya.
+
+### 20.1 Status audit dan acceptance
+- **Audit source statis Web Admin: SELESAI** untuk source paths/access surfaces yang tercatat pada laporan, matriks dan patch plan.
+- **Acceptance testing: BELUM SELESAI.** Tidak ada pernyataan bahwa Web Admin siap diterima atau siap produksi.
+- ADM-001–ADM-023: 23/23 memiliki status statis aktual di matriks modul. Status tersebut menggambarkan keadaan source, bukan PASS acceptance.
+- T-001–T-173: 173/173 dipetakan; semua status aktual tetap **NOT VERIFIED**. Test method, deklarasi method, source path atau CI aggregate historis tidak dapat mengubah status menjadi PASS.
+- P0/P1 tetap OPEN sampai patch yang disetujui diimplementasikan dan pengujian langsung menghasilkan bukti.
+
+### 20.2 Source provenance final recheck
+- Patch plan mencantumkan 71 existing source paths dengan blob SHA.
+- Seluruh 71/71 path di-fetch ulang dari branch source work/web-admin-w0-20261121; semua blob SHA cocok dengan patch plan.
+- Compare source branch terhadap pin 2b4321ce032fd5e67cf022da8564a5287b8cef6f menghasilkan identical, 0 ahead / 0 behind.
+- SHA source pada patch plan berasal dari branch source, bukan branch dokumentasi. Dokumen dan backup tetap berada di branch dokumentasi.
+- File NEW belum memiliki blob SHA pre-change; file WA-07 yang belum ditemukan tidak boleh dianggap tersedia atau diberi SHA asumsi.
+
+### 20.3 Keputusan batas WA-03 dan dependency Guru
+WA-03 tidak memberi izin mengubah jalur Guru. Admin assignment core hanya dapat dikerjakan setelah approval dan harus dipisahkan dari jadwal Guru.
+
+Berstatus **CROSS-SCOPE BLOCKED / memerlukan persetujuan terpisah**:
+- Shared ExamScheduleChangeService jika dipakai oleh jalur Guru.
+- Integrasi perubahan jadwal pada ExamController.
+- Schedule-save pada shared Livewire Admin/ExamManagement bila branch Guru berada di komponen yang sama.
+- Perubahan ExamPolicy/shared authorization yang mengubah capability Guru.
+- API, route, service, middleware, Livewire, view, atau perilaku lain yang mengubah alur Guru.
+- Semua file app/Livewire/Teacher/* dan view Guru.
+
+Jika isolasi Admin/Guru tidak dapat dibuktikan pada file shared, file itu harus dikeluarkan dari patch Admin sampai ada persetujuan lintas-scope. Tidak boleh melakukan perubahan “sekalian” pada Guru.
+
+### 20.4 Dependency status Guru aktif — belum diputuskan
+Source W0 menunjukkan User model tidak mendeklarasikan SoftDeletes dan tidak menampilkan atribut status aktif; TeacherProfile memakai SoftDeletes tetapi tidak memiliki atribut status kepegawaian aktif. Tidak soft-deleted atau keberadaan profil saja tidak membuktikan Guru aktif.
+
+Pilihan desain yang belum diterapkan:
+1. **Direkomendasikan — dua status eksplisit:** users.account_status (ACTIVE, SUSPENDED, INACTIVE) dan teacher_profiles.employment_status (ACTIVE, ON_LEAVE, INACTIVE, ENDED). Capability hanya jika keduanya ACTIVE, role GURU, relasi TeacherProfile tunggal dan tenant-local, serta permission/scope/schedule checks lolos. Dampak: migration additive untuk dua kolom, indeks/constraint sesuai kebutuhan, audit transisi, dan proses review data legacy. Tidak boleh backfill otomatis ke ACTIVE.
+2. **Alternatif minimal:** users.is_active dan teacher_profiles.is_active boolean. Dampak dua kolom additive; kurang ekspresif untuk cuti/berakhir dan tetap membutuhkan review data legacy.
+3. **Turunan dari soft-delete/profil saja:** ditolak sebagai definisi aktif karena tidak membedakan suspended, cuti, berhenti, dan profil yang dihapus sementara.
+
+Pilihan 1 adalah rekomendasi desain saja. Schema/migration User dan TeacherProfile harus diperiksa pada salinan MySQL 8 sebelum keputusan. Baris legacy yang tidak dapat dibuktikan harus NEEDS_REVIEW; tidak boleh otomatis memperoleh capability.
+
+### 20.5 Risiko yang belum dapat dibuktikan secara statis
+- Data aktual: orphan FK, tenant mismatch, duplikasi, nilai legacy ambigu, schema drift, constraint yang sudah ada dan migration preflight.
+- Concurrency Proktor: overlap, double-confirm, revoke-vs-confirm, schedule-change-vs-confirm, expiry, deadlock, retry, lock timeout, isolation-level dan clock skew.
+- Perilaku DDL MySQL: kompatibilitas tipe/charset/collation/index, implicit commit, metadata lock, downtime, dan rollback/restore.
+- Livewire hydration, stale browser tab/session, Sanctum token, permission revocation dan cache invalidation pada request paralel.
+- Serialization/error response/media/export/download/query/cache/queue yang dapat membuka data pada kombinasi role/tenant yang belum diuji runtime.
+- Audit tampering via raw SQL/privileged DB account, trigger bypass, cascade, restore dan transaction failure.
+- Dampak role migration pada akun lama, password/profile/history dan login Guru/Admin.
+- Regresi jadwal/ujian aktif dan penerimaan operasional oleh Admin, Guru, Siswa dan madrasah.
+
+### 20.6 Pengujian wajib MySQL 8 / InnoDB
+SQLite tidak boleh dipakai untuk menyimpulkan keamanan concurrency Proktor atau kompatibilitas DDL/FK MySQL. Pengujian wajib pada database MySQL 8/InnoDB disposable hasil restore:
+- Dua atau lebih koneksi independen untuk assignment overlap, same Guru/multi exam, multi Guru, multi tenant, revoke/confirm/reschedule/expiry race; konflik harus ditolak secara konsisten.
+- Locking current read, isolation level, deadlock, retry/idempotency, lock timeout dan rollback.
+- Boundary server-time, timezone, stale schedule_revision, jadwal berubah setelah attempt mulai, dan NEEDS_REVIEW.
+- Apply/verify/rollback migration WA-03/WA-04/WA-06 setelah preflight; uji metadata lock dan integritas data.
+- Direct SQL mismatch insert/update untuk semua composite FK; database harus menolak tanpa bantuan Eloquent.
+- AuditLog update/delete/raw SQL dan privilege bypass; transaksi mutation-audit harus atomik sesuai rancangan.
+- Negative Admin HTTP/API/Livewire tests yang memeriksa payload/HTML/media/export; positive Guru regression hanya sebagai uji perilaku existing, bukan perubahan fitur Guru.
+- Browser multi-session dan UAT Madrasah pada lingkungan terisolasi.
+
+### 20.7 Stop gate
+Patch plan final dan checkpoint telah diperbarui pada branch dokumentasi. Backup dan manifest final review disimpan di docs/backup/web-admin-final-review-2026-11-21/. Source branch tidak berubah. Tidak ada source aplikasi, database, migration, seeder, role, permission, konfigurasi, Web Guru, Android, VPS atau PR yang diubah. **Audit dokumentasi berhenti di sini; tunggu persetujuan eksplisit pengguna sebelum implementasi.**
