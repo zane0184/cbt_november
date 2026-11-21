@@ -1,29 +1,29 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Contexts\\TenantContext;
-use App\\Models\\AcademicYear;
-use App\\Models\\Assessment;
-use App\\Models\\Curriculum;
-use App\\Models\\Exam;
-use App\\Models\\ExamAttempt;
-use App\\Models\\ExamParticipant;
-use App\\Models\\GradeLevel;
-use App\\Models\\Permission;
-use App\\Models\\Phase;
-use App\\Models\\Role;
-use App\\Models\\Rombel;
-use App\\Models\\Semester;
-use App\\Models\\StudentProfile;
-use App\\Models\\Subject;
-use App\\Models\\TeacherProfile;
-use App\\Models\\TeacherSubjectAssignment;
-use App\\Models\\Tenant;
-use App\\Models\\User;
-use App\\Services\\ExamProctorAssignmentService;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Tests\\TestCase;
+use App\Contexts\TenantContext;
+use App\Models\AcademicYear;
+use App\Models\Assessment;
+use App\Models\Curriculum;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
+use App\Models\GradeLevel;
+use App\Models\Permission;
+use App\Models\Phase;
+use App\Models\Role;
+use App\Models\Rombel;
+use App\Models\Semester;
+use App\Models\StudentProfile;
+use App\Models\Subject;
+use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Services\ExamProctorAssignmentService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class MonitoringDuplicationTest extends TestCase
 {
@@ -236,7 +236,7 @@ class MonitoringDuplicationTest extends TestCase
     public function test_revoked_or_expired_temporary_assignment_removes_monitoring_access(): void
     {
         $this->assignTemporaryProctor();
-        $assignment = \\App\\Models\\ExamProctorAssignment::query()->firstOrFail();
+        $assignment = \App\Models\ExamProctorAssignment::query()->firstOrFail();
 
         app(ExamProctorAssignmentService::class)->revoke(
             $this->admin,
@@ -250,7 +250,7 @@ class MonitoringDuplicationTest extends TestCase
             ->assertForbidden();
 
         $this->assignTemporaryProctor();
-        \\App\\Models\\ExamProctorAssignment::query()->whereKey($assignment->id)
+        \App\Models\ExamProctorAssignment::query()->whereKey($assignment->id)
             ->update(['status' => 'ACTIVE', 'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null, 'expires_at' => now()->subSecond()]);
 
         $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
