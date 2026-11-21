@@ -105,11 +105,11 @@ class ImportTemplateGeneratorTest extends TestCase
 
         $guru = $this->get('/admin/import/template/GURU');
         $guru->assertOk();
-        $this->assertStringContainsString('Template%20Import%20Guru.xlsx', (string) $guru->headers->get('content-disposition'));
+        $this->assertStringContainsString('filename="Template Import Guru.xlsx"', (string) $guru->headers->get('content-disposition'));
 
         $siswa = $this->get('/admin/import/template/SISWA');
         $siswa->assertOk();
-        $this->assertStringContainsString('Template%20Import%20Siswa.xlsx', (string) $siswa->headers->get('content-disposition'));
+        $this->assertStringContainsString('filename="Template Import Siswa.xlsx"', (string) $siswa->headers->get('content-disposition'));
     }
 
 }
