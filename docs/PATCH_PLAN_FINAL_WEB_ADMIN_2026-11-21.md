@@ -143,7 +143,14 @@ Before editing:
 | `app/Livewire/Admin/ExamManagement.php` — `478aaa170ee297b0c8399f049cd9b1ba56cbfb10` | If this shared component still handles Guru schedule saves, call shared schedule service. This is **BLOCKED** under current no-Web-Guru scope until separately approved. | mirrored WA-03 path | None | API/Livewire schedule parity |
 | **NEW** migration | Add rombel_id, schedule_revision, confirmed_at/by, needs_review_at/by as needed; add composite tenant FKs; add indexes for tenant+Guru+interval+status. | New migration | Preflight invalid/ambiguous assignments; old ACTIVE records preserved as NEEDS_REVIEW; no destructive delete | Two-connection MySQL 8 overlap/concurrency tests |
 
-**Open dependency:** Source has no explicit `is_active` on User/TeacherProfile. Initial eligibility predicate can only be “User not soft-deleted + TeacherProfile exists and not soft-deleted + role GURU”. If Madrasah needs reversible suspend/activate distinct from soft-delete, add a separate approved active-state migration; do not invent this silently.
+**Open dependency — status Guru aktif BELUM TERDEFINISI dan tidak boleh disimpulkan dari soft-delete.** Source snapshot W0 menunjukkan User tidak mendeklarasikan SoftDeletes dan tidak memiliki field status aktif yang terlihat pada model; TeacherProfile memakai SoftDeletes, tetapi tidak memiliki field status kepegawaian/aktif. Karena itu, “tidak soft-deleted” bukan bukti Guru aktif. Predicate final harus menunggu keputusan desain dan pemeriksaan skema database aktual.
+
+Pilihan desain (belum dipilih/diterapkan):
+1. **Dua status eksplisit (direkomendasikan):** users.account_status (ACTIVE, SUSPENDED, INACTIVE) untuk akses akun, dan teacher_profiles.employment_status (ACTIVE, ON_LEAVE, INACTIVE, ENDED) untuk status penugasan Guru. Guru eligible hanya jika kedua status ACTIVE, akun dan profil tidak dihapus/ditutup, role tepat GURU, tepat satu TeacherProfile tenant-local, serta permission dan scope penugasan valid. Dampak DB: dua kolom/status domain baru, indeks tenant/status yang sesuai, aturan transisi dan audit; migration additive setelah pemeriksaan schema, data profiling, serta keputusan nilai legacy. Tidak boleh auto-backfill semua baris menjadi ACTIVE.
+2. **Satu status akun + status profil minimal:** users.is_active dan teacher_profiles.is_active boolean. Lebih sederhana tetapi kurang ekspresif untuk cuti/berakhir; tetap perlu dua kolom dan aturan backfill/review. Tidak direkomendasikan dibanding enum status.
+3. **Turunan dari keberadaan profil/soft-delete saja:** tidak memerlukan kolom baru, tetapi tidak dapat membedakan akun dinonaktifkan, Guru cuti, Guru berhenti, dan profil yang sekadar dihapus sementara. **Ditolak sebagai definisi aktif**; tidak boleh digunakan untuk memberi capability.
+
+Rekomendasi pilihan 1 tetap merupakan usulan desain, bukan keputusan implementasi. Sebelum approval, audit harus memeriksa seluruh migration/schema User dan TeacherProfile di database salinan MySQL 8, memetakan akun/profil legacy ke NEEDS_REVIEW, dan menyiapkan kebijakan transisi. Tidak ada akun atau profil yang diaktifkan otomatis.
 
 ### WA-04 — tenant identity, User scoping and composite foreign keys
 
@@ -351,3 +358,64 @@ The source blob SHA-1s in §4 identify the exact W0 snapshot files reviewed. The
 - Implementation: **NOT STARTED**.
 - Patch plan: **FINAL, WAITING FOR EXPLICIT USER APPROVAL**.
 - No source/database/migration/config/role/permission/Web Guru/PR/deployment changed.
+
+
+## 13. Final review addendum — 21 November 2026
+
+### Status dokumen yang berlaku
+Addendum ini mengungguli narasi status historis yang masih tertinggal di dokumen lama. **Audit source statis: SELESAI. Acceptance testing: BELUM SELESAI. Implementasi: NOT STARTED dan MENUNGGU PERSETUJUAN EKSPLISIT.** Tidak ada klaim runtime PASS yang diturunkan dari keberadaan test method atau CI aggregate.
+
+### Status 23 modul ADM
+Semua ADM-001–ADM-023 mempunyai status implementasi statis pada matriks detail (23/23). Status tersebut adalah kondisi source yang ditemukan, bukan hasil acceptance. Status aktual per modul tetap persis seperti baris ADM pada matriks; tidak ada modul yang dinyatakan complete. Acceptance per modul: **NOT VERIFIED / NOT RUN** sampai ada run evidence yang ditautkan ke ID modul, commit, lingkungan MySQL 8, perintah, exit code, assertion, dan artefak.
+
+### Status 173 test ID
+T-001–T-173 lengkap dipetakan 173/173. Status aktual setiap ID tetap **NOT VERIFIED**; test method/source candidate hanya membuktikan kandidat lokasi pengujian. CI #692 adalah bukti aggregate historis pada commit yang berbeda, bukan bukti run per-ID dan bukan acceptance untuk W0. Dilarang mengubah status menjadi PASS tanpa run record individual yang dapat diaudit.
+
+### WA-03 — batas scope yang diperjelas
+**Dalam scope Web Admin, hanya setelah approval:** desain/penerapan Admin assignment UI dan authorization, assignment state machine, penyimpanan rombel_id/schedule_revision/metadata konfirmasi, validasi Guru dan tenant, audit, serta concurrency tests yang dapat diselesaikan tanpa mengubah jalur Guru. Komponen Admin hanya boleh disentuh pada cabang Admin yang terisolasi; ExamManagement adalah komponen shared sehingga perubahan schedule-save atau branch Guru tidak boleh dilakukan tanpa approval tambahan.
+
+**Cross-scope BLOCKED — memerlukan persetujuan terpisah:** ExamScheduleChangeService jika dipakai bersama alur Guru; integrasi ExamController untuk perubahan jadwal; perubahan schedule-save pada shared ExamManagement; perubahan route/API/service/middleware/Livewire/view yang mengubah perilaku Guru; dan seluruh file app/Livewire/Teacher/* atau view Guru. Tidak ada pekerjaan WA-03 yang boleh mengubah API, service, Livewire, view, atau perilaku Guru di bawah approval Web Admin saja. File ExamController.php, ExamManagement.php, routes/web.php hanya boleh disentuh untuk bagian Admin yang terbukti terpisah; jika isolasi tidak dapat dibuktikan, file dikeluarkan dari patch dan dependency dinaikkan ke approval terpisah.
+
+### Source provenance recheck
+Semua **71 path source existing** yang memiliki blob SHA-1 pada tabel WA-01 s.d. WA-06 telah di-fetch ulang langsung dari work/web-admin-w0-20261121; seluruh 71/71 SHA cocok dengan nilai pada patch plan. Branch tersebut dibandingkan dengan source pin 2b4321ce032fd5e67cf022da8564a5287b8cef6f dan hasilnya **identical, 0 ahead / 0 behind**. SHA pada tabel merujuk ke source branch tersebut, bukan blob dokumen di branch dokumentasi. File berlabel NEW belum memiliki source blob SHA dan tidak memiliki backup pre-change; pembuatan file baru harus tercatat di manifest implementasi setelah approval. WA-07 adalah rencana modul tingkat fitur dan belum memiliki daftar file existing/blob SHA final.
+
+### Dependency, DB dan rollback yang wajib dikunci sebelum patch
+- WA-01: tanpa schema migration yang direncanakan; perlu audit route/policy/response allowlist dan regresi akses Guru. Permission seeding harus idempotent. Rollback kode/policy harus satu commit terkoordinasi; jangan mengembalikan Admin CBT access sebagai workaround.
+- WA-02: perubahan role/permission pivot dan perilaku installer/login; migration data hanya setelah inventaris akun legacy, pemetaan deterministik, dan daftar manual review. Tidak boleh menghapus/merge akun. Rollback memulihkan grant/session/token secara terkontrol, bukan menghidupkan alias tanpa audit.
+- WA-03: migration additive untuk status assignment/rombel/revision/confirmation hanya setelah keputusan active-state Guru dan preflight data. Baris legacy ACTIVE tidak otomatis menjadi CONFIRMED; yang tidak dapat dibuktikan masuk NEEDS_REVIEW. Rollback tidak boleh mengubah assignment ambigu menjadi capability aktif.
+- WA-04: migration composite FK/indexes memerlukan parent candidate keys, pemeriksaan tipe/charset/collation/UUID, orphan/mismatch preflight, urutan constraint, dan estimasi metadata lock. DDL MySQL dapat implicit commit; rollback wajib berupa migration balik yang diuji pada clone dan restore backup, bukan asumsi transaksi DDL.
+- WA-05: tidak diperkirakan perlu schema migration; policy registration/permission map harus diuji per method dan per role. Rollback mengembalikan policy/route commit tanpa membuka akses lintas tenant.
+- WA-06: audit columns/trigger/constraint memerlukan migration additive; tentukan hak DB yang dapat melewati trigger, retensi actor/tenant, transaction boundary, dan strategi rollback tanpa menghapus log. Cache invalidation diuji pada tenant/rombel yang berubah.
+- WA-07: setiap modul memiliki discovery/design/schema review tersendiri; tidak boleh digabung ke patch keamanan P0/P1 sebelum acceptance dasar aman.
+
+### Risiko yang tidak dapat dibuktikan hanya dari pembacaan source
+1. Apakah database aktual berisi orphan/mismatch, duplikasi, status legacy ambigu, constraint drift, atau data yang menggagalkan migration.
+2. Race condition assignment overlap, schedule revision, revoke/reconfirm, simultaneous Admin actions, deadlock, lock timeout, isolation-level behavior dan server clock skew.
+3. Apakah MySQL 8/InnoDB menerima semua composite FK/index dengan definisi kolom yang persis kompatibel, dan dampak metadata lock/DDL downtime.
+4. Apakah Livewire hydration, browser back/restore, multi-tab, stale session, Sanctum token, permission revocation dan cache benar-benar fail-closed pada request berikutnya.
+5. Apakah API serialization, exception/debug response, media download, export, pagination, queue/command dan cache dapat membocorkan data pada kombinasi role/tenant yang tidak tercakup.
+6. Apakah audit tetap immutable ketika aplikasi memakai raw SQL, privileged DB account, cascade, restore, atau operasi maintenance.
+7. Apakah rollback dan restore benar-benar mempertahankan UUID, FK, audit history, session/token dan tenant boundaries.
+8. Apakah jadwal Guru yang berubah bersamaan dengan penugasan Proktor tidak menghasilkan assignment stale atau capability sementara.
+9. Apakah perubahan role/permission memutus akses Admin/Guru yang sah atau mengunci instalasi lama.
+10. Apakah UI Admin responsif, accessible, dan alur operasional dapat diterima oleh madrasah.
+
+### Pengujian wajib pada MySQL 8 / InnoDB
+SQLite tidak boleh dipakai untuk menyimpulkan keamanan concurrency Proktor atau validitas DDL/FK MySQL. Wajib gunakan database MySQL 8/InnoDB disposable yang dipulihkan dari snapshot representatif:
+- Dua atau lebih koneksi independen melakukan assignment overlap bersamaan untuk Guru yang sama, Guru berbeda, ujian sama/berbeda, tenant sama/berbeda; tepat satu transaksi konflik harus ditolak dan tidak ada double-confirm.
+- Uji row/gap/current locking, isolation level, deadlock, retry, lock timeout, idempotency key, revoke-vs-confirm, reschedule-vs-confirm, expiry-vs-request, dan rollback transaksi.
+- Uji server time sebagai acuan, interval batas, timezone, schedule revision stale, perubahan jadwal setelah attempt dimulai, dan assignment NEEDS_REVIEW.
+- Jalankan migration WA-03/WA-04/WA-06 pada clone MySQL 8: schema introspection, candidate unique indexes, FK mismatch/orphan preflight, apply, verify constraints, rollback/restore, dan uji data tetap utuh.
+- Uji tenant composite FK dengan insert/update langsung yang sengaja mismatch untuk setiap relasi; database harus menolak tanpa mengandalkan Eloquent.
+- Uji AuditLog update/delete/raw SQL sesuai privilege model; kegagalan audit harus membatalkan mutation sensitif bila disyaratkan.
+- Uji query/API/Livewire denial Admin dan positive Guru regression; hasil harus menguji body/serialization, bukan hanya HTTP status.
+- Jalankan browser multi-session dan UAT Admin/Guru/Siswa di lingkungan terisolasi. Guru hanya untuk regresi dan tidak boleh diubah tanpa approval lintas-scope.
+
+### File count dan urutan aman
+- Existing source file dengan SHA terverifikasi: **71 path** di WA-01–WA-06.
+- New source/test/migration/policy files: hanya dibuat setelah approval dan dicatat sebagai NEW di manifest; WA-07 file discovery masih terbuka.
+- Urutan yang direkomendasikan: (0) approval dan freeze scope; (1) WA-01 P0 Admin CBT deny/metadata boundary tanpa shared Guru edits; (2) WA-04 tenant identity/FK preflight dan migration pada clone; (3) WA-05 curriculum authorization; (4) WA-06 Admin hydration/audit; (5) WA-02 role/legacy account transition setelah inventaris dan dry-run; (6) WA-03 Admin assignment core setelah keputusan status Guru, sementara semua shared schedule/Guru integration tetap BLOCKED sampai approval terpisah; (7) WA-07 per-modul setelah P0/P1 acceptance.
+Urutan dapat disesuaikan hanya berdasarkan dependency hasil test; tidak ada tahap yang otomatis disetujui oleh dokumen ini.
+
+### Stop gate
+Dokumen ini adalah final review dan patch plan, bukan izin kerja. Tidak ada source, database, migration, seeder, role, permission, config, Web Guru, Android, VPS atau PR yang diubah. **Berhenti di sini dan tunggu persetujuan eksplisit pengguna.**
