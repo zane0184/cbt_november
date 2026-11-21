@@ -127,7 +127,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
             ->set('reason', 'Pengawasan ujian kelas enam')
             ->call('assign')
-            ->assertNotFound();
+            ->assertStatus(404);
 
         $this->assertDatabaseCount('exam_proctor_assignments', 0);
     }
@@ -157,7 +157,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
             ->set('reason', 'Pengawasan ujian kelas enam')
             ->call('assign')
-            ->assertNotFound();
+            ->assertStatus(404);
 
         $this->assertDatabaseCount('exam_proctor_assignments', 0);
     }
@@ -182,7 +182,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
             ->set('reason', 'Pengawasan ujian kelas enam')
             ->call('assign')
-            ->assertNotFound();
+            ->assertStatus(404);
 
         $this->assertDatabaseCount('exam_proctor_assignments', 0);
     }
