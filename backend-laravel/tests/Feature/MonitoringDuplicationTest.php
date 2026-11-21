@@ -589,4 +589,46 @@ class MonitoringDuplicationTest extends TestCase
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
             ->assertForbidden();
     }
+    public function test_tenant_b_guru_cannot_access_tenant_a_monitoring_participants_or_attempts(): void
+    {
+        $participant = ExamParticipant::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $this->student->id)
+            ->firstOrFail();
+        $attempt = ExamAttempt::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'participant_id' => $participant->id,
+            'student_id' => $this->student->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+        ]);
+
+        $tenantB = Tenant::create(['name' => 'Tenant Monitoring B', 'code' => 'MONB']);
+        app(TenantContext::class)->setTenantId($tenantB->id);
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        $foreignGuru = User::create([
+            'tenant_id' => $tenantB->id,
+            'name' => 'Guru Tenant B',
+            'email' => 'guru-tenant-b-monitor@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $foreignGuru->roles()->attach($guruRole->id);
+        TeacherProfile::create([
+            'tenant_id' => $tenantB->id,
+            'user_id' => $foreignGuru->id,
+            'full_name' => 'Guru Tenant B',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+        TenantContext::resetInstance();
+
+        $this->actingAs($foreignGuru, 'sanctum');
+        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")->assertForbidden();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants")->assertForbidden();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$attempt->id}")->assertForbidden();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/participants")->assertForbidden();
+        $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}")->assertForbidden();
+    }
+
 }
