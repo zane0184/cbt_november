@@ -115,6 +115,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'assigned_by' => $this->admin->id,
             'status' => 'PENDING',
         ]);
+        $this->assertDatabaseMissing('roles', ['name' => 'PROKTOR']);
         $this->assertDatabaseHas('audit_logs', [
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->admin->id,
@@ -123,7 +124,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         ]);
     }
 
-    public function test_assigned_guru_can_monitor_only_while_assignment_is_active_and_for_that_exam(): void
+    public function test_assigned_guru_can_monitor_only_after_confirmation_and_for_that_exam(): void
     {
         $this->actingAs($this->proctorGuru)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
 
@@ -214,6 +215,47 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->actingAs($this->proctorGuru, 'sanctum')
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
             ->assertForbidden();
+    }
+
+    public function test_confirmation_rejects_overlapping_confirmed_assignment_for_same_guru(): void
+    {
+        $this->assignThroughUi();
+        $firstAssignment = ExamProctorAssignment::query()->firstOrFail();
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->call('confirm', $firstAssignment->id)
+            ->assertHasNoErrors();
+
+        $otherExam = Exam::create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $this->exam->assessment_id,
+            'title' => 'Ujian Kedua pada waktu yang sama',
+            'duration_seconds' => 3600,
+            'start_at' => now()->subMinutes(5),
+            'end_at' => now()->addHours(2),
+            'status' => 'PUBLISHED',
+            'created_by' => $this->examAuthor->id,
+            'locked_at' => now(),
+        ]);
+
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->set('selectedExamId', $otherExam->id)
+            ->set('selectedProctorId', $this->proctorGuru->id)
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\TH:i'))
+            ->set('expiresAt', now()->addHour()->format('Y-m-d\\TH:i'))
+            ->set('reason', 'Pengawasan ujian kedua yang waktunya bertumpang tindih')
+            ->call('assign')
+            ->assertHasNoErrors();
+
+        $secondAssignment = ExamProctorAssignment::query()
+            ->where('exam_id', $otherExam->id)
+            ->firstOrFail();
+
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->call('confirm', $secondAssignment->id)
+            ->assertHasErrors(['assignment']);
+
+        $this->assertSame('PENDING', $secondAssignment->fresh()->status);
     }
 
     public function test_database_rejects_cross_tenant_guru_assignment_reference(): void
