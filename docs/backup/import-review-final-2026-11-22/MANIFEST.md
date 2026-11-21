@@ -22,3 +22,9 @@ Commit: 79f0542d9326a3b4725506232e6e9c8e0cd2f46b
 ## Follow-up backup before Livewire redirect correction
 Commit: fb11e9c3847ce46261e4ca48123d178812001321
 - backend-laravel/app/Livewire/Admin/ImportManagement.php -> docs/backup/import-review-final-2026-11-22/ImportManagement.php.before-final-void-return-fix | blob SHA a5881aad6b0d642d187a29c6aba7bb33f226e498
+
+
+## Follow-up backup before tenant/ZIP/deadlock test patch
+Commit: 736fe35b029bf8e2a1c090be044af19cc3e4c892
+- backend-laravel/app/Services/Import/ImportWorkbookService.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookService.php.before-tenant-guard-zip-order | blob SHA bea9c7bce9c7216c4d9e69e827471aa675f9f914
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-deadlock-test-isolation | blob SHA 255eda89fe1de8ff3797055e25ed71c8fe5f37dd
