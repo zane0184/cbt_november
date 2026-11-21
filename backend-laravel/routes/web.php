@@ -14,6 +14,7 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Http\Controllers\Admin\ImportTemplateController;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -84,6 +85,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'));
 
     // Admin Operational Routes
+    Route::get('/admin/import/template/{type}', [ImportTemplateController::class, 'download'])->name('admin.import.template');
     Route::get('/admin/users', UserManagement::class);
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
