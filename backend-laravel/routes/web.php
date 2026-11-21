@@ -44,8 +44,6 @@ Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
 Route::get('/activate-import-account/{token}', [ImportAccountActivationController::class, 'show'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.show');
 Route::post('/activate-import-account/{token}', [ImportAccountActivationController::class, 'store'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.store');
-Route::get('/activate-import-account/{token}', [ImportAccountActivationController::class, 'show'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.show');
-Route::post('/activate-import-account/{token}', [ImportAccountActivationController::class, 'store'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.store');
 Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
 Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
 
