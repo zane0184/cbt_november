@@ -316,3 +316,34 @@ Branch dokumentasi baru: `docs/canonical-reconciliation-admin-guru-20261121`, di
 Entry point master `docs/WEB_ADMIN_MASTER_SPECIFICATION.md` kini menautkan spesifikasi rinci, register, 23 modul audit, T-001–T-168, provenance, prompt, handover, laporan, checkpoint, serta dokumen W6 commit-pinned. Detail file, backup, blob SHA, dan status audit tercatat pada `docs/LAPORAN_REKONSILIASI_ADMIN_GURU_2026-11-21.md`.
 
 Keputusan Admin/Guru terbaru tercatat pada Addendum 33, DEC-WA-019–025, dan prompt agent. Source aplikasi tetap tidak berubah. Semua temuan RBAC, role, Proktor, schedule, tenant, dan kurikulum yang belum diimplementasikan tetap OPEN.
+
+
+## 16. FINALISASI SESUAI MASTER PROMPT FINAL — KEPUTUSAN TERBARU (21 NOVEMBER 2026)
+
+### 16.1 Status branch dan PR saat verifikasi ulang
+Branch `docs/canonical-reconciliation-admin-guru-20261121` tetap menjadi branch konsolidasi dokumentasi. HEAD saat pemeriksaan awal putaran finalisasi: `55cfe325aef13abd4dae97c7d46e127a0ff47bbb`. Branch source `recovery/source-preservation-20261121` @ `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`, W0 `work/web-admin-w0-20261121` @ `2b4321ce032fd5e67cf022da8564a5287b8cef6f`, dan W6 `docs/curriculum-kbc-w6-requirements-20261121` @ `4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4` tidak diubah.
+PR #5/#6/#7 masih OPEN, Draft, Unmerged pada saat verifikasi; tidak diubah. PR #1/#3/#4 juga OPEN/Draft; PR #2 CLOSED/Unmerged.
+
+### 16.2 Keputusan Proktor final — ACTIVE
+Pengguna menegaskan:
+- PENDING tidak memberikan capability.
+- Hanya CONFIRMED dapat memberi capability setelah validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict dan waktu server terpenuhi.
+- ACTIVE bukan status assignment.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED tidak memberikan capability.
+- Interval wajib `starts_at <= serverNow < expires_at`; setiap request memvalidasi ulang dan tidak bergantung cron.
+- Setelah reschedule Guru melalui ExamScheduleChangeService, assignment terdampak NEEDS_REVIEW dan capability lama langsung dicabut. Setelah review sah, status kembali CONFIRMED, bukan ACTIVE.
+
+Nota lama OPEN/PROPOSED telah diganti menjadi keputusan final. Addendum 34 spesifikasi ditandai SUPERSEDED oleh Addendum 35; DEC-WA-026 dicatat di register.
+
+### 16.3 Perbaikan test dan audit
+- Matriks audit ADM-001–ADM-023 tetap utuh; kontrol AUD-PRO-05 diperjelas dengan penolakan ACTIVE sebagai status assignment.
+- T-001–T-168 dipertahankan; T-169–T-173 ditambahkan. T-114 diubah dari status hasil ACTIVE menjadi CONFIRMED; T-160 memuat seluruh syarat capability.
+- Seluruh test yang belum dijalankan tetap NOT RUN.
+
+### 16.4 Selisih jumlah path diselesaikan
+Compare base W0-recheck `fb058f05264b8d464d687583c53f06fbb7fe54f7` terhadap branch pada HEAD awal `55cfe325aef13abd4dae97c7d46e127a0ff47bbb` menunjukkan 28 path docs/ berubah/ditambahkan, 0 dihapus, 0 source aplikasi. Rinciannya 12 dokumen kerja (6 added, 6 modified) dan 16 backup/manifest. Angka 18 dan 24 pada catatan terdahulu adalah snapshot compare parsial sebelum backup finalisasi selesai.
+
+Backup tambahan finalisasi tersedia pada `docs/backup/reconciliation-2026-11-21/finalization/`; manifest mencatat 16 file yang dibackup dan Git blob SHA identik. Ini backup GitHub, bukan backup lokal.
+
+### 16.5 Batas implementasi dan pengujian
+Tidak ada source aplikasi, migration, seeder, database, .env, PR, merge, rebase, force-push, deployment, atau Android yang diubah/dijalankan. Source audit tetap read-only. Temuan role/permission/Admin/Guru/tenant/assignment/schedule/Kurmer-KBC tetap OPEN sampai implementasi disetujui. CI, runtime, browser, MySQL concurrency, import/restore dan UAT tetap NOT RUN.
