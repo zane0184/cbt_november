@@ -21,11 +21,11 @@
 ### DESAIN
 - Patch plan final tersedia: WA-01 s.d. WA-07, dengan source file provenance, backup convention, dependency, DB impact, migration/preflight, test, rollback dan acceptance.
 - WA-03 dibatasi: Admin assignment core terpisah dapat direncanakan; shared schedule service, ExamController, shared ExamManagement, shared ExamPolicy/API/routes atau jalur Guru berstatus **CROSS-SCOPE BLOCKED** dan memerlukan persetujuan terpisah.
-- Definisi Guru aktif belum tersedia pada source. Soft-delete/ketiadaan soft-delete bukan bukti aktif. Pilihan desain status eksplisit User + TeacherProfile telah ditambahkan ke patch plan; belum dipilih/diterapkan.
+- DESAIN status aktif Guru telah dipilih pengguna: users.account_status (ACTIVE/SUSPENDED/INACTIVE) + teacher_profiles.employment_status (ACTIVE/ON_LEAVE/INACTIVE/ENDED). Eligibility memerlukan keduanya ACTIVE, role GURU, tepat satu TeacherProfile valid tenant-local, tidak dihapus, dan seluruh permission/scope/assignment checks. Tidak ada migration atau DB write; detail transisi/default INACTIVE/preflight/index/constraint/rollback berada di paket WA-01.
 - SQLite tidak boleh menjadi dasar kesimpulan concurrency Proktor. Uji wajib menggunakan MySQL 8/InnoDB disposable dengan dua atau lebih koneksi.
 
 ### IMPLEMENTASI
-- **NOT STARTED — belum disetujui.**
+- **NOT STARTED — WA-01 execution package disiapkan; menunggu persetujuan eksplisit sebelum coding.**
 - Tidak ada source aplikasi, database, migration, seeder, role, permission, konfigurasi, Web Guru, Android, VPS atau PR yang diubah.
 - Source branch `work/web-admin-w0-20261121` dibandingkan dengan source pin `2b4321ce032fd5e67cf022da8564a5287b8cef6f`: **identical, 0 ahead / 0 behind**.
 - 71/71 source existing paths yang memiliki SHA pada WA-01–WA-06 telah diverifikasi ulang langsung dari source branch; semua cocok. SHA dokumentasi tidak dipakai sebagai source SHA.
@@ -262,7 +262,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Matriks T-ID: docs/MATRIKS_TEST_WEB_ADMIN_T001_T173_MAPPING_2026-11-21.md — 173/173 mapping, setiap ID NOT VERIFIED.
 - Final review telah memverifikasi 71/71 source blob SHA dari source branch work/web-admin-w0-20261121 @ 2b4321ce032fd5e67cf022da8564a5287b8cef6f.
 - WA-03 shared Guru schedule integration: BLOCKED pending separate approval.
-- Guru active-state: undecided; no implicit active inference from soft-delete. Recommended explicit User account status + TeacherProfile employment status is design proposal only.
+- Guru active-state: dua status eksplisit telah TERPILIH sebagai desain; belum diimplementasikan. Default aman INACTIVE; akun/profil lama tidak auto-aktif; data ambigu NEEDS_REVIEW.
 - MySQL 8/InnoDB concurrency, FK, DDL, rollback and audit integrity tests remain mandatory and NOT RUN.
 - No source/DB/migration/seeder/role/permission/config/Web Guru/Android/VPS/PR changed.
 - Stop: wait for explicit user approval before implementation.
@@ -278,3 +278,15 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Backup files were fetched after creation; each backup blob SHA equals the original pre-review document blob SHA. The manifest includes report, checkpoint, patch plan, module matrix and T-ID matrix backups.
 - Latest review did not modify source branch. Compare source branch against W0 source pin remains identical.
 - No PR action was performed.
+
+
+### Status persiapan WA-01 — 21 November 2026
+- Paket eksekusi: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md (commit 2ef53b77908f91caa2b216a6d24f29df4dce9cdb).
+- Patch plan diperbarui: commit 35cdef25a42d7117080d5b1c4751afd8efcd6194.
+- Manifest backup source/test: docs/backup/wa-01-source-2026-11-21/MANIFEST.md (commit 382af4dfe3505e13d941c8738d07ac83be996cf8).
+- Backup mencakup 23 source files yang direncanakan berubah dan 6 existing test files; setiap file byte-identical dengan source W0, Git blob SHA cocok, SHA-256 tercatat.
+- Satu file test baru AdminCbtBoundaryTest.php direncanakan tetapi belum dibuat.
+- 36 test IDs WA01-N/P/S direncanakan; semua hasil aktual NOT RUN.
+- File metadata assignment yang sudah ada ProctorAssignmentManagement dan service terkait tidak diubah. Admin tetap memakai halaman /admin/proctor-assignments yang sudah ada sebagai satu-satunya metadata surface.
+- routes/api.php disimpan sebagai artefak referensi backup tetapi tidak masuk daftar file yang direncanakan berubah.
+- Tidak ada coding, source write, migration, seeder execution, DB write, deployment, source branch write atau PR action. Paket WA-01 belum disetujui.
