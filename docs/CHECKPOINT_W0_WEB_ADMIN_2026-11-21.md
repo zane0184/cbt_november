@@ -145,7 +145,7 @@ Path yang dipertahankan:
 5. `docs/SUPPLEMENTAL_SPEC_MASTER_KURIKULUM_KURMER_KBC_W6.md`
 6. `docs/REGISTER_KEPUTUSAN_WEB_ADMIN_KURIKULUM.md`
 7. `docs/MATRIKS_AUDIT_DAN_PENGUJIAN_MASTER_KURIKULUM_W6.md`
-8. `docs/CHECKPOINT_KURIKULUM_KURMER_KBC_2026-11-21.md`
+8. `docs/CHECKPOINT_KURIKULUM_KURMER_KBC_W6_2026-11-21.md`
 
 Rencana: buat entry point `docs/WEB_ADMIN_MASTER_SPECIFICATION.md` pada branch dokumentasi integrasi terpisah; tautkan spesifikasi induk, keputusan, matriks W0, addendum Kurmer-KBC, register, dan acceptance tests W6. Semua file sumber dipertahankan; tidak ada overwrite/delete. Branch tidak digabung otomatis. Sebelum integrasi, tampilkan path, asal branch, konflik, dan resolusi yang diusulkan untuk ditinjau.
 
