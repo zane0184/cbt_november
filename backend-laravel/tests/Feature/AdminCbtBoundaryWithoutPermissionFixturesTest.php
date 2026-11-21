@@ -1,23 +1,23 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Contexts\\TenantContext;
-use App\\Livewire\\Admin\\ExamManagement;
-use App\\Livewire\\Admin\\QuestionBank;
-use App\\Models\\Assessment;
-use App\\Models\\Exam;
-use App\\Models\\ExamAttempt;
-use App\\Models\\Question;
-use App\\Models\\Role;
-use App\\Models\\Subject;
-use App\\Models\\Tenant;
-use App\\Models\\User;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Support\\Facades\\Gate;
-use Livewire\\Livewire;
-use Tests\\TestCase;
+use App\Contexts\TenantContext;
+use App\Livewire\Admin\ExamManagement;
+use App\Livewire\Admin\QuestionBank;
+use App\Models\Assessment;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\Question;
+use App\Models\Role;
+use App\Models\Subject;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Livewire\Livewire;
+use Tests\TestCase;
 
 /**
  * WA-01 safe boundary coverage.
