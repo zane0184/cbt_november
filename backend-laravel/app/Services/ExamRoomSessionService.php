@@ -442,6 +442,29 @@ class ExamRoomSessionService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            // Lock all physical rooms before the session row. attachRoom uses
+            // the same order, so concurrent room changes are serialized.
+            $roomIds = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('exam_session_id', $sessionId)
+                ->where('status', 'ACTIVE')
+                ->orderBy('exam_room_id')
+                ->pluck('exam_room_id')
+                ->unique()
+                ->values();
+
+            $lockedRooms = ExamRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereIn('id', $roomIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            if ($lockedRooms->count() !== $roomIds->count()) {
+                throw ValidationException::withMessages(['room' => 'Salah satu ruang sesi tidak lagi tersedia pada tenant ini.']);
+            }
+
             $session = ExamSession::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
@@ -455,38 +478,55 @@ class ExamRoomSessionService
             }
             $this->validateSessionWindow($exam, $startsAt, $endsAt);
 
+            foreach ($roomIds as $roomId) {
+                $overlap = ExamSessionRoom::query()
+                    ->where('tenant_id', $actor->tenant_id)
+                    ->where('exam_room_id', $roomId)
+                    ->where('status', 'ACTIVE')
+                    ->whereHas('session', function ($query) use ($session, $startsAt, $endsAt) {
+                        $query->where('id', '<>', $session->id)
+                            ->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                            ->where('starts_at', '<', $endsAt)
+                            ->where('ends_at', '>', $startsAt);
+                    })
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($overlap) {
+                    throw ValidationException::withMessages([
+                        'session' => 'Perubahan jadwal membuat ruang bertumpang tindih dengan sesi lain.',
+                    ]);
+                }
+            }
+
+            $sessionRoomIds = $session->sessionRooms()->where('status', 'ACTIVE')->pluck('id');
             $hasActiveAttempt = ExamParticipantRoomAssignment::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
-                ->whereIn('exam_session_room_id', $session->sessionRooms()->pluck('id'))
+                ->whereIn('exam_session_room_id', $sessionRoomIds)
                 ->where('status', 'ACTIVE')
-                ->whereHas('participant.attempts', fn ($query) => $query->where('status', 'IN_PROGRESS'));
-            if ($hasActiveAttempt->exists()) {
+                ->whereHas('participant.attempts', fn ($query) => $query->where('status', 'IN_PROGRESS'))
+                ->exists();
+
+            if ($hasActiveAttempt) {
                 throw ValidationException::withMessages(['session' => 'Jadwal tidak dapat diubah ketika peserta pada sesi ini sedang mengerjakan ujian.']);
             }
 
             $old = $session->only(['starts_at', 'ends_at', 'schedule_revision']);
-            $newRevision = (int) $session->schedule_revision + 1;
             $session->update([
                 'starts_at' => $startsAt,
                 'ends_at' => $endsAt,
-                'schedule_revision' => $newRevision,
             ]);
 
-            ExamProctorAssignment::query()
+            $this->bumpScheduleRevision($actor, $session, $reason);
+
+            $window = ExamSession::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
-                ->whereIn('exam_session_room_id', $session->sessionRooms()->pluck('id'))
-                ->where('status', 'CONFIRMED')
-                ->whereNull('revoked_at')
-                ->update(['status' => 'NEEDS_REVIEW', 'updated_at' => now()]);
+                ->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                ->selectRaw('MIN(starts_at) AS starts_at, MAX(ends_at) AS ends_at')
+                ->first();
 
-            $allSessions = ExamSession::query()
-                ->where('tenant_id', $actor->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->whereIn('status', ['SCHEDULED', 'ACTIVE']);
-
-            $window = (clone $allSessions)->selectRaw('MIN(starts_at) AS starts_at, MAX(ends_at) AS ends_at')->first();
             if ($window?->starts_at && $window?->ends_at) {
                 $exam->update(['start_at' => $window->starts_at, 'end_at' => $window->ends_at]);
             }
@@ -494,12 +534,47 @@ class ExamRoomSessionService
             $this->auditService->log('EXAM_SESSION_RESCHEDULE', 'ExamSession', $session->id, $old, [
                 'starts_at' => $session->starts_at,
                 'ends_at' => $session->ends_at,
-                'schedule_revision' => $newRevision,
+                'schedule_revision' => $session->fresh()->schedule_revision,
                 'reason' => $reason,
             ]);
 
             return $session->fresh()->load('sessionRooms');
         });
+    }
+
+    private function bumpScheduleRevision(User $actor, ExamSession $session, string $reason): void
+    {
+        $oldRevision = (int) $session->schedule_revision;
+        $session->update(['schedule_revision' => $oldRevision + 1]);
+
+        $roomIds = $session->sessionRooms()->pluck('id');
+        $affected = ExamProctorAssignment::query()
+            ->where('tenant_id', $actor->tenant_id)
+            ->where('exam_id', $session->exam_id)
+            ->whereIn('exam_session_room_id', $roomIds)
+            ->whereNull('revoked_at')
+            ->whereIn('status', ['PENDING', 'CONFIRMED'])
+            ->lockForUpdate()
+            ->get();
+
+        foreach ($affected as $assignment) {
+            $old = $assignment->only(['status', 'schedule_revision']);
+            $assignment->update(['status' => 'NEEDS_REVIEW']);
+
+            $this->auditService->log('EXAM_PROCTOR_ASSIGNMENT_NEEDS_REVIEW', 'ExamProctorAssignment', $assignment->id, $old, [
+                'status' => 'NEEDS_REVIEW',
+                'schedule_revision' => $assignment->schedule_revision,
+                'session_schedule_revision' => $oldRevision + 1,
+                'reason' => $reason,
+            ]);
+        }
+
+        $this->auditService->log('EXAM_SESSION_SCOPE_REVISION', 'ExamSession', $session->id, [
+            'schedule_revision' => $oldRevision,
+        ], [
+            'schedule_revision' => $oldRevision + 1,
+            'reason' => $reason,
+        ]);
     }
 
     private function assertAdmin(User $actor): void
