@@ -12,8 +12,10 @@ use App\Models\Role;
 use App\Models\Semester;
 use App\Models\Subject;
 use App\Models\Tenant;
+use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\ExamRoomSessionService;
+use App\Services\ExamProctorAssignmentService;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -149,6 +151,9 @@ class ExamRoomSessionConcurrencyTest extends TestCase
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_session_room_rombels')) {
                 $connection->table('exam_session_room_rombels')->where('tenant_id', $this->tenantId)->delete();
             }
+            if (\Illuminate\Support\Facades\Schema::hasTable('exam_proctor_assignments')) {
+                $connection->table('exam_proctor_assignments')->where('tenant_id', $this->tenantId)->delete();
+            }
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_session_rooms')) {
                 $connection->table('exam_session_rooms')->where('tenant_id', $this->tenantId)->delete();
             }
@@ -238,4 +243,120 @@ class ExamRoomSessionConcurrencyTest extends TestCase
             ->where('status', 'ACTIVE')
             ->count());
     }
+    public function test_concurrent_proctor_confirmation_is_serialized_by_guru_row_and_rejects_overlap(): void
+    {
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $proctor = User::create([
+            'tenant_id' => $this->tenantId,
+            'name' => 'Guru Proktor Concurrent',
+            'email' => 'guru-concurrent@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $proctor->roles()->attach($guruRole->id);
+        TeacherProfile::create([
+            'tenant_id' => $this->tenantId,
+            'user_id' => $proctor->id,
+            'full_name' => 'Guru Proktor Concurrent',
+        ]);
+
+        $roomTwo = $this->service->createRoom($this->admin, [
+            'code' => 'CONC-ROOM-2',
+            'name' => 'Ruang Bersama Dua',
+            'location' => 'Gedung B',
+            'capacity' => 30,
+        ]);
+        $sessionOne = $this->service->createSession(
+            $this->admin,
+            $this->examOne->id,
+            'Sesi Proktor Pertama',
+            2,
+            now()->addMinutes(5),
+            now()->addMinutes(65)
+        );
+        $sessionTwo = $this->service->createSession(
+            $this->admin,
+            $this->examTwo->id,
+            'Sesi Proktor Kedua',
+            2,
+            now()->addMinutes(10),
+            now()->addMinutes(70)
+        );
+        $scopeOne = $this->service->attachRoom($this->admin, $this->examOne->id, $sessionOne->id, $this->room->id);
+        $scopeTwo = $this->service->attachRoom($this->admin, $this->examTwo->id, $sessionTwo->id, $roomTwo->id);
+
+        $assignmentService = app(ExamProctorAssignmentService::class);
+        $assignmentOne = $assignmentService->assign(
+            $this->admin,
+            $this->examOne,
+            $scopeOne->id,
+            $proctor->id,
+            $sessionOne->starts_at,
+            $sessionOne->ends_at,
+            'Penugasan Proktor sesi pertama'
+        );
+        $assignmentTwo = $assignmentService->assign(
+            $this->admin,
+            $this->examTwo,
+            $scopeTwo->id,
+            $proctor->id,
+            $sessionTwo->starts_at,
+            $sessionTwo->ends_at,
+            'Penugasan Proktor sesi kedua'
+        );
+
+        $primary = DB::connection('mysql');
+        $primary->beginTransaction();
+        $primary->table('users')
+            ->where('id', $proctor->id)
+            ->lockForUpdate()
+            ->first();
+
+        DB::setDefaultConnection('mysql');
+        $assignmentService->confirm($this->admin, $this->examOne, $assignmentOne);
+
+        $secondaryConfig = config('database.connections.mysql');
+        config(['database.connections.mysql_concurrent' => $secondaryConfig]);
+        DB::purge('mysql_concurrent');
+        $secondary = DB::connection('mysql_concurrent');
+        $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
+        DB::setDefaultConnection('mysql_concurrent');
+
+        $lockWaitObserved = false;
+        try {
+            $assignmentService->confirm($this->admin, $this->examTwo, $assignmentTwo);
+        } catch (QueryException $exception) {
+            $lockWaitObserved = str_contains(strtolower($exception->getMessage()), 'lock wait timeout')
+                || str_contains(strtolower($exception->getMessage()), '1205');
+        }
+
+        $this->assertTrue($lockWaitObserved, 'The second confirmation must wait on the same Guru row mutex.');
+        $this->assertSame(1, $primary->transactionLevel());
+
+        DB::setDefaultConnection('mysql');
+        $primary->commit();
+
+        DB::setDefaultConnection('mysql_concurrent');
+        try {
+            $assignmentService->confirm($this->admin, $this->examTwo, $assignmentTwo);
+            $this->fail('After the first transaction commits, overlapping Guru assignment must be rejected.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('assignment', $exception->errors());
+        }
+
+        $this->assertSame(1, $secondary->table('exam_proctor_assignments')
+            ->where('tenant_id', $this->tenantId)
+            ->where('proctor_user_id', $proctor->id)
+            ->where('status', 'CONFIRMED')
+            ->whereNull('revoked_at')
+            ->count());
+        $this->assertDatabaseHas('exam_proctor_assignments', [
+            'id' => $assignmentOne->id,
+            'status' => 'CONFIRMED',
+        ]);
+        $this->assertDatabaseHas('exam_proctor_assignments', [
+            'id' => $assignmentTwo->id,
+            'status' => 'PENDING',
+        ]);
+    }
+
 }
