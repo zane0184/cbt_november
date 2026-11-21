@@ -219,7 +219,15 @@ class ExamPolicy
             return $user->hasPermission('exam.monitor');
         }
 
-        if (!$user->hasRole('GURU') || !$user->hasPermission('exam.monitor')) {
+        // A Guru monitoring capability must not survive a stale or mixed
+        // role assignment (for example GURU + SISWA). The active portal role
+        // is exclusive; temporary Proktor status is an assignment, not a role.
+        $roleNames = $user->roles()->pluck('name');
+        if ($roleNames->count() !== 1 || $roleNames->first() !== 'GURU') {
+            return false;
+        }
+
+        if (!$user->hasPermission('exam.monitor')) {
             return false;
         }
 
