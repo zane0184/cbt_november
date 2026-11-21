@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
+use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -191,6 +192,7 @@ class ExamAttemptController extends Controller
 
     public function execution(Request $request, Exam $exam)
     {
+        $user = $this->requireSingleStudent($request);
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -199,8 +201,6 @@ class ExamAttemptController extends Controller
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
         }
-
-        $user = $request->user();
 
         $lockedState = DB::transaction(function () use ($exam, $user, $deviceId) {
             // Execution heartbeat/binding mutation follows lifecycle parent-first locks.
@@ -369,6 +369,7 @@ class ExamAttemptController extends Controller
 
         public function submit(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        $user = $this->requireSingleStudent($request);
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -377,8 +378,6 @@ class ExamAttemptController extends Controller
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
         }
-
-        $user = $request->user();
 
         return DB::transaction(function () use ($exam, $attempt, $user, $deviceId) {
             // Match Start: Exam -> Participant -> Attempt.
@@ -500,6 +499,20 @@ class ExamAttemptController extends Controller
         }
 
         return response()->json(['success' => true, 'data' => $this->attemptResponseData($attempt)]);
+    }
+
+    private function requireSingleStudent(Request $request): User
+    {
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+
+        abort_unless(
+            $user && $user->tenant_id && count($roleNames) === 1 && $roleNames[0] === 'SISWA',
+            403,
+            'Endpoint eksekusi ujian hanya tersedia untuk akun Siswa.'
+        );
+
+        return $user;
     }
 
     /**
