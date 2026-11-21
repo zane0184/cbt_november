@@ -41,6 +41,10 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('GURU', (string) $book->getSheetByName('Petunjuk')->getCell('B3')->getValue());
         $this->assertSame(DataType::TYPE_STRING, $book->getSheetByName('Data Guru')->getCell('B2')->getDataType());
         $this->assertSame('@', $book->getSheetByName('Data Guru')->getStyle('B2')->getNumberFormat()->getFormatCode());
+        $this->assertSame('@', $book->getSheetByName('Data Guru')->getStyle('D2')->getNumberFormat()->getFormatCode());
+        $this->assertSame('@', $book->getSheetByName('Data Guru')->getStyle('H2')->getNumberFormat()->getFormatCode());
+        $this->assertSame('@', $book->getSheetByName('Penugasan Guru')->getStyle('F2')->getNumberFormat()->getFormatCode());
+        $this->assertSame('@', $book->getSheetByName('Penugasan Guru')->getStyle('G2')->getNumberFormat()->getFormatCode());
         $this->assertSame('@', $book->getSheetByName('Penugasan Guru')->getStyle('A2')->getNumberFormat()->getFormatCode());
         $this->assertSame('hidden', $book->getSheetByName('Referensi')->getSheetState());
     }
@@ -59,6 +63,8 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('SISWA', (string) $book->getSheetByName('Petunjuk')->getCell('B3')->getValue());
         $this->assertSame('@', $book->getSheetByName('Data Siswa')->getStyle('A2')->getNumberFormat()->getFormatCode());
         $this->assertSame('@', $book->getSheetByName('Data Siswa')->getStyle('B2')->getNumberFormat()->getFormatCode());
+        $this->assertSame('@', $book->getSheetByName('Data Siswa')->getStyle('F2')->getNumberFormat()->getFormatCode());
+        $this->assertSame('@', $book->getSheetByName('Data Siswa')->getStyle('H2')->getNumberFormat()->getFormatCode());
         $this->assertSame('hidden', $book->getSheetByName('Referensi')->getSheetState());
     }
 
