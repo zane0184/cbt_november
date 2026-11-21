@@ -23,13 +23,13 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use RuntimeException;
+use App\Exceptions\ImportWorkbookValidationException;
 use Throwable;
 
 class ImportWorkbookService
@@ -89,83 +89,85 @@ class ImportWorkbookService
     public function confirm(string $batchId, string $tenantId, string $userId): array
     {
         $this->assertAdminActor($tenantId, $userId);
-        return DB::transaction(function () use ($batchId, $tenantId, $userId): array {
-            // Serialize all import confirmations for one tenant. This prevents two batches
-            // from concurrently creating the same legacy identity without adding constraints
-            // to the existing identity columns.
+        DB::transaction(function () use ($batchId, $tenantId, $userId): void {
             Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
             $batch = ImportBatch::query()->where('tenant_id', $tenantId)->whereKey($batchId)->lockForUpdate()->firstOrFail();
-            if ($batch->status !== 'PREVIEW') throw new RuntimeException('Batch ini tidak lagi dapat dikonfirmasi.');
             if ((string) $batch->created_by !== $userId) throw new RuntimeException('Hanya Admin pembuat preview yang dapat mengonfirmasi batch ini.');
+            if ($batch->status === 'PREVIEW') {
+                $batch->update(['status' => 'PROCESSING', 'confirmed_at' => now()]);
+                return;
+            }
+            if ($batch->status !== 'PROCESSING') throw new RuntimeException('Batch ini tidak lagi dapat dikonfirmasi.');
+        }, 3);
 
-            $batch->update(['status' => 'PROCESSING', 'confirmed_at' => now()]);
-            $activationLinks = [];
-            $rows = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batch->id)
-                ->where('status', 'VALID')->orderByRaw("CASE sheet_name WHEN 'Data Guru' THEN 1 WHEN 'Data Siswa' THEN 1 ELSE 2 END")
-                ->orderBy('row_number')->get();
+        $activationLinks = [];
+        $rowIds = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batchId)
+            ->where('status', 'VALID')
+            ->orderByRaw("CASE sheet_name WHEN 'Data Guru' THEN 1 WHEN 'Data Siswa' THEN 1 ELSE 2 END")
+            ->orderBy('row_number')->pluck('id');
 
-            foreach ($rows as $row) {
-                try {
+        foreach ($rowIds as $rowId) {
+            try {
+                $result = DB::transaction(function () use ($rowId, $batchId, $tenantId, $userId): ?array {
+                    Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+                    $row = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batchId)->whereKey($rowId)->lockForUpdate()->firstOrFail();
+                    if ($row->status !== 'VALID') return null;
                     $payload = json_decode(Crypt::decryptString($row->encrypted_payload), true, 512, JSON_THROW_ON_ERROR);
-                    $result = DB::transaction(function () use ($batch, $row, $payload, $tenantId, $userId): array {
-                        if ($row->sheet_name === 'Data Guru') return $this->importTeacher($payload, $tenantId, $userId);
-                        if ($row->sheet_name === 'Data Siswa') return $this->importStudent($payload, $tenantId, $userId);
-                        return $this->importAssignment($payload, $tenantId, $userId);
-                    }, 3);
-
+                    if ($row->sheet_name === 'Data Guru') $result = $this->importTeacher($payload, $tenantId, $userId);
+                    elseif ($row->sheet_name === 'Data Siswa') $result = $this->importStudent($payload, $tenantId, $userId);
+                    else $result = $this->importAssignment($payload, $tenantId, $userId);
                     $summary = $row->row_summary ?? [];
                     if (!empty($result['user_id'])) $summary['created_user_id'] = $result['user_id'];
                     $row->update(['status' => $result['status'], 'reason' => $result['reason'], 'encrypted_payload' => null, 'row_summary' => $summary]);
-                    if (!empty($result['activation_url'])) {
-                        $activationLinks[] = [
-                            'name' => $result['name'],
-                            'identity' => $result['identity'],
-                            'url' => $result['activation_url'],
-                        ];
-                    }
-                } catch (Throwable $exception) {
-                    Log::warning('Import row failed.', [
-                        'batch_id' => $batch->id,
-                        'row_id' => $row->id,
-                        'exception_class' => get_class($exception),
-                    ]);
-                    $safeReason = $exception instanceof QueryException
-                        ? 'Gagal menyimpan baris karena konflik integritas data atau penyimpanan.'
-                        : mb_substr('Gagal menyimpan baris: '.$exception->getMessage(), 0, 500);
-                    $row->update([
+                    return $result;
+                }, 3);
+                if (!empty($result['activation_url'])) $activationLinks[] = ['name' => $result['name'], 'identity' => $result['identity'], 'url' => $result['activation_url']];
+            } catch (Throwable $exception) {
+                Log::warning('Import row failed.', ['batch_id' => $batchId, 'row_id' => $rowId, 'exception_class' => get_class($exception)]);
+                DB::transaction(function () use ($rowId, $batchId, $tenantId): void {
+                    Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+                    $row = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batchId)->whereKey($rowId)->lockForUpdate()->firstOrFail();
+                    if ($row->status === 'VALID') $row->update([
                         'status' => 'FAILED',
-                        'reason' => $safeReason,
+                        'reason' => 'Baris gagal disimpan karena konflik data atau gangguan internal. Hubungi dukungan teknis jika masalah berulang.',
                         'encrypted_payload' => null,
                     ]);
-                }
+                }, 3);
             }
+        }
 
-            // Remove encrypted staging payloads for every row after execution. The report keeps only masked identity hints and outcomes.
-            ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batch->id)->update(['encrypted_payload' => null]);
-            $batch->refresh();
-            $counts = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batch->id)
+        $batch = DB::transaction(function () use ($batchId, $tenantId): ImportBatch {
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+            $batch = ImportBatch::query()->where('tenant_id', $tenantId)->whereKey($batchId)->lockForUpdate()->firstOrFail();
+            if (in_array($batch->status, ['COMPLETED', 'PARTIAL'], true)) return $batch->fresh('rows');
+            ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batchId)
+                ->whereIn('status', ['INVALID', 'SKIPPED', 'IMPORTED', 'SUCCESS', 'FAILED'])->update(['encrypted_payload' => null]);
+            $counts = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batchId)
                 ->selectRaw("SUM(status IN ('IMPORTED','SUCCESS')) as imported_count")
                 ->selectRaw("SUM(status = 'SKIPPED') as skipped_count")
                 ->selectRaw("SUM(status IN ('INVALID','FAILED')) as failed_count")
-                ->first();
-            $batch->update([
-                'status' => ((int) $counts->failed_count > 0 ? 'PARTIAL' : 'COMPLETED'),
-                'valid_rows' => (int) $counts->imported_count,
-                'skipped_rows' => (int) $counts->skipped_count,
-                'failed_rows' => (int) $counts->failed_count,
-                'completed_at' => now(),
-            ]);
-
-            app(AuditService::class)->log('IMPORT_BATCH_CONFIRMED', 'ImportBatch', $batch->id, null, [
-                'type' => $batch->type,
-                'imported_rows' => (int) $counts->imported_count,
-                'skipped_rows' => (int) $counts->skipped_count,
-                'failed_rows' => (int) $counts->failed_count,
-                'activation_links_issued' => count($activationLinks),
-            ]);
-
-            return ['batch' => $batch->fresh('rows'), 'activation_links' => $activationLinks];
+                ->selectRaw("SUM(status = 'VALID') as pending_count")->first();
+            if ((int) $counts->pending_count === 0) {
+                $batch->update([
+                    'status' => (int) $counts->failed_count > 0 ? 'PARTIAL' : 'COMPLETED',
+                    'valid_rows' => (int) $counts->imported_count,
+                    'skipped_rows' => (int) $counts->skipped_count,
+                    'failed_rows' => (int) $counts->failed_count,
+                    'completed_at' => now(),
+                ]);
+                app(AuditService::class)->log('IMPORT_BATCH_CONFIRMED', 'ImportBatch', $batch->id, null, [
+                    'type' => $batch->type, 'imported_rows' => (int) $counts->imported_count,
+                    'skipped_rows' => (int) $counts->skipped_count, 'failed_rows' => (int) $counts->failed_count,
+                ]);
+            } else {
+                $batch->update([
+                    'status' => 'PROCESSING', 'valid_rows' => (int) $counts->imported_count,
+                    'skipped_rows' => (int) $counts->skipped_count, 'failed_rows' => (int) $counts->failed_count,
+                ]);
+            }
+            return $batch->fresh('rows');
         }, 3);
+        return ['batch' => $batch, 'activation_links' => $activationLinks];
     }
 
     public function regenerateActivation(string $batchId, string $rowId, string $tenantId, string $userId): array
@@ -228,12 +230,23 @@ class ImportWorkbookService
     {
         $this->assertXlsxArchive($path);
         $book = IOFactory::load($path);
+        $expectedSheets = $type === 'GURU' ? ['Petunjuk', 'Data Guru', 'Penugasan Guru', 'Referensi'] : ['Petunjuk', 'Data Siswa', 'Referensi'];
+        if ($book->getSheetNames() !== $expectedSheets) throw new ImportWorkbookValidationException('Workbook harus menggunakan seluruh sheet template tanpa sheet tambahan atau perubahan nama.');
+        foreach ($book->getAllSheets() as $sheet) {
+            $expectedState = $sheet->getTitle() === 'Referensi'
+                ? \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN
+                : \PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_VISIBLE;
+            if ($sheet->getSheetState() !== $expectedState) throw new ImportWorkbookValidationException('Status tampilan sheet tidak sesuai template.');
+            foreach ($sheet->getCellCollection()->getCoordinates() as $coordinate) {
+                if ($sheet->getCell($coordinate)->getDataType() === DataType::TYPE_FORMULA) throw new ImportWorkbookValidationException('Formula tidak diizinkan pada workbook import.');
+            }
+        }
         $instruction = $book->getSheetByName('Petunjuk');
         $data = $book->getSheetByName($type === 'GURU' ? 'Data Guru' : 'Data Siswa');
-        if (!$instruction || !$data) throw new RuntimeException('Struktur workbook tidak sesuai template.');
+        if (!$instruction || !$data) throw new ImportWorkbookValidationException('Struktur workbook tidak sesuai template.');
         if ((string) $instruction->getCell('B2')->getValue() !== ImportTemplateVersion::VERSION
             || (string) $instruction->getCell('B3')->getValue() !== $type) {
-            throw new RuntimeException('Versi atau jenis template tidak sesuai. Unduh template terbaru.');
+            throw new ImportWorkbookValidationException('Versi atau jenis template tidak sesuai. Unduh template terbaru.');
         }
 
         $expected = $type === 'GURU' ? self::GURU_HEADERS : self::SISWA_HEADERS;
@@ -266,7 +279,7 @@ class ImportWorkbookService
 
         if ($type === 'GURU') {
             $assignments = $book->getSheetByName('Penugasan Guru');
-            if (!$assignments) throw new RuntimeException('Sheet Penugasan Guru wajib tersedia pada template Guru.');
+            if (!$assignments) throw new ImportWorkbookValidationException('Sheet Penugasan Guru wajib tersedia pada template Guru.');
             $this->assertSheetBounds($assignments, count(self::ASSIGNMENT_HEADERS));
             $this->assertHeaders($assignments, self::ASSIGNMENT_HEADERS);
             $newTeacherKeys = collect($rows)->filter(fn ($r) => $r['sheet'] === 'Data Guru' && $r['status'] === 'VALID')
@@ -294,28 +307,54 @@ class ImportWorkbookService
 
     private function assertXlsxArchive(string $path): void
     {
-        if (!is_file($path) || filesize($path) > 10 * 1024 * 1024) {
-            throw new RuntimeException('File tidak ditemukan atau melebihi batas 10 MB.');
-        }
+        if (!is_file($path) || filesize($path) > 10 * 1024 * 1024) throw new ImportWorkbookValidationException('File tidak ditemukan atau melebihi batas 10 MB.');
         $zip = new \ZipArchive();
-        if ($zip->open($path) !== true) throw new RuntimeException('File bukan arsip XLSX yang valid atau file rusak.');
+        if ($zip->open($path) !== true) throw new ImportWorkbookValidationException('File bukan arsip XLSX yang valid atau file rusak.');
         try {
-            if ($zip->numFiles > 100) throw new RuntimeException('Workbook berisi terlalu banyak komponen.');
+            if ($zip->numFiles > 100) throw new ImportWorkbookValidationException('Workbook berisi terlalu banyak komponen.');
             $expandedBytes = 0;
             $required = [];
+            $allowed = [
+                '/^\[Content_Types\]\.xml$/', '/^_rels\/\.rels$/',
+                '/^docProps\/(app|core)\.xml$/', '/^xl\/workbook\.xml$/',
+                '/^xl\/_rels\/workbook\.xml\.rels$/',
+                '/^xl\/worksheets\/sheet[1-9][0-9]*\.xml$/',
+                '/^xl\/worksheets\/_rels\/sheet[1-9][0-9]*\.xml\.rels$/',
+                '/^xl\/(styles|sharedStrings)\.xml$/', '/^xl\/theme\/theme[1-9][0-9]*\.xml$/',
+            ];
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $entry = $zip->statIndex($i);
-                if (!$entry) continue;
+                if (!$entry) throw new ImportWorkbookValidationException('Komponen arsip XLSX tidak dapat dibaca.');
+                $name = (string) ($entry['name'] ?? '');
+                if ($name === '' || str_contains($name, '..') || str_contains($name, chr(92)) || str_starts_with($name, '/')) {
+                    throw new ImportWorkbookValidationException('Workbook berisi jalur komponen yang tidak aman.');
+                }
+                $isAllowed = false;
+                foreach ($allowed as $pattern) if (preg_match($pattern, $name)) { $isAllowed = true; break; }
+                if (!$isAllowed) throw new ImportWorkbookValidationException('Workbook berisi komponen tambahan yang tidak didukung.');
+                if (preg_match('/\.rels$/i', $name)) {
+                    $relationshipXml = $zip->getFromIndex($i);
+                    if (!is_string($relationshipXml) || preg_match("/TargetMode\s*=\s*(?:\"External\"|'External')/i", $relationshipXml)) {
+                        throw new ImportWorkbookValidationException('External link atau relasi eksternal tidak diizinkan pada workbook.');
+                    }
+                }
+                if (preg_match('/\.xml$/i', $name)) {
+                    $xml = $zip->getFromIndex($i);
+                    if (is_string($xml) && preg_match('/macroEnabled|vbaProject|oleObject|externalLink|connections|queryTable/i', $xml)) {
+                        throw new ImportWorkbookValidationException('Workbook mengandung macro, objek tertanam, atau koneksi eksternal yang tidak diizinkan.');
+                    }
+                }
                 $expandedBytes += (int) ($entry['size'] ?? 0);
-                if ($expandedBytes > 50 * 1024 * 1024) throw new RuntimeException('Ukuran isi workbook setelah ekstraksi melebihi 50 MB.');
-                $required[$entry['name']] = true;
+                if ($expandedBytes > 50 * 1024 * 1024 || (int) ($entry['size'] ?? 0) > 30 * 1024 * 1024) {
+                    throw new ImportWorkbookValidationException('Ukuran isi workbook setelah ekstraksi melebihi batas aman 50 MB.');
+                }
+                $required[$name] = true;
             }
-            if (empty($required['[Content_Types].xml']) || empty($required['xl/workbook.xml'])) {
-                throw new RuntimeException('Struktur arsip XLSX tidak lengkap.');
+            if (empty($required['[Content_Types].xml']) || empty($required['xl/workbook.xml'])
+                || empty($required['xl/_rels/workbook.xml.rels']) || empty($required['_rels/.rels'])) {
+                throw new ImportWorkbookValidationException('Struktur arsip XLSX tidak lengkap.');
             }
-        } finally {
-            $zip->close();
-        }
+        } finally { $zip->close(); }
     }
 
     private function assertSheetBounds($sheet, int $expectedColumns): void
@@ -323,7 +362,7 @@ class ImportWorkbookService
         $rows = $sheet->getHighestDataRow();
         $columns = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
         if ($rows > 5001 || $columns > $expectedColumns) {
-            throw new RuntimeException('Workbook melebihi batas 5.000 baris data atau memiliki kolom tambahan yang tidak didukung pada sheet '.$sheet->getTitle().'.');
+            throw new ImportWorkbookValidationException('Workbook melebihi batas 5.000 baris data atau memiliki kolom tambahan yang tidak didukung pada sheet '.$sheet->getTitle().'.');
         }
     }
 
@@ -332,7 +371,7 @@ class ImportWorkbookService
         foreach ($expected as $index => $header) {
             $column = Coordinate::stringFromColumnIndex($index + 1);
             if (trim((string) $sheet->getCell($column.'1')->getValue()) !== $header) {
-                throw new RuntimeException('Header tidak sesuai pada sheet '.$sheet->getTitle().', kolom '.$column.'.');
+                throw new ImportWorkbookValidationException('Header tidak sesuai pada sheet '.$sheet->getTitle().', kolom '.$column.'.');
             }
         }
     }
@@ -343,8 +382,8 @@ class ImportWorkbookService
         for ($column = 1; $column <= $count; $column++) {
             $letter = Coordinate::stringFromColumnIndex($column);
             $cell = $sheet->getCell($letter.$row);
-            if ($cell->getDataType() === DataType::TYPE_FORMULA) throw new RuntimeException('Formula tidak diizinkan pada sheet '.$sheet->getTitle().' baris '.$row.'.');
-            if (mb_strlen((string) ($cell->getValue() ?? '')) > 5000) throw new RuntimeException('Isi sel terlalu panjang pada sheet '.$sheet->getTitle().' baris '.$row.'.');
+            if ($cell->getDataType() === DataType::TYPE_FORMULA) throw new ImportWorkbookValidationException('Formula tidak diizinkan pada sheet '.$sheet->getTitle().' baris '.$row.'.');
+            if (mb_strlen((string) ($cell->getValue() ?? '')) > 5000) throw new ImportWorkbookValidationException('Isi sel terlalu panjang pada sheet '.$sheet->getTitle().' baris '.$row.'.');
             if (in_array($column, $textColumns, true) && $cell->getValue() !== null && $cell->getDataType() === DataType::TYPE_NUMERIC) {
                 $values[] = '__NUMERIC_IDENTIFIER__';
             } else {

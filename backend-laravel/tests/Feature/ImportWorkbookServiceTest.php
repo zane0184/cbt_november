@@ -366,6 +366,10 @@ class ImportWorkbookServiceTest extends TestCase
         $assignments = $book->createSheet();
         $assignments->setTitle('Penugasan Guru');
         $this->writeRows($assignments, array_merge([$assignmentHeaders], $assignmentRows));
+        $reference = $book->createSheet();
+        $reference->setTitle('Referensi');
+        $reference->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
+        $this->writeRows($reference, [['Mata Pelajaran', 'Rombel', 'Tahun Pelajaran', 'Semester']]);
         return $this->saveWorkbook($book);
     }
 
@@ -380,6 +384,10 @@ class ImportWorkbookServiceTest extends TestCase
         $data = $book->createSheet();
         $data->setTitle('Data Siswa');
         $this->writeRows($data, array_merge([$headers], $dataRows));
+        $reference = $book->createSheet();
+        $reference->setTitle('Referensi');
+        $reference->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
+        $this->writeRows($reference, [['Mata Pelajaran', 'Rombel', 'Tahun Pelajaran', 'Semester']]);
         return $this->saveWorkbook($book);
     }
 
@@ -609,11 +617,10 @@ class ImportWorkbookServiceTest extends TestCase
             ->assertSee('Preview berhasil')
             ->assertSee('Guru Livewire')
             ->call('confirmImport')
-            ->assertSee('Tautan aktivasi satu kali')
-            ->assertSee('Guru Livewire')
-            ->assertSee('Riwayat Import Madrasah Ini')
-            ->assertSee('import-fixture.xlsx')
-            ->assertSee('COMPLETED');
+            ->assertRedirect(route('admin.import'));
+
+        $this->assertTrue(session()->has('import_activation_links'));
+        $this->assertFalse(property_exists(Livewire::test(ImportManagement::class)->instance(), 'activationLinks'));
 
         $this->assertDatabaseHas('teacher_profiles', [
             'tenant_id' => $this->tenant->id,
@@ -650,5 +657,130 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertSame(1, User::query()->where('tenant_id', $this->tenant->id)->where('name', 'Guru Batch Pertama')->count());
         $this->assertSame(0, User::query()->where('tenant_id', $this->tenant->id)->where('name', 'Guru Batch Kedua')->count());
     }
+
+
+    public function test_workbook_rejects_external_relationships_and_unexpected_sheets(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $external = $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru External', 'L', '', '']]);
+        $zip = new \ZipArchive();
+        $this->assertSame(true, $zip->open($external->getRealPath()));
+        $rels = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        $zip->addFromString('xl/_rels/workbook.xml.rels', str_replace('</Relationships>',
+            '<Relationship Id="rIdExternal" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://invalid.test/" TargetMode="External"/></Relationships>', $rels));
+        $zip->close();
+        try {
+            app(ImportWorkbookService::class)->preview($external, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('External relationship must be rejected.');
+        } catch (\App\Exceptions\ImportWorkbookValidationException $exception) {
+            $this->assertStringContainsString('External link', $exception->getMessage());
+        }
+        $book = IOFactory::load($this->guruWorkbook([['PNS', '001234567890123457', '', '', 'Guru Extra Sheet', 'L', '', '']])->getRealPath());
+        $book->createSheet()->setTitle('Sheet Tidak Dikenal');
+        try {
+            app(ImportWorkbookService::class)->preview($this->saveWorkbook($book), 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('Unexpected sheets must be rejected.');
+        } catch (\App\Exceptions\ImportWorkbookValidationException $exception) {
+            $this->assertStringContainsString('sheet tambahan', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
+    public function test_workbook_rejects_formula_in_instruction_or_hidden_reference_sheet(): void
+    {
+        $book = IOFactory::load($this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Formula', 'L', '', '']])->getRealPath());
+        $book->getSheetByName('Petunjuk')->setCellValue('B4', '=HYPERLINK("https://invalid.test","klik")');
+        $formula = $this->saveWorkbook($book);
+        try {
+            app(ImportWorkbookService::class)->preview($formula, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('Formula in any sheet must be rejected.');
+        } catch (\App\Exceptions\ImportWorkbookValidationException $exception) {
+            $this->assertStringContainsString('Formula tidak diizinkan', $exception->getMessage());
+        }
+    }
+
+    public function test_workbook_rejects_zip_bomb_expansion_over_limit(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $file = $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Zip Bomb', 'L', '', '']]);
+        $zip = new \ZipArchive();
+        $this->assertSame(true, $zip->open($file->getRealPath()));
+        $zip->deleteName('xl/sharedStrings.xml');
+        $zip->addFromString('xl/sharedStrings.xml', str_repeat('A', 51 * 1024 * 1024));
+        $zip->close();
+        try {
+            app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+            $this->fail('Expanded ZIP payload above the configured bound must be rejected.');
+        } catch (\App\Exceptions\ImportWorkbookValidationException $exception) {
+            $this->assertStringContainsString('batas aman 50 MB', $exception->getMessage());
+        }
+        $this->assertDatabaseCount('import_batches', 0);
+    }
+
+    public function test_processing_batch_can_resume_after_interruption_without_duplicate_account(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $service = app(ImportWorkbookService::class);
+        $batch = $service->preview($this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Resume', 'L', '', '']]),
+            'GURU', $this->tenant->id, $this->admin->id);
+        \Illuminate\Support\Facades\DB::table('import_batches')->where('id', $batch->id)
+            ->update(['status' => 'PROCESSING', 'confirmed_at' => now()]);
+        $result = $service->confirm($batch->id, $this->tenant->id, $this->admin->id);
+        $this->assertSame('COMPLETED', $result['batch']->status);
+        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('nip', '001234567890123456')->count());
+        $this->assertSame('IMPORTED', $result['batch']->rows->first()->status);
+    }
+
+    public function test_failed_teacher_creation_does_not_leave_orphan_assignment(): void
+    {
+        $this->academicSetup(true);
+        $file = $this->guruWorkbook(
+            [['PNS', '001234567890123456', '', '', 'Guru Tanpa Role', 'L', '', '']],
+            [['001234567890123456', 'MTK — Matematika', '1A — 2026/2027', '2026/2027', 'GANJIL — 2026/2027', '2026-07-01', '', 'ACTIVE']]
+        );
+        $batch = app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
+        $this->assertSame(2, $batch->valid_rows);
+        $result = app(ImportWorkbookService::class)->confirm($batch->id, $this->tenant->id, $this->admin->id);
+        $this->assertSame('PARTIAL', $result['batch']->status);
+        $this->assertSame(2, $result['batch']->failed_rows);
+        $this->assertSame(0, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->count());
+        $this->assertDatabaseCount('teacher_subject_assignments', 0);
+    }
+
+    public function test_admin_account_is_not_granted_teacher_or_student_role_by_import_feature(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $batch = app(ImportWorkbookService::class)->preview($this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Boundary', 'L', '', '']]),
+            'GURU', $this->tenant->id, $this->admin->id);
+        app(ImportWorkbookService::class)->confirm($batch->id, $this->tenant->id, $this->admin->id);
+        $this->assertFalse($this->admin->fresh()->hasRole('GURU'));
+        $this->assertFalse($this->admin->fresh()->hasRole('SISWA'));
+        $this->assertDatabaseMissing('teacher_profiles', ['tenant_id' => $this->tenant->id, 'user_id' => $this->admin->id]);
+        $this->assertDatabaseMissing('student_profiles', ['tenant_id' => $this->tenant->id, 'user_id' => $this->admin->id]);
+    }
+
+    public function test_activation_links_are_not_livewire_public_properties_and_are_flushed_once(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $source = $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Link Aman', 'L', '', '']]);
+        $file = UploadedFile::fake()->createWithContent('import-fixture.xlsx', file_get_contents($source->getRealPath()));
+        $component = Livewire::test(ImportManagement::class)->set('type', 'GURU')->set('upload', $file)
+            ->call('previewUpload')->assertHasNoErrors()->call('confirmImport')->assertRedirect(route('admin.import'));
+        $this->assertFalse(property_exists($component->instance(), 'activationLinks'));
+        $this->assertTrue(session()->has('import_activation_links'));
+        $this->assertCount(1, session()->get('import_activation_links'));
+    }
+
+    public function test_admin_visible_row_failure_reason_does_not_expose_exception_details(): void
+    {
+        $batch = app(ImportWorkbookService::class)->preview($this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Exception', 'L', '', '']]),
+            'GURU', $this->tenant->id, $this->admin->id);
+        $result = app(ImportWorkbookService::class)->confirm($batch->id, $this->tenant->id, $this->admin->id);
+        $reason = $result['batch']->rows->first()->reason;
+        $this->assertStringContainsString('gangguan internal', $reason);
+        $this->assertStringNotContainsString('No query results', $reason);
+        $this->assertStringNotContainsString('App\\Models', $reason);
+    }
+
 
 }

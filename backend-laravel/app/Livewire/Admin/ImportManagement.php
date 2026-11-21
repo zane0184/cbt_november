@@ -3,9 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\ImportBatch;
-use App\Models\ImportBatchRow;
 use App\Services\Import\ImportWorkbookService;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Database\QueryException;
 use Livewire\Component;
@@ -18,7 +16,6 @@ class ImportManagement extends Component
     public string $type = 'GURU';
     public $upload = null;
     public ?string $batchId = null;
-    public array $activationLinks = [];
     public string $notice = '';
 
     private function authorizeImport(): void
@@ -53,7 +50,6 @@ class ImportManagement extends Component
             return;
         }
 
-        $this->activationLinks = [];
         $this->batchId = null;
         $this->notice = '';
 
@@ -70,7 +66,7 @@ class ImportManagement extends Component
                 : 'File ini sudah pernah diproses. Lihat status pada riwayat import.';
             $this->resetValidation('upload');
         } catch (\Throwable $exception) {
-            $this->addError('upload', $this->safeErrorMessage($exception));
+            $this->addError('upload', $this->safeErrorMessage($exception, true));
         }
     }
 
@@ -82,17 +78,17 @@ class ImportManagement extends Component
             return;
         }
 
-        $this->activationLinks = [];
         try {
             $result = app(ImportWorkbookService::class)->confirm(
                 $this->batchId,
                 (string) auth()->user()->tenant_id,
                 (string) auth()->id(),
             );
-            $this->activationLinks = $result['activation_links'];
-            $this->notice = 'Proses import selesai. Tautan aktivasi ditampilkan satu kali; salin dan bagikan secara pribadi kepada pemilik akun.';
+            session()->flash('import_activation_links', $result['activation_links']);
+            session()->flash('import_notice', 'Proses import selesai. Tautan aktivasi ditampilkan satu kali; salin dan bagikan secara pribadi kepada pemilik akun.');
             $this->upload = null;
             $this->batchId = (string) $result['batch']->id;
+            return redirect()->route('admin.import');
         } catch (\Throwable $exception) {
             $this->addError('upload', $this->safeErrorMessage($exception));
         }
@@ -112,15 +108,17 @@ class ImportManagement extends Component
                 (string) auth()->user()->tenant_id,
                 (string) auth()->id(),
             );
-            $this->activationLinks = [$link];
-            $this->notice = 'Tautan aktivasi baru diterbitkan. Tautan lama telah dinonaktifkan; salin dan bagikan secara pribadi.';
+            session()->flash('import_activation_links', [$link]);
+            session()->flash('import_notice', 'Tautan aktivasi baru diterbitkan. Tautan lama telah dinonaktifkan; salin dan bagikan secara pribadi.');
+            return redirect()->route('admin.import');
         } catch (\Throwable $exception) {
             $this->addError('upload', $this->safeErrorMessage($exception));
         }
     }
 
-    private function safeErrorMessage(\Throwable $exception): string
+    private function safeErrorMessage(\Throwable $exception, bool $allowValidationMessage = false): string
     {
+        if ($allowValidationMessage && $exception instanceof \App\Exceptions\ImportWorkbookValidationException) return $exception->getMessage();
         if ($exception instanceof QueryException) {
             Log::error('Import operation failed at database layer.', [
                 'tenant_id' => auth()->user()?->tenant_id,
@@ -130,7 +128,8 @@ class ImportManagement extends Component
             return 'Operasi import gagal pada penyimpanan data. Tidak ada perubahan yang dapat dipastikan berhasil; periksa riwayat import atau hubungi dukungan teknis.';
         }
 
-        return $exception->getMessage();
+        Log::error('Import operation failed.', ['tenant_id' => auth()->user()?->tenant_id, 'user_id' => auth()->id(), 'exception_class' => get_class($exception)]);
+        return 'Operasi import tidak dapat diselesaikan. Silakan periksa kembali data atau hubungi dukungan teknis.';
     }
 
     public function discardPreview(): void
@@ -143,7 +142,8 @@ class ImportManagement extends Component
                 (string) auth()->id(),
             );
         }
-        $this->reset(['upload', 'batchId', 'activationLinks', 'notice']);
+        session()->forget(['import_activation_links', 'import_notice']);
+        $this->reset(['upload', 'batchId', 'notice']);
     }
 
     public function showBatch(string $id): void
@@ -151,7 +151,6 @@ class ImportManagement extends Component
         $this->authorizeImport();
         $batch = ImportBatch::query()->where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
         $this->batchId = (string) $batch->id;
-        $this->activationLinks = [];
         $this->notice = 'Detail riwayat import: tautan aktivasi tidak disimpan dan tidak dapat ditampilkan ulang.';
     }
 
@@ -167,6 +166,8 @@ class ImportManagement extends Component
         return view('livewire.admin.import-management', [
             'batch' => $batch,
             'history' => $history,
+            'activationLinks' => session()->pull('import_activation_links', []),
+            'notice' => session()->pull('import_notice', $this->notice),
         ])->layout('layouts.app');
     }
 }
