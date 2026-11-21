@@ -34,7 +34,7 @@ Base: `docs/web-admin-w0-recheck-20261121` @ `fb058f05264b8d464d687583c53f06fbb7
 
 ## PENGUJIAN
 - Metadata GitHub, branch compare, pembacaan source, dan pembuatan backup telah dilakukan.
-- Link entry point 17/17 PASS.
+- Link entry point 18/18 PASS.
 - 23 modul audit tetap ada; T-001–T-132 dipertahankan; T-133–T-168 ditambahkan.
 - Backup 6/6 cocok dengan blob sumber; SHA-256 dicatat pada manifest.
 - Compare menunjukkan hanya 18 path docs/ yang berubah/ditambahkan; tidak ada source aplikasi.
@@ -46,3 +46,7 @@ Base: `docs/web-admin-w0-recheck-20261121` @ `fb058f05264b8d464d687583c53f06fbb7
 3. Serahkan prompt penerus.
 4. Berhenti menunggu persetujuan pengguna sebelum implementasi source.
 5. W1/W6, Portal Guru/Siswa, Android, deployment, database dan Device Lease/Fencing tetap HOLD sesuai scope.
+
+
+## Klarifikasi desain yang masih OPEN
+Semantik capability untuk status PENDING/CONFIRMED/ACTIVE belum dinyatakan eksplisit. Rekomendasi fail-closed (PENDING tidak memberi hak; CONFIRMED-only) belum menjadi keputusan pengguna. Lihat `docs/NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md`. Jangan implementasikan transisi status sebelum pengguna mengonfirmasi.
