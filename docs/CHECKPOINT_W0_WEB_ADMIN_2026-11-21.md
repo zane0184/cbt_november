@@ -11,8 +11,9 @@
 | Source commit pin | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Source tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja | `work/web-admin-w0-20261121` |
-| **Branch kerja HEAD sebelum pembaruan checkpoint** | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
-| Parent commit checkpoint ini | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
+| **Branch kerja HEAD sebelum pembaruan checkpoint final** | `0c1c85e4bd597948b06abc972d5fc29c4d1a64a7` |
+| Parent commit checkpoint final ini | `0c1c85e4bd597948b06abc972d5fc29c4d1a64a7` |
+| Commit laporan audit revisi | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
 | Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 
 Urutan commit branch kerja setelah source pin:
