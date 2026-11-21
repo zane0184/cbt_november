@@ -9,6 +9,8 @@ use App\Models\Curriculum;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
+use App\Models\ExamSessionRoom;
+use App\Services\ExamRoomSessionService;
 use App\Models\GradeLevel;
 use App\Models\Permission;
 use App\Models\Phase;
@@ -36,6 +38,7 @@ class MonitoringDuplicationTest extends TestCase
     private User $unassignedGuru;
     private User $student;
     private Exam $exam;
+    private ExamSessionRoom $sessionRoom;
 
     protected function setUp(): void
     {
@@ -118,7 +121,34 @@ class MonitoringDuplicationTest extends TestCase
             'created_by' => $this->examAuthor->id,
             'locked_at' => now(),
         ]);
-        $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id]);
+        $this->exam->participants()->create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->student->id,
+            'rombel_id' => $rombel->id,
+        ]);
+
+        $roomService = app(ExamRoomSessionService::class);
+        $room = $roomService->createRoom($this->admin, [
+            'code' => 'MON-R1',
+            'name' => 'Ruang Monitoring 1',
+            'location' => 'Gedung A',
+            'capacity' => 30,
+        ]);
+        $session = $roomService->createSession(
+            $this->admin,
+            $this->exam->id,
+            'Sesi Monitoring',
+            1,
+            now()->subMinutes(10),
+            now()->addHour()
+        );
+        $this->sessionRoom = $roomService->attachRoom(
+            $this->admin,
+            $this->exam->id,
+            $session->id,
+            $room->id
+        );
+        $roomService->mapRombel($this->admin, $this->sessionRoom->id, $rombel->id);
     }
 
     private function createGuru(Role $guruRole, string $suffix, string $name): User
@@ -146,6 +176,7 @@ class MonitoringDuplicationTest extends TestCase
         return app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
+            $this->sessionRoom->id,
             $this->assignedGuru->id,
             now()->subMinute(),
             now()->addMinutes(30),
