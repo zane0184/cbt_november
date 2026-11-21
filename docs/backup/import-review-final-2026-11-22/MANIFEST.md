@@ -73,3 +73,8 @@ Commit: 95991b62ea9d157320ab8767aa5102a113d9cd7f
 ## Backup before final review checkpoint update
 Commit: a3522e1c8be02224ef9b369051105f05b2704e39
 - docs/CHECKPOINT_IMPORT_GURU_SISWA_2026-11-22.md -> docs/backup/import-review-final-2026-11-22/CHECKPOINT_IMPORT_GURU_SISWA_2026-11-22.md.before-final-review-update | original blob SHA 9bafd8ab9dcfd25fb0d25701b33206f254256f3d
+
+
+## Backup before artifact digest correction
+Commit: 959954b4396c65567576268c3cc235c9a432e022
+- docs/CHECKPOINT_IMPORT_GURU_SISWA_2026-11-22.md -> docs/backup/import-review-final-2026-11-22/CHECKPOINT_IMPORT_GURU_SISWA_2026-11-22.md.before-artifact-digest-correction | original blob SHA 94889c6e5affdb81d42f165fff3a7ed21bde12b2
