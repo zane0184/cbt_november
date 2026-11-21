@@ -14,6 +14,7 @@ use App\Models\Rombel;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ExamRoomSessionService
@@ -24,7 +25,7 @@ class ExamRoomSessionService
     {
         $this->assertAdmin($actor);
         $validated = validator($data, [
-            'code' => ['required', 'string', 'max:50'],
+            'code' => ['required', 'string', 'max:50', Rule::unique('exam_rooms', 'code')->where('tenant_id', $actor->tenant_id)],
             'name' => ['required', 'string', 'max:150'],
             'location' => ['nullable', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
@@ -68,6 +69,16 @@ class ExamRoomSessionService
             if ($sessionNumber < 1 || mb_strlen(trim($name)) < 1 || mb_strlen($name) > 120) {
                 throw ValidationException::withMessages([
                     'session' => 'Nama sesi wajib diisi dan nomor sesi harus lebih besar dari nol.',
+                ]);
+            }
+
+            if (ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('session_number', $sessionNumber)
+                ->exists()) {
+                throw ValidationException::withMessages([
+                    'sessionNumber' => 'Nomor sesi sudah digunakan pada ujian ini.',
                 ]);
             }
 
@@ -161,9 +172,14 @@ class ExamRoomSessionService
                 ->first();
 
             if ($existing) {
-                if ($existing->status !== 'ACTIVE') {
-                    $existing->update(['status' => 'ACTIVE', 'capacity_override' => $capacityOverride]);
-                    $this->bumpScheduleRevision($actor, $session, 'Ruang sesi yang sebelumnya nonaktif diaktifkan kembali.');
+                $scopeChanged = $existing->status !== 'ACTIVE'
+                    || $existing->capacity_override !== $capacityOverride;
+                if ($scopeChanged) {
+                    $existing->update([
+                        'status' => 'ACTIVE',
+                        'capacity_override' => $capacityOverride,
+                    ]);
+                    $this->bumpScheduleRevision($actor, $session, 'Pasangan ruang-sesi diaktifkan atau kapasitasnya diubah.');
                 }
                 return $existing->fresh()->load(['room', 'session']);
             }
