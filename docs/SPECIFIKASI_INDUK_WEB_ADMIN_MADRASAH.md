@@ -1472,7 +1472,7 @@ Proktor adalah Guru yang diberi assignment pengawasan pada ujian tertentu oleh A
 
 Assignment mengikat Guru, tenant, exam, rombel, rentang waktu, status, schedule revision, actor Admin, alasan, dan audit history. Guru tetap memakai akun/role GURU. Capability hanya berlaku untuk exam/rombel/waktu yang ditugaskan.
 
-Akses Proktor harus diperiksa pada setiap request: Guru aktif, tenant cocok, assignment sah, exam/rombel cocok, status ACTIVE, revoked_at null, starts_at <= server_now < expires_at, dan schedule revision cocok. Admin hanya membuat/meninjau/mencabut assignment dan membaca metadata ujian; Admin tidak memonitor ujian atau mengakses jawaban/nilai.
+Akses Proktor harus diperiksa pada setiap request: Guru aktif, TeacherProfile valid/aktif, tenant cocok, assignment sah, exam/rombel cocok, status CONFIRMED, assignment belum dicabut, starts_at <= server_now < expires_at, dan schedule revision cocok. Status assignment ACTIVE tidak digunakan. Admin hanya membuat/meninjau/mencabut assignment dan membaca metadata ujian; Admin tidak memonitor ujian atau mengakses jawaban/nilai.
 
 Semua perubahan assignment dan semua aksi penting pengawasan masuk audit log. Tidak ada role PROKTOR global/permanen.
 
