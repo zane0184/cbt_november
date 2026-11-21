@@ -1802,6 +1802,44 @@ Jika dokumen lama memakai urutan atau redaksi berbeda, jangan menghapus histori;
 Seluruh ketentuan pada Addendum 33 adalah desain/keputusan aktif. Temuan source yang masih memiliki role OPERATOR/PROKTOR permanen, permission Admin yang terlalu luas, jalur jadwal terpisah, atau assignment yang belum lengkap tetap OPEN sebagai gap implementasi. Tidak ada klaim bahwa source sudah diperbaiki, pengujian lulus, W0 ditutup, atau aplikasi siap produksi.
 
 
-# ADDENDUM 34 — KLARIFIKASI STATUS ASSIGNMENT PROKTOR
+# ADDENDUM 34 — KLARIFIKASI STATUS ASSIGNMENT PROKTOR (SUPERSEDED)
 
-Semantik hak untuk status `PENDING`, `CONFIRMED`, dan kemungkinan `ACTIVE` belum diputuskan secara eksplisit. Gunakan [Nota Klarifikasi Status Assignment Proktor](NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md). Rekomendasi fail-closed bahwa PENDING tidak memberi capability dan CONFIRMED-only sebagai pemberi capability adalah PROPOSED, bukan keputusan ACTIVE. Jangan implementasikan status enum/transisi sebelum pengguna mengonfirmasi. Status NEEDS_REVIEW, REVOKED, EXPIRED, dan COMPLETED tetap secara eksplisit tidak memberi hak sesuai keputusan pengguna.
+Addendum 34 adalah catatan sementara sebelum keputusan pengguna ditegaskan. Pernyataan bahwa semantik PENDING/CONFIRMED/ACTIVE masih OPEN dan rekomendasi fail-closed masih PROPOSED telah **SUPERSEDED** oleh Addendum 35. Jangan gunakan Addendum 34 sebagai aturan aktif.
+
+
+# ADDENDUM 35 — KEPUTUSAN FINAL STATUS ASSIGNMENT DAN CAPABILITY PROKTOR
+
+Tanggal: 21 November 2026
+Status: **KEPUTUSAN FINAL PENGGUNA — ACTIVE**. Addendum ini menggantikan Addendum 34 dan seluruh kalimat historis yang menyatakan semantik status masih OPEN/PROPOSED.
+
+## 35.1 Status assignment yang sah
+Status assignment hanya:
+- `PENDING`
+- `CONFIRMED`
+- `NEEDS_REVIEW`
+- `REVOKED`
+- `EXPIRED`
+- `COMPLETED`
+
+Status `ACTIVE` tidak diperlukan dan tidak boleh digunakan sebagai status assignment. Istilah ACTIVE tetap boleh dipakai untuk status akun Guru, bukan status assignment Proktor.
+
+## 35.2 Capability
+- `PENDING`: tidak memberikan capability.
+- `CONFIRMED`: satu-satunya status yang dapat memberikan capability, secara bersyarat.
+- `NEEDS_REVIEW`, `REVOKED`, `EXPIRED`, `COMPLETED`: tidak memberikan capability.
+
+## 35.3 Validasi wajib setiap request
+Assignment CONFIRMED hanya memberikan capability jika Guru masih aktif, TeacherProfile valid/aktif, tenant cocok, exam dan rombel cocok, schedule revision sama dengan jadwal terkini, assignment belum dicabut/tidak konflik, permission dan lingkup tugas sah, serta waktu server memenuhi `starts_at <= serverNow < expires_at`. Semua kondisi diperiksa pada setiap request; cron/scheduler bukan sumber otorisasi.
+
+Jika waktu server mencapai atau melewati `expires_at`, capability langsung ditolak walaupun status persisten belum sempat diperbarui menjadi EXPIRED.
+
+## 35.4 Perubahan jadwal dan konfirmasi ulang
+Reschedule dilakukan Guru melalui `ExamScheduleChangeService`. Assignment terdampak berubah menjadi NEEDS_REVIEW dalam transaksi yang sama dan capability lama langsung tidak berlaku. Admin meninjau dan mengonfirmasi ulang setelah validasi revision/konflik. Status hasil konfirmasi adalah CONFIRMED, bukan ACTIVE.
+
+## 35.5 Overlap dan concurrency
+Interval `[starts_at, expires_at)`; konflik jika `existing.starts_at < new.expires_at AND existing.expires_at > new.starts_at`. Interval bersebelahan diterima. Pemeriksaan lintas assignment Guru/ujian/rombel harus memakai MySQL 8+ InnoDB, lock order Exam → Guru mutex → assignment locking/current read, dan penyimpanan assignment/event/audit secara atomik. Kegagalan audit menggagalkan transaksi.
+
+## 35.6 Pengujian dan status source
+T-159/T-160 tetap NOT RUN sampai benar-benar diuji. T-169 dan test tambahan setelah T-168 mengunci larangan status ACTIVE dan validasi capability CONFIRMED. Keputusan desain ACTIVE tidak berarti source telah diimplementasikan; seluruh temuan source terkait tetap OPEN sampai patch dan pengujian mendapat persetujuan terpisah.
+
+Rujuk [Keputusan Final Status Assignment Proktor](NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md).
