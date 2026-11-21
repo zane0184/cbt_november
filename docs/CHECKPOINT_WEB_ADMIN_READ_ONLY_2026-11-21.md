@@ -86,3 +86,20 @@ Laporan audit resmi: `docs/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md`.
 - Backup report sebelum update: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase2-rbac-curriculum`, commit `1bd059264bee7843fe6c7e4d5db9dde10ab2eb23`, blob `59d50a48720541ac41d9a6282ed066e60f62fe39` (identik dengan blob report sebelum update).
 - Backup checkpoint sebelum update: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase2-findings`, commit `7fb9f8cb2e137951dc320e747509ba83c4d2c48e`, blob `3e6184568f20d9b735d903d39d58ffbe8f437654` (identik dengan blob checkpoint sebelum update).
 - Langkah berikutnya: audit semua query User/withoutGlobalScopes, route-model binding, export, cache, jobs, controller tersisa, lalu matriks modul/test dan patch plan final.
+
+
+## Checkpoint audit phase 3 — 21 November 2026
+
+### Temuan tambahan
+- P1-09: composite FK tenant belum lengkap untuk exam_participants.user_id, exam_attempt_answers.student_id, dan student/grader/finalizer pada tabel scoring. Validasi aplikasi ada pada sebagian jalur, tetapi database belum menolak seluruh mismatch. Tidak ada migration dijalankan.
+- User query: direct queries yang diperiksa umumnya memfilter tenant; LoginIdentityResolver/InstallerService/EnsureLicenseActive/CleanupOrphanedMedia memakai unscoped lookup dengan pembatas tambahan. User model sendiri tidak memiliki global TenantScoped.
+- Tidak ditemukan custom route binding (Route::bind/Route::model/resolveRouteBinding).
+- Cache analytics tenant-prefixed; satu export class ditemukan dan caller menggunakan ReportPolicy; tidak ditemukan app/Jobs classes.
+- Inventaris test statis: 64 file *Test.php, 433 deklarasi method konvensional; bukan hitungan run. T-001–T-173 mapping masih OPEN.
+
+### Verifikasi dan status
+- Laporan diperbarui: commit `d352582e5e1175625d4f90d93aa19dabc11f2ff2`, blob `7689d15e1d3074bb953a244c94dd77f988c9bfa1`.
+- Backup laporan sebelum update: `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase3-tenant-schema`, commit `8c1559da22acbf5e98990bfabe8f5f988b9e114d`, blob `62908d92411504e3223be54929433825cbf342f9` (sama dengan blob report sebelum update).
+- Backup checkpoint sebelum update: `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase3-tenant-schema`, commit `80d4788dc762c78c0ecd5773d39cab38a0287669`, blob `a2f363b812b66e70c72195b08b66d02f863ee736` (sama dengan blob checkpoint sebelum update).
+- Audit read-only tetap berlangsung; implementasi NOT STARTED; tidak ada perubahan source/database/migration/role/permission/config.
+- Berikutnya: selesaikan pemeriksaan controller/Livewire/policy dan model/relasi tersisa; petakan ADM-001–ADM-023 dan T-001–T-173; finalisasi patch plan per file.
