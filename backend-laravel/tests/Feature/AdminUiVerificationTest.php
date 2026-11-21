@@ -143,6 +143,10 @@ class AdminUiVerificationTest extends TestCase
 
         $this->get('/admin/questions')->assertForbidden();
         $this->get('/admin/exams')->assertForbidden();
+
+        $dashboard = $this->get('/operator/dashboard');
+        $dashboard->assertDontSee('Manajemen Ujian');
+        $dashboard->assertDontSee('Bank Soal');
     }
 
     /** @test */
@@ -404,7 +408,7 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_cannot_create_or_configure_exams_through_livewire()
+    public function admin_cannot_open_cbt_authoring_livewire_components()
     {
         $this->actingAs($this->admin);
 
