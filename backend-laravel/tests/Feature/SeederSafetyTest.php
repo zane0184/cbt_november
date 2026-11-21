@@ -23,7 +23,6 @@ class SeederSafetyTest extends TestCase
         $this->assertDatabaseMissing('roles', ['name' => 'SUPER_ADMIN']);
         $this->assertDatabaseMissing('roles', ['name' => 'PROKTOR']);
         $this->assertDatabaseMissing('roles', ['name' => 'OPERATOR']);
-        $this->assertDatabaseMissing('roles', ['name' => 'OPERATOR']);
         $this->assertDatabaseHas('roles', ['name' => 'ADMIN_MADRASAH']);
         $this->assertDatabaseHas('roles', ['name' => 'GURU']);
         $this->assertDatabaseHas('roles', ['name' => 'KAMAD']);
@@ -44,5 +43,6 @@ class SeederSafetyTest extends TestCase
         $this->assertDatabaseHas('roles', ['name' => 'ADMIN_MADRASAH']);
         $this->assertDatabaseHas('roles', ['name' => 'GURU']);
         $this->assertDatabaseMissing('roles', ['name' => 'PROKTOR']);
+        $this->assertDatabaseMissing('roles', ['name' => 'OPERATOR']);
     }
 }
