@@ -6,6 +6,7 @@ use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Services\ExamProctorAssignmentService;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 class ProctorAssignmentManagement extends Component
@@ -16,6 +17,11 @@ class ProctorAssignmentManagement extends Component
     public string $expiresAt = '';
     public string $reason = '';
     public string $revokeReason = '';
+
+    public function boot(): void
+    {
+        $this->assertCanManage();
+    }
 
     public function mount(): void
     {
@@ -33,8 +39,8 @@ class ProctorAssignmentManagement extends Component
     {
         $this->assertCanManage();
         $data = $this->validate([
-            'selectedExamId' => ['required', 'uuid', 'exists:exams,id'],
-            'selectedProctorId' => ['required', 'uuid', 'exists:users,id'],
+            'selectedExamId' => ['required', 'uuid', Rule::exists('exams', 'id')->where('tenant_id', auth()->user()->tenant_id)],
+            'selectedProctorId' => ['required', 'uuid', Rule::exists('users', 'id')->where('tenant_id', auth()->user()->tenant_id)],
             'startsAt' => ['required', 'date'],
             'expiresAt' => ['required', 'date', 'after:startsAt'],
             'reason' => ['required', 'string', 'min:10', 'max:1000'],
@@ -78,9 +84,10 @@ class ProctorAssignmentManagement extends Component
             ->orderBy('start_at')->get(['id', 'title', 'start_at', 'end_at']);
         $proctors = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'PROKTOR'))
-            ->orderBy('name')->get(['id', 'name', 'email']);
+            ->orderBy('name')->get(['id', 'name']);
         $assignments = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
-            ->with(['exam:id,title,status,start_at,end_at', 'proctor:id,name,email', 'assigner:id,name', 'revoker:id,name'])
+            ->select(['id', 'tenant_id', 'exam_id', 'proctor_user_id', 'status', 'starts_at', 'expires_at', 'revoked_at', 'updated_at'])
+            ->with(['exam:id,title', 'proctor:id,name'])
             ->orderByDesc('updated_at')->limit(100)->get();
 
         return view('livewire.admin.proctor-assignment-management', compact('exams', 'proctors', 'assignments'))->layout('layouts.app');
