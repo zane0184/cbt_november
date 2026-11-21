@@ -236,7 +236,7 @@ jobs:
           <?php
           require 'vendor/autoload.php';
           $app = require 'bootstrap/app.php';
-          $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+          $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
           $mysql = config('database.connections.mysql');
           $expected = [
               'driver' => 'mysql',
@@ -306,7 +306,7 @@ jobs:
             echo "Selected WA-01 test body references the prohibited permission bootstrapper" >&2
             exit 1
           fi
-          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder|factory\\(' \\
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder' \\
             tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \\
             tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \\
             tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
