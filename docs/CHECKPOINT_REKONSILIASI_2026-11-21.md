@@ -50,3 +50,7 @@ Base: `docs/web-admin-w0-recheck-20261121` @ `fb058f05264b8d464d687583c53f06fbb7
 
 ## Klarifikasi desain yang masih OPEN
 Semantik capability untuk status PENDING/CONFIRMED/ACTIVE belum dinyatakan eksplisit. Rekomendasi fail-closed (PENDING tidak memberi hak; CONFIRMED-only) belum menjadi keputusan pengguna. Lihat `docs/NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md`. Jangan implementasikan transisi status sebelum pengguna mengonfirmasi.
+
+
+## Verifikasi final pasca-klarifikasi
+Compare terakhir dari base W0-recheck ke branch konsolidasi: 24 path berubah/ditambahkan, semuanya docs/; tidak ada source aplikasi. Angka 18 pada catatan pengujian sebelumnya adalah snapshot sebelum nota klarifikasi dan backup tambahan. Backup final laporan/checkpoint tersedia di `docs/backup/reconciliation-2026-11-21/final/`.
