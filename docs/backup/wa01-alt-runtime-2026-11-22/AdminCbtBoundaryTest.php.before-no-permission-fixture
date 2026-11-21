@@ -82,7 +82,7 @@ class AdminCbtBoundaryTest extends TestCase
         $this->assertFalse($gate->allows('viewStudentResults', $admin));
         $this->assertFalse($gate->allows('viewSubjectResults', $subject));
 
-        app(\\App\\Contexts\\TenantContext::class)->setTenantId($tenant->id);
+        app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
         $this->actingAs($admin);
         $this->get('/')->assertRedirect('/operator/dashboard');
         Livewire::test(QuestionBank::class)->assertForbidden();
@@ -96,7 +96,7 @@ class AdminCbtBoundaryTest extends TestCase
         $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         Role::create(['name' => 'KAMAD', 'label' => 'Kepala Madrasah']);
 
-        app(\\App\\Services\\RolePermissionBootstrapper::class)->bootstrap();
+        app(\App\Services\RolePermissionBootstrapper::class)->bootstrap();
 
         $grants = $adminRole->fresh()->permissions()->pluck('name')->all();
 
