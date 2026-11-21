@@ -3,10 +3,10 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 mb-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Role: Admin Madrasah
+                <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Role: Operator Madrasah
             </div>
             <h1 class="text-2xl font-bold text-navy-900">Dashboard Operasional Madrasah</h1>
-            <p class="text-sm text-textSecondary">Pengelolaan administrasi madrasah, data induk, akademik, pengguna, dan kurikulum.</p>
+            <p class="text-sm text-textSecondary">Pengelolaan data induk madrasah, rombel, mata pelajaran, pengguna, dan administrasi ujian.</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="/admin/users" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-sm">
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Summary Cards Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total User</p>
             <p class="text-2xl font-bold text-navy-900 mt-2">{{ $totalUsers }}</p>
@@ -45,16 +45,21 @@
             <p class="text-2xl font-bold text-amber-600 mt-2">{{ $totalSubjects }}</p>
             <p class="text-[11px] text-gray-500 mt-1">Mapel Terdaftar</p>
         </div>
+        <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
+            <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total Ujian</p>
+            <p class="text-2xl font-bold text-purple-600 mt-2">{{ $totalExams }}</p>
+            <p class="text-[11px] text-gray-500 mt-1">Jadwal Ujian</p>
+        </div>
     </div>
 
     <!-- Quick Operational Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <a href="/admin/users" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
             <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
                 👥
             </div>
             <h3 class="font-bold text-navy-900 text-base">Manajemen Pengguna</h3>
-            <p class="text-xs text-textSecondary mt-1">Tambah, edit, dan kelola akun Guru dan Siswa.</p>
+            <p class="text-xs text-textSecondary mt-1">Tambah, edit, dan kelola akun Operator, Guru, Proktor, & Siswa.</p>
         </a>
         <a href="/admin/academic" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
             <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
@@ -69,6 +74,13 @@
             </div>
             <h3 class="font-bold text-navy-900 text-base">Kurikulum Merdeka</h3>
             <p class="text-xs text-textSecondary mt-1">Master data Capaian Pembelajaran (CP) dan Tujuan Pembelajaran (TP).</p>
+        </a>
+        <a href="/admin/exams" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
+            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
+                📝
+            </div>
+            <h3 class="font-bold text-navy-900 text-base">Administrasi Ujian</h3>
+            <p class="text-xs text-textSecondary mt-1">Penugasan rombel ke ujian, penanganan token, dan status sesi.</p>
         </a>
     </div>
 
