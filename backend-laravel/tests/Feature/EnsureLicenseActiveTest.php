@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 class EnsureLicenseActiveTest extends TestCase
@@ -82,6 +83,27 @@ class EnsureLicenseActiveTest extends TestCase
 
         $this->assertSame(423, $response->getStatusCode());
         $this->assertSame('LICENSE_NOT_ACTIVATED', $response->getData(true)['code']);
+    }
+
+    public function test_browser_license_block_returns_a_standard_http_redirect_response(): void
+    {
+        config([
+            'license.testing_bypass' => false,
+            'license.pre_activation_2026' => false,
+        ]);
+
+        $request = Request::create('/operator/dashboard', 'GET');
+        $request->setLaravelSession(app('session.store'));
+
+        $response = app(EnsureLicenseActive::class)->handle(
+            $request,
+            fn () => response('unexpected')
+        );
+
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertSame(302, $response->getStatusCode());
+        $this->assertSame(url('/license/status'), $response->headers->get('Location'));
+        $this->assertSame('LICENSE_NOT_ACTIVATED', app('session.store')->get('license_error'));
     }
 
     public function test_valid_pilot_installation_passes_license_middleware(): void
