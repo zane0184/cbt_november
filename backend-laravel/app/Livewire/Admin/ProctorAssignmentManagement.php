@@ -62,7 +62,22 @@ class ProctorAssignmentManagement extends Component
 
         $service->assign(auth()->user(), $exam, $proctor->id, Carbon::parse($data['startsAt']), Carbon::parse($data['expiresAt']), $data['reason']);
         $this->reset('reason');
-        session()->flash('proctorAssignmentMessage', 'Penugasan Proktor berhasil disimpan dan dicatat.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan tersimpan dengan status PENDING. Capability monitoring belum aktif sampai Admin mengonfirmasi.');
+    }
+
+    public function confirm(string $assignmentId, ExamProctorAssignmentService $service): void
+    {
+        $this->assertCanManage();
+        $tenantId = auth()->user()->tenant_id;
+        $assignment = ExamProctorAssignment::query()
+            ->where('tenant_id', $tenantId)
+            ->findOrFail($assignmentId);
+        $exam = Exam::query()
+            ->where('tenant_id', $tenantId)
+            ->findOrFail($assignment->exam_id);
+
+        $service->confirm(auth()->user(), $exam, $assignment);
+        session()->flash('proctorAssignmentMessage', 'Penugasan berhasil dikonfirmasi. Capability hanya berlaku selama interval tugas dan validasi tetap terpenuhi.');
     }
 
     public function revoke(string $assignmentId, ExamProctorAssignmentService $service): void
