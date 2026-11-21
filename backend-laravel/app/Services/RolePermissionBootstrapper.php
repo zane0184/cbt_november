@@ -7,7 +7,7 @@ use App\Models\Role;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
-/** Additive, idempotent least-privilege bootstrap for Admin, curriculum, question-bank, exam, grading, and reporting access. */
+/** Idempotent least-privilege role bootstrap; removes stale grants that violate the current Admin/Guru responsibility boundary. */
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
