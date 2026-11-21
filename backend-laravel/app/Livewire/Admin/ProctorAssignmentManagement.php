@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ExamProctorAssignmentService;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 class ProctorAssignmentManagement extends Component
@@ -51,7 +52,13 @@ class ProctorAssignmentManagement extends Component
         $proctor = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
             ->whereHas('teacherProfile', fn ($query) => $query->where('tenant_id', $tenantId)->whereNull('deleted_at'))
-            ->findOrFail($data['selectedProctorId']);
+            ->find($data['selectedProctorId']);
+
+        if (!$proctor) {
+            throw ValidationException::withMessages([
+                'selectedProctorId' => 'Penugasan hanya dapat diberikan kepada Guru dengan profil aktif pada tenant ini.',
+            ]);
+        }
 
         $service->assign(auth()->user(), $exam, $proctor->id, Carbon::parse($data['startsAt']), Carbon::parse($data['expiresAt']), $data['reason']);
         $this->reset('reason');
