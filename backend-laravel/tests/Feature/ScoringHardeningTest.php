@@ -315,10 +315,6 @@ class ScoringHardeningTest extends TestCase
             );
         }
 
-        $this->assertFalse(
-            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($this->teacher, $this->attempt),
-            'This fixture teacher is checked separately by the positive assignment test.'
-        );
     }
 
     public function test_reopen_score_is_allowed_only_for_assigned_guru_in_same_tenant()
