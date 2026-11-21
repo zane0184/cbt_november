@@ -69,3 +69,11 @@ Source HEAD before Admin endpoint tests: `e705342d4e98f462119eb5ccb927eb016be587
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-innodb-engine-count | bf48ad24af8fcddecfc36106b8c840e01e5f5ce5 | 9485 |
 
 Both source files were snapshotted before the corresponding test-only changes. No production database or source baseline ZIP was modified.
+
+## Additional snapshot — complete Proktor data-surface matrix
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-complete-proctor-data-surface-matrix | 186f338d6861a38ec418539d8080820f55a49626 | 29962 |
+
+This snapshot predates the expanded assertions for in-scope monitoring attempt DTOs, answer-payload exclusion, and the complete report/analytics endpoint denial matrix.
