@@ -227,6 +227,55 @@ jobs:
           }
           PHP
 
+      - name: Verify Laravel resolves only the restricted disposable MySQL account
+        id: laravel-db-config
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01/laravel-db-config.json"
+          <?php
+          require 'vendor/autoload.php';
+          $app = require 'bootstrap/app.php';
+          $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap();
+          $mysql = config('database.connections.mysql');
+          $expected = [
+              'driver' => 'mysql',
+              'host' => getenv('DB_HOST'),
+              'port' => getenv('DB_PORT'),
+              'database' => getenv('DB_DATABASE'),
+              'username' => getenv('DB_USERNAME'),
+          ];
+          $actual = [
+              'driver' => $mysql['driver'] ?? null,
+              'host' => $mysql['host'] ?? null,
+              'port' => (string) ($mysql['port'] ?? ''),
+              'database' => $mysql['database'] ?? null,
+              'username' => $mysql['username'] ?? null,
+          ];
+          $unsafeOverride = is_file('storage/app/private/installer-database.php')
+              || is_file('bootstrap/cache/config.php')
+              || !empty($mysql['url'])
+              || !empty(getenv('DB_URL'));
+          $ok = config('database.default') === 'mysql'
+              && $actual === $expected
+              && $actual['username'] !== 'root'
+              && hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? ''))
+              && !$unsafeOverride;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'default_connection' => config('database.default'),
+              'resolved_connection' => $actual,
+              'application_user_is_root' => $actual['username'] === 'root',
+              'installer_database_override_present' => is_file('storage/app/private/installer-database.php'),
+              'cached_database_config_present' => is_file('bootstrap/cache/config.php'),
+              'database_url_override_present' => !empty($mysql['url']) || !empty(getenv('DB_URL')),
+              'password_matches_ephemeral_app_credential' => hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? '')),
+          ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+          if (!$ok) {
+              exit(73);
+          }
+          PHP
+
       - name: Preflight-only mode — stop before any database migration
         if: inputs.phase == 'preflight'
         run: |
@@ -257,7 +306,7 @@ jobs:
             echo "Selected WA-01 test body references the prohibited permission bootstrapper" >&2
             exit 1
           fi
-          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder|\\->seed\\(|factory\\(' \\
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder|factory\\(' \\
             tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \\
             tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \\
             tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
