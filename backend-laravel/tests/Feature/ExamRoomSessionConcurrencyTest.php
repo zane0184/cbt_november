@@ -14,7 +14,7 @@ use App\Models\Subject;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ExamRoomSessionService;
-use Illuminate\Database\DatabaseMigrations;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
