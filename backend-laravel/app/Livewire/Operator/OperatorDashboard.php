@@ -11,12 +11,28 @@ use Livewire\Component;
 
 class OperatorDashboard extends Component
 {
-    public function mount()
+    public function boot(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    public function mount(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    private function assertCanAccess(): void
     {
         $user = auth()->user();
-        if (!$user || !$user->tenant_id || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR'])->exists()) {
-            abort(403, 'Akses ditolak. Dashboard ini hanya tersedia untuk pengguna berwenang pada tenant madrasah aktif.');
-        }
+        abort_unless(
+            $user
+                && $user->tenant_id
+                && $user->hasRole('ADMIN_MADRASAH')
+                && !$user->hasRole('ADMIN')
+                && !$user->hasRole('OPERATOR'),
+            403,
+            'Dashboard hanya tersedia untuk Admin Madrasah aktif pada tenant yang sesuai.'
+        );
     }
 
     public function render()
