@@ -1,51 +1,165 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\\Feature;
 
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\Assessment;
-use App\Models\Exam;
-use App\Models\ExamAttempt;
-use App\Models\ExamParticipant;
-use App\Models\AcademicYear;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use App\\Contexts\\TenantContext;
+use App\\Models\\AcademicYear;
+use App\\Models\\Assessment;
+use App\\Models\\Curriculum;
+use App\\Models\\Exam;
+use App\\Models\\ExamAttempt;
+use App\\Models\\ExamParticipant;
+use App\\Models\\GradeLevel;
+use App\\Models\\Permission;
+use App\\Models\\Phase;
+use App\\Models\\Role;
+use App\\Models\\Rombel;
+use App\\Models\\Semester;
+use App\\Models\\StudentProfile;
+use App\\Models\\Subject;
+use App\\Models\\TeacherProfile;
+use App\\Models\\TeacherSubjectAssignment;
+use App\\Models\\Tenant;
+use App\\Models\\User;
+use App\\Services\\ExamProctorAssignmentService;
+use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use Tests\\TestCase;
 
 class MonitoringDuplicationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private $tenant;
-    private $admin;
-    private $student;
-    private $exam;
+    private Tenant $tenant;
+    private User $admin;
+    private User $examAuthor;
+    private User $assignedGuru;
+    private User $unassignedGuru;
+    private User $student;
+    private Exam $exam;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->tenant = Tenant::create(['name' => 'T1', 'code' => 'T1']);
-        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
-        $this->admin = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Admin', 'email' => 'admin@e.com', 'password' => 'p']);
-        $adminRole = \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
-        $this->admin->roles()->attach($adminRole);
-        $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'email' => 's@e.com', 'password' => 'p']);
-        $this->student->roles()->create(['name' => 'SISWA', 'label' => 'Siswa']);
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->admin->id]);
+        $this->tenant = Tenant::create(['name' => 'Tenant Monitoring', 'code' => 'MON1']);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
 
-        $this->exam = Exam::create(['tenant_id' => $this->tenant->id, 'assessment_id' => $assessment->id, 'title' => 'E1', 'duration_seconds' => 60, 'created_by' => $this->admin->id]);
+        $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $siswaRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+
+        $monitorPermission = Permission::create(['name' => 'exam.monitor', 'label' => 'Monitoring ujian']);
+        $assignPermission = Permission::create(['name' => 'exam.proctor.assign', 'label' => 'Menugaskan Proktor sementara']);
+        $guruRole->permissions()->attach($monitorPermission->id);
+        $adminRole->permissions()->attach($assignPermission->id);
+
+        $this->admin = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Admin', 'email' => 'admin-monitor@example.test', 'password' => bcrypt('password')]);
+        $this->admin->roles()->attach($adminRole->id);
+
+        $this->examAuthor = $this->createGuru($guruRole, 'author', 'Guru Pembuat Ujian');
+        $this->assignedGuru = $this->createGuru($guruRole, 'proctor', 'Guru Proktor Sementara');
+        $this->unassignedGuru = $this->createGuru($guruRole, 'unassigned', 'Guru Tanpa Assignment');
+
+        $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa', 'email' => 'siswa-monitor@example.test', 'password' => bcrypt('password')]);
+        $this->student->roles()->attach($siswaRole->id);
+
+        $year = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2026/2027', 'is_active' => true]);
+        $semester = Semester::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $year->id,
+            'term' => 'GANJIL',
+            'is_active' => true,
+        ]);
+        $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MTK-MON', 'name' => 'Matematika', 'status' => 'ACTIVE']);
+        $curriculum = Curriculum::create(['tenant_id' => $this->tenant->id, 'name' => 'Kurikulum Merdeka', 'code' => 'KM-MON', 'status' => 'ACTIVE', 'is_active' => true]);
+        $phase = Phase::create(['tenant_id' => $this->tenant->id, 'curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A-MON', 'status' => 'ACTIVE']);
+        $grade = GradeLevel::create(['tenant_id' => $this->tenant->id, 'phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1-MON', 'level' => 1, 'status' => 'ACTIVE']);
+        $rombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $year->id,
+            'grade_level_id' => $grade->id,
+            'name' => '1A-MON',
+            'status' => 'ACTIVE',
+        ]);
+
+        $studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id, 'full_name' => 'Siswa Monitoring']);
+        $rombel->students()->attach($studentProfile->id);
+
+        $teacherProfile = $this->examAuthor->teacherProfile;
+        TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $rombel->id,
+            'academic_year_id' => $year->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+            'created_by' => $this->examAuthor->id,
+        ]);
+
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $year->id,
+            'semester_id' => $semester->id,
+            'subject_id' => $subject->id,
+            'title' => 'Asesmen Monitoring',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->examAuthor->id,
+        ]);
+
+        $this->exam = Exam::create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $assessment->id,
+            'title' => 'Ujian Monitoring',
+            'duration_seconds' => 3600,
+            'start_at' => now()->subMinutes(10),
+            'end_at' => now()->addHour(),
+            'status' => 'PUBLISHED',
+            'created_by' => $this->examAuthor->id,
+            'locked_at' => now(),
+        ]);
         $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id]);
-        $this->bootstrapCbtRolePermissions();
     }
 
-    public function test_participants_list_does_not_duplicate_when_multiple_attempts_exist()
+    private function createGuru(Role $guruRole, string $suffix, string $name): User
     {
-        $participant = ExamParticipant::where('exam_id', $this->exam->id)->first();
+        $guru = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => $name,
+            'email' => $suffix.'-monitor@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $guru->roles()->attach($guruRole->id);
+        TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $guru->id,
+            'full_name' => $name,
+        ]);
 
-        // 1. Create first attempt (e.g., finished)
-        $attempt1 = ExamAttempt::create([
+        return $guru->fresh();
+    }
+
+    private function assignTemporaryProctor(): void
+    {
+        app(ExamProctorAssignmentService::class)->assign(
+            $this->admin,
+            $this->exam,
+            $this->assignedGuru->id,
+            now()->subMinute(),
+            now()->addMinutes(30),
+            'Penugasan sementara untuk pengawasan ujian'
+        );
+    }
+
+    public function test_exam_author_can_monitor_and_participant_rows_are_not_duplicated_by_attempts(): void
+    {
+        $participant = ExamParticipant::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $this->student->id)
+            ->firstOrFail();
+
+        $firstAttempt = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'participant_id' => $participant->id,
@@ -53,11 +167,10 @@ class MonitoringDuplicationTest extends TestCase
             'attempt_number' => 1,
             'status' => 'SUBMITTED',
         ]);
-        $attempt1->created_at = now()->subHour();
-        $attempt1->save();
+        $firstAttempt->created_at = now()->subHour();
+        $firstAttempt->save();
 
-        // 2. Create second attempt (latest)
-        $attempt2 = ExamAttempt::create([
+        $latestAttempt = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'participant_id' => $participant->id,
@@ -65,15 +178,82 @@ class MonitoringDuplicationTest extends TestCase
             'attempt_number' => 2,
             'status' => 'IN_PROGRESS',
         ]);
-        $attempt2->created_at = now();
-        $attempt2->save();
+        $latestAttempt->created_at = now();
+        $latestAttempt->save();
 
-        $this->actingAs($this->admin, 'sanctum');
+        $this->actingAs($this->examAuthor, 'sanctum');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants");
 
-        $response->assertStatus(200);
-        // Should only have 1 student row despite 2 attempts
+        $response->assertOk();
         $this->assertCount(1, $response->json('data'));
-        $this->assertEquals('IN_PROGRESS', $response->json('data.0.attempt.status'));
+        $this->assertSame('IN_PROGRESS', $response->json('data.0.attempt.status'));
+    }
+
+    public function test_admin_cannot_monitor_even_after_admin_assigns_a_guru_as_temporary_proctor(): void
+    {
+        $this->assignTemporaryProctor();
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants")
+            ->assertForbidden();
+
+        $this->actingAs($this->admin)
+            ->get("/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
+    public function test_assigned_guru_can_monitor_only_the_exam_with_an_active_assignment(): void
+    {
+        $this->assignTemporaryProctor();
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertOk();
+
+        $otherExam = Exam::create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $this->exam->assessment_id,
+            'title' => 'Ujian Lain Tanpa Assignment',
+            'duration_seconds' => 3600,
+            'start_at' => now()->subMinutes(10),
+            'end_at' => now()->addHour(),
+            'status' => 'PUBLISHED',
+            'created_by' => $this->examAuthor->id,
+            'locked_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/exams/{$otherExam->id}/monitoring")
+            ->assertForbidden();
+    }
+
+    public function test_guru_without_exam_authority_or_active_proctor_assignment_cannot_monitor(): void
+    {
+        $this->actingAs($this->unassignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
+    public function test_revoked_or_expired_temporary_assignment_removes_monitoring_access(): void
+    {
+        $this->assignTemporaryProctor();
+        $assignment = \\App\\Models\\ExamProctorAssignment::query()->firstOrFail();
+
+        app(ExamProctorAssignmentService::class)->revoke(
+            $this->admin,
+            $this->exam,
+            $assignment,
+            'Penugasan selesai lebih awal'
+        );
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+
+        $this->assignTemporaryProctor();
+        \\App\\Models\\ExamProctorAssignment::query()->whereKey($assignment->id)
+            ->update(['status' => 'ACTIVE', 'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null, 'expires_at' => now()->subSecond()]);
+
+        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
     }
 }
