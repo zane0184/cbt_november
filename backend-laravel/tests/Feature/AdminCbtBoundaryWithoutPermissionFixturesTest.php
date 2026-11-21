@@ -20,6 +20,23 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
+ * Test double representing a legacy account whose stale permission check would
+ * return true for every CBT capability, without persisting permission fixtures.
+ */
+class StalePermissionSimulationUser extends User
+{
+    public function hasPermission(string $permission): bool
+    {
+        return in_array($permission, [
+            'question.view', 'question.manage',
+            'exam.manage', 'exam.assign', 'exam.monitor',
+            'exam.close', 'exam.token', 'exam.grade', 'exam.reopen',
+            'report.view',
+        ], true);
+    }
+}
+
+/**
  * WA-01 safe boundary coverage.
  *
  * Deliberately does not create Permission rows or permission_role pivots.
@@ -39,13 +56,28 @@ class AdminCbtBoundaryWithoutPermissionFixturesTest extends TestCase
         $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
 
-        $admin = User::create([
+        $persistedAdmin = User::create([
             'tenant_id' => $tenant->id,
             'name' => 'Admin Multi Role',
             'email' => 'admin.safe-boundary@example.test',
             'password' => bcrypt('password'),
         ]);
-        $admin->roles()->attach([$adminRole->id, $guruRole->id, $studentRole->id]);
+        $persistedAdmin->roles()->attach([$adminRole->id, $guruRole->id, $studentRole->id]);
+
+        // Simulate all stale CBT grants in memory; do not create permission
+        // records or write permission_role pivots to the disposable database.
+        $admin = new StalePermissionSimulationUser();
+        $admin->setRawAttributes($persistedAdmin->getAttributes(), true);
+        $admin->setRelation('roles', $persistedAdmin->roles()->get());
+
+        foreach ([
+            'question.view', 'question.manage',
+            'exam.manage', 'exam.assign', 'exam.monitor',
+            'exam.close', 'exam.token', 'exam.grade', 'exam.reopen',
+            'report.view',
+        ] as $stalePermission) {
+            $this->assertTrue($admin->hasPermission($stalePermission));
+        }
 
         // Prove this test has not seeded or mutated permission data.
         $this->assertSame(0, DB::table('permissions')->count());
