@@ -783,4 +783,57 @@ class ImportWorkbookServiceTest extends TestCase
     }
 
 
+
+    public function test_import_row_transaction_retries_a_mysql_deadlock_without_partial_duplicate_account(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $attempts = 0;
+        TeacherProfile::creating(function ($profile) use (&$attempts): void {
+            $attempts++;
+            if ($attempts === 1) {
+                $deadlock = new \PDOException('Deadlock found when trying to get lock; try restarting transaction', 1213);
+                throw new \Illuminate\Database\QueryException('mysql', 'insert into teacher_profiles', [], $deadlock);
+            }
+        });
+
+        try {
+            $batch = app(ImportWorkbookService::class)->preview(
+                $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Deadlock Retry', 'L', '', '']]),
+                'GURU', $this->tenant->id, $this->admin->id
+            );
+            $result = app(ImportWorkbookService::class)->confirm($batch->id, $this->tenant->id, $this->admin->id);
+        } finally {
+            TeacherProfile::flushEventListeners();
+        }
+
+        $this->assertGreaterThanOrEqual(2, $attempts, 'Deadlock harus memicu retry transaksi baris.');
+        $this->assertSame('COMPLETED', $result['batch']->status);
+        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('nip', '001234567890123456')->count());
+        $this->assertSame(1, User::query()->where('tenant_id', $this->tenant->id)->where('username', '001234567890123456')->count());
+    }
+
+    public function test_abandoned_preview_staging_expires_after_retention_and_keeps_tenant_audit(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $batch = app(ImportWorkbookService::class)->preview(
+            $this->guruWorkbook([['PNS', '001234567890123456', '', '', 'Guru Retensi', 'L', '', '']]),
+            'GURU', $this->tenant->id, $this->admin->id
+        );
+        $row = ImportBatchRow::query()->where('batch_id', $batch->id)->firstOrFail();
+        $this->assertNotEmpty($row->encrypted_payload);
+
+        \Illuminate\Support\Facades\DB::table('import_batches')->where('id', $batch->id)
+            ->update(['created_at' => now()->subDays(8), 'updated_at' => now()->subDays(8)]);
+        \Illuminate\Support\Facades\Artisan::call('imports:expire-staging', ['--days' => 7]);
+
+        $this->assertDatabaseHas('import_batches', [
+            'id' => $batch->id, 'tenant_id' => $this->tenant->id, 'status' => 'EXPIRED',
+        ]);
+        $this->assertNull(ImportBatchRow::query()->whereKey($row->id)->value('encrypted_payload'));
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id, 'action' => 'IMPORT_PREVIEW_EXPIRED', 'entity_id' => $batch->id,
+        ]);
+    }
+
+
 }

@@ -88,7 +88,8 @@ class ImportManagement extends Component
             session()->flash('import_notice', 'Proses import selesai. Tautan aktivasi ditampilkan satu kali; salin dan bagikan secara pribadi kepada pemilik akun.');
             $this->upload = null;
             $this->batchId = (string) $result['batch']->id;
-            return redirect()->route('admin.import');
+            $this->redirectRoute('admin.import');
+            return;
         } catch (\Throwable $exception) {
             $this->addError('upload', $this->safeErrorMessage($exception));
         }
@@ -151,6 +152,7 @@ class ImportManagement extends Component
         $this->authorizeImport();
         $batch = ImportBatch::query()->where('tenant_id', auth()->user()->tenant_id)->findOrFail($id);
         $this->batchId = (string) $batch->id;
+        session()->forget(['import_activation_links', 'import_notice']);
         $this->notice = 'Detail riwayat import: tautan aktivasi tidak disimpan dan tidak dapat ditampilkan ulang.';
     }
 
