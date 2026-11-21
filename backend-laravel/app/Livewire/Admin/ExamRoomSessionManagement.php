@@ -53,6 +53,10 @@ class ExamRoomSessionManagement extends Component
 
     public function updatedSelectedExamId(string $examId): void
     {
+        $this->selectedSessionId = '';
+        $this->selectedSessionRoomId = '';
+        $this->selectedRombelId = '';
+
         $exam = Exam::query()
             ->where('tenant_id', auth()->user()->tenant_id)
             ->whereKey($examId)
