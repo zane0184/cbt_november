@@ -369,6 +369,32 @@ class ExamRoomSessionService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            $roomId = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($snapshot->exam_session_room_id)
+                ->value('exam_room_id');
+
+            ExamRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($roomId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $sessionRoom = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($snapshot->exam_session_room_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $session = ExamSession::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereKey($sessionRoom->exam_session_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $mapping = ExamSessionRoomRombel::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
@@ -384,21 +410,28 @@ class ExamRoomSessionService
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
                 ->where('rombel_id', $mapping->rombel_id)
+                ->orderBy('id')
+                ->lockForUpdate()
                 ->pluck('id');
 
-            ExamParticipantRoomAssignment::query()
+            $assignments = ExamParticipantRoomAssignment::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
                 ->whereIn('participant_id', $participantIds)
-                ->where('exam_session_room_id', $mapping->exam_session_room_id)
+                ->where('exam_session_room_id', $sessionRoom->id)
                 ->where('status', 'ACTIVE')
-                ->update([
+                ->orderBy('participant_id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($assignments as $assignment) {
+                $assignment->update([
                     'status' => 'RELEASED',
                     'released_at' => now(),
                     'released_by' => $actor->id,
                     'release_reason' => $reason,
-                    'updated_at' => now(),
                 ]);
+            }
 
             $old = $mapping->only(['status', 'released_at', 'released_by', 'release_reason']);
             $mapping->update([
@@ -408,13 +441,13 @@ class ExamRoomSessionService
                 'release_reason' => $reason,
             ]);
 
-            $session = $mapping->sessionRoom()->firstOrFail()->session()->lockForUpdate()->firstOrFail();
             $this->bumpScheduleRevision($actor, $session, 'Pemetaan rombel dari ruang sesi dilepaskan.');
 
             $this->auditService->log('EXAM_SESSION_ROOM_ROMBEL_RELEASE', 'ExamSessionRoomRombel', $mapping->id, $old, [
                 'status' => 'RELEASED',
                 'released_by' => $actor->id,
                 'release_reason' => $reason,
+                'released_participant_count' => $assignments->count(),
             ]);
         });
     }
