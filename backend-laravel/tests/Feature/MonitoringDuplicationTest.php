@@ -477,8 +477,11 @@ class MonitoringDuplicationTest extends TestCase
             ->assertForbidden();
 
         $this->assignTemporaryProctor();
-        \App\Models\ExamProctorAssignment::query()->whereKey($assignment->id)
-            ->update(['status' => 'CONFIRMED', 'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null, 'expires_at' => now()->subSecond()]);
+        $expiredAssignment = \App\Models\ExamProctorAssignment::query()
+            ->where('status', 'CONFIRMED')
+            ->latest()
+            ->firstOrFail();
+        $expiredAssignment->update(['expires_at' => now()->subSecond()]);
 
         $this->actingAs($this->assignedGuru, 'sanctum')
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
