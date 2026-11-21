@@ -1,51 +1,95 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\\Feature;
 
-use App\Models\Tenant;
-use App\Models\User;
-use App\Models\Assessment;
-use App\Models\Exam;
-use App\Models\ExamAttempt;
-use App\Models\ExamParticipant;
-use App\Models\AcademicYear;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
+use App\\Contexts\\TenantContext;
+use App\\Models\\AcademicYear;
+use App\\Models\\Assessment;
+use App\\Models\\Exam;
+use App\\Models\\ExamAttempt;
+use App\\Models\\ExamParticipant;
+use App\\Models\\Permission;
+use App\\Models\\Role;
+use App\\Models\\Tenant;
+use App\\Models\\User;
+use Illuminate\\Foundation\\Testing\\RefreshDatabase;
+use Tests\\Support\\CreatesTeacherExamScope;
+use Tests\\TestCase;
 
 class MonitoringDuplicationTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesTeacherExamScope;
 
-    private $tenant;
-    private $admin;
-    private $student;
-    private $exam;
+    private Tenant $tenant;
+    private User $admin;
+    private User $teacher;
+    private User $student;
+    private Exam $exam;
+    private ExamAttempt $attempt1;
+    private ExamAttempt $attempt2;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->tenant = Tenant::create(['name' => 'T1', 'code' => 'T1']);
-        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
-        $this->admin = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Admin', 'email' => 'admin@e.com', 'password' => 'p']);
-        $adminRole = \App\Models\Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
-        $this->admin->roles()->attach($adminRole);
-        $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'email' => 's@e.com', 'password' => 'p']);
-        $this->student->roles()->create(['name' => 'SISWA', 'label' => 'Siswa']);
 
-        $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
-        $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->admin->id]);
+        $this->tenant = Tenant::create(['name' => 'Monitoring Tenant', 'code' => 'MON1']);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
 
-        $this->exam = Exam::create(['tenant_id' => $this->tenant->id, 'assessment_id' => $assessment->id, 'title' => 'E1', 'duration_seconds' => 60, 'created_by' => $this->admin->id]);
-        $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id]);
-        $this->bootstrapCbtRolePermissions();
-    }
+        $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $monitorPermission = Permission::create(['name' => 'exam.monitor', 'label' => 'Monitoring ujian sesuai penugasan']);
+        $guruRole->permissions()->attach($monitorPermission->id);
 
-    public function test_participants_list_does_not_duplicate_when_multiple_attempts_exist()
-    {
-        $participant = ExamParticipant::where('exam_id', $this->exam->id)->first();
+        $this->admin = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Admin',
+            'email' => 'admin-monitor@example.test', 'password' => bcrypt('password'),
+        ]);
+        $this->admin->roles()->attach($adminRole->id);
 
-        // 1. Create first attempt (e.g., finished)
-        $attempt1 = ExamAttempt::create([
+        $this->teacher = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Guru Monitoring',
+            'email' => 'guru-monitor@example.test', 'password' => bcrypt('password'),
+        ]);
+        $this->teacher->roles()->attach($guruRole->id);
+
+        $this->student = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Siswa Monitoring',
+            'email' => 'siswa-monitor@example.test', 'password' => bcrypt('password'),
+        ]);
+        $this->student->roles()->attach($studentRole->id);
+
+        $scope = $this->createTeacherExamScope($this->tenant, $this->teacher, [$this->student], 'MONITOR');
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $scope['academicYear']->id,
+            'semester_id' => $scope['semester']->id,
+            'subject_id' => $scope['subject']->id,
+            'title' => 'Asesmen Monitoring',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->teacher->id,
+        ]);
+
+        $this->exam = Exam::create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $assessment->id,
+            'title' => 'Ujian Monitoring',
+            'duration_seconds' => 3600,
+            'start_at' => now()->subMinutes(5),
+            'end_at' => now()->addHours(2),
+            'status' => 'PUBLISHED',
+            'created_by' => $this->teacher->id,
+            'locked_at' => now(),
+        ]);
+
+        $participant = ExamParticipant::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'user_id' => $this->student->id,
+        ]);
+
+        $this->attempt1 = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'participant_id' => $participant->id,
@@ -53,11 +97,10 @@ class MonitoringDuplicationTest extends TestCase
             'attempt_number' => 1,
             'status' => 'SUBMITTED',
         ]);
-        $attempt1->created_at = now()->subHour();
-        $attempt1->save();
+        $this->attempt1->created_at = now()->subHour();
+        $this->attempt1->save();
 
-        // 2. Create second attempt (latest)
-        $attempt2 = ExamAttempt::create([
+        $this->attempt2 = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'participant_id' => $participant->id,
@@ -65,15 +108,40 @@ class MonitoringDuplicationTest extends TestCase
             'attempt_number' => 2,
             'status' => 'IN_PROGRESS',
         ]);
-        $attempt2->created_at = now();
-        $attempt2->save();
+        $this->attempt2->created_at = now();
+        $this->attempt2->save();
+    }
 
-        $this->actingAs($this->admin, 'sanctum');
+    public function test_assigned_guru_can_monitor_and_participant_list_does_not_duplicate(): void
+    {
+        $this->actingAs($this->teacher, 'sanctum');
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants");
 
-        $response->assertStatus(200);
-        // Should only have 1 student row despite 2 attempts
+        $response->assertOk();
         $this->assertCount(1, $response->json('data'));
         $this->assertEquals('IN_PROGRESS', $response->json('data.0.attempt.status'));
+    }
+
+    public function test_admin_is_denied_direct_monitoring_answers_score_and_report_urls_and_apis(): void
+    {
+        $this->actingAs($this->admin)
+            ->get("/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+
+        $this->actingAs($this->admin, 'sanctum');
+
+        $apiUrls = [
+            "/api/v1/exams/{$this->exam->id}/monitoring",
+            "/api/v1/exams/{$this->exam->id}/monitoring/participants",
+            "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$this->attempt2->id}",
+            "/api/v1/exams/{$this->exam->id}/monitoring/events",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/answers",
+            "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt2->id}/score",
+            "/api/v1/exams/{$this->exam->id}/results",
+        ];
+
+        foreach ($apiUrls as $url) {
+            $this->getJson($url)->assertForbidden();
+        }
     }
 }
