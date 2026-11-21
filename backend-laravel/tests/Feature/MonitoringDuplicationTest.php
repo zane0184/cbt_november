@@ -778,7 +778,8 @@ class MonitoringDuplicationTest extends TestCase
 
     public function test_completed_session_revokes_monitoring_even_before_assignment_scheduler_transition(): void
     {
-        $assignment = $this->assignTemporaryProctor();
+        $assignment = $this->createPendingTemporaryProctorAssignment();
+        app(ExamProctorAssignmentService::class)->confirm($this->admin, $this->exam, $assignment);
         $sessionRoom = ExamSessionRoom::query()
             ->whereKey($assignment->exam_session_room_id)
             ->firstOrFail();
