@@ -242,3 +242,7 @@ Validasi akhir:
 - Tidak ada PHPUnit, runtime, endpoint HTTP, browser, MySQL concurrency, import/restore, atau UAT yang dijalankan.
 
 Perubahan path seluruhnya dokumentasi. Tidak ada source, migration, seeder, database, .env, merge, rebase, force-push, deployment, atau branch source yang diubah.
+
+
+## E.5 Koreksi compare final setelah checkpoint provenance refresh
+Pemeriksaan branch ref terbaru menunjukkan HEAD `f7912c207be8a4db8efba23100f8aab50283c47c`. Compare dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke HEAD tersebut menghasilkan **50 path**: **40 added, 10 modified, 0 deleted**. Seluruh path berada di `docs/`; tidak ada source aplikasi. Angka 49 pada E.4 adalah snapshot tepat sebelum backup tambahan untuk checkpoint provenance refresh dibuat; angka 50 ini menggantikannya sebagai hasil compare terkini.
