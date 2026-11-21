@@ -210,3 +210,138 @@ Bukti:
 Dampak: Admin yang membaca detail Assessment dapat menerima koleksi seluruh Exam terkait, termasuk atribut token dan konfigurasi ujian, melalui serialisasi Eloquent. Jalur ini terpisah dari ExamController list/detail dan memperluas permukaan P0-03. Selain itu, policy view Assessment mengizinkan Admin; perlu DTO metadata minimum terpisah untuk kebutuhan Admin, bukan eager-load Exam mentah.
 
 Status: **P0 OPEN**. Belum ada HTTP response test yang dijalankan untuk mengukur payload aktual; kesimpulan berasal dari alur controller/policy/model yang dibaca statis. Perlu negative response assertions untuk token, instructions, snapshot, roster, attempt, score, dan metadata yang tidak termasuk allowlist Admin.
+
+
+---
+
+## 12. ADDENDUM AUDIT PHASE 5 — Admin UI/result surface, policy paths, curriculum CRUD (21 November 2026)
+
+### 12.1 P0-07 — Admin dapat membuka UI hasil ujian dan membaca jawaban/per-soal
+
+Bukti:
+- `routes/web.php` mendaftarkan `GET /exams/{exam}/results` → `App\\Livewire\\Teacher\\ResultList` dan `GET /exams/{exam}/results/{attempt}` → `App\\Livewire\\Teacher\\ResultDetail`; route berada pada group `auth, tenant, license`, tanpa role middleware.
+- `app/Livewire/Teacher/ResultList.php::mount()` hanya mengandalkan Gate `viewExamResults`; `ReportPolicy::viewExamResults()` mengizinkan ADMIN_MADRASAH tenant-local dengan permission `report.view`.
+- `ResultList::render()` membaca `ExamAttempt`, `participant.user`, dan `score`; Blade `resources/views/livewire/teacher/result-list.blade.php` menampilkan nama peserta, status attempt, skor mentah, nilai maksimum, persentase, status penilaian.
+- `app/Livewire/Teacher/ResultDetail.php::mount()` mengotorisasi melalui `viewExamResults` dan `ExamAttemptPolicy::view`; policy tersebut mengizinkan Admin dengan `report.view`.
+- Blade `resources/views/livewire/teacher/result-detail.blade.php` menampilkan evaluated answer snapshot, skor per butir, feedback dan rincian jawaban. Ini bukan metadata administratif minimum.
+
+Dampak: Admin dapat membaca data hasil dan jawaban siswa melalui route UI Guru yang dipasang tanpa role middleware khusus. Temuan ini memperjelas P0-04/P0-07. UI menu tersembunyi bukan kontrol keamanan karena route dan Livewire method tetap menjadi jalur server.
+
+### 12.2 P0-08 — Admin dapat melakukan finalisasi massal, finalisasi, reopen, dan close ujian
+
+Bukti:
+- `app/Livewire/Teacher/ResultList.php::confirmFinalizeAll()` memeriksa `viewExamResults`, lalu untuk setiap attempt memanggil `authorize('finalize', $attempt)`. `ExamAttemptPolicy::finalize()` menerima ADMIN_MADRASAH dengan `exam.grade`; RolePermissionBootstrapper memberikan grant tersebut kepada Admin. Admin dapat memfinalisasi banyak attempt dari route hasil.
+- `app/Livewire/Teacher/ResultDetail.php::finalize()` menggunakan `finalize`; `reopen()` menggunakan `reopen`. `ExamAttemptPolicy::reopen()` mengizinkan ADMIN_MADRASAH dengan `exam.reopen`.
+- `app/Http/Controllers/Api/V1/ScoringController.php::finalize()` dan `::reopen()` menggunakan policy yang sama; akses tidak terbatas pada tombol Blade.
+- `app/Policies/ExamPolicy.php::close()` menerima ADMIN_MADRASAH dengan `exam.close`; `ExamController::close()` memanggil policy tersebut. RolePermissionBootstrapper memberi Admin permission `exam.close`.
+- `ExamPolicy::monitor()` menerima Admin dengan `exam.monitor`; MonitoringController summary/participants/attempt/events memanggil policy tersebut.
+
+Dampak: Admin memiliki capability operasional CBT yang dilarang, termasuk close ujian, finalisasi nilai, reopen hasil, dan monitoring. Ini P0 privilege boundary, bukan sekadar kebocoran tampilan.
+
+### 12.3 P1-10 — Endpoint CRUD kurikulum tanpa authorization method-level
+
+Route:
+- `routes/api.php` memasang seluruh resource di group `auth:sanctum, tenant, license`. Tidak ada role/permission middleware per resource.
+- TenantScoped global scope pada model membatasi baris tenant, tetapi tidak membuktikan authorization role/action.
+
+Temuan method:
+- `GradeLevelController::index/store/show/update/destroy`: tidak memanggil policy/Gate/permission.
+- `ElementController::index/store/show/update/destroy`: tidak memanggil policy/Gate/permission.
+- `LearningObjectiveController::index/store/show/update/destroy`: tidak memanggil policy/Gate/permission.
+- `LearningPathController::index/store/show/update/destroy`: tidak memanggil policy/Gate/permission.
+- `MaterialController::index/store/show/update/destroy`: tidak memanggil policy/Gate/permission.
+- `TagController::index/store/destroy`: tidak memanggil policy/Gate/permission; controller juga tidak memakai AuditService.
+- `LearningOutcomeController::index/show/update/destroy`: tidak memanggil policy/Gate/permission. `store()` memakai `StoreLearningOutcomeRequest::authorize()` dengan `learning_outcome.manage`; permission ini tidak didefinisikan dalam daftar permission RolePermissionBootstrapper yang diperiksa, sehingga intended grant perlu diverifikasi.
+- Kontrol yang sudah ada: `CurriculumController` dan `PhaseController` memanggil `authorize()` pada seluruh CRUD dan BasePolicy memeriksa permission; `CurriculumPolicy`/ `PhasePolicy` memakai prefix curriculum.
+
+Dampak: seluruh identitas authenticated tenant yang mencapai API group berpotensi membaca/mengubah/menghapus master data pada controller tanpa authorization method-level. Model TenantScoped membantu membatasi tenant record; hal itu tidak membatasi role. Ini temuan unauthorized in-tenant mutation, belum bukti cross-tenant exploit.
+
+### 12.4 P1-11 — Audit event tidak konsisten pada master akademik Admin
+
+Bukti:
+- `AcademicManagement::createRombel()` dan `::createSubject()` melakukan persistensi tanpa memanggil AuditService.
+- `CurriculumManagement::createTp()` membuat LearningObjective dalam transaksi tetapi tidak menulis AuditService event.
+- `UserManagement::createUser()` membuat User, Role pivot dan profile dalam transaksi; tidak memanggil AuditService.
+- Beberapa controller API Element/GradeLevel/LearningObjective/LearningOutcome/LearningPath/Material memang menulis AuditService pada sebagian mutasi; TagController tidak.
+- `StudentRombelManagement::addStudentToRombel()` menulis audit event (kontrol positif).
+
+Dampak: jejak actor/reason/before-after untuk mutasi master data Admin tidak seragam; transaksi data tidak selalu memiliki audit event atomik.
+
+### 12.5 P1-12 — Alias ADMIN/OPERATOR dan portal Proktor masih aktif pada jalur UI/login
+
+Bukti:
+- `AuthWebController::login()` allowlist menerima ADMIN_MADRASAH, OPERATOR, KAMAD, GURU, PROKTOR, SISWA; `redirectForUser()` mengarahkan ADMIN_MADRASAH/OPERATOR ke `/operator/dashboard` dan PROKTOR ke `/proktor/assignments`.
+- `routes/web.php` tetap memetakan OperatorDashboard dan ProktorDashboard.
+- `resources/views/layouts/app.blade.php` menampilkan label Panel Admin & Guru, Dashboard Operator, dan menu Proktor berbasis role PROKTOR; menu Bank Soal dan Manajemen Ujian ditampilkan juga untuk Admin.
+- `AcademicManagement::authorizeAcademicManagement()` dan `CurriculumManagement::authorizeCurriculumManagement()` masih menerima role ADMIN sebagai alias.
+- `RolePermissionBootstrapper::ROLE_GRANTS` memberi Admin permission exam.manage/assign/monitor/close/token/grade/reopen/report; OPTIONAL_ROLE_GRANTS masih membuat grant OPERATOR.
+- `ExamPolicy` dan `AssessmentPolicy` masih mengandung OPERATOR/PROKTOR branches.
+
+Dampak: source runtime tidak sesuai keputusan final ADMIN_MADRASAH-only, no ADMIN/OPERATOR alias, dan Proktor bukan role/portal permanen.
+
+### 12.6 Tenant and authorization cross-check
+
+- `bootstrap/app.php` memberi middleware priority Authenticate → IdentifyTenant → SubstituteBindings; ini mendukung tenant context sebelum implicit route-model binding.
+- `IdentifyTenant::handle()` mereset context dan mengambil tenant dari user; X-Tenant-Override diabaikan. Jika user tidak memiliki tenant_id, middleware saat ini meneruskan request dengan context null, tidak abort eksplisit. TenantScoped models fail-closed dengan 1=0; User model tidak memakai TenantScoped.
+- Dari 56 model aktif, model User, Role, Permission, AuditLog, Tenant, local installation/license records, MultiCurriculum family, QuestionMultiCurriculumMapping, RombelStudent dan TenantCurriculumRegistration tidak memakai TenantScoped. Sebagian memang global/installation-scoped; masing-masing query harus diperiksa sesuai domain. User tidak scoped merupakan risiko khusus.
+- AcademicManagement query Rombel/Subject/GradeLevel/AcademicYear mengandalkan TenantScoped global scope (keempat model scoped); tidak semua query menuliskan tenant_id eksplisit. TenantScoped bukan authorization.
+- UserManagement menulis list query dengan where tenant_id eksplisit.
+- TeacherSubjectAssignmentController::canManage() membatasi Admin pada ADMIN_MADRASAH + academic.manage; tetapi `assertSameTenantAndAcademicContext()` memvalidasi user tidak deleted dan role GURU, belum membuktikan status aktif TeacherProfile/user secara menyeluruh.
+
+### 12.7 Pengujian dan bukti aktual
+
+- Pemeriksaan statis tambahan: 14 Livewire components, 24 API controller files, 11 policy files, 56 model files, 34 Blade view files, 64 test files.
+- Route inventory dibaca dari `routes/web.php` dan `routes/api.php`; method/action dibandingkan dengan policy/Gate/permission.
+- Test yang relevan ada, antara lain:
+  - `AdminUiVerificationTest::admin_can_access_all_admin_routes` — fixture Admin diizinkan membuka route Admin termasuk /admin/questions dan /admin/exams; ini justru mengabadikan akses yang kini dilarang.
+  - `AdminUiVerificationTest::admin_cannot_create_or_configure_exams_through_livewire` — hanya menguji create/configure, bukan list/token/monitoring/results/finalize/close.
+  - `RoleDashboardVerificationTest::monitoring_access_control_and_tenant_isolation` — secara eksplisit mengharapkan Admin dapat membuka monitoring.
+  - `ScoringHardeningTest::test_reopen_score_is_allowed_only_for_admin_roles_in_same_tenant` — mengharapkan Admin dapat reopen.
+  - `Security/AnswerKeyLeakageTest::test_non_teacher_staff_cannot_preview_answer_key` — hanya preview route; tidak menguji QuestionController index/show atau Admin direct API.
+  - `RBACEnforcementTest::test_admin_can_access_curricula_store` — menguji Admin create Curriculum; tidak menutup unauthorized access ke GradeLevel/Element/TP/Path/Material/Tag endpoints.
+- Tidak ada HTTP test baru yang dijalankan dalam audit ini. Test method di atas adalah bukti keberadaan assertion/ekspektasi source test, bukan hasil run pada tahap ini.
+- Bukti CI terdahulu tetap aggregate CI #692: 480 tests / 1,942 assertions pada source commit lama; belum ada mapping T-001–T-173 ke test run individual.
+
+### 12.8 Blob SHA source utama pada snapshot W0
+
+| Path | Git blob SHA-1 |
+|---|---|
+| routes/web.php | c22fed7d54871bf4971acf626514fc02c4a68ce9 |
+| routes/api.php | f7e08e9080f4d492b374d5783a67304bfe975f94 |
+| bootstrap/app.php | d1137fce9e10bc490a044f950170008d55cab914 |
+| resources/views/layouts/app.blade.php | 0163813cafc0226b9eae8af789223da0fb793f64 |
+| resources/views/livewire/admin/exam-management.blade.php | 5705d815cc3e2539d167b22a26d3508586a77439 |
+| resources/views/livewire/admin/question-bank.blade.php | 72feaf1cc1be17253868c91861781dbb223b5aa9 |
+| resources/views/livewire/teacher/result-list.blade.php | f9c8de95b18954379b0c1e93555e90acad246983 |
+| resources/views/livewire/teacher/result-detail.blade.php | c72c6b95703a105225a084ffab8344a83f9ec6dc |
+| app/Livewire/Admin/ExamManagement.php | 478aaa170ee297b0c8399f049cd9b1ba56cbfb10 |
+| app/Livewire/Admin/QuestionBank.php | a3013b528015daf4214dd1aa567eba950b03663a |
+| app/Livewire/Teacher/ResultList.php | fd60539cb33bd33d0c183b980a84f567681a4d68 |
+| app/Livewire/Teacher/ResultDetail.php | 6f959b61eb04ca9d0ee8005009a5e82b3b98a016 |
+| app/Policies/ExamPolicy.php | 350c1ddc6bed8738d1af17cacd6c95bc367b7c29 |
+| app/Policies/ExamAttemptPolicy.php | b19d6d39d34884d8be464f786340c1a2ab7108b6 |
+| app/Policies/AssessmentPolicy.php | 79a0367c8c83723ae3cc9e581fb8dda8a6e2d02a |
+| app/Policies/QuestionPolicy.php | af94614a2043206922149b0c44a8ec1e3d87767d |
+| app/Policies/ReportPolicy.php | e53be3994c52d067c1e31fe37edc450c24a0f4b6 |
+| app/Http/Controllers/Api/V1/AssessmentController.php | 28e6f8fe07c8e2b3dad22ecd190e9aa108947e78 |
+| app/Http/Controllers/Api/V1/ExamController.php | bf373858869b470b235e2256e5be6169fbb1f561 |
+| app/Http/Controllers/Api/V1/QuestionController.php | 7ded53423dd4d96788123819e8039fd543ce4fba |
+| app/Http/Controllers/Api/V1/MediaController.php | 52254b81a55db8e2e45538158ef202b8ccf09b70 |
+| app/Http/Controllers/Api/V1/MonitoringController.php | 335a32029f4d5ab4788ea31fd81088dfdb5acde2 |
+| app/Http/Controllers/Api/V1/ScoringController.php | 42b96176162a6e69e3661d468a6d3362b05f59c5 |
+| app/Http/Controllers/Api/V1/ReportController.php | c78442de0f5b4b40a7773bb2af0cf0ffd852d055 |
+| app/Http/Controllers/Api/V1/GradeLevelController.php | 8d063a89445fbce767e88caf9931e5a8d7c5c2dd |
+| app/Http/Controllers/Api/V1/ElementController.php | b503b903fd7ce8e85ecb466a209e0ff8bad960c2 |
+| app/Http/Controllers/Api/V1/LearningObjectiveController.php | 97c0f8cc1da01567d2ca2092421652bfb89d94e6 |
+| app/Http/Controllers/Api/V1/LearningOutcomeController.php | bddb5db70fa2f6bccd12f00505a8be4acca84791 |
+| app/Http/Controllers/Api/V1/LearningPathController.php | 6b4d1762697bea60fe25ad856c091a37a1fc4e10 |
+| app/Http/Controllers/Api/V1/MaterialController.php | abdbcb845089e57e1b6f98dde5978e6e35df317d |
+| app/Http/Controllers/Api/V1/TagController.php | a9d5101ac2e63a047d0527d0c82d141ee5bb5301 |
+| app/Models/User.php | 74dd080f703d7ef3256b406176e53dad5786a937 |
+| app/Traits/TenantScoped.php | cf192a8ccb6ca530122cb105ed3086adb09a3c5a |
+| app/Http/Middleware/IdentifyTenant.php | 376a4b2771c3d9a6b128ad847c150d47ac2977db |
+| app/Services/RolePermissionBootstrapper.php | fac82573de84c52b52867afbbf7e1637164835b4 |
+
+### 12.9 Status
+
+Temuan P0-07/P0-08 dan P1-10/P1-11/P1-12 masih OPEN. Ini pemeriksaan statis mendalam atas jalur Admin UI, hasil, policy, dan API kurikulum. Belum merupakan audit menyeluruh akhir: seluruh relasi model, seluruh serialisasi/resource, query lintas domain, export/download/media, cache invalidation, test mapping 173 ID dan 23 modul harus dituntaskan.
