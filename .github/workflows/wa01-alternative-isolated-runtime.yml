@@ -39,6 +39,7 @@ jobs:
     env:
       APP_ENV: testing
       APP_DEBUG: "true"
+      CBT_LICENSE_TEST_BYPASS: "true"
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       CACHE_STORE: array
       SESSION_DRIVER: array
