@@ -46,7 +46,7 @@ class ImportWorkbookService
 
         $analysis = $this->analyze($file->getRealPath(), $type, $tenantId);
         return DB::transaction(function () use ($analysis, $type, $tenantId, $userId, $sha, $file): ImportBatch {
-            Tenant::withoutGlobalScopes()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
             $duplicate = ImportBatch::query()->where('tenant_id', $tenantId)->where('type', $type)->where('file_sha256', $sha)->lockForUpdate()->first();
             if ($duplicate) return $duplicate;
 
@@ -311,7 +311,7 @@ class ImportWorkbookService
     {
         $errors = [];
         if ($p['identity'] === '' || $p['identity'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas Guru wajib berupa teks.';
-        $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)
+        $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')
             ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity']))->first();
         if (!$teacher && !in_array($p['identity'], $newTeacherKeys, true)) $errors[] = 'Guru tidak ditemukan pada tenant ini atau belum ada di sheet Data Guru yang valid.';
         $subject = $this->resolveSubject($p['subject'], $tenantId);
@@ -344,7 +344,7 @@ class ImportWorkbookService
     {
         $parts = explode(' — ', $label, 2);
         if (count($parts) !== 2) return null;
-        return Subject::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('code',$parts[0])->where('name',$parts[1])->where('status','ACTIVE')->first();
+        return Subject::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')->where('code',$parts[0])->where('name',$parts[1])->where('status','ACTIVE')->first();
     }
 
     private function resolveRombel(string $label, string $yearName, string $tenantId): ?Rombel
@@ -352,10 +352,10 @@ class ImportWorkbookService
         if ($label === '' || $yearName === '') return null;
         $parts = explode(' — ', $label, 2);
         if (count($parts) !== 2 || $parts[1] !== $yearName) return null;
-        $year = AcademicYear::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('name',$yearName)->first();
+        $year = AcademicYear::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')->where('name',$yearName)->first();
         if (!$year) return null;
         return Rombel::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('academic_year_id',$year->id)
-            ->where('name',$parts[0])->where('status','ACTIVE')->first();
+            ->where('name',$parts[0])->where('status','ACTIVE')->whereNull('deleted_at')->first();
     }
 
     private function resolveSemester(string $label, string $yearName, string $tenantId): ?Semester
@@ -364,7 +364,7 @@ class ImportWorkbookService
         if (count($parts) !== 2 || $parts[1] !== $yearName) return null;
         $year = AcademicYear::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('name',$yearName)->first();
         if (!$year) return null;
-        return Semester::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('academic_year_id',$year->id)->where('term',$parts[0])->first();
+        return Semester::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')->where('academic_year_id',$year->id)->where('term',$parts[0])->first();
     }
 
     private function validDate(string $date): bool
@@ -418,7 +418,7 @@ class ImportWorkbookService
 
     private function importAssignment(array $p, string $tenantId, string $userId): array
     {
-        $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)
+        $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')
             ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity']))->firstOrFail();
         $subject = $this->resolveSubject($p['subject'],$tenantId) ?? throw new RuntimeException('Mata pelajaran tidak lagi valid.');
         $rombel = $this->resolveRombel($p['rombel'],$p['academic_year'],$tenantId) ?? throw new RuntimeException('Rombel tidak lagi valid.');
