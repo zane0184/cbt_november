@@ -250,3 +250,14 @@ Pemeriksaan branch ref terbaru menunjukkan HEAD `f7912c207be8a4db8efba23100f8aab
 
 ## E.6 Final compare setelah seluruh handover diselaraskan
 Compare terbaru dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` ke branch pada HEAD `73333d9592291ae37e1849306555a735f10e6717` menghasilkan **54 path**: **42 added, 12 modified, 0 deleted**. Semua path berada di `docs/`; 0 source aplikasi. Perincian: 18 dokumen kerja (6 file baru dan 12 file diperbarui) serta 36 file backup/manifest. Dua handover lama juga diberi addendum keputusan final dan seluruh cakupan temuan OPEN. Angka 50 pada E.5 adalah snapshot sebelum dua handover dan dua backup tambahannya; angka 54 menggantikannya.
+
+
+## E.7 Verifikasi ref terakhir dan handover
+- HEAD branch saat pemeriksaan final terakhir: `2759c181bbd3a82a584a0de9ed3165e76f608764`.
+- Compare dari base W0-recheck ke ref final: 54 path (42 added, 12 modified, 0 deleted), seluruhnya docs/.
+- Dua handover yang ikut diperbarui dan backup sebelum perubahannya:
+  - `docs/00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md` — backup `docs/backup/reconciliation-2026-11-21/finalization/00_PAKET_HANDOVER_WEB_ADMIN_AGENT_BARU.md.before-final-decision`, blob `65e3678837082f6b17b7aee3a9f9830183cba79f`.
+  - `docs/HANDOVER_WEB_ADMIN_AGENT_BARU.md` — backup `docs/backup/reconciliation-2026-11-21/finalization/HANDOVER_WEB_ADMIN_AGENT_BARU.md.before-final-decision`, blob `54b2a65a7ad81f336d6b62e44789dd1593f89d81`.
+- Backup dua handover diverifikasi blob-identical dengan file sumber sebelum perubahan.
+- Master entry point tetap memiliki 18 tautan lokal unik yang valid.
+- PR #1/#3/#4/#5/#6/#7 OPEN/Draft/Unmerged dan PR #2 CLOSED/Unmerged; tidak ada PR disentuh.
