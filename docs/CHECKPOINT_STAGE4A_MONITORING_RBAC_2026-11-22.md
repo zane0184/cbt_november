@@ -63,6 +63,11 @@ Perubahan kunci:
 - Database disposable dibersihkan setelah tes.
 - Tidak ada uji produksi, browser manual, UAT madrasah, stress multi-process, atau concurrent deadlock multi-koneksi.
 
+## DESAIN LANJUTAN
+- Dokumen Stage 4B telah dibuat: `docs/DESAIN_STAGE4B_RUANG_SESI_PROKTOR_2026-11-22.md`.
+- Desain memakai relasi ruang-sesi yang fleksibel, snapshot rombel asal pada ExamParticipant, mapping peserta ke pasangan ruang-sesi, dan assignment Proktor pada pasangan ruang-sesi.
+- Belum ada perubahan source atau migration Stage 4B pada checkpoint ini; implementasi dimulai setelah backup, fixture, migration test, dan CI MySQL 8 disiapkan.
+
 ## LANGKAH BERIKUTNYA
 1. Stage 4B — ruang ujian, sesi, relasi ruang-sesi, pemetaan rombel/peserta, assignment Proktor pada scope ruang-sesi, dan pembatasan query seluruh endpoint monitoring/attempt/report.
 2. Stage 4B — schedule revision, NEEDS_REVIEW, EXPIRED/COMPLETED, conflict lintas assignment, serta uji multi-koneksi.
