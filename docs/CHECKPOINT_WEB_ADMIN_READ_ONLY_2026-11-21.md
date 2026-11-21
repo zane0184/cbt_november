@@ -307,3 +307,60 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Documentation preparation backup manifest current blob: f557b5007a732379a17021e8534a4d5a2e2c8efd; latest update commit 6fd9a49882f71aacf60d0094977acb9eb7c5fc8b.
 - Checkpoint before this ledger refresh has byte-identical backup at docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-ledger-refresh (commit 3b2126a8786038891a427904b67eae4cca691173).
 - Current state remains documentation-only; WAIT FOR EXPLICIT WA-01 EXECUTION APPROVAL.
+
+
+---
+
+## Checkpoint revisi final WA-01 — 21 November 2026
+
+### AUDIT
+- Source branch work/web-admin-w0-20261121 dibandingkan ulang dengan pin 2b4321ce032fd5e67cf022da8564a5287b8cef6f: identical, 0 ahead, 0 behind, 0 changed files.
+- Matriks method-level mencakup seluruh 6 policy, 12 API controller, Livewire lifecycle/action, serta seluruh route web CBT/Admin/Student yang relevan.
+- Temuan baru: QuestionBank dan ExamManagement shared Livewire belum fail-closed terbukti; assignment page belum memenuhi bukti metadata allowlist; monitoring web route perlu verifikasi middleware; QuestionPublication apiResource memiliki show/update route tanpa method pada controller.
+- Seluruh temuan tersebut dicatat BLOCKED; tidak disamarkan sebagai PASS.
+
+### DESAIN
+- Matriks final: docs/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md.
+- Paket WA-01 direvisi dengan addendum method-level, Livewire, assignment, permission DB gate, WA-03 boundary dan test plan final.
+- Pilihan desain Livewire dan assignment metadata memerlukan keputusan/approval sebelum coding.
+- RolePermissionBootstrapper disiapkan sebagai perubahan kode terpisah dari eksekusi database.
+- Bootstrapper execution memerlukan approval database terpisah, snapshot pivot, clone, idempotency, backup/restore drill dan postflight.
+- WA-01 acceptance hanya mempertahankan perilaku Guru W0; schedule revision/status/capability Guru WA-03 tetap CROSS-SCOPE BLOCKED.
+
+### IMPLEMENTASI
+- **NOT STARTED.**
+- Tidak ada source aplikasi, database, migration, seeder, permission pivot, konfigurasi, source branch, PR, deployment, atau Web Guru yang berubah.
+- Daftar source target 23 file tidak berubah. Assignment component/view/model/service tetap protected dan excluded.
+- QuestionBank/ExamManagement serta method schedule terkait ditandai conditional/BLOCKED; tidak ada patch.
+
+### PENGUJIAN
+- 69 test IDs pada matriks final: seluruhnya **NOT RUN**.
+- HTTP/API, Livewire lifecycle/snapshot/browser, query/eager-load capture, metadata HTML/response, cache prewarm, export-before-generation, MySQL 8/InnoDB, bootstrapper clone dan restore drill: NOT RUN.
+- Tidak ada PASS yang diklaim.
+
+### Publikasi
+- Paket revisi: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md
+  - Commit: 0174b955876a7c8ed5f2ee7148be4b6b57067292
+  - Blob: 5899473c44ded53c94de1a897cc1d2ea0a0a6bd5
+- Matriks final: docs/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md
+  - Commit: 67799840e39614592c916e2a4ffc0bb214cd5e8b
+  - Blob akan dicatat pada manifest setelah fetch verifikasi.
+- Backup sebelum revisi paket: docs/backup/wa-01-preparation-2026-11-21/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md.before-final-authorization-matrix
+  - Blob identik dengan paket sebelum revisi: 636ac9c2c6b78e1b0fa34b767257e2a3932b1dbd
+- Backup sebelum revisi checkpoint: docs/backup/wa-01-preparation-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-final-wa01-authorization-revision
+  - Blob identik dengan checkpoint sebelum revisi: accd8e72a01324574d080040a4a7a3ef11c62a7d
+- Branch dokumentasi: docs/canonical-reconciliation-admin-guru-20261121.
+- Source branch: work/web-admin-w0-20261121; tidak diubah.
+- Tidak ada PR dibuat/diubah/merge/close.
+
+### Blocker yang tersisa
+1. WA01-B01 QuestionBank shared Livewire/stale snapshot.
+2. WA01-B02 ExamManagement shared Livewire dan schedule Guru.
+3. WA01-B03 Assignment metadata allowlist; protected files tidak boleh berubah pada WA-01.
+4. WA01-B04 Middleware route web monitoring.
+5. WA01-B05 QuestionPublication show/update route gap.
+6. WA01-B06 Approval DB terpisah untuk bootstrapper/pivot.
+7. WA01-B07 Shared schedule/WA-03 cross-scope.
+8. WA01-B08 Runtime evidence belum tersedia.
+
+**Stop gate:** dokumentasi final dipublikasikan. Implementasi tetap NOT STARTED. Tunggu persetujuan pengguna; jangan mulai coding atau perubahan database.
