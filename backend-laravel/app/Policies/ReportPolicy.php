@@ -19,7 +19,7 @@ class ReportPolicy
             return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $exam);
         }
 
-        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) && $user->hasPermission('report.view');
+        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
     }
 
     /**
