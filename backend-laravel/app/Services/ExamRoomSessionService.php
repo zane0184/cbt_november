@@ -46,6 +46,86 @@ class ExamRoomSessionService
         });
     }
 
+    public function updateRoom(User $actor, string $roomId, array $data): ExamRoom
+    {
+        $this->assertAdmin($actor);
+        $validated = validator($data, [
+            'code' => ['required', 'string', 'max:50', Rule::unique('exam_rooms', 'code')
+                ->where('tenant_id', $actor->tenant_id)->ignore($roomId)],
+            'name' => ['required', 'string', 'max:150'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'capacity' => ['required', 'integer', 'min:1', 'max:5000'],
+            'status' => ['required', Rule::in(['ACTIVE', 'INACTIVE'])],
+        ])->validate();
+
+        return DB::transaction(function () use ($actor, $roomId, $validated) {
+            $room = ExamRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->whereKey($roomId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $futureSessionExists = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_room_id', $room->id)
+                ->where('status', 'ACTIVE')
+                ->whereHas('session', function ($query) {
+                    $query->whereIn('status', ['SCHEDULED', 'ACTIVE'])
+                        ->where('ends_at', '>', now());
+                })
+                ->exists();
+
+            if ($validated['status'] === 'INACTIVE' && $futureSessionExists) {
+                throw ValidationException::withMessages([
+                    'status' => 'Ruang tidak dapat dinonaktifkan selama masih digunakan sesi yang belum selesai.',
+                ]);
+            }
+
+            $overrideExceedsCapacity = ExamSessionRoom::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_room_id', $room->id)
+                ->where('status', 'ACTIVE')
+                ->where('capacity_override', '>', $validated['capacity'])
+                ->exists();
+
+            if ($overrideExceedsCapacity) {
+                throw ValidationException::withMessages([
+                    'capacity' => 'Kapasitas baru tidak boleh lebih kecil daripada override kapasitas sesi yang masih aktif.',
+                ]);
+            }
+
+            $maxAssigned = DB::table('exam_session_rooms as esr')
+                ->join('exam_participant_room_assignments as epa', function ($join) {
+                    $join->on('epa.exam_session_room_id', '=', 'esr.id')
+                        ->on('epa.tenant_id', '=', 'esr.tenant_id')
+                        ->on('epa.exam_id', '=', 'esr.exam_id');
+                })
+                ->where('esr.tenant_id', $actor->tenant_id)
+                ->where('esr.exam_room_id', $room->id)
+                ->where('esr.status', 'ACTIVE')
+                ->where('epa.status', 'ACTIVE')
+                ->groupBy('esr.id')
+                ->selectRaw('COUNT(epa.id) AS assigned_count')
+                ->get()
+                ->max('assigned_count') ?? 0;
+
+            if ((int) $validated['capacity'] < (int) $maxAssigned) {
+                throw ValidationException::withMessages([
+                    'capacity' => 'Kapasitas baru lebih kecil daripada jumlah peserta yang sudah ditempatkan pada salah satu sesi.',
+                ]);
+            }
+
+            $old = $room->only(['code', 'name', 'location', 'capacity', 'status']);
+            $room->update($validated);
+
+            $this->auditService->log('EXAM_ROOM_UPDATE', 'ExamRoom', $room->id, $old, $room->only([
+                'code', 'name', 'location', 'capacity', 'status',
+            ]));
+
+            return $room->fresh();
+        }, 3);
+    }
+
     public function createSession(
         User $actor,
         string $examId,
@@ -261,9 +341,10 @@ class ExamRoomSessionService
                 ]);
             }
 
-            if ($sessionRoom->status !== 'ACTIVE' || $session->status !== 'SCHEDULED') {
+            if ($room->status !== 'ACTIVE' || $rombel->status !== 'ACTIVE'
+                || $sessionRoom->status !== 'ACTIVE' || $session->status !== 'SCHEDULED') {
                 throw ValidationException::withMessages([
-                    'sessionRoom' => 'Pemetaan hanya dapat dilakukan pada pasangan sesi-ruang yang aktif dan belum berjalan.',
+                    'sessionRoom' => 'Pemetaan hanya dapat dilakukan pada ruang dan rombel aktif serta sesi yang belum berjalan.',
                 ]);
             }
 
@@ -426,6 +507,12 @@ class ExamRoomSessionService
                 return;
             }
 
+            if ($session->status !== 'SCHEDULED' || $sessionRoom->status !== 'ACTIVE') {
+                throw ValidationException::withMessages([
+                    'mapping' => 'Pemetaan rombel hanya dapat dilepaskan sebelum sesi mulai.',
+                ]);
+            }
+
             $participantIds = ExamParticipant::query()
                 ->where('tenant_id', $actor->tenant_id)
                 ->where('exam_id', $exam->id)
@@ -443,6 +530,19 @@ class ExamRoomSessionService
                 ->orderBy('participant_id')
                 ->lockForUpdate()
                 ->get();
+
+            $hasActiveAttempt = ExamParticipantRoomAssignment::query()
+                ->where('tenant_id', $actor->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->whereIn('id', $assignments->pluck('id'))
+                ->whereHas('participant.attempts', fn ($query) => $query->where('status', 'IN_PROGRESS'))
+                ->exists();
+
+            if ($hasActiveAttempt) {
+                throw ValidationException::withMessages([
+                    'mapping' => 'Pemetaan tidak dapat dilepaskan ketika peserta sedang mengerjakan ujian.',
+                ]);
+            }
 
             foreach ($assignments as $assignment) {
                 $assignment->update([
