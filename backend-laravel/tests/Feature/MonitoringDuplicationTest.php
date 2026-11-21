@@ -139,7 +139,7 @@ class MonitoringDuplicationTest extends TestCase
         return $guru->fresh();
     }
 
-    private function createPendingTemporaryProctorAssignment(): \\App\\Models\\ExamProctorAssignment
+    private function createPendingTemporaryProctorAssignment(): \App\Models\ExamProctorAssignment
     {
         return app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
