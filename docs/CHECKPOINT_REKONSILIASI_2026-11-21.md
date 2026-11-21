@@ -104,3 +104,10 @@ Compare lengkap dari base W0-recheck ke HEAD awal branch konsolidasi 55cfe325aef
 - Source, migration, seeder, database, .env, PR, merge, rebase, force-push, deployment, Android dan W6 implementation tidak disentuh.
 
 **Checkpoint ini menggantikan semua status OPEN/PROPOSED sebelumnya terkait semantik status Proktor dan angka compare 18/24/28.**
+
+
+## Provenance refresh
+- Provenance final addendum commit: `9088bf03ab7b7c5606b7cfe360c4555f84f131f5`.
+- Report final compare snapshot: base `fb058f05264b8d464d687583c53f06fbb7fe54f7` → compare HEAD `3ec270e98fe9e6dfaed5a4a2db3d8a88aae3701d`: 49 paths (39 added, 10 modified, 0 deleted), all docs/.
+- Checkpoint ini diperbarui setelah laporan dan provenance; branch HEAD aktual setelah commit checkpoint harus diverifikasi melalui ref branch, bukan ditebak dari SHA sebelumnya.
+- Backup checkpoint tepat sebelum refresh ini: `docs/backup/reconciliation-2026-11-21/finalization/CHECKPOINT_REKONSILIASI_2026-11-21.md.before-provenance-refresh`, blob SHA `e28aaa697433197e3969d69cdea9eb675a8d04a2`, cocok dengan sumber sebelum perubahan.
