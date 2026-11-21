@@ -90,6 +90,7 @@ class ImportTemplateGeneratorTest extends TestCase
         $this->assertSame('1A — 2026/2027', $guru->getSheetByName('Referensi')->getCell('B2')->getValue());
         $this->assertSame('2026/2027', $guru->getSheetByName('Referensi')->getCell('C2')->getValue());
         $this->assertSame('GANJIL — 2026/2027', $guru->getSheetByName('Referensi')->getCell('D2')->getValue());
+        $this->assertSame('CONTOH - HAPUS BARIS INI', $guru->getSheetByName('Penugasan Guru')->getCell('A2')->getValue());
         $this->assertSame('=SubjectsList', $guru->getSheetByName('Penugasan Guru')->getCell('B2')->getDataValidation()->getFormula1());
         $this->assertSame('=RombelsList', $guru->getSheetByName('Penugasan Guru')->getCell('C2')->getDataValidation()->getFormula1());
         $this->assertSame('=AcademicYearsList', $guru->getSheetByName('Penugasan Guru')->getCell('D2')->getDataValidation()->getFormula1());
