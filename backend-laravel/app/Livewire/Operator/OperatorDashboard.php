@@ -26,11 +26,9 @@ class OperatorDashboard extends Component
         abort_unless(
             $user
                 && $user->tenant_id
-                && $user->hasRole('ADMIN_MADRASAH')
-                && !$user->hasRole('ADMIN')
-                && !$user->hasRole('OPERATOR'),
+                && $user->hasRole('ADMIN_MADRASAH'),
             403,
-            'Dashboard hanya tersedia untuk Admin Madrasah aktif pada tenant yang sesuai.'
+            'Dashboard hanya tersedia untuk Admin Madrasah pada tenant yang sesuai.'
         );
     }
 
