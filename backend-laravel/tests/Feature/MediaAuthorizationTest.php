@@ -49,6 +49,23 @@ class MediaAuthorizationTest extends TestCase
         $this->bootstrapCbtRolePermissions();
     }
 
+    public function test_admin_multi_role_cannot_access_question_media_library(): void
+    {
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $admin = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Admin Multi Role',
+            'email' => 'admin-multi@media.test',
+            'password' => bcrypt('password'),
+        ]);
+        $admin->roles()->attach([$adminRole->id, $guruRole->id]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->getJson('/api/v1/media')
+            ->assertForbidden();
+    }
+
     public function test_user_media_owner_is_forced_to_authenticated_user(): void
     {
         Storage::fake('local');
