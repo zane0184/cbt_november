@@ -239,6 +239,18 @@ class MonitoringDuplicationTest extends TestCase
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")->assertOk();
     }
 
+    public function test_legacy_active_status_never_grants_monitoring_capability(): void
+    {
+        $assignment = $this->createPendingTemporaryProctorAssignment();
+        \\Illuminate\\Support\\Facades\\DB::table('exam_proctor_assignments')
+            ->where('id', $assignment->id)
+            ->update(['status' => 'ACTIVE']);
+
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+            ->assertForbidden();
+    }
+
     public function test_assigned_guru_can_monitor_only_the_exam_with_a_confirmed_assignment(): void
     {
         $this->assignTemporaryProctor();
