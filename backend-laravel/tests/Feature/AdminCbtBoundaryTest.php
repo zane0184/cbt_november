@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\ExamManagement;
+use App\Livewire\Admin\QuestionBank;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
@@ -13,6 +15,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class AdminCbtBoundaryTest extends TestCase
@@ -77,6 +80,10 @@ class AdminCbtBoundaryTest extends TestCase
         $this->assertFalse($gate->allows('viewExamResults', $exam));
         $this->assertFalse($gate->allows('viewStudentResults', $admin));
         $this->assertFalse($gate->allows('viewSubjectResults', $subject));
+
+        $this->actingAs($admin);
+        Livewire::test(QuestionBank::class)->assertForbidden();
+        Livewire::test(ExamManagement::class)->assertForbidden();
     }
 
     public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions(): void
