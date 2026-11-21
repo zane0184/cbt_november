@@ -216,3 +216,48 @@ Semua test berikut NOT RUN. Runtime acceptance wajib memakai MySQL 8/InnoDB; SQL
 | T-130 | Preserve distinct user accounts | Dua user lama (Admin dan Operator) dimiliki orang berbeda | Dua user ID/password tetap terpisah; hanya role/policy disatukan |
 | T-131 | UI naming | Login dengan akun Admin lama dan Operator lama setelah migrasi | UI hanya menampilkan Admin Madrasah; tidak ada label/menu/portal Operator |
 | T-132 | Installer terminology | Installer menampilkan istilah Operator Installer untuk token bootstrap | Tetap diperlakukan sebagai operator server/installer, bukan role Operator Madrasah |
+
+## ADDENDUM TEST — ROLE OPERATOR DIHAPUS, ADMIN/GURU, DAN PROKTOR (T-133 s.d. T-168)
+
+Semua test berikut berstatus **NOT RUN** sampai dijalankan pada source commit yang dipilih dan bukti hasil disimpan. Test authorization wajib menggunakan request langsung/API, bukan hanya memeriksa menu tersembunyi.
+
+| Test ID | Skenario | Hasil yang diharapkan | Prioritas | Lingkungan |
+|---|---|---|---|---|
+| T-133 | Fresh install/bootstrap role | Tidak membuat role aktif OPERATOR atau PROKTOR. | P0 | MySQL 8 disposable |
+| T-134 | Migrasi akun legacy OPERATOR | User dipetakan ke ADMIN_MADRASAH; user ID/password hash/tenant/profil/histori tetap. | P0 | Restore DB disposable |
+| T-135 | Dua akun legacy milik orang berbeda | Dua user record tetap terpisah; tidak ada merge. | P0 | MySQL 8 disposable |
+| T-136 | Legacy mapping ambigu/multi-role/orphan/tenant mismatch | Migrasi berhenti fail-closed dan meminta manual review. | P0 | MySQL 8 disposable |
+| T-137 | Pasca migrasi | Tidak ada role row/pivot/grant OPERATOR aktif. | P0 | MySQL 8 disposable |
+| T-138 | Runtime alias | Login/resolver/policy/route tidak menerima OPERATOR/ADMIN sebagai alias aktif. | P0 | Feature + HTTP |
+| T-139 | Permission parity | Semua akun ADMIN_MADRASAH mempunyai permission array dan keputusan route/action yang identik. | P0 | Feature + DB |
+| T-140 | Admin administrative CRUD | Admin dapat melakukan aksi administrasi yang sah sesuai permission dan tenant. | P1 | Feature + HTTP |
+| T-141 | Admin akses bank soal | Direct endpoint/Livewire action ditolak. | P0 | Feature + HTTP |
+| T-142 | Admin akses isi soal/kunci | Direct API, detail, export dan media key ditolak. | P0 | Feature + HTTP |
+| T-143 | Admin membuat/mengubah ujian | Create/update/delete exam ditolak. | P0 | Feature + HTTP |
+| T-144 | Admin mengubah jadwal/mapel/konfigurasi | Semua jalur API/Livewire ditolak. | P0 | Feature + HTTP |
+| T-145 | Admin publish/token/snapshot | Publish, lock, token read/write dan snapshot mutation ditolak. | P0 | Feature + HTTP |
+| T-146 | Admin Attempt/Answer/Score | Detail/list/mutasi Attempt, Answer, Score ditolak. | P0 | Feature + HTTP |
+| T-147 | Admin grading/correction | Penilaian dan koreksi jawaban ditolak. | P0 | Feature + HTTP |
+| T-148 | Admin result/analytics | Nilai, hasil, detail jawaban, analitik ujian Guru ditolak. | P0 | Feature + HTTP |
+| T-149 | Admin operational monitoring/close | Monitoring operasional, close/finalize/reopen/status update ditolak. | P0 | Feature + HTTP |
+| T-150 | Admin emergency CBT actions | Reset Attempt, Force Submit, takeover perangkat, perpanjangan waktu ditolak. | P0 | Feature + HTTP |
+| T-151 | Admin metadata exam list | Hanya metadata minimum yang diperlukan untuk assignment tampil; tidak ada payload/hasil/monitoring. | P0 | Feature + query |
+| T-152 | Admin Proktor assignment | Admin dapat assign/review/confirm/revoke Guru pengawas sesuai scope; tidak mengubah exam. | P1 | Feature + HTTP |
+| T-153 | Proktor role/portal | Tidak ada role/portal/login permanen PROKTOR. | P0 | Feature + route |
+| T-154 | Guru eligible | Semua Guru aktif tenant-local dapat dipilih, tanpa membatasi kategori Guru kelas/mapel. | P1 | Feature + DB |
+| T-155 | Cross-tenant assignment | Guru/rombel/exam tenant lain ditolak. | P0 | MySQL 8 |
+| T-156 | Adjacent intervals | 07:00–09:00 dan 09:00–11:00 diterima. | P1 | MySQL 8 |
+| T-157 | Overlap lintas ujian/rombel | Assignment Guru yang overlap ditolak. | P0 | MySQL 8 |
+| T-158 | NEEDS_REVIEW capability | Assignment NEEDS_REVIEW tidak memberi hak Proktor. | P0 | Feature + HTTP |
+| T-159 | PENDING capability | Assignment PENDING tidak memberi hak Proktor. | P0 | Feature + HTTP |
+| T-160 | CONFIRMED capability | Assignment CONFIRMED memberi capability hanya pada tenant/exam/rombel dan interval yang benar. | P0 | Feature + HTTP |
+| T-161 | Revoke | Capability langsung dicabut pada request berikutnya. | P0 | Feature + HTTP |
+| T-162 | Expiry | Hak ditolak saat serverNow >= expires_at meski cron belum berjalan. | P0 | Feature + time control |
+| T-163 | Reschedule | Perubahan jadwal Guru menandai semua assignment terdampak NEEDS_REVIEW secara atomik. | P0 | MySQL 8 |
+| T-164 | Reschedule after attempt started | Perubahan ditolak sesuai aturan CBT yang disepakati. | P0 | MySQL 8 |
+| T-165 | Shared schedule service | API dan Livewire memanggil ExamScheduleChangeService yang sama. | P0 | Feature + architecture |
+| T-166 | Concurrent assignment | Dua koneksi MySQL/InnoDB menugaskan Guru yang sama pada interval overlap; hanya satu transaksi berhasil. | P0 | MySQL 8, 2 connections |
+| T-167 | Audit failure | Kegagalan audit event menggagalkan transaksi assignment/reschedule/revoke. | P0 | MySQL 8 |
+| T-168 | Direct schedule update bypass | Update jadwal di luar ExamScheduleChangeService ditolak/tidak dapat terjadi. | P0 | Feature + DB |
+
+Test T-001–T-132 dipertahankan. Penambahan ini tidak mengubah status eksekusi test sebelumnya. Tidak ada test pada addendum ini yang dianggap PASS hanya karena sudah didokumentasikan.
