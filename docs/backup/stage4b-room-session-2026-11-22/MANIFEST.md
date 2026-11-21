@@ -164,3 +164,11 @@ The Admin Livewire component no longer eager-loads participant room assignments,
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-session-completion-and-profile-revocation-tests | dbd5fb28758a23d08a5ac6c78da4935481fe60ce | 33713 |
 
 Added fail-closed tests for a completed session and a soft-deleted TeacherProfile while a Proktor assignment is otherwise confirmed.
+
+## Additional snapshot — direct API denial status matrix
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-http-denial-status-matrix-adjustment | 7f144dbc3df60a91b90b2df03b50d7c1c4ac4f37 | 34857 |
+
+The API matrix now accepts 403/404/405 for prohibited non-student POST operations. All three are denial responses; any successful response or validation-only 422 remains a test failure.
