@@ -26,7 +26,7 @@ class MediaController extends Controller
         $user = $request->user();
 
         abort_unless(
-            $user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'),
+            $user->hasRole('GURU'),
             ResponseCode::HTTP_FORBIDDEN
         );
 
@@ -279,7 +279,7 @@ class MediaController extends Controller
                 ->find($media->owner_id);
 
             $questionReadable = false;
-            if ($question && ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'))) {
+            if ($question && $user->hasRole('GURU')) {
                 $questionReadable = Gate::allows('view', $question);
             }
 
@@ -324,7 +324,7 @@ class MediaController extends Controller
             Gate::authorize('update', $question);
             if ($user->hasRole('GURU')) {
                 abort_unless($media->uploaded_by === $user->id, ResponseCode::HTTP_FORBIDDEN);
-            } elseif (!$user->hasRole('ADMIN_MADRASAH')) {
+            } else {
                 abort(ResponseCode::HTTP_FORBIDDEN);
             }
         } else {
