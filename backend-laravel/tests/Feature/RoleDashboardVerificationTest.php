@@ -215,10 +215,10 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_can_access_curriculum_and_exams()
+    public function operator_legacy_role_cannot_access_admin_or_cbt_modules()
     {
         $this->actingAs($this->operatorA);
-        $this->get('/admin/curriculum')->assertStatus(200);
+        $this->get('/admin/curriculum')->assertStatus(403);
         $this->get('/admin/exams')->assertStatus(403);
     }
 
@@ -287,11 +287,11 @@ class RoleDashboardVerificationTest extends TestCase
         // Tenant A authorized users can access monitoring
         $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
         $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
-        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
-        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
+        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
+        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
 
         // The monitoring detail response must be an allowlist, not a raw attempt model.
-        $attemptResponse = $this->actingAs($this->adminA, 'sanctum')
+        $attemptResponse = $this->actingAs($this->kamadA, 'sanctum')
             ->getJson("/api/v1/exams/{$exam->id}/monitoring/attempts/{$attempt->id}");
         $attemptResponse->assertStatus(200)
             ->assertJsonPath('data.attempt.participant.user.name', 'Siswa A')
