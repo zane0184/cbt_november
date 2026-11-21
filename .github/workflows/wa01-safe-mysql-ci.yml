@@ -70,6 +70,8 @@ jobs:
           composer validate --no-check-publish 2>&1 | tee "$RUNNER_TEMP/wa01-safe/composer-validate.log"
           composer install --no-interaction --prefer-dist --no-progress --no-scripts 2>&1 | tee "$RUNNER_TEMP/wa01-safe/composer-install.log"
           composer check-platform-reqs 2>&1 | tee "$RUNNER_TEMP/wa01-safe/composer-platform.log"
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
           DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan package:discover --ansi 2>&1 | tee "$RUNNER_TEMP/wa01-safe/package-discover.log"
 
       - name: Create unique disposable schema and restricted application user
