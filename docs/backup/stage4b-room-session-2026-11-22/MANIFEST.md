@@ -146,3 +146,13 @@ The Admin room UI test exercises the Livewire edit/save/deactivation path. The P
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-monitoring-attempt-dto-path-fix | 00ea1d597aeac638018b981a1748482611ff28fa | 33697 |
 
 The monitoring endpoint returns the operational attempt under `data.attempt`; the test now asserts that exact response shape and verifies answer payloads are absent from that nested DTO.
+
+## Additional snapshots — remove participant operational data from Admin room UI
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/app/Livewire/Admin/ExamRoomSessionManagement.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionManagement.php.before-remove-participant-operational-data-from-admin | 93959c9376cb938c5d0391207d6f16d3aaeace88 | 13155 |
+| backend-laravel/resources/views/livewire/admin/exam-room-session-management.blade.php | docs/backup/stage4b-room-session-2026-11-22/exam-room-session-management.blade.php.before-remove-participant-operational-data-from-admin | 59f725909b6c62d8b282317cdf1827162eff6d36 | 19984 |
+| backend-laravel/tests/Feature/ExamRoomSessionManagementTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionManagementTest.php.before-admin-participant-data-assertion | c3d9732eeb7b25a2e994b4cfa48e81c5d3e9fc7f | 25663 |
+
+The Admin Livewire component no longer eager-loads participant room assignments, and the view no longer exposes an operational participant count. Capacity remains a room metadata field. A regression assertion prevents participant names/counts from appearing in this Admin UI.
