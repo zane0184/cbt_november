@@ -26,9 +26,7 @@ class ExamPolicy
             return TeacherAccess::canManageExam($user, $exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) {
-            return false;
-        }
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
 
         if ($user->hasRole('KAMAD')) {
             return true;
@@ -204,19 +202,6 @@ class ExamPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
 
-        if ($user->hasRole('PROKTOR')) {
-            return ExamProctorAssignment::query()
-                ->activeNow()
-                ->where('tenant_id', $user->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->where('proctor_user_id', $user->id)
-                ->exists();
-        }
-
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) {
-            return false;
-        }
-
         if ($user->hasRole('KAMAD')) {
             return $user->hasPermission('exam.monitor');
         }
@@ -236,7 +221,7 @@ class ExamPolicy
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($user->hasRole('PROKTOR') || $user->hasRole('KAMAD') || $user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasRole('KAMAD') || $user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH')) return false;
 
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.grade')
