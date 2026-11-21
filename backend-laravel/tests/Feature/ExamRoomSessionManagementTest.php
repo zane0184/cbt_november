@@ -623,4 +623,29 @@ class ExamRoomSessionManagementTest extends TestCase
         }
     }
 
+    public function test_admin_room_livewire_edits_metadata_and_deactivates_room(): void
+    {
+        $room = $this->createRoom('LIVEWIRE1');
+
+        Livewire::actingAs($this->admin)
+            ->test(ExamRoomSessionManagement::class)
+            ->call('editRoom', $room->id)
+            ->assertSet('editingRoomId', $room->id)
+            ->set('roomName', 'Ruang Livewire Diperbarui')
+            ->set('roomLocation', 'Gedung Administrasi')
+            ->set('roomCapacity', 24)
+            ->set('roomStatus', 'INACTIVE')
+            ->call('saveRoom')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('exam_rooms', [
+            'id' => $room->id,
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Ruang Livewire Diperbarui',
+            'location' => 'Gedung Administrasi',
+            'capacity' => 24,
+            'status' => 'INACTIVE',
+        ]);
+    }
+
 }
