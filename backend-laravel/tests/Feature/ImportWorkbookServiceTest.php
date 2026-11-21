@@ -193,6 +193,13 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertSame('SKIPPED', $rows[0]->status);
         $this->assertSame('INVALID', $rows[1]->status);
         $this->assertSame('INVALID', $rows[2]->status);
+
+        $result = app(ImportWorkbookService::class)->confirm($batch->id, $this->tenant->id, $this->admin->id);
+        $this->assertSame('Guru Lama', User::query()->whereKey($existing->id)->value('name'));
+        $this->assertSame('Guru Lama', TeacherProfile::query()->where('user_id', $existing->id)->value('full_name'));
+        $this->assertSame(1, TeacherProfile::query()->where('tenant_id', $this->tenant->id)->where('nip', '198001012005011001')->count());
+        $this->assertSame(1, $result['batch']->skipped_rows);
+        $this->assertSame(2, $result['batch']->failed_rows);
     }
 
     public function test_unknown_rombel_and_cross_tenant_reference_are_invalid(): void
