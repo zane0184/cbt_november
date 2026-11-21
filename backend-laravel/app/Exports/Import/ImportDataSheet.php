@@ -61,7 +61,7 @@ class ImportDataSheet extends DefaultValueBinder implements FromArray, WithTitle
                 foreach (array_merge($this->textColumns, array_keys($this->referenceColumns)) as $column) {
                     $sheet->getStyle($column.':'.$column)->getNumberFormat()->setFormatCode('@');
                 }
-                $lastRow = max(2000, count($this->examples) + 1);
+                $lastRow = max(5001, count($this->examples) + 1);
                 foreach ($this->referenceColumns as $column => $options) {
                     if (!$options) continue;
                     $index = $this->referenceColumnIndexes[$column] ?? 1;
