@@ -232,6 +232,14 @@ jobs:
           php artisan test tests/Feature/AdminCbtBoundaryWithoutPermissionFixturesTest.php --display-warnings 2>&1 |
             tee "$RUNNER_TEMP/wa01-safe/phpunit-admin-boundary.log"
 
+      - name: Run license middleware browser redirect regression
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/EnsureLicenseActiveTest.php --filter=test_browser_license_block_returns_a_standard_http_redirect_response --display-warnings 2>&1 |
+            tee "$RUNNER_TEMP/wa01-safe/phpunit-license-browser-redirect.log"
+
       - name: Verify permissions tables remain empty after selected test
         working-directory: backend-laravel
         shell: bash
