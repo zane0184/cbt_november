@@ -193,6 +193,18 @@ class MonitoringDuplicationTest extends TestCase
     {
         $this->assignTemporaryProctor();
 
+        // Simulate stale legacy Guru grants in memory only; no permission pivot is mutated.
+        $adminRole = $this->admin->roles()->firstOrFail();
+        $staleGuruRole = new Role(['name' => 'GURU', 'label' => 'Legacy Guru']);
+        $staleGuruRole->setRelation('permissions', collect([
+            new Permission(['name' => 'exam.monitor', 'label' => 'Stale monitoring permission']),
+        ]));
+        $adminRole->setRelation('permissions', collect([
+            new Permission(['name' => 'exam.monitor', 'label' => 'Stale monitoring permission']),
+            new Permission(['name' => 'exam.proctor.assign', 'label' => 'Temporary assignment permission']),
+        ]));
+        $this->admin->setRelation('roles', collect([$adminRole, $staleGuruRole]));
+
         $this->actingAs($this->admin, 'sanctum')
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring/participants")
             ->assertForbidden();
