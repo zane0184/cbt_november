@@ -6,7 +6,6 @@ use App\Http\Controllers\StudentExamController;
 use App\Livewire\Teacher\ResultList;
 use App\Livewire\Teacher\ResultDetail;
 use App\Livewire\Admin\AdminDashboard;
-use App\Livewire\Kamad\KamadDashboard;
 use App\Livewire\Admin\TenantProfileManagement;
 use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\StudentRombelManagement;
@@ -25,10 +24,6 @@ Route::get('/', function () {
 
         if ($user->hasRole('ADMIN_MADRASAH')) {
             return redirect('/admin/dashboard');
-        }
-
-        if ($user->hasRole('KAMAD') && !$user->hasRole('ADMIN_MADRASAH')) {
-            return redirect('/admin/kamad');
         }
 
         if ($user->hasRole('GURU')) {
@@ -88,7 +83,6 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('stude
 Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
     Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');
-    Route::get('/admin/kamad', KamadDashboard::class)->name('admin.kamad');
     Route::get('/admin/profile', TenantProfileManagement::class)->name('admin.profile');
 
     // Temporary URL compatibility only: the Operator dashboard itself is retired.
