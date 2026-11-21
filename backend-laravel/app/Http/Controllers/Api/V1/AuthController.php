@@ -32,7 +32,10 @@ class AuthController extends Controller
         }
 
         $user = $resolver->resolve($identifier);
-        if (! $user || ! Hash::check((string) $validated['password'], (string) $user->password) || $user->hasRole('SUPER_ADMIN')) {
+        $roles = $user?->roles?->pluck('name')->all() ?? [];
+        $allowedRoles = ['ADMIN_MADRASAH', 'KAMAD', 'GURU', 'SISWA'];
+        if (! $user || ! Hash::check((string) $validated['password'], (string) $user->password)
+            || count($roles) !== 1 || !in_array($roles[0], $allowedRoles, true)) {
             RateLimiter::hit($throttleKey, 60);
             throw ValidationException::withMessages(['identifier' => ['Identitas atau password tidak valid.']]);
         }

@@ -14,7 +14,6 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
-use App\Livewire\Proktor\ProktorDashboard;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -83,7 +82,6 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
 
     // Temporary URL compatibility only: the Operator dashboard itself is retired.
     Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'));
-    Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);
