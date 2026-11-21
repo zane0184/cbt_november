@@ -10,11 +10,13 @@ class AssessmentPolicy
 {
     public function viewAny(User $user): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return $user->hasRole('KAMAD') || $user->hasRole('GURU') || $user->hasRole('SISWA');
     }
 
     public function view(User $user, Assessment $assessment): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $assessment->tenant_id
             || $user->hasRole('ADMIN_MADRASAH')
             || $user->hasRole('OPERATOR')) return false;
@@ -33,12 +35,14 @@ class AssessmentPolicy
 
     public function create(User $user): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.manage');
     }
 
     public function update(User $user, Assessment $assessment): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $assessment->tenant_id) return false;
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.manage')
@@ -48,6 +52,7 @@ class AssessmentPolicy
 
     public function delete(User $user, Assessment $assessment): bool
     {
+        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $assessment->tenant_id) return false;
         if ($assessment->exams()->count() > 0) return false;
 
