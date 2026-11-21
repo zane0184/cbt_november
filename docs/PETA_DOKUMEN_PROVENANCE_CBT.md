@@ -165,3 +165,9 @@ DEC-WA-026 / Addendum 35 berstatus ACTIVE:
 Pada pemeriksaan ulang, 14 dari 15 path source kunci yang dipilih berhasil di-fetch pada recovery branch; path `backend-laravel/app/Services/ExamScheduleChangeService.php` tidak ditemukan pada ref tersebut. Source blob yang ditemukan tetap sesuai audit sebelumnya, termasuk seeder, role bootstrapper, resolver login, question bank, policy ujian/attempt/question, API ExamController, Livewire ExamManagement, ProctorAssignmentManagement, User, TenantScoped, IdentifyTenant dan ExamProctorAssignmentService. Ini pemeriksaan statis saja. Tidak ada PHPUnit/runtime/HTTP/MySQL concurrency/browser/UAT dijalankan.
 
 Matriks audit 23 modul dipertahankan; test T-001–T-168 dipertahankan dan T-169–T-173 ditambahkan. Seluruh test yang belum dijalankan tetap NOT RUN.
+
+
+## 7.7 Verifikasi compare dan checkpoint final
+Compare tree finalisasi dari base `fb058f05264b8d464d687583c53f06fbb7fe54f7` pada HEAD pemeriksaan akhir `3ec270e98fe9e6dfaed5a4a2db3d8a88aae3701d` menunjukkan 49 path: 39 added, 10 modified, 0 deleted. Semua berada di `docs/`; 0 source aplikasi. Rinciannya 16 dokumen kerja dan 33 backup/manifest. Angka 18/24/28 pada catatan sebelumnya adalah compare parsial dan sudah digantikan angka 49.
+
+Laporan akhir diperbarui pada commit `71cf460712c72dccbe0c7387faf4b6fc20dd7814`; checkpoint finalisasi diperbarui pada commit `312f9ba22bbe4195142ceac7bf4283e8daa73018`. Branch tetap tidak di-merge. Commit final yang menjadi HEAD branch harus dibaca dari branch ref aktual setelah update dokumentasi terakhir.
