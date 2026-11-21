@@ -295,7 +295,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 ### WA-01 package publication ledger
 - Paket eksekusi WA-01: docs/WA01_PAKET_EKSEKUSI_WEB_ADMIN_MENUNGGU_PERSETUJUAN_2026-11-21.md; blob 636ac9c2c6b78e1b0fa34b767257e2a3932b1dbd; latest update commit dea039f0bf44fe32acb8d7113ac7550d83e79b01.
 - Patch plan setelah penyesuaian WA-01: blob 7553ef0f46b2dd92a499c7bc6bfbd132dc7aada6; commit 35cdef25a42d7117080d5b1c4751afd8efcd6194.
-- Backup source/test manifest: docs/backup/wa-01-source-2026-11-21/MANIFEST.md; blob ad70462a1cce54ab535b5d3db0c6e6283d4a981a; creation commit 382af4dfe3505e13d941c8738d07ac83be996cf8.
+- Backup source/test manifest: docs/backup/wa-01-source-2026-11-21/MANIFEST.md; blob 7345a496c3f1cce62d889f154cb8a5bfe6fbc44b; latest manifest update commit d0382ca184aec8daca8e072dfc9d84075afe64d9.
 - Backup root contains 23 planned existing source files + 6 existing test files; all verified byte-identical against W0. The separate new test file is not yet created.
 - Backup copies of checkpoint and patch plan before this preparation are in docs/backup/wa-01-preparation-2026-11-21/.
 - Status: package ready for review, NOT APPROVED FOR CODING. Wait for explicit execution approval.
