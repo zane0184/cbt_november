@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
-use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
@@ -127,6 +126,8 @@ class MonitoringDuplicationTest extends TestCase
         $this->actingAs($this->admin)
             ->get("/exams/{$this->exam->id}/monitoring")
             ->assertForbidden();
+        $this->get("/exams/{$this->exam->id}/results")->assertForbidden();
+        $this->get("/exams/{$this->exam->id}/results/{$this->attempt2->id}")->assertForbidden();
 
         $this->actingAs($this->admin, 'sanctum');
 
