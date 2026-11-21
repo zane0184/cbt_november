@@ -693,3 +693,63 @@ Impact: final requirement “Guru aktif + TeacherProfile valid/aktif” cannot b
 Detailed model/query/FK matrix: `docs/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md` (published and backed up on the documentation branch).
 
 Audit remains OPEN pending final source-to-test trace validation and per-file patch plan. No implementation or DB change was performed.
+
+
+---
+
+## 18. ADDENDUM AUDIT PHASE 11 — raw query, relationship joins, login token and file/media paths (21 November 2026)
+
+### 18.1 Raw query inventory
+
+All `DB::table`, `DB::select`, join and relevant raw query sites in `app/` were inventoried. Key request-path controls:
+- `ExamController::hasLegacySnapshotHistory()`: raw `exam_attempt_answers` and `exam_question_scores` lookups include tenant_id + exam_id + snapshot IDs.
+- `MediaController::attachToQuestionVersion/detachFromQuestionVersion/questionHasActiveAttempt()`: pivot and exam/attempt/participant joins include tenant_id in the relevant join/filter conditions; file references are scoped by tenant.
+- `TeacherAccess`: raw joins include user.tenant_id = student_profile.tenant_id, pivot tenant_id = profile tenant_id, rombel tenant_id and assignment tenant. This is a positive defense-in-depth implementation.
+- `ExamSnapshotService::createSnapshots()`: raw history queries include tenant_id + exam_id + snapshot IDs; QuestionVersion and media are reloaded with tenant_id under locks.
+- `CurriculumAchievementService`: raw joins tie current score, attempt and tenant_id; inserts carry tenant_id in each achievement/contribution/source row.
+- `StudentRombelManagement`: pivot existence/insert includes tenant_id; parent Rombel and StudentProfile are tenant-scoped.
+- `ExpireExamAttemptsCommand`: cross-tenant candidate scan is maintenance-only; each candidate is revalidated under tenant context and parent locks.
+- `CleanupOrphanedMediaCommand`: global candidate scan is maintenance-only; row re-fetch, reference check and storage path are tenant-bound.
+- `Phase7dBenchmarkCommand`: explicitly switches to isolated SQLite `database/benchmark.sqlite`, runs migrate:fresh on that connection, and cleans up only the benchmark file; destructive benchmark deletes occur only on that isolated DB connection.
+- `InventoryLegacySuperAdminCommand`: reads users/roles/tenant data globally for CLI inventory, has an explicit no-mutation contract; no web route invokes it.
+- Installer migration table query is read-only and installer-only.
+
+### 18.2 P1-23 — Monitoring roster join does not independently bind User tenant
+
+- `MonitoringController::participants()` joins `users` to `exam_participants` on `user_id = users.id` and orders by users.name; it does not add `users.tenant_id = exam_participants.tenant_id` in the join.
+- `ExamParticipantController::index()` eager-loads `participants.user`; User has no TenantScoped trait.
+- Application participant creation validates User tenant_id equals Exam tenant, and ExamParticipant has tenant scope. However `exam_participants.user_id` lacks composite FK `(user_id, tenant_id)` to User, so a corrupt/legacy row could resolve a different-tenant User through these relations.
+- This is a defense-in-depth data exposure risk. It is not a demonstrated valid-path cross-tenant exploit. Add explicit tenant equality to join/relationship query and composite FK migration after disposable DB preflight.
+
+### 18.3 Login and session controls — confirmed source details
+
+- `LoginIdentityResolver::resolve()` explicitly filters `deleted_at IS NULL` for User, TeacherProfile and StudentProfile, so soft-deleted users/profiles cannot log in through the normal identifier resolver.
+- It requires exactly one LocalInstallationIdentity and exactly one Tenant, then filters candidates by identity tenant. This is a positive control.
+- It accepts staff roles ADMIN_MADRASAH, ADMIN, OPERATOR, KAMAD and PROKTOR; API AuthController issues tokens without a narrower active-role allowlist. Web AuthController allows ADMIN_MADRASAH, OPERATOR, KAMAD, GURU, PROKTOR and SISWA.
+- AuthWebController sets TenantContext to installation identity tenant after login; IdentifyTenant middleware then derives context from authenticated user on protected requests. Normal login resolver ensures the two match; old Sanctum tokens are not re-resolved through the login resolver.
+- `AuthController::me()` returns the authenticated user's role/permission names; it does not return other users' data.
+- `User` table retains legacy string column `role` (default STUDENT), but runtime role authorization uses role pivots/hasRole; no active application access to `$user->role` was found. Preserve/inventory legacy column during any future migration; do not treat it as role source of truth.
+
+### 18.4 Media and file handling
+
+- Media uploads validate file type/size and write under private tenant media paths; public storage is not used for question media.
+- `MediaController::show()` returns the file response after media owner/tenant and QuestionPolicy checks. Admin can pass the current QuestionPolicy view check and therefore read question media; the remaining issue is the Admin authorization boundary, not public storage.
+- Media attachment/detachment locks Question → QuestionVersion → MediaAsset in consistent order and calls QuestionPolicy update. The explicit Admin role check in the controller is followed by policy update, which denies Admin; Admin cannot attach/detach question media through this path.
+- Orphan cleanup validates the exact tenant storage path and skips files outside the expected private path.
+
+### 18.5 API resources and serialization
+
+- Only two API Resource classes exist in the active tree: LearningOutcomeResource and LearningOutcomeVersionResource. They are not used by the LearningOutcomeController paths inspected.
+- Question, Exam, Assessment, Score and some Monitoring endpoints serialize Eloquent models or hand-built arrays directly. There is no common Admin-safe metadata DTO/resource for Exam or Assessment.
+- QuestionOption/QuestionVersion and Exam models do not hide key/token fields globally; any future Admin DTO must be allowlist-based, not rely on hidden attributes that would break Guru authoring.
+
+### 18.6 Test evidence status
+
+- Static source references are recorded; no direct raw SQL tenant-mismatch fixture or monitoring user-tenant mismatch test was run.
+- Existing `UserSecurityTest::test_cannot_add_cross_tenant_user_to_exam` verifies application-level rejection; it does not prove database composite FK enforcement.
+- Existing `TeacherAccess` coverage and `RombelStudentPivotTest` prove selected tenant/pivot behavior in CI aggregate; no per-T-ID pass is asserted.
+- All T-001–T-173 per-ID outcomes remain NOT VERIFIED.
+
+### 18.7 Status
+
+Raw query, file/media and login path review completed statically for all inventoried call sites. P1-23 OPEN. Overall audit still needs final evidence reconciliation, source path coverage checklist and per-file patch plan. No source/DB/config changes.
