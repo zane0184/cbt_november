@@ -333,7 +333,7 @@ class ExamRoomSessionManagement extends Component
             ->with([
                 'exam:id,title',
                 'sessionRooms.room',
-                'sessionRooms.participantAssignments',
+
                 'sessionRooms.rombelMappings.rombel',
             ])
             ->orderByDesc('created_at')
