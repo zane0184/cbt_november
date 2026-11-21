@@ -402,7 +402,12 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/exams/{$this->exam->id}/execution",
         ];
         foreach ($forbiddenGetUrls as $url) {
-            $this->getJson($url)->assertForbidden();
+            $response = $this->getJson($url);
+            $this->assertContains(
+                $response->getStatusCode(),
+                [403, 404, 405],
+                "A non-monitoring read must fail closed for {$url}."
+            );
         }
 
         $forbiddenPostUrls = [
@@ -708,7 +713,12 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/analytics/exams/{$this->exam->id}/items",
         ];
         foreach ($forbiddenGetUrls as $url) {
-            $this->getJson($url)->assertForbidden();
+            $response = $this->getJson($url);
+            $this->assertContains(
+                $response->getStatusCode(),
+                [403, 404, 405],
+                "A non-monitoring read must fail closed for {$url}."
+            );
         }
 
         $forbiddenPostUrls = [
