@@ -236,3 +236,13 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase11-raw-query-review`, commit `882d45d47145c38fd398b1e6f557ea7264336c0c`, blob `92afdb5dd7863414f7e481ce06a695b2d969bab4` (identical before update).
 - Audit remains OPEN; no source/DB/migration/config/role/permission/Web Guru/PR/deployment changes.
 - Remaining: final traceability reconciliation, patch plan per file, DB migration impact/rollback and acceptance test design. No implementation until explicit approval.
+
+
+## Final publication commit and checkpoint provenance
+
+- Report latest commit: `ddd583c7e9b735003d1f37805843df51e622add8`; blob `21e1724ecd797214fb162809f73f7fa026a28cf5`.
+- Final patch plan commit: `ba6e8f59fa685b3e341cb12c85f9948d753cb257`; blob `449cd5ac0d05902bfd2e9be493faf99d8ae081fd`.
+- Module matrix blob: `29d15bb18a550b70475dd0e2f7886b11148f2469`.
+- Test mapping blob: `4abf6802a0b62b7bf6fb3245aa4e6a0c9f65d71b`.
+- Tenant/query matrix blob: `f5e55a7e402351ada8778119077437e8fdfbb653`.
+- This checkpoint is being updated from prior blob `c9040edabb42460dc42014ac61e638635c441cbc`; the new commit SHA is returned by the GitHub update operation and must be verified against the live branch ref.
