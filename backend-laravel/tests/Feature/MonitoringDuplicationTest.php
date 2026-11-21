@@ -231,13 +231,15 @@ class MonitoringDuplicationTest extends TestCase
             ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
             ->assertForbidden();
 
+        $this->actingAs($this->admin);
         app(ExamProctorAssignmentService::class)->confirm($this->admin, $this->exam, $assignment);
         $this->assertSame('CONFIRMED', $assignment->fresh()->status);
 
-        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")->assertOk();
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")->assertOk();
     }
 
-    public function test_assigned_guru_can_monitor_only_the_exam_with_an_active_assignment(): void
+    public function test_assigned_guru_can_monitor_only_the_exam_with_a_confirmed_assignment(): void
     {
         $this->assignTemporaryProctor();
 
@@ -286,9 +288,10 @@ class MonitoringDuplicationTest extends TestCase
 
         $this->assignTemporaryProctor();
         \App\Models\ExamProctorAssignment::query()->whereKey($assignment->id)
-            ->update(['status' => 'ACTIVE', 'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null, 'expires_at' => now()->subSecond()]);
+            ->update(['status' => 'CONFIRMED', 'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null, 'expires_at' => now()->subSecond()]);
 
-        $this->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
+        $this->actingAs($this->assignedGuru, 'sanctum')
+            ->getJson("/api/v1/exams/{$this->exam->id}/monitoring")
             ->assertForbidden();
     }
 }
