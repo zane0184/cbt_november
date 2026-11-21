@@ -56,9 +56,9 @@ Backup:
 GitHub Actions run 44944158355:
 - Status: SUCCESS.
 - Source diuji: a3522e1c8be02224ef9b369051105f05b2704e39.
-- 14 suite terpilih: 93 test, 502 assertions, seluruhnya PASS.
+- 16 suite terpilih: 100 test, 519 assertions, seluruhnya PASS.
 - Rincian:
-  - AdminCbtBoundaryTest: 1 / 27 assertions.
+  - AdminCbtBoundaryTest: 1 / 29 assertions.
   - AdminDashboardAccessTest: 3 / 28.
   - AcademicPeriodManagementTest: 3 / 33.
   - LegacyRoleMigrationServiceTest: 4 / 34.
