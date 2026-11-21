@@ -12,7 +12,9 @@ class QuestionPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->tenant_id !== null && $user->hasPermission('question.view');
+        return $user->tenant_id !== null
+            && $user->hasRole('GURU')
+            && $user->hasPermission('question.view');
     }
 
     public function view(User $user, $model): bool
@@ -20,6 +22,7 @@ class QuestionPolicy extends BasePolicy
         if (!$model instanceof Question
             || !$user->tenant_id
             || $user->tenant_id !== $model->tenant_id
+            || !$user->hasRole('GURU')
             || !$user->hasPermission('question.view')) {
             return false;
         }
