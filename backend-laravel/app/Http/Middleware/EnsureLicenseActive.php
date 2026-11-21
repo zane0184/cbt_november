@@ -195,7 +195,8 @@ class EnsureLicenseActive
     private function blocked(Request $request, string $code): Response
     {
         if ($request->expectsJson() || $request->is('api/*')) return response()->json(['success' => false, 'code' => $code, 'message' => 'Lisensi CBT tidak aktif atau perlu sinkronisasi dengan Publisher.'], 423);
-        return redirect('/license/status')->with('license_error', $code);
+        $request->session()->flash('license_error', $code);
+        return new \\Illuminate\\Http\\RedirectResponse(url('/license/status'));
     }
 
     private function safeCode(Throwable $exception): string
