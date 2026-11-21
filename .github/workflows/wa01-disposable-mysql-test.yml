@@ -313,6 +313,12 @@ jobs:
             echo "Forbidden bootstrapper/seeder/factory path found in selected test files" >&2
             exit 1
           fi
+          if grep -nF -- 'factory(' tests/Feature/AdminCbtBoundaryTest.php tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \\
+            tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \\
+            tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
+            echo "Factory call found in selected test files" >&2
+            exit 1
+          fi
           if grep -nF -- '->seed(' tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php \
             tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php \
             tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
