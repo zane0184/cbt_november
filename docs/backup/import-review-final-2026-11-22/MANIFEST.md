@@ -28,3 +28,9 @@ Commit: fb11e9c3847ce46261e4ca48123d178812001321
 Commit: 736fe35b029bf8e2a1c090be044af19cc3e4c892
 - backend-laravel/app/Services/Import/ImportWorkbookService.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookService.php.before-tenant-guard-zip-order | blob SHA bea9c7bce9c7216c4d9e69e827471aa675f9f914
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-deadlock-test-isolation | blob SHA 255eda89fe1de8ff3797055e25ed71c8fe5f37dd
+
+
+## Follow-up backup before PROCESSING resume UI patch
+Commit: 557dc01f24d3df23e1a1b0ee353dad70f704651e
+- backend-laravel/resources/views/livewire/admin/import-management.blade.php -> docs/backup/import-review-final-2026-11-22/import-management.blade.php.before-processing-resume-ui | blob SHA 53de11a76f2feed9a147b5c0fea3a31b821ae466
+- backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-processing-resume-ui | blob SHA ca7a89b5b89c2dcf10a69709d00c52a215e1994a
