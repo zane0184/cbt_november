@@ -17,6 +17,9 @@ class ImportTemplateController extends Controller
         $type = strtoupper($type);
         abort_unless(in_array($type, ['GURU', 'SISWA'], true), 404);
         $filename = $type === 'GURU' ? 'Template Import Guru.xlsx' : 'Template Import Siswa.xlsx';
-        return Excel::download(new ImportTemplateExport((string) $user->tenant_id, $type), $filename);
+        $response = Excel::download(new ImportTemplateExport((string) $user->tenant_id, $type), $filename);
+        $response->headers->set('Cache-Control', 'private, no-store, max-age=0');
+        $response->headers->set('Pragma', 'no-cache');
+        return $response;
     }
 }
