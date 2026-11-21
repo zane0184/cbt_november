@@ -294,3 +294,65 @@ Sampai persetujuan diberikan, berhenti pada dokumentasi. Tidak ada source write,
 | tests/Feature/MediaAuthorizationTest.php::test_admin_cannot_access_question_media_but_can_access_own_user_media (planned) | 2b4321ce032fd5e67cf022da8564a5287b8cef6f | PHP 8.3.x, MySQL 8/InnoDB disposable + private storage fake | NOT RUN | Method belum dibuat; belum ada run artifact |
 
 Semua test baru WA01-N/P/S juga menggunakan source baseline W0 yang sama sampai source commit berubah melalui approval dan implementasi. Saat run kelak, kolom source commit wajib diperbarui ke commit implementasi aktual; environment harus mencatat versi patch yang tepat, bukan hanya target rencana. Tidak ada bukti test PASS pada tahap persiapan.
+
+
+---
+
+## 16. REVISI FINAL — Matriks method-level, Livewire, assignment allowlist, DB gate (21 November 2026)
+
+**Addendum ini mengungguli bagian paket sebelumnya jika ada perbedaan.** Paket tetap dokumentasi-only, belum disetujui coding, dan IMPLEMENTASI tetap NOT STARTED.
+
+### 16.1 Source recheck
+- Source branch: work/web-admin-w0-20261121.
+- Source pin: 2b4321ce032fd5e67cf022da8564a5287b8cef6f.
+- Compare: identical, 0 ahead, 0 behind, 0 changed files.
+- Matriks berdasarkan method source W0; tidak ada source branch write.
+
+### 16.2 Matriks terperinci
+Lampiran resmi method-level untuk seluruh 6 policy, 12 API controller, Livewire lifecycle/action, dan route web relevan:
+- docs/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md
+- Matriks ini mencatat current access W0, target Admin/Guru/Siswa/Proktor, permission, tenant/ownership/scope, shared usage, deny placement, route gaps dan blocker.
+
+### 16.3 Temuan final yang mengubah status rencana
+1. QuestionBank mount saat ini menerima Admin/Guru; render mengembalikan MADRASAH question data dan eager-load opsi/answer key. Public state mengandung stem, explanation, option content, correctOption/correctOptions. Beberapa state-only public actions tidak punya auth sendiri. Stale snapshot/hydration order belum dibuktikan. Status: **BLOCKED**.
+2. ExamManagement mount menerima Admin/Guru; render eager-load assessment, participants, attempts, snapshots dan question version data. SaveExam merupakan shared Guru schedule/snapshot/participant lifecycle. Stale snapshot/hydration belum dibuktikan. Status: **BLOCKED**.
+3. ProctorAssignmentManagement query Proctor mengambil email dan Blade menampilkannya; assignment base query tidak membatasi select kolom; eager relation Exam menambah status; render tidak mengulang assertCanManage. Response/snapshot belum direkam. Status metadata allowlist: **BLOCKED**. File assignment/component/view/model/service tetap protected dan tidak boleh berubah pada WA-01.
+4. Route web GET /exams/{exam}/monitoring dideklarasikan di luar auth/tenant/license group pada routes/web.php; global middleware belum dibuktikan. Status: **BLOCKED** sampai stack dan unauthenticated test diverifikasi.
+5. QuestionPublicationController terhubung melalui apiResource yang menghasilkan show/update route, sedangkan method show/update tidak ada pada class W0. Status: **ROUTE GAP / BLOCKED**; routes/api.php tidak ditambahkan ke target WA-01 pada revisi ini.
+
+### 16.4 Livewire design gate
+QuestionBank dan ExamManagement tetap conditional/BLOCKED. Pilihan desain:
+- Guard per request/lifecycle dan render/action yang hanya menerima Guru, dengan bukti Livewire menjalankan guard sebelum hydration/action serta stale snapshot/direct action tests; Guru query/validation/view/lifecycle tetap W0.
+- Pisahkan component/route Guru; membutuhkan perubahan route/file dan approval lintas-scope.
+- Jika isolasi tidak dapat dibuktikan, keluarkan component dari patch dan jangan nyatakan WA-01 accepted.
+
+Tidak boleh mengubah ExamManagement.saveExam, schedule update, publish, token, lock, atau lifecycle Guru. Event listener/computed property tidak ditemukan pada dua class W0; tetap harus diperiksa dalam test runtime termasuk inherited listener/framework behavior.
+
+### 16.5 Assignment allowlist gate
+Allowlist target:
+- Exam: id, title, start_at, end_at.
+- Assignment: id, status, starts_at, expires_at, nama Proktor/aktor yang disetujui.
+- Proctor dropdown: id, name; email tidak diperlukan.
+- Tidak boleh ada token/config/instructions/question/snapshot/roster/participant/attempt/answer/score/result/report/export/monitoring/analytics.
+Karena file assignment protected tidak boleh berubah di WA-01, pilihan yang tersedia adalah component metadata baru + view + route dengan approval perubahan source target, atau work package assignment terpisah. Tanpa keputusan, assignment metadata tetap BLOCKED.
+
+### 16.6 Permission bootstrapper dan DB gate
+Perubahan RolePermissionBootstrapper hanya rencana kode. Daftar Admin yang direncanakan dicabut: question.view, question.manage, exam.manage, exam.assign, exam.monitor, exam.close, exam.token, exam.grade, exam.reopen, report.view. Yang dipertahankan: exam.proctor.assign, curriculum.view, curriculum.manage, academic.manage, user.manage.
+Eksekusi bootstrapper adalah tindakan database terpisah dan memerlukan snapshot role_permission sebelum, exact pivot diff, clone MySQL 8/InnoDB, uji idempotensi dua kali, backup+restore drill, postflight dan persetujuan DB eksplisit. Tidak ada eksekusi bootstrapper, seeder atau pivot write pada tahap persiapan. Rollback tidak boleh mengembalikan CBT grants Admin.
+
+### 16.7 Batas WA-01 / WA-03
+WA-01 hanya acceptance perilaku Guru yang sudah ada pada W0. Schedule revision, status Guru baru, capability Guru baru, integrasi WA-03, shared schedule service, ExamController.update dan ExamManagement.saveExam tetap CROSS-SCOPE BLOCKED. Tidak ada perubahan schedule/lifecycle Guru.
+
+### 16.8 Test plan final
+Lampiran matriks memuat 69 test IDs: 25 authorization/API negative, 14 Livewire, 10 assignment metadata, 20 role/cache/tenant/permission. Semua **NOT RUN**. Daftar 36 test ID pada bagian awal paket dipertahankan sebagai baseline historis; acceptance final memakai matriks 69 ID yang lebih rinci. Tidak ada test PASS yang diklaim.
+
+### 16.9 Source target list
+Daftar 23 source file existing pada bagian 3 paket utama **tidak berubah**. Tidak ada source file baru ditambahkan pada revisi dokumentasi. Conditional BLOCKED file/method dan excluded protected assignment files dijelaskan pada lampiran. routes/api.php tetap excluded.
+
+### 16.10 Status akhir
+- AUDIT: source method/route statis diperiksa; temuan dan blocker tercatat.
+- DESAIN: matriks dan opsi desain dipublikasikan; beberapa boundary masih BLOCKED.
+- IMPLEMENTASI: **NOT STARTED**.
+- PENGUJIAN: seluruh 69 test **NOT RUN**; runtime, browser, MySQL, cache, export dan restore belum diuji.
+- Tidak ada source app, database, migration, seeder, permission pivot, config, source branch, PR, deployment atau Web Guru yang berubah.
+- **Berhenti dan tunggu persetujuan pengguna.**
