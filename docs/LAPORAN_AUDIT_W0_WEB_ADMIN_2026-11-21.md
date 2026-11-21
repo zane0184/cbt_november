@@ -48,7 +48,7 @@ Perbedaan yang ditanyakan berasal dari checkpoint awal yang mencatat commit `641
 4. `9c6ce35...` (parent `c708e978...`) — workflow SHA-256/restore versi pertama.
 5. `a42cdb...` (parent `9c6ce35...`) — perbaikan workflow; HEAD branch kerja yang benar saat laporan revisi ini.
 
-Jadi `641aff0...` bukan HEAD terbaru. Pada saat laporan revisi pertama dibuat, HEAD adalah `a42cdb...`; checkpoint kemudian diperbarui lagi dan current HEAD final tercatat pada checkpoint terbaru. Branch recovery tetap pada `7fc45bf...`. Perbandingan recovery → branch kerja saat laporan revisi pertama: ahead 5, behind 0; path tambahan hanya empat file: tiga dokumen W0 dan satu workflow verifikasi. Perbandingan final setelah revisi dokumen: ahead 9, behind 0, dengan empat path yang sama. Tidak ada source aplikasi berubah.
+Jadi `641aff0...` bukan HEAD terbaru. Pada saat laporan revisi pertama dibuat, HEAD adalah `a42cdb...`; checkpoint kemudian diperbarui lagi dan current HEAD final tercatat pada checkpoint terbaru. Branch recovery tetap pada `7fc45bf...`. Perbandingan recovery → branch kerja saat laporan revisi pertama: ahead 5, behind 0; path tambahan hanya empat file: tiga dokumen W0 dan satu workflow verifikasi. Perbandingan final setelah revisi dokumen tetap menunjukkan working branch berada di atas source pin, tidak tertinggal, dan hanya memiliki empat path tambahan yang terdokumentasi. Tidak ada source aplikasi berubah.
 
 ### 2.2 Inventaris dan manifest source
 
