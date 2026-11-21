@@ -203,17 +203,29 @@ class ExamPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
 
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return false;
-        }
-
         if ($user->hasRole('KAMAD')) {
             return $user->hasPermission('exam.monitor');
         }
 
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.monitor')
-            && TeacherAccess::canViewExam($user, $exam);
+        if (!$user->hasRole('GURU') || !$user->hasPermission('exam.monitor')) {
+            return false;
+        }
+
+        $isExamAuthor = (string) $exam->created_by === (string) $user->id
+            && TeacherAccess::canManageExam($user, $exam);
+
+        $hasActiveTemporaryProctorAssignment = $user->teacherProfile()
+            ->where('tenant_id', $user->tenant_id)
+            ->whereNull('deleted_at')
+            ->exists()
+            && \\App\\Models\\ExamProctorAssignment::query()
+                ->where('tenant_id', $exam->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('proctor_user_id', $user->id)
+                ->activeNow()
+                ->exists();
+
+        return $isExamAuthor || $hasActiveTemporaryProctorAssignment;
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
