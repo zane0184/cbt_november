@@ -24,6 +24,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 use Livewire\Livewire;
@@ -255,6 +256,16 @@ class ImportWorkbookServiceTest extends TestCase
         return $withSubject ? [$year, $rombel, $semester, $subject] : [$year, $rombel];
     }
 
+    private function numericCellWorkbook(UploadedFile $file, string $sheetName, string $cell, int|float $value): UploadedFile
+    {
+        $book = IOFactory::load($file->getRealPath());
+        $book->getSheetByName($sheetName)->getCell($cell)->setValueExplicit($value, DataType::TYPE_NUMERIC);
+        $path = tempnam(sys_get_temp_dir(), 'cbt-import-numeric-').'.xlsx';
+        (new Xlsx($book))->save($path);
+        $this->temporaryFiles[] = $path;
+        return new UploadedFile($path, 'import-numeric.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+    }
+
     private function guruWorkbook(array $dataRows, array $assignmentRows = []): UploadedFile
     {
         $headers = ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika PNS', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)'];
@@ -304,6 +315,38 @@ class ImportWorkbookServiceTest extends TestCase
         $this->temporaryFiles[] = $path;
         return new UploadedFile($path, 'import-fixture.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
+    public function test_numeric_phone_and_date_cells_are_rejected_instead_of_silently_coerced(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruFile = $this->numericCellWorkbook(
+            $this->guruWorkbook([
+                ['PNS', '001234567890123456', '', '', 'Guru Nomor', 'L', '', '081234567890'],
+            ]),
+            'Data Guru',
+            'H2',
+            81234567890
+        );
+        $guruBatch = app(ImportWorkbookService::class)->preview($guruFile, 'GURU', $this->tenant->id, $this->admin->id);
+        $this->assertSame(0, $guruBatch->valid_rows);
+        $this->assertSame(1, $guruBatch->failed_rows);
+        $this->assertStringContainsString('Nomor HP harus disimpan sebagai teks', $guruBatch->rows->first()->reason);
+
+        Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        [, $rombel] = $this->academicSetup();
+        $studentFile = $this->numericCellWorkbook(
+            $this->studentWorkbook([
+                ['000123', '0012345678', 'Siswa Tanggal', 'P', 'Jakarta', '2015-03-04', 'Orang Tua', '081234567890', 'Alamat', '1A — 2026/2027', '2026/2027'],
+            ]),
+            'Data Siswa',
+            'F2',
+            42000
+        );
+        $studentBatch = app(ImportWorkbookService::class)->preview($studentFile, 'SISWA', $this->tenant->id, $this->admin->id);
+        $this->assertSame(0, $studentBatch->valid_rows);
+        $this->assertSame(1, $studentBatch->failed_rows);
+        $this->assertStringContainsString('Tanggal lahir harus berformat YYYY-MM-DD', $studentBatch->rows->first()->reason);
+    }
+
     public function test_livewire_admin_can_upload_preview_and_confirm_guru_workbook(): void
     {
         Role::create(['name' => 'GURU', 'label' => 'Guru']);
