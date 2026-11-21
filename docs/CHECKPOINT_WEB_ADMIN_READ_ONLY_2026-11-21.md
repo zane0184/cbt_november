@@ -193,3 +193,15 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase8-routes-livewire-recheck`, commit `8b4e4dd6e8c18217a7bdb99fc8cae7d3c4f993fd`, blob `af93f97be75e0fbc6e3737cbfa3c2839fc6d286f` (identical before update).
 - Status: audit OPEN; patch plan final pending. No source/DB/migration/config/role/permission/Web Guru/PR/deployment change.
 - Next: finish all API response/resource/export/download/cache query review, test trace validation and per-file patch/rollback planning. No implementation before explicit approval.
+
+
+## Checkpoint audit phase 9 — auth and tenant fail-closed
+
+- P1-18: LoginIdentityResolver accepts legacy ADMIN/OPERATOR/PROKTOR staff roles; API AuthController issues Sanctum tokens without an active-role allowlist. Web login still accepts OPERATOR/PROKTOR. Other role branches remain in LicenseStatusController, Operator/Kamad/Proktor dashboards, Academic/Curriculum management, DatabaseSeeder, InstallerService, RolePermissionBootstrapper, ExamPolicy and AssessmentPolicy.
+- P1-19: IdentifyTenant does not abort authenticated user with null tenant_id; it leaves context null and proceeds. TenantScoped models fail closed, but User is not scoped and some route-bound relations depend on explicit tenant checks.
+- Positive controls: middleware priority Authenticate → IdentifyTenant → SubstituteBindings; X-Tenant-Override ignored; TenantScoped create/read fail-closed; LoginIdentityResolver requires one tenant/installation.
+- Report commit `cfa3e8893f2a905707698b32c7e8efe87bc73881`, blob `d6c3ae0e26f6af6bc53ff5a3c7c71f24284216f1`.
+- Report backup `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase9-auth-tenant-null`, commit `df771455a3b3c41cddbb3cec15f6703355405bfa`, blob `459ee8a2ee48f35a057283aa180c845a4ac7b2c5` (identical before update).
+- Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase9-auth-tenant-null`, commit `769192ca20c71d973e9345eb9f87bccefe2122a6`, blob `1b21b0e92601193356bdc88d156f2023a319271e` (identical before update).
+- Audit still OPEN; no source/config/database/role/permission/Web Guru/PR/deployment changed.
+- Remaining: full User query/relationship and unscoped review completion, exports/cache/resource serialization, test method evidence reconciliation, per-file patch plan and rollback/acceptance review.
