@@ -66,6 +66,9 @@
                     <a href="/admin/dashboard" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/dashboard') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                         <span class="text-emerald-400">▦</span><span>Dashboard Eksekutif</span>
                     </a>
+                    <a href="/admin/profile" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/profile*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                        <span class="text-emerald-400">⌂</span><span>Profil Madrasah</span>
+                    </a>
                     @if($currentUser->hasPermission('user.manage'))
                         <a href="/admin/users" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/users*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span class="text-emerald-400">♙</span><span>Guru & Siswa</span>
@@ -128,6 +131,7 @@
                         <div class="sidebar-scroll absolute left-0 top-full z-30 mt-2 max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-cardBorder bg-navy-900 p-3 text-sm text-white shadow-xl">
                             @if($isAdminMadrasah)
                                 <a href="/admin/dashboard" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Dashboard Eksekutif</a>
+                                <a href="/admin/profile" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Profil Madrasah</a>
                                 @if($currentUser->hasPermission('user.manage'))<a href="/admin/users" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Guru & Siswa</a>@endif
                                 @if($currentUser->hasPermission('academic.manage'))
                                     <a href="/admin/academic" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Data Akademik</a>

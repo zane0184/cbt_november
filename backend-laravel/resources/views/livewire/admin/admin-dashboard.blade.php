@@ -6,6 +6,7 @@
             <p class="mt-1 text-sm text-textSecondary">{{ $tenant->name }} <span class="mx-1 text-gray-300">•</span> Administrasi madrasah dalam satu ringkasan.</p>
         </div>
         <div class="flex flex-wrap gap-2">
+            <a href="/admin/profile" class="rounded-xl border border-cardBorder bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-gray-50">Profil Madrasah</a>
             <a href="/admin/users" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700">Kelola Guru & Siswa</a>
             <a href="/admin/academic" class="rounded-xl border border-cardBorder bg-white px-4 py-2.5 text-sm font-semibold text-navy-900 transition hover:bg-gray-50">Data Akademik</a>
         </div>

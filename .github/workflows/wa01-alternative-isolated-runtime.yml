@@ -260,6 +260,7 @@ jobs:
           test -f tests/Feature/StudentResultVisibilityTest.php
           test -f tests/Feature/AdminDashboardAccessTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
+          test -f tests/Feature/TenantProfileManagementTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
           grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
           if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|Permission::(create|firstOrCreate|updateOrCreate)|permissions\(\)->(sync|attach|detach)|permission_role.*(insert|update|delete)'; then
@@ -282,7 +283,11 @@ jobs:
             echo "Academic period test contains prohibited permission table writes." >&2
             exit 1
           fi
-          echo "Static guard PASS: selected Admin test has no permission writes; no seeder/bootstrapper is selected."
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/TenantProfileManagementTest.php; then
+            echo "Tenant profile test contains prohibited permission table writes." >&2
+            exit 1
+          fi
+          echo "Static guard PASS: selected Admin tests contain no permission writes; no seeder/bootstrapper is selected."
 
       - name: PHP lint — application, migrations, routes and tests
         shell: bash
@@ -308,6 +313,12 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/AcademicPeriodManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-academic-periods.log"
+
+      - name: PHPUnit — Tenant profile management
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/TenantProfileManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-tenant-profile.log"
 
       - name: PHPUnit — API authentication and tenant isolation
         shell: bash
