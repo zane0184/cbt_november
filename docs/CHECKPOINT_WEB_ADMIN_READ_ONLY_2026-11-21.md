@@ -274,7 +274,7 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Module matrix final: blob 24395c574086f7efbe4b1a2d14ab33958865f015; commit 8d2b9cae1d1f153e943510f17d2262f6cd1a0cde.
 - T-ID matrix final: blob 05759afbdaaf70f5ccf9d76175d992887932d37f; commit 6c3a5eace8cc499d1c9f5804f396d29199b69e32.
 - Tenant/query/relation matrix remains: blob f5e55a7e402351ada8778119077437e8fdfbb653.
-- Backup manifest: docs/backup/web-admin-final-review-2026-11-21/MANIFEST.md; blob 34fe4784a53e23277a159f78d231434360902312; commit 272c9bdb764a8293f7b782efee6837b6effd8085.
+- Backup manifest: docs/backup/web-admin-final-review-2026-11-21/MANIFEST.md; blob e2cab6af00cadfda072646a581701645134e24f3; commit c06376ada4390575a4fda6f6263ad8acb4ad6015.
 - Backup files were fetched after creation; each backup blob SHA equals the original pre-review document blob SHA. The manifest includes report, checkpoint, patch plan, module matrix and T-ID matrix backups.
 - Latest review did not modify source branch. Compare source branch against W0 source pin remains identical.
 - No PR action was performed.
