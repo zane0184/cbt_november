@@ -12,7 +12,7 @@ class StudentExamController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        abort_unless($user && $user->hasRole('SISWA') && $user->tenant_id, 403);
+        abort_unless($user && $user->hasRole('SISWA') && !$user->hasRole('ADMIN_MADRASAH') && $user->tenant_id, 403);
 
         $now = now();
         $participants = ExamParticipant::query()
@@ -89,7 +89,7 @@ class StudentExamController extends Controller
     public function show(Request $request, Exam $exam)
     {
         $user = $request->user();
-        abort_unless($user && $user->hasRole('SISWA') && $user->tenant_id, 403);
+        abort_unless($user && $user->hasRole('SISWA') && !$user->hasRole('ADMIN_MADRASAH') && $user->tenant_id, 403);
         abort_unless($exam->tenant_id === $user->tenant_id, 404);
         $this->authorize('view', $exam);
 
@@ -142,7 +142,7 @@ class StudentExamController extends Controller
     public function result(Request $request, string $attempt)
     {
         $user = $request->user();
-        abort_unless($user && $user->hasRole('SISWA') && $user->tenant_id, 404);
+        abort_unless($user && $user->hasRole('SISWA') && !$user->hasRole('ADMIN_MADRASAH') && $user->tenant_id, 404);
 
         $examAttempt = \App\Models\ExamAttempt::query()
             ->where('tenant_id', $user->tenant_id)
