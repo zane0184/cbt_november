@@ -37,3 +37,16 @@ Source HEAD: `58c47809bd977a723c7811e087f60dc1cc824dde`
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-proctor-monitoring-endpoint-scope | 10d967406b5ed4c2bebd183d10ec999c9c3a9b77 | 19765 |
 
 The three snapshots were created as separate files before changing their source counterparts. Earlier Stage 4B backups remain unchanged.
+
+## Additional snapshots — before duplicate-placement and MySQL concurrency coverage
+
+Source HEAD before test/runner changes: `58c47809bd977a723c7811e087f60dc1cc824dde`
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/ExamRoomSessionManagementTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionManagementTest.php.before-duplicate-placement-and-tenant-tests | 5a11e1afb7adee1867e756c4dba16de695f5b33b | 20403 |
+| .github/workflows/wa01-alternative-isolated-runtime.yml | docs/backup/stage4b-room-session-2026-11-22/wa01-alternative-isolated-runtime.yml.before-mysql-concurrency-test | 87989f8ad5c87362c4cf36b10e7bd92f7bbc2eb6 | 23812 |
+
+New file: `backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php` — added as a new test file; no prior source existed to back up.
+
+The earlier endpoint-scope snapshots and original Stage 4B baseline snapshots remain unchanged.
