@@ -329,7 +329,11 @@ jobs:
             echo "Base TestCase setUp invokes the prohibited helper" >&2
             exit 1
           fi
-          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions' app/Providers/AppServiceProvider.php; then
+          if sed -n '/protected function tearDown()/,/^    }/p' tests/TestCase.php | grep -F 'bootstrapCbtRolePermissions'; then
+            echo "Base TestCase tearDown invokes the prohibited helper" >&2
+            exit 1
+          fi
+                    if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions' app/Providers/AppServiceProvider.php; then
             echo "Application service provider invokes the prohibited bootstrapper" >&2
             exit 1
           fi
