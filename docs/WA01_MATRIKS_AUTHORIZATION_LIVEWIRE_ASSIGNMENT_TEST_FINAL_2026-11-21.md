@@ -565,3 +565,18 @@ Daftar 23 file existing tetap sama dengan paket utama. Tidak ada target ditambah
 ## 13. Gate
 
 Paket ini bukan izin coding. Tidak ada source, DB, migration, seeder, permission pivot, config, source branch, PR, deployment atau Web Guru yang diubah. Persetujuan coding WA-01 dan persetujuan DB bootstrapper harus terpisah. Berhenti setelah publikasi dokumentasi dan tunggu keputusan pengguna.
+
+
+## 14. Policy keenam — BasePolicy.php (parent policy)
+
+Source W0 blob: 788f68632ca55e71723c12a7f771cace621a7406. BasePolicy adalah parent class generik. Pada source yang diaudit, QuestionPolicy extends BasePolicy tetapi meng-override viewAny, view, create, update dan delete; karena itu implementasi generic di bawah tidak menjadi perilaku aktual QuestionPolicy untuk lima method tersebut. Empat policy lain dalam paket ini tidak extends BasePolicy.
+
+| Method | Akses W0 saat ini | Target WA-01 | Permission | Tenant / ownership / scope | Admin / Guru / Siswa / Proktor | Shared / deny Admin |
+|---|---|---|---|---|---|---|
+| viewAny | Setiap user yang memiliki permissionPrefix.view; tidak memeriksa tenant atau role | Untuk pemakaian CBT, Admin deny; jangan mengubah permission prefix lain tanpa audit caller | {permissionPrefix}.view | Tidak ada tenant check pada generic method; caller wajib query tenant | Admin deny pada pemakaian CBT; Guru hanya jika concrete policy mengizinkan; Siswa/Proktor mengikuti concrete policy | Parent class; jangan menambah Admin deny generik yang memutus modul non-CBT. Admin deny harus ada di concrete CBT policy. |
+| view | Tenant equality + permissionPrefix.view | Admin deny pada concrete CBT policy; generic non-CBT behavior tetap | {permissionPrefix}.view | user.tenant_id === model.tenant_id | Admin deny untuk CBT; Guru sesuai concrete policy; Siswa/Proktor sesuai concrete policy | Generic; jangan mengubah tanpa meninjau seluruh subclass/caller. |
+| create | permissionPrefix.manage; tidak ada role/tenant check | Admin deny untuk CBT concrete policy; non-CBT permission behavior tetap | {permissionPrefix}.manage | Tidak ada tenant/ownership check pada generic method | Admin deny untuk CBT; role lain sesuai concrete policy | Generic; tidak boleh dianggap cukup sebagai tenant authorization. |
+| update | Tenant equality + permissionPrefix.manage | Admin deny untuk CBT concrete policy; non-CBT behavior tetap | {permissionPrefix}.manage | Tenant equality | Admin deny untuk CBT; Guru sesuai concrete policy | Generic. |
+| delete | Tenant equality + permissionPrefix.manage | Admin deny untuk CBT concrete policy; non-CBT behavior tetap | {permissionPrefix}.manage | Tenant equality | Admin deny untuk CBT; Guru sesuai concrete policy | Generic. |
+
+**Scope decision:** BasePolicy.php tidak ditambahkan ke daftar 23 source target WA-01. Mengubah parent policy berisiko memengaruhi seluruh subclass/caller di luar CBT. Semua Admin deny wajib ditempatkan pada concrete CBT policies dan controller boundary yang disetujui. Jika ditemukan subclass lain atau pemanggil langsung, lakukan audit dampak lintas-modul sebelum perubahan; jangan patch BasePolicy secara generik pada WA-01.
