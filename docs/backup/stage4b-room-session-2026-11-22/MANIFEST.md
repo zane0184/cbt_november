@@ -58,3 +58,14 @@ The earlier endpoint-scope snapshots and original Stage 4B baseline snapshots re
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-laravel-test-trait-import-fix | e7ff210a9bfaaf8881c3ff4f057504dfe640575c | 8590 |
 
 The source file was newly created for Stage 4B concurrency coverage; this snapshot preserves its exact pre-correction state. The current file imports `Illuminate\\Foundation\\Testing\\DatabaseMigrations`.
+
+## Additional snapshots — Admin direct API boundary and InnoDB preflight
+
+Source HEAD before Admin endpoint tests: `e705342d4e98f462119eb5ccb927eb016be587fb`
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-admin-direct-api-boundary | 52f10c0935f52c59f281c58ff7ba827fe3020b4e | 26798 |
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-innodb-engine-count | bf48ad24af8fcddecfc36106b8c840e01e5f5ce5 | 9485 |
+
+Both source files were snapshotted before the corresponding test-only changes. No production database or source baseline ZIP was modified.
