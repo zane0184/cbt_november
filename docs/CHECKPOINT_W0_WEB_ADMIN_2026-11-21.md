@@ -11,8 +11,8 @@
 | Source commit pin | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Source tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja | `work/web-admin-w0-20261121` |
-| **Branch kerja HEAD sebelum checkpoint revisi terakhir** | `96f0b5037fc13addce7c2c254dd085cb116b1868` |
-| Parent commit checkpoint revisi terakhir ini | `96f0b5037fc13addce7c2c254dd085cb116b1868` |
+| **Branch kerja HEAD sebelum checkpoint final ini** | `06efd155b2c9bfaeef82e4df95249c8899009bc7` |
+| Parent commit checkpoint final ini | `06efd155b2c9bfaeef82e4df95249c8899009bc7` |
 | Commit laporan audit revisi | `8073cbd4c281b786e56d0b3d688ae2ce194dd872` |
 | Branch recovery HEAD (tidak berubah) | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 
@@ -29,7 +29,7 @@ Klarifikasi: `641aff0...` adalah commit laporan audit dan parent dari checkpoint
 
 - Source pin tetap `7fc45bf...`; recursive tree `144364e...` berisi 768 entries: 531 file blobs (mode 100644) dan 237 directory entries. Tidak ada symlink atau submodule pada tree tersebut.
 - Branch kerja dibuat dari source pin. Branch recovery asli tetap pada SHA `7fc45bf...`.
-- Perbandingan recovery → working branch menunjukkan 10 commit tambahan dan hanya empat path baru: manifest Git, laporan, checkpoint, serta workflow verifikasi SHA/restore. Tiga dokumen W0 yang telah diterima tetap dipertahankan.
+- Perbandingan recovery → working branch menunjukkan hanya empat path tambahan: manifest Git, laporan, checkpoint, serta workflow verifikasi SHA/restore. Tiga dokumen W0 yang telah diterima tetap dipertahankan.
 - Route/action-permission static review tetap seperti temuan laporan W0; belum ada patch source.
 - ZIP baseline 6 November belum diperiksa raw bytes. Status tetap BLOCKED. Tidak ada arsip recovered yang dipakai untuk menggantikan baseline.
 
