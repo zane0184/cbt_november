@@ -46,6 +46,7 @@ class ImportWorkbookService
 
         $analysis = $this->analyze($file->getRealPath(), $type, $tenantId);
         return DB::transaction(function () use ($analysis, $type, $tenantId, $userId, $sha, $file): ImportBatch {
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
             $duplicate = ImportBatch::query()->where('tenant_id', $tenantId)->where('type', $type)->where('file_sha256', $sha)->lockForUpdate()->first();
             if ($duplicate) return $duplicate;
 
@@ -124,6 +125,8 @@ class ImportWorkbookService
                 }
             }
 
+            // Remove encrypted staging payloads for every row after execution. The report keeps only masked identity hints and outcomes.
+            ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batch->id)->update(['encrypted_payload' => null]);
             $batch->refresh();
             $counts = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batch->id)
                 ->selectRaw("SUM(status IN ('IMPORTED','SUCCESS')) as imported_count")

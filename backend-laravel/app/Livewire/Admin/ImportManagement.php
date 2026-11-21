@@ -110,7 +110,7 @@ class ImportManagement extends Component
         $this->authorizeImport();
         $tenantId = (string) auth()->user()->tenant_id;
         $batch = $this->batchId
-            ? ImportBatch::query()->where('tenant_id', $tenantId)->with('rows')->find($this->batchId)
+            ? ImportBatch::query()->where('tenant_id', $tenantId)->with(['rows' => fn ($query) => $query->orderBy('sheet_name')->orderBy('row_number')])->find($this->batchId)
             : null;
         $history = ImportBatch::query()->where('tenant_id', $tenantId)->latest()->limit(20)->get();
 

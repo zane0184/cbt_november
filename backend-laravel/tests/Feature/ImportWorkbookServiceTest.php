@@ -136,7 +136,7 @@ class ImportWorkbookServiceTest extends TestCase
             ['PNS', '001234567890123456', '', '', 'Guru Duplikat 2', 'L', '', ''],
         ]);
         $batch = app(ImportWorkbookService::class)->preview($file, 'GURU', $this->tenant->id, $this->admin->id);
-        $rows = $batch->rows;
+        $rows = $batch->rows->sortBy('row_number')->values();
         $this->assertSame('SKIPPED', $rows[0]->status);
         $this->assertSame('INVALID', $rows[1]->status);
         $this->assertSame('INVALID', $rows[2]->status);
@@ -148,11 +148,12 @@ class ImportWorkbookServiceTest extends TestCase
         $this->academicSetup();
         $tenantB = Tenant::create(['name' => 'Madrasah Import B', 'code' => 'IMPB']);
         $this->setTenantContext($tenantB->id);
-        $this->academicSetup();
+        [$foreignYear, $foreignRombel] = $this->academicSetup();
+        Rombel::create(['academic_year_id' => $foreignYear->id, 'grade_level_id' => $foreignRombel->grade_level_id, 'name' => '2B', 'status' => 'ACTIVE']);
         $this->setTenantContext($this->tenant->id);
 
         $file = $this->studentWorkbook([
-            ['000001', '0098765432', 'Siswa Rombel Salah', 'L', '', '', '', '', '', '9Z — 2026/2027', '2026/2027'],
+            ['000001', '0098765432', 'Siswa Rombel Salah', 'L', '', '', '', '', '', '2B — 2026/2027', '2026/2027'],
         ]);
         $batch = app(ImportWorkbookService::class)->preview($file, 'SISWA', $this->tenant->id, $this->admin->id);
         $this->assertSame('INVALID', $batch->rows->first()->status);
