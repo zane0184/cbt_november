@@ -39,6 +39,8 @@ class ImportWorkbookServiceTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'Madrasah Import A', 'code' => 'IMPA']);
         $this->setTenantContext($this->tenant->id);
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $permission = Permission::create(['name' => 'user.manage', 'label' => 'Kelola Pengguna']);
+        $adminRole->permissions()->attach($permission->id);
         $this->admin = User::create(['name' => 'Admin Import', 'email' => 'admin.import@madrasah.test', 'password' => Hash::make('StrongPassword123!')]);
         $this->admin->roles()->attach($adminRole);
         $this->actingAs($this->admin);
@@ -268,4 +270,32 @@ class ImportWorkbookServiceTest extends TestCase
         $this->temporaryFiles[] = $path;
         return new UploadedFile($path, 'import-fixture.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
+    public function test_livewire_admin_can_upload_preview_and_confirm_guru_workbook(): void
+    {
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $file = $this->guruWorkbook([
+            ['PNS', '001234567890123456', '', '', 'Guru Livewire', 'L', '', ''],
+        ]);
+
+        Livewire::test(ImportManagement::class)
+            ->set('type', 'GURU')
+            ->set('upload', $file)
+            ->call('previewUpload')
+            ->assertHasNoErrors()
+            ->assertSee('Preview berhasil')
+            ->assertSee('Guru Livewire')
+            ->call('confirmImport')
+            ->assertSee('Tautan aktivasi satu kali')
+            ->assertSee('Guru Livewire');
+
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'nip' => '001234567890123456',
+        ]);
+        $this->assertDatabaseHas('import_batches', [
+            'tenant_id' => $this->tenant->id,
+            'status' => 'COMPLETED',
+        ]);
+    }
+
 }
