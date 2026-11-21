@@ -193,7 +193,12 @@
                             <p class="font-bold text-slate-900">{{ $session->exam?->title }} · Sesi {{ $session->session_number }} — {{ $session->name }}</p>
                             <p class="mt-1 text-xs text-slate-500">{{ $session->starts_at?->format('d/m/Y H:i') }}–{{ $session->ends_at?->format('H:i') }} · Revisi jadwal {{ $session->schedule_revision }} · {{ $session->status }}</p>
                         </div>
-                        <button type="button" wire:click="selectSessionForReschedule('{{ $session->id }}')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">Pilih untuk ubah jadwal</button>
+                        <div class="flex flex-wrap gap-2">
+                            @if($session->status === 'SCHEDULED')
+                                <button type="button" wire:click="selectSessionForReschedule('{{ $session->id }}')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700">Ubah Jadwal</button>
+                                <button type="button" wire:click="cancelSession('{{ $session->id }}')" class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700">Batalkan Sesi</button>
+                            @endif
+                        </div>
                     </div>
                     @if($session->sessionRooms->isNotEmpty())
                         <div class="mt-3 grid gap-3 md:grid-cols-2">
@@ -222,11 +227,15 @@
         </div>
 
         @if($sessions->isNotEmpty())
-            <div class="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <label class="block max-w-xl text-sm font-medium text-slate-700">Alasan pelepasan pemetaan rombel
+            <div class="mt-5 grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+                <label class="block text-sm font-medium text-slate-700">Alasan pelepasan pemetaan rombel
                     <input wire:model="releaseReason" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="Minimal 10 karakter; digunakan saat tombol Lepaskan dipilih">
+                    @error('releaseReason')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
                 </label>
-                @error('releaseReason')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
+                <label class="block text-sm font-medium text-slate-700">Alasan pembatalan sesi
+                    <input wire:model="cancelReason" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2" placeholder="Minimal 10 karakter; digunakan saat Batalkan Sesi dipilih">
+                    @error('cancelReason')<span class="text-xs text-red-600">{{ $message }}</span>@enderror
+                </label>
             </div>
         @endif
 
