@@ -347,3 +347,8 @@ Hanya enam file dokumentasi di branch docs/source-canonical-design-closure-20261
 - Conversation Files berisi 27 item: 24 laporan Tahap 1–5P, instruksi Lanjutkan, teks tempel, dan laporan audit Web Admin. Tidak ada source ZIP.
 - Library dipaginasi seluruhnya dalam 5 halaman. Satu-satunya ZIP yang tercantum adalah CBT agent.zip (245.690 byte); baseline 6 November, V50.39, V50.10, recovered source ZIP, CBT_MADRASAH_PAKET_FINAL, dan ZIP handover tidak ada pada daftar Library saat ini.
 - Dokumen provenance historis tetap dapat dibaca dan memuat hash/manifest, tetapi bukan pengganti raw source bytes.
+
+
+
+## CATATAN PRECEDENCE TERBARU — STATUS ASSIGNMENT PROKTOR
+Checkpoint ini adalah catatan historis. Jika bagian lama menyebut status assignment ACTIVE, bagian tersebut SUPERSEDED. Keputusan final adalah PENDING deny; CONFIRMED-only secara bersyarat; ACTIVE bukan status assignment; NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED deny; capability hanya pada starts_at <= serverNow < expires_at setelah seluruh validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict. Rujuk Addendum 35 dan DEC-WA-026. Temuan source tetap OPEN sampai implementasi dan tes.
