@@ -66,7 +66,7 @@ Backup manifest sebelum ledger refresh: docs/backup/wa-01-preparation-2026-11-21
 |---|---|---|---:|---|---|
 | docs/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md | 73aa8478816eb3c0672562fa17e6b84e54338dd9 | a66932c94e7bc2161024461c04258bd2c0d7713b17793e32ba440493a7d6c13c | 60680 | docs/backup/wa-01-preparation-2026-11-21/WA01_MATRIKS_AUTHORIZATION_LIVEWIRE_ASSIGNMENT_TEST_FINAL_2026-11-21.md.before-basepolicy-completion | Backup blob identik dengan matriks sebelum update |
 
-Backup manifest sebelum ledger ini: docs/backup/wa-01-preparation-2026-11-21/MANIFEST.md.before-basepolicy-matrix-ledger; blob tersimpan pada commit b5686be557e9e5e62f21b6afcc34d146372b6466; backup manifest blob diverifikasi terpisah. Commit backup manifest: b5686be557e9e5e62f21b6afcc34d146372b6466.
+Backup manifest sebelum ledger ini: docs/backup/wa-01-preparation-2026-11-21/MANIFEST.md.before-basepolicy-matrix-ledger; blob backup: de534318428e0843620d9939379caddae3e7bc35; commit backup: b5686be557e9e5e62f21b6afcc34d146372b6466.
 
 ## Matriks final setelah policy keenam
 - Matriks final terkini mencakup BasePolicy.php sebagai policy keenam (parent class); source blob 788f68632ca55e71723c12a7f771cace621a7406.
