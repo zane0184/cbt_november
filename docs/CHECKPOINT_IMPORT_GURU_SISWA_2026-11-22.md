@@ -106,15 +106,16 @@ Status: IMPLEMENTASI PARSIAL; bukan klaim Stage 4A selesai.
 - Kandidat Proktor sekarang wajib akun tenant-local, belum dihapus, tepat satu role GURU, serta mempunyai TeacherProfile tenant-local yang tidak soft-deleted. Filter UI dan validasi service sama-sama menerapkan syarat ini.
 - Admin CBT boundary ditambah tes API langsung GET /api/v1/questions dan GET /api/v1/exams.
 - Test ProctorAssignmentSecurityTest mencakup Guru aktif, Siswa, multi-role, profil Guru soft-deleted, revoke, akses halaman Admin oleh Guru, dan foreign key lintas tenant.
+- MonitoringDuplicationTest memastikan Guru yang ditugaskan secara akademik dapat monitoring; Admin ditolak pada URL monitoring/hasil serta API monitoring, jawaban, score, report, dan heartbeat; Guru tidak dapat memakai endpoint jawaban/heartbeat Siswa.
 - Backup sumber implementasi: docs/backup/stage4a-proctor-eligibility-2026-11-22/ (manifest tersedia).
 - Laporan implementasi: docs/IMPLEMENTASI_STAGE4A_PORTAL_RBAC_PROKTOR_GURU_2026-11-22.md.
 - CI 44946708332 pada SHA 6fdefb24ef5bc3acbd182fbc9f9a1366d19a0037: SUCCESS, 100 test / 516 assertion, PHP lint PASS.
-- CI terbaru 44946877772 pada SHA 2ff3f3b6c671e12f25da941f50370bf1cc47eeb5: SUCCESS. PHP lint PASS; 100 test / 519 assertion PASS, termasuk 1 AdminCbtBoundaryTest / 29 assertion dan 7 ProctorAssignmentSecurityTest / 15 assertion.
+- CI terbaru 44948376979 pada SHA 4c2804a50d7d48b3760c7df3cab0f311d309143f: SUCCESS. PHP lint PASS; 102 test / 539 assertion PASS, termasuk AdminCbtBoundaryTest (1/29), ProctorAssignmentSecurityTest (7/15), dan MonitoringDuplicationTest (2/20).
 - Belum ada migration baru, perubahan DB produksi, deployment VPS, PR, atau merge.
 
 Pekerjaan selanjutnya:
-1. Verifikasi akhir CI 44946877772.
-2. Lengkapi pengujian URL/API langsung untuk monitoring, peserta, jawaban, nilai, dan report.
+1. CI 44948376979 telah SUCCESS; gunakan SHA 4c2804a50d7d48b3760c7df3cab0f311d309143f sebagai source teruji terbaru.
+2. Perluas pengujian URL/API langsung untuk mutation answer, score mutation, token/lock, dan ekspor laporan; audit controller yang memvalidasi input sebelum otorisasi.
 3. Audit final portal Admin/Guru/Siswa dan isolasi akses.
 4. Lanjutkan lifecycle/capability assignment Proktor sementara (PENDING/CONFIRMED/NEEDS_REVIEW/REVOKED/EXPIRED/COMPLETED), scope rombel dan schedule revision, konflik, serta pencabutan capability.
 5. Lanjutkan tahap berikut tanpa membuka hak CBT untuk Admin Madrasah.
