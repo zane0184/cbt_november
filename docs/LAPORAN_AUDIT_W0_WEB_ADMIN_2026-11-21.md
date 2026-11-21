@@ -1,6 +1,6 @@
 # LAPORAN AUDIT W0 — WEB ADMIN MADRASAH
 **Tanggal:** 21 November 2026 (WIB)  
-**Status:** AUDIT STATIS SELESAI; SHA-256 DAN RESTORE SNAPSHOT PASS; PROVENANCE ZIP BASELINE TETAP BLOCKED  
+**Status:** AUDIT STATIS W0 DAN INTEGRITAS SNAPSHOT PASS; ZIP 6 NOVEMBER ARSIP HISTORIS, BUKAN BLOCKER W0  
 **Scope:** Web Admin Madrasah saja  
 **Tidak termasuk:** Portal Guru/Siswa, Android, Publisher/Super Admin, licensing, VPS/deployment, Device Lease/Fencing
 
@@ -17,7 +17,7 @@ Persetujuan pengguna telah diterapkan dengan batas yang tegas:
 
 W0 telah membuat branch kerja baru, memverifikasi urutan commit, membuat manifest rekursif Git, dan menyelesaikan audit statis route-permission utama. Workflow GitHub Actions khusus audit mengambil source commit pin, menghitung SHA-256 seluruh 531 tracked files, membuat arsip snapshot, memulihkan ke direktori disposable, dan membandingkan seluruh path/ukuran/hash. Hasil restore PASS; snapshot dan manifest diunggah sebagai artifact. Pemeriksaan independen atas artifact yang diunduh juga menghasilkan 531 file cocok, tanpa missing/extra/changed.
 
-**W1 belum dimulai.** Provenance byte-to-byte source Git terhadap ZIP baseline 6 November tetap BLOCKED karena raw ZIP asli belum dapat diperiksa. Tidak ada source aplikasi yang diubah. Tidak ada migration, database, merge PR, deployment, atau konfigurasi produksi yang disentuh.
+**W1 belum dimulai dan belum disetujui.** Berdasarkan koreksi keputusan terbaru, ZIP 6 November adalah arsip historis saja; pemeriksaan raw-byte/CRC/SHA terhadap ZIP tersebut tidak lagi menjadi syarat atau blocker W0. GitHub menjadi pusat sumber kebenaran proyek. Tidak ada source aplikasi yang diubah. Tidak ada migration, database, merge PR, deployment, atau konfigurasi produksi yang disentuh.
 
 ## 2. AUDIT
 
@@ -238,3 +238,122 @@ W0 menghasilkan dasar yang cukup untuk menyusun patch plan, tetapi **tidak membu
 3. W1 hanya dimulai setelah persetujuan eksplisit pengguna. Setiap file yang akan diubah wajib dibackup dan diverifikasi sebelum patch.
 
 **Kesimpulan:** Klarifikasi commit, SHA-256 seluruh 531 tracked files, dan uji restore snapshot disposable telah PASS. Provenance ZIP baseline tetap BLOCKED sesuai instruksi. W0 diserahkan untuk pemeriksaan akhir pengguna; W1 belum dimulai dan belum disetujui.
+
+
+---
+
+# ADDENDUM REKONSILIASI GITHUB DAN DOKUMENTASI — 21 NOVEMBER 2026
+
+Addendum ini mengoreksi status dan hierarki sumber kebenaran tanpa menghapus temuan, matriks, keputusan, atau bukti audit W0 yang telah dicatat pada bagian sebelumnya. Jika terdapat perbedaan dengan catatan historis di atas, addendum ini yang berlaku untuk status saat ini.
+
+## A. AUDIT — Git ref terkini yang dibaca langsung
+
+Pada awal rekonsiliasi, GitHub refs dibaca langsung:
+
+| Branch | HEAD terverifikasi | Fungsi |
+|---|---|---|
+| `work/web-admin-w0-20261121` | `cbb7cda6ebfbd3792435d6dbfebed8b1cbc406af` | Branch kerja Web Admin; dokumen W0 dan workflow audit |
+| `docs/curriculum-kbc-w6-requirements-20261121` | `4a7f7c3ed56dc2fb10ce477418cebc5a2394a0d4` | Branch dokumentasi tambahan Kurmer-KBC |
+| `recovery/source-preservation-20261121` | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` | Source pin/recovery; tidak diubah |
+
+HEAD di atas adalah hasil pembacaan refs sebelum commit rekonsiliasi dokumen W0. SHA commit yang memuat revisi laporan dan checkpoint ini dicatat dari hasil GitHub Contents API dan diverifikasi lagi dari branch ref setelah commit. Git commit bersifat content-addressed; sebuah file tidak dapat menyertakan SHA commit yang sedang membentuk dirinya sendiri tanpa mengubah SHA itu kembali. Karena itu, SHA HEAD final ditetapkan melalui Git ref dan dicantumkan pada laporan/handover setelah commit, sedangkan checkpoint menyebut parent/commit sebelumnya dan mengarahkan pembaca ke ref branch untuk SHA commit yang memuat checkpoint.
+
+Tidak ada merge, rebase, force-push, reset, atau perubahan pada branch source/recovery. Tidak ada perubahan source aplikasi.
+
+## B. Koreksi sumber kebenaran proyek
+
+Hierarki yang berlaku:
+1. Keputusan proyek terbaru yang telah disepakati — sumber kebenaran persyaratan dan desain.
+2. GitHub working source yang ditetapkan — sumber kebenaran kondisi source aktual.
+3. Branch, commit, tag, dan Pull Request — riwayat versi dan perubahan.
+4. Checkpoint/laporan audit di GitHub — progres, temuan, dan handover.
+5. Backup, manifest, dan snapshot GitHub Actions — bukti integritas dan pemulihan.
+
+`CBT REVISI 6 NOPEMBER 2026.zip` adalah arsip historis. Tidak perlu dibuka, dicocokkan, dijadikan blocker W0, atau digunakan untuk menurunkan/mengganti source GitHub. Perbedaan dengan arsip historis bukan defect.
+
+W0 dinilai berdasarkan working source GitHub, source commit pin, backup/snapshot, SHA-256 manifest, restore disposable, dan audit source relevan. SHA-256/restore tetap PASS. Penghapusan status ZIP sebagai blocker tidak menghapus gap keamanan dan implementasi yang ditemukan.
+
+## C. Temuan audit keamanan tetap terbuka
+
+Seluruh temuan pada bagian 2.4–2.7 tetap OPEN sampai ada patch implementasi dan bukti tes yang sesuai, termasuk:
+- role/permission Admin dan Operator belum dikonsolidasikan; alias `ADMIN` dan role `OPERATOR` masih ditemukan;
+- portal Proktor permanen dan role `PROKTOR` masih ditemukan; assignment harus beralih ke Guru aktif;
+- Admin masih memiliki akses permukaan Bank Soal dan dapat membaca konten soal;
+- Admin masih dapat membuka UI ujian campuran, serta policy/permission membuka aksi close;
+- hak monitoring, detail attempt, payload jawaban, score per soal, report/result, finalize, dan reopen masih terlalu luas untuk Admin;
+- assignment Proktor belum membuktikan pencegahan bentrok interval lintas ujian;
+- perubahan jadwal belum memiliki satu service yang konsisten menandai assignment terdampak untuk review;
+- tenant isolation dan seluruh jalur query User/relasi tetap memerlukan pengujian negatif lintas tenant.
+
+Tidak satu pun temuan tersebut dianggap selesai oleh keberhasilan snapshot atau CI yang tercatat sebelumnya.
+
+## D. AUDIT — Multi-curriculum dan mapping soal (read-only)
+
+Source yang diperiksa pada pin `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0`:
+
+- `database/migrations/2026_11_05_190004_create_multi_curriculums_table.php`: kolom `code` secara eksplisit mengomentari `MERDEKA, KBC, K13, CUSTOM`; KBC karena itu dapat direpresentasikan sebagai kurikulum sejajar. Ini bertentangan dengan keputusan integrasi Kurmer+KBC.
+- `190005_create_multi_curriculum_versions_table.php`: versi memiliki `effective_year`, tetapi belum terlihat provenance lengkap nomor/nama dokumen sumber dan effective date.
+- `190006_create_multi_curriculum_structures_table.php`: node generik mencakup `FASE`, `GRADE_LEVEL`, `ELEMENT`, `DIMENSI_CINTA`, `PETA_KASIH`; belum membuktikan katalog Panca Cinta dan DPL resmi yang terpisah dan terversi.
+- `190007_create_multi_learning_outcomes_table.php`: tipe generik CP/TP/ATP/KKTP/KBC_CINTA; migration berikutnya menambahkan `multi_curriculum_version_id`.
+- `190008_create_question_multi_curriculum_mappings_table.php`: mapping menghubungkan question, tenant, curriculum version, dan multi-learning outcome. FK mapping memiliki beberapa perilaku cascade.
+- `200001_fase1c_multi_curriculum_integrity.php`: menambahkan relasi composite/registration, backfill versi dari struktur, dan `curriculum_owner_id`; beberapa jalur mapping memakai cascade. Jalur SQLite dan MySQL tidak sepenuhnya ekuivalen; trigger sync versi hanya tampak pada SQLite. Migration bersifat forward-only.
+- `QuestionMultiCurriculumMapping` memiliki `curriculum_owner_id` pada fillable dan hook model, tetapi hook Eloquent bukan pengganti constraint DB untuk raw SQL/Query Builder.
+- `Question` mempunyai `curriculum_id`, `subject_id`, `phase_id`, `grade_level_id`, dan relasi tags, tetapi model yang diperiksa belum menunjukkan relasi langsung ke CP/TP legacy atau mapping multi-curriculum.
+
+Implikasi: jangan menghapus tabel atau melakukan rekonstruksi skema secara asumtif. Diperlukan desain rekonsiliasi yang menjaga data legacy, provenance owner, tenant registration, versi CP/TP, snapshot soal, dan relasi yang telah digunakan. Tidak ada database/source yang diubah.
+
+## E. Satu spesifikasi kerja Web Admin — rencana dokumentasi, belum digabung
+
+Branch tidak disatukan otomatis. Empat dokumen Kurmer-KBC tetap berada di branch dokumentasinya sampai ada rencana integrasi yang ditinjau. Rencana satu sumber dokumentasi adalah membuat indeks/spesifikasi induk Web Admin yang merujuk dokumen sumber tanpa menghapus atau menimpa dokumen yang sudah ada.
+
+### Path yang wajib dipertahankan
+
+**W0 / working branch**
+1. `.github/workflows/w0-source-snapshot-verify.yml`
+2. `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv`
+3. `docs/LAPORAN_AUDIT_W0_WEB_ADMIN_2026-11-21.md`
+4. `docs/CHECKPOINT_W0_WEB_ADMIN_2026-11-21.md`
+
+**Kurmer-KBC / documentation branch**
+5. `docs/SUPPLEMENTAL_SPEC_MASTER_KURIKULUM_KURMER_KBC_W6.md`
+6. `docs/REGISTER_KEPUTUSAN_WEB_ADMIN_KURIKULUM.md`
+7. `docs/MATRIKS_AUDIT_DAN_PENGUJIAN_MASTER_KURIKULUM_W6.md`
+8. `docs/CHECKPOINT_KURIKULUM_KURMER_KBC_W6_2026-11-21.md`
+
+**Dokumen/keputusan terdahulu**
+9. Seluruh spesifikasi induk Web Admin yang telah disepakati pada dokumentasi GitHub, tanpa penggantian.
+10. Matriks audit W0 dan seluruh tabel route/action/permission pada laporan W0 ini.
+11. Seluruh keputusan lama yang masih berlaku, khususnya satu role `ADMIN_MADRASAH`, Guru pemilik operasional CBT, Proktor sebagai assignment Guru sementara, dan isolasi satu madrasah/satu instalasi/satu database.
+
+### Rencana penggabungan dokumentasi di masa berikutnya
+
+1. Inventarisasi seluruh dokumen spesifikasi induk, keputusan, matriks audit, matriks pengujian, dan checkpoint di GitHub; identifikasi duplikasi tanpa menghapus sumber.
+2. Buat satu dokumen indeks/entry point `docs/WEB_ADMIN_MASTER_SPECIFICATION.md` sebagai pintu rujukan seluruh tahap W0–W10.
+3. Dokumen induk menetapkan Kurikulum Merdeka sebagai kerangka akademik dan KBC sebagai landasan nilai/karakter yang terintegrasi. Tidak boleh ada pilihan “Kurmer ATAU KBC”.
+4. Pertahankan empat dokumen Kurmer-KBC sebagai sumber detail dan tautkan dari spesifikasi induk; jangan menyalin secara terpisah sehingga terjadi drift.
+5. Pertahankan laporan/checkpoint/matriks W0, seluruh keputusan RBAC, dan temuan terbuka sebagai rujukan audit historis.
+6. Setelah path dan isi diperiksa, buat branch dokumentasi integrasi terpisah atau PR dokumentasi. Tidak melakukan merge otomatis ke branch W0 atau recovery.
+7. Sebelum integrasi, tampilkan daftar file, asal branch, konflik/duplikasi, dan usulan resolusi untuk diperiksa pengguna.
+
+Rencana ini belum dijalankan. Tidak ada branch yang digabung dan tidak ada dokumen lama yang dihapus.
+
+## F. Status gate setelah koreksi
+
+| Kriteria | Status |
+|---|---|
+| GitHub working source dan commit pin | PASS |
+| HEAD refs W0, docs Kurmer-KBC, recovery dibaca langsung | PASS pada waktu audit; SHA final sesudah commit dilaporkan terpisah |
+| Recovery branch tetap pada source pin | PASS |
+| SHA-256 531 tracked files | PASS |
+| Snapshot dan restore disposable 531/531 | PASS |
+| ZIP 6 November sebagai blocker W0 | CLOSED BY DECISION — arsip historis saja |
+| Audit RBAC/permission/Proktor/tenant | OPEN — belum diperbaiki/dibuktikan tes |
+| Audit multi_curriculums dan question mapping | OPEN — audit statis awal; belum ada rekonsiliasi data runtime |
+| Satu spesifikasi kerja Web Admin | PLAN ONLY — belum diintegrasikan antar-branch |
+| W0 formal closure | MENUNGGU PENILAIAN PENGGUNA |
+| W1 | NOT APPROVED / NOT STARTED |
+| W6 | NOT STARTED |
+
+## G. Batas kerja dan perubahan
+
+Rekonsiliasi ini hanya mengubah laporan dan checkpoint dokumentasi W0. Tidak ada perubahan source aplikasi, migration, seeder, database, produksi, deployment, branch recovery, atau branch dokumentasi Kurmer-KBC. Tidak ada merge/rebase/force-push. Semua temuan keamanan dan gap tetap terbuka.
