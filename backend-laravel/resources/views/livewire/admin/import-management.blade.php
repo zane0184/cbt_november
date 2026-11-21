@@ -55,7 +55,7 @@
             </div>
             <div class="overflow-x-auto"><table class="min-w-full text-sm">
                 <thead><tr class="border-b text-left"><th class="p-2">Sheet</th><th class="p-2">Baris</th><th class="p-2">Nama / Identitas</th><th class="p-2">Status</th><th class="p-2">Alasan</th></tr></thead>
-                <tbody>@foreach($batch->rows as $row)<tr class="border-b align-top"><td class="p-2">{{ $row->sheet_name }}</td><td class="p-2">{{ $row->row_number }}</td><td class="p-2">{{ $row->row_summary['name'] ?? '—' }}<div class="text-xs text-textSecondary">••••{{ $row->row_summary['identity_suffix'] ?? '—' }}</div></td><td class="p-2 font-semibold">{{ $row->status }}</td><td class="p-2">{{ $row->reason ?: '—' }}</td></tr>@endforeach</tbody>
+                <tbody>@foreach($batch->rows as $row)<tr class="border-b align-top"><td class="p-2">{{ $row->sheet_name }}</td><td class="p-2">{{ $row->row_number }}</td><td class="p-2">{{ $row->row_summary['name'] ?? '—' }}<div class="text-xs text-textSecondary">••••{{ $row->row_summary['identity_suffix'] ?? '—' }}</div></td><td class="p-2 font-semibold">{{ $row->status }}</td><td class="p-2">{{ $row->reason ?: '—' }}@if($row->status === 'IMPORTED' && (string) $batch->created_by === (string) auth()->id())<div class="mt-1"><button wire:click="regenerateActivation('{{ $row->id }}')" class="text-xs text-emerald-700 underline">Terbitkan ulang tautan aktivasi</button></div>@endif</td></tr>@endforeach</tbody>
             </table></div>
         </div>
     @endif

@@ -83,6 +83,27 @@ class ImportManagement extends Component
         }
     }
 
+    public function regenerateActivation(string $rowId): void
+    {
+        $this->authorizeImport();
+        if (!$this->batchId) {
+            $this->addError('upload', 'Pilih riwayat import terlebih dahulu.');
+            return;
+        }
+        try {
+            $link = app(ImportWorkbookService::class)->regenerateActivation(
+                $this->batchId,
+                $rowId,
+                (string) auth()->user()->tenant_id,
+                (string) auth()->id(),
+            );
+            $this->activationLinks = [$link];
+            $this->notice = 'Tautan aktivasi baru diterbitkan. Tautan lama telah dinonaktifkan; salin dan bagikan secara pribadi.';
+        } catch (\\Throwable $exception) {
+            $this->addError('upload', $exception->getMessage());
+        }
+    }
+
     public function discardPreview(): void
     {
         $this->authorizeImport();

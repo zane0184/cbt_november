@@ -110,7 +110,9 @@ class ImportWorkbookService
                         return $this->importAssignment($payload, $tenantId, $userId);
                     }, 3);
 
-                    $row->update(['status' => $result['status'], 'reason' => $result['reason'], 'encrypted_payload' => null]);
+                    $summary = $row->row_summary ?? [];
+                    if (!empty($result['user_id'])) $summary['created_user_id'] = $result['user_id'];
+                    $row->update(['status' => $result['status'], 'reason' => $result['reason'], 'encrypted_payload' => null, 'row_summary' => $summary]);
                     if (!empty($result['activation_url'])) {
                         $activationLinks[] = [
                             'name' => $result['name'],
@@ -152,6 +154,35 @@ class ImportWorkbookService
             ]);
 
             return ['batch' => $batch->fresh('rows'), 'activation_links' => $activationLinks];
+        }, 3);
+    }
+
+    public function regenerateActivation(string $batchId, string $rowId, string $tenantId, string $userId): array
+    {
+        $this->assertAdminActor($tenantId, $userId);
+        return DB::transaction(function () use ($batchId, $rowId, $tenantId, $userId): array {
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+            $batch = ImportBatch::query()->where('tenant_id', $tenantId)->whereKey($batchId)->lockForUpdate()->firstOrFail();
+            if ((string) $batch->created_by !== $userId) throw new RuntimeException('Hanya Admin pembuat batch yang dapat menerbitkan ulang tautan aktivasi.');
+            $row = ImportBatchRow::query()->where('tenant_id', $tenantId)->where('batch_id', $batchId)->whereKey($rowId)->lockForUpdate()->firstOrFail();
+            if ($row->status !== 'IMPORTED' || empty($row->row_summary['created_user_id'])) {
+                throw new RuntimeException('Baris ini tidak memiliki akun hasil import yang dapat diaktivasi ulang.');
+            }
+            $user = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($row->row_summary['created_user_id'])->firstOrFail();
+            $used = ImportActivationToken::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('user_id', $user->id)->whereNotNull('used_at')->exists();
+            if ($used) throw new RuntimeException('Akun sudah diaktivasi. Tautan baru tidak dapat diterbitkan.');
+            $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('user_id', $user->id)->whereNull('deleted_at')->first();
+            $student = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('user_id', $user->id)->whereNull('deleted_at')->first();
+            if (!$teacher && !$student) throw new RuntimeException('Profil akun tidak ditemukan pada tenant ini.');
+            $identity = $teacher ? ($teacher->nip ?: $teacher->nik) : $student->nisn;
+            $name = $teacher?->full_name ?? $student?->full_name ?? $user->name;
+            $link = $this->createActivation($user, $name, $identity, $tenantId);
+            app(AuditService::class)->log('IMPORT_ACTIVATION_LINK_REISSUED', 'ImportBatchRow', $row->id, null, [
+                'batch_id' => $batch->id,
+                'user_id' => $user->id,
+                'expires_in_hours' => 48,
+            ]);
+            return ['name' => $name, 'identity' => $identity, 'url' => $link['activation_url']];
         }, 3);
     }
 
@@ -495,12 +526,14 @@ class ImportWorkbookService
 
     private function createActivation(User $user, string $name, string $identity, string $tenantId): array
     {
+        ImportActivationToken::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('user_id', $user->id)
+            ->whereNull('used_at')->update(['used_at' => now()]);
         $plain = Str::random(64);
         ImportActivationToken::create([
             'user_id'=>$user->id,'token_hash'=>hash('sha256',$plain),
             'expires_at'=>now()->addHours(48),'created_at'=>now(),
         ]);
         $url = URL::temporarySignedRoute('import-account.activate.show', now()->addHours(48), ['token'=>$plain]);
-        return ['status'=>'IMPORTED','reason'=>null,'activation_url'=>$url,'name'=>$name,'identity'=>$identity];
+        return ['status'=>'IMPORTED','reason'=>null,'activation_url'=>$url,'name'=>$name,'identity'=>$identity,'user_id'=>$user->id];
     }
 }
