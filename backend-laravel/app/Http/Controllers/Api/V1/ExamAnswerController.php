@@ -20,6 +20,13 @@ class ExamAnswerController extends Controller
 
     public function index(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+
+        if (!$user || !$user->tenant_id || count($roleNames) !== 1 || $roleNames[0] !== 'SISWA') {
+            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -27,12 +34,6 @@ class ExamAnswerController extends Controller
                 'message' => 'Device binding identifier missing.',
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
-        }
-
-        $user = $request->user();
-
-        if (!$user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH') || !$user->tenant_id) {
-            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
         }
 
 
@@ -85,6 +86,13 @@ class ExamAnswerController extends Controller
 
     public function update(Request $request, Exam $exam, ExamAttempt $attempt, ExamQuestionSnapshot $snapshot)
     {
+        $user = $request->user();
+        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
+
+        if (!$user || !$user->tenant_id || count($roleNames) !== 1 || $roleNames[0] !== 'SISWA') {
+            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -92,12 +100,6 @@ class ExamAnswerController extends Controller
                 'message' => 'Device binding identifier missing.',
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
-        }
-
-        $user = $request->user();
-
-        if (!$user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH') || !$user->tenant_id) {
-            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif yang dapat mengakses jawaban ujian.'], 403);
         }
 
         // 1. Basic Authorization & Integrity Checks
