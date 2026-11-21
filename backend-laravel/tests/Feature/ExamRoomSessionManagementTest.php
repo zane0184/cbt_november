@@ -636,7 +636,9 @@ class ExamRoomSessionManagementTest extends TestCase
             ->set('roomCapacity', 24)
             ->set('roomStatus', 'INACTIVE')
             ->call('saveRoom')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertDontSee('peserta ditempatkan')
+            ->assertDontSee('Siswa');
 
         $this->assertDatabaseHas('exam_rooms', [
             'id' => $room->id,
