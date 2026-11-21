@@ -547,3 +547,59 @@ Reconfirmed:
 ### 15.7 Status
 
 Audit route-by-route and Livewire hydration review adds P0-12/P1-16/P1-17. Audit remains OPEN; no source or configuration changed. Patch plan final remains pending full query/export/cache/resource review and final per-file dependency analysis.
+
+
+---
+
+## 16. ADDENDUM AUDIT PHASE 9 — login role acceptance and missing tenant fail-closed guard (21 November 2026)
+
+### P1-18 — API login still issues tokens to legacy ADMIN/OPERATOR/PROKTOR identities
+
+Bukti:
+- `LoginIdentityResolver::resolve()` defines staff roles `ADMIN_MADRASAH, ADMIN, OPERATOR, KAMAD, PROKTOR`; any one of those passes staff-role matching if username identity matches.
+- `AuthController::login()` uses that resolver and rejects only missing user, invalid password or SUPER_ADMIN. It does not apply a separate allowlist that restricts the active Admin role.
+- Therefore an account with legacy `ADMIN`, `OPERATOR`, or `PROKTOR` can receive a Sanctum API token if its tenant installation identity and credentials pass.
+- Web login `AuthWebController::login()` allowlist excludes `ADMIN` but still accepts `OPERATOR` and `PROKTOR`; redirectForUser routes Admin/Operator to `/operator/dashboard` and Proktor to `/proktor/assignments`.
+- Additional legacy runtime paths: `LicenseStatusController` accepts ADMIN_MADRASAH/OPERATOR; `OperatorDashboard::mount()` accepts ADMIN_MADRASAH/ADMIN/OPERATOR; `KamadDashboard::mount()` accepts ADMIN_MADRASAH/ADMIN/KAMAD; `AcademicManagement` and `CurriculumManagement` accept ADMIN; DatabaseSeeder creates OPERATOR; InstallerService role map still includes OPERATOR; RolePermissionBootstrapper optional grants OPERATOR; ExamPolicy/AssessmentPolicy contain OPERATOR and PROKTOR branches.
+
+Dampak: keputusan final ADMIN_MADRASAH-only belum diterapkan pada authentication/runtime. API token path specifically bypasses the web allowlist's partial exclusion of ADMIN. Status P1 OPEN; no login request was executed in this phase.
+
+### P1-19 — IdentifyTenant tidak menolak authenticated user tanpa tenant_id
+
+Bukti:
+- `IdentifyTenant::handle()` resets TenantContext, rejects SUPER_ADMIN, reads `$user->tenant_id`, and sets context only if tenantId is truthy.
+- If an authenticated user has null tenant_id, middleware currently calls next($request) instead of aborting 403.
+- `TenantScoped::bootTenantScoped()` fails closed (1=0) when context is absent, and create hook throws without context. This is a positive control for models using the trait.
+- `User` does not use TenantScoped. Several route-bound User records and User relationships are resolved by primary key; controller/policy checks must therefore reject null/mismatched tenant explicitly.
+- `LoginIdentityResolver` normal login requires exactly one local installation tenant and filters candidate users by that tenant; however old Sanctum tokens/legacy sessions are not necessarily re-resolved through LoginIdentityResolver on every request.
+
+Dampak: fail-closed behavior is inconsistent at middleware boundary. No cross-tenant data disclosure was demonstrated. Require middleware to reject authenticated user without tenant, and negative HTTP tests for all unscoped User/resource routes.
+
+### 16.3 Additional positive tenant controls
+
+- Middleware priority in `bootstrap/app.php`: Authenticate → IdentifyTenant → SubstituteBindings. This allows tenant context to be established before implicit route model binding.
+- X-Tenant-Override is ignored; tenant derives from authenticated user.
+- `TenantScoped` forces tenant_id from context on create and returns no rows without context.
+- LoginIdentityResolver requires exactly one installation identity and exactly one Tenant, then filters username, TeacherProfile and StudentProfile candidates by that tenant.
+- User query sites reviewed in ExamParticipantController, ReportController, Admin UserManagement, ExamManagement, ProctorAssignmentManagement, OperatorDashboard and ExamProctorAssignmentService generally include explicit tenant_id filters. Unscoped bootstrap/maintenance uses are separately documented in §10.2 and §13.6.
+- No custom Route::bind/Route::model/resolveRouteBinding was found; implicit binding uses model query scopes where available.
+
+### 16.4 Final source path inventory for role branches
+
+- `app/Services/LoginIdentityResolver.php::resolve`
+- `app/Http/Controllers/Api/V1/AuthController.php::login`
+- `app/Http/Controllers/AuthWebController.php::login/redirectForUser`
+- `app/Http/Controllers/LicenseStatusController.php::__invoke/refresh`
+- `app/Livewire/Operator/OperatorDashboard.php::mount/render`
+- `app/Livewire/Proktor/ProktorDashboard.php::mount/render`
+- `app/Livewire/Kamad/KamadDashboard.php::mount`
+- `app/Livewire/Admin/AcademicManagement.php::authorizeAcademicManagement`
+- `app/Livewire/Admin/CurriculumManagement.php::authorizeCurriculumManagement`
+- `app/Services/RolePermissionBootstrapper.php::ROLE_GRANTS/OPTIONAL_ROLE_GRANTS/bootstrap`
+- `database/seeders/DatabaseSeeder.php::run`
+- `app/Services/InstallerService.php` role creation/bootstrap
+- `app/Policies/ExamPolicy.php`, `AssessmentPolicy.php`
+
+### 16.5 Status
+
+P1-18 and P1-19 OPEN. Authentication, role branch and middleware static review complete for the listed paths; no login/API request or tenant-null HTTP test was executed. No source/config/database changed.
