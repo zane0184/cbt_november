@@ -91,7 +91,7 @@ class ImportWorkbookService
             // Serialize all import confirmations for one tenant. This prevents two batches
             // from concurrently creating the same legacy identity without adding constraints
             // to the existing identity columns.
-            Tenant::withoutGlobalScopes()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
             $batch = ImportBatch::query()->where('tenant_id', $tenantId)->whereKey($batchId)->lockForUpdate()->firstOrFail();
             if ($batch->status !== 'PREVIEW') throw new RuntimeException('Batch ini tidak lagi dapat dikonfirmasi.');
             if ((string) $batch->created_by !== $userId) throw new RuntimeException('Hanya Admin pembuat preview yang dapat mengonfirmasi batch ini.');
@@ -208,7 +208,7 @@ class ImportWorkbookService
 
     private function assertAdminActor(string $tenantId, string $userId): void
     {
-        $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($userId)->firstOrFail();
+        $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($userId)->firstOrFail();
         if (!$actor->hasRole('ADMIN_MADRASAH')) {
             throw new RuntimeException('Hanya Admin Madrasah pada tenant yang sama yang dapat menjalankan import.');
         }
