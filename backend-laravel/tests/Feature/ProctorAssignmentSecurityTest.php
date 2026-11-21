@@ -132,6 +132,36 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assertDatabaseCount('exam_proctor_assignments', 0);
     }
 
+    public function test_multi_role_user_cannot_be_selected_as_temporary_proctor(): void
+    {
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $multiRoleUser = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Multi Role',
+            'email' => 'guru-multi@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $multiRoleUser->roles()->attach([$guruRole->id, $studentRole->id]);
+        TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $multiRoleUser->id,
+            'full_name' => 'Guru Multi Role',
+        ]);
+
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->set('selectedExamId', $this->exam->id)
+            ->set('selectedProctorId', $multiRoleUser->id)
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
+            ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+            ->set('reason', 'Pengawasan ujian kelas enam')
+            ->call('assign')
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('exam_proctor_assignments', 0);
+    }
+
     public function test_guru_without_active_teacher_profile_cannot_be_selected(): void
     {
         $teacherRole = Role::where('name', 'GURU')->firstOrFail();
