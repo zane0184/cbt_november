@@ -203,3 +203,104 @@ Paket 5 tidak boleh mulai mengubah source aplikasi sampai:
 Catatan kelengkapan pesan pengguna: daftar yang diterima dalam percakapan terpotong setelah butir 5 pada frasa "tentang Panduan Kurik...". Butir 1-5 di atas dicatat sesuai bagian yang terbaca; jika pengguna mengirim kelanjutan daftar, lampiran ini harus diperbarui sebelum Paket 5.
 
 Status: gate kepatuhan regulasi ditetapkan; verifikasi awal sumber publik dilakukan; pengarsipan dokumen primer lengkap, matriks pasal-requirement, dan implementasi belum dilakukan.
+
+
+## 9. Koreksi desain mengikat: satu kesatuan sistem kurikulum dan kewenangan profesional Guru (2026-11-21)
+
+Bagian ini merupakan koreksi dan pengganti terhadap ketentuan yang bertentangan pada bagian 4.2, 4.3, 4.4, 5, dan catatan keputusan bisnis sebelumnya. Jika ada perbedaan, bagian 9 ini yang berlaku.
+
+### 9.1 Model konseptual tunggal
+
+CBT Madrasah tidak boleh menawarkan KBC, Pembelajaran Mendalam, atau 8 Dimensi Profil Lulusan sebagai pilihan kurikulum alternatif. Model konseptualnya:
+
+- **Kurikulum Merdeka**: kerangka dan struktur kurikulum.
+- **Kurikulum Berbasis Cinta (KBC)**: landasan nilai dan karakter pendidikan madrasah; Panca Cinta menjadi nilai yang diintegrasikan dalam pembelajaran.
+- **Pembelajaran Mendalam**: pendekatan pembelajaran berkesadaran, bermakna, dan menggembirakan.
+- **8 Dimensi Profil Lulusan**: arah capaian kompetensi dan karakter.
+- **Alur akademik**: CP -> TP -> ATP -> Materi -> Bank Soal -> Asesmen -> Ujian -> Hasil Belajar.
+
+Keempat unsur tersebut harus terhubung pada data pembelajaran, perencanaan, asesmen, evaluasi dan pelaporan. Implementasi KBC dan Pembelajaran Mendalam tidak boleh mengubah CP resmi secara diam-diam atau menciptakan mata pelajaran baru tanpa dasar regulasi.
+
+### 9.2 Koreksi daftar regulasi dan sumber CP
+
+Tambahan daftar wajib:
+6. Keputusan Kepala BSKAP Nomor 046/H/KR/2025 tentang Capaian Pembelajaran pada PAUD, Jenjang Pendidikan Dasar dan Menengah sebagaimana diubah oleh Keputusan Kepala BKPDM Nomor 020 Tahun 2026.
+
+Hasil verifikasi publik awal:
+- Siaran pers resmi Kemendikdasmen tanggal 23 Juni 2026 menyatakan Kepka BKPDM 020/2026 mengubah CP Pendidikan Agama dan Budi Pekerti; perubahan ini terbatas pada mapel tersebut, sedangkan CP mapel lain tetap merujuk Kepka BSKAP 046/H/KR/2025. Sumber primer publik: https://www.kemendikdasmen.go.id/siaran-pers/15636-capaian-pembelajaran-baru-telah-terbit-yang-berubah-hanya-mata-pelajaran-agama-dan-budi-pekerti dan dokumen siaran pers: https://www.kemendikdasmen.go.id/download/file/1933
+- Portal resmi kurikulum Kemendikdasmen memuat dokumen CP BSKAP 046/H/KR/2025: https://kurikulum.kemendikdasmen.go.id/file/1758643025_manage_file.pdf
+- Buku ajar resmi Kemenag yang diterbitkan pada cms2025.kemenag.go.id merujuk Kepdirjen Pendis 9941 Tahun 2025 untuk CP PAI dan Bahasa Arab madrasah, misalnya: https://cms2025.kemenag.go.id/storage/files/Alquran%20Hadis%20Kelas%201.pdf dan menampilkan CP Al-Qur'an Hadis MI yang secara eksplisit menyebut Kepdirjen 9941/2025: https://cms2025.kemenag.go.id/storage/files/Alquran%20Hadis%20Kelas%203.pdf
+- Oleh sebab itu, pemetaan CP MI wajib membedakan sumber CP mapel umum dari sumber CP mapel PAI dan Bahasa Arab madrasah. Kepka BKPDM 020/2026 tidak boleh diterapkan secara pukul rata ke semua mapel, dan CP madrasah tidak boleh diimpor hanya dari dokumen nasional yang tidak mencakup kekhususan mapel madrasah.
+- 8 Dimensi Profil Lulusan tercantum dalam Standar Kompetensi Lulusan yang dirujuk Permendikdasmen 10/2025; portal Pusat Standar dan Kebijakan Pendidikan menjelaskan delapan dimensi tersebut: https://pskp.kemendikdasmen.go.id/standar-nasional-pendidikan-a/standar-penilaian-pendidikan
+- Permendikdasmen 13/2025 menguatkan arah kebijakan melalui 8 dimensi profil lulusan dan Pembelajaran Mendalam; siaran pers resmi: https://www.kemendikdasmen.go.id/siaran-pers/13278-permendikdasmen-nomor-13-tahun-2025-menguatkan-arah-kebijakan-melalui-pembelajaran-mendalam
+
+Catatan verifikasi: hasil di atas merupakan verifikasi awal metadata dan pengumuman/dokumen publik. Sebelum paket data diimpor, tim tetap harus mengarsipkan naskah keputusan primer lengkap beserta seluruh lampiran, memastikan status berlaku/perubahan, mencatat checksum SHA-256, dan menguji cakupan MI per mapel/fase. Siaran pers atau buku ajar dapat menjadi bukti penunjuk sumber, tetapi tidak menggantikan naskah keputusan primer beserta lampirannya.
+
+### 9.3 Hak Admin dan kewenangan Guru yang dikoreksi
+
+- **Admin Madrasah** mengelola referensi yang tersedia bagi madrasah, aktivasi/nonaktif referensi sesuai kewenangan, template akademik, muatan lokal/ekstensi tenant, serta sinkronisasi resmi yang diizinkan. Admin tidak boleh mengubah isi CP global resmi atau menghapus referensi yang sudah digunakan.
+- **Guru** dapat memilih CP dan referensi resmi yang sesuai, serta **membuat, mengembangkan, mengurutkan, dan menyesuaikan TP/ATP** berdasarkan CP, konteks pembelajaran, karakteristik dan kebutuhan peserta didik, sesuai ketentuan yang berlaku.
+- TP/ATP hasil pengembangan Guru harus disimpan sebagai karya/perencanaan milik tenant dan Guru, ditautkan ke CP sumber beserta versi, fase, mapel, rombel, tahun ajaran, pembuat, waktu perubahan, dan status. Sistem harus membedakan secara tegas antara referensi resmi, template/contoh, dan rancangan TP/ATP yang dikembangkan Guru.
+- Template atau contoh TP/ATP yang disediakan Admin tidak boleh diperlakukan sebagai satu-satunya pilihan, tidak mengunci Guru untuk hanya memilih, dan tidak menghapus kewenangan Guru mengembangkan rancangan sendiri.
+- Guru tidak boleh mengubah teks CP resmi, fase, elemen, atau identitas mapel referensi. Bila Guru mengembangkan TP/ATP, itu bukan perubahan terhadap CP sumber.
+- Riwayat rancangan TP/ATP harus berversi; perubahan tidak boleh mengubah rencana, asesmen, ujian, atau laporan historis yang sudah mereferensikan versi sebelumnya.
+- Hak pengembangan TP/ATP tetap dibatasi tenant, penugasan, kelas/rombel, mapel, dan permission Guru; bukan izin membuat atau mengubah katalog CP resmi global.
+
+### 9.4 Perubahan alur akademik Guru
+
+Alur minimum:
+1. Guru memilih kelas/rombel yang menjadi penugasannya.
+2. Sistem menentukan fase dari kelas/jenjang dan konfigurasi kurikulum yang berlaku.
+3. Guru memilih mapel dari penugasan yang sah.
+4. Guru memilih elemen dan CP resmi yang cocok dengan mapel/fase/versi.
+5. Guru memilih TP yang tersedia sebagai template/rancangan terdahulu **atau membuat dan mengembangkan TP baru** yang ditautkan ke CP.
+6. Guru menyusun ATP dari TP terpilih/dikembangkan, mengurutkan tujuan, serta menyesuaikan alur sesuai kebutuhan pembelajaran.
+7. Guru menghubungkan materi, aktivitas, asesmen, bank soal dan evaluasi dengan TP/ATP yang relevan.
+8. Sistem memvalidasi seluruh hubungan, hak akses, tenant, penugasan, versi dan status saat simpan/publikasi.
+
+Dropdown bertingkat tetap membantu menemukan referensi, tetapi bukan mekanisme yang membatasi Guru hanya pada daftar TP/ATP baku. Form pengembangan harus mendukung rancangan baru, duplikasi sebagai draft, revisi, pengurutan, dan pengarsipan versi tanpa mengubah sumber CP.
+
+### 9.5 Data model dan audit trail minimum
+
+Model data harus membedakan setidaknya:
+- reference source/document/version dan checksum;
+- curriculum framework/version, fase, kelas, mapel, elemen;
+- CP resmi (immutable/versioned);
+- TP/ATP template atau contoh (provenance dan label status);
+- TP/ATP rancangan Guru/tenant (author, tenant, CP source/version, revision/version, status);
+- relasi urutan ATP ke TP dan pemetaan ke materi, pembelajaran, asesmen, soal, ujian, evaluasi, hasil belajar;
+- snapshot historis untuk semua proses yang sudah berlangsung.
+
+Jangan mengasumsikan skema yang ada sudah memenuhi ini hanya karena tabel multi-kurikulum memiliki outcome_type CP/TP/ATP. Audit migration/model/constraint/query dan data aktual harus membuktikannya. Perubahan skema harus dirancang kompatibel dengan LearningOutcome/LearningObjective/LearningPath lama, disertai backup dan strategi backfill di staging.
+
+### 9.6 Audit ulang terhadap source yang sudah diperiksa
+
+Berdasarkan pemeriksaan statis terdahulu:
+- Halaman Admin Kurikulum saat ini dapat membuat TP secara manual; belum terbukti memiliki katalog resmi lengkap, provenance, versioning, import/sync dan pengelolaan ATP yang sesuai desain.
+- Bank Soal Guru saat ini menunjukkan pemilihan CP/TP berbasis LearningOutcome/LearningObjective; belum terbukti memiliki cascading penuh dari rombel/fase/mapel/elemen sampai ATP, dan belum terbukti terhubung dengan katalog canonical multi-kurikulum.
+- Seeder yang diperiksa tidak mengisi dataset CP/TP/ATP. Tidak ada dump DB atau dataset katalog resmi yang ditemukan pada tree repository saat audit sebelumnya.
+- Tidak ada akses DB runtime saat audit; isi tabel, data CP/TP/ATP, jumlah, sumber, relasi, duplikasi, orphan, dan konsistensi tenant belum dapat dibuktikan.
+- Belum ada bukti integrasi end-to-end dengan perencanaan pembelajaran, materi, bank soal, asesmen, ujian, evaluasi dan hasil belajar.
+- Karena itu, implementasi Master Data Kurikulum **BELUM LULUS AUDIT** dan Paket 5 tetap ditahan.
+
+### 9.7 Acceptance gate yang diperbarui sebelum Paket 5 dinyatakan selesai
+
+1. Naskah primer lengkap dan lampiran Kepka BSKAP 046/2025, Kepka BKPDM 020/2026, Kepdirjen Pendis 9941/2025, KMA 450/2024 jo 1503/2025, Kepdirjen Pendis 6077/2025, serta regulasi terkait telah diarsipkan, checksum dan cakupan MI diverifikasi.
+2. Matriks mapel MI membedakan CP mapel umum, CP PAI, dan CP Bahasa Arab dengan sumber hukum/dokumen yang benar; pembaruan CP 2026 diterapkan hanya pada lingkup yang diubah.
+3. Tidak ada rumusan atau kode CP/TP/ATP resmi yang dibuat oleh AI atau disalin dari sumber tidak terverifikasi.
+4. Admin dapat mengelola master referensi/aktivasi/template akademik sesuai kewenangan; tidak dapat merusak referensi global atau histori.
+5. Guru dapat memilih CP resmi serta mengembangkan TP/ATP sendiri; seluruh rancangan tertaut ke CP dan versi yang benar serta memiliki audit trail.
+6. Dropdown bertingkat dan form pengembangan TP/ATP diuji runtime, termasuk reset cascade, validasi relasi, draft, revisi, pengurutan dan penugasan.
+7. Integrasi end-to-end CP -> TP -> ATP -> Materi -> Bank Soal -> Asesmen -> Ujian -> Hasil Belajar dibuktikan melalui data dan skenario uji.
+8. Versi lama tetap dapat dibaca dan tidak berubah setelah revisi CP/TP/ATP atau sinkronisasi.
+9. Sync referensi resmi idempoten, tidak menggandakan data, tidak menghapus histori, dan menghasilkan audit log.
+10. Uji RBAC, multi-tenant, tenant mismatch, stale permission, dan akses API/Livewire langsung lulus.
+11. Semua pengujian dijalankan pada staging/DB disposable, bukan database produksi, dan hasilnya dicatat.
+
+### 9.8 Status pelaksanaan setelah koreksi pengguna
+
+- AUDIT: temuan statis terdahulu dipertahankan; verifikasi publik awal CP 046/2025, perubahan BKPDM 020/2026, rujukan CP madrasah Kepdirjen 9941/2025, dan 8 Dimensi telah ditambahkan. Audit database/runtime dan audit lintas modul masih tertunda.
+- DESAIN: model satu kesatuan Kurikulum Merdeka + KBC/Panca Cinta + Pembelajaran Mendalam + 8 Dimensi ditetapkan. Hak Guru mengembangkan TP/ATP mengoreksi spesifikasi sebelumnya.
+- IMPLEMENTASI: tidak ada source aplikasi yang diubah dalam pembaruan dokumen ini.
+- PENGUJIAN: tidak ada test aplikasi/database dijalankan dalam pembaruan ini.
+- KEPUTUSAN: Paket 5 belum boleh dinyatakan selesai atau siap implementasi penuh sebelum dokumen primer, matriks regulasi, data aktual, desain model dan acceptance gate di atas diverifikasi.
