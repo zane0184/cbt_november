@@ -603,3 +603,93 @@ Dampak: fail-closed behavior is inconsistent at middleware boundary. No cross-te
 ### 16.5 Status
 
 P1-18 and P1-19 OPEN. Authentication, role branch and middleware static review complete for the listed paths; no login/API request or tenant-null HTTP test was executed. No source/config/database changed.
+
+
+---
+
+## 17. ADDENDUM AUDIT PHASE 10 — exhaustive tenant/query inventory, audit coverage and active-user state (21 November 2026)
+
+### 17.1 Corrected inventory counts
+
+The detailed source inventory supersedes preliminary counts:
+- Models: **56 total; 40 TenantScoped; 16 without the trait**.
+- `withoutGlobalScopes()`: 25 calls.
+- `withoutGlobalScope(...)`: 5 calls.
+- Total: **30 occurrences across 8 active PHP files**, not the preliminary 36/10 estimate in the first audit note.
+- The 16 unscoped models and their classification/controls are listed in `docs/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md`.
+- The unscoped classes include expected global/installation records (Tenant, Role, Permission, LocalLicense*, MultiCurriculum*) and special pivot/log models (RombelStudent, AuditLog); User is the main tenant-identity model lacking a global scope.
+
+### 17.2 User and unscoped query review — completed static inventory
+
+The 30 occurrences were enumerated in eight files and reviewed:
+- `CleanupOrphanedMediaCommand`: cross-tenant maintenance scan, but re-fetch is constrained by row ID + tenant_id, file path must match `private/tenants/{tenant}/media/{filename}`, and snapshot references are tenant-filtered.
+- `ExpireExamAttemptsCommand`: cross-tenant scheduler scans candidates, sets TenantContext per candidate, then locks/revalidates Exam → Participant → Attempt → Snapshot with tenant IDs and restores prior context in finally.
+- `LicenseStatusController`: explicit authenticated tenant filter.
+- `EnsureLicenseActive`: attempt-recovery unscoped lookup compares installation tenant, exam ID, status/expiry and participant user; collection path filters tenant/user.
+- `User::creating`: unscoped username uniqueness check explicitly filters tenant_id.
+- `InstallerService`: pre-auth recovery lookup by username/email is global initially but fails closed unless exact tenant identity, tenant code, user ID, name, username, email, password hash and exact role ADMIN_MADRASAH match. Postcondition lookup compares admin tenant to tenant row.
+- `InstallationIdentityService`: requires exactly one Tenant and requested tenant exists.
+- `LoginIdentityResolver`: requires exactly one installation identity and one Tenant; User/profile candidate queries filter tenant_id and reject ambiguity.
+- Direct User query sites in ExamParticipantController, ReportController, UserManagement, ExamManagement, ProctorAssignmentManagement, OperatorDashboard and ExamProctorAssignmentService were reviewed; request-path queries generally add explicit tenant_id. Role/profile relations to User remain unscoped by Eloquent and rely on DB/application consistency.
+
+No direct cross-tenant User query exploit was confirmed in the static review. This is not a runtime negative-test result.
+
+### 17.3 P1-20 — Normal license middleware does not bind authenticated tenant to installation tenant
+
+Bukti:
+- `IdentifyTenant::handle()` sets TenantContext from authenticated user. It does not compare that user.tenant_id with LocalInstallationIdentity.tenant_id or assert exactly one tenant.
+- `EnsureLicenseActive::handle()` normal active-license path loads LocalLicenseState + installation and calls `LicenseArtifactVerifier::assertOperational()`, which verifies signed installation_id/license claims but does not compare request user tenant_id with `state.installation.tenant_id`.
+- The temporary pre-activation guard does compare installer tenant, installed.lock tenant, DB identity and authenticated user tenant. The normal Publisher license path lacks the equivalent request-tenant comparison.
+- `LoginIdentityResolver` normally blocks login if the database contains multiple tenants, but existing Sanctum tokens/sessions are not re-resolved through that resolver on every request.
+
+Impact: under the intended one-database/one-madrasah model, this is a defense-in-depth installation binding gap rather than a demonstrated cross-tenant exploit. If extra tenant rows or old tokens exist in one database, an authenticated user from a different tenant could receive a TenantContext while the active license remains bound to the installation's original tenant. Middleware should fail closed unless authenticated user tenant equals the local installation tenant.
+
+### 17.4 P1-21 — No explicit active/deactivated account state for Guru
+
+Bukti:
+- Base `users` migration has tenant_id, name, email, password, legacy role string, timestamps and softDeletes; no `is_active`, `status`, `suspended_at` or equivalent account state.
+- `User` model does not define an active-state method/field.
+- `TeacherProfile` has SoftDeletes only; no active/inactive status.
+- `UserManagement` supports create only; no Admin activation/deactivation/restore lifecycle.
+- `ExamProctorAssignmentService::assign()` checks same-tenant User, `deleted_at IS NULL`, and role PROKTOR; it does not require TeacherProfile and has no separate account-active status.
+- `TeacherSubjectAssignmentController::assertSameTenantAndAcademicContext()` checks profile exists, user not soft-deleted, tenant matches and role GURU; no explicit active status field exists.
+
+Impact: final requirement “Guru aktif + TeacherProfile valid/aktif” cannot be fully represented/verified as a separate lifecycle state in the current schema. Soft-delete is not equivalent to reversible administrative deactivation. Proktor service also uses the wrong role model.
+
+### 17.5 P1-22 — Curriculum CRUD permission inconsistency
+
+- `RolePermissionBootstrapper` defines 15 permissions; it does not define `learning_outcome.manage` or `material.manage`.
+- `StoreLearningOutcomeRequest::authorize()` requires `learning_outcome.manage`; without external/manual grant, intended store operation is denied to Admin/Guru.
+- `LearningOutcomePolicy` and `MaterialPolicy` exist with BasePolicy prefixes but their controllers do not consistently call them.
+- GradeLevel, Element, LearningObjective, LearningPath, Material, Tag and LearningOutcome index/show/update/destroy lack method-level authorization as detailed in §12.3.
+- Thus some curriculum mutations are open to any authenticated tenant role while LearningOutcome store may be unavailable to all normal roles. This is inconsistent with Admin_Madrasah curriculum authority and Guru read/authoring boundaries.
+
+### 17.6 Audit coverage and transaction observations
+
+- AuditService call-site inventory was searched across all app PHP. It covers most API curriculum/exam/question/scoring/report operations, teacher-subject assignment, Proktor assignment, student-rombel membership and some Livewire operations.
+- Missing Admin mutation audit: AcademicManagement::createRombel/createSubject; CurriculumManagement::createTp; UserManagement::createUser; TagController CRUD.
+- Non-atomic audit patterns exist where controller persists first and calls AuditService afterward without a surrounding transaction (examples: CurriculumController, PhaseController, GradeLevelController, ElementController, LearningObjectiveController, LearningPathController, MaterialController, AssessmentController, some ExamController archive/publish/delete paths). If audit write fails, data mutation may already persist.
+- Positive atomic patterns: TeacherSubjectAssignmentController store/update/deactivate, ExamProctorAssignmentService, ExamAttempt lifecycle, ScoringService/ScoringController, ExamParticipantController store/destroy, ExpireExamAttemptsCommand, several ExamManagement/QuestionBank/StudentRombel flows.
+- AuditLog still lacks append-only enforcement and uses ON DELETE SET NULL for actor/tenant.
+
+### 17.7 Export, cache, media and resource review
+
+- Export call sites: `ReportController::exportExcel` uses `ExamResultsExport`; PDF render paths are all in ReportController. Authorization runs before export, but ReportPolicy currently permits Admin to read/export exam/student/subject results (P0 boundary defect).
+- Cache usage in app is limited to four AnalyticsController Cache::remember keys; all include tenant_id and authorization runs before cache. Score changes invalidate exam and current rombel keys through ScoringService/ScoringController/ResultList/ResultDetail.
+- Cache invalidation gap: `StudentRombelManagement::addStudentToRombel()` does not invalidate tenant+rombel+exam analytics cache. RombelAnalyticsService derives result membership from current StudentProfile.rombels; after a student is added to a new rombel, a cached report for that rombel can remain stale up to the one-hour TTL. No runtime cache invalidation test was run.
+- Media files are stored under private tenant paths and MediaController checks path/tenant ownership. Admin still has read access to question media through QuestionPolicy; this is a role authorization defect, not evidence of public storage exposure.
+- Only two API JsonResource classes were found, both LearningOutcome resources. Exam/Question/Score/Monitoring endpoints mostly serialize Eloquent models or arrays directly; there is no general Admin-redacted Exam/Question/Score DTO/resource.
+- No app/Jobs classes were found. Two console commands are tenant-aware maintenance as described in §17.2.
+
+### 17.8 Test inventory status
+
+- T-001–T-173 map is published separately. Every per-ID status remains NOT VERIFIED.
+- Test source candidate methods and blob SHAs are recorded in mapping document.
+- Existing CI #692 aggregate 480 tests / 1,942 assertions does not provide per-ID traceability.
+- No new HTTP/Livewire/MySQL/browser test executed during this phase.
+
+### 17.9 Tenant matrix
+
+Detailed model/query/FK matrix: `docs/MATRIKS_TENANT_QUERY_RELATION_WEB_ADMIN_2026-11-21.md` (published and backed up on the documentation branch).
+
+Audit remains OPEN pending final source-to-test trace validation and per-file patch plan. No implementation or DB change was performed.
