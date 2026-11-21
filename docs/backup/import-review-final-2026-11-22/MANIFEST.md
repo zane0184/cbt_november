@@ -17,3 +17,8 @@ Commit: 79f0542d9326a3b4725506232e6e9c8e0cd2f46b
 - backend-laravel/app/Livewire/Admin/ImportManagement.php -> docs/backup/import-review-final-2026-11-22/ImportManagement.php.before-redirect-fix-and-retention-tests | blob SHA 8b3963d93b1158b8b4ada2567b6c1ec26c508e08
 - backend-laravel/tests/Feature/ImportWorkbookServiceTest.php -> docs/backup/import-review-final-2026-11-22/ImportWorkbookServiceTest.php.before-deadlock-retention-tests | blob SHA 06b2899986afdc9c8b42a7eab792c2f760cd2747
 - backend-laravel/routes/console.php -> docs/backup/import-review-final-2026-11-22/console.php.before-retention-audit-test | blob SHA 6f5d1010f1a20f9b2408ec9690f9faac23c27f16
+
+
+## Follow-up backup before Livewire redirect correction
+Commit: fb11e9c3847ce46261e4ca48123d178812001321
+- backend-laravel/app/Livewire/Admin/ImportManagement.php -> docs/backup/import-review-final-2026-11-22/ImportManagement.php.before-final-void-return-fix | blob SHA a5881aad6b0d642d187a29c6aba7bb33f226e498
