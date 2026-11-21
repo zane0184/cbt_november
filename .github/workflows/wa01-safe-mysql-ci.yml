@@ -35,7 +35,7 @@ jobs:
           --health-retries=12
     env:
       APP_ENV: testing
-      APP_KEY: base64:V2FfMDFfU2FmZV9UZXN0X0tleV8yMDI2XzExXzIxXzEyMzQ1Njc=
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       LOG_CHANNEL: stderr
       CACHE_STORE: array
       SESSION_DRIVER: array
