@@ -558,3 +558,21 @@ Jadwal ujian hanya diubah Guru. API dan Livewire wajib memakai ExamScheduleChang
 5. Tunggu persetujuan eksplisit pengguna sebelum implementasi.
 6. Tidak ada migration/database/production/VPS/merge/deployment/Android/Portal Guru/Siswa/Device Lease-Fencing dalam tahap dokumentasi ini.
 7. Jangan mengklaim W0 selesai, source aman, atau siap produksi berdasarkan dokumentasi saja.
+
+
+## ADDENDUM KEPUTUSAN FINAL STATUS PROKTOR — DEC-WA-026 (ACTIVE)
+
+Keputusan pengguna final; jangan mengajukan ulang sebagai pertanyaan dan jangan menandainya OPEN:
+- PENDING tidak memberikan capability.
+- Hanya CONFIRMED dapat memberikan capability setelah validasi Guru aktif, TeacherProfile, tenant, exam, rombel, schedule revision, permission/scope, revoke/conflict, dan waktu server terpenuhi.
+- ACTIVE bukan status assignment dan tidak boleh menjadi enum/transition/status pemberi capability.
+- NEEDS_REVIEW, REVOKED, EXPIRED, COMPLETED tidak memberikan capability.
+- Capability berlaku hanya pada `starts_at <= serverNow < expires_at`; validasi dilakukan setiap request dan tidak bergantung pada cron.
+- Reschedule oleh Guru melalui ExamScheduleChangeService membuat assignment terdampak NEEDS_REVIEW secara atomik. Setelah review sah, status kembali CONFIRMED, bukan ACTIVE.
+- Interval [start,end); overlap ditolak dengan MySQL 8+ InnoDB locking/current read.
+
+Dokumen normatif: Addendum 35 `docs/SPECIFIKASI_INDUK_WEB_ADMIN_MADRASAH.md`, DEC-WA-026 `docs/REGISTER_KEPUTUSAN_WEB_ADMIN.md`, dan `docs/NOTA_KLARIFIKASI_STATUS_ASSIGNMENT_PROKTOR_2026-11-21.md`. Addendum 34 dan nota OPEN/PROPOSED sebelumnya berstatus SUPERSEDED.
+
+## Cakupan handover yang wajib diteruskan
+
+Jangan membatasi pekerjaan berikutnya pada Proktor. Seluruh temuan yang masih OPEN harus ditangani sesuai persetujuan tahap: penghapusan role aktif OPERATOR dan alias ADMIN, migrasi identitas legacy yang aman, exact permission profile ADMIN_MADRASAH, penutupan seluruh endpoint CBT untuk Admin, ownership Guru, pemilihan Guru aktif sebagai Proktor, assignment/overlap/concurrency/audit, shared ExamScheduleChangeService, isolasi tenant khusus User/withoutGlobalScopes, domain/install identity/seeder, integritas Kurmer-KBC dan provenance master. Semua test T-001–T-173 harus tetap terdaftar; yang belum dijalankan tetap NOT RUN. Tidak ada izin coding/migration/DB/merge dari addendum dokumentasi ini.
