@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthWebController;
 use App\Http\Controllers\StudentExamController;
 use App\Livewire\Teacher\ResultList;
 use App\Livewire\Teacher\ResultDetail;
+use App\Livewire\Admin\AdminDashboard;
 use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
@@ -12,22 +13,25 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
-use App\Livewire\Operator\OperatorDashboard;
 use App\Livewire\Proktor\ProktorDashboard;
 
 Route::get('/', function () {
     if (auth()->check()) {
         $user = auth()->user();
-        if ($user->hasRole('PROKTOR')) {
-            return redirect('/proktor/assignments');
-        } elseif ($user->hasRole('ADMIN_MADRASAH') && !$user->hasRole('ADMIN') && !$user->hasRole('OPERATOR')) {
-            return redirect('/operator/dashboard');
-        } elseif ($user->hasRole('GURU')) {
+
+        if ($user->hasRole('ADMIN_MADRASAH')) {
+            return redirect('/admin/dashboard');
+        }
+
+        if ($user->hasRole('GURU')) {
             return redirect('/admin/exams');
-        } elseif ($user->hasRole('SISWA')) {
+        }
+
+        if ($user->hasRole('SISWA')) {
             return redirect('/student/exams');
         }
     }
+
     return view('welcome');
 });
 
@@ -73,7 +77,10 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('stude
 
 Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
-    Route::get('/operator/dashboard', OperatorDashboard::class);
+    Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');
+
+    // Temporary URL compatibility only: the Operator dashboard itself is retired.
+    Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'));
     Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
     // Admin Operational Routes
