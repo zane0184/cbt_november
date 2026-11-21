@@ -303,6 +303,16 @@ class MonitoringDuplicationTest extends TestCase
         $participants->assertOk();
         $this->assertCount(1, $participants->json('data'));
         $this->assertSame('Siswa', $participants->json('data.0.student_name'));
+        $this->assertArrayNotHasKey('answer_payload', $participants->json('data.0'));
+        $this->assertArrayNotHasKey('answers', $participants->json('data.0'));
+
+        $monitoringAttemptDetail = $this->getJson(
+            "/api/v1/exams/{$this->exam->id}/monitoring/attempts/{$assignedAttempt->id}"
+        );
+        $monitoringAttemptDetail->assertOk();
+        $this->assertSame($assignedAttempt->id, $monitoringAttemptDetail->json('data.id'));
+        $this->assertArrayNotHasKey('answer_payload', $monitoringAttemptDetail->json('data'));
+        $this->assertArrayNotHasKey('answers', $monitoringAttemptDetail->json('data'));
 
         // The legacy participant index is a second route to the same operational
         // data and must use the exact same room/session allowlist.
@@ -372,6 +382,12 @@ class MonitoringDuplicationTest extends TestCase
             "/api/v1/reports/exams/{$this->exam->id}/results",
             "/api/v1/reports/exams/{$this->exam->id}/summary",
             "/api/v1/reports/exams/{$this->exam->id}/questions",
+            "/api/v1/reports/exams/{$this->exam->id}/rombels/{$otherRombel->id}",
+            "/api/v1/reports/students/{$otherStudent->id}/results",
+            "/api/v1/reports/subjects/{$this->exam->assessment->subject_id}/results",
+            "/api/v1/analytics/rombels/{$otherRombel->id}/exams/{$this->exam->id}",
+            "/api/v1/analytics/students/{$otherStudent->id}",
+            "/api/v1/analytics/subjects/{$this->exam->assessment->subject_id}",
             "/api/v1/reports/exams/{$this->exam->id}/export/pdf",
             "/api/v1/reports/exams/{$this->exam->id}/export/excel",
             "/api/v1/reports/exams/{$this->exam->id}/summary/export/pdf",
