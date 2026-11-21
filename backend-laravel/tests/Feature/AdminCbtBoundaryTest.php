@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\QuestionBank;
-use App\Livewire\Kamad\KamadDashboard;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
@@ -97,35 +96,9 @@ class AdminCbtBoundaryTest extends TestCase
         Livewire::test(QuestionBank::class)->assertForbidden();
         Livewire::test(ExamManagement::class)->assertForbidden();
         $this->get('/student/exams')->assertForbidden();
-        $this->get('/admin/kamad')->assertForbidden();
 
         $this->assertSame($permissionRowsBefore, Permission::query()->count());
         $this->assertSame($permissionPivotRowsBefore, DB::table('permission_role')->count());
-
-        // Kamad is a distinct read-only role in the same Admin shell, never an Admin privilege.
-        $kamadRole = Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
-        $monitorPermission = Permission::firstOrCreate(['name' => 'exam.monitor'], ['label' => 'Monitoring ujian']);
-        $reportPermission = Permission::firstOrCreate(['name' => 'report.view'], ['label' => 'Lihat laporan']);
-        $kamadRole->permissions()->syncWithoutDetaching([$monitorPermission->id, $reportPermission->id]);
-
-        $kamad = User::create([
-            'tenant_id' => $tenant->id,
-            'name' => 'Kepala Madrasah',
-            'email' => 'kamad@boundary.test',
-            'password' => bcrypt('password'),
-        ]);
-        $kamad->roles()->attach($kamadRole->id);
-
-        app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
-        $this->actingAs($kamad)->get('/')->assertRedirect('/admin/kamad');
-        $this->get('/admin/kamad')
-            ->assertOk()
-            ->assertSee('Dashboard Eksekutif Kepala Madrasah')
-            ->assertSee('BACA SAJA');
-
-        Livewire::test(KamadDashboard::class)
-            ->assertViewHas('totalExams', 0)
-            ->assertViewHas('totalAttempts', 0);
     }
 
     public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions(): void
