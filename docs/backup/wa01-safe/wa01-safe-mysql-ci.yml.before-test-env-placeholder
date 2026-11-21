@@ -1,0 +1,308 @@
+name: WA-01 Safe Disposable MySQL Test
+
+on:
+  push:
+    branches:
+      - work/wa01-safe-mysql-ci-20261121
+    paths:
+      - "backend-laravel/**"
+      - ".github/workflows/wa01-safe-mysql-ci.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wa01-safe-mysql-safe-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  admin-boundary:
+    name: PHP 8.3 + MySQL 8 disposable Admin boundary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-safe-wa01-root
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -p${{ github.run_id }}-${{ github.run_attempt }}-safe-wa01-root"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      LOG_CHANNEL: stderr
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      CBT_LICENSE_TEST_BYPASS: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3 and required extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          extensions: bcmath, curl, dom, fileinfo, gd, intl, mbstring, mysqli, mysqlnd, pdo_mysql, pdo_sqlite, xml, zip
+          coverage: none
+
+      - name: Verify runtime and install locked dependencies
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/wa01-safe"
+          php --version | tee "$RUNNER_TEMP/wa01-safe/php-version.log"
+          composer --version | tee "$RUNNER_TEMP/wa01-safe/composer-version.log"
+          php -r 'if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 3) exit(1);'
+          test ! -e .env
+          composer validate --no-check-publish 2>&1 | tee "$RUNNER_TEMP/wa01-safe/composer-validate.log"
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts 2>&1 | tee "$RUNNER_TEMP/wa01-safe/composer-install.log"
+          composer check-platform-reqs 2>&1 | tee "$RUNNER_TEMP/wa01-safe/composer-platform.log"
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+          DB_CONNECTION=sqlite DB_DATABASE=:memory: php artisan package:discover --ansi 2>&1 | tee "$RUNNER_TEMP/wa01-safe/package-discover.log"
+
+      - name: Create unique disposable schema and restricted application user
+        id: db
+        working-directory: backend-laravel
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-safe-wa01-root
+        run: |
+          set -euo pipefail
+          DB_NAME="cbt_safe_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_USER="safe_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$DB_ROOT_PASSWORD"
+          echo "::add-mask::$DB_PASSWORD"
+          [[ "$DB_NAME" =~ ^cbt_safe_wa01_[0-9]+_[0-9]+$ ]]
+          [[ "$DB_USER" =~ ^safe_wa01_[0-9]+_[0-9]+$ ]]
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -p"$DB_ROOT_PASSWORD" <<SQL
+          CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          CREATE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
+          GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'%';
+          SQL
+          {
+            echo "DB_DATABASE=$DB_NAME"
+            echo "DB_USERNAME=$DB_USER"
+            echo "DB_PASSWORD=$DB_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "database=$DB_NAME" >> "$GITHUB_OUTPUT"
+          echo "db_user=$DB_USER" >> "$GITHUB_OUTPUT"
+          echo "Created one run-scoped disposable schema and schema-limited user."
+
+      - name: Verify MySQL identity, empty schema, InnoDB and grants
+        id: preflight
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-safe/mysql-preflight.json"
+          <?php
+          $expectedDb = 'cbt_safe_wa01_' . getenv('GITHUB_RUN_ID') . '_' . getenv('GITHUB_RUN_ATTEMPT');
+          $expectedUser = 'safe_wa01_' . getenv('GITHUB_RUN_ID') . '_' . getenv('GITHUB_RUN_ATTEMPT');
+          if (PHP_VERSION_ID < 80300 || PHP_VERSION_ID >= 80400 ||
+              getenv('APP_ENV') !== 'testing' ||
+              getenv('DB_CONNECTION') !== 'mysql' ||
+              getenv('DB_HOST') !== '127.0.0.1' ||
+              getenv('DB_PORT') !== '3306' ||
+              getenv('DB_DATABASE') !== $expectedDb ||
+              getenv('DB_USERNAME') !== $expectedUser ||
+              file_exists('.env')) {
+              fwrite(STDERR, "Safe WA-01 runtime/database gate refused execution.\n");
+              exit(71);
+          }
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=' . $expectedDb,
+              $expectedUser,
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $identity = $pdo->query(
+              'SELECT DATABASE() AS db, VERSION() AS version, @@hostname AS hostname, ' .
+              '@@port AS port, @@default_storage_engine AS engine, SUBSTRING_INDEX(CURRENT_USER(), CHAR(64), 1) AS db_user'
+          )->fetch(PDO::FETCH_ASSOC);
+          $tables = (int) $pdo->query(
+              "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"
+          )->fetchColumn();
+          $grants = $pdo->query('SHOW GRANTS FOR CURRENT_USER()')->fetchAll(PDO::FETCH_COLUMN);
+          $schemaGrant = false;
+          $unsafeGlobal = false;
+          foreach ($grants as $grant) {
+              if (stripos($grant, 'ON `' . $expectedDb . '`.*') !== false) $schemaGrant = true;
+              if (stripos($grant, 'ON *.*') !== false && stripos($grant, 'GRANT USAGE ON *.*') !== 0) $unsafeGlobal = true;
+              if (stripos($grant, 'WITH GRANT OPTION') !== false) $unsafeGlobal = true;
+          }
+          $ok = $identity['db'] === $expectedDb
+              && str_starts_with($identity['version'], '8.0.')
+              && strtoupper($identity['engine']) === 'INNODB'
+              && (int) $identity['port'] === 3306
+              && $identity['db_user'] === $expectedUser
+              && $tables === 0
+              && $schemaGrant
+              && !$unsafeGlobal;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'php' => PHP_VERSION,
+              'mysql_hostname' => $identity['hostname'],
+              'database' => $identity['db'],
+              'application_user' => $identity['db_user'],
+              'mysql_version' => $identity['version'],
+              'default_engine' => $identity['engine'],
+              'tables_before_test_migrations' => $tables,
+              'schema_scoped_grant' => $schemaGrant,
+              'unsafe_global_grant_or_grant_option' => $unsafeGlobal,
+              'grants' => $grants,
+              'production_or_vps_credentials_used' => false,
+              'checkout_env_file_present' => file_exists('.env')
+          ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+          if (!$ok) exit(72);
+          PHP
+
+      - name: Verify Laravel resolves only the disposable MySQL connection
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-safe/laravel-config-gate.json"
+          <?php
+          require 'vendor/autoload.php';
+          $app = require 'bootstrap/app.php';
+          $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $mysql = config('database.connections.mysql');
+          $actual = [
+              'driver' => $mysql['driver'] ?? null,
+              'host' => $mysql['host'] ?? null,
+              'port' => (string) ($mysql['port'] ?? ''),
+              'database' => $mysql['database'] ?? null,
+              'username' => $mysql['username'] ?? null,
+          ];
+          $expected = [
+              'driver' => 'mysql',
+              'host' => getenv('DB_HOST'),
+              'port' => getenv('DB_PORT'),
+              'database' => getenv('DB_DATABASE'),
+              'username' => getenv('DB_USERNAME'),
+          ];
+          $ok = config('database.default') === 'mysql'
+              && $actual === $expected
+              && $actual['username'] !== 'root'
+              && hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? ''))
+              && empty($mysql['url'])
+              && empty(getenv('DB_URL'))
+              && !is_file('bootstrap/cache/config.php')
+              && !is_file('storage/app/private/installer-database.php')
+              && !is_file('.env');
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'default_connection' => config('database.default'),
+              'resolved_connection' => $actual,
+              'application_user_is_root' => $actual['username'] === 'root',
+              'password_matches_run_scoped_credential' => hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? '')),
+              'unsafe_override_present' => !empty($mysql['url']) || !empty(getenv('DB_URL')) || is_file('bootstrap/cache/config.php') || is_file('storage/app/private/installer-database.php') || is_file('.env')
+          ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+          if (!$ok) exit(73);
+          PHP
+
+      - name: PHP lint for application and tests
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app bootstrap config routes tests -type f -name '*.php' -print0 |
+            xargs -0 -n1 php -l 2>&1 | tee "$RUNNER_TEMP/wa01-safe/php-lint.log"
+
+      - name: Run Admin CBT denial test without permission fixture writes
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AdminCbtBoundaryWithoutPermissionFixturesTest.php --display-warnings 2>&1 |
+            tee "$RUNNER_TEMP/wa01-safe/phpunit-admin-boundary.log"
+
+      - name: Run license middleware browser redirect regression
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/EnsureLicenseActiveTest.php --filter=test_browser_license_block_returns_a_standard_http_redirect_response --display-warnings 2>&1 |
+            tee "$RUNNER_TEMP/wa01-safe/phpunit-license-browser-redirect.log"
+
+      - name: Run auth tenant Guru and Siswa regression subset
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test \
+            tests/Feature/AuthTest.php \
+            tests/Feature/MultiTenantAuthTest.php \
+            tests/Feature/TenantIsolationTest.php \
+            tests/Feature/AssessmentPolicyTeacherCreateTest.php \
+            tests/Feature/StudentWebLoginTest.php \
+            tests/Feature/StudentResultVisibilityTest.php \
+            --display-warnings 2>&1 |
+            tee "$RUNNER_TEMP/wa01-safe/phpunit-auth-tenant-guru-siswa.log"
+          php artisan test tests/Feature/WebAdminAuthTest.php --filter=test_teacher_can_login_using_nip --display-warnings 2>&1 |
+            tee "$RUNNER_TEMP/wa01-safe/phpunit-guru-nip-login.log"
+
+      - name: Verify permissions tables remain empty after selected test
+        working-directory: backend-laravel
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-safe/permission-fixture-postcheck.json"
+          <?php
+          $pdo = new PDO(
+              'mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE'),
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $permissionRows = (int) $pdo->query('SELECT COUNT(*) FROM permissions')->fetchColumn();
+          $permissionRoleRows = (int) $pdo->query('SELECT COUNT(*) FROM permission_role')->fetchColumn();
+          $ok = $permissionRows === 0 && $permissionRoleRows === 0;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'permissions_rows' => $permissionRows,
+              'permission_role_rows' => $permissionRoleRows,
+              'permission_fixture_mutation_performed' => false
+          ], JSON_PRETTY_PRINT) . PHP_EOL;
+          if (!$ok) exit(74);
+          PHP
+
+      - name: Cleanup disposable schema and application user
+        if: always()
+        working-directory: backend-laravel
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-safe-wa01-root
+        run: |
+          set -euo pipefail
+          DB_NAME="cbt_safe_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_USER="safe_wa01_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          echo "::add-mask::$DB_ROOT_PASSWORD"
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -p"$DB_ROOT_PASSWORD" \
+            --execute="DROP DATABASE IF EXISTS $DB_NAME; DROP USER IF EXISTS '$DB_USER'@'%';"
+          echo "Disposable schema and app user dropped. MySQL service ends with this runner."
+
+      - name: Upload runtime logs and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wa01-safe-mysql-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/wa01-safe/
+          if-no-files-found: warn
+          retention-days: 30
