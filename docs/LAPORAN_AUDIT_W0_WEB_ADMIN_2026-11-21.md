@@ -15,9 +15,9 @@ Persetujuan pengguna telah diterapkan dengan batas yang tegas:
 - Admin hanya membaca metadata ujian dan mengelola penugasan Proktor.
 - Satu madrasah = satu instalasi = satu database.
 
-W0 telah membuat branch kerja baru, memverifikasi titik awalnya, membuat manifest rekursif Git, memverifikasi manifest, dan menyelesaikan audit statis route-permission utama. Tidak ada source aplikasi yang diubah. Tidak ada migration, database, merge PR, deployment, atau konfigurasi produksi yang disentuh.
+W0 telah membuat branch kerja baru, memverifikasi urutan commit, membuat manifest rekursif Git, dan menyelesaikan audit statis route-permission utama. Workflow GitHub Actions khusus audit mengambil source commit pin, menghitung SHA-256 seluruh 531 tracked files, membuat arsip snapshot, memulihkan ke direktori disposable, dan membandingkan seluruh path/ukuran/hash. Hasil restore PASS; snapshot dan manifest diunggah sebagai artifact. Pemeriksaan independen atas artifact yang diunduh juga menghasilkan 531 file cocok, tanpa missing/extra/changed.
 
-**W1 belum dimulai.** Walaupun backup Git dan manifest telah diverifikasi, pemeriksaan SHA-256 per-file serta uji pemulihan snapshot lokal belum dapat dilakukan di runtime ini. Keterkaitan byte-to-byte source Git dengan ZIP baseline 6 November juga belum terbukti. Karena itu W0 tidak dinyatakan lulus penuh pada gate integritas arsip.
+**W1 belum dimulai.** Provenance byte-to-byte source Git terhadap ZIP baseline 6 November tetap BLOCKED karena raw ZIP asli belum dapat diperiksa. Tidak ada source aplikasi yang diubah. Tidak ada migration, database, merge PR, deployment, atau konfigurasi produksi yang disentuh.
 
 ## 2. AUDIT
 
@@ -30,8 +30,10 @@ W0 telah membuat branch kerja baru, memverifikasi titik awalnya, membuat manifes
 | Commit source | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
 | Git tree SHA-1 | `144364e4163ccc62f74bc1fbf93b601380ed2723` |
 | Branch kerja baru | `work/web-admin-w0-20261121` |
-| Titik awal branch kerja | Commit persis `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
-| Branch kerja setelah manifest | `de2d82244150863e330c17e36345bee73c3907ac` |
+| Source pin / titik awal branch | `7fc45bf71ac1ebd375eba44fd57c983bf18d66e0` |
+| HEAD pada saat laporan revisi pertama dibuat | `a42cdbebec90dc9279160e5e062a4fbf98d85df1` |
+| Parent HEAD saat itu | `9c6ce35a6db3edac5c2e57e4025d999e11422122` |
+| Commit penambahan manifest | `de2d82244150863e330c17e36345bee73c3907ac` |
 | Manifest blob SHA-1 | `f74b89d00015a15c04e4e062d46571afdd3074bc` |
 | Manifest | `docs/backup/W0_SOURCE_TREE_MANIFEST_2026-11-21.tsv` |
 
@@ -46,7 +48,7 @@ Perbedaan yang ditanyakan berasal dari checkpoint awal yang mencatat commit `641
 4. `9c6ce35...` (parent `c708e978...`) — workflow SHA-256/restore versi pertama.
 5. `a42cdb...` (parent `9c6ce35...`) — perbaikan workflow; HEAD branch kerja yang benar saat laporan revisi ini.
 
-Jadi `641aff0...` bukan HEAD terbaru. Branch recovery tetap pada `7fc45bf...`. Perbandingan recovery → branch kerja: ahead 5, behind 0; path tambahan hanya empat file: tiga dokumen W0 dan satu workflow verifikasi. Tidak ada source aplikasi berubah.
+Jadi `641aff0...` bukan HEAD terbaru. Pada saat laporan revisi pertama dibuat, HEAD adalah `a42cdb...`; checkpoint kemudian diperbarui lagi dan current HEAD final tercatat pada checkpoint terbaru. Branch recovery tetap pada `7fc45bf...`. Perbandingan recovery → branch kerja saat laporan revisi pertama: ahead 5, behind 0; path tambahan hanya empat file: tiga dokumen W0 dan satu workflow verifikasi. Perbandingan final setelah revisi dokumen: ahead 9, behind 0, dengan empat path yang sama. Tidak ada source aplikasi berubah.
 
 ### 2.2 Inventaris dan manifest source
 
@@ -222,8 +224,8 @@ Percobaan workflow #1 (run `44870798226`) gagal karena expression checkout masih
 | Manifest diverifikasi ulang | PASS | Git blob SHA `f74b89...`; 71.665 byte |
 | Route/action-permission static review | PASS | Temuan dan gap tercatat di laporan ini |
 | Source aplikasi sama dengan PR #5 head | PASS | Recovery additions hanya dokumentasi; app source tidak berubah |
-| SHA-256 per-file | BLOCKED | Manifest memakai Git blob SHA-1; SHA-256 tidak dihitung dalam sesi ini |
-| Restore snapshot pada disposable workspace | NOT RUN | Runtime lokal tidak menyediakan Git checkout/container test; backup branch tetap tersimpan di Git |
+| SHA-256 seluruh tracked file pada source pin | PASS | 531 file; manifest byte-level tersedia |
+| Restore snapshot disposable | PASS | 531/531 cocok; missing/extra/changed = 0 |
 | ZIP baseline raw-byte/CRC/SHA recheck | BLOCKED | Raw archive tidak dapat dimaterialisasi; checksum historis tidak dihitung ulang |
 | Browser/responsive/UAT | NOT RUN | Di luar audit statis W0 |
 | W1 | NOT STARTED | Menunggu pemeriksaan dan persetujuan laporan/checkpoint W0 |
@@ -231,9 +233,8 @@ Percobaan workflow #1 (run `44870798226`) gagal karena expression checkout masih
 ## 7. Keputusan keamanan dan langkah berikutnya
 
 W0 menghasilkan dasar yang cukup untuk menyusun patch plan, tetapi **tidak membuka W1 otomatis**. Sebelum W1:
-1. Pengguna meninjau laporan dan checkpoint ini.
-2. Tentukan apakah Git tree/blob manifest dan backup branch diterima sebagai bukti backup W0 sementara, atau SHA-256 per-file/restore test wajib diselesaikan terlebih dahulu.
-3. Provenance ZIP baseline tetap ditelusuri terpisah; jangan mengklaim identik sebelum raw archive dapat diverifikasi.
-4. Setelah gate W0 diterima, W1 hanya dimulai pada branch kerja terpisah dan setiap file yang akan diubah harus memiliki backup sebelum patch.
+1. Pengguna melakukan pemeriksaan akhir W0 berdasarkan laporan dan checkpoint revisi.
+2. ZIP baseline tetap BLOCKED sampai raw ZIP asli dapat diperiksa; jangan mengganti baseline dengan arsip recovered.
+3. W1 hanya dimulai setelah persetujuan eksplisit pengguna. Setiap file yang akan diubah wajib dibackup dan diverifikasi sebelum patch.
 
-**Kesimpulan:** AUDIT STATIS W0 selesai dan terdokumentasi; gate integritas W0 masih PARTIAL/BLOCKED pada SHA-256 per-file, restore test, dan raw ZIP provenance. W1 belum dimulai.
+**Kesimpulan:** Klarifikasi commit, SHA-256 seluruh 531 tracked files, dan uji restore snapshot disposable telah PASS. Provenance ZIP baseline tetap BLOCKED sesuai instruksi. W0 diserahkan untuk pemeriksaan akhir pengguna; W1 belum dimulai dan belum disetujui.
