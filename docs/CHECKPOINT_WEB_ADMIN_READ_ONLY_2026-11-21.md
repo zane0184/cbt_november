@@ -221,3 +221,18 @@ Source blob SHA untuk jalur kritis dicatat pada laporan audit §12.8.
 - Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase10-query-inventory`, commit `b78ed044b86861ca0fcb2dbfe15ce71e90dd2c69`, blob `b445cc2105dc1d229959c7358c0e7a2802aee5df` (identical before update).
 - Audit remains OPEN. No source/database/migration/config/role/permission/Web Guru/PR/deployment changes.
 - Remaining: final review of all source paths against exact test IDs, verify all file provenance, compose per-file patch plan and acceptance/rollback, then stop for explicit approval.
+
+
+## Checkpoint audit phase 11 — raw queries, media and login/session
+
+- P1-23: MonitoringController participants query joins users by user_id without users.tenant_id = participant.tenant_id; ExamParticipantController eager-loads unscoped User. App creation validates tenant, but missing composite FK leaves corruption/legacy-row exposure risk.
+- Raw query inventory: ExamController history checks, MediaController joins/pivots, TeacherAccess joins, ExamSnapshotService, CurriculumAchievementService, StudentRombelManagement, maintenance commands, benchmark isolation, legacy inventory and installer reads reviewed. Relevant request-path queries carry tenant predicates; maintenance scans are tenant-revalidated.
+- LoginIdentityResolver filters soft-deleted users/profiles, requires one installation and tenant, but accepts legacy ADMIN/OPERATOR/PROKTOR. API AuthController issues tokens without active-role allowlist. Existing Sanctum tokens are not re-resolved each request.
+- User legacy role string column is not used for runtime authorization; role pivot is.
+- Media uses private tenant path and safe cleanup; Admin can read question media through QuestionPolicy but cannot attach/detach due update policy.
+- Only two API Resource classes found; Exam/Question/Assessment/Score largely raw model/array serialization.
+- Report commit `c2cf7c3e1633aa61d7bf8533192090f95be2e6b6`, blob `afe5cd57d2bf89f549032943eb7935a3892456f3`.
+- Report backup `docs/backup/web-admin-read-only-2026-11-21/LAPORAN_AUDIT_READ_ONLY_WEB_ADMIN_2026-11-21.md.before-phase11-raw-query-review`, commit `4477018dd10ac47ce760d134b15f72417ce82d7e`, blob `b67f69b4480f418fadbd8900afbf4695b68a6f36` (identical before update).
+- Checkpoint backup `docs/backup/web-admin-read-only-2026-11-21/CHECKPOINT_WEB_ADMIN_READ_ONLY_2026-11-21.md.before-phase11-raw-query-review`, commit `882d45d47145c38fd398b1e6f557ea7264336c0c`, blob `92afdb5dd7863414f7e481ce06a695b2d969bab4` (identical before update).
+- Audit remains OPEN; no source/DB/migration/config/role/permission/Web Guru/PR/deployment changes.
+- Remaining: final traceability reconciliation, patch plan per file, DB migration impact/rollback and acceptance test design. No implementation until explicit approval.
