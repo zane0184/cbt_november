@@ -76,3 +76,70 @@ Tidak ada perubahan pada baseline, branch dokumentasi sebelumnya, PR existing, d
 - Workflow terakhir: `.github/workflows/wa01-safe-mysql-ci.yml`, blob `f3d6f99154f60b1bef27c76c9931363c3d0273e6`.
 
 **Status saat addendum:** runner alternatif sudah berjalan sampai MySQL preflight pada run #7, tetapi WA-01 tetap NOT PASS karena bootstrap Laravel config gate belum lulus. Belum ada migration/test yang berjalan. Run #8 harus menjadi bukti untuk gerbang Laravel config, lint dan PHPUnit. Semua database yang dibuat pada run gagal telah dihapus oleh cleanup step; MySQL service runner dihentikan.
+
+
+## FINAL EVIDENCE — AUTOMATIC RUN #17
+
+**Status: WA-01 safe runtime gate PASS for the tested Admin boundary and selected regressions.**
+
+- Run: [WA-01 Safe Disposable MySQL Test #17](https://github.com/zane0184/cbt_november/actions/runs/44926818861)
+- Run conclusion: SUCCESS.
+- Commit tested: `5cb2c42fc1926301620119c8431d0bea6f790e81`.
+- PHP CLI: 8.3.37.
+- Composer: 2.11.2.
+- MySQL: 8.0.46, default engine InnoDB.
+- Disposable DB: `cbt_safe_wa01_44926818861_1`.
+- Disposable app user: `safe_wa01_44926818861_1`.
+- MySQL hostname: `2e9ca3af1cb3` (ephemeral GitHub service container).
+- Port: 3306.
+- Schema before migrations: 0 base tables.
+- Grants: global USAGE only; ALL PRIVILEGES only on the run-specific disposable schema; no global grant and no GRANT OPTION.
+- Laravel resolved connection: mysql / 127.0.0.1:3306 / exact run-specific DB and app user; app user not root; resolved password matched run-scoped credential; no DB_URL/config cache/installer override/.env at preflight.
+- Production/VPS credentials: not used.
+
+### Runtime tests and assertions
+
+| Test group | Result |
+|---|---:|
+| Admin CBT boundary, stale effective grants simulated in memory | 1 passed, 40 assertions |
+| License middleware browser redirect regression | 1 passed, 4 assertions |
+| Auth, multi-tenant auth, tenant isolation, Guru assessment policy, Siswa web login and result visibility | 37 passed, 116 assertions |
+| Guru NIP login regression | 1 passed, 5 assertions |
+| **Total** | **40 passed, 165 assertions** |
+
+- PHP lint: PASS for `app/`, `bootstrap/`, `config/`, `routes/`, and `tests/`.
+- Permission post-check: PASS; `permissions` rows = 0 and `permission_role` rows = 0.
+- No seeder, RolePermissionBootstrapper, or persisted permission fixture mutation was executed.
+- Laravel `RefreshDatabase` migrations ran only on the unique disposable schema.
+- Cleanup: PASS; schema and app user dropped, MySQL service stopped.
+- Warnings: 0 in run #17 after using an empty CI-only `.env` placeholder created after the no-`.env` preflight gate and removed during cleanup. It contained no secrets and no DB credentials; test configuration came from the runner environment.
+- Artifact: `wa01-safe-mysql-evidence-44926818861-1`, artifact ID `14715713449`, 9,279 bytes, retained 30 days.
+
+### Scope and limitations
+
+- The Admin test creates Tenant, Role and User records plus role-user membership in the disposable DB. It does not create Permission rows or permission_role pivots.
+- Ten stale CBT permission names are simulated by a test-only User subclass whose `hasPermission()` returns true. This proves Admin-deny authorization precedence through Gate, Livewire and tested routes even when the effective permission check says true. It does not claim persistence-level testing of legacy permission_role records.
+- The selected regression subset is not the complete Laravel suite and does not prove every Web Admin/Guru/Siswa acceptance criterion.
+- Browser visual tests, full lifecycle E2E, UAT, load/concurrency and production deployment remain NOT RUN.
+
+### Source and backup record
+
+Implementation branch: `work/wa01-safe-mysql-ci-20261121`  
+HEAD after run #17: `5cb2c42fc1926301620119c8431d0bea6f790e81`.
+
+Files changed in this stage:
+- `backend-laravel/app/Http/Middleware/EnsureLicenseActive.php` — browser blocked path now returns a standard Symfony/Laravel RedirectResponse, preserving flash message.
+- `backend-laravel/tests/Feature/EnsureLicenseActiveTest.php` — regression test for the HTTP redirect response contract.
+- `backend-laravel/tests/Feature/AdminCbtBoundaryWithoutPermissionFixturesTest.php` — no-permission-write Admin boundary test, with in-memory stale grant simulation.
+- `.github/workflows/wa01-safe-mysql-ci.yml` — automatic disposable PHP 8.3/MySQL 8 runner, test-only bypass, empty temporary .env placeholder and guaranteed cleanup.
+- Backup copies in `docs/backup/wa01-safe/`:
+  - `EnsureLicenseActive.php.before-livewire-response-fix` (original blob `6b2ea236c4afdbf5efc1031637eb8c9e5e0877c2`)
+  - `EnsureLicenseActiveTest.php.before-livewire-response-fix` (original blob `b5c1cd2274f5becb712ecc62867698ddb39bef31`)
+  - `AdminCbtBoundaryWithoutPermissionFixturesTest.php.before-livewire-response-fix` (pre-simulation blob `35ff266fe125aa3ef656222beb5e26e008a15af9`)
+  - `wa01-safe-mysql-ci.yml.before-test-env-placeholder` (workflow blob before final placeholder update `a2bc53a862503d40b09235a056d12fab504276b9`)
+
+No baseline branch, existing PR, production/VPS database, production .env, secret, migration production path, or deployment was changed.
+
+### Next action
+
+WA-01 safe runtime evidence is sufficient to proceed to Package 1. Continue on a new implementation branch based on the verified WA-01 HEAD; inspect the exact Package 1/W1 acceptance scope from the canonical specification and checkpoint, then implement Admin-only functionality with backup, source tests and checkpoint. Keep the Admin CBT deny invariant as a mandatory regression gate.
