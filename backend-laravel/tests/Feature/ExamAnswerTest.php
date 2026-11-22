@@ -959,4 +959,50 @@ class ExamAnswerTest extends TestCase
     }
 
 
+
+    public function test_expired_lease_can_only_be_recovered_by_the_same_bound_auth_session_and_advances_fence(): void
+    {
+        DeviceLease::query()->where('exam_attempt_id', $this->attempt->id)->update([
+            'expires_at' => now()->subSecond(),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat")
+            ->assertOk();
+
+        $this->assertSame(2, (int) $this->attempt->fresh()->fence_generation);
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $this->attempt->id,
+            'fence_generation' => 1,
+            'status' => 'EXPIRED',
+        ]);
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $this->attempt->id,
+            'fence_generation' => 2,
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$this->secondApiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat")
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+    }
+
+    public function test_submit_releases_lease_and_increments_fence_generation(): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit")
+            ->assertOk();
+
+        $this->assertSame('SUBMITTED', $this->attempt->fresh()->status);
+        $this->assertSame(2, (int) $this->attempt->fresh()->fence_generation);
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $this->attempt->id,
+            'fence_generation' => 1,
+            'status' => 'RELEASED',
+            'release_reason' => 'STUDENT_SUBMITTED',
+        ]);
+    }
+
+
 }
