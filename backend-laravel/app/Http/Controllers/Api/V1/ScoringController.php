@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamQuestionScore;
@@ -24,20 +25,17 @@ class ScoringController extends Controller
 
     public function score(Exam $exam, ExamAttempt $attempt)
     {
-        $this->authorize('score', $attempt);
-
-        if ($attempt->exam_id !== $exam->id) {
+        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
             abort(404);
         }
 
-        return DB::transaction(function () use ($attempt) {
-            // Keep the same lock order as answer writes and submit: attempt first.
-            $lockedAttempt = ExamAttempt::query()
-                ->whereKey($attempt->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        $this->authorize('score', $attempt);
 
-            if ($lockedAttempt->status === 'IN_PROGRESS') {
+        return DB::transaction(function () use ($exam, $attempt) {
+            [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
+            $this->authorize('score', $lockedAttempt);
+
+            if (in_array($lockedAttempt->status, ['IN_PROGRESS'], true)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Attempt must be closed before scoring.'
@@ -47,14 +45,10 @@ class ScoringController extends Controller
             try {
                 $score = $this->scoringService->scoreAttempt($lockedAttempt);
             } catch (\DomainException $e) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage(),
-                ], 409);
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
             }
 
-            $this->auditService->log('SCORE_ATTEMPT', 'ExamAttemptScore', $score->id);
-
+            // ScoringService owns the atomic score history/current-pointer audit event.
             return response()->json(['success' => true, 'data' => $score]);
         });
     }
@@ -67,7 +61,9 @@ class ScoringController extends Controller
 
         $this->authorize('viewScore', $attempt);
 
-        $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $attempt->id)->first();
+        $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $attempt->id)
+            ->where('tenant_id', $attempt->tenant_id)
+            ->first();
         if (!$currentPointer) {
             return response()->json([
                 'success' => false,
@@ -91,7 +87,7 @@ class ScoringController extends Controller
         // Students receive only the published summary. Per-question evaluated
         // answers, grading feedback, grader identity, and internal score metadata
         // remain restricted to authorized staff even when show_result is enabled.
-        if ($request->user()->hasRole('SISWA')) {
+        if ($request->user()->hasExactRole('SISWA')) {
             abort_unless(
                 $score->tenant_id === $attempt->tenant_id
                     && $score->attempt_id === $attempt->id
@@ -133,29 +129,31 @@ class ScoringController extends Controller
 
     public function updateManualScore(Request $request, Exam $exam, ExamAttempt $attempt, ExamQuestionScore $questionScore)
     {
-        $this->authorize('grade', $attempt);
-
-        if ($attempt->exam_id !== $exam->id || $questionScore->attempt_id !== $attempt->id) {
+        if ($attempt->exam_id !== $exam->id
+            || $attempt->tenant_id !== $exam->tenant_id
+            || $questionScore->attempt_id !== $attempt->id
+            || $questionScore->tenant_id !== $attempt->tenant_id
+            || $questionScore->exam_id !== $exam->id) {
             abort(404);
         }
 
+        $this->authorize('grade', $attempt);
         $validated = $request->validate([
-            'awarded_score' => 'required|numeric|min:0|max:' . $questionScore->max_score,
+            'awarded_score' => 'required|numeric|min:0',
             'feedback' => 'nullable|string'
         ]);
 
-        return DB::transaction(function () use ($request, $attempt, $questionScore, $validated) {
-            // Serialize grading with submit/recalculation using the canonical lock order.
-            $lockedAttempt = ExamAttempt::query()
-                ->whereKey($attempt->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        return DB::transaction(function () use ($request, $exam, $attempt, $questionScore, $validated) {
+            [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
+            $this->authorize('grade', $lockedAttempt);
 
             if ($lockedAttempt->status === 'IN_PROGRESS') {
                 return response()->json(['success' => false, 'message' => 'Cannot grade an active attempt.'], 422);
             }
 
-            $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $lockedAttempt->id)
+            $currentPointer = ExamAttemptScoreCurrent::query()
+                ->where('tenant_id', $lockedAttempt->tenant_id)
+                ->where('attempt_id', $lockedAttempt->id)
                 ->lockForUpdate()
                 ->first();
 
@@ -166,7 +164,8 @@ class ScoringController extends Controller
                 ], 409);
             }
 
-            $attemptScore = ExamAttemptScore::whereKey($currentPointer->current_score_id)
+            $attemptScore = ExamAttemptScore::query()
+                ->whereKey($currentPointer->current_score_id)
                 ->where('attempt_id', $lockedAttempt->id)
                 ->where('tenant_id', $lockedAttempt->tenant_id)
                 ->where('scoring_version', $currentPointer->scoring_version)
@@ -184,15 +183,29 @@ class ScoringController extends Controller
                 return response()->json(['success' => false, 'message' => 'Cannot modify a finalized score.'], 422);
             }
 
-            if ($questionScore->scoring_version !== $attemptScore->scoring_version) {
-                return response()->json(['success' => false, 'message' => 'Cannot update historical score version.'], 422);
+            $lockedQuestionScore = ExamQuestionScore::query()
+                ->where('tenant_id', $lockedAttempt->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('attempt_id', $lockedAttempt->id)
+                ->where('scoring_version', $attemptScore->scoring_version)
+                ->whereKey($questionScore->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedQuestionScore || $lockedQuestionScore->question_type !== 'ESSAY'
+                || !in_array($lockedQuestionScore->scoring_status, ['MANUAL_REVIEW', 'GRADED'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Manual grading is available only for ESSAY questions awaiting or receiving Guru review.'
+                ], 422);
             }
 
-            $questionScore = ExamQuestionScore::where('id', $questionScore->id)->lockForUpdate()->first();
+            if ((float) $validated['awarded_score'] > (float) $lockedQuestionScore->max_score) {
+                return response()->json(['success' => false, 'message' => 'Awarded score exceeds the immutable snapshot maximum.'], 422);
+            }
 
-            $oldValues = $questionScore->toArray();
-
-            $questionScore->update([
+            $oldValues = $lockedQuestionScore->toArray();
+            $lockedQuestionScore->update([
                 'awarded_score' => $validated['awarded_score'],
                 'feedback' => $validated['feedback'] ?? null,
                 'scoring_status' => 'GRADED',
@@ -200,41 +213,40 @@ class ScoringController extends Controller
                 'graded_at' => now()
             ]);
 
-            $this->auditService->log('UPDATE_MANUAL_SCORE', 'ExamQuestionScore', $questionScore->id, $oldValues, $questionScore->toArray());
+            $this->auditService->log(
+                'UPDATE_MANUAL_SCORE',
+                'ExamQuestionScore',
+                $lockedQuestionScore->id,
+                $oldValues,
+                $lockedQuestionScore->toArray()
+            );
 
-            $updatedScore = $this->scoringService->scoreAttempt($lockedAttempt, true);
+            $this->scoringService->scoreAttempt($lockedAttempt, true);
 
-            return response()->json(['success' => true, 'data' => $questionScore->fresh()]);
+            return response()->json(['success' => true, 'data' => $lockedQuestionScore->fresh()]);
         });
     }
 
     public function finalize(Exam $exam, ExamAttempt $attempt)
     {
-        $this->authorize('finalize', $attempt);
-
-        if ($attempt->exam_id !== $exam->id) {
+        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
             abort(404);
         }
 
-        if ($attempt->status !== 'SUBMITTED') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot finalize an unsubmitted or in-progress attempt.'
-            ], 422);
-        }
+        $this->authorize('finalize', $attempt);
 
         try {
             return DB::transaction(function () use ($exam, $attempt) {
-                $lockedAttempt = ExamAttempt::query()
-                    ->whereKey($attempt->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+                [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
+                $this->authorize('finalize', $lockedAttempt);
 
-                if ($lockedAttempt->exam_id !== $exam->id || $lockedAttempt->status !== 'SUBMITTED') {
-                    return response()->json(['success' => false, 'message' => 'Only submitted attempts can be finalized.'], 422);
+                if (!in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
+                    return response()->json(['success' => false, 'message' => 'Only submitted or expired attempts can be finalized.'], 422);
                 }
 
-                $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $lockedAttempt->id)
+                $currentPointer = ExamAttemptScoreCurrent::query()
+                    ->where('tenant_id', $lockedAttempt->tenant_id)
+                    ->where('attempt_id', $lockedAttempt->id)
                     ->lockForUpdate()
                     ->first();
 
@@ -245,7 +257,8 @@ class ScoringController extends Controller
                     ], 409);
                 }
 
-                $score = ExamAttemptScore::whereKey($currentPointer->current_score_id)
+                $score = ExamAttemptScore::query()
+                    ->whereKey($currentPointer->current_score_id)
                     ->where('attempt_id', $lockedAttempt->id)
                     ->where('tenant_id', $lockedAttempt->tenant_id)
                     ->where('scoring_version', $currentPointer->scoring_version)
@@ -260,10 +273,13 @@ class ScoringController extends Controller
                 }
 
                 if ($score->grading_status === 'FINALIZED') {
-                    return response()->json(['success' => true, 'data' => $score, 'message' => 'Already finalized.']);
+                    return response()->json(['success' => true, 'data' => $score, 'message' => 'Already finalized.', 'idempotent' => true]);
                 }
 
-                $pendingManual = ExamQuestionScore::where('attempt_id', $lockedAttempt->id)
+                $pendingManual = ExamQuestionScore::query()
+                    ->where('tenant_id', $lockedAttempt->tenant_id)
+                    ->where('exam_id', $lockedExam->id)
+                    ->where('attempt_id', $lockedAttempt->id)
                     ->where('scoring_version', $score->scoring_version)
                     ->where('scoring_status', 'MANUAL_REVIEW')
                     ->count();
@@ -281,16 +297,15 @@ class ScoringController extends Controller
                     'finalized_by' => auth()->id()
                 ]);
 
-                // Calculate Curriculum Achievements for the finalized attempt
-                $assessment = $exam->assessment;
-                if ($assessment) {
-                    $student = $lockedAttempt->participant->user;
+                $assessment = $lockedExam->assessment;
+                $student = $participant->user;
+                if ($assessment && $student) {
                     $subject = $assessment->subject;
                     $academicYear = $assessment->academicYear;
                     $semester = $assessment->semester;
                     $rombel = $student->studentProfile?->rombels()->first();
 
-                    if ($student && $subject && $academicYear && $semester) {
+                    if ($subject && $academicYear && $semester) {
                         $achievementService = app(\App\Services\CurriculumAchievementService::class);
                         $achievementService->calculateStudentAchievements(
                             $student,
@@ -303,45 +318,42 @@ class ScoringController extends Controller
                     }
                 }
 
-                $this->analyticsCacheService->invalidateExamAnalytics($exam, $lockedAttempt);
-
+                $this->analyticsCacheService->invalidateExamAnalytics($lockedExam, $lockedAttempt);
                 $this->auditService->log('FINALIZE_SCORE', 'ExamAttemptScore', $score->id);
 
                 return response()->json(['success' => true, 'data' => $score->fresh()]);
             });
         } catch (\InvalidArgumentException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         }
     }
 
     public function recalculate(Exam $exam, ExamAttempt $attempt)
     {
-        $this->authorize('score', $attempt);
-
-        if ($attempt->exam_id !== $exam->id) {
+        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
             abort(404);
         }
 
-        return DB::transaction(function () use ($exam, $attempt) {
-            $lockedAttempt = ExamAttempt::query()
-                ->whereKey($attempt->id)
-                ->lockForUpdate()
-                ->firstOrFail();
+        $this->authorize('score', $attempt);
 
-            if ($lockedAttempt->exam_id !== $exam->id || $lockedAttempt->status === 'IN_PROGRESS') {
+        return DB::transaction(function () use ($exam, $attempt) {
+            [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
+            $this->authorize('score', $lockedAttempt);
+
+            if ($lockedAttempt->status === 'IN_PROGRESS') {
                 return response()->json(['success' => false, 'message' => 'Attempt must be closed before recalculation.'], 422);
             }
 
-            $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $lockedAttempt->id)
+            $currentPointer = ExamAttemptScoreCurrent::query()
+                ->where('tenant_id', $lockedAttempt->tenant_id)
+                ->where('attempt_id', $lockedAttempt->id)
                 ->lockForUpdate()
                 ->first();
 
             $existingScore = null;
             if ($currentPointer) {
-                $existingScore = ExamAttemptScore::whereKey($currentPointer->current_score_id)
+                $existingScore = ExamAttemptScore::query()
+                    ->whereKey($currentPointer->current_score_id)
                     ->where('attempt_id', $lockedAttempt->id)
                     ->where('tenant_id', $lockedAttempt->tenant_id)
                     ->where('scoring_version', $currentPointer->scoring_version)
@@ -354,7 +366,7 @@ class ScoringController extends Controller
                         'message' => 'Current score pointer target is invalid; recalculation is blocked pending integrity review.'
                     ], 409);
                 }
-            } elseif (ExamAttemptScore::where('attempt_id', $lockedAttempt->id)->exists()) {
+            } elseif (ExamAttemptScore::where('tenant_id', $lockedAttempt->tenant_id)->where('attempt_id', $lockedAttempt->id)->exists()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Current score pointer is missing for an attempt with score history; recalculation is blocked pending integrity review.'
@@ -365,27 +377,27 @@ class ScoringController extends Controller
                 return response()->json(['success' => false, 'message' => 'Cannot recalculate a finalized score.'], 422);
             }
 
-            $score = $this->scoringService->scoreAttempt($lockedAttempt, true);
+            try {
+                $score = $this->scoringService->scoreAttempt($lockedAttempt, true);
+            } catch (\DomainException $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
+            }
 
-            $this->auditService->log('RECALCULATE_SCORE', 'ExamAttemptScore', $score->id);
-
+            // ScoringService owns the score history/current-pointer audit event.
             return response()->json(['success' => true, 'data' => $score]);
         });
     }
 
     public function reopen(Request $request, Exam $exam, ExamAttempt $attempt)
     {
-        $this->authorize('reopen', $attempt);
-
-        if ($attempt->exam_id !== $exam->id) {
+        if ($attempt->exam_id !== $exam->id || $attempt->tenant_id !== $exam->tenant_id) {
             abort(404);
         }
 
-        $validated = $request->validate([
-            'reason' => 'required|string',
-        ]);
-
+        $this->authorize('reopen', $attempt);
+        $validated = $request->validate(['reason' => 'required|string']);
         $reason = trim($validated['reason']);
+
         if ($reason === '') {
             return response()->json([
                 'success' => false,
@@ -394,18 +406,52 @@ class ScoringController extends Controller
         }
 
         try {
-            $score = $this->scoringService->reopenAttempt($attempt, $reason, $request->user());
+            return DB::transaction(function () use ($request, $exam, $attempt, $reason) {
+                [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
+                $this->authorize('reopen', $lockedAttempt);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Score reopened successfully.',
-                'data' => $score
-            ]);
+                $score = $this->scoringService->reopenAttempt($lockedAttempt, $reason, $request->user());
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Score reopened successfully.',
+                    'data' => $score
+                ]);
+            });
         } catch (\InvalidArgumentException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage()
-            ], 422);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
         }
+    }
+
+    /**
+     * Acquire lifecycle parent rows in the shared order before any score row:
+     * Exam -> Participant -> Attempt -> ScoreCurrent -> AttemptScore -> QuestionScore.
+     */
+    private function lockAttemptContext(Exam $exam, ExamAttempt $attempt): array
+    {
+        $lockedExam = Exam::query()
+            ->where('tenant_id', $exam->tenant_id)
+            ->whereKey($exam->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $participant = ExamParticipant::query()
+            ->where('tenant_id', $lockedExam->tenant_id)
+            ->where('exam_id', $lockedExam->id)
+            ->whereKey($attempt->participant_id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        $lockedAttempt = ExamAttempt::query()
+            ->where('tenant_id', $lockedExam->tenant_id)
+            ->where('exam_id', $lockedExam->id)
+            ->where('participant_id', $participant->id)
+            ->whereKey($attempt->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        return [$lockedExam, $participant, $lockedAttempt];
     }
 }
