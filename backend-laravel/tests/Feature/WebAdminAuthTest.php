@@ -204,7 +204,7 @@ class WebAdminAuthTest extends TestCase
         $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $guruSessionCookieValue);
         $this->app['auth']->forgetGuards();
-        $this->get('/admin/exams')->assertRedirect('/login');
+        $this->get('/login')->assertOk()->assertSee('Masuk ke CBT Madrasah');
         $this->assertGuest();
 
         // Client B restores the same Guru identity using the official Admin action.
@@ -221,14 +221,14 @@ class WebAdminAuthTest extends TestCase
         $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $guruSessionCookieValue);
         $this->app['auth']->forgetGuards();
-        $this->get('/admin/exams')->assertRedirect('/login');
+        $this->get('/login')->assertRedirect('/login');
         $this->assertGuest();
 
         // The old remember-me cookie was invalidated by remember_token rotation.
         $this->withCookie($sessionCookieName, '')
             ->withCookie($rememberCookie->getName(), $rememberCookie->getValue());
         $this->app['auth']->forgetGuards();
-        $this->get('/admin/exams')->assertRedirect('/login');
+        $this->get('/login')->assertOk()->assertSee('Masuk ke CBT Madrasah');
         $this->assertGuest();
 
         // Fresh credentials establish a new browser session.
