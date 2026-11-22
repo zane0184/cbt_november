@@ -186,16 +186,16 @@ class WebAdminAuthTest extends TestCase
 
     public function test_invalid_password_returns_generic_identifier_error(): void
     {
-        $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => 'salah']);
+        $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => 'salah']);
         $response->assertSessionHasErrors('identifier');
         $this->assertGuest();
     }
 
     public function test_login_rate_limiter_blocks_repeated_failures(): void
     {
-        RateLimiter::clear('login:web:guru.uji|127.0.0.1');
+        RateLimiter::clear('login:web:198001012006041001|127.0.0.1');
         for ($i = 0; $i < 5; $i++) {
-            $this->post('/login', ['identifier' => 'guru.uji', 'password' => 'salah']);
+            $this->post('/login', ['identifier' => '198001012006041001', 'password' => 'salah']);
         }
         $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => 'salah']);
         $response->assertSessionHasErrors('identifier');
