@@ -440,3 +440,76 @@ Sebelum coding Stage 4B:
 6. Setelah semua approval dan izin eksplisit koordinator, siapkan migration forward-only dan acceptance tests. Tidak ada migration sekarang.
 
 Status akhir: AUDIT/DESIGN CONTINUATION COMPLETE — IMPLEMENTATION GATED.
+
+
+## 8. POST-AUDIT REMOTE REFRESH — UPDATE AGENT 2 DAN CI AGENT 3
+
+Pemeriksaan tambahan dilakukan setelah komentar baru Agent 2 pada Issue #10.
+
+### 8.1 Branch HEAD dan graph terbaru
+
+| Owner | Branch | HEAD | Ahead / behind terhadap Agent 1 |
+|---|---|---|---:|
+| Agent 1 | work/stage4b-room-session-20261122 | 4754ae0418193cd0f25b29a6296d3632065348f9 sebelum update dokumentasi ini | — |
+| Agent 2 | work/stage4d-account-lifecycle-20261122 | 32d383eb1564cdbcf084b8677fe8b750a4b45a11 | 225 / 84 |
+| Agent 3 | work/web-guru-foundation-20261122 | 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23 | 172 / 229 |
+| Kandidat Agent 4 | work/import-guru-siswa-implementation-20261122 | f38ceec7b0653fcf3363eec40f3d4577c323cca8 | 80 / 352 |
+| main | main | feab77228f7108f7f7a45325d7f1fb878c07310b | 15 / 1202 |
+
+Merge-base tetap:
+- Agent 2: 0631a3d84d058c8c049dcb71dc54b2e7cbb849a6.
+- Agent 3: 81b6c74d81d80bc483530802594f624fb4e0f3db.
+- Kandidat Agent 4: 17c20c66284deb7a18e3a6dde2b3d47f9c966bd9.
+- main: 95736e338e517a087503adfb3e3a899709e0340c.
+
+Commit terbaru Agent 2 hanya menambah dokumen audit. Source runtime baseline tetap 74bf7178f46673e9be90523671490c0749034acd. Commit terbaru Agent 3 hanya menambah manifest backup. Candidate Agent 4 belum dikonfirmasi sebagai owner.
+
+### 8.2 Update Agent 2
+
+Agent 2 menambahkan laporan read-only:
+backend-laravel/docs/AGENT2_CONTINUATION_AUTH_TENANT_REPORTING_LIFECYCLE_2026-11-22.md
+
+Blob SHA: bd8e80ad324fda10faf4cfc9cb34b4d19b8f299c.
+Source baseline HEAD: 74bf7178f46673e9be90523671490c0749034acd.
+Dokumentasi HEAD: 32d383eb1564cdbcf084b8677fe8b750a4b45a11.
+
+Poin lintas Stage 4B:
+- Exact-role belum konsisten pada sejumlah Exam/Attempt/Report policy dan service entrypoint.
+- ExamPolicy::monitor masih memiliki jalur KAMAD; ini bertentangan dengan keputusan tidak ada portal KAMAD.
+- Tenant pre-auth resolver belum menyelesaikan topologi shared multi-tenant DB vs per-tenant installation.
+- Reporting wajib memakai current score pointer dan FINALIZED; ExamSummaryReportService saat ini mengagregasi seluruh histori score dan berisiko menghitung versi lama/non-final.
+- Immutable report issuance/snapshot belum tersedia.
+- Scheduler Proktor Agent 1 masih dapat menyelesaikan assignment saat Attempt aktif.
+- Device Lease/Fencing belum dibuktikan end-to-end.
+
+Status approval Agent 2 pada Issue #10 tetap PENDING; laporan audit bukan approval kontrak Stage 4B.
+
+### 8.3 CI Agent 2 — koreksi status terbaru
+
+Run #388, ID 45003796892, pada source SHA 74bf7178f46673e9be90523671490c0749034acd: BLOCKED — RUNNER.
+Run #389, ID 45008591113, pada dokumentasi SHA 32d383eb1564cdbcf084b8677fe8b750a4b45a11 dengan source runtime tidak berubah: BLOCKED — RUNNER.
+
+Kedua job tidak memiliki steps yang dieksekusi; laporan Agent 2 mencatat runner_id=0 dan attempts 1–3 tanpa runner. PHPUnit tidak berjalan. Status patch explicit web guard bukan PASS dan bukan FAIL; statusnya BLOCKED — RUNNER. Run 44998669927 dan 44998949281 yang lebih lama tetap tercatat sebagai failure HTTP 500 vs expected 302, tetapi bukan bukti untuk run terbaru.
+
+### 8.4 CI Agent 3 — run terbaru menggantikan success lama
+
+Run 45003191589 pada source SHA 834a59f11f9b548c8d7f0fcea68c15cf4bbe501f — FAILURE.
+- PHP lint dan route registration: PASS.
+- PHPUnit TeacherPortalFoundationTest: 18 passed, 2 failed, 86 assertions.
+- Kegagalan 1: tenant-context mismatch mengharapkan HTTP 403 tetapi menerima 200.
+- Kegagalan 2: Livewire action untuk ID Question lintas tenant melempar ModelNotFoundException, bukan respons Not Found yang diharapkan.
+- Source test commit 834a59f hanya mengubah TeacherPortalFoundationTest.php.
+- Branch Agent 3 saat refresh berada di 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23; commit terbaru sesudah test hanya dokumentasi backup.
+
+Run SUCCESS Agent 3 sebelumnya 44995889398 pada SHA a338679... tidak lagi menjadi CI terbaru. Dua kegagalan baru ini harus diselesaikan Agent 3 sebelum integrasi Web Guru.
+
+Controller Agent 3 tetap pada blob e915bf43118026ef8eace96338fa6cad44ee29e1 dan method show() tidak memanggil ExamMonitoringScope::allowsParticipant(). Kegagalan CI lintas tenant tersebut menambah blocker security, tetapi tidak menggantikan acceptance test Proktor A/B.
+
+### 8.5 Keputusan yang tidak berubah
+
+- Issue #10 tetap OPEN.
+- Komentar Agent 2 menyatakan approval Agent 2/3/4 tetap PENDING.
+- Belum ada approval teknis Agent 3 atau Agent 4.
+- Branch Agent 4 tetap kandidat.
+- Tidak ada source, migration, schema, database, workflow, atau branch agent lain yang diubah dalam refresh ini.
+- Status Stage 4B tetap AUDIT/DESIGN CONTINUATION COMPLETE — IMPLEMENTATION GATED.
