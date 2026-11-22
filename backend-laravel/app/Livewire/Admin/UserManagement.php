@@ -36,12 +36,14 @@ class UserManagement extends Component
     public $email = '';
     public $password = '';
     public $selectedRole = '';
+    public $employmentType = '';
     public $nip = '';
     public $nik = '';
     public $nisn = '';
     public $editName = '';
     public $editUsername = '';
     public $editEmail = '';
+    public $editEmploymentType = '';
     public $editNip = '';
     public $editNik = '';
     public $editNisn = '';
@@ -87,14 +89,20 @@ class UserManagement extends Component
             'email' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))],
             'password' => ['required','string','min:14'],
             'selectedRole' => ['required','string',Rule::in($manageableRoles)],
-            'nip' => ['nullable','string','max:18'],
+            'employmentType' => ['nullable', 'required_if:selectedRole,GURU', Rule::in(['ASN', 'HONORER'])],
+            'nip' => ['nullable','digits:18'],
             'nik' => ['nullable','digits:16'],
             'nisn' => ['nullable','digits:10'],
         ];
 
         if ($this->selectedRole === 'GURU') {
-            $rules['nip'][] = Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId));
-            $rules['nik'][] = Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId));
+            if ($this->employmentType === 'ASN') {
+                $rules['nip'] = ['required', 'digits:18', Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
+                $rules['nik'] = ['prohibited'];
+            } elseif ($this->employmentType === 'HONORER') {
+                $rules['nik'] = ['required', 'digits:16', Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
+                $rules['nip'] = ['prohibited'];
+            }
         }
         if ($this->selectedRole === 'SISWA') $rules['nisn'] = ['required','digits:10',Rule::unique('student_profiles','nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
         return $rules;
@@ -103,7 +111,7 @@ class UserManagement extends Component
     public function openCreateModal(): void
     {
         $this->authorizeUserManagement();
-        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn']);
+        $this->reset(['name','username','email','password','selectedRole','employmentType','nip','nik','nisn']);
         $this->resetValidation();
         $this->showCreateModal = true;
     }
@@ -126,11 +134,14 @@ class UserManagement extends Component
             $user->roles()->sync([$role->id]);
 
             if ($this->selectedRole === 'GURU') {
+                $loginIdentifier = $this->employmentType === 'ASN' ? trim($this->nip) : trim($this->nik);
                 TeacherProfile::query()->create([
-                    'user_id' => $user->id, 'full_name' => trim($this->name),
-                    'nip' => trim($this->nip) !== '' ? trim($this->nip) : null,
-                    'nik' => trim($this->nik) !== '' ? trim($this->nik) : null,
-                    'employee_identifier' => trim($this->nip) !== '' ? trim($this->nip) : (trim($this->nik) !== '' ? trim($this->nik) : null),
+                    'user_id' => $user->id,
+                    'full_name' => trim($this->name),
+                    'employment_type' => $this->employmentType,
+                    'nip' => $this->employmentType === 'ASN' ? $loginIdentifier : null,
+                    'nik' => $this->employmentType === 'HONORER' ? $loginIdentifier : null,
+                    'employee_identifier' => $loginIdentifier,
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
                 StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
@@ -160,6 +171,7 @@ class UserManagement extends Component
         $this->editName = $user->name;
         $this->editUsername = $user->username;
         $this->editEmail = $user->email;
+        $this->editEmploymentType = $user->teacherProfile?->employment_type ?? '';
         $this->editNip = $user->teacherProfile?->nip ?? '';
         $this->editNik = $user->teacherProfile?->nik ?? '';
         $this->editNisn = $user->studentProfile?->nisn ?? '';
@@ -183,8 +195,14 @@ class UserManagement extends Component
             'editEmail' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->id)],
         ];
         if ($isGuru) {
-            $rules['editNip'] = ['nullable','string','max:18', Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->teacherProfile->id)];
-            $rules['editNik'] = ['nullable','digits:16', Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->teacherProfile->id)];
+            $rules['editEmploymentType'] = ['required', Rule::in(['ASN', 'HONORER'])];
+            if ($this->editEmploymentType === 'ASN') {
+                $rules['editNip'] = ['required', 'digits:18', Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->teacherProfile->id)];
+                $rules['editNik'] = ['prohibited'];
+            } elseif ($this->editEmploymentType === 'HONORER') {
+                $rules['editNik'] = ['required', 'digits:16', Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->teacherProfile->id)];
+                $rules['editNip'] = ['prohibited'];
+            }
         } else {
             $rules['editNisn'] = ['required','digits:10', Rule::unique('student_profiles','nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->studentProfile->id)];
         }
@@ -200,11 +218,13 @@ class UserManagement extends Component
 
             if ($isGuru) {
                 $profile = TeacherProfile::query()->where('tenant_id', $tenantId)->where('user_id', $locked->id)->lockForUpdate()->firstOrFail();
+                $oldValues['employment_type'] = $profile->employment_type;
                 $oldValues['nip'] = $profile->nip;
                 $oldValues['nik'] = $profile->nik;
                 $profile->full_name = $locked->name;
-                $profile->nip = trim($validated['editNip'] ?? '') !== '' ? trim($validated['editNip']) : null;
-                $profile->nik = trim($validated['editNik'] ?? '') !== '' ? trim($validated['editNik']) : null;
+                $profile->employment_type = $validated['editEmploymentType'];
+                $profile->nip = $validated['editEmploymentType'] === 'ASN' ? trim($validated['editNip']) : null;
+                $profile->nik = $validated['editEmploymentType'] === 'HONORER' ? trim($validated['editNik']) : null;
                 $profile->employee_identifier = $profile->nip ?: $profile->nik;
                 $profile->save();
             } else {
@@ -218,6 +238,7 @@ class UserManagement extends Component
             app(AuditService::class)->log('USER_UPDATED', 'User', $locked->id, $oldValues, [
                 'name' => $locked->name, 'username' => $locked->username, 'email' => $locked->email,
                 'role' => $isGuru ? 'GURU' : 'SISWA',
+                'employment_type' => $isGuru ? $profile->employment_type : null,
             ]);
         }, 3);
 
