@@ -161,14 +161,25 @@ class UserManagement extends Component
                         $query->where('nip', $loginIdentifier)->orWhere('nik', $loginIdentifier)
                             ->orWhere('employee_identifier', $loginIdentifier);
                     })->exists();
-                if ($identityConflict) {
+                $studentIdentityConflict = StudentProfile::withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists();
+                if ($identityConflict || $studentIdentityConflict) {
                     throw ValidationException::withMessages([
                         $this->employmentType === 'ASN' ? 'nip' : 'nik'
-                            => 'Identitas Guru sudah digunakan pada instalasi ini.',
+                            => 'Identitas login Guru sudah digunakan oleh akun lain pada instalasi ini.',
                     ]);
                 }
-            } elseif (StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists()) {
-                throw ValidationException::withMessages(['nisn' => 'NISN sudah digunakan pada instalasi ini.']);
+            } else {
+                $studentIdentityConflict = StudentProfile::withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists();
+                $teacherIdentityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where(function ($query) use ($loginIdentifier): void {
+                        $query->where('nip', $loginIdentifier)->orWhere('nik', $loginIdentifier)
+                            ->orWhere('employee_identifier', $loginIdentifier);
+                    })->exists();
+                if ($studentIdentityConflict || $teacherIdentityConflict) {
+                    throw ValidationException::withMessages(['nisn' => 'NISN sudah digunakan sebagai identitas login akun lain.']);
+                }
             }
 
             $user = User::create([
@@ -299,7 +310,9 @@ class UserManagement extends Component
                     })->exists();
                 $usernameConflict = User::withoutGlobalScopes()->where('tenant_id', $tenantId)
                     ->where('id', '<>', $locked->id)->whereRaw('LOWER(username) = ?', [strtolower($loginIdentifier)])->exists();
-                if ($identityConflict || $usernameConflict) {
+                $studentIdentityConflict = StudentProfile::withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists();
+                if ($identityConflict || $usernameConflict || $studentIdentityConflict) {
                     throw ValidationException::withMessages([
                         $validated['editEmploymentType'] === 'ASN' ? 'editNip' : 'editNik'
                             => 'Identitas login sudah digunakan pada instalasi ini.',
@@ -320,8 +333,13 @@ class UserManagement extends Component
                     ->where('id', '<>', $profile->id)->where('nisn', $validated['editNisn'])->exists();
                 $usernameConflict = User::withoutGlobalScopes()->where('tenant_id', $tenantId)
                     ->where('id', '<>', $locked->id)->whereRaw('LOWER(username) = ?', [strtolower($validated['editNisn'])])->exists();
-                if ($nisnConflict || $usernameConflict) {
-                    throw ValidationException::withMessages(['editNisn' => 'NISN sudah digunakan pada instalasi ini.']);
+                $teacherIdentityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where(function ($query) use ($validated): void {
+                        $query->where('nip', $validated['editNisn'])->orWhere('nik', $validated['editNisn'])
+                            ->orWhere('employee_identifier', $validated['editNisn']);
+                    })->exists();
+                if ($nisnConflict || $usernameConflict || $teacherIdentityConflict) {
+                    throw ValidationException::withMessages(['editNisn' => 'NISN sudah digunakan sebagai identitas login akun lain.']);
                 }
                 $oldValues['nisn'] = $profile->nisn;
                 $profile->full_name = $locked->name;
