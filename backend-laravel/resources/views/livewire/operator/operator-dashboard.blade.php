@@ -91,6 +91,16 @@
                 <h3 class="font-bold text-navy-900">Guru Pengawas</h3>
                 <p class="mt-1 text-xs leading-5 text-textSecondary">Tetapkan Guru pengawas sementara untuk ujian yang diterbitkan.</p>
             </a>
+            <a href="/admin/madrasah-profile" class="group rounded-2xl border border-cardBorder bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+                <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-xl">🏛️</div>
+                <h3 class="font-bold text-navy-900">Identitas Madrasah</h3>
+                <p class="mt-1 text-xs leading-5 text-textSecondary">Perbarui nama, NSM, NPSN, alamat, kontak, dan logo resmi.</p>
+            </a>
+            <a href="/admin/academic-periods" class="group rounded-2xl border border-cardBorder bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md">
+                <div class="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-xl">📅</div>
+                <h3 class="font-bold text-navy-900">Tahun Ajaran & Semester</h3>
+                <p class="mt-1 text-xs leading-5 text-textSecondary">Atur periode aktif tanpa menghapus riwayat akademik sebelumnya.</p>
+            </a>
         </div>
     </section>
 
