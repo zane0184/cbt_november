@@ -41,6 +41,7 @@ Perubahan:
 14. Sebelum submit POST, client menyimpan marker SUBMITTING di local_meta; jika respons tidak dapat dipastikan, marker menjadi UNKNOWN dan client tidak mengirim ulang otomatis.
 15. Saat halaman dibuka ulang, marker SUBMITTING/UNKNOWN untuk student+exam yang sama diperiksa melalui GET Attempt sebelum client mengizinkan start baru.
 16. Jika GET Attempt mengembalikan IN_PROGRESS, client meminta execution context dan memverifikasi ID Attempt yang sama, lalu melanjutkan Attempt itu melalui GET execution; tidak ada POST start baru. Jika ID berbeda atau execution tidak mengizinkan resume, runner fail-closed.
+17. Panel terminal membedakan Attempt SUBMITTED (Ujian berhasil dikirim) dari EXPIRED (Ujian ditutup oleh server), sehingga status expiry tidak dilabeli sebagai submit manual yang berhasil.
 
 Backup:
 - Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`; byte-exact dengan baseline.
@@ -53,6 +54,7 @@ Backup:
 - Sebelum persistent submit state: `.../show.blade.php.before-persistent-submit-state`.
 - Sebelum student-scope recovery: `.../show.blade.php.before-student-scope-recovery`.
 - Sebelum safe resume after submit check: `.../show.blade.php.before-safe-resume-after-submit-check`, blob `1b63a315a1df0e36fc5b07339acd3bc6b88e242d` (cocok dengan runner sebelum patch resume).
+- Sebelum terminal status label: `.../show.blade.php.before-terminal-status-label`, blob `5b8aa0efc2f180d675f401315e43ce578b722925` (cocok dengan runner sebelum perubahan label terminal).
 
 Commit implementasi utama:
 - `61abd0dc6c6a3fab4a139ae0ffdcc488ccddfd9f` — IndexedDB draft + submit barrier.
@@ -66,6 +68,7 @@ Commit implementasi utama:
 - `5cfda8a434eaed696404662bf50151a521060128` — persist SUBMITTING/UNKNOWN marker across reload and prevent duplicate Attempt creation.
 - `c36e63c4a8fc0e227eb4d97679b70a3537b5d82e` — scope local recovery marker to the authenticated student.
 - `b07e50896ec98d8975bf7c4242c3b69eb620fa9a` — resume same active Attempt after status lookup, guarded by exact Attempt ID.
+- `b8e6f5e7f367fe3691943980a7797e032f713134` — distinguish EXPIRED from SUBMITTED in completion UI.
 
 ## PENGUJIAN
 Dilakukan:
@@ -73,8 +76,9 @@ Dilakukan:
 - Baseline backup pertama byte-exact terverifikasi.
 - Compare base → branch: status ahead, behind 0; perubahan terbatas pada runner, backup runner, laporan, dan checkpoint. Jumlah commit bertambah saat laporan/checkpoint diperbarui.
 - Pemeriksaan source statis atas call sites IndexedDB, persist conflict, frozen base_revision, no old store calls, dan skip conflict saat flush.
-- JavaScript syntax parse/compile terhadap inline runner aktual pada blob `5b8aa0efc2f180d675f401315e43ce578b722925`: PASS.
-- 9 assertion statis terhadap schema v2, atomic queue, durable submit marker, recovery reload, same-Attempt guard, conflict/undurable submit barrier: 9/9 PASS.
+- JavaScript syntax parse/compile terhadap inline runner aktual pada blob `5b8aa0efc2f180d675f401315e43ce578b722925`: PASS; setelah patch label terminal, parse ulang pada blob `8222aa80a588abfb476c1ff94b153f6ee6ef1ee1`: PASS.
+- 9 assertion statis terhadap schema v2, atomic queue, durable submit marker, recovery reload, same-Attempt guard, conflict/undurable submit barrier: 9/9 PASS pada runner sebelumnya.
+- 8 assertion statis pada runner final: 8/8 PASS, termasuk label SUBMITTED/EXPIRED, resume same Attempt, submit marker, barrier dan IndexedDB v2.
 - Pemeriksaan route: GET Attempt path benar karena helper `api()` menambahkan `apiBase` `/api/v1/exams/{exam}`; tidak diperlukan perubahan route URL.
 - Pemeriksaan commit status exact SHA: tidak ada status/check run terpasang (`statuses=[]`); CI belum berjalan pada commit ini.
 
