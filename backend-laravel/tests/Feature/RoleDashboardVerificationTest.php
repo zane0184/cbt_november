@@ -367,9 +367,6 @@ class RoleDashboardVerificationTest extends TestCase
 
         // Test Proktor Dashboard for Tenant A
         $this->actingAs($this->proctorA);
-        Livewire::test(ProktorDashboard::class)
-            ->assertViewHas('activeExams', fn ($exams) => $exams->isEmpty())
-            ->assertViewHas('inProgressAttempts', 0)
-            ->assertViewHas('submittedAttempts', 0);
+        Livewire::test(ProktorDashboard::class)->assertForbidden();
     }
 }
