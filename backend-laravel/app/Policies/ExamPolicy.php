@@ -11,7 +11,7 @@ class ExamPolicy
     public function viewAny(User $user): bool
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        return $user->hasRole('KAMAD') || $user->hasRole('GURU') || $user->hasRole('SISWA');
+        return $user->hasRole('GURU') || $user->hasRole('SISWA');
     }
 
     public function view(User $user, Exam $exam): bool
@@ -27,10 +27,6 @@ class ExamPolicy
 
         if ($user->hasRole('ADMIN_MADRASAH')) {
             return false;
-        }
-
-        if ($user->hasRole('KAMAD')) {
-            return true;
         }
 
         if ($user->hasRole('SISWA')) {
@@ -207,10 +203,6 @@ class ExamPolicy
             return false;
         }
 
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('exam.monitor');
-        }
-
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.monitor')
             && TeacherAccess::canViewExam($user, $exam);
@@ -226,7 +218,7 @@ class ExamPolicy
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($user->hasRole('KAMAD') || $user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasRole('SISWA')) return false;
 
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.grade')
