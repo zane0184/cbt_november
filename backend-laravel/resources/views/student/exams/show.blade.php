@@ -678,6 +678,10 @@
             for (const timer of state.timers.values()) clearTimeout(timer);
             state.timers.clear();
             await flushPendingSaves();
+            // The save barrier is now clear. Lock the runner before the next
+            // asynchronous IndexedDB write so no new edit can slip between
+            // the final queue check and the submit request.
+            setRunnerLocked(true);
             await persistSubmitState('SUBMITTING');
             submitRequestStarted = true;
             const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/submit`, { method: 'POST', body: JSON.stringify({}) });
@@ -698,6 +702,7 @@
                 await recoverSubmitStatus();
                 return;
             }
+            setRunnerLocked(false);
             el('submit-button').disabled = false;
             if (auto) setSaveStatus('Waktu habis, tetapi ada jawaban yang belum terkonfirmasi. Attempt mengikuti expiry server; jangan tutup halaman.', true);
             showError(`Ujian belum dapat dikirim: ${error.message}. Draft lokal dipertahankan. Jangan tutup halaman; periksa koneksi lalu coba lagi.`);
