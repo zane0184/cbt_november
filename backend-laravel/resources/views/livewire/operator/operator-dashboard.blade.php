@@ -3,10 +3,10 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200 mb-2">
-                <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Role: Operator Madrasah
+                <span class="w-2 h-2 rounded-full bg-emerald-600"></span> Role: Admin Madrasah
             </div>
-            <h1 class="text-2xl font-bold text-navy-900">Dashboard Operasional Madrasah</h1>
-            <p class="text-sm text-textSecondary">Pengelolaan data induk madrasah, rombel, mata pelajaran, pengguna, dan administrasi ujian.</p>
+            <h1 class="text-2xl font-bold text-navy-900">Dashboard Admin Madrasah</h1>
+            <p class="text-sm text-textSecondary">Administrasi identitas madrasah, data akademik, pengguna, dan dukungan penugasan Guru pengawas.</p>
         </div>
         <div class="flex items-center gap-3">
             <a href="/admin/users" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-sm">
@@ -33,7 +33,7 @@
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Guru</p>
             <p class="text-2xl font-bold text-indigo-600 mt-2">{{ $totalTeachers }}</p>
-            <p class="text-[11px] text-gray-500 mt-1">Pengajar & Pembuat Soal</p>
+            <p class="text-[11px] text-gray-500 mt-1">Guru Aktif</p>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Rombel</p>
@@ -59,7 +59,7 @@
                 👥
             </div>
             <h3 class="font-bold text-navy-900 text-base">Manajemen Pengguna</h3>
-            <p class="text-xs text-textSecondary mt-1">Tambah, edit, dan kelola akun Operator, Guru, Proktor, & Siswa.</p>
+            <p class="text-xs text-textSecondary mt-1">Tambah dan kelola akun Guru dan Siswa madrasah.</p>
         </a>
         <a href="/admin/academic" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
             <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
@@ -79,8 +79,8 @@
             <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
                 📝
             </div>
-            <h3 class="font-bold text-navy-900 text-base">Administrasi Ujian</h3>
-            <p class="text-xs text-textSecondary mt-1">Penugasan rombel ke ujian, penanganan token, dan status sesi.</p>
+            <h3 class="font-bold text-navy-900 text-base">Daftar Ujian & Pengawas</h3>
+            <p class="text-xs text-textSecondary mt-1">Melihat daftar ujian Guru dan menetapkan Guru pengawas sementara.</p>
         </a>
     </div>
 
