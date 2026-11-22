@@ -10,6 +10,7 @@ use App\Models\ExamAttempt;
 use App\Models\DeviceLease;
 use App\Models\ExamAttemptAnswer;
 use App\Models\MediaAsset;
+use App\Services\AuditService;
 use App\Models\ExamParticipant;
 use App\Models\StudentProfile;
 use App\Models\AcademicYear;
@@ -1054,6 +1055,27 @@ class ExamAnswerTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
             ->get($url)
             ->assertOk();
+    }
+
+
+
+    public function test_answer_receipt_is_not_persisted_when_transaction_audit_fails(): void
+    {
+        $audit = \\Mockery::mock(AuditService::class);
+        $audit->shouldReceive('log')->once()->andThrow(new \\RuntimeException('audit unavailable'));
+        $this->app->instance(AuditService::class, $audit);
+
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
+                'client_request_id' => 'transaction-must-rollback',
+                'base_revision' => 0,
+                'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+                'answer_state' => 'ANSWERED',
+            ])
+            ->assertServerError();
+
+        $this->assertDatabaseCount('exam_attempt_answers', 0);
+        $this->assertDatabaseCount('exam_attempt_answer_requests', 0);
     }
 
 
