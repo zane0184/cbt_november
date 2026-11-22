@@ -12,6 +12,7 @@ use App\Models\MultiCurriculumVersion;
 use App\Models\MultiLearningOutcome;
 use App\Models\Role;
 use App\Models\TeacherProfile;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
 use App\Models\User;
@@ -196,6 +197,30 @@ class TeacherPortalFoundationTest extends TestCase
             'entity_type' => 'TeacherProfile',
             'entity_id' => $profile->id,
         ]);
+    }
+
+    public function test_expired_assignment_is_not_counted_as_active(): void
+    {
+        $profile = TeacherProfile::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('user_id', $this->teacher->id)
+            ->firstOrFail();
+
+        TeacherSubjectAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('teacher_profile_id', $profile->id)
+            ->firstOrFail()
+            ->update(['ends_at' => now()->subDay()->toDateString()]);
+
+        $this->actingAs($this->teacher);
+
+        Livewire::test(TeacherLearning::class)
+            ->assertSee('Masa Berlaku Berakhir')
+            ->assertSee('0 penugasan aktif');
+
+        $this->get('/guru/dashboard')
+            ->assertOk()
+            ->assertSee('Belum ada penugasan aktif');
     }
 
     public function test_curriculum_context_uses_only_registered_tenant_owned_versions_and_shows_unverified_source_state(): void
