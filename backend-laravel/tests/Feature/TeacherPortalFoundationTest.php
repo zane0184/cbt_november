@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Livewire\Teacher\TeacherDashboard;
+use App\Livewire\Admin\ExamManagement;
+use App\Livewire\Admin\QuestionBank;
+use App\Models\Permission;
 use App\Livewire\Teacher\TeacherLearning;
 use App\Livewire\Teacher\TeacherProfilePage;
 use App\Models\MultiCurriculum;
@@ -45,6 +48,9 @@ class TeacherPortalFoundationTest extends TestCase
         app(TenantContext::class)->setTenantId($this->tenant->id);
 
         $this->guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruPermissions = collect(['question.view', 'exam.manage'])
+            ->map(fn (string $name) => Permission::firstOrCreate(['name' => $name], ['label' => $name]));
+        $this->guruRole->permissions()->sync($guruPermissions->pluck('id')->all());
         $this->teacher = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Guru Portal Uji',
@@ -119,6 +125,96 @@ class TeacherPortalFoundationTest extends TestCase
 
         $this->teacher->roles()->attach($adminRole->id);
         $this->actingAs($this->teacher)->get('/guru/dashboard')->assertForbidden();
+    }
+
+    public function test_question_and_exam_livewire_screens_allow_only_single_role_guru_with_permission_and_assignment(): void
+    {
+        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertOk();
+        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertOk();
+
+        $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+
+        foreach ([
+            [$adminRole, 'admin.component@mug.test'],
+            [$studentRole, 'siswa.component@mug.test'],
+        ] as [$role, $email]) {
+            $user = User::create([
+                'tenant_id' => $this->tenant->id,
+                'name' => 'Akun Ditolak',
+                'email' => $email,
+                'password' => bcrypt('password123'),
+            ]);
+            $user->roles()->attach($role->id);
+
+            Livewire::actingAs($user)->test(QuestionBank::class)->assertForbidden();
+            Livewire::actingAs($user)->test(ExamManagement::class)->assertForbidden();
+        }
+
+        foreach ([$studentRole, $adminRole] as $additionalRole) {
+            $this->teacher->roles()->attach($additionalRole->id);
+            $this->teacher->unsetRelation('roles');
+
+            Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
+            Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
+
+            $this->teacher->roles()->detach($additionalRole->id);
+            $this->teacher->unsetRelation('roles');
+        }
+    }
+
+    public function test_question_and_exam_livewire_screens_reject_missing_permission_assignment_and_foreign_tenant_context(): void
+    {
+        $questionView = Permission::query()->where('name', 'question.view')->firstOrFail();
+        $examManage = Permission::query()->where('name', 'exam.manage')->firstOrFail();
+
+        $this->guruRole->permissions()->detach($questionView->id);
+        $this->teacher->unsetRelation('roles');
+        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
+
+        $this->guruRole->permissions()->detach($examManage->id);
+        $this->teacher->unsetRelation('roles');
+        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
+
+        $this->guruRole->permissions()->sync([$questionView->id, $examManage->id]);
+        $this->teacher->unsetRelation('roles');
+        TeacherSubjectAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->whereIn('teacher_profile_id', TeacherProfile::query()
+                ->where('tenant_id', $this->tenant->id)
+                ->where('user_id', $this->teacher->id)
+                ->select('id'))
+            ->delete();
+
+        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
+        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
+
+        $tenantB = Tenant::create([
+            'name' => 'Tenant B',
+            'code' => 'MUG02',
+            'status' => 'ACTIVE',
+        ]);
+        app(TenantContext::class)->setTenantId($tenantB->id);
+
+        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
+        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
+    }
+
+    public function test_question_and_exam_livewire_recheck_role_during_hydration_and_direct_actions(): void
+    {
+        $questionHydration = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $questionAction = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $examHydration = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $examAction = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $this->teacher->roles()->attach($studentRole->id);
+        $this->teacher->unsetRelation('roles');
+
+        $questionHydration->set('search', 'blocked')->assertForbidden();
+        $questionAction->call('addMatchingPair')->assertForbidden();
+        $examHydration->set('search', 'blocked')->assertForbidden();
+        $examAction->call('createExam')->assertForbidden();
     }
 
     public function test_guru_without_exactly_one_tenant_local_teacher_profile_is_denied(): void
