@@ -17,7 +17,9 @@ class ReportPolicy
         if (!$exam || $user->tenant_id !== $exam->tenant_id) return false;
 
         if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $exam);
+            return $this->isSingleRoleGuru($user)
+                && $user->hasPermission('report.view')
+                && TeacherAccess::canViewExam($user, $exam);
         }
 
         return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
@@ -31,12 +33,15 @@ class ReportPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $student->tenant_id) return false;
 
+        if ($user->hasRole('GURU') && !$this->isSingleRoleGuru($user)) return false;
         if ($user->id === $student->id) return true;
 
         if ($user->hasRole('GURU')) {
             // Exact subject/year/semester/rombel authorization is enforced by
             // studentResults/exportStudentPdf after required filters validate.
-            return $user->hasPermission('report.view') && TeacherAccess::profileIds($user) !== [];
+            return $this->isSingleRoleGuru($user)
+                && $user->hasPermission('report.view')
+                && TeacherAccess::profileIds($user) !== [];
         }
 
         return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
@@ -45,6 +50,13 @@ class ReportPolicy
     /**
      * Determine if the user can view subject results.
      */
+    private function isSingleRoleGuru(User $user): bool
+    {
+        $roles = $user->roles()->pluck('name')->all();
+
+        return count($roles) === 1 && $roles[0] === 'GURU';
+    }
+
     public function viewSubjectResults(User $user, \App\Models\Subject $subject): bool
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
