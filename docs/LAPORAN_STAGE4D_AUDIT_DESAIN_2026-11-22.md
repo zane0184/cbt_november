@@ -238,3 +238,48 @@ Pembagian kepemilikan: Agent 1 tetap pemilik Stage 4B; branch ini mengelola Stag
 - Tidak ada file pada branch Agent1 yang diubah.
 - Catatan untuk Agent1: test `ExamRoomSessionConcurrencyTest` juga menggunakan `DatabaseMigrations`; periksa risiko teardown terhadap migration forward-only yang sama. Jangan mengubah migration keamanan untuk membuat teardown lolos. Migration Stage4B `down()` memiliki guard histori, tetapi belum ditemukan test eksplisit yang membuktikan rollback kosong berhasil dan rollback dengan histori ditolak.
 
+
+
+## ADDENDUM — VERIFIKASI FINAL STAGE 4C DAN PEMANTAUAN AGENT 1 (22 NOVEMBER 2026)
+
+### AUDIT CI Stage 4C
+
+Run final: [44982525201](https://github.com/zane0184/cbt_november/actions/runs/44982525201)
+- Branch: `work/stage4d-account-lifecycle-20261122`; SHA checkout: `af4e26ad974e0cded776ca552cafa77bcf4ae4d7`; event push; attempt 1.
+- Final run/job: `completed / success`.
+- PHP 8.3 + Composer/dependency validation, disposable MySQL 8 identity/preflight, static guard, PHP lint, Admin CBT boundary, Admin dashboard, academic period, legacy role migration, tenant profile, Admin user scope, import, API auth/tenant isolation, Guru/Siswa regression, monitoring duplication, Proktor assignment: seluruh step sukses.
+- Stage 4C functional lifecycle/tenant boundary: `7 passed, 26 assertions`.
+- Stage 4C MySQL 8 tenant mutex concurrency: `1 passed, 8 assertions`.
+- InnoDB post-migration: `80 base tables, 0 non-InnoDB`; `all_tables_innodb=true`; required schema ready, missing tables 0.
+- Disposable database dan user dibersihkan; artifact runtime evidence berhasil diunggah.
+- Step Stage 4B room/session dan Stage 4B room conflict concurrency: `skipped` karena branch Stage 4D, bukan PASS.
+
+### AUDIT CI Stage 4B — Agent 1 (terpisah)
+
+- Branch Agent 1 tetap `work/stage4b-room-session-20261122`; tidak ada perubahan dari pekerjaan Stage 4D.
+- HEAD Agent 1 yang terdeteksi setelah pemeriksaan: `af36ad3b8b188e147e084045af0e02ee8b591d65` (commit memperketat FK checks saat rollback).
+- Run pada HEAD tersebut: [44983125116](https://github.com/zane0184/cbt_november/actions/runs/44983125116), masih `pending` saat checkpoint dibuat.
+- Run sebelumnya [44982968567](https://github.com/zane0184/cbt_november/actions/runs/44982968567), SHA `fb868c3ae1f8f9701d09b4abeadb978027796b46`, masih `in_progress` saat checkpoint dibuat.
+- Run lama [44982090117](https://github.com/zane0184/cbt_november/actions/runs/44982090117), SHA `5d45b8404f225c105016a25976939afe3774abef`, final failure pada fixture test Stage 4C yang berbenturan dengan unique constraint semester (`semesters_one_active_per_tenant_unique`); step Stage 4B setelahnya bukan bukti uji Stage 4B.
+- Agent 1 telah membuat commit perbaikan fixture lintas tahun dan commit rollback FK di branch sendiri. Tunggu run terbaru Agent 1 selesai; jangan mengedit atau mengklaim PASS atas nama Agent 1.
+
+### AUDIT akun, autentikasi, relasi dan data akademik — verifikasi source tambahan
+
+- `User.php` pada source branch saat ini tidak menggunakan `SoftDeletes`; tabel `users` memang memiliki kolom `deleted_at`.
+- `LoginIdentityResolver` menggunakan query tanpa global scope namun secara eksplisit mengecualikan `users.deleted_at`; profil Guru/Siswa yang terhapus juga dikecualikan.
+- `AuthWebController::login` memanggil resolver kemudian `Auth::login($user)`; belum ada bukti test yang membuktikan session web yang sudah hidup, Sanctum token, route model binding, dan relasi autentikasi menolak akun yang dinonaktifkan. Ini wajib diuji sebelum deactivation diimplementasikan.
+- `TeacherProfile` dan `StudentProfile` memakai SoftDeletes. Relasi dan seluruh assignment/rombel/attempt/answer/score wajib tetap dipertahankan.
+- `UserManagement` masih create/list, bukan edit/deactivate/reset. Otorisasi dicek di mount, action create/open modal, dan render; perlu test Livewire hydration/action/render serta multi-role/stale session.
+- `AuditService` mencatat tenant, actor, old/new values, IP, user-agent; belum ada bukti pengujian redaksi secret dan actor attribution untuk lifecycle baru.
+- Migration awal `users` membuat email non-null dan unique per tenant serta tabel `password_reset_tokens` dengan email sebagai primary key. Migration login berikutnya mengizinkan email nullable; karena itu broker standar tetap tidak sesuai untuk identitas tenant-scoped.
+- Migration awal `rombel_student` menunjukkan FK rombel/student, timestamps dan unique rombel+student. Model pivot aktual menegakkan tenant context; riwayat perpindahan masih belum tersedia sebagai ledger append-only.
+
+### DESAIN / gate Admin
+
+Matriks Admin yang ada masih parsial: test CI saat ini menjalankan satu test Admin CBT boundary (27 assertions) yang memeriksa Gate/policy untuk beberapa model, Livewire QuestionBank/ExamManagement dan route student; test terkait monitoring dan Proktor berjalan terpisah. Belum ada satu matriks exhaustif yang menguji seluruh route + HTTP method API, scoring/token/close/reopen/participant/answer/attempt/report/export/analytics, Livewire mount-hydration-action-render, service/repository/query/cache/media, session lama, manipulasi request, serta kombinasi multi-role/stale permission.
+
+Gate minimum Admin tetap **BELUM LULUS**. WG-01 Agent 3 belum boleh dianggap siap dimulai berdasarkan run ini. Setelah matriks menyeluruh terbukti lulus pada SHA yang sama, koordinator harus diberi notifikasi segera.
+
+### IMPLEMENTASI / BACKUP
+
+Pada addendum ini tidak ada source runtime, migration, atau database yang diubah. Perubahan hanya dokumentasi/checkpoint/manifest setelah snapshot backup. Stage 4D runtime implementation belum dimulai. Histori akademik tetap desain saja; tidak ada migration/backfill. Tidak ada perubahan Agent 1 atau Agent 3.
