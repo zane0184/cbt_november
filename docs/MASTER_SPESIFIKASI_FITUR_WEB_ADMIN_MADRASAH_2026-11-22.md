@@ -165,10 +165,10 @@ Kurikulum Merdeka terintegrasi, bukan label Bank Soal saja. Kelola daftar dan ve
 ## 8. MANAJEMEN UJIAN, RUANG, DAN PROKTOR
 
 ### 8.1 Daftar ujian
-Admin melihat nama, mapel, Guru pembuat, kelas/rombel, tahun pelajaran, jadwal, durasi, status, jumlah peserta, status mulai/submit. Admin tidak otomatis boleh mengedit soal, kunci, atau konfigurasi akademik milik Guru.
+Admin melihat metadata administratif ujian: nama, mapel, Guru pembuat, kelas/rombel, tahun pelajaran, jadwal, durasi, dan jumlah peserta terdaftar. Admin tidak melihat status kehadiran/progres peserta dan tidak otomatis boleh mengedit soal, kunci, atau konfigurasi akademik milik Guru.
 
 ### 8.2 Ruang
-CRUD ruang, kapasitas, status, penempatan peserta, daftar peserta, Proktor yang ditugaskan, histori. Room hanya mengatur penempatan dan cakupan monitoring; **Room bukan admission gate untuk start/resume Attempt**.
+CRUD ruang, kapasitas, status, penempatan peserta, daftar peserta, Proktor yang ditugaskan, dan histori. Room hanya mengatur penempatan administratif; **Room bukan admission gate untuk start/resume Attempt**.
 
 ### 8.3 Penugasan Proktor
 Admin memilih Exam, Room, akun Guru, interval waktu, alasan. Catat assigned_by, revoked_by, waktu, status, reason dan audit. Proktor adalah assignment sementara, bukan role permanen. Penugasan berbatas waktu dan memakai interval [starts_at, ends_at). Adjacent 07:00–09:00 dan 09:00–11:00 tidak overlap. Cegah overlap untuk Guru yang sama pada waktu bersamaan, termasuk request concurrent melalui transaksi/locking yang benar. Proktor hanya melihat minimum identitas peserta, kehadiran, status/progres di Room yang ditugaskan. Tidak boleh melihat jawaban, kunci, bank soal, konfigurasi, nilai, atau Room lain kecuali hak terpisah yang eksplisit.
@@ -180,14 +180,14 @@ Admin memilih Exam, Room, akun Guru, interval waktu, alasan. Catat assigned_by, 
 ### 8.5 Model serentak
 Jadwal Exam `start_at/end_at`, waktu server resmi. Token dibuat saat publish, dapat dilihat sebelum jadwal, Siswa tidak boleh mulai sebelum jadwal. Jangan implementasikan wave/session/session_number/ExamSession/SessionRoom sebagai lifecycle operasional atau syarat admission. Pertahankan kompatibilitas historis seperlunya tanpa mengaktifkan model lama.
 
-## 9. MONITORING CBT — DIHAPUS DARI WEB ADMIN
+## 9. FITUR OPERASIONAL PESERTA CBT — TIDAK DISEDIAKAN DI WEB ADMIN
 
-Tidak ada menu, halaman, widget, panel dashboard, endpoint, atau tindakan Monitoring CBT pada Web Admin Madrasah. Admin tidak memantau ujian berjalan, kehadiran, progres peserta, Attempt, perangkat, sinkronisasi, maupun status teknis peserta. Admin juga tidak melakukan Reset Attempt, Force Submit, perpanjangan waktu, release/takeover perangkat dari Web Admin. Informasi administratif dasar tentang daftar ujian dan jadwal tetap boleh ditampilkan di Manajemen Ujian, tetapi tanpa status real-time ujian/peserta. Laporan hasil/rekap akademik pada Bagian 10 tetap berlaku dan bukan monitoring ujian berjalan.
+Web Admin tidak menyediakan tampilan real-time kehadiran/progres peserta, status Attempt/perangkat/sinkronisasi, maupun tindakan operasional peserta/Attempt/perangkat. Admin tidak melakukan Reset Attempt, Force Submit, perpanjangan waktu, atau release/takeover perangkat melalui Web Admin. Daftar ujian dan jadwal administratif tetap tersedia pada Bagian 8. Laporan hasil/rekap akademik pasca-ujian tetap mengikuti Bagian 10.
 
 ## 10. LAPORAN DAN CETAK
 
 Akademik: rekap Siswa per kelas/rombel/tahun, Guru, mapel, penugasan.
-Ujian: daftar ujian, peserta, kehadiran, belum mulai, sedang mengerjakan, selesai, rekap per mapel/kelas/tahun.
+Ujian: rekap daftar ujian, peserta terdaftar, dan hasil/nilai per mapel/kelas/tahun. Rekap kehadiran pasca-ujian hanya jika bersumber dari data final yang tersedia; tidak menampilkan status live seperti belum mulai atau sedang mengerjakan.
 Hasil: nilai per Siswa/kelas/mapel/ujian, distribusi, histori, status penilaian. Essay dinilai manual oleh Guru/pemeriksa berwenang; Admin tidak otomatis menjadi penilai.
 Fitur: filter, preview, cetak PDF, export XLSX, kop madrasah, header/footer, tanggal, nomor halaman bila diperlukan. Semua export tunduk pada authorization dan audit; jangan menyertakan credential.
 
@@ -270,7 +270,7 @@ Untuk setiap menu/submenu:
 - Sebelum start_at ditolak; pada jadwal yang sah diizinkan.
 - Setelah end_at ditolak sesuai aturan.
 - Admission tidak bergantung pada Room atau ExamSession.
-- Room memengaruhi monitoring/placement, bukan hak start/resume.
+- Room hanya memengaruhi penempatan administratif, bukan hak start/resume.
 - Guru mandiri dan ujian terpusat diuji terpisah.
 - Proctor overlap/adjacent interval diuji pada MySQL concurrent.
 - Reset/Force Submit/extension/release memerlukan permission, reason, transaction, audit.
@@ -314,9 +314,9 @@ DEFERRED sampai Juni 2027:
 
 
 
-### Keputusan pengguna 23 November 2026 — pengecualian Monitoring CBT
+### Keputusan pengguna 23 November 2026 — batas fitur operasional CBT pada Web Admin
 
-Seluruh fungsi Monitoring CBT di Web Admin dikeluarkan dari ruang lingkup. Jangan membuat menu/halaman/panel/widget monitoring, status kehadiran/progres/Attempt/perangkat/sinkronisasi secara real-time, maupun tindakan Reset Attempt, Force Submit, perpanjangan waktu, release/takeover perangkat dari Web Admin. Daftar ujian/jadwal dan laporan hasil/rekap akademik tetap boleh ada sesuai bagian masing-masing, tanpa monitoring ujian berjalan.
+Web Admin hanya mengelola informasi administratif ujian dan laporan hasil/rekap akademik sesuai kewenangan. Web Admin tidak menyediakan tampilan real-time status peserta/Attempt/perangkat/sinkronisasi atau tindakan operasional peserta/Attempt/perangkat.
 
 ## 18. INSTRUKSI PERTAMA UNTUK AGENT PENGGANTI
 
