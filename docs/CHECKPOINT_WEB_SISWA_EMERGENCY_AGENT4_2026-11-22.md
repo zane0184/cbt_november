@@ -5,7 +5,7 @@ Tanggal: 22 November 2026
 - Base: `7642f8df7d20effe82dc1ba5b086147894332767`
 - Runtime: `backend-laravel/resources/views/student/exams/show.blade.php`
 - Runtime blob SHA: `8222aa80a588abfb476c1ff94b153f6ee6ef1ee1`
-- Laporan blob SHA: `3fab197b2107931c5a40ead89fbbe1f99262006c`
+- Laporan blob SHA: `260bb9fd5f161a9f66396ab8acae81c909be23f6`
 - Laporan: `docs/WEB_SISWA_EMERGENCY_AGENT4_REPORT_2026-11-22.md` (blob `a5e0c4ca8d970fb302a16fc77d96db8b977185ef`)
 - PR draft: https://github.com/zane0184/cbt_november/pull/13
 
@@ -30,6 +30,7 @@ Runner memiliki IndexedDB schema v2 dengan object store:
 - Sebelum IndexedDB v2: `.../show.blade.php.before-indexeddb-v2`.
 - Sebelum safe resume after submit check: `.../show.blade.php.before-safe-resume-after-submit-check`, blob `1b63a315a1df0e36fc5b07339acd3bc6b88e242d`.
 - Sebelum terminal status label: `.../show.blade.php.before-terminal-status-label`, blob `5b8aa0efc2f180d675f401315e43ce578b722925`.
+- Verifikasi akhir seluruh backup runner: 11/11 blob SHA cocok.
 - Backup tambahan dibuat sebelum conflict race, conflict UI, dan ack/scope refinements. Detail blob/commit tercatat di laporan.
 
 ## Pengujian
