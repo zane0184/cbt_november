@@ -203,3 +203,41 @@ Dokumen ini hanya threat model dan acceptance request; bukan spesifikasi API fin
 No F-01/F-02 runtime adversarial test was run in this refresh. Owner contract and exact integration tests remain pending.
 
 Status: **BLOCKED — ADMISSION/MEDIA BACKEND CONTRACT PENDING**.
+
+
+## 9. ADDENDUM — PORTAL, EXACT ROLE, KAMAD FROZEN, PROKTOR GURU
+
+Dasar keputusan produk: Issue #10 komentar `7078539953` oleh koordinator `zane0184`. Ini keputusan produk final, bukan persetujuan implementasi backend dari Agent 2/3.
+
+### Trust boundary identitas
+
+- Web Siswa hanya untuk user tepat satu role `SISWA`. Browser tidak menentukan role/tenant/installation; backend harus memvalidasi exact-one role pada setiap Student route/API/controller/policy/service, bukan hanya login.
+- Akun Guru Proktor tetap tepat satu role `GURU`, login dengan akun Guru sendiri, dan assignment tidak mengubah role. Karena itu Guru Proktor harus gagal pada setiap Student endpoint.
+- KAMAD frozen dari seluruh akses CBT: login/session/token, route, API, policy, permission, Livewire, monitoring, report/export, dan bypass author/KAMAD harus ditolak. Histori appointment/jabatan boleh tersimpan sebagai data non-authorizing.
+- Tidak ada role, akun, login atau portal Proktor permanen. Menu Proktor hanya berada di Web Guru dan hanya selama assignment aktif yang sah.
+- Web Siswa tidak boleh menampilkan, memanggil atau mengimplementasikan assignment/monitoring Proktor, room operations, takeover, Force Submit atau fungsi administratif.
+
+### Temuan source yang menambah risiko
+
+Agent 2 audit report blob `a503e790f08e9cd684e36e9006d4e3d55bb3c3f3` menyatakan KAMAD masih diterima login Web/API, LoginIdentityResolver dan RolePermissionBootstrapper masih mengenali KAMAD, dan ExamPolicy/ExamAttemptPolicy/ExamMonitoringScope masih memiliki jalur KAMAD. `StudentExamController` blob `981fd29d24906c158d4dda5889950fdc43f6ec3d` menggunakan `hasRole('SISWA')` serta menolak ADMIN_MADRASAH, bukan exact-one role SISWA. Ini berarti controller sendiri belum menutup semua mixed-role case.
+
+`ExamMonitoringScope` blob `11b455954f974d1c60ed5c49700368f8d37c09c1` mengembalikan seluruh peserta untuk exam author atau KAMAD; Proktor memakai cabang assignment room-scoped. Agent 2 menyebut UI menu Proktor Guru belum ditemukan pada source yang diperiksa. Agent 1 assignment service blob `c968ce68c0decace1c35a0ccb3b2b4449c057656` memvalidasi target assignment tepat satu GURU dan TeacherProfile aktif, tetapi belum membuktikan seluruh route/policy/monitoring/scheduler.
+
+### Ancaman tambahan
+
+1. Mixed-role user dengan SISWA+GURU atau SISWA+KAMAD melewati predicate `hasRole('SISWA')` pada controller jika token/session masih ada.
+2. KAMAD mendapat akses lewat resolver, policy, permission bootstrap, monitoring atau reporting meskipun portal KAMAD sudah dibekukan.
+3. Guru Proktor memakai API peserta jika endpoint tidak melakukan exact-one SISWA.
+4. Siswa mencoba mengakses endpoint/route monitoring Proktor atau room operations.
+5. Assignment Proktor dianggap role permanen atau memberi hak lihat jawaban/nilai/Force Submit secara implisit.
+
+### Acceptance security
+
+- Exact-one SISWA wajib pada seluruh Student endpoint dan jalur service/policy terkait.
+- KAMAD harus deny-by-default pada seluruh CBT surface, termasuk jalur API dan monitoring lama.
+- Proktor assignment adalah capability sementara akun GURU di Web Guru, bukan role baru.
+- Proktor tidak otomatis melihat jawaban, nilai, answer key, konfigurasi Exam, Force Submit atau assignment Guru lain.
+- Tidak ada fitur Proktor di Web Siswa; SISWA tidak dapat memanggil route/API Proktor.
+- Semua negative authorization diuji dengan role campuran dan existing session/token, bukan hanya alur login baru.
+
+Status tambahan: KAMAD/Exact-role **P0 BLOCKED** pada source Agent 2 yang diaudit; persetujuan backend dan runtime test belum tersedia. F-01/F-02 tetap P0 OPEN.
