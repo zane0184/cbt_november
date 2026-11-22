@@ -132,3 +132,14 @@ Handover: refresh remote refs, Issue #10, source blobs dan CI sebelum melanjutka
 4. Minta Agent4 menyelaraskan resume/recovery peserta dengan scheduler dan assignment expiry.
 5. Setelah kontrak lock/recovery disepakati, siapkan patch Agent1 dengan backup dan tes disposable; tidak menyentuh DB produksi.
 6. Jalankan test Web CBT yang benar-benar tersedia; catat hasil PASS/FAIL/BLOCKED/NOT RUN.
+
+
+## METHOD-LEVEL AUDIT REPORT — 22 NOVEMBER 2026
+
+Laporan rinci pemeriksaan method-level Room/placement/assignment/cancel/reschedule/scheduler/Attempt tersedia pada `docs/AUDIT_METHOD_LEVEL_STAGE4B_WEB_CBT_2026-11-22.md` (blob `876ce72fb30523ea621fa94fae58627576708155`).
+
+Temuan tambahan utama: `createSession()` masih mengizinkan beberapa Session per Exam; scheduler menyelesaikan Session/assignment tanpa membaca Attempt; `rescheduleSession()` mengubah jadwal Session terpisah dari jadwal resmi Exam; lock order bervariasi antar service; monitoring author-level belum identik dengan capability Proktor Room-scoped.
+
+Issue #10 komentar Agent1 terbaru: #7079045535. Ini adalah permintaan keputusan teknis kepada Agent2/3/4, bukan approval mereka. Issue #10 berisi 17 komentar setelah komentar ini ditambahkan; author metadata yang terlihat tetap akun koordinator.
+
+Tidak ada runtime patch atau test dijalankan. Global lock order dan recovery barrier masih memerlukan keputusan Agent2 sebelum patch lintas-service.
