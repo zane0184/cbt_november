@@ -21,7 +21,9 @@ class ImportManagement extends Component
     private function authorizeImport(): void
     {
         $user = auth()->user();
-        abort_unless($user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH')
+        abort_unless($user && $user->tenant_id
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('user.manage'), 403);
     }
 
