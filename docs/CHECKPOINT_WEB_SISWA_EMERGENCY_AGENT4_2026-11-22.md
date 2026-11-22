@@ -1,37 +1,42 @@
-# Checkpoint Agent 4 — Web Siswa Emergency
+# Checkpoint Agent 4 — Web Siswa
 Tanggal: 22 November 2026
 
 - Branch: `work/agent4-web-siswa-emergency-20261122`
 - Base: `7642f8df7d20effe82dc1ba5b086147894332767`
-- HEAD: `66fc7352e88fa664d9d12119849eea4e184808ca`
+- Runtime: `backend-laravel/resources/views/student/exams/show.blade.php`
 - Laporan: `docs/WEB_SISWA_EMERGENCY_AGENT4_REPORT_2026-11-22.md`
+- PR draft: https://github.com/zane0184/cbt_november/pull/13
 
-## Posisi
-Patch client-side IndexedDB draft queue dan submit barrier telah ditulis pada `backend-laravel/resources/views/student/exams/show.blade.php`.
+## Posisi implementasi
+Runner memiliki IndexedDB schema v2 dengan object store:
+`attempt_context`, `answers`, `sync_queue`, `server_receipts`, `conflicts`, `local_meta`.
+
+- Jawaban lokal + sync queue ditulis atomik.
+- Request ID, payload, base revision disimpan untuk retry immutable.
+- Conflict 409 diarsipkan; draft lokal tidak ditimpa; conflict ditampilkan pada navigasi dan memblokir submit.
+- Queue lama v1 dimigrasikan ke struktur v2.
+- Orphaned local state yang tidak sesuai snapshot Attempt menghentikan runner.
+- Submit hanya lanjut jika queue kosong dan tidak ada conflict.
+- Receipt store disiapkan tetapi belum diisi karena kontrak receipt backend belum tersedia. UI tidak menyatakan receipt verified.
 
 ## Backup
-`backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`
-Blob backup = blob baseline `7283ca553d787f4505299a306e2bd487884622d3`; byte-exact verified.
-
-## Perubahan
-- Draft jawaban lokal IndexedDB per Attempt/snapshot sebelum autosave jaringan.
-- Restore draft lokal setelah fetch jawaban server.
-- Hapus draft hanya setelah save sukses.
-- 409 tidak lagi menimpa jawaban lokal.
-- Submit ditahan sampai seluruh draft memperoleh konfirmasi server dan tidak ada konflik.
-- Start/resume membutuhkan IndexedDB.
-- beforeunload warning untuk draft/pending/conflict.
+- Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`, byte-exact verified.
+- Sebelum IndexedDB v2: `.../show.blade.php.before-indexeddb-v2`.
+- Backup tambahan dibuat sebelum conflict race, conflict UI, dan ack/scope refinements. Detail blob/commit tercatat di laporan.
 
 ## Pengujian
-- Fetch baseline/backup/hasil dan compare GitHub: PASS untuk verifikasi file/backup/diff.
-- Tidak ada browser E2E, PHPUnit, PHP lint, CI, MySQL concurrency, integration, atau UAT dijalankan.
-- Jangan menganggap patch lulus runtime.
+- Source dan backup dibaca ulang melalui GitHub.
+- Pemeriksaan statis struktur IndexedDB dan call sites dilakukan.
+- Belum ada browser E2E, JS runtime syntax check, PHPUnit, PHP lint, CI, MySQL concurrency, API integration, Device Lease/Fencing, atau UAT.
+- Tidak mengklaim runtime PASS.
 
 ## Blocker
-Backend exact-role, KAMAD frozen, F-01 admission/snapshot, F-02 media, device lease/fencing, API idempotency/receipt dan server expiry/submit masih harus diverifikasi oleh Agent 2. Web Siswa tetap NOT READY FOR OPERATIONAL EXAM sampai seluruh gate security + integration + UAT lulus.
+Backend exact-one SISWA, KAMAD frozen, F-01 admission/snapshot, F-02 media, Device Lease/Fencing, idempotency same-ID/different-payload, verified receipt, server expiry/submit, serta response-lost recovery belum ditutup.
+Web Siswa belum siap operasional.
 
-## Instruksi berikutnya
-1. Minta Agent 2 review API save/submit/admission/media dan kontrak konflik/receipt.
-2. Jalankan browser E2E IndexedDB + submit barrier pada browser target.
-3. Integrasikan hanya setelah approval owner dan CI exact-SHA.
-4. Simulasi ujian non-nilai bersama Guru/Siswa; jangan gunakan ujian bernilai sebelum gate lulus.
+## Langkah berikutnya (tetap scope Agent 4)
+1. Verifikasi source final dan seluruh backup.
+2. Siapkan automated browser tests untuk IndexedDB migration, atomic draft/queue, immutable retry, conflict persistence, orphaned-state rejection, submit barrier.
+3. Jalankan browser E2E setelah runner dapat dijalankan pada environment test yang tersedia.
+4. Sinkronkan kontrak receipt/conflict/submit dengan Agent 2 sebelum mengubah client.
+5. Update laporan berdasarkan hasil nyata; jangan merge/deploy sendiri.
