@@ -30,6 +30,7 @@ class StudentResultReportService
                 $q->whereHas('scoreCurrentPointer.currentScore', function ($sq) {
                     $sq->whereColumn('exam_attempt_scores.attempt_id', 'exam_attempts.id')
                         ->whereColumn('exam_attempt_scores.tenant_id', 'exam_attempts.tenant_id')
+                        ->whereColumn('exam_attempt_scores.scoring_version', 'exam_attempt_score_current.scoring_version')
                         ->where('grading_status', 'FINALIZED');
                 });
             })
