@@ -39,7 +39,8 @@ Perubahan:
 12. IndexedDB diperiksa sebelum start/resume; beforeunload memperingatkan saat ada pekerjaan pending.
 13. Jika draft gagal ditulis ke IndexedDB (mis. quota/error), item ditandai undurable dan submit diblokir; tidak fallback diam-diam ke memory.
 14. Sebelum submit POST, client menyimpan marker SUBMITTING di local_meta; jika respons tidak dapat dipastikan, marker menjadi UNKNOWN dan client tidak mengirim ulang otomatis.
-15. Saat halaman dibuka ulang, marker UNKNOWN untuk student+exam yang sama diperiksa melalui GET Attempt sebelum client mengizinkan POST start baru; completion hanya ditampilkan setelah server menyatakan SUBMITTED/EXPIRED.
+15. Saat halaman dibuka ulang, marker SUBMITTING/UNKNOWN untuk student+exam yang sama diperiksa melalui GET Attempt sebelum client mengizinkan start baru.
+16. Jika GET Attempt mengembalikan IN_PROGRESS, client meminta execution context dan memverifikasi ID Attempt yang sama, lalu melanjutkan Attempt itu melalui GET execution; tidak ada POST start baru. Jika ID berbeda atau execution tidak mengizinkan resume, runner fail-closed.
 
 Backup:
 - Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`; byte-exact dengan baseline.
@@ -51,6 +52,7 @@ Backup:
 - Sebelum submit response recovery: `.../show.blade.php.before-submit-response-recovery`, blob `e11d60f8d5dac203b9fda3d130528ad463be3991`.
 - Sebelum persistent submit state: `.../show.blade.php.before-persistent-submit-state`.
 - Sebelum student-scope recovery: `.../show.blade.php.before-student-scope-recovery`.
+- Sebelum safe resume after submit check: `.../show.blade.php.before-safe-resume-after-submit-check`, blob `1b63a315a1df0e36fc5b07339acd3bc6b88e242d` (cocok dengan runner sebelum patch resume).
 
 Commit implementasi utama:
 - `61abd0dc6c6a3fab4a139ae0ffdcc488ccddfd9f` — IndexedDB draft + submit barrier.
@@ -63,6 +65,7 @@ Commit implementasi utama:
 - `57b0e407e72c0583172fab8342781cd76cbd0f9f` — submit response recovery through authoritative Attempt status.
 - `5cfda8a434eaed696404662bf50151a521060128` — persist SUBMITTING/UNKNOWN marker across reload and prevent duplicate Attempt creation.
 - `c36e63c4a8fc0e227eb4d97679b70a3537b5d82e` — scope local recovery marker to the authenticated student.
+- `b07e50896ec98d8975bf7c4242c3b69eb620fa9a` — resume same active Attempt after status lookup, guarded by exact Attempt ID.
 
 ## PENGUJIAN
 Dilakukan:
@@ -70,9 +73,13 @@ Dilakukan:
 - Baseline backup pertama byte-exact terverifikasi.
 - Compare base → branch: status ahead, behind 0; perubahan terbatas pada runner, backup runner, laporan, dan checkpoint. Jumlah commit bertambah saat laporan/checkpoint diperbarui.
 - Pemeriksaan source statis atas call sites IndexedDB, persist conflict, frozen base_revision, no old store calls, dan skip conflict saat flush.
+- JavaScript syntax parse/compile terhadap inline runner aktual pada blob `5b8aa0efc2f180d675f401315e43ce578b722925`: PASS.
+- 9 assertion statis terhadap schema v2, atomic queue, durable submit marker, recovery reload, same-Attempt guard, conflict/undurable submit barrier: 9/9 PASS.
+- Pemeriksaan route: GET Attempt path benar karena helper `api()` menambahkan `apiBase` `/api/v1/exams/{exam}`; tidak diperlukan perubahan route URL.
+- Pemeriksaan commit status exact SHA: tidak ada status/check run terpasang (`statuses=[]`); CI belum berjalan pada commit ini.
 
 Belum dilakukan:
-- JavaScript parser/runtime syntax check.
+- Browser runtime/E2E dan IndexedDB integration test.
 - Browser E2E / IndexedDB reload, crash, quota, offline, reconnect, multi-tab.
 - PHPUnit, PHP lint, CI, disposable MySQL 8 concurrency.
 - API integration, receipt verification, Device Lease/Fencing.
@@ -85,7 +92,7 @@ Tidak ada hasil PASS yang diklaim untuk tes yang belum dijalankan. Workflow back
 - Backend idempotency saat ini perlu memastikan same request ID + different payload ditolak. Client menyimpan request immutable, tetapi ini tidak menggantikan validasi server.
 - Tidak ada resolusi konflik otomatis; konflik tetap diblokir dan memerlukan penanganan yang disetujui.
 - Device binding/fingerprint bukan bukti Device Lease/Fencing.
-- PATCH CLIENT BELUM TERUJI DI BROWSER.
+- PATCH CLIENT BELUM TERUJI DI BROWSER; syntax parse saja tidak membuktikan perilaku runtime.
 
 ## STATUS
 **PATCH CLIENT TERSEDIA UNTUK REVIEW — BELUM SIAP OPERASIONAL.**
