@@ -95,6 +95,11 @@
                     @error('assignmentStatus')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
                 </label>
 
+                <label class="block text-sm font-semibold text-slate-700 md:col-span-2 xl:col-span-3">Alasan perubahan (wajib)
+                    <textarea wire:model="changeReason" rows="2" minlength="10" maxlength="1000" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal" placeholder="Jelaskan alasan penugasan atau perubahan..."></textarea>
+                    @error('changeReason')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
+                </label>
+
                 <div class="flex flex-wrap items-end gap-2 md:col-span-2 xl:col-span-3">
                     <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-700 disabled:opacity-50">
                         <span wire:loading.remove>{{ $editingAssignmentId ? 'Simpan Perubahan' : 'Simpan Penugasan' }}</span>
@@ -152,7 +157,7 @@
                                 <div class="flex justify-end gap-2">
                                     <button type="button" wire:click="edit('{{ $assignment->id }}')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Edit</button>
                                     @if ($assignment->status === 'ACTIVE')
-                                        <button type="button" wire:click="deactivate('{{ $assignment->id }}')" wire:confirm="Nonaktifkan penugasan ini? Riwayat tetap disimpan." class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Nonaktifkan</button>
+                                        <button type="button" wire:click="openDeactivateModal('{{ $assignment->id }}')" class="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">Nonaktifkan</button>
                                     @endif
                                 </div>
                             </td>
@@ -166,4 +171,23 @@
 
         <div class="mt-4">{{ $assignments->links() }}</div>
     </section>
+
+    @if ($showDeactivateModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+            <section class="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                <h2 class="text-lg font-bold text-slate-900">Nonaktifkan Penugasan Guru</h2>
+                <p class="mt-2 text-sm text-slate-600">Record penugasan dan histori akademik tetap disimpan. Alasan wajib dicatat pada audit log.</p>
+                <form wire:submit="deactivate" class="mt-4 space-y-4">
+                    <label class="block text-sm font-semibold text-slate-700">Alasan penonaktifan
+                        <textarea wire:model="deactivationReason" rows="3" minlength="10" maxlength="1000" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 font-normal"></textarea>
+                        @error('deactivationReason')<span class="mt-1 block text-xs text-red-600">{{ $message }}</span>@enderror
+                    </label>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" wire:click="$set('showDeactivateModal', false)" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Batal</button>
+                        <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Konfirmasi Nonaktifkan</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    @endif
 </div>
