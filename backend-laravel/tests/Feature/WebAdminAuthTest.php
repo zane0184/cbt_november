@@ -162,6 +162,14 @@ class WebAdminAuthTest extends TestCase
         $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => $this->password]);
         $response->assertRedirect('/admin/exams');
         $this->assertAuthenticatedAs($this->guru);
+
+        // The existing browser session must not survive account deactivation.
+        $this->guru->delete();
+        $this->app['auth']->forgetGuards();
+
+        $this->get('/admin/exams')->assertRedirect('/login');
+        $this->assertGuest();
+        $this->assertSoftDeleted('users', ['id' => $this->guru->id]);
     }
 
     public function test_student_can_login_using_nisn_without_email(): void
@@ -231,29 +239,6 @@ class WebAdminAuthTest extends TestCase
         $this->actingAs($this->guru);
         $this->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
-    }
-    public function test_existing_web_session_is_rejected_after_account_soft_deactivation(): void
-    {
-        $this->withoutMiddleware(EnsureLicenseActive::class);
-
-        $login = $this->post('/login', [
-            'identifier' => $this->nisn,
-            'password' => $this->password,
-        ]);
-        $login->assertRedirect('/student/exams');
-        $this->assertAuthenticatedAs($this->siswa);
-
-        // Simulate deactivation by an authorized Admin in a separate request.
-        $this->siswa->delete();
-
-        // A real subsequent HTTP request receives a fresh guard instance but
-        // retains the browser session cookie and session payload.
-        $this->app['auth']->forgetGuards();
-
-        $response = $this->get('/student/exams');
-        $response->assertRedirect('/login');
-        $this->assertGuest();
-        $this->assertSoftDeleted('users', ['id' => $this->siswa->id]);
     }
 
 }
