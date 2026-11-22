@@ -111,8 +111,8 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/students/{student}/export/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportStudentPdf']);
 
     // Analytics Dashboard
-    Route::get('/exams/{exam}/analytics', \App\Livewire\Teacher\AnalyticsDashboard::class);
-    Route::get('/exams/{exam}/analytics/items', \App\Livewire\Teacher\ItemAnalysis::class);
+    Route::get('/exams/{exam}/analytics', \App\Livewire\Teacher\AnalyticsDashboard::class)->name('teacher.exams.analytics');
+    Route::get('/exams/{exam}/analytics/items', \App\Livewire\Teacher\ItemAnalysis::class)->name('teacher.exams.analytics.items');
 });
 
 require __DIR__.'/teacher.php';
