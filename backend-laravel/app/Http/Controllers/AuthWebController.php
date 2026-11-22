@@ -14,15 +14,14 @@ use Illuminate\Support\Str;
 
 class AuthWebController extends Controller
 {
+    private const PORTAL_ROLES = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
+
     public function showLoginForm()
     {
         if (Auth::check()) {
-            if (Auth::user()->hasRole('SUPER_ADMIN')) {
-                Auth::logout(); request()->session()->invalidate(); request()->session()->regenerateToken();
-            } else {
-                return $this->redirectForUser(Auth::user());
-            }
+            return $this->redirectForUser(Auth::user());
         }
+
         return view('auth.login');
     }
 
@@ -41,9 +40,9 @@ class AuthWebController extends Controller
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.'])->withInput($request->only('identifier'));
         }
-        $roles = $user->roles->pluck('name')->all();
-        $allowedRoles = ['ADMIN_MADRASAH', 'KAMAD', 'GURU', 'SISWA'];
-        if (count($roles) !== 1 || ! in_array($roles[0], $allowedRoles, true)) {
+
+        $role = $this->exactPortalRole($user);
+        if ($role === null) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
         }
@@ -51,27 +50,61 @@ class AuthWebController extends Controller
         RateLimiter::clear($throttleKey);
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+
         $identity = LocalInstallationIdentity::query()->first();
         if ($identity && $user->tenant_id) {
             TenantContext::getInstance()?->setTenantId($identity->tenant_id);
             app(TenantContext::class)->setTenantId($identity->tenant_id);
         }
-        return $this->redirectForUser($user);
+
+        return $this->redirectForUser($user, $role);
     }
 
     public function logout(Request $request)
     {
-        Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();
-        TenantContext::getInstance()?->setTenantId(null); app(TenantContext::class)->setTenantId(null);
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        TenantContext::getInstance()?->setTenantId(null);
+        app(TenantContext::class)->setTenantId(null);
+
         return redirect('/login')->with('status', 'Anda telah berhasil keluar dari CBT Madrasah.');
     }
 
-    protected function redirectForUser(User $user)
+    private function exactPortalRole(User $user): ?string
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return redirect('/admin/dashboard');
-        if ($user->hasRole('KAMAD')) return redirect('/');
-        if ($user->hasRole('GURU')) return redirect('/guru/dashboard');
-        if ($user->hasRole('SISWA')) return redirect('/student/exams');
+        // Always read the persisted role set; do not trust a cached Eloquent relation.
+        $roles = $user->roles()->pluck('name')->all();
+
+        if (count($roles) !== 1 || ! in_array($roles[0], self::PORTAL_ROLES, true)) {
+            return null;
+        }
+
+        return $roles[0];
+    }
+
+    protected function redirectForUser(User $user, ?string $role = null)
+    {
+        $role ??= $this->exactPortalRole($user);
+
+        return match ($role) {
+            'ADMIN_MADRASAH' => redirect('/admin/dashboard'),
+            'GURU' => redirect('/guru/dashboard'),
+            'SISWA' => redirect('/student/exams'),
+            default => $this->denyPortalSession(),
+        };
+    }
+
+    private function denyPortalSession()
+    {
+        if (Auth::check()) {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+        }
+
+        TenantContext::getInstance()?->setTenantId(null);
+        app(TenantContext::class)->setTenantId(null);
 
         return redirect('/login')->withErrors([
             'identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.',
