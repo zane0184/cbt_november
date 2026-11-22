@@ -47,6 +47,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['tenant_id', 'exam_id', 'exam_room_id'], 'ere_exam_room_unique');
+            $table->unique(['exam_id', 'tenant_id', 'exam_room_id'], 'ere_exam_tenant_room_fk_unique');
             $table->unique(['id', 'tenant_id', 'exam_id'], 'ere_id_tenant_exam_unique');
             $table->index(['tenant_id', 'exam_id', 'status'], 'ere_exam_status_idx');
             $table->foreign(['exam_id', 'tenant_id'], 'ere_exam_tenant_fk')
