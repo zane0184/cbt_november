@@ -93,7 +93,8 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assignThroughUi();
         $this->actingAs($this->proctor);
         $this->get("/exams/{$this->exam->id}/monitoring")->assertOk();
-        $this->assertTrue($this->proctor->fresh()->roles()->where('name', 'GURU')->exists());
+        $this->assertSame(['GURU'], $this->proctor->fresh()->roles()->pluck('name')->all());
+        $this->assertSame(0, Role::where('name', 'PROKTOR')->count());
         $this->assertDatabaseHas('exam_proctor_assignments', ['proctor_user_id' => $this->proctor->id, 'exam_id' => $this->exam->id, 'status' => 'ACTIVE']);
     }
 
