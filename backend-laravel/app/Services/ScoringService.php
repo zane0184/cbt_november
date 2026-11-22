@@ -525,6 +525,10 @@ class ScoringService
                 ->lockForUpdate()
                 ->firstOrFail();
 
+            if (!in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
+                throw new \InvalidArgumentException('Only submitted or expired attempts can have a finalized score reopened.');
+            }
+
             $lockedAttempt->setRelation('exam', $lockedExam);
             $lockedAttempt->setRelation('participant', $lockedParticipant);
 
