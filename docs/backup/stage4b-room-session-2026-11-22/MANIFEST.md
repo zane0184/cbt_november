@@ -181,3 +181,11 @@ The API matrix now accepts 403/404/405 for prohibited non-student POST operation
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-unsupported-method-denial-expectation | 36062f3d7fde042fe014dd61a64ebb8ac86669d7 | 35631 |
 
 CI exposed that Admin rescheduling still recalculated `Exam.start_at/end_at` from session bounds. The recalculation was removed; session rescheduling now updates session metadata/revision and affected assignment states only. Unsupported HTTP methods (405) are accepted as fail-closed alongside 403/404 in the route denial matrix; no successful response is accepted.
+
+## Additional snapshot — MySQL information_schema alias correction
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-information-schema-column-alias-fix | 620cc2a57e01f34efd03997c020012e0530b1e34 | 14496 |
+
+The first concurrency CI run confirmed all Stage 4B functional suites and the migration-wide InnoDB check passed. The two concurrency cases then exposed a test-query issue: MySQL returned uppercase metadata column names while the test read lowercase object properties. The query now aliases `TABLE_NAME` and `ENGINE` explicitly to lowercase. This is a test assertion correction, not an engine or migration change.
