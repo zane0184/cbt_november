@@ -57,7 +57,7 @@ class AuthWebController extends Controller
             $lockedUser->load('roles');
 
             if ($lockedUser->hasExactRole('SISWA')
-                && app(\\App\\Services\\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
                 return false;
             }
 
