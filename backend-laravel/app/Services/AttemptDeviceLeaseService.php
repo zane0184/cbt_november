@@ -147,7 +147,6 @@ class AttemptDeviceLeaseService
 
     public function release(ExamAttempt $attempt, string $reason): void
     {
-        $generation = (int) $attempt->fence_generation;
         DeviceLease::query()
             ->where('tenant_id', $attempt->tenant_id)
             ->where('exam_attempt_id', $attempt->id)
