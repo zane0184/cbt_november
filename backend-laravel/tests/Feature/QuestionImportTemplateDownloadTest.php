@@ -51,8 +51,10 @@ final class QuestionImportTemplateDownloadTest extends TestCase
 
         $response->assertOk()
             ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-            ->assertHeader('Cache-Control', 'private, no-store, max-age=0')
             ->assertHeader('Pragma', 'no-cache');
+
+        $cacheDirectives = array_map('trim', explode(',', strtolower($response->headers->get('Cache-Control', ''))));
+        $this->assertEqualsCanonicalizing(['private', 'no-store', 'max-age=0'], $cacheDirectives);
 
         $this->assertStringContainsString(
             'Template_Import_Soal_CBT-QUESTION-1.xlsx',
