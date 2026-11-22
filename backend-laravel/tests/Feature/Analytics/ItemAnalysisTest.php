@@ -61,7 +61,20 @@ class ItemAnalysisTest extends TestCase
             $student = User::factory()->create(['tenant_id' => $tenant->id]);
             $participant = ExamParticipant::factory()->create(['exam_id' => $exam->id, 'user_id' => $student->id, 'tenant_id' => $tenant->id]);
             $attempt = ExamAttempt::factory()->create(['exam_id' => $exam->id, 'participant_id' => $participant->id, 'tenant_id' => $tenant->id, 'status' => 'SUBMITTED']);
-            ExamAttemptScore::factory()->create(['attempt_id' => $attempt->id, 'exam_id' => $exam->id, 'student_id' => $student->id, 'grading_status' => 'FINALIZED', 'tenant_id' => $tenant->id]);
+            $score = ExamAttemptScore::factory()->create([
+                'attempt_id' => $attempt->id,
+                'exam_id' => $exam->id,
+                'student_id' => $student->id,
+                'grading_status' => 'FINALIZED',
+                'tenant_id' => $tenant->id,
+                'scoring_version' => 1,
+            ]);
+            ExamAttemptScoreCurrent::create([
+                'tenant_id' => $tenant->id,
+                'attempt_id' => $attempt->id,
+                'current_score_id' => $score->id,
+                'scoring_version' => 1,
+            ]);
         }
 
         $service = new ItemAnalysisService();
@@ -117,13 +130,20 @@ class ItemAnalysisTest extends TestCase
             // Percentage: 100 for first 27, 0 for last 27, 50 for middle
             $percentage = ($i < 27) ? 100 : (($i >= 73) ? 0 : 50);
 
-            ExamAttemptScore::factory()->create([
+            $score = ExamAttemptScore::factory()->create([
                 'attempt_id' => $attempt->id,
                 'exam_id' => $exam->id,
                 'student_id' => $student->id,
                 'percentage' => $percentage,
                 'grading_status' => 'FINALIZED',
-                'tenant_id' => $tenant->id
+                'tenant_id' => $tenant->id,
+                'scoring_version' => 1,
+            ]);
+            ExamAttemptScoreCurrent::create([
+                'tenant_id' => $tenant->id,
+                'attempt_id' => $attempt->id,
+                'current_score_id' => $score->id,
+                'scoring_version' => 1,
             ]);
 
             // Item scores: Top group gets 10, Bottom group gets 0
