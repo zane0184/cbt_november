@@ -65,6 +65,7 @@ class QuestionBank extends Component
     public $showModal = false;
     public $editingQuestionId = null;
     public $editingQuestionVersionId = null;
+    public $editingQuestionVersionStatus = null;
 
     public $questionCode = '';
     public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, ESSAY
@@ -94,7 +95,7 @@ class QuestionBank extends Component
     public function openCreateModal()
     {
         Gate::authorize('create', Question::class);
-        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
+        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'editingQuestionVersionStatus', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
         $this->questionType = 'MULTIPLE_CHOICE';
         $this->correctOption = 'A';
         $this->correctOptions = [];
@@ -116,6 +117,7 @@ class QuestionBank extends Component
 
         $this->editingQuestionId = $question->id;
         $this->editingQuestionVersionId = $version?->id;
+        $this->editingQuestionVersionStatus = $version?->status;
         $this->questionCode = $question->question_code;
         $this->selectedSubjectId = $question->subject_id;
 
