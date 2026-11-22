@@ -135,6 +135,7 @@ class TeacherSubjectAssignmentConcurrencyTest extends TestCase
             'startsAt' => '2026-07-01',
             'endsAt' => '2027-06-30',
             'assignmentStatus' => 'ACTIVE',
+            'changeReason' => 'Penugasan dibuat untuk pengujian mutex tenant.',
         ];
     }
 
