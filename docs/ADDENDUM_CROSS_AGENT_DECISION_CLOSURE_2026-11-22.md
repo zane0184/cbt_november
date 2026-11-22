@@ -134,3 +134,46 @@ Agent 3: NEEDS DESIGN / PENDING untuk UI Guru; tidak ada approval owner terverif
 Agent 4: PENDING — owner/branch resmi belum dikonfirmasi.
 Web Siswa: NOT READY FOR OPERATIONAL EXAM.
 Implementation: GATED.
+
+
+## 2026-11-22 — Keputusan Koordinator: Portal, KAMAD, dan Proktor (mengikat)
+
+Keputusan ini berasal dari instruksi koordinator terbaru dan mengesampingkan setiap rumusan lama yang bertentangan pada dokumen ini.
+
+### DESAIN — batas produk final
+- Portal/jenis akun aktif pada fase CBT ini hanya ADMIN_MADRASAH, GURU, dan SISWA.
+- KAMAD: `KAMAD PORTAL/ACCESS — FROZEN, NOT IN CURRENT CBT SCOPE`. Tidak ada portal, login, dashboard, route, permission, policy access, menu, monitoring, bypass, atau approval ujian KAMAD. Identitas pejabat/histori administrasi resmi yang masih dibutuhkan tidak boleh dihapus.
+- Proktor adalah penugasan operasional sementara kepada pengguna dengan akun GURU yang sah. Tidak ada akun/login/credential/portal Proktor tersendiri dan tidak dibuat role permanen PROKTOR.
+- Menu `PROKTOR` berada di dalam Web Guru. Menu hanya antarmuka; otorisasi wajib ditegakkan backend berdasarkan assignment yang aktif, masa berlaku, status, tenant/installation, Exam, ExamSession, SessionRoom/Room, dan peserta yang ditempatkan.
+- Akun SISWA hanya untuk peserta ujian; bukan identitas Proktor.
+- Guru tanpa assignment Proktor aktif tidak memperoleh capability Proktor. Assignment berakhir/dicabut, akses operasional ikut berakhir; akun tetap GURU.
+
+### AUDIT — bukti source yang telah diperiksa (read-only)
+| Branch/source | Path | Blob SHA | Temuan |
+|---|---|---|---|
+| Agent 1 | `backend-laravel/app/Services/ExamProctorAssignmentService.php` | `c968ce68c0decace1c35a0ccb3b2b4449c057656` | Service menerima `proctorUserId` dan memeriksa kelayakan melalui `isEligibleGuru`; penugasan terkait Exam dan SessionRoom. |
+| Agent 1 | `backend-laravel/app/Models/ExamProctorAssignment.php` | `88a1c2319200342eb2dc2a5993e95a8b6a32dbfc` | Assignment menyimpan `proctor_user_id`, Exam, SessionRoom, assigner, starts/expires, status, revoke metadata. |
+| Agent 1/2/3 | `backend-laravel/app/Services/ExamMonitoringScope.php` | `11b455954f974d1c60ed5c49700368f8d37c09c1` | Masih memberi bypass untuk Exam author dan `hasRole('KAMAD')`; tidak sesuai keputusan KAMAD frozen dan perlu diperbaiki oleh owner backend sebelum runtime approval. |
+| Agent 2 | `backend-laravel/app/Policies/ExamPolicy.php` | `c05d96ef932fdc81b67336240af4e1726864c3d6` | `viewAny/view` masih mengenali KAMAD; policy belum sesuai keputusan final. |
+| Agent 3 | `backend-laravel/app/Policies/ExamPolicy.php` | `839df41c82a5b45706072d60431706ca5861cc6c` | Policy masih mengenali KAMAD; harus dibekukan/dikeluarkan dari jalur akses CBT oleh owner backend. |
+| Agent 3 | `backend-laravel/app/Http/Controllers/Api/V1/ExamAttemptController.php` | `e915bf43118026ef8eace96338fa6cad44ee29e1` | `store` menggunakan device binding ID; bukti ini bukan bukti lease/fencing dan tidak menyelesaikan room-scope `show`. |
+
+Inventaris di atas adalah seluruh referensi yang berhasil diverifikasi pada file/class yang dibuka dalam audit ini, bukan klaim exhaustive atas semua route, menu, role seeder, middleware, policy, Livewire, atau konfigurasi repository. Audit tree-wide KAMAD perlu dilanjutkan sebelum menyatakan seluruh referensi telah diinventarisasi.
+
+### KOORDINASI / ownership
+- Agent 1: desain dan lifecycle assignment sementara, relasi SessionRoom/Room, expiry/revocation, histori dan audit event. Tidak membuat role Proktor.
+- Agent 2: exact-role GURU, autentikasi, authorization dan enforcement server-side; hapus/disable semua jalur akses KAMAD dari scope CBT tanpa menghapus histori identitas resmi.
+- Agent 3: menu Proktor di Web Guru; UI hanya menampilkan assignment yang dikembalikan backend dan tidak membuat portal/login baru.
+- Agent 4: peserta tetap akun SISWA; tidak ada fungsi Proktor pada Web Siswa.
+
+### Acceptance criteria minimum
+1. Login/portal yang aktif hanya Admin Madrasah, Guru, Siswa.
+2. KAMAD tidak dapat login atau mengakses endpoint, route, Livewire, API, monitoring, export, atau bypass CBT; histori administratif tidak terhapus.
+3. Guru dengan assignment aktif hanya melihat Exam/Session/Room/peserta yang ditugaskan.
+4. Guru tanpa assignment, assignment kedaluwarsa/dicabut, tenant berbeda, room berbeda, dan actor non-GURU ditolak server-side.
+5. Tidak ada akun, credential, portal, atau role permanen Proktor; menu Proktor berada di Web Guru.
+6. Audit event merekam pemberi tugas, Guru, Exam, Session, Room, masa berlaku, perubahan status, pencabutan, alasan, dan actor.
+7. Regression/integration test mencakup exact-role, cross-tenant, room A vs room B, expiry/revocation, history retention, serta endpoint/API/Livewire/export.
+
+### Status
+Keputusan produk untuk portal/KAMAD/identitas Proktor: FINAL dari koordinator. Implementasi backend/UI tetap GATED karena approval owner Agent 2/3/4 dan izin implementasi runtime belum lengkap. Status Stage 4B keseluruhan tetap `BLOCKED — CROSS-AGENT DECISION PENDING`.
