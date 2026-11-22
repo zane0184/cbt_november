@@ -14,14 +14,14 @@ use RuntimeException;
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'],
+        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'tenant.manage', 'exam.proctor.assign'],
         'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
         'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
     ];
 
     /** Legacy role alias: same portal and same administrative permissions as Admin Madrasah. */
     private const OPTIONAL_ROLE_GRANTS = [
-        'OPERATOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'],
+        'OPERATOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'tenant.manage', 'exam.proctor.assign'],
     ];
 
     public function bootstrap(): void
@@ -42,6 +42,7 @@ class RolePermissionBootstrapper
                 'question.view' => 'Lihat Bank Soal sesuai penugasan Guru',
                 'question.manage' => 'Kelola Bank Soal sesuai penugasan Guru',
                 'user.manage' => 'Kelola akun Guru dan Siswa pada tenant aktif',
+                'tenant.manage' => 'Kelola identitas resmi madrasah pada tenant aktif',
                 'exam.manage' => 'Guru mengelola asesmen dan ujian sesuai penugasan',
                 'exam.assign' => 'Guru mengelola peserta ujian sesuai penugasan',
                 'exam.monitor' => 'Monitoring ujian sesuai kewenangan Guru atau penugasan Proktor',
@@ -77,7 +78,7 @@ class RolePermissionBootstrapper
                 'OPERATOR' => ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
                 'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
                 'GURU' => ['curriculum.manage'],
-                'PROKTOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
+                'PROKTOR' => ['tenant.manage', 'curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
             ];
 
             foreach ($revokedGrants as $roleName => $permissionNames) {
