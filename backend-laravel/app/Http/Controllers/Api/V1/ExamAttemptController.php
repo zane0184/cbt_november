@@ -210,6 +210,16 @@ class ExamAttemptController extends Controller
             ]);
 
             $participant->update(['status' => 'STARTED']);
+
+            $this->auditService->log('START_ATTEMPT', 'ExamAttempt', $attempt->id, null, [
+                'tenant_id' => $lockedExam->tenant_id,
+                'exam_id' => $lockedExam->id,
+                'participant_id' => $participant->id,
+                'attempt_number' => $attempt->attempt_number,
+                'status' => 'IN_PROGRESS',
+                'started_at' => $startedAt->toIso8601String(),
+                'expires_at' => $expiresAt->toIso8601String(),
+            ]);
             $this->auditService->log('START_ATTEMPT', 'Exam', $lockedExam->id, null, [
                 'attempt_id' => $attempt->id
             ]);
@@ -506,6 +516,7 @@ class ExamAttemptController extends Controller
                 && $lockedAttempt->expires_at->lte($serverNow);
             $terminalStatus = $expiredByDeadline ? 'EXPIRED' : 'SUBMITTED';
 
+            $oldStatus = $lockedAttempt->status;
             $lockedAttempt->update([
                 'status' => $terminalStatus,
                 'submitted_at' => $serverNow,
@@ -514,15 +525,38 @@ class ExamAttemptController extends Controller
 
             $participant->update(['status' => 'COMPLETED']);
 
-            $this->auditService->log($expiredByDeadline ? 'EXPIRE_ATTEMPT' : 'SUBMIT_ATTEMPT', 'Exam', $lockedExam->id, null, [
-                'attempt_id' => $lockedAttempt->id,
-                'device_fingerprint' => $deviceId,
-                'status' => $terminalStatus,
-                'close_reason' => $expiredByDeadline ? 'SERVER_DEADLINE_REACHED' : 'STUDENT_SUBMITTED',
-            ]);
+            $this->auditService->log(
+                $expiredByDeadline ? 'EXPIRE_ATTEMPT' : 'SUBMIT_ATTEMPT',
+                'ExamAttempt',
+                $lockedAttempt->id,
+                ['status' => $oldStatus],
+                [
+                    'status' => $terminalStatus,
+                    'exam_id' => $lockedExam->id,
+                    'participant_id' => $participant->id,
+                    'device_fingerprint' => $deviceId,
+                    'closed_at' => $serverNow->toIso8601String(),
+                    'close_reason' => $expiredByDeadline ? 'SERVER_DEADLINE_REACHED' : 'STUDENT_SUBMITTED',
+                ]
+            );
 
-            // Scoring executes while the parent and Attempt locks remain held.
-            app(\App\Services\ScoringService::class)->scoreAttempt($lockedAttempt);
+            // A scoring blocker must not roll back the student's terminal submit.
+            // The attempt remains closed and is explicitly flagged for Guru review.
+            try {
+                app(\App\Services\ScoringService::class)->scoreAttempt($lockedAttempt);
+            } catch (\DomainException|\InvalidArgumentException $exception) {
+                $this->auditService->log('SCORING_BLOCKED', 'ExamAttempt', $lockedAttempt->id, null, [
+                    'status' => $terminalStatus,
+                    'reason' => $exception->getMessage(),
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Attempt berhasil ditutup, tetapi penilaian ditahan untuk pemeriksaan Guru.',
+                    'code' => 'SCORING_BLOCKED',
+                    'data' => ['status' => $terminalStatus, 'grading_status' => 'BLOCKED'],
+                ], 202);
+            }
 
             return response()->json([
                 'success' => true,
