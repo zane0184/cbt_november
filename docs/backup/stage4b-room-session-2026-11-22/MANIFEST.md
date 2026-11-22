@@ -251,3 +251,10 @@ The previous test teardown disabled `FOREIGN_KEY_CHECKS` while deleting a dispos
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-canonical-guru-and-independent-connection-assertions | 4b10d619c1ce87893fb006da26fd18892e6f8bd7 | 14378 | e3d19c60e64cc636e8193f9639bbb529daff06b2 |
+
+
+## Supplemental snapshot — second independent room/proctor race connection assertion
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-second-race-connection-id-assertion | 4db4e328c57f34d76e47590ef66d263424b2e98f | 14709 | 2060362cad028f86b99a12f9955b6088e71a8301 |
