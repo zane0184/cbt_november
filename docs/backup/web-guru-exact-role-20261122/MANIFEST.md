@@ -100,3 +100,13 @@ Jumlah snapshot backup terdaftar: 22. Seluruh blob SHA yang tercantum harus dive
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | bfe512dcc6f42c1f9d24c04a5bdca461e85f98f3 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-Agent2-CI-review-and-test-fix | bfe512dcc6f42c1f9d24c04a5bdca461e85f98f3 | b6e84d78edc0880bf09e0491ab3d537b60621f01 | MATCH |
 
 Jumlah snapshot backup terdaftar: 25. Seluruh blob SHA yang tercantum harus diverifikasi sebelum P0 ditutup.
+
+## Backup tambahan — laporan akar masalah CI dan koreksi test
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| docs/AGENT3_P0_EXACT_ROLE_CI_CLOSURE_2026-11-22.md | 1971429f957bf9a06ae2991d9b79c4e15e46d247 | docs/backup/web-guru-exact-role-20261122/AGENT3_P0_EXACT_ROLE_CI_CLOSURE.before-CI-failure-root-cause-reconcile.md | 1971429f957bf9a06ae2991d9b79c4e15e46d247 | ed9f07802ec64da235d638cf402cf73c67d6240a | MATCH |
+| docs/CHECKPOINT_AGENT3_P0_EXACT_ROLE_CI_CLOSURE_2026-11-22.md | 763b7784a44723027eb2785c37ffef1db1609246 | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_AGENT3_P0_EXACT_ROLE.before-CI-failure-root-cause-reconcile.md | 763b7784a44723027eb2785c37ffef1db1609246 | eb5bd6e5e52cb5da41c2a401630664e305e34584 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 7d5c2c3eab161d830e75a3274af4e3732a6814fa | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-CI-failure-root-cause-reconcile | 7d5c2c3eab161d830e75a3274af4e3732a6814fa | 7f7cb2e60b822ec41af5347ac01af776e486bb02 | MATCH |
+
+Jumlah snapshot backup terdaftar: 28. Seluruh blob SHA yang tercantum harus diverifikasi sebelum P0 ditutup.
