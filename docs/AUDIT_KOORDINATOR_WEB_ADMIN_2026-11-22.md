@@ -112,3 +112,11 @@ Setelah audit statis, workflow isolasi WA01 di branch koordinator disiapkan agar
 - Saat pemeriksaan pertama setelah commit, endpoint Actions belum menampilkan run untuk branch ini (total_count 0). Karena itu belum ada hasil runtime PASS/FAIL; pemicu CI harus diverifikasi pada perubahan backend berikutnya atau setelah GitHub memproses event.
 
 Perubahan ini hanya workflow CI dan backup workflow; tidak ada source aplikasi, migration, database, credential, atau deployment yang diubah. Test runtime koordinator tetap NOT RUN.
+
+
+### Hasil percobaan runner setelah addendum CI
+- Run #45034945940 pada exact SHA c3d2c816b4fe219542ae329a2fe36370ec126491, attempt 1: failure sebelum steps; job tidak memiliki steps.
+- Satu rerun gagal dengan kondisi sama; attempt 2 juga tidak memiliki steps.
+- Job IDs: 137246503960 (attempt 1), 137246664176 (attempt 2).
+- Ini diklasifikasikan BLOCKED — RUNNER/EXECUTION ENVIRONMENT. Bukan hasil PHPUnit gagal dan bukan PASS. Tidak ada bukti test runtime pada source exact SHA ini.
+- Jangan mengulang rerun tanpa batas. Jalur CI perlu diperiksa/diaktifkan kembali setelah ketersediaan runner GitHub pulih; sementara itu perubahan runtime tidak boleh diklaim lulus.
