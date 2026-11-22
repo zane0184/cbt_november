@@ -207,6 +207,7 @@ try {
     await page.locator('#submit-button').click();
     await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
     assert.equal(scenario.startCalls, 1);
+    assert.equal(scenario.startTokens[0], null, 'Optional-token exams must start without a token field');
     assert.equal(scenario.answerWrites, 1);
     assert.equal(scenario.submitCalls, 1);
     assert.equal(scenario.serverAnswers[0].answer_payload.selected_option_id, 'opt-a');
