@@ -312,6 +312,9 @@ class ExamAnswerController extends Controller
 
                 $replayResponse = json_decode((string) $requestReplay->response_json, true, 512, JSON_THROW_ON_ERROR);
                 $replayResponse['fence_generation'] = (int) $lockedAttempt->fence_generation;
+                if (isset($replayResponse['data']) && is_array($replayResponse['data'])) {
+                    $replayResponse['data']['fence_generation'] = (int) $lockedAttempt->fence_generation;
+                }
                 $replayResponse['idempotent'] = true;
                 $replayResponse['message'] = 'Request yang sama telah diterima sebelumnya.';
                 return response()->json($replayResponse);
