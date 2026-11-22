@@ -1,0 +1,105 @@
+# Checkpoint Agent 3 — Web CBT Scope & P0 Security Gate
+
+Tanggal: 22 November 2026
+Repository: `zane0184/cbt_november`
+Branch: `work/web-guru-foundation-20261122`
+HEAD aktual saat refresh: `4c695181bafa43ad0f02006b8a63e551b8829a03`
+Target test source: `6334dc9abd07a1441c8c02f3f7a6cc5c452ead36`
+Test blob: `4f1bb48b390b03b2602df6348fd3b9788581e6c9`
+Instruksi koordinator otoritatif: Issue #10 comment `7078921888`
+Laporan audit lengkap: `docs/AGENT3_WEB_CBT_SCOPE_P0_SECURITY_AUDIT_2026-11-22.md`
+Laporan blob akan dicatat setelah commit.
+
+## STATUS
+
+**P0 OPEN — WEB CBT BELUM MEMILIKI BUKTI ACCEPTANCE LENGKAP.**
+
+Checkpoint ini adalah checkpoint Agent 3 aktif dan mengoreksi rumusan scope yang bertentangan pada checkpoint Agent 3 terdahulu. Referensi lama adalah histori, bukan instruksi aktif.
+
+## SCOPE FINAL
+
+- Fokus sampai Juni 2027 hanya Web CBT.
+- Android native/Android Studio/API Android dan Web Super Admin ditunda; bukan blocker/dependency.
+- Portal aktif hanya ADMIN MADRASAH, GURU, SISWA.
+- Tidak ada akun/portal/role OPERATOR.
+- Tidak ada akun/login/portal/role permanen PROKTOR. Proktor = assignment sementara akun GURU; menu berada dalam Web Guru.
+- SISWA hanya peserta ujian.
+- Tidak ada aktor/fitur/akses CBT untuk identitas di luar tiga portal. Legacy role string hanya diperiksa jika memengaruhi authorization/fungsi.
+- Satu instalasi per madrasah dengan database akademik terpisah; Tenant ID tetap defense-in-depth; semua komponen operasional diisolasi per instalasi.
+
+## AUDIT
+
+- HEAD Agent 3 `4c695181...`; test blob `4f1bb48...`, 22 test methods statis.
+- Agent 1 HEAD `69f16da9...`; Agent 2 HEAD `103e543a...`; Agent 4 docs HEAD `05447d93...`.
+- Agent 2 source runtime baseline masih `74bf7178...`; Stage 4E adalah dokumentasi read-only, bukan runtime patch.
+- Issue #8/#9/#10 masih OPEN, komentar 7/2/16; owner approval teknis terpisah belum terverifikasi.
+- Web Guru route group saat ini hanya dashboard, pembelajaran, kurikulum, profil, template import. Belum ada route/menu Proktor.
+- Layout Guru masih menonaktifkan Bank Soal, Asesmen/Ujian, Monitoring, Penilaian dan Analytics; copy menyebut assignment Proktor dikelola Admin.
+- QuestionBank/ExamManagement memakai komponen namespace Admin dan URL `/admin/*`, tetapi component boundary menuntut Guru; perlu rekonsiliasi routing/UI.
+- ProctorAssignmentManagement dan ExamRoomSessionManagement masih Admin UI.
+- Beberapa Admin component memakai `hasRole('ADMIN_MADRASAH')` atau role-exists, belum exact-one. CurriculumManagement masih memiliki role literal legacy `ADMIN` pada authorization; ini berdampak langsung pada tiga-portal allowlist.
+- Agent 2 ExamPolicy masih banyak `hasRole()`; `startAttempt` tidak memverifikasi exact-one SISWA. Agent 2 QuestionPolicy memiliki helper exact-GURU privat; Agent 3 QuestionPolicy masih `hasRole('GURU')`. Rekonsiliasi menunggu review Agent 2.
+- HTTP POST Livewire test terbaru hanya membuktikan pemulihan TenantContext dan stale tenant reassignment. Revocation lain masih memakai Livewire test harness/direct boot.
+- CSRF, replay/tampering snapshot, session lintas instalasi, side-effect coverage lengkap, MySQL 8, CI exact-SHA, Browser QA belum terbukti.
+
+## DESAIN
+
+- Exact-role contract harus shared, persisted, fail-closed terhadap mixed/empty/unknown/revoked roles dan stale permissions.
+- Agent 2 owner helper/authorization backend; Agent 3 mengikuti kontrak pada QuestionPolicy/UI/Admin components milik Agent 3 setelah approval.
+- Livewire POST diuji sebagai HTTP request baru dengan session/auth identity yang sama, dan semua revocation harus menolak.
+- Menu Proktor berada di Web Guru; capability server-side dibatasi assignment aktif, expiry/revocation, ExamSession kanonis, Room/SessionRoom, peserta, tenant dan installation.
+- Admin tetap mengelola administrasi/master Room/session/placement/assignment sesuai permission. Guru membuat dan menerbitkan Exam sesuai assignment tanpa approval Admin.
+- Monitoring UI Proktor wajib room-scoped di seluruh data surfaces. Exam-level Gate saja bukan bukti room scope.
+
+## IMPLEMENTASI
+
+- Tidak ada source runtime/test/policy/route/middleware/controller/service/migration/schema/config/dependency/workflow/database yang diubah pada audit koreksi ini.
+- Laporan dan checkpoint ini adalah file baru; tidak ada file lama ditimpa.
+- Backup pre-patch test sebelumnya tetap byte-exact, blob `0b273618...`.
+- Tidak ada merge/rebase/cherry-pick/deployment/production DB access.
+
+## PENGUJIAN
+
+| Tes | Status |
+|---|---|
+| Refresh branch/source/issues | PASS — read-only |
+| Source inspection | PASS — statis |
+| Backup pre-patch | PASS — byte-exact |
+| PHP lint PHP 8.3 | NOT RUN |
+| Route registration | NOT RUN |
+| PHPUnit | NOT RUN |
+| HTTP Livewire full revocation | NOT RUN / PARTIAL |
+| Exact-role all portals | NOT RUN |
+| CSRF | NOT RUN |
+| Snapshot replay/tampering | NOT RUN |
+| Tenant/session two-installation | NOT RUN |
+| Database integrity full effects | PARTIAL / NOT RUN |
+| MySQL 8/InnoDB | NOT RUN |
+| CI exact-SHA | UNKNOWN |
+| Browser QA | BLOCKED |
+| Production database | NOT TOUCHED |
+
+## NEXT GATE
+
+1. Agent 2: approval/review exact-role contract dan QuestionPolicy/ExamPolicy/Admin authorization.
+2. Agent 1: approval kontrak ExamSession/Room/SessionRoom/placement/Proktor lifecycle/monitoring scope.
+3. Agent 4: kontrak Web Siswa participant/Attempt/Answer/submit/resume.
+4. Agent 3: setelah kontrak diterima, rapikan route/menu Guru dan implementasikan menu Proktor dalam Web Guru; exact-role Admin component guards; HTTP Livewire revocation matrix.
+5. Siapkan PHP 8.3 + Composer lockfile + MySQL 8/InnoDB disposable, lalu jalankan semua acceptance tests exact-SHA.
+6. Browser QA non-production setelah gate backend lulus.
+
+Tidak ada Android atau Web Super Admin. Tidak ada migration/deployment produksi.
+
+**P0 tetap OPEN.**
+
+
+## ADDENDUM AUDIT — Monitoring Room Scope & Admin/Guru Exact-Role (22 Nov 2026)
+
+Audit tambahan dan temuan rinci: `docs/AGENT3_WEB_CBT_MONITORING_ROOM_SCOPE_ADDENDUM_2026-11-22.md`.
+
+- Monitoring view saat ini menggunakan endpoint Exam-level tanpa Room/SessionRoom parameter pada client; belum terbukti backend data bocor, tetapi tidak cukup sebagai consumer Proktor room-scoped.
+- Agent 1 assignment service memvalidasi tepat satu role GURU; UI Admin calon Proktor belum menyaring exact-one.
+- Beberapa Admin Livewire components belum exact-one; CurriculumManagement masih menerima role literal legacy ADMIN. Ini perlu rekonsiliasi exact-role Agent 2 sebelum patch.
+- Tidak ada runtime source/test berubah; seluruh temuan statis dan tes runtime NOT RUN.
+
+Checkpoint ini dibackup byte-exact sebelum diperbarui. Backup: `docs/backup/agent3-web-cbt-p0-2026-11-22/CHECKPOINT_AGENT3_WEB_CBT_P0_SCOPE_2026-11-22.md.before-monitoring-refresh`.
