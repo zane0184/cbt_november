@@ -6,6 +6,7 @@ use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use LogicException;
 
 class StudentAcademicEvent extends Model
 {
@@ -30,6 +31,12 @@ class StudentAcademicEvent extends Model
         'metadata' => 'array',
         'created_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::updating(fn () => throw new LogicException('Student academic events are append-only and cannot be updated.'));
+        static::deleting(fn () => throw new LogicException('Student academic events are append-only and cannot be deleted.'));
+    }
 
     public function student(): BelongsTo
     {
