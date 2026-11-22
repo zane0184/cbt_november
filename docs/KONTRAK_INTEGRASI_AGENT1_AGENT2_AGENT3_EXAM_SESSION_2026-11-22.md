@@ -354,3 +354,72 @@ Issue review lintas agent dibuat: https://github.com/zane0184/cbt_november/issue
 Pada pemeriksaan komentar terakhir, belum ada respons persetujuan dari Agent 2, Agent 3, atau Agent 4; komentar yang tersedia hanya catatan koordinator. Semua status tetap PENDING. Issue duplikat #11 ditutup sebagai duplicate.
 
 Snapshot ini adalah bukti kondisi remote saat audit, bukan jaminan branch tidak akan bergerak setelah checkpoint. Sebelum implementasi, HEAD wajib diperiksa ulang.
+
+
+## 10.14 FINAL RECONCILIATION — REMOTE HEAD, SOURCE, DATABASE, DAN APPROVAL (22 NOVEMBER 2026)
+
+Laporan rinci: docs/LAPORAN_AUDIT_DESAIN_STAGE4B_ROOM_SESSION_2026-11-22.md
+
+### HEAD terbaru setelah backup dokumentasi
+
+| Owner | Branch | HEAD remote | Ahead / behind terhadap Agent 1 |
+|---|---|---|---:|
+| Agent 1 | work/stage4b-room-session-20261122 | 6fb24dbe8d2de48f98c5ca9668286b2c20452c75 | — |
+| Agent 2 | work/stage4d-account-lifecycle-20261122 | 74bf7178f46673e9be90523671490c0749034acd | 224 / 73 |
+| Agent 3 | work/web-guru-foundation-20261122 | a955a439b1b3fa4c149f0153f283951d2bfb88d2 | 164 / 218 |
+| Kandidat Agent 4 — owner belum terkonfirmasi | work/import-guru-siswa-implementation-20261122 | f38ceec7b0653fcf3363eec40f3d4577c323cca8 | 80 / 341 |
+| main | main | feab77228f7108f7f7a45325d7f1fb878c07310b | 15 / 1191 |
+
+Merge-base Agent 2: 0631a3d84d058c8c049dcb71dc54b2e7cbb849a6.
+Merge-base Agent 3: 81b6c74d81d80bc483530802594f624fb4e0f3db.
+Merge-base kandidat Agent 4: 17c20c66284deb7a18e3a6dde2b3d47f9c966bd9.
+Merge-base main: 95736e338e517a087503adfb3e3a899709e0340c.
+
+Semua branch diverged. Tidak ada PR terbuka dari branch tersebut. Tidak ada merge/rebase yang dicoba; konflik merge aktual NOT TESTED. Branch Agent 4 tetap kandidat dan tidak boleh dianggap resmi.
+
+### Koreksi database inventory — supersedes bagian 10.9 sebelumnya
+
+Dump uji ditemukan kembali di Project Library:
+- cbt_madrasah_test_backup_20261102_083757.sql
+- 122.380 byte; SHA-256 historis f716921d657baf7096df577fa844602e5cc015364d07d30a0834c4b43471901c.
+- MySQL 8.0.46; 57 tabel; seluruhnya InnoDB; 39 migration tercatat.
+- Data INSERT hanya cache, migrations, sessions; tidak ada data tenant/user/siswa/guru/rombel/membership.
+- Dump bertanggal 2 November dan belum memiliki tabel Stage 4B exam_sessions/room/placement.
+- Mengandung DROP TABLE IF EXISTS; hanya boleh dipulihkan ke database disposable baru yang benar-benar kosong.
+
+Dump belum di-restore, raw bytes tidak dapat dimaterialisasi pada sesi ini, dan SHA belum dihitung ulang saat audit ini. Database produksi tidak disentuh. Status yang benar: DUMP FOUND — RESTORE/RUNTIME NOT RUN — PRODUCTION DB NOT TOUCHED. Dump ini tidak membuktikan kondisi data produksi atau legacy Stage 4B.
+
+Workspace aktif /mnt/data/CBT_MADRASAH_RECONSTRUCTION/, /mnt/data/cbt_audit_work/, /mnt/data/cbt_stage5p_work/ dan /mnt/data/CBT_DUAL_INSTALLER_RECONSTRUCTION_2026-11-15/ tidak ditemukan.
+
+### Temuan source final
+
+1. Migration Stage 4B blob 9551b1dd79397bd0432f03eefc970852b675fd25 masih memakai unique (tenant_id, exam_id, session_number); is_operational/operational_guard belum ada.
+2. ExamSessionLifecycleService blob 8e34152afd817f30cc2f81b5f25fc450571463ac mengunci Session tanpa Exam, menyelesaikan session berdasar ends_at, menyelesaikan/expire assignment tanpa memeriksa Attempt IN_PROGRESS.
+3. cancelSession dapat melepas placement dan revoke Proktor tanpa menutup Exam; Exam PUBLISHED dapat tetap menerima Attempt karena session bukan admission gate.
+4. rescheduleSession masih mengubah jadwal session secara independen; jadwal resmi wajib tetap pada Exam.
+5. Agent 2 start/resume/submit mengunci Exam → Participant → Attempt; resume Attempt IN_PROGRESS yang belum expired dan masih eligible setelah close harus dipertahankan.
+6. Agent 2 ExamAnswerController masih Attempt → Answer; belum sesuai global parent-first lock order.
+7. archive, publishResults, destroy belum memakai transaksi + Exam row lock + re-authorize. Destroy memiliki race dengan create Attempt.
+8. Agent 1 ExamAttemptController::show memakai ExamMonitoringScope::allowsParticipant. Agent 3 controller blob e915bf43118026ef8eace96338fa6cad44ee29e1 dan kandidat Agent 4 controller blob 808702092c94b386657fe027f60758a625d5bb93 tidak memakai scope tersebut.
+9. Relasi histori withTrashed Agent 2 untuk participant, Proktor, assigner/revoker, placement actor, dan student score harus dipertahankan. Relasi actor grader/finalizer pada model score masih perlu keputusan.
+
+### Status CI
+
+- Agent 1 run 44984303003 SUCCESS pada source f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5; MySQL 8.0.46/InnoDB. Room management 12/49, room concurrency 2/22, monitoring 15/151, Proktor assignment 8/34; child-first rollback PASS. Tidak menguji operational guard satu session.
+- Agent 2 run 44998669927 dan 44998949281 FAILURE pada StudentWebLoginTest.php:125 (HTTP 500, expected 302); belum ada PASS untuk exact HEAD 74bf7178.
+- Agent 3 run 44995889398 SUCCESS pada source a33867928711b456d2414a675bef1a929861dee8; tidak membuktikan integrasi Stage 4B.
+- Kandidat Agent 4 run 44949239676 SUCCESS pada f38ceec7; tidak membuktikan integrasi Stage 4B lintas agent.
+
+### Status approval
+
+Issue #10 tetap OPEN. Empat komentar yang tersedia berasal dari koordinator; belum ada approval teknis Agent 2, Agent 3, atau Agent 4. Status:
+- Agent 2: NEEDS DESIGN / COORDINATION.
+- Agent 3: PENDING.
+- Agent 4: PENDING — OWNER UNCONFIRMED.
+- Operational guard: NEEDS DESIGN / compatibility test.
+- Lock order: NEEDS DESIGN lintas agent.
+- Database: DUMP FOUND, RESTORE NOT RUN.
+- Source/migration implementation: NOT STARTED.
+
+Lihat laporan Stage 4B untuk desain canonical session, MySQL generated guard vs SQLite partial unique index, lifecycle recovery, tabel lock order, contoh deadlock, dan acceptance test plan.
+
