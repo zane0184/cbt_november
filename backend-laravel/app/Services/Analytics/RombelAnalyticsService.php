@@ -20,6 +20,7 @@ class RombelAnalyticsService
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
             ->where('grading_status', 'FINALIZED')
+            ->current()
             ->whereHas('student', function ($studentQuery) use ($rombel, $exam) {
                 $studentQuery->where('tenant_id', $exam->tenant_id)
                     ->whereHas('studentProfile', function ($profileQuery) use ($rombel, $exam) {
