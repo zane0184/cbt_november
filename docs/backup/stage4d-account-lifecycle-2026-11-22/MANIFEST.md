@@ -55,3 +55,24 @@ Patch 4C concurrency menghapus trait DatabaseMigrations dari test yang dijalanka
 - CI run `44982525201` pada SHA `af4e26ad974e0cded776ca552cafa77bcf4ae4d7` masih berjalan saat manifest ini disusun.
 
 Tidak ada source runtime Stage4D, migration, DB produksi, VPS, Android, atau ZIP baseline yang diubah.
+
+
+## Snapshot tambahan — sebelum update status Stage 4C PASS (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| docs/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md.before-stage4c-pass-2026-11-22 | 7226563c4ba09074b0652523f34248d0c5d3a9cf | belum dihitung ulang | a483a376e1690a5e07b01d7a70381ea374685288 |
+| docs/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md.before-stage4c-pass-2026-11-22 | 900fac446d4743d67caa1757d48dd1014c47bc9d | belum dihitung ulang | 0510142fa117405f15f291322ed42c5cb755187b |
+| docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md | docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-stage4c-pass-2026-11-22 | b5fd685b87c08794a93f2d6047c0f75ee85d82e6 | belum dihitung ulang | be2a2d38b2dc82bd622d5d5926bb6ceeb271670f |
+
+## Hasil CI terbaru yang dicatat
+- Stage4D run `44982525201`, exact SHA `af4e26ad974e0cded776ca552cafa77bcf4ae4d7`: final completed/success.
+- Stage4C lifecycle tenant boundary: 7 passed / 26 assertions.
+- Stage4C MySQL 8 tenant mutex concurrency: 1 passed / 8 assertions.
+- InnoDB: 80 base tables, 0 non-InnoDB; required schema ready; cleanup disposable database/user success.
+- Stage4B tests pada run Stage4D: skipped (tidak dihitung PASS).
+- Agent1 latest observed HEAD `af36ad3b8b188e147e084045af0e02ee8b591d65`; run `44983125116` pending saat update; prior run `44982968567` in_progress pada SHA `fb868c3ae1f8f9701d09b4abeadb978027796b46`. Branch Agent1 tidak disentuh.
+- Admin CBT denial matrix masih parsial; Gate minimum Admin belum lulus. Agent3 WG-01 belum disentuh.
+- Perubahan pada checkpoint ini dokumentasi saja; tidak ada source runtime/migration/database yang berubah.
+
+Dokumen status diperbarui pada commit report `8a1ea04a676bee3327c73614cce06f7db401a07a` dan checkpoint `8c1225a1437344dc5f52726e5087c3d131bfb996`.
