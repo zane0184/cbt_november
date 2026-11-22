@@ -147,7 +147,7 @@ class StudentWebLoginTest extends TestCase
         $this->assertGuest();
 
         // A fresh login obtains a new session and can access the student portal.
-        $this->withCookie($studentRememberCookie->getName(), ''));
+        $this->withCookie($studentRememberCookie->getName(), '');
         $freshLogin = $this->post('/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
