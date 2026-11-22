@@ -115,6 +115,36 @@ final class QuestionImportTemplateDownloadTest extends TestCase
         }
     }
 
+    public function test_unauthenticated_user_cannot_download_question_template(): void
+    {
+        $this->get(route('teacher.questions.template'))->assertRedirect();
+    }
+
+    public function test_single_admin_or_student_role_is_denied_from_template_download(): void
+    {
+        foreach ([
+            ['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah', 'email' => 'admin.template@test.local'],
+            ['name' => 'SISWA', 'label' => 'Siswa', 'email' => 'siswa.template@test.local'],
+        ] as $identity) {
+            $role = Role::create([
+                'name' => $identity['name'],
+                'label' => $identity['label'],
+            ]);
+
+            $user = User::create([
+                'tenant_id' => $this->tenant->id,
+                'name' => $identity['label'].' Template Uji',
+                'email' => $identity['email'],
+                'password' => bcrypt('password123'),
+            ]);
+            $user->roles()->attach($role->id);
+
+            $this->actingAs($user)
+                ->get(route('teacher.questions.template'))
+                ->assertForbidden();
+        }
+    }
+
     public function test_multi_role_account_is_denied_from_template_download(): void
     {
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
