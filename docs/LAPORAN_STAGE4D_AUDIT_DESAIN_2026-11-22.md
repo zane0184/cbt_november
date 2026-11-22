@@ -386,3 +386,38 @@ Pada pembaruan ini source runtime tidak berubah; perubahan setelah checkpoint ad
 Tidak ada perubahan Agent 1 atau Agent 3. Tidak ada production DB/VPS/deployment, merge, rebase, PR, migration produksi atau perubahan database produksi.
 
 Status: account lifecycle dasar sudah ada; session HTTP + Sanctum HTTP proof sedang diuji; reset token belum ada; Admin Gate belum lulus; histori akademik tetap desain; Stage 4B Agent1 CI terbukti lulus pada source SHA f1d01ea..., dengan dua commit dokumentasi saja setelahnya.
+
+
+## ADDENDUM — AUTH VERSION / SESSION FENCING (22 NOVEMBER 2026)
+
+### AUDIT
+- Account lifecycle sebelumnya hanya memastikan Eloquent tidak memuat akun soft-deleted dan mencabut Sanctum token. Itu belum cukup untuk mencegah browser session lama hidup kembali setelah akun direaktivasi dengan UUID yang sama.
+- Reset password tenant-scoped tetap belum tersedia pada route web/API maupun controller. Broker `password_reset_tokens` bawaan tidak boleh digunakan untuk kebutuhan ini karena identitas harus tenant+user scoped dan email tidak wajib.
+
+### DESAIN
+- Ditambahkan auth epoch monotonik pada akun. Web session menyimpan `cbt.auth_version.{user_id}`; setiap request pada grup web membandingkan nilai session dengan `users.auth_version`.
+- Deaktivasi dan reaktivasi menaikkan `auth_version`; mismatch mengakhiri guard, invalidate session, regenerate CSRF token dan redirect ke login.
+- Sanctum token tetap dicabut saat deaktivasi. API lama tidak bergantung pada session epoch.
+
+### IMPLEMENTASI
+- Migration baru: `backend-laravel/database/migrations/2026_11_22_130002_add_auth_version_to_users.php`.
+- Middleware baru: `backend-laravel/app/Http/Middleware/EnsureAccountSessionVersion.php`.
+- Middleware dipasang ke grup web pada `bootstrap/app.php`.
+- `AuthWebController` menulis versi auth ke session setelah login berhasil.
+- `UserManagement` menaikkan auth version saat deactivate dan reactivate serta memutar remember_token pada reaktivasi.
+- `Tests/TestCase.php` mengisi auth epoch pada helper actingAs agar test authenticated web mengikuti kontrak session.
+- Backup tujuh file sebelum perubahan tercatat di manifest. Test `WebAdminAuthTest.php` juga dibackup sebelum koreksi assertion reaktivasi pada commit `0ac6dc938291e07fa871499f25983931282de5cf`.
+- Test Guru login sekarang menguji session lama setelah akun di-soft-delete lalu direstore; assertion akhir dikoreksi agar memastikan akun sudah aktif, bukan masih soft-deleted.
+- Test Siswa menguji sesi lama ditolak selama akun nonaktif. Test Sanctum menguji token lama ditolak untuk akun soft-deleted.
+
+### PENGUJIAN
+- Run `44989053716` pada SHA `ac80026beced315acddb4c8adc8524d5779474c8` masih IN_PROGRESS ketika addendum ini ditulis; lint, Admin boundary, dashboard, academic period, legacy role migration, tenant profile dan Admin user-management telah completed/success. Import sedang berjalan; API auth, Guru/Siswa regression, monitoring, Proktor, Stage4C dan InnoDB belum mulai.
+- Run `44989260109` pada SHA `0ac6dc938291e07fa871499f25983931282de5cf` PENDING ketika addendum ini ditulis. Ini run yang harus menjadi bukti untuk assertion test yang telah dikoreksi.
+- Tidak ada klaim PASS untuk auth epoch/session fencing sampai test HTTP berjalan dan CI exact SHA final success.
+
+### STATUS
+- Session fencing: IMPLEMENTED, VERIFICATION PENDING.
+- Reset password tenant-scoped: NOT IMPLEMENTED.
+- Admin CBT security Gate: NOT PASSED; matriks route/method masih perlu dilengkapi.
+- Histori akademik: desain saja, tanpa migration/backfill.
+- Tidak ada perubahan Agent1/Agent3, VPS, production DB, deployment, merge, rebase atau PR.
