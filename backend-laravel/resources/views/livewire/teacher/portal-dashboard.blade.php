@@ -5,7 +5,7 @@
             <h1 class="mt-1 text-2xl font-extrabold md:text-3xl">Dashboard Guru</h1>
             <p class="mt-2 text-sm portal-muted">Ringkasan penugasan akademik dan aktivitas pembelajaran Anda.</p>
         </div>
-        <a href="{{ route('teacher.learning') }}" class="portal-button">Lihat Penugasan</a>
+        <a href="{{ route('teacher.assignments') }}" class="portal-button">Lihat Penugasan</a>
     </section>
 
     @if (session()->has('message'))
@@ -94,7 +94,7 @@
                 <h2 class="font-bold">Penugasan Aktif Saya</h2>
                 <p class="mt-1 text-xs portal-muted">Hanya penugasan Guru pada tenant ini yang masih berlaku hari ini.</p>
             </div>
-            <a href="{{ route('teacher.learning') }}" class="text-sm font-bold" style="color:var(--accent)">Lihat semua penugasan →</a>
+            <a href="{{ route('teacher.assignments') }}" class="text-sm font-bold" style="color:var(--accent)">Lihat semua penugasan →</a>
         </div>
         @if(count($activeAssignments))
             <div class="overflow-x-auto">
@@ -128,7 +128,7 @@
                 <h2 class="font-bold">Kurikulum Merdeka Terintegrasi KBC</h2>
                 <p class="mt-1 text-xs portal-muted">Ringkasan referensi kurikulum yang terdaftar untuk tenant Anda.</p>
             </div>
-            <a href="{{ route('teacher.learning') }}#kurikulum" class="text-sm font-bold" style="color:var(--accent)">Buka konteks kurikulum →</a>
+            <a href="{{ route('teacher.assignments') }}#kurikulum" class="text-sm font-bold" style="color:var(--accent)">Buka konteks kurikulum →</a>
         </div>
         <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
             <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">Versi Terdaftar</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['version_count'] }}</p></div>
