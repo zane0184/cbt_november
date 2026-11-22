@@ -129,6 +129,7 @@ async function attachApiMock(page, scenario) {
     }
     if (method === 'POST' && path === '/attempts/attempt-1/heartbeat') {
       scenario.heartbeatCalls++;
+      if (scenario.mode === 'heartbeat-terminal') return json(route, 409, { success: false, code: 'ATTEMPT_NOT_ACTIVE' });
       scenario.generation++;
       scenario.leaseExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
       return json(route, 200, { success: true, server_now: new Date().toISOString(), status: 'IN_PROGRESS', fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt });
@@ -363,6 +364,23 @@ try {
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
     console.log('PASS: heartbeat generation is persisted before subsequent answer writes');
+  }
+
+  // A terminal heartbeat response is reconciled with read-only Attempt status instead of leaving a false active runner.
+  {
+    const scenario = makeScenario('heartbeat-terminal');
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    scenario.status = 'EXPIRED';
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
+    assert.equal(scenario.heartbeatCalls, 1);
+    assert.equal(scenario.statusChecks, 1);
+    assert.equal(await page.locator('#completion-title').textContent(), 'Ujian ditutup oleh server');
+    assert.equal(await page.locator('#runner-panel').isVisible(), false);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: terminal heartbeat is reconciled from server Attempt status');
   }
 
   // Image media from the immutable snapshot is fetched with bound-session and fencing headers.
