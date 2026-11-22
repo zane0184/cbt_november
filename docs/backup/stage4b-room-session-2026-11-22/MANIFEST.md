@@ -232,6 +232,13 @@ The updated teardown restores nullable participant/proctor references while thei
 
 ## Additional snapshot — concurrency test foreign-key-safe tenant cleanup
 
+- Snapshot: `backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php` before FK-enforced child-first cleanup
+  - Backup: `docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-foreign-key-safe-teardown`
+  - Source blob SHA: `98539a62144da02aab564d00e92ea3508afac411`
+  - UTF-8 bytes: 14569
+  - Final teardown change: update nullable proctor/participant references first; then delete placement children, proctor assignments, room-session rows, sessions and rooms without disabling FK checks.
+
+
 | Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
 |---|---|---|---:|
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-foreign-key-safe-teardown | 98539a62144da02aab564d00e92ea3508afac411 | 14569 |
