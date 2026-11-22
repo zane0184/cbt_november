@@ -149,7 +149,14 @@ class ExpireExamAttemptsCommand extends Command
                 } else {
                     $attempt->setRelation('exam', $exam);
                     $attempt->setRelation('participant', $participant);
-                    $score = $scoringService->scoreAttempt($attempt);
+
+                    try {
+                        $score = $scoringService->scoreAttempt($attempt);
+                    } catch (\DomainException|\InvalidArgumentException $exception) {
+                        // Keep the authoritative expiry transition, but never fabricate
+                        // a score when the immutable snapshot/scoring contract is blocked.
+                        $skipReason = 'SCORING_BLOCKED: ' . $exception->getMessage();
+                    }
                 }
 
                 AuditLog::create([
