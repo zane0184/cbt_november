@@ -43,6 +43,7 @@ class LoginIdentityResolver
             $studentUserIds = StudentProfile::withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')
+                ->where('academic_status', 'ACTIVE')
                 ->whereRaw('LOWER(nisn) = ?', [$normalized])
                 ->pluck('user_id');
         }
