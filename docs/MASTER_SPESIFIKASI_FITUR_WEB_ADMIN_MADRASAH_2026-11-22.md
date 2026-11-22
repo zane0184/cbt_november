@@ -60,7 +60,6 @@ Nama label boleh mengikuti konsistensi UI yang ada, tetapi cakupan fungsi beriku
 8. Laporan
    - Rekap akademik
    - Rekap peserta/kehadiran
-   - Rekap ujian
    - Hasil/nilai sesuai kewenangan
    - Export dan cetak
 9. Audit dan Keamanan
@@ -168,7 +167,7 @@ Ujian reguler/mandiri tetap menjadi tanggung jawab Guru pembuat sesuai penugasan
 
 ### 8.2 Daftar ujian terpusat untuk penugasan
 
-Web Admin hanya menampilkan daftar ujian yang ditandai secara eksplisit sebagai ujian terpusat dengan jenis UTS, UAS, atau UM dan memerlukan penugasan Proktor. Informasi yang ditampilkan dibatasi pada data yang diperlukan untuk memilih penugasan: nama ujian, jenis ujian, jadwal, Guru penanggung jawab, dan daftar ruang yang telah ditetapkan oleh alur yang berwenang. Tampilan ini bukan dashboard pelaksanaan atau pemantauan ujian.
+Web Admin hanya menampilkan daftar ujian yang ditandai secara eksplisit sebagai ujian terpusat dengan jenis UTS, UAS, atau UM dan memerlukan penugasan Proktor. Informasi yang ditampilkan dibatasi pada data yang diperlukan untuk memilih penugasan: nama ujian, jenis ujian, jadwal, Guru penanggung jawab, dan daftar ruang yang telah ditetapkan oleh alur yang berwenang. Tampilan ini hanya untuk administrasi penugasan Proktor, bukan untuk melihat pelaksanaan ujian.
 
 Admin tidak dapat mengubah soal, kunci jawaban, durasi, jadwal akademik, peserta, roster, maupun pengaturan ujian lainnya.
 
@@ -178,7 +177,7 @@ Admin memilih ujian terpusat (UTS/UAS/UM), ruang yang telah tersedia pada data u
 
 Catat assigned_by, revoked_by, waktu, status, reason, dan audit. Proktor adalah Guru dengan assignment sementara, bukan role permanen. Penugasan memakai interval [starts_at, ends_at). Adjacent 07:00–09:00 dan 09:00–11:00 tidak overlap. Cegah overlap untuk Guru yang sama pada waktu bersamaan, termasuk request concurrent melalui transaksi/locking yang benar.
 
-Setelah assignment aktif, menu Proktor muncul pada akun Guru yang ditugaskan dan hanya memberi akses sesuai batas ruang/ujian yang ditugaskan. Menu tersebut tidak memberi akses ke jawaban, kunci, bank soal, konfigurasi, atau nilai. Web Admin tidak menyediakan tampilan aktivitas/progres peserta kepada Admin.
+Setelah assignment aktif, menu Proktor muncul pada akun Guru yang ditugaskan dan hanya memberi akses sesuai batas ruang/ujian yang ditugaskan. Menu tersebut tidak memberi akses ke jawaban, kunci, bank soal, konfigurasi, atau nilai. Web Admin tidak menampilkan aktivitas atau progres peserta kepada Admin.
 
 ### 8.4 Mode ujian
 
@@ -192,7 +191,7 @@ Jadwal Exam `start_at/end_at`, waktu server resmi. Token dibuat saat Guru menerb
 
 ## 9. FITUR OPERASIONAL PESERTA CBT — TIDAK DISEDIAKAN DI WEB ADMIN
 
-Web Admin tidak menyediakan tampilan real-time kehadiran/progres peserta, status Attempt/perangkat/sinkronisasi, maupun tindakan operasional peserta/Attempt/perangkat. Admin tidak melakukan Reset Attempt, Force Submit, perpanjangan waktu, atau release/takeover perangkat melalui Web Admin. Daftar ujian dan jadwal administratif tetap tersedia pada Bagian 8. Laporan hasil/rekap akademik pasca-ujian tetap mengikuti Bagian 10.
+Web Admin tidak menampilkan kehadiran/progres peserta secara langsung, status Attempt/perangkat/sinkronisasi, maupun menyediakan tindakan operasional peserta/Attempt/perangkat. Admin tidak melakukan Reset Attempt, Force Submit, perpanjangan waktu, atau release/takeover perangkat melalui Web Admin. Daftar ujian dan jadwal administratif tetap tersedia pada Bagian 8. Laporan hasil/rekap akademik pasca-ujian tetap mengikuti Bagian 10.
 
 ## 10. LAPORAN DAN CETAK
 
@@ -270,7 +269,7 @@ Untuk setiap menu/submenu:
 - Tidak ada akses lintas instalasi/database.
 - Guru tidak dapat mengubah master data Admin.
 - Guru hanya mengakses assignment miliknya.
-- Proktor hanya mengakses ujian/ruang sesuai assignment aktif; Admin tidak memperoleh akses monitoring peserta.
+- Proktor hanya mengakses ujian/ruang sesuai assignment aktif; Admin tidak memperoleh akses ke aktivitas/progres peserta.
 - Siswa tidak dapat membuka portal/fitur Proktor.
 - IDOR pada detail, update, delete, export, dan download ditolak.
 
@@ -329,7 +328,7 @@ Dalam seluruh jenis ujian, tugas Admin hanya menetapkan/mencabut Guru sebagai Pr
 
 ### Keputusan pengguna 23 November 2026 — batas fitur operasional CBT pada Web Admin
 
-Web Admin hanya menyediakan alur penetapan/pencabutan Proktor untuk ujian terpusat UTS/UAS/UM. Daftar ujian yang terlihat Admin dibatasi pada ujian tersebut untuk keperluan assignment. Admin tidak mengelola ujian reguler/mandiri, ruang, peserta, pelaksanaan, laporan hasil/nilai ujian, pemantauan, Attempt, atau perangkat.
+Web Admin hanya menyediakan alur penetapan/pencabutan Proktor untuk ujian terpusat UTS/UAS/UM. Daftar ujian yang terlihat Admin dibatasi pada ujian tersebut untuk keperluan assignment. Admin tidak mengelola ujian reguler/mandiri, ruang, peserta, pelaksanaan, laporan hasil/nilai ujian, aktivitas/progres peserta, Attempt, atau perangkat.
 
 ## 18. INSTRUKSI PERTAMA UNTUK AGENT PENGGANTI
 
