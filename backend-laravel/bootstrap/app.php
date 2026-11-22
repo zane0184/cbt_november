@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->statefulApi();
+        $middleware->appendToGroup('web', \\App\\Http\\Middleware\\EnsureAccountSessionVersion::class);
         $middleware->alias([
             'tenant' => \App\Http\Middleware\IdentifyTenant::class,
             'prevent_reinstall' => \App\Http\Middleware\PreventReinstallation::class,
