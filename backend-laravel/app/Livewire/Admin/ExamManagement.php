@@ -540,6 +540,6 @@ class ExamManagement extends Component
             'rombels' => $rombels,
             'availableQuestions' => $availableQuestions,
             'activeSemester' => $activeSemester,
-        ])->layout('layouts.app');
+        ])->layout('layouts.teacher');
     }
 }
