@@ -6,7 +6,8 @@ Tanggal: 22 November 2026
 - Branch kerja: `work/web-guru-phase1-audit-implementation-20261122`.
 - Baseline: Agent 3 `cf9a6ed871314b289505c9ef4cd4319ee7590ffb`.
 - Source/test SHA terakhir: `a64caefb2ab683fb910c6fe4bf8ff3b14cc182dc`.
-- HEAD branch setelah Phase 2 audit: `128b35853eb2e40eb3c16c91677d776cfe687124` (commit dokumen audit).
+- Source HEAD fitur Penugasan Saya: `8a0d30caa67e431badc342d8a0cf9cabcca6abf0`.
+- HEAD branch setelah laporan Phase 3: `d679a2160eae55cd6b3e38db9813f05c2ea364a1` (commit dokumen).
 - Branch Agent 3 lama dan `main` tidak diubah.
 - Laporan fase: `docs/WEB_GURU_PHASE1_REPORT_2026-11-22.md`.
 
@@ -32,8 +33,15 @@ Tanggal: 22 November 2026
 - Snapshot menyimpan field `is_correct` dan explanation; privasi Student API/media wajib diverifikasi oleh Agent 2/4.
 - Tidak ada source Bank Soal yang diubah pada audit Phase 2.
 
+## Implementasi Phase 3
+- Halaman read-only `/guru/penugasan` sudah dibuat, memakai kembali TeacherPortalDataService.
+- Menu desktop/mobile dan CTA Dashboard sudah diarahkan ke halaman khusus.
+- Regression test HTTP route ditambahkan.
+- Dokumen: `docs/WEB_GURU_PHASE3_PENUGASAN_SAYA_2026-11-22.md`.
+- Source/test belum runtime verified karena GitHub Actions gagal sebelum runner/steps.
+
 ## Tahap berikutnya
-**Phase 2B — Bank Soal dan Asesmen Guru hardening**
+**Phase 4 — Hardening Bank Soal dan Asesmen Guru**
 1. Pulihkan CI runner/log dan jalankan test exact SHA.
 2. Audit QuestionBank seluruh action/IDOR, owner, versioning, key privacy, type validation, filters.
 3. Audit ExamManagement transaction/publish/snapshot/token/roster/update schedule and status.
