@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/web-admin-package1-implementation-20261122
+      - work/coordinator-web-admin-audit-20261122
     paths:
       - 'backend-laravel/**'
       - '.github/workflows/wa01-alternative-isolated-runtime.yml'
