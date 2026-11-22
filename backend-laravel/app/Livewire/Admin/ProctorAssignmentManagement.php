@@ -66,7 +66,7 @@ class ProctorAssignmentManagement extends Component
     private function assertCanManage(): void
     {
         $user = auth()->user();
-        abort_unless($user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH') && $user->hasPermission('exam.proctor.assign'),
+        abort_unless($user && $user->tenant_id && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists() && $user->hasPermission('exam.proctor.assign'),
             403, 'Hanya Admin Madrasah berizin yang dapat mengelola penugasan Proktor.');
     }
 
