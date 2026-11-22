@@ -23,6 +23,7 @@ class UserManagement extends Component
     public $showEditModal = false;
     public $showResetPasswordModal = false;
     public $editingUserId = null;
+    public $editingRole = '';
     public $resetPasswordUserId = null;
     public $resetPassword = '';
     public $name = '';
@@ -150,6 +151,7 @@ class UserManagement extends Component
         $user = $this->manageableUserQuery()->with(['roles','teacherProfile','studentProfile'])->whereKey($userId)->firstOrFail();
 
         $this->editingUserId = (string) $user->id;
+        $this->editingRole = $user->roles->first()->name;
         $this->editName = $user->name;
         $this->editUsername = $user->username;
         $this->editEmail = $user->email;
@@ -216,6 +218,7 @@ class UserManagement extends Component
 
         $this->showEditModal = false;
         $this->editingUserId = null;
+        $this->editingRole = '';
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Data pengguna berhasil diperbarui.']);
         session()->flash('message', 'Data pengguna berhasil diperbarui.');
     }
