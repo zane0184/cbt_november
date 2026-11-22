@@ -208,9 +208,18 @@ return new class extends Migration
             $table->unique(['tenant_id', 'exam_id', 'proctor_user_id'], 'exam_proctor_assignment_unique');
         });
 
+        // The base migration's tenant_id FK must remain intact during rollback.
+        // MySQL may have reused the Stage 4B composite index as its supporting
+        // index, so create a standalone tenant_id index before removing it.
+        if (! Schema::hasIndex('exam_participants', ['tenant_id'])) {
+            Schema::table('exam_participants', function (Blueprint $table): void {
+                $table->index('tenant_id', 'exam_participants_tenant_fk_support_idx');
+            });
+        }
+
         Schema::table('exam_participants', function (Blueprint $table): void {
-            // MySQL refuses to drop an index while an FK still depends on it.
-            // Remove the tenant-aware FK first, then its supporting lookup index.
+            // Remove the Stage 4B tenant-aware rombel FK before its lookup index.
+            // The base tenant_id FK remains supported by the standalone index.
             $table->dropForeign('exam_participants_rombel_tenant_fk');
             $table->dropIndex('exam_participants_rombel_scope_idx');
             $table->dropUnique('exam_participants_id_tenant_exam_unique');
