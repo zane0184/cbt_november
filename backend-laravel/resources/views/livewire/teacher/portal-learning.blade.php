@@ -27,13 +27,13 @@
         @if(count($assignments))
             <div class="overflow-x-auto">
                 <table class="portal-table w-full min-w-[850px] text-sm">
-                    <thead><tr><th>Mata Pelajaran</th><th>Rombel / Kelas</th><th>Tahun Ajaran</th><th>Semester</th><th>Periode Penugasan</th><th>Siswa</th><th>Status</th></tr></thead>
+                    <thead><tr><th>Mata Pelajaran</th><th>Fase / Rombel / Kelas</th><th>Tahun Ajaran</th><th>Semester</th><th>Periode Penugasan</th><th>Siswa</th><th>Status</th></tr></thead>
                     <tbody>
                     @foreach($assignments as $row)
                         @php($assignment = $row['assignment'])
                         <tr>
                             <td><p class="font-bold">{{ $assignment->subject->name }}</p><p class="text-xs portal-muted">{{ $assignment->subject->code }}</p></td>
-                            <td><p class="font-semibold">{{ $assignment->rombel->name }}</p><p class="text-xs portal-muted">{{ $assignment->rombel->gradeLevel?->name ?? 'Kelas belum tersedia' }}</p></td>
+                            <td><p class="font-semibold">{{ $assignment->rombel->name }}</p><p class="text-xs portal-muted">{{ $assignment->rombel->gradeLevel?->phase?->name ?? 'Fase belum tersedia' }} · {{ $assignment->rombel->gradeLevel?->name ?? 'Kelas belum tersedia' }}</p></td>
                             <td>{{ $assignment->academicYear->name }}</td>
                             <td>{{ $assignment->semester->term }}</td>
                             <td>{{ $assignment->starts_at?->format('d/m/Y') ?? 'Tanpa tanggal mulai' }}<br><span class="portal-muted">s.d. {{ $assignment->ends_at?->format('d/m/Y') ?? 'Tidak dibatasi' }}</span></td>
