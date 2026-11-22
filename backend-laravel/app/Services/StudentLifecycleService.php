@@ -126,7 +126,7 @@ class StudentLifecycleService
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $rombelId, $effectiveDate, $reason) {
             $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
-            $rombel = $this->lockRombel($tenantId, $rombelId, false);
+            $rombel = $this->lockRombel($tenantId, $rombelId, true);
             $membership = $this->lockMembership($tenantId, $student->id, $rombel->id, $rombel->academic_year_id);
             if (!$membership) {
                 throw ValidationException::withMessages(['actionFromRombelId' => 'Penempatan rombel tidak ditemukan.']);
@@ -144,7 +144,7 @@ class StudentLifecycleService
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $fromRombelId, $effectiveDate, $reason) {
             $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
-            $rombel = $this->lockRombel($tenantId, $fromRombelId, false);
+            $rombel = $this->lockRombel($tenantId, $fromRombelId, true);
             $membership = $this->lockMembership($tenantId, $student->id, $rombel->id, $rombel->academic_year_id);
             if (!$membership) {
                 throw ValidationException::withMessages(['actionFromRombelId' => 'Penempatan rombel kelas akhir tidak ditemukan.']);
