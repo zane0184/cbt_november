@@ -127,6 +127,11 @@ class AdminUserManagementScopeTest extends TestCase
         $multiStudent = StudentProfile::create(['user_id' => $multi->id, 'full_name' => 'Profil Siswa Multi', 'nisn' => '0099001100']);
         TeacherProfile::create(['user_id' => $multi->id, 'full_name' => 'Profil Guru Multi', 'nip' => '198801012020011001', 'employee_identifier' => '198801012020011001']);
 
+        $deletedStudent = User::create(['name' => 'Siswa Dihapus', 'email' => 'siswa.dihapus@madrasah.test', 'password' => bcrypt('password123')]);
+        $deletedStudent->roles()->attach($siswaRole->id);
+        StudentProfile::create(['user_id' => $deletedStudent->id, 'full_name' => 'Siswa Dihapus', 'nisn' => '0099001102']);
+        DB::table('users')->where('id', $deletedStudent->id)->update(['deleted_at' => now()]);
+
         $student = User::create(['name' => 'Siswa Tunggal', 'email' => 'siswa.tunggal@madrasah.test', 'password' => bcrypt('password123')]);
         $student->roles()->attach($siswaRole->id);
         $studentProfile = StudentProfile::create(['user_id' => $student->id, 'full_name' => 'Siswa Tunggal', 'nisn' => '0099001101']);
@@ -143,6 +148,8 @@ class AdminUserManagementScopeTest extends TestCase
         Livewire::test(StudentRombelManagement::class)
             ->assertViewHas('availableStudents', fn ($students) => $students->pluck('id')->all() === [$studentProfile->id])
             ->assertDontSee('Profil Siswa Multi');
+
+        Livewire::test(UserManagement::class)->assertDontSee('Siswa Dihapus');
 
         $this->assertSame(2, $multi->fresh()->roles()->count());
         $this->assertSame(1, StudentProfile::query()->whereKey($multiStudent->id)->count());
