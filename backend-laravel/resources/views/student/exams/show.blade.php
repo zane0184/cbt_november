@@ -288,7 +288,7 @@
             answer_state: 'ANSWERED',
             answer_payload: payload
         });
-        const serialized = JSON.stringify(canonical).replace(/\\u2028/g, '\\\\u2028').replace(/\\u2029/g, '\\\\u2029');
+        const serialized = JSON.stringify(canonical).replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
         return sha256Hex(serialized);
     }
     async function verifyAnswerReceipt(result, question, pendingItem) {
