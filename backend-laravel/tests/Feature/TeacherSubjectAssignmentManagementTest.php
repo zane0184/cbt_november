@@ -319,11 +319,18 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
 
     public function test_non_admin_guru_and_siswa_cannot_open_assignment_management(): void
     {
+        $siswaRole = Role::query()->firstOrCreate(
+            ['name' => 'SISWA'],
+            ['label' => 'Siswa']
+        );
+
         foreach ([
             ['role' => 'GURU', 'name' => 'Guru Bukan Admin', 'email' => 'guru-denied@example.test'],
             ['role' => 'SISWA', 'name' => 'Siswa Bukan Admin', 'email' => 'siswa-denied@example.test'],
         ] as $fixture) {
-            $role = Role::query()->where('name', $fixture['role'])->firstOrFail();
+            $role = $fixture['role'] === 'SISWA'
+                ? $siswaRole
+                : Role::query()->where('name', $fixture['role'])->firstOrFail();
             $user = User::create([
                 'tenant_id' => $this->tenant->id,
                 'name' => $fixture['name'],
