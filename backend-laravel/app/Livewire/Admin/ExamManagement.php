@@ -335,19 +335,40 @@ class ExamManagement extends Component
             $targetUserIds = [];
             if ($this->selectedRombelId === 'ALL') {
                 if ($user->hasRole('GURU')) abort(403, 'Guru tidak dapat menugaskan ujian kepada seluruh siswa madrasah.');
-                $targetUserIds = User::where('tenant_id', $tenantId)
-                    ->whereHas('roles', fn($q) => $q->where('name', 'SISWA'))
-                    ->pluck('id')->toArray();
+                $targetUserIds = DB::table('users')
+                    ->join('role_user', 'role_user.user_id', '=', 'users.id')
+                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                    ->where('users.tenant_id', $tenantId)
+                    ->whereNull('users.deleted_at')
+                    ->groupBy('users.id')
+                    ->havingRaw('COUNT(DISTINCT roles.id) = 1')
+                    ->havingRaw('MAX(roles.name) = ?', ['SISWA'])
+                    ->pluck('users.id')
+                    ->all();
             } elseif ($this->selectedRombelId) {
-                $studentProfileIds = DB::table('rombel_student')
-                    ->where('tenant_id', $tenantId)
-                    ->where('rombel_id', $this->selectedRombelId)
-                    ->pluck('student_id');
-
-                $targetUserIds = StudentProfile::where('tenant_id', $tenantId)
-                    ->whereIn('id', $studentProfileIds)
-                    ->pluck('user_id')
-                    ->toArray();
+                // Roster admission is based on the official tenant-local room membership,
+                // an active persisted student profile/user, and exactly one persisted SISWA role.
+                // A user with SISWA plus any other role must never become an exam participant.
+                $targetUserIds = DB::table('rombel_student')
+                    ->join('student_profiles', function ($join) use ($tenantId): void {
+                        $join->on('student_profiles.id', '=', 'rombel_student.student_id')
+                            ->where('student_profiles.tenant_id', '=', $tenantId)
+                            ->whereNull('student_profiles.deleted_at');
+                    })
+                    ->join('users', function ($join) use ($tenantId): void {
+                        $join->on('users.id', '=', 'student_profiles.user_id')
+                            ->where('users.tenant_id', '=', $tenantId)
+                            ->whereNull('users.deleted_at');
+                    })
+                    ->join('role_user', 'role_user.user_id', '=', 'users.id')
+                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                    ->where('rombel_student.tenant_id', $tenantId)
+                    ->where('rombel_student.rombel_id', $this->selectedRombelId)
+                    ->groupBy('users.id')
+                    ->havingRaw('COUNT(DISTINCT roles.id) = 1')
+                    ->havingRaw('MAX(roles.name) = ?', ['SISWA'])
+                    ->pluck('users.id')
+                    ->all();
             }
 
             foreach ($targetUserIds as $uid) {
