@@ -192,12 +192,17 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
+        // Keep the mount-selected academicYearId untouched so the UI's
+        // updatedAcademicYearId hook does not clear the intentionally mismatched
+        // references before the server-side save guard is exercised.
+        $payload = $this->validPayload();
+        unset($payload['academicYearId']);
+        $payload['rombelId'] = $otherRombel->id;
+        $payload['semesterId'] = $otherSemester->id;
+
         Livewire::actingAs($this->admin)
             ->test(TeacherSubjectAssignmentManagement::class)
-            ->set(array_merge($this->validPayload(), [
-                'rombelId' => $otherRombel->id,
-                'semesterId' => $otherSemester->id,
-            ]))
+            ->set($payload)
             ->call('save')
             ->assertHasErrors(['academicYearId']);
 
