@@ -71,6 +71,7 @@
             <div class="text-4xl">✓</div><h2 class="mt-3 text-2xl font-bold">Ujian berhasil dikirim</h2><p id="completion-message" class="mt-2 text-slate-600">Jawaban Anda telah diterima server. Silakan kembali ke daftar ujian.</p><a href="{{ route('student.exams.index') }}" class="mt-6 inline-flex rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white">Kembali ke Daftar Ujian</a>
         </section>
         <div id="fatal-error" class="mt-4 hidden rounded-xl bg-red-50 p-4 text-red-800" role="alert"></div>
+        <button id="check-submit-status" type="button" class="mt-3 hidden rounded-xl border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-900" aria-live="polite">Periksa status pengiriman</button>
     </main>
 
 <script>
@@ -81,7 +82,7 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, submitting: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, submitting: false, submitOutcomeUnknown: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
@@ -484,25 +485,76 @@
         if (state.pending.size) throw new Error('Masih ada jawaban yang belum mendapat konfirmasi server.');
     }
 
+    function showCompletion(status) {
+        state.submitOutcomeUnknown = false;
+        el('check-submit-status').classList.add('hidden');
+        el('completion-message').textContent = status === 'EXPIRED'
+            ? 'Waktu ujian berakhir dan server telah menutup Attempt.'
+            : 'Server telah mengonfirmasi Attempt berstatus terkirim.';
+        el('runner-panel').classList.add('hidden');
+        el('completion-panel').classList.remove('hidden');
+    }
+
+    async function recoverSubmitStatus() {
+        if (!state.attemptId || !state.submitOutcomeUnknown) return;
+        const button = el('check-submit-status');
+        button.disabled = true;
+        button.textContent = 'Memeriksa status…';
+        try {
+            const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}`, { method: 'GET' });
+            const status = result.data?.status;
+            if (status === 'SUBMITTED' || status === 'EXPIRED') {
+                showCompletion(status);
+                return;
+            }
+            showError('Server masih melaporkan Attempt belum terminal. Status pengiriman belum dapat dipastikan; jangan kirim ulang. Hubungi Guru/Admin untuk pemeriksaan.');
+        } catch (error) {
+            showError(`Status pengiriman belum dapat dipastikan: ${error.message}. Jangan kirim ulang dan jangan hapus data browser; coba periksa status lagi atau hubungi Guru/Admin.`);
+        } finally {
+            if (state.submitOutcomeUnknown) {
+                button.disabled = false;
+                button.textContent = 'Periksa status pengiriman';
+                button.classList.remove('hidden');
+            }
+        }
+    }
+
     async function submitExam(auto = false) {
-        if (state.submitting || !state.attemptId) return;
+        if (state.submitting || state.submitOutcomeUnknown || !state.attemptId) return;
         if (!auto && !window.confirm('Yakin ingin mengirim ujian? Pastikan semua jawaban sudah tersimpan.')) return;
         state.submitting = true; el('submit-button').disabled = true;
+        let submitRequestStarted = false;
         try {
             for (const timer of state.timers.values()) clearTimeout(timer);
             state.timers.clear();
             await flushPendingSaves();
-            await api(`/attempts/${encodeURIComponent(state.attemptId)}/submit`, { method: 'POST', body: JSON.stringify({}) });
-            el('runner-panel').classList.add('hidden'); el('completion-panel').classList.remove('hidden');
+            submitRequestStarted = true;
+            const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/submit`, { method: 'POST', body: JSON.stringify({}) });
+            const status = result.data?.status;
+            if (status !== 'SUBMITTED' && status !== 'EXPIRED') {
+                throw new Error('Respons submit tidak memuat status terminal yang dapat diverifikasi.');
+            }
+            showCompletion(status);
         } catch (error) {
-            state.submitting = false; el('submit-button').disabled = false;
+            state.submitting = false;
+            if (submitRequestStarted) {
+                state.submitOutcomeUnknown = true;
+                el('submit-button').disabled = true;
+                el('check-submit-status').classList.remove('hidden');
+                showError('Respons pengiriman tidak dapat dipastikan. Sistem tidak akan mengirim ulang secara otomatis. Periksa status Attempt di server.');
+                await recoverSubmitStatus();
+                return;
+            }
+            el('submit-button').disabled = false;
             if (auto) setSaveStatus('Waktu habis, tetapi ada jawaban yang belum terkonfirmasi. Attempt mengikuti expiry server; jangan tutup halaman.', true);
             showError(`Ujian belum dapat dikirim: ${error.message}. Draft lokal dipertahankan. Jangan tutup halaman; periksa koneksi lalu coba lagi.`);
+        } finally {
+            if (state.submitting) state.submitting = false;
         }
     }
 
     window.addEventListener('beforeunload', event => {
-        if (state.pending.size || state.conflicts.size || state.undurable.size || state.saving.size) {
+        if (state.pending.size || state.conflicts.size || state.undurable.size || state.saving.size || state.submitOutcomeUnknown) {
             event.preventDefault();
             event.returnValue = '';
         }
@@ -512,6 +564,7 @@
     el('previous-button').addEventListener('click', () => { if (state.current > 0) { state.current--; renderQuestion(); } });
     el('next-button').addEventListener('click', () => { if (state.current < state.questions.length - 1) { state.current++; renderQuestion(); } });
     el('submit-button').addEventListener('click', () => submitExam(false));
+    el('check-submit-status').addEventListener('click', recoverSubmitStatus);
     window.addEventListener('online', () => {
         if (!state.attemptId || state.submitting || state.pending.size === 0) return;
         flushPendingSaves().then(() => setSaveStatus('Koneksi pulih; jawaban tertunda sudah tersimpan'))
