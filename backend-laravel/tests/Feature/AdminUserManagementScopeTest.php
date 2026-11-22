@@ -10,6 +10,7 @@ use App\Livewire\Admin\TenantProfileManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
+use App\Models\AcademicYear;
 use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
@@ -161,6 +162,7 @@ class AdminUserManagementScopeTest extends TestCase
         $permissionPivotsBefore = DB::table('permission_role')->count();
         $tenant = Tenant::create(['name' => 'Madrasah Buat User', 'code' => 'NEWUSR']);
         $this->signInAdmin($tenant);
+        $activeYear = AcademicYear::create(['name' => '2026/2027', 'is_active' => true]);
         Role::create(['name' => 'GURU', 'label' => 'Guru']);
         Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
 
@@ -180,6 +182,7 @@ class AdminUserManagementScopeTest extends TestCase
         Livewire::test(UserManagement::class)
             ->set('name', 'Siswa Baru')
             ->set('selectedRole', 'SISWA')
+            ->set('entryAcademicYearId', $activeYear->id)
             ->set('nisn', '0099887766')
             ->set('password', 'StrongPassword123!')
             ->call('createUser')
