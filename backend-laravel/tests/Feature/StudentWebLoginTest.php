@@ -59,6 +59,7 @@ class StudentWebLoginTest extends TestCase
     public function test_student_browser_cookie_is_invalidated_by_admin_deactivation_and_reactivation(): void
     {
         // Client A: student logs in and keeps its own browser cookie jar.
+        $studentApiToken = $this->student->createToken('before-account-deactivation')->plainTextToken;
         $studentLogin = $this->post('/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
@@ -125,6 +126,11 @@ class StudentWebLoginTest extends TestCase
             ->call('restoreUser', $this->student->id)
             ->assertHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $this->student->id, 'deleted_at' => null]);
+
+        // The API token issued before the official lifecycle transition remains revoked.
+        $this->withToken($studentApiToken)
+            ->getJson('/api/v1/auth/me')
+            ->assertUnauthorized();
 
         // Client A replays the same pre-deactivation browser cookie after reactivation.
         $this->withoutCookie($sessionCookieName)
