@@ -132,7 +132,7 @@ class ExpireExamAttemptsCommand extends Command
                     'last_activity_at' => $closedAt,
                 ]);
 
-                app(\\App\\Services\\AttemptDeviceLeaseService::class)->release($attempt, 'SERVER_EXPIRY');
+                app(\App\Services\AttemptDeviceLeaseService::class)->release($attempt, 'SERVER_EXPIRY');
 
                 $hasOtherActiveAttempt = ExamAttempt::withoutGlobalScope('tenant')
                     ->where('tenant_id', $attempt->tenant_id)
