@@ -16,6 +16,7 @@ class QuestionMultiCurriculumMapping extends Model
     protected $fillable = [
         'id',
         'tenant_id',
+        'academic_year_id',
         'question_id',
         'multi_curriculum_version_id',
         'multi_learning_outcome_id',
@@ -28,17 +29,34 @@ class QuestionMultiCurriculumMapping extends Model
         parent::boot();
 
         static::saving(function (QuestionMultiCurriculumMapping $model) {
-            // Auto-resolve curriculum_owner_id from outcome if missing
             if (!$model->curriculum_owner_id && $model->multi_learning_outcome_id) {
-                $outcome = MultiLearningOutcome::find($model->multi_learning_outcome_id);
-                if ($outcome && $outcome->tenant_id) {
-                    $model->curriculum_owner_id = $outcome->tenant_id;
-                }
+                $outcome = MultiLearningOutcome::withoutGlobalScopes()->whereKey($model->multi_learning_outcome_id)->first();
+                if ($outcome && $outcome->tenant_id) $model->curriculum_owner_id = $outcome->tenant_id;
             }
 
-            // Reject NULL curriculum_owner_id on model save
-            if (!$model->curriculum_owner_id) {
-                throw new \InvalidArgumentException("QuestionMultiCurriculumMapping requires a valid non-null curriculum_owner_id.");
+            if (!$model->tenant_id || !$model->academic_year_id || !$model->curriculum_owner_id
+                || !$model->multi_curriculum_version_id || !$model->multi_learning_outcome_id) {
+                throw new \InvalidArgumentException('Question curriculum mapping requires tenant, academic year, version, outcome, and curriculum owner.');
+            }
+
+            $outcome = MultiLearningOutcome::withoutGlobalScopes()
+                ->where('tenant_id', $model->curriculum_owner_id)
+                ->where('multi_curriculum_version_id', $model->multi_curriculum_version_id)
+                ->whereKey($model->multi_learning_outcome_id)->first();
+
+            if (!$outcome) {
+                throw new \InvalidArgumentException('The selected outcome does not belong to the selected curriculum version and owner.');
+            }
+
+            $registration = TenantCurriculumRegistration::withoutGlobalScopes()
+                ->where('tenant_id', $model->tenant_id)
+                ->where('academic_year_id', $model->academic_year_id)
+                ->where('multi_curriculum_version_id', $model->multi_curriculum_version_id)
+                ->where('curriculum_owner_id', $model->curriculum_owner_id)
+                ->where('status', 'ACTIVE')->exists();
+
+            if (!$registration) {
+                throw new \InvalidArgumentException('The curriculum version is not actively registered for this tenant and academic year.');
             }
         });
     }
@@ -51,6 +69,11 @@ class QuestionMultiCurriculumMapping extends Model
     public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class, 'question_id');
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class, 'academic_year_id')->withTrashed();
     }
 
     public function version(): BelongsTo
