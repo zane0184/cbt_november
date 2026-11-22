@@ -1014,6 +1014,12 @@ class ExamAnswerTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit")
             ->assertOk();
 
+        $retry = $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit");
+        $retry->assertOk()
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('data.fence_generation', 1);
+
         $this->assertSame('SUBMITTED', $this->attempt->fresh()->status);
         $this->assertSame(1, (int) $this->attempt->fresh()->fence_generation);
         $this->assertDatabaseHas('device_leases', [
