@@ -628,6 +628,12 @@
                 await loadExecution(execution, state.attemptId);
                 await persistSubmitState('RESUMED');
                 state.submitOutcomeUnknown = false;
+                // The unknown-submit path locks this control before checking
+                // the server. Once the server confirms the same Attempt is
+                // still IN_PROGRESS and execution data is restored, allow the
+                // student to submit again (the normal save/conflict barrier
+                // remains enforced by submitExam()).
+                el('submit-button').disabled = false;
                 button.classList.add('hidden');
                 return;
             }
