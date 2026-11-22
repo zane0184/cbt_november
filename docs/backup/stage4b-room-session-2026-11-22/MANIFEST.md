@@ -279,3 +279,10 @@ The previous test teardown disabled `FOREIGN_KEY_CHECKS` while deleting a dispos
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-manual-fresh-migration-strategy | 4a1223e57f5bba86ae9046a68276954ad4c234d5 | 15087 | 13c609abf56f3ccd344bab1c5b0f5cd536eb7621 |
+
+
+## Supplemental snapshot — isolated concurrency migration strategy and rollback proof
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| .github/workflows/wa01-alternative-isolated-runtime.yml | docs/backup/stage4b-room-session-2026-11-22/wa01-alternative-isolated-runtime.yml.before-stage4b-rollback-proof-step | 24b9b01d1c4ff63f13bb2d64592cecf03fe68cb5 | 24874 | f1ff17a410b59e806a85dbb77861143f013703c2 |
