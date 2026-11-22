@@ -258,3 +258,10 @@ The previous test teardown disabled `FOREIGN_KEY_CHECKS` while deleting a dispos
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-second-race-connection-id-assertion | 4db4e328c57f34d76e47590ef66d263424b2e98f | 14709 | 2060362cad028f86b99a12f9955b6088e71a8301 |
+
+
+## Supplemental snapshot — explicit foreign-key enforcement guard for rollback
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-explicit-fk-check-rollback-guard | 4250669036b80c54ceb2bea8f4ae9123f97b45b5 | 17062 | b5e3d5ebe8e4a566a0dd6f59e43ba6fb9215588f |
