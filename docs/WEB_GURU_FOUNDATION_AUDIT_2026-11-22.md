@@ -227,3 +227,11 @@ Blob backup telah diverifikasi identik dengan blob sumber pra-perubahan untuk Te
 - Koreksi namespace masuk pada source SHA `67ccd99f7ae14a8c0e9ddb71ce773d627d182231`.
 - Run `44983955276` menguji SHA `67ccd99f7ae14a8c0e9ddb71ce773d627d182231`; status masih in progress pada tahap inisialisasi container ketika catatan ini diperbarui.
 - HEAD branch aktual saat checkpoint dokumentasi: `a9456a2eab3a2a8e1bb367e92bc02ca5f8af6b83`. Commit sesudah source test SHA hanya backup manifest/dokumentasi.
+
+
+## 11. CATATAN TAMBAHAN — LIVEWIRE DAN STALE PERMISSION LEGACY
+
+- `QuestionBank` dan `ExamManagement` memanggil `assertCanAccess()` pada lifecycle `boot()` dan `mount()`; keduanya memeriksa permission utama setiap request, tetapi guard masih tidak mensyaratkan tepat satu role GURU. Policy QuestionPolicy dan ExamPolicy juga tidak menolak semua kombinasi role tambahan selain ADMIN_MADRASAH.
+- `ResultList`, `ResultDetail`, `AnalyticsDashboard`, dan `ItemAnalysis` melakukan otorisasi pada `mount()` atau saat aksi tertentu. Audit source belum menemukan pemeriksaan otorisasi umum pada `boot()` untuk setiap request Livewire pada keempat komponen tersebut. Akibatnya, skenario permission dicabut setelah halaman awal terbuka perlu diuji khusus pada request render/hydration berikutnya.
+- Aksi mutasi nilai pada ResultDetail memanggil policy grade/finalize/reopen, termasuk re-authorize pada model yang dikunci. Namun, itu belum menggantikan pemeriksaan izin untuk setiap request yang hanya melakukan render.
+- Keputusan: menu modul legacy tetap disabled. Tidak mengubah file komponen/policy legacy pada tahap ini karena merupakan source bersama yang perlu koordinasi; tidak mengklaim stale-permission gate sudah lulus.
