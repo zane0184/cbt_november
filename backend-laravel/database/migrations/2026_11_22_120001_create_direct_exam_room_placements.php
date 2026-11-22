@@ -30,9 +30,14 @@ return new class extends Migration
 
         if (Schema::hasTable('exam_room_exam')
             || Schema::hasTable('exam_participant_room_placements')
-            || Schema::hasColumn('exam_proctor_assignments', 'exam_room_id')) {
+            || Schema::hasColumn('exam_proctor_assignments', 'exam_room_id')
+            || Schema::hasColumn('exams', 'proctoring_mode')) {
             throw new RuntimeException('Direct Exam-Room migration detected partial state; no DDL was executed.');
         }
+
+        Schema::table('exams', function (Blueprint $table): void {
+            $table->string('proctoring_mode', 20)->default('SELF_MANAGED')->after('locked_at');
+        });
 
         // exam_rooms is a reusable physical room registry. This pivot allocates
         // the same physical room to different Exams without introducing sessions.
@@ -130,5 +135,11 @@ return new class extends Migration
             Schema::dropIfExists('exam_participant_room_placements');
         }
         Schema::dropIfExists('exam_room_exam');
+
+        if (Schema::hasColumn('exams', 'proctoring_mode')) {
+            Schema::table('exams', function (Blueprint $table): void {
+                $table->dropColumn('proctoring_mode');
+            });
+        }
     }
 };
