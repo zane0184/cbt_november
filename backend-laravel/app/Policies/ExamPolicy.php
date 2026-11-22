@@ -12,8 +12,6 @@ class ExamPolicy
     public function viewAny(User $user): bool
     {
         return $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('OPERATOR')
-            || $user->hasRole('KAMAD')
             || $user->hasRole('GURU')
             || $user->hasRole('SISWA');
     }
@@ -30,7 +28,7 @@ class ExamPolicy
 
         // Admin may view only the tenant's exam register; operational actions
         // remain separately authorized and are never implied by this read access.
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR') || $user->hasRole('KAMAD')) {
+        if ($user->hasRole('ADMIN_MADRASAH')) {
             return true;
         }
 
@@ -167,7 +165,7 @@ class ExamPolicy
     public function assignProctor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id
-            || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists()
+            || !$user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             || !$user->hasPermission('exam.proctor.assign')
             || $exam->status !== 'PUBLISHED'
             || !$exam->locked_at
@@ -189,10 +187,6 @@ class ExamPolicy
     {
         if ($user->tenant_id !== $exam->tenant_id) {
             return false;
-        }
-
-        if ($user->hasRole('KAMAD') && $user->hasPermission('exam.monitor')) {
-            return true;
         }
 
         if (!$user->hasRole('GURU')) {
@@ -219,10 +213,8 @@ class ExamPolicy
     {
         if ($user->tenant_id !== $exam->tenant_id
             || $user->hasRole('PROKTOR')
-            || $user->hasRole('KAMAD')
             || $user->hasRole('SISWA')
-            || $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('OPERATOR')) {
+            || $user->hasRole('ADMIN_MADRASAH')) {
             return false;
         }
 
