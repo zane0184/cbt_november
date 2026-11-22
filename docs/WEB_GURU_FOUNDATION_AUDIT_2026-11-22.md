@@ -203,3 +203,17 @@ Inventaris dari source branch:
 ## 8. STATUS SETELAH AUDIT LANJUTAN
 
 PARSIAL — reuse fitur telah diinventaris dan query duplikat dibersihkan; gate CI terbaru dan test lifecycle tambahan masih menunggu hasil. Menu modul legacy tetap tidak ditautkan sampai multi-role/stale-permission audit selesai. Tidak siap produksi.
+
+
+## 9. ADDENDUM HASIL CI DAN KOREKSI TEST FIXTURE
+
+- Run `44982777697` mencatat tepat 7 warning test (35 assertions). Semuanya berasal dari pembacaan file `.env` yang tidak tersedia pada tujuh method: `guru_can_open_dashboard_with_real_assignment_and_student_counts`, `semester_is_not_guessed_when_admin_has_not_activated_it`, `admin_and_multi_role_users_are_denied_from_guru_portal_url_and_livewire`, `guru_without_exactly_one_tenant_local_teacher_profile_is_denied`, `dashboard_does_not_expose_assignments_from_another_tenant`, `teacher_can_update_only_contact_phone_and_change_is_audited`, dan `curriculum_context_uses_only_registered_tenant_owned_versions_and_shows_unverified_source_state`.
+- Run `44982836419` memuat test assignment kedaluwarsa tambahan sehingga warning file `.env` yang sama muncul pada delapan test.
+- PHPUnit juga menampilkan deprecation metadata doc-comment pada test legacy: FormulaTest, AdminUiVerificationTest, Analytics Cache/ItemAnalysis/Security, ExamManagementHardeningTest, RoleDashboardVerificationTest, dan TeacherPracticeWorkflowTest. Ini terpisah dari tujuh warning `.env` dan belum diperbaiki.
+- Run `44983639700` pada SHA `9afc0a0fd489227a67310edec67223457fe42139` mengonfirmasi warning `.env` tidak lagi muncul setelah workflow membuat file kosong sementara. Namun PHPUnit gagal pada 2 test baru (9 passed, 2 failed; 42 assertions):
+  - Test soft-delete memakai `User::delete()`, tetapi model User tidak mengaktifkan trait SoftDeletes sehingga menjalankan hard delete; FK profil menolak penghapusan. Test diperbaiki dengan mengubah `deleted_at` langsung pada DB disposable.
+  - Test mismatch context melalui Livewire test harness mendapat 200 karena middleware tenant memulihkan konteks dari user terautentikasi. Test diperbaiki untuk menguji langsung `TeacherPortalAccess` ketika konteks tenant berbeda.
+- Run `44983824109` pada SHA `d78992ba19cb8df3b4ba1e21d5bcf1d64b50b409` sedang berjalan setelah koreksi fixture. Hasil belum diketahui.
+
+### Verifikasi backup
+Blob backup telah diverifikasi identik dengan blob sumber pra-perubahan untuk TeacherPortalDataService, workflow CI, layout Guru (dua checkpoint), dan test foundation (dua checkpoint). Manifest mencatat ukuran byte UTF-8 dan blob SHA sumber/backup yang sama.
