@@ -35,7 +35,7 @@ class ImportTemplateExport implements WithMultipleSheets
             new ImportDataSheet(
                 $this->type === 'GURU' ? 'Data Guru' : 'Data Siswa',
                 $this->type === 'GURU'
-                    ? ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika PNS', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)']
+                    ? ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika ASN', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)']
                     : ['NIS (opsional)', 'NISN*', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Tempat Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Nama Orang Tua/Wali', 'No. HP Orang Tua/Wali', 'Alamat', 'Rombel*', 'Tahun Pelajaran*'],
                 $this->type === 'GURU'
                     ? [['ASN', '198001012005011001', '', '0012345678901234', 'CONTOH - HAPUS BARIS INI', 'L', '', '']]
