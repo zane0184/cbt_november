@@ -52,7 +52,7 @@ function makeScenario(mode = 'normal') {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
     requireToken: false, startTokens: [], media: [], legacyPending: false, disableIndexedDb: false,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
-    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], executionCalls: 0, omitStartFence: false, leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
     questionStem: 'Berapakah hasil 2 + 2?',
@@ -88,9 +88,12 @@ async function attachApiMock(page, scenario) {
     if (method === 'POST' && path === '/attempts') {
       scenario.startCalls++;
       scenario.startTokens.push(request.postDataJSON().token ?? null);
-      return json(route, 200, { success: true, data: { id: 'attempt-1', fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt } });
+      const startData = { id: 'attempt-1' };
+      if (!scenario.omitStartFence) { startData.fence_generation = scenario.generation; startData.lease_expires_at = scenario.leaseExpiresAt; }
+      return json(route, 200, { success: true, data: startData });
     }
     if (method === 'GET' && path === '/execution') {
+      scenario.executionCalls++;
       const now = new Date();
       return json(route, 200, { success: true, data: {
         attempt: { id: 'attempt-1', expires_at: new Date(now.getTime() + scenario.expiresInMs).toISOString(), fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt },
@@ -108,6 +111,7 @@ async function attachApiMock(page, scenario) {
     if (method === 'PUT' && path === '/attempts/attempt-1/answers/snapshot-1') {
       scenario.answerWrites++;
       if (!scenario.online) return route.abort('failed');
+      if (scenario.mode === 'fence-mismatch') return json(route, 409, { success: false, code: 'ATTEMPT_FENCE_MISMATCH', message: 'Fence mismatch' });
       if (scenario.mode === 'conflict') {
         return json(route, 409, {
           success: false, message: 'Konflik revisi',
@@ -214,7 +218,22 @@ try {
     console.log('PASS: runner fails closed when IndexedDB is unavailable');
   }
 
-  // 2. Required exam token is trimmed and normalized to uppercase before the start request.
+  // Start response without a server-issued fence generation must fail closed.
+  {
+    const scenario = makeScenario();
+    scenario.omitStartFence = true;
+    const { context, page } = await newPage(browser, scenario);
+    await page.locator('#start-button').click();
+    await page.waitForFunction(() => document.querySelector('#start-status').textContent.includes('fencing generation'));
+    assert.equal(scenario.startCalls, 1);
+    assert.equal(scenario.executionCalls, 0, 'Execution must not be requested without a server-issued fence');
+    assert.equal(await page.locator('#runner-panel').isVisible(), false);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: runner fails closed when start response omits fencing generation');
+  }
+
+  // 3. Required exam token is trimmed and normalized to uppercase before the start request.
   {
     const scenario = makeScenario();
     scenario.requireToken = true;
@@ -400,7 +419,32 @@ try {
     console.log('PASS: IndexedDB v1 pending answer migrates and synchronizes');
   }
 
-  // 7. Conflict: local draft is restored, server copy is retained, submit stays blocked.
+  // A fence/session rejection locks the runner but keeps the exact durable local draft.
+  {
+    const scenario = makeScenario('fence-mismatch');
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await chooseFirstAnswer(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Draft lokal dipertahankan'));
+    assert.equal(await page.locator('#runner-panel').getAttribute('aria-busy'), 'true');
+    const queue = await page.evaluate(() => new Promise(resolve => {
+      const request = indexedDB.open('cbt-madrasah-student-v1', 2);
+      request.onsuccess = () => {
+        const db = request.result; const tx = db.transaction('sync_queue', 'readonly');
+        const get = tx.objectStore('sync_queue').getAll();
+        get.onsuccess = () => { const rows = get.result; db.close(); resolve(rows); };
+        get.onerror = () => { db.close(); resolve([]); };
+      };
+      request.onerror = () => resolve([]);
+    }));
+    assert.equal(queue.length, 1);
+    assert.ok(queue[0].clientRequestId);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: fence mismatch locks runner and preserves durable answer queue');
+  }
+
+  // 8. Conflict: local draft is restored, server copy is retained, submit stays blocked.
   {
     const scenario = makeScenario('conflict');
     const { context, page } = await newPage(browser, scenario);
@@ -421,7 +465,7 @@ try {
     console.log('PASS: conflict draft restores after reload and submit remains blocked');
   }
 
-  // 8. Server expiry triggers one automatic submit and clears the timer interval.
+  // 9. Server expiry triggers one automatic submit and clears the timer interval.
   {
     const scenario = makeScenario();
     scenario.expiresInMs = -1000;
@@ -437,7 +481,7 @@ try {
     console.log('PASS: server expiry auto-submits once and clears timer');
   }
 
-  // 9. Lost submit response: status is checked; no second start/submit is posted.
+  // 10. Lost submit response: status is checked; no second start/submit is posted.
   {
     const scenario = makeScenario('unknown-submit');
     const { context, page } = await newPage(browser, scenario);
