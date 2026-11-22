@@ -17,7 +17,8 @@ class ExamAttemptPolicy
         // exposes answer payloads and per-question grading data. Student self-service
         // uses the dedicated result endpoint and its restricted DTO instead.
         if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view')
+            return $this->isSingleRoleGuru($user)
+                && $user->hasPermission('report.view')
                 && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
@@ -66,7 +67,7 @@ class ExamAttemptPolicy
     public function score(User $user, ExamAttempt $attempt): bool
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU') || !$this->isSingleRoleGuru($user)) return false;
 
         $exam = $attempt->exam;
         $assessment = $exam?->assessment;
@@ -106,6 +107,13 @@ class ExamAttemptPolicy
      * Reopening a finalized score is restricted to the assigned Guru
      * within the authorized tenant and teaching-assignment scope.
      */
+    private function isSingleRoleGuru(User $user): bool
+    {
+        $roles = $user->roles()->pluck('name')->all();
+
+        return count($roles) === 1 && $roles[0] === 'GURU';
+    }
+
     public function reopen(User $user, ExamAttempt $attempt): bool
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
@@ -114,6 +122,7 @@ class ExamAttemptPolicy
         }
 
         return $user->hasRole('GURU')
+            && $this->isSingleRoleGuru($user)
             && $user->hasPermission('exam.grade')
             && $attempt->exam
             && $attempt->exam->assessment
