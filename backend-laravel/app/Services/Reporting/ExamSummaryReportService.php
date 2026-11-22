@@ -3,41 +3,33 @@
 namespace App\Services\Reporting;
 
 use App\Models\Exam;
-use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
-use Illuminate\Support\Facades\DB;
 
 class ExamSummaryReportService
 {
     /**
-     * Get summary report for an exam.
+     * Only the authoritative current score pointer contributes to reports.
+     * Historical score versions remain audit history and are never aggregated.
      */
     public function getSummary(Exam $exam): array
     {
-        $participantCount = $exam->participants()->where('exam_participants.tenant_id', $exam->tenant_id)->count();
-        $attemptCount = $exam->attempts()->where('exam_attempts.tenant_id', $exam->tenant_id)->count();
+        $participantCount = $exam->participants()
+            ->where('exam_participants.tenant_id', $exam->tenant_id)
+            ->count();
 
-        $stats = ExamAttemptScore::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->select([
-                DB::raw('COUNT(*) as total_scored'),
-                DB::raw('SUM(CASE WHEN grading_status = "FINALIZED" THEN 1 ELSE 0 END) as finalized_count'),
-                DB::raw('SUM(CASE WHEN grading_status = "MANUAL_REVIEW" THEN 1 ELSE 0 END) as pending_manual_count'),
-                DB::raw('AVG(percentage) as average_percentage'),
-                DB::raw('MAX(percentage) as highest_percentage'),
-                DB::raw('MIN(percentage) as lowest_percentage'),
-                DB::raw('AVG(raw_score) as average_score'),
-                DB::raw('MAX(raw_score) as highest_score'),
-                DB::raw('MIN(raw_score) as lowest_score'),
-            ])
+        $attemptCount = $exam->attempts()
+            ->where('exam_attempts.tenant_id', $exam->tenant_id)
+            ->count();
+
+        $stats = $this->currentScoreQuery($exam)
+            ->selectRaw($this->aggregateSelect())
             ->first();
 
         return [
             'exam_title' => $exam->title,
             'participant_count' => $participantCount,
             'attempt_count' => $attemptCount,
-            'total_scored' => $stats->total_scored ?? 0,
+            'total_scored' => (int) ($stats->total_scored ?? 0),
             'finalized_count' => (int) ($stats->finalized_count ?? 0),
             'pending_manual_count' => (int) ($stats->pending_manual_count ?? 0),
             'average_percentage' => round($stats->average_percentage ?? 0, 2),
@@ -69,11 +61,10 @@ class ExamSummaryReportService
                                     ->where('rombels.academic_year_id', $exam->assessment?->academic_year_id);
                             });
                     });
-            })->count();
+            })
+            ->count();
 
-        $stats = ExamAttemptScore::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
+        $stats = $this->currentScoreQuery($exam)
             ->whereHas('student', function ($userQuery) use ($exam, $rombel) {
                 $userQuery->where('tenant_id', $exam->tenant_id)
                     ->whereHas('studentProfile', function ($profileQuery) use ($exam, $rombel) {
@@ -85,24 +76,14 @@ class ExamSummaryReportService
                             });
                     });
             })
-            ->select([
-                DB::raw('COUNT(*) as total_scored'),
-                DB::raw('SUM(CASE WHEN grading_status = "FINALIZED" THEN 1 ELSE 0 END) as finalized_count'),
-                DB::raw('SUM(CASE WHEN grading_status = "MANUAL_REVIEW" THEN 1 ELSE 0 END) as pending_manual_count'),
-                DB::raw('AVG(percentage) as average_percentage'),
-                DB::raw('MAX(percentage) as highest_percentage'),
-                DB::raw('MIN(percentage) as lowest_percentage'),
-                DB::raw('AVG(raw_score) as average_score'),
-                DB::raw('MAX(raw_score) as highest_score'),
-                DB::raw('MIN(raw_score) as lowest_score'),
-            ])
+            ->selectRaw($this->aggregateSelect())
             ->first();
 
         return [
             'exam_title' => $exam->title,
             'rombel_name' => $rombel->name,
             'participant_count' => $participantCount,
-            'total_scored' => $stats->total_scored ?? 0,
+            'total_scored' => (int) ($stats->total_scored ?? 0),
             'finalized_count' => (int) ($stats->finalized_count ?? 0),
             'pending_manual_count' => (int) ($stats->pending_manual_count ?? 0),
             'average_percentage' => round($stats->average_percentage ?? 0, 2),
@@ -122,24 +103,44 @@ class ExamSummaryReportService
         $subject = \App\Models\Subject::query()->findOrFail($subjectId);
         $exams = Exam::query()
             ->where('tenant_id', $subject->tenant_id)
-            ->whereHas('assessment', function ($q) use ($subject) {
-                $q->where('tenant_id', $subject->tenant_id)
+            ->whereHas('assessment', function ($query) use ($subject) {
+                $query->where('tenant_id', $subject->tenant_id)
                     ->where('subject_id', $subject->id);
             })
-            ->when($filters['academic_year_id'] ?? null, function ($q, $ayId) {
-                $q->whereHas('assessment', function ($sq) use ($ayId) {
-                    $sq->where('academic_year_id', $ayId);
-                });
+            ->when($filters['academic_year_id'] ?? null, function ($query, $academicYearId) {
+                $query->whereHas('assessment', fn ($assessmentQuery) => $assessmentQuery->where('academic_year_id', $academicYearId));
             })
-            ->when($filters['semester_id'] ?? null, function ($q, $semesterId) {
-                $q->whereHas('assessment', function ($sq) use ($semesterId) {
-                    $sq->where('semester_id', $semesterId);
-                });
+            ->when($filters['semester_id'] ?? null, function ($query, $semesterId) {
+                $query->whereHas('assessment', fn ($assessmentQuery) => $assessmentQuery->where('semester_id', $semesterId));
             })
             ->get();
 
-        return $exams->map(function ($exam) {
-            return $this->getSummary($exam);
-        });
+        return $exams->map(fn (Exam $exam) => $this->getSummary($exam));
+    }
+
+    private function currentScoreQuery(Exam $exam): \Illuminate\Database\Eloquent\Builder
+    {
+        return ExamAttemptScore::query()
+            ->join('exam_attempt_score_current as current_pointer', function ($join) {
+                $join->on('current_pointer.attempt_id', '=', 'exam_attempt_scores.attempt_id')
+                    ->on('current_pointer.current_score_id', '=', 'exam_attempt_scores.id')
+                    ->on('current_pointer.tenant_id', '=', 'exam_attempt_scores.tenant_id')
+                    ->on('current_pointer.scoring_version', '=', 'exam_attempt_scores.scoring_version');
+            })
+            ->where('exam_attempt_scores.tenant_id', $exam->tenant_id)
+            ->where('exam_attempt_scores.exam_id', $exam->id);
+    }
+
+    private function aggregateSelect(): string
+    {
+        return 'COUNT(*) as total_scored,
+            SUM(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN 1 ELSE 0 END) as finalized_count,
+            SUM(CASE WHEN exam_attempt_scores.grading_status = "MANUAL_REVIEW" THEN 1 ELSE 0 END) as pending_manual_count,
+            AVG(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN exam_attempt_scores.percentage ELSE NULL END) as average_percentage,
+            MAX(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN exam_attempt_scores.percentage ELSE NULL END) as highest_percentage,
+            MIN(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN exam_attempt_scores.percentage ELSE NULL END) as lowest_percentage,
+            AVG(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN exam_attempt_scores.raw_score ELSE NULL END) as average_score,
+            MAX(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN exam_attempt_scores.raw_score ELSE NULL END) as highest_score,
+            MIN(CASE WHEN exam_attempt_scores.grading_status = "FINALIZED" THEN exam_attempt_scores.raw_score ELSE NULL END) as lowest_score';
     }
 }
