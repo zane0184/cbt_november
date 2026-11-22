@@ -259,3 +259,36 @@ Audit lanjutan menemukan beberapa komponen Admin yang sebelumnya hanya memeriksa
 
 ### STATUS WORKFLOW SETELAH PENAMBAHAN REGRESI
 Workflow `wa01-alternative-isolated-runtime.yml` sekarang mencantumkan test role canonical, retirement Kamad + rollback, dan penugasan Proktor sementara pada Guru. Namun setiap Actions run terbaru masih berakhir sebelum step berjalan; check run tidak memberikan summary, steps, logs, maupun artifact. Oleh sebab itu belum ada hasil PHP lint/PHPUnit dari perubahan terakhir. Jangan tandai hardening sebagai lulus sampai ada runner yang benar-benar mengeksekusi langkah tersebut.
+
+
+## ADDENDUM KONTROL UI PENUGASAN PROKTOR — EXACT SINGLE GURU (22 NOV 2026)
+
+### AUDIT
+Pemeriksaan ulang source pada branch koordinator menemukan:
+- `ExamProctorAssignmentService::assign()` sudah menolak akun yang tidak memiliki tepat satu role GURU dan tidak memiliki TeacherProfile aktif pada tenant yang sama.
+- `ProctorAssignmentManagement::assign()` dan `render()` sebelumnya hanya memfilter akun yang memiliki role GURU, sehingga akun multi-role masih dapat muncul sebagai kandidat di UI walaupun service akan menolaknya.
+- Ini merupakan inkonsistensi pilihan UI terhadap validasi server-side; bukan bukti bahwa assignment multi-role berhasil disimpan.
+
+### DESAIN
+Daftar kandidat dan lookup saat submit harus sama-sama mensyaratkan tepat satu role, yaitu GURU, serta TeacherProfile aktif pada tenant yang sama. Validasi service tetap menjadi otoritas terakhir dan tidak dihapus.
+
+### IMPLEMENTASI
+Sebelum perubahan, backup dibuat dan diverifikasi melalui kesamaan Git blob SHA:
+- `ProctorAssignmentManagement.php`: source sebelum patch blob `c084d7b240b118f99c5f259d1658f3bd4b9cf8d6`; backup `docs/backup/coordinator-web-admin-2026-11-22/ProctorAssignmentManagement.php.before-exact-guru-role-ui-filter`.
+- `ProctorAssignmentSecurityTest.php`: source sebelum patch blob `10b279826a4d56a740dadc557609bf81496ea3fb`; backup `docs/backup/coordinator-web-admin-2026-11-22/ProctorAssignmentSecurityTest.php.before-exact-guru-role-ui-filter`.
+- Dokumen audit sebelum addendum juga dibackup pada `docs/backup/coordinator-web-admin-2026-11-22/AUDIT_KOORDINATOR_WEB_ADMIN_2026-11-22.md.before-exact-guru-role-ui-filter`; blob asal `c37decb4f266a0089868172e896de815a52e6b28`.
+
+Perubahan:
+1. Query kandidat pada `assign()` ditambah `has('roles', '=', 1)`.
+2. Query kandidat pada `render()` ditambah syarat yang sama.
+3. `ProctorAssignmentSecurityTest` ditambah test negatif yang membuat akun dengan role GURU + ADMIN_MADRASAH dan memastikan nama akun tersebut tidak tampil pada daftar kandidat.
+4. Service tetap mempertahankan exact-role validation; tidak ada perubahan pada policy, migration, skema, atau data.
+
+### PENGUJIAN
+- Pemeriksaan isi source dan test setelah commit: dilakukan melalui fetch ulang branch.
+- Backup diverifikasi dari blob SHA asal yang sama dengan source pra-patch.
+- PHPUnit, PHP lint, dan test runtime: BELUM DIJALANKAN. Tidak ada klaim test lulus.
+- Belum ada perubahan VPS, database, migration, branch main, merge, atau deployment.
+
+### STATUS
+Patch UI exact-role dibuat pada branch koordinator dan menunggu verifikasi runtime. P0 Admin tetap NOT ACCEPTED sampai rangkaian tes PHP 8.3 + MySQL 8 disposable dan regression security dapat dijalankan serta diperiksa.
