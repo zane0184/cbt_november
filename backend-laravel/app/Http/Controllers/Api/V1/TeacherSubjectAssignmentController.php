@@ -30,7 +30,7 @@ class TeacherSubjectAssignmentController extends Controller
             ->with(['teacher:id,full_name', 'subject:id,name,code', 'rombel:id,name', 'academicYear:id,name', 'semester:id,term'])
             ->orderByDesc('created_at');
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             $profile = TeacherProfile::query()->where('user_id', $user->id)->first();
             abort_unless($profile, 403, 'Profil guru tidak ditemukan.');
             $query->where('teacher_profile_id', $profile->id);
@@ -152,7 +152,7 @@ class TeacherSubjectAssignmentController extends Controller
     {
         return $user !== null
             && $user->tenant_id !== null
-            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasExactRole('ADMIN_MADRASAH')
             && $user->hasPermission('academic.manage');
     }
 
@@ -163,7 +163,7 @@ class TeacherSubjectAssignmentController extends Controller
             return;
         }
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             $profile = TeacherProfile::query()->where('user_id', $user->id)->first();
             abort_unless($profile && $assignment->teacher_profile_id === $profile->id, 403);
             return;
@@ -225,7 +225,7 @@ class TeacherSubjectAssignmentController extends Controller
         }
 
         $teacherUser = $teacher->user;
-        if (!$teacherUser || $teacherUser->deleted_at !== null || $teacherUser->tenant_id !== $tenantId || !$teacherUser->hasRole('GURU')) {
+        if (!$teacherUser || $teacherUser->deleted_at !== null || $teacherUser->tenant_id !== $tenantId || !$teacherUser->hasExactRole('GURU')) {
             throw ValidationException::withMessages(['teacher_profile_id' => 'Profil harus terhubung ke akun Guru aktif dalam tenant yang sama.']);
         }
 
