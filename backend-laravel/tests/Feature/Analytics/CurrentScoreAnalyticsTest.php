@@ -21,6 +21,7 @@ use App\Services\Analytics\StudentAnalyticsService;
 use App\Services\Analytics\SubjectAnalyticsService;
 use App\Services\Reporting\ExamSummaryReportService;
 use App\Services\Reporting\QuestionReportService;
+use App\Services\Reporting\StudentResultReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -184,6 +185,25 @@ class CurrentScoreAnalyticsTest extends TestCase
 
         $this->assertSame(0, ExamAttemptScore::query()->where('attempt_id', $attempt->id)->current()->count());
         $this->assertSame(0, app(ExamAnalyticsService::class)->getSummary($exam)['participant_count']);
+    }
+
+    public function test_student_result_filter_rejects_pointer_with_mismatched_scoring_version(): void
+    {
+        $exam = Exam::factory()->create(['tenant_id' => $this->tenant->id, 'show_result' => true]);
+        [$student, $attempt] = $this->createScoredAttempt($exam, 30.0, 90.0);
+
+        ExamAttemptScoreCurrent::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('attempt_id', $attempt->id)
+            ->update(['scoring_version' => 3]);
+
+        $results = app(StudentResultReportService::class)->getStudentResults($student, [
+            'finalized_only' => true,
+            'visible_only' => true,
+        ]);
+
+        $this->assertSame(0, $results->total());
+        $this->assertNull($attempt->fresh()->resolvedCurrentScore());
     }
 
     /**
