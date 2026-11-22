@@ -51,7 +51,7 @@ class StudentAcademicEvent extends Model
 
     public function fromRombel(): BelongsTo
     {
-        return $this->belongsTo(Rombel::class, 'from_rombel_id');
+        return $this->belongsTo(Rombel::class, 'from_rombel_id')->withTrashed();
     }
 
     public function toRombel(): BelongsTo
