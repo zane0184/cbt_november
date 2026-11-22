@@ -107,7 +107,7 @@ class ScoringService
                 if (!$existingScore) {
                     throw new \DomainException('Scoring blocked: current score pointer target is invalid.');
                 }
-            } elseif (ExamAttemptScore::where('attempt_id', $attempt->id)->exists()) {
+            } elseif (ExamAttemptScore::where('tenant_id', $attempt->tenant_id)->where('attempt_id', $attempt->id)->exists()) {
                 throw new \DomainException('Scoring blocked: current score pointer is missing for an attempt with score history.');
             }
 
@@ -197,6 +197,7 @@ class ScoringService
 
             $attemptScore = ExamAttemptScore::updateOrCreate(
                 [
+                    'tenant_id' => $attempt->tenant_id,
                     'attempt_id' => $attempt->id,
                     'scoring_version' => $version
                 ],
@@ -214,7 +215,7 @@ class ScoringService
             );
 
             ExamAttemptScoreCurrent::updateOrCreate(
-                ['attempt_id' => $attempt->id],
+                ['tenant_id' => $attempt->tenant_id, 'attempt_id' => $attempt->id],
                 [
                     'tenant_id' => $attempt->tenant_id,
                     'current_score_id' => $attemptScore->id,
@@ -258,7 +259,8 @@ class ScoringService
     ): ExamQuestionScore {
         $existingQScore = null;
         if (!$createNewVersion) {
-            $existingQScore = ExamQuestionScore::where('attempt_id', $attempt->id)
+            $existingQScore = ExamQuestionScore::where('tenant_id', $attempt->tenant_id)
+                ->where('attempt_id', $attempt->id)
                 ->where('snapshot_id', $snapshot->id)
                 ->where('scoring_version', $version)
                 ->lockForUpdate()
@@ -475,6 +477,7 @@ class ScoringService
     ): ExamQuestionScore {
         return ExamQuestionScore::updateOrCreate(
             [
+                'tenant_id' => $attempt->tenant_id,
                 'attempt_id' => $attempt->id,
                 'snapshot_id' => $snapshot->id,
                 'scoring_version' => $version,
