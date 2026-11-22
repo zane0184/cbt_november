@@ -155,3 +155,28 @@ Read-only audit terhadap Agent 4 Web Siswa menemukan source saat ini belum mengi
 5. Setelah test lulus, lakukan API E2E dua token/sesi dan dua browser terpisah; baru evaluasi status P0.
 6. Tidak ada production deploy/migration sebelum approval, backup, preflight, dan integrasi Agent 4.
 
+
+
+## 9. PEMULIHAN CI — 23 November 2026 (koordinator)
+
+### AUDIT artefak run 45053144875
+Artefak asli `agent2-p0-auth-session-fencing-45053144875-2` (ID `14769635195`) telah diunduh dan log diperiksa. Ditemukan tiga akar masalah test harness:
+1. Workflow tidak mengaktifkan `CBT_LICENSE_TEST_BYPASS`, sehingga middleware lisensi menghasilkan HTTP 423 pada banyak test. Bypass tersedia hanya untuk `APP_ENV=testing` dan tetap false by default.
+2. Fixture login pada `StudentWebLoginTest` dan `AuthTest` tidak menyetel `is_active=true`, sehingga controller secara benar menolak fixture dengan 403.
+3. Dua pemanggilan session array driver memakai SessionManager yang sama; test dua sesi sebenarnya berbagi instance store.
+Peringatan file `.env` hilang juga muncul pada runner, tetapi bukan akar semua failure.
+
+### IMPLEMENTASI patch harness
+Branch tetap `work/agent2-p0-auth-session-fencing-20261123`.
+- Workflow menambahkan `workflow_dispatch`, env test-only `CBT_LICENSE_TEST_BYPASS=true`, dan membuat file `.env` kosong sebelum bootstrap.
+- Fixture Siswa dan Admin ditandai aktif secara eksplisit pada test.
+- Test binding menggunakan dua instance SessionManager independen.
+- Backup byte-exact untuk workflow dan tiga test diverifikasi 4/4 cocok; backup berada di `backend-laravel/docs/backup/agent2-p0-auth-session-fencing-2026-11-23/ci-recovery-before-patch/`.
+- Backup checkpoint ini: `backend-laravel/docs/backup/agent2-p0-auth-session-fencing-2026-11-23/ci-recovery-before-patch/AGENT2_P0_AUTH_SESSION_FENCING_CHECKPOINT_2026-11-23.md.before-ci-recovery`.
+- Commit patch source terakhir saat catatan dibuat: `ed47e68f2842583ace3ab70eb3f36dca69e6bbd1`.
+
+### PENGUJIAN setelah patch
+Belum ada bukti hasil workflow pada exact commit patch di sesi ini. PHP lint, PHPUnit, MySQL 8 integration, dan two-connection concurrency tetap **NOT VERIFIED**. Run lama tetap 58 failed/24 warnings dan concurrency SKIPPED; jangan mengubah status run lama menjadi PASS.
+
+### NEXT
+Ambil run GitHub Actions yang terpicu pada commit terbaru; periksa semua step dan log. Jika test suite lulus, pastikan two-connection concurrency step juga PASS. Jika gagal, triase failure tersisa tanpa melemahkan production license/account checks. Receipt read-only dan media Web masih memerlukan kontrak desain Agent 2–Agent 4 pada Issue #10.
