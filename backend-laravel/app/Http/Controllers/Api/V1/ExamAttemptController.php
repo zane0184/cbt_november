@@ -254,11 +254,22 @@ class ExamAttemptController extends Controller
 
             $this->authorize('view', $lockedExam);
 
-            $lockedAttempt = $participant->attempts()
+            $activeAttempts = $participant->attempts()
                 ->where('status', 'IN_PROGRESS')
                 ->where('expires_at', '>', now())
+                ->orderBy('id')
                 ->lockForUpdate()
-                ->first();
+                ->get();
+
+            if ($activeAttempts->count() > 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ditemukan lebih dari satu Attempt aktif untuk peserta ini. Pemeriksaan integritas diperlukan.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
+                ], 409);
+            }
+
+            $lockedAttempt = $activeAttempts->first();
 
             if (!$lockedAttempt) {
                 return response()->json([
@@ -465,8 +476,20 @@ class ExamAttemptController extends Controller
                 ], 422);
             }
 
-            if (!$lockedAttempt->device_fingerprint) {
-                $lockedAttempt->device_fingerprint = $deviceId;
+            $activeAttemptCount = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->where('status', 'IN_PROGRESS')
+                ->where('expires_at', '>', now())
+                ->count();
+
+            if ($activeAttemptCount !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah Attempt aktif peserta tidak konsisten; submit ditahan untuk pemeriksaan integritas.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
+                ], 409);
             }
 
             $serverNow = now();
