@@ -428,7 +428,11 @@ class ImportWorkbookService
 
     private function teacherPayload(array $v): array
     {
-        return ['category'=>strtoupper($v[0]), 'nip'=>$v[1], 'nik'=>$v[2], 'nuptk'=>$v[3], 'name'=>$v[4], 'gender'=>strtoupper($v[5]), 'email'=>strtolower($v[6]), 'phone'=>$v[7]];
+        $category = strtoupper(trim($v[0]));
+        // PNS is accepted only as a legacy workbook value; persist the canonical ASN category.
+        if ($category === 'PNS') $category = 'ASN';
+
+        return ['category'=>$category, 'nip'=>$v[1], 'nik'=>$v[2], 'nuptk'=>$v[3], 'name'=>$v[4], 'gender'=>strtoupper($v[5]), 'email'=>strtolower($v[6]), 'phone'=>$v[7]];
     }
 
     private function studentPayload(array $v): array
@@ -449,7 +453,7 @@ class ImportWorkbookService
         if (mb_strlen($payload['name']) > 255) $errors[] = 'Nama lengkap maksimal 255 karakter.';
         if (!in_array($payload['gender'], ['L','P',''], true)) $errors[] = 'Jenis kelamin harus L atau P.';
         if ($type === 'GURU') {
-            if (!in_array($payload['category'], ['PNS','HONORER'], true)) $errors[] = 'Kategori kepegawaian harus PNS atau HONORER.';
+            if (!in_array($payload['category'], ['ASN','HONORER'], true)) $errors[] = 'Kategori kepegawaian harus ASN atau HONORER.';
             if ($payload['category'] === 'PNS' && (!preg_match('/^\d{18}$/', $payload['nip']) || $payload['nik'] !== '')) $errors[] = 'Guru PNS wajib mengisi NIP 18 digit dan mengosongkan NIK.';
             if ($payload['category'] === 'HONORER' && (!preg_match('/^\d{16}$/', $payload['nik']) || $payload['nip'] !== '')) $errors[] = 'Guru honorer wajib mengisi NIK 16 digit dan mengosongkan NIP.';
             if ($payload['nuptk'] !== '' && !preg_match('/^\d{16}$/', $payload['nuptk'])) $errors[] = 'NUPTK harus 16 digit teks.';
@@ -489,7 +493,10 @@ class ImportWorkbookService
         $errors = [];
         if ($p['identity'] === '' || $p['identity'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas Guru wajib berupa teks.';
         $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')
-            ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity'])->orWhere('employee_identifier',$p['identity']))->first();
+            ->where(function ($query) use ($p): void {
+                $query->where(fn ($asn) => $asn->where('employment_type', 'ASN')->where('nip', $p['identity']))
+                    ->orWhere(fn ($honorer) => $honorer->where('employment_type', 'HONORER')->where('nik', $p['identity']));
+            })->first();
         if (!$teacher && !in_array($p['identity'], $newTeacherKeys, true)) $errors[] = 'Guru tidak ditemukan pada tenant ini atau belum ada di sheet Data Guru yang valid.';
         $subject = $this->resolveSubject($p['subject'], $tenantId);
         if (!$subject) $errors[] = 'Mata pelajaran tidak dikenal pada tenant ini.';
@@ -556,15 +563,18 @@ class ImportWorkbookService
         $exists = $identityValues && TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)
             ->where(fn($q) => collect($identityValues)->each(fn ($value) => $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value)->orWhere('employee_identifier',$value)))->exists();
         if ($exists) return ['status'=>'SKIPPED','reason'=>'Identitas sudah terdaftar sebelum konfirmasi.'];
-        $loginIdentifier = $p['nip'] ?: $p['nik'];
+        $loginIdentifier = $p['category'] === 'ASN' ? $p['nip'] : $p['nik'];
         if ($this->loginUsernameExists($tenantId, $loginIdentifier)) throw new RuntimeException('Identitas login sudah digunakan sebagai username akun lain pada tenant ini.');
         $role = Role::query()->where('name','GURU')->firstOrFail();
         $temporaryPassword = Str::random(64);
         $user = User::create(['name'=>$p['name'],'username'=>$loginIdentifier,'email'=>$p['email'] ?: null,'password'=>Hash::make($temporaryPassword)]);
         $user->roles()->sync([$role->id]);
         $profile = TeacherProfile::create([
-            'user_id'=>$user->id,'nip'=>$p['nip'] ?: null,'nik'=>$p['nik'] ?: null,'nuptk'=>$p['nuptk'] ?: null,
-            'employee_identifier'=>$p['nip'] ?: $p['nik'],'full_name'=>$p['name'],
+            'user_id'=>$user->id,'employment_type'=>$p['category'],
+            'nip'=>$p['category'] === 'ASN' ? $p['nip'] : null,
+            'nik'=>$p['category'] === 'HONORER' ? $p['nik'] : null,
+            'nuptk'=>$p['nuptk'] ?: null,
+            'employee_identifier'=>$loginIdentifier,'full_name'=>$p['name'],
             'gender'=>$p['gender'] === 'L' ? 'M' : ($p['gender'] === 'P' ? 'F' : null),'phone'=>$p['phone'] ?: null,
         ]);
         app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'GURU','profile_id'=>$profile->id,'login_identifier_suffix'=>substr($p['nip'] ?: $p['nik'], -4)]);
@@ -599,7 +609,10 @@ class ImportWorkbookService
     private function importAssignment(array $p, string $tenantId, string $userId): array
     {
         $teacher = TeacherProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)->whereNull('deleted_at')
-            ->where(fn($q) => $q->where('nip',$p['identity'])->orWhere('nik',$p['identity'])->orWhere('employee_identifier',$p['identity']))->firstOrFail();
+            ->where(function ($query) use ($p): void {
+                $query->where(fn ($asn) => $asn->where('employment_type', 'ASN')->where('nip', $p['identity']))
+                    ->orWhere(fn ($honorer) => $honorer->where('employment_type', 'HONORER')->where('nik', $p['identity']));
+            })->firstOrFail();
         $subject = $this->resolveSubject($p['subject'],$tenantId) ?? throw new RuntimeException('Mata pelajaran tidak lagi valid.');
         $rombel = $this->resolveRombel($p['rombel'],$p['academic_year'],$tenantId) ?? throw new RuntimeException('Rombel tidak lagi valid.');
         $semester = $this->resolveSemester($p['semester'],$p['academic_year'],$tenantId) ?? throw new RuntimeException('Semester tidak lagi valid.');
