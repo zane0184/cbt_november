@@ -16,6 +16,7 @@
     </header>
     <main class="mx-auto max-w-5xl px-4 py-8" id="exam-app"
         data-exam-id="{{ $exam->id }}"
+        data-student-id="{{ $student->id }}"
         data-device-binding="{{ $deviceBindingId }}"
         data-require-token="{{ $exam->require_token ? '1' : '0' }}"
         data-has-active-attempt="{{ $activeAttempt ? '1' : '0' }}"
@@ -180,7 +181,7 @@
     async function persistAttemptContext() {
         const key = String(state.attemptId);
         await localTransaction(['attempt_context'], 'readwrite', tx => tx.objectStore('attempt_context').put({
-            key, attemptId: key, examId: String(app.dataset.examId), deviceBinding,
+            key, attemptId: key, examId: String(app.dataset.examId), studentId: String(app.dataset.studentId), deviceBinding,
             updatedAt: Date.now()
         }));
     }
@@ -188,7 +189,7 @@
         const key = 'submit:' + String(state.attemptId);
         await localTransaction(['local_meta'], 'readwrite', tx => tx.objectStore('local_meta').put({
             key, attemptId: String(state.attemptId), examId: String(app.dataset.examId),
-            deviceBinding, status, terminalStatus, updatedAt: Date.now()
+            studentId: String(app.dataset.studentId), deviceBinding, status, terminalStatus, updatedAt: Date.now()
         }));
     }
     async function findUncertainSubmitForExam() {
@@ -204,7 +205,7 @@
         });
         const statesByAttempt = new Map(rows.states.filter(row => row.attemptId).map(row => [String(row.attemptId), row]));
         return rows.contexts
-            .filter(row => row.examId === String(app.dataset.examId) && row.deviceBinding === deviceBinding)
+            .filter(row => row.examId === String(app.dataset.examId) && row.studentId === String(app.dataset.studentId))
             .map(row => ({ context: row, submit: statesByAttempt.get(String(row.attemptId)) }))
             .filter(row => row.submit && ['SUBMITTING', 'UNKNOWN'].includes(row.submit.status))
             .sort((a, b) => Number(b.submit.updatedAt || 0) - Number(a.submit.updatedAt || 0))[0] || null;
