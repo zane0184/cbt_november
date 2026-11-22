@@ -8,6 +8,8 @@ use App\Livewire\Admin\AdminDashboard;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\TenantProfileManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Livewire\Admin\QuestionBank;
+use App\Livewire\Admin\ExamManagement;
 use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
@@ -108,6 +110,8 @@ class AdminUserManagementScopeTest extends TestCase
         Livewire::test(StudentRombelManagement::class)->assertForbidden();
         Livewire::test(TenantProfileManagement::class)->assertForbidden();
         Livewire::test(ProctorAssignmentManagement::class)->assertForbidden();
+        Livewire::test(QuestionBank::class)->assertForbidden();
+        Livewire::test(ExamManagement::class)->assertForbidden();
     }
 
     public function test_admin_can_create_guru_and_student_with_profiles_and_audit_log(): void
