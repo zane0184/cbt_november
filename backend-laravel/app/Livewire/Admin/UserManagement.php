@@ -199,6 +199,10 @@ class UserManagement extends Component
                 'name' => $user->name, 'role' => $this->selectedRole,
                 'username' => $user->username,
                 'profile_type' => $this->selectedRole === 'GURU' ? 'TeacherProfile' : 'StudentProfile',
+                'employment_type' => $this->selectedRole === 'GURU' ? $this->employmentType : null,
+                'login_identifier_suffix' => $this->selectedRole === 'GURU'
+                    ? substr($this->employmentType === 'ASN' ? trim($this->nip) : trim($this->nik), -4)
+                    : substr(trim($this->nisn), -4),
             ]);
         }, 3);
 
