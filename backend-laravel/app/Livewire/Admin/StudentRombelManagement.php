@@ -213,9 +213,9 @@ class StudentRombelManagement extends Component
             ->orderBy('full_name')->paginate(15, ['*'], 'studentsPage');
 
         $studentsWithMemberships = StudentProfile::query()
-            ->with(['user', 'rombels' => fn ($query) => $query->whereNull('rombels.deleted_at')->with(['gradeLevel', 'academicYear'])])
+            ->with(['user', 'rombels' => fn ($query) => $query->withTrashed()->with(['gradeLevel', 'academicYear'])])
             ->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereHas('rombels', fn ($query) => $query->whereNull('rombels.deleted_at'))
+            ->whereHas('rombels', fn ($query) => $query->withTrashed())
             ->whereHas('user', fn ($query) => $query->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')->has('roles', '=', 1)
                 ->whereHas('roles', fn ($roles) => $roles->where('name', 'SISWA')))
