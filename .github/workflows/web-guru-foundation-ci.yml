@@ -163,7 +163,12 @@ jobs:
 
       - name: PHPUnit — Web Guru foundation security and data scope
         shell: bash
-        run: php artisan test --filter=TeacherPortalFoundationTest --display-warnings
+        run: |
+          set -euo pipefail
+          test ! -e .env
+          : > .env
+          trap 'rm -f .env' EXIT
+          php artisan test --filter=TeacherPortalFoundationTest --display-warnings
 
       - name: Verify migrated tables use InnoDB
         shell: bash
