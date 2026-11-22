@@ -18,7 +18,7 @@ use App\Livewire\Proktor\ProktorDashboard;
 Route::get('/', function () {
     if (auth()->check()) {
         $user = auth()->user();
-        if ($user->hasRole('OPERATOR') || $user->hasRole('ADMIN_MADRASAH')) {
+        if ($user->hasRole('ADMIN_MADRASAH')) {
             return redirect('/admin/dashboard');
         } elseif ($user->hasRole('GURU')) {
             return redirect('/admin/exams');
@@ -71,13 +71,7 @@ Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('stude
 
 Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
-    Route::get('/admin/dashboard', OperatorDashboard::class)->name('admin.dashboard');
-    // Legacy URL retained as a redirect only; both legacy role identifiers use one Admin Madrasah portal.
-    Route::get('/operator/dashboard', function () {
-        abort_unless(auth()->user()->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists(), 403);
-        return redirect('/admin/dashboard');
-    });
-    Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
+    Route::get('/admin/dashboard', \App\Livewire\Admin\OperatorDashboard::class)->name('admin.dashboard');
 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);
