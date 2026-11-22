@@ -180,6 +180,11 @@ return new class extends Migration
     {
         $this->assertPrerequisites(false);
 
+        if (DB::getDriverName() === 'mysql'
+            && (int) DB::selectOne('SELECT @@FOREIGN_KEY_CHECKS AS enabled')->enabled !== 1) {
+            throw new RuntimeException('Stage 4B rollback requires MySQL foreign-key checks to remain enabled.');
+        }
+
         foreach (self::TABLES as $table) {
             if (Schema::hasTable($table) && DB::table($table)->exists()) {
                 throw new RuntimeException("Stage 4B rollback refused: {$table} contains room/session history. Preserve the records and use an approved forward-only recovery.");
