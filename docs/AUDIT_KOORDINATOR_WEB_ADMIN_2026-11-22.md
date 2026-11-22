@@ -96,3 +96,19 @@ P0-H: Upgrade compatibility dari VPS baseline hanya setelah ada bukti read-only 
 Web Admin: NOT ACCEPTED / P0 OPEN.
 Tidak ada izin merge, production migration, atau deployment.
 Tahap berikutnya adalah patch terukur per ownership, backup per file, test exact-SHA di disposable runtime, lalu review integrasi. Web Guru dan Web Siswa tetap ditahan sampai Web Admin lulus acceptance.
+
+
+## ADDENDUM IMPLEMENTASI KOORDINATOR — CI BRANCH ISOLATION
+Setelah audit statis, workflow isolasi WA01 di branch koordinator disiapkan agar perubahan berikutnya dapat diuji pada branch terpisah tanpa menulis ke branch Agent 3 atau main.
+
+- Workflow: .github/workflows/wa01-alternative-isolated-runtime.yml
+- Blob sebelum perubahan: c21ba66ddfd32838962a75bae584ea953a16b333
+- Backup byte-exact dibuat terlebih dahulu: docs/backup/coordinator-web-admin-2026-11-22/wa01-alternative-isolated-runtime.yml.before-coordinator-branch
+- Backup commit: 8ffc427c7ceac25dc98dd1f4d54aeb2e4da9ef1b
+- Workflow branch filter diperluas agar mencakup work/coordinator-web-admin-audit-20261122.
+- Commit perubahan workflow: c3d2c816b4fe219542ae329a2fe36370ec126491
+- Blob workflow setelah perubahan: 172107b8e14a0ae1c9dfb584386facea7b789eeb
+- Workflow menggunakan MySQL 8 disposable dan app DB user dengan privilege terbatas sesuai konfigurasi file; tidak diarahkan ke VPS.
+- Saat pemeriksaan pertama setelah commit, endpoint Actions belum menampilkan run untuk branch ini (total_count 0). Karena itu belum ada hasil runtime PASS/FAIL; pemicu CI harus diverifikasi pada perubahan backend berikutnya atau setelah GitHub memproses event.
+
+Perubahan ini hanya workflow CI dan backup workflow; tidak ada source aplikasi, migration, database, credential, atau deployment yang diubah. Test runtime koordinator tetap NOT RUN.
