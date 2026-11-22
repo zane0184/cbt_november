@@ -15,7 +15,7 @@ class AttemptAuthSessionBindingTest extends TestCase
         $user = new User();
         $binding = app(AttemptAuthSessionBinding::class);
 
-        $firstSession = app('session')->driver('array');
+        $firstSession = (new \Illuminate\Session\SessionManager(app()))->driver('array');
         $firstSession->setId('web-session-first-0000000000000001');
         $firstSession->start();
         $firstRequest = Request::create('/api/v1/exams/attempt');
@@ -23,7 +23,7 @@ class AttemptAuthSessionBindingTest extends TestCase
         $firstRequest->setUserResolver(fn () => $user);
         $firstRequest->headers->set('X-Device-Binding-ID', 'same-browser-fingerprint');
 
-        $secondSession = app('session')->driver('array');
+        $secondSession = (new \Illuminate\Session\SessionManager(app()))->driver('array');
         $secondSession->setId('web-session-second-000000000002');
         $secondSession->start();
         $secondRequest = Request::create('/api/v1/exams/attempt');
