@@ -244,3 +244,10 @@ The updated teardown restores nullable participant/proctor references while thei
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-foreign-key-safe-teardown | 98539a62144da02aab564d00e92ea3508afac411 | 14569 |
 
 The previous test teardown disabled `FOREIGN_KEY_CHECKS` while deleting a disposable tenant's records and restoring nullable room/proctor references. The snapshot is retained before tightening teardown to preserve constraint enforcement and avoid deleting or nulling records until dependent rows are removed in child-first order.
+
+
+## Supplemental snapshots — MySQL test fixture and independent connection assertions
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-canonical-guru-and-independent-connection-assertions | 4b10d619c1ce87893fb006da26fd18892e6f8bd7 | 14378 | e3d19c60e64cc636e8193f9639bbb529daff06b2 |
