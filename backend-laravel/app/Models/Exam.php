@@ -20,7 +20,7 @@ class Exam extends Model
         'attempt_limit', 'shuffle_questions', 'shuffle_options',
         'show_result', 'show_correct_answer', 'allow_resume',
         'auto_submit', 'require_token', 'token', 'token_mode',
-        'revision_number', 'created_by', 'published_at', 'locked_at'
+        'revision_number', 'created_by', 'published_at', 'locked_at', 'proctoring_mode'
     ];
 
     protected $casts = [
