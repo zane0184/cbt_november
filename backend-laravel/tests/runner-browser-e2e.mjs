@@ -24,7 +24,7 @@ const fixture = [
   '<meta name="csrf-token" content="test-csrf"><style>.hidden{display:none!important}button{min-height:44px}' + runnerStyles + '</style></head><body>',
   '<main id="exam-app" data-exam-id="exam-1" data-student-id="student-1" data-device-binding="11111111-1111-4111-8111-111111111111" data-require-token="0">',
   '<section id="instruction-panel"><input id="exam-token"><button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
-  '<section id="runner-panel" class="hidden"><div class="runner-layout"><div class="runner-main"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
+  '<section id="runner-panel" class="hidden"><div id="question-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div><div class="runner-layout"><div class="runner-main"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
   '<div id="question-number"></div><div id="question-points"></div><div id="question-media"></div><div id="question-stem" dir="auto"></div><div id="question-input"></div>',
   '<button id="previous-button" type="button">Sebelumnya</button><button id="next-button" type="button">Berikutnya</button></div>',
   '<details id="question-nav-panel" class="question-nav-panel"><summary>Nomor soal</summary><div id="question-nav"></div><button id="submit-button" type="button">Kirim Ujian</button></details></div></section>',
