@@ -399,7 +399,13 @@ class MonitoringController extends Controller
             }
 
             if (!app(\App\Services\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
+                $fenceMatches = app(\App\Services\AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
+                return response()->json([
+                    'success' => false,
+                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                ], 409);
             }
 
             $serverNow = now();
@@ -409,7 +415,9 @@ class MonitoringController extends Controller
                 'success' => true,
                 'server_now' => $serverNow->toIso8601String(),
                 'expires_at' => $lockedAttempt->expires_at->toIso8601String(),
-                'status' => $lockedAttempt->status
+                'status' => $lockedAttempt->status,
+                'fence_generation' => (int) $lockedAttempt->fence_generation,
+                'lease_expires_at' => $lockedAttempt->device_lease_expires_at?->toIso8601String(),
             ]);
         });
     }
