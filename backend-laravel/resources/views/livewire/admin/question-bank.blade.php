@@ -3,7 +3,7 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-navy-900">Bank Soal & Modul Asesmen</h1>
-            <p class="text-xs text-textSecondary mt-1">Kelola butir soal pilihan ganda, pilihan ganda kompleks, benar/salah, menjodohkan, jawaban singkat, dan uraian/esai</p>
+            <p class="text-xs text-textSecondary mt-1">Kelola butir soal pilihan ganda, pilihan ganda kompleks, benar/salah, menjodohkan, dan uraian/esai</p>
         </div>
         @can('create', \App\Models\Question::class)
             <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
@@ -205,7 +205,9 @@
                                 <option value="TRUE_FALSE">Benar / Salah</option>
                                 <option value="MATCHING">Menjodohkan (Matching)</option>
                                 <option value="ESSAY">Uraian / Esai</option>
-                                <option value="SHORT_ANSWER">Jawaban Singkat</option>
+                                @if($questionType === 'SHORT_ANSWER')
+                                    <option value="SHORT_ANSWER" disabled>Jawaban Singkat — dinonaktifkan sampai scoring siap</option>
+                                @endif
                             </select>
                         </div>
                         <div>
