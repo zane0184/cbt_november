@@ -25,4 +25,9 @@ class TeacherProfile extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function userForHistory(): BelongsTo
+    {
+        return $this->belongsTo(User::class)->withTrashed();
+    }
 }
