@@ -313,6 +313,9 @@ class UserManagement extends Component
                 'deleted_at' => null,
             ];
 
+            // Increment the auth epoch so a stale browser session cannot revive after reactivation.
+            $user->auth_version = ((int) $user->auth_version) + 1;
+
             // Revoke API credentials and remember-me sessions before soft-deactivation.
             $user->tokens()->delete();
             $user->remember_token = Str::random(60);
@@ -350,6 +353,10 @@ class UserManagement extends Component
                 'deleted_at' => $user->deleted_at?->toISOString(),
             ];
             $user->restore();
+            // A restored account must not revive sessions created before deactivation.
+            $user->auth_version = ((int) $user->auth_version) + 1;
+            $user->remember_token = Str::random(60);
+            $user->save();
 
             app(AuditService::class)->log('USER_REACTIVATED', 'User', $user->id, $old, [
                 'status' => 'ACTIVE',
