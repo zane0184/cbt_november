@@ -35,7 +35,7 @@ class LoginIdentityResolver
         $user = User::withoutGlobalScopes()->with('roles')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($candidateIds->first())->first();
         if (! $user) return null;
         $roles = $user->roles->pluck('name')->all();
-        $allowedRoles = ['ADMIN_MADRASAH', 'KAMAD', 'GURU', 'SISWA'];
+        $allowedRoles = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
         if (count($roles) !== 1 || !in_array($roles[0], $allowedRoles, true)) return null;
 
         $matchesUsername = $usernameUsers->contains(fn ($candidate) => (string) $candidate->id === (string) $user->id);
@@ -45,7 +45,7 @@ class LoginIdentityResolver
         return match ($roles[0]) {
             'SISWA' => $matchesStudent ? $user : null,
             'GURU' => ($matchesTeacher || $matchesUsername) ? $user : null,
-            'ADMIN_MADRASAH', 'KAMAD' => $matchesUsername ? $user : null,
+            'ADMIN_MADRASAH' => $matchesUsername ? $user : null,
             default => null,
         };
     }
