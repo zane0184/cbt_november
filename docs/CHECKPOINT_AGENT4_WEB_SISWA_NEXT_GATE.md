@@ -579,3 +579,124 @@ Commit addendum: checkpoint `0459e24152a74b2baac4e4383f4baf175f7e11f6`; reconcil
 Perubahan hanya dokumentasi. Tidak ada source runtime/test code/route/API/controller/policy/model/service/middleware/migration/schema/database/config, source Agent 1/2/3, kandidat, merge/PR/deployment yang diubah.
 
 Status akhir tetap `BLOCKED — CROSS-AGENT CONTRACT PENDING`; ownership Agent 4, approval owner Agent 1/2/3, F-01/F-02, lease/fencing, answer receipt/conflict, submit/expiry, snapshot/media, scheduler/recovery dan izin implementasi belum selesai. Web Siswa `NOT READY FOR OPERATIONAL EXAM`.
+
+## 18. REFRESH REMOTE & CROSS-AGENT CONTRACT CLOSURE — 22 NOVEMBER 2026, 19:28 WIB
+
+### 18.1 Verifikasi branch dan graph
+
+Remote refs berikut ditemukan kembali melalui pencarian branch GitHub: `work/stage4b-room-session-20261122`, `work/stage4d-account-lifecycle-20261122`, `work/web-guru-foundation-20261122`, `work/agent4-web-siswa-audit-20261122`, `work/import-guru-siswa-implementation-20261122`, dan `main`.
+
+Compare remote terhadap `main` pada refresh ini:
+- Agent 1: status `diverged`, 1239 ahead / 15 behind (compare API membatasi daftar file pada 300; bukan inventaris lengkap).
+- Agent 2: status `diverged`, 1360 ahead / 15 behind (daftar file compare dibatasi 300).
+- Agent 3: status `diverged`, 1192 ahead / 15 behind (daftar file compare dibatasi 300).
+- Kandidat Agent 4: status `diverged`, 930 ahead / 15 behind (daftar file compare dibatasi 300).
+- Dokumentasi Agent 4: pada awal refresh identik dengan checkpoint `05447d93da90063389b822ce2468a459c5bbac11`; compare tepat dari checkpoint tersebut ke branch menghasilkan 0 ahead / 0 behind.
+- Main: `feab77228f7108f7f7a45325d7f1fb878c07310b`.
+
+Catatan keterbatasan: pencarian branch hanya mengembalikan nama ref, sedangkan compare connector tidak mengekspos SHA tip head secara terpisah (hanya base/merge-base dan status graph). Karena itu SHA tip Agent 1/2/3/kandidat tidak diklaim sebagai hasil pembacaan langsung ref pada sesi ini. SHA yang disebut pada laporan/comment owner atau checkpoint sebelumnya tetap diberi label sebagai SHA yang dilaporkan, bukan SHA tip yang baru diverifikasi.
+
+Branch dokumentasi Agent 4 kemudian menerima satu commit backup dan satu commit checkpoint pada sesi ini. Branch tersebut tetap dokumentasi saja dan tidak menjadi basis source runtime.
+
+### 18.2 Checkpoint dan backup
+
+- Checkpoint sebelum refresh: blob `9357c3d18ba59efaa3f76a2b8388bd465c41b9d5`.
+- Backup dibuat sebelum update: `docs/backup/agent4-contract-closure-2026-11-22/CHECKPOINT_AGENT4_WEB_SISWA_NEXT_GATE.before-refresh-20261122-1928.md`.
+- Backup blob: `9357c3d18ba59efaa3f76a2b8388bd465c41b9d5`.
+- Verifikasi original blob = backup blob: **BYTE-EXACT PASS**.
+- Commit backup: `c750dbf6b13f480bed35c7541d60e0ee087a8317`.
+- Lima dokumen kontrak Agent 4 dan backup manifest sebelumnya dibaca ulang pada branch dokumentasi. Tidak ada perubahan pada reconciliation, test matrix, threat model, backend request Agent 2, atau manifest dalam refresh ini karena tidak ada approval/kontrak teknis baru yang dapat diverifikasi untuk mengubah acceptance criteria.
+
+### 18.3 Issue #8, #9, #10 dan approval
+
+Issue #8 tetap OPEN (7 komentar), Issue #9 tetap OPEN (2 komentar), Issue #10 tetap OPEN (19 komentar) pada refresh.
+
+Semua komentar yang diperiksa pada ketiga issue tercatat dari akun GitHub `zane0184`. Tidak ada komentar langsung dari akun owner teknis Agent 1, Agent 2, atau Agent 3 yang dapat diverifikasi terpisah. Dengan demikian:
+- Komentar yang melaporkan pekerjaan Agent 1/2/3 adalah catatan koordinasi/rekap, bukan approval owner.
+- Komentar keputusan koordinator #7078539953 (portal aktif, KAMAD frozen, Proktor assignment Guru) dan #7078921888 (prioritas Web CBT sampai Juni 2027; Android dan Web Super Admin ditunda) adalah keputusan produk koordinator, bukan persetujuan teknis Agent 1/2/3.
+- #7078306561 menyatakan NEEDS DESIGN untuk QuestionVersion/snapshot/accepted_answers/media; bukan approval final Agent 3.
+- #7079042438 dan #7079045535 adalah laporan Agent 3/Agent 1 yang disampaikan melalui akun koordinator; tidak membuktikan identitas GitHub owner yang terpisah.
+- Tidak ditemukan approval langsung owner Agent 4 untuk branch kandidat.
+
+| Domain/Owner | Status setelah refresh | Bukti/penjelasan |
+|---|---|---|
+| Agent 1 — canonical ExamSession, Room, scheduler, lock order, Attempt recovery, Proktor assignment | **PENDING / NEEDS DESIGN** | Laporan audit method-level menyebut multi-session masih mungkin, scheduler menyelesaikan Session/assignment tanpa recovery barrier Attempt aktif, reschedule independen, dan lock order belum konsisten. Belum ada approval teknis owner yang dapat diverifikasi. |
+| Agent 2 — exact-role SISWA, KAMAD frozen, Proktor authorization, F-01/F-02, lease/fencing, answer receipt/conflict, submit/expiry | **PENDING / P0 OPEN** | Belum ada jawaban owner terverifikasi untuk kontrak backend. Temuan source terdahulu tetap blocker; tidak ada bukti test integrasi baru yang menutupnya. |
+| Agent 3 — Web Guru/Proktor menu dan monitoring room-scope; QuestionVersion/snapshot/media boundary | **NEEDS DESIGN / PENDING** | Laporan UI menyebut route/menu Proktor belum tersedia dan monitoring lama masih Exam-level; source QuestionVersion tidak menyimpan accepted_answers dan snapshot belum menyalinnya. Komentar teknis yang tersedia berasal dari akun koordinator, bukan approval owner yang terverifikasi. |
+| Agent 4 — owner, official branch, base commit, scope | **PENDING CONFIRMATION** | Branch dokumentasi tetap dokumentasi saja. Kandidat `work/import-guru-siswa-implementation-20261122` @ `f38ceec7b0653fcf3363eec40f3d4577c323cca8` belum disahkan sebagai branch implementasi. |
+| Koordinator — izin implementasi | **NOT GRANTED** | Instruksi terakhir menegaskan implementation gate tetap tertutup. |
+
+### 18.4 Dampak keputusan ruang lingkup terbaru
+
+Keputusan koordinator #7078921888 menetapkan prioritas aktif hanya Web CBT sampai Juni 2027. Android native/Android Studio/Android API dan Web Super Admin ditunda dan bukan blocker Web CBT. Portal aktif tetap ADMIN_MADRASAH, GURU, SISWA; KAMAD frozen; Proktor adalah assignment sementara akun GURU di Web Guru; Operator berada pada Admin Madrasah. Ini memperjelas prioritas, tetapi tidak menutup blocker security Web Siswa dan tidak memberi izin implementasi.
+
+### 18.5 Kontrak dan blocker yang tetap terbuka
+
+1. **Exact-one SISWA:** seluruh endpoint peserta harus menolak role campuran termasuk SISWA+GURU, SISWA+KAMAD, SISWA+ADMIN_MADRASAH; Guru Proktor tetap bukan peserta.
+2. **KAMAD frozen:** tutup login web/API, token, session, route, permission, policy, Livewire, monitoring, report/export dan jalur bypass; pertahankan histori administratif.
+3. **Proktor:** exact-one GURU + assignment aktif, belum expired/revoked, dibatasi installation/tenant, Exam, canonical Session, Room/SessionRoom dan peserta; tidak otomatis memperoleh jawaban/nilai/bank soal/config/Force Submit/assignment lain. Tidak ada fungsi Proktor di Web Siswa.
+4. **F-01:** snapshot tidak boleh dilepas sebelum admission lengkap; Attempt resume yang sama setelah Exam close tetap diperbolehkan hanya jika IN_PROGRESS, belum expired, owner/participant/tenant/installation/device/lease/fencing sah. Attempt baru setelah close ditolak.
+5. **F-02:** media wajib terikat ke user → Attempt → question_order → snapshot → QuestionVersion → MediaAsset, termasuk validasi device/lease/fencing sesuai kontrak dan penolakan stale request setelah takeover.
+6. **Answer/receipt/409:** definisi canonical request ID, base revision, receipt yang dapat diverifikasi, idempotent replay, same ID/different payload, conflict archive dan response-lost recovery belum disetujui. Pending lokal tidak boleh dibuang pada 409 tanpa arsip konflik yang durable.
+7. **IndexedDB/offline:** enam object store tetap desain; belum ada implementasi/tes reload, crash, offline, multi-tab, quota, retry/dedup dan conflict recovery.
+8. **Submit/expiry:** submit idempotency, final-state lock, save-vs-submit race, timeout/response-lost retry, expiry dan Force Submit authorization/audit belum final.
+9. **Session/recovery:** satu Exam satu operational ExamSession, banyak Room; perlu canonical schedule authority, global lock order, recovery barrier dan scheduler guard terhadap Attempt aktif.
+10. **QuestionVersion/snapshot:** accepted_answers belum terbukti tersimpan di authoring/QuestionVersion dan disalin ke immutable snapshot; SHORT_ANSWER tetap BLOCKED. ESSAY manual review.
+11. **Test/CI:** tidak ada bukti baru CI exact-SHA, PHPUnit, MySQL 8/InnoDB, F-01/F-02 adversarial, lease/fencing, receipt/conflict, IndexedDB, multi-tab, submit race, room recovery, multi-device atau Browser E2E yang menutup acceptance gate.
+
+### 18.6 Pertanyaan teknis spesifik yang masih harus dijawab
+
+**Agent 1**
+- Apakah satu Exam secara DB/service dijamin tepat satu operational ExamSession? Tunjukkan invariant, unique/guard, dan migrasi hanya setelah persetujuan.
+- Apa schedule authority tunggal dan bagaimana Session mengikuti schedule revision Exam tanpa session/wave tambahan?
+- Apa global lock order untuk Exam → Room(s) → Session → SessionRoom(s) → Participant/Placement → Proctor Assignment → User, dan Attempt-only Exam → Participant → Attempt → Answer/Score/Lease?
+- Apa recovery barrier yang mencegah scheduler menyelesaikan Session/assignment ketika Attempt sah masih perlu dipulihkan?
+- Bagaimana assign/confirm/revoke/cancel/scheduler dibuat idempotent dan diaudit; tunjukkan MySQL concurrency test.
+
+**Agent 2**
+- Tunjukkan satu helper/guard exact-one SISWA yang diterapkan pada setiap Student Web/API/Livewire/service endpoint, bukan hanya login. Bagaimana user inactive/soft-deleted, installation mismatch, tenant mismatch dan peserta non-eligible ditolak?
+- Tunjukkan semua jalur KAMAD yang ditutup: login, token issuance, session, routes, policies, permission bootstrap, monitoring/report/export dan service authorization. Bagaimana histori jabatan dipertahankan tanpa capability?
+- Tetapkan kontrak admission snapshot start-vs-resume dan F-02 media chain; sertakan request/response/error, transaksi/lock order, audit event dan race test takeover.
+- Tetapkan lifecycle Device Lease/Fencing dan buktikan stale lease/fencing ditolak pada Attempt, Answer, Media dan Submit.
+- Tetapkan receipt/409, revision, same-request replay, payload mismatch, submit idempotency, response-lost retry, expiry dan Force Submit authorization.
+- Konfirmasi accepted_answers persistence/snapshot/scoring serta media version binding.
+
+**Agent 3**
+- Konfirmasi owner dan branch/HEAD Web Guru; tunjukkan route/menu Proktor berada di Web Guru dan hanya terlihat bagi Guru exact-one dengan assignment aktif.
+- Tunjukkan semua monitoring list/detail/action/export dibatasi Room/SessionRoom di backend response, bukan sekadar filter UI.
+- Tegaskan tidak ada Proktor route/action/API/menu di Web Siswa dan tidak ada penggunaan endpoint Exam-level lama untuk capability Proktor.
+- Tetapkan boundary QuestionVersion/accepted_answers/media dengan Agent 2 dan test authoring → snapshot → scoring.
+- Berikan hasil PHP lint/PHPUnit/MySQL 8 dan CI exact-SHA untuk source test terbaru; jumlah test method statis bukan bukti lulus.
+
+**Owner Agent 4 / koordinator**
+- Konfirmasi identitas owner Agent 4, official implementation branch, exact base commit, scope file/domain yang dimiliki, dan apakah kandidat @ `f38ceec7...` sah.
+- Koordinator baru memberi izin implementasi runtime setelah kontrak Agent 1–3 disetujui; keputusan itu harus tertulis eksplisit dengan branch/base dan file scope.
+
+### 18.7 Implementasi dan pengujian
+
+**DOCUMENTATION ONLY — NO RUNTIME IMPLEMENTATION.**
+
+Tidak ada source runtime, test code, route, API, controller, policy, model, service, middleware, migration, schema, database, config, branch Agent 1/2/3, kandidat Agent 4, merge, rebase, cherry-pick, PR, atau deployment yang diubah.
+
+Backup checkpoint byte-exact terverifikasi sebagaimana §18.2. Tidak ada PHP lint, PHPUnit, MySQL, Browser E2E, IndexedDB, multi-tab, concurrency, lease/fencing atau multi-device test yang dijalankan oleh refresh dokumentasi ini.
+
+### 18.8 Status dan urutan berikutnya
+
+- `AGENT 4 OWNERSHIP — PENDING CONFIRMATION`
+- `AGENT 1/2/3 TECHNICAL APPROVAL — NOT VERIFIED`
+- `F-01 — P0 OPEN`
+- `F-02 — P0 OPEN`
+- `EXACT-ONE SISWA — P0 OPEN`
+- `KAMAD FROZEN — PRODUCT DECISION FINAL; BACKEND ENFORCEMENT PENDING`
+- `PROKTOR GURU — PRODUCT DECISION FINAL; BACKEND + WEB GURU ENFORCEMENT PENDING`
+- `DEVICE LEASE/FENCING — NOT VERIFIED`
+- `ANSWER RECEIPT/CONFLICT — NEEDS DESIGN`
+- `INDEXEDDB/OFFLINE RECOVERY — NOT IMPLEMENTED / NOT VERIFIED`
+- `SUBMIT/EXPIRY — PENDING`
+- `ROOM/SESSION/RECOVERY — PENDING`
+- `QUESTIONVERSION/SNAPSHOT/MEDIA — NEEDS DESIGN`
+- `SHORT_ANSWER — BLOCKED`
+- `IMPLEMENTATION GATE — CLOSED`
+- `WEB SISWA — NOT READY FOR OPERATIONAL EXAM`
+
+Urutan berikutnya: tunggu jawaban langsung owner Agent 1/2/3 pada kontrak sesuai ownership; verifikasi identitas/ownership Agent 4 dan branch/base; rekonsiliasi exact source + test evidence; setelah seluruh kontrak disetujui, minta izin implementasi eksplisit koordinator. Sampai itu terjadi, Agent 4 tetap pada audit/desain/dokumentasi.
