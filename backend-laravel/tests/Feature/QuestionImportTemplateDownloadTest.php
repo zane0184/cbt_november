@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Exports\QuestionImport\QuestionImportTemplateExport;
+use App\Services\ExcelQuestionImporter;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -89,16 +90,20 @@ final class QuestionImportTemplateDownloadTest extends TestCase
             $this->assertSame('Jenis Soal', $data->getCell('L1')->getValue());
             $this->assertSame('Pertanyaan', $data->getCell('M1')->getValue());
             $this->assertSame(
-                '"MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,SHORT_ANSWER,ESSAY"',
+                '"MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,ESSAY"',
                 $data->getCell('L2')->getDataValidation()->getFormula1()
             );
             $this->assertSame('"EASY,MEDIUM,HARD"', $data->getCell('P2')->getDataValidation()->getFormula1());
+            $instructions = $workbook->getSheetByName('Petunjuk');
+            $this->assertStringContainsString('hanya MULTIPLE_CHOICE', (string) $instructions->getCell('B8')->getValue());
+            $this->assertStringContainsString('BLOCKED', (string) $instructions->getCell('B10')->getValue());
+
 
             $details = $workbook->getSheetByName('Detail Opsi');
             $this->assertSame('Option Key', $details->getCell('D1')->getValue());
             $this->assertSame('"A,B,C,D"', $details->getCell('D2')->getDataValidation()->getFormula1());
             $this->assertSame(
-                '"OPTION,MATCH_PAIR,ACCEPTED_ANSWER"',
+                '"OPTION,MATCH_PAIR"',
                 $details->getCell('B2')->getDataValidation()->getFormula1()
             );
 
@@ -115,6 +120,22 @@ final class QuestionImportTemplateDownloadTest extends TestCase
                 unlink($temporaryPath);
             }
         }
+    }
+
+    public function test_short_answer_is_rejected_by_importer_until_full_support_is_verified(): void
+    {
+        $result = app(ExcelQuestionImporter::class)->import('not-used', [
+            'rows' => [[
+                'stem' => 'Jawaban singkat belum didukung',
+                'type' => 'SHORT_ANSWER',
+                'accepted_answers' => ['contoh'],
+            ]],
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(1, $result['total_rows']);
+        $this->assertSame(0, $result['imported']);
+        $this->assertStringContainsString('Invalid question type', $result['errors'][0]['error']);
     }
 
     public function test_unauthenticated_user_cannot_download_question_template(): void
