@@ -10,49 +10,36 @@ class ExamAttemptPolicy
 {
     public function view(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $attempt->tenant_id) return false;
-
-        // This policy protects the Guru/Kamad result-detail surface, which
-        // exposes answer payloads and per-question grading data. Student self-service
-        // uses the dedicated result endpoint and its restricted DTO instead.
-        if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view')
-                && TeacherAccess::canViewExam($user, $attempt->exam);
-        }
-
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('report.view');
-        }
-
-        // OPERATOR is limited to operational monitoring and must not receive
-        // answer-level or score-detail access. Students use their own result route.
-        return false;
+        return $user->tenant_id === $attempt->tenant_id
+            && $user->hasExactRole('GURU')
+            && $user->hasPermission('report.view')
+            && TeacherAccess::canViewExam($user, $attempt->exam);
     }
 
     public function viewScore(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $attempt->tenant_id) return false;
-
-        if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $attempt->exam);
+        if ($user->tenant_id !== $attempt->tenant_id) {
+            return false;
         }
 
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('report.view');
+        if ($user->hasExactRole('GURU')) {
+            return $user->hasPermission('report.view')
+                && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
-        // Student results are visible only through the authoritative current-score pointer.
-        // Historical score rows must not become visible merely because they have a higher
-        // scoring_version or remain in the score history after a pointer change.
+        if (!$user->hasExactRole('SISWA')) {
+            return false;
+        }
+
+        // Student results are visible only through the authoritative current-score
+        // pointer. Historical versions are never selected by MAX(version).
         $participant = $attempt->participant;
         $exam = $attempt->exam;
         $currentScore = $attempt->resolvedCurrentScore();
 
         return $participant
             && $participant->tenant_id === $attempt->tenant_id
-            && $participant->user_id === $user->id
+            && (string) $participant->user_id === (string) $user->id
             && $exam
             && $exam->tenant_id === $attempt->tenant_id
             && $exam->show_result
@@ -65,12 +52,15 @@ class ExamAttemptPolicy
 
     public function score(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasExactRole('GURU')) {
+            return false;
+        }
 
         $exam = $attempt->exam;
         $assessment = $exam?->assessment;
-        if (!$exam || !$assessment) return false;
+        if (!$exam || !$assessment) {
+            return false;
+        }
 
         return $user->hasPermission('exam.grade')
             && TeacherAccess::canManageAssessment($user, $assessment)
@@ -79,45 +69,18 @@ class ExamAttemptPolicy
 
     public function grade(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        // Manual question-level grading belongs to the assigned Guru only.
-        // Admin Madrasah has no answer-level grading or result-finalization authority.
+        // Essay/manual grading belongs to the assigned Guru, never to Admin
+        // or a temporary Proktor assignment.
         return $this->score($user, $attempt);
     }
 
     public function finalize(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $attempt->tenant_id) return false;
-
-        if (!$user->hasRole('GURU')) return false;
-
-        $exam = $attempt->exam;
-        $assessment = $exam?->assessment;
-        if (!$exam || !$assessment) return false;
-
-        return $user->hasPermission('exam.grade')
-            && TeacherAccess::canManageAssessment($user, $assessment)
-            && TeacherAccess::canViewExam($user, $exam);
+        return $this->score($user, $attempt);
     }
 
-    /**
-     * Reopen applies to a FINALIZED SCORE, not to the student's exam attempt.
-     * Reopening a finalized score is restricted to the assigned Guru
-     * within the authorized tenant and teaching-assignment scope.
-     */
     public function reopen(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $attempt->tenant_id) {
-            return false;
-        }
-
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.grade')
-            && $attempt->exam
-            && $attempt->exam->assessment
-            && TeacherAccess::canManageAssessment($user, $attempt->exam->assessment)
-            && TeacherAccess::canViewExam($user, $attempt->exam);
+        return $this->score($user, $attempt);
     }
 }
