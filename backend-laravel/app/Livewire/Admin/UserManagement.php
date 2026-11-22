@@ -141,6 +141,20 @@ class UserManagement extends Component
                         => 'Identitas login sudah dipakai sebagai username akun lain pada instalasi ini.',
                 ]);
             }
+            if (trim($this->username) !== '') {
+                $usernameIdentityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where(function ($query): void {
+                        $username = strtolower(trim($this->username));
+                        $query->whereRaw('LOWER(nip) = ?', [$username])
+                            ->orWhereRaw('LOWER(nik) = ?', [$username])
+                            ->orWhereRaw('LOWER(employee_identifier) = ?', [$username]);
+                    })->exists()
+                    || StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                        ->whereRaw('LOWER(nisn) = ?', [strtolower(trim($this->username))])->exists();
+                if ($usernameIdentityConflict) {
+                    throw ValidationException::withMessages(['username' => 'Username bentrok dengan identitas login Guru/Siswa lain.']);
+                }
+            }
             if ($this->selectedRole === 'GURU') {
                 $identityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
                     ->where(function ($query) use ($loginIdentifier): void {
@@ -247,6 +261,20 @@ class UserManagement extends Component
                 ->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
             $this->validate($rules);
             $locked = $this->manageableUserQuery()->whereKey($userId)->lockForUpdate()->firstOrFail();
+            $usernameIdentityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                ->where('user_id', '<>', $locked->id)
+                ->where(function ($query) use ($validated): void {
+                    $username = strtolower(trim($validated['editUsername']));
+                    $query->whereRaw('LOWER(nip) = ?', [$username])
+                        ->orWhereRaw('LOWER(nik) = ?', [$username])
+                        ->orWhereRaw('LOWER(employee_identifier) = ?', [$username]);
+                })->exists()
+                || StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where('user_id', '<>', $locked->id)
+                    ->whereRaw('LOWER(nisn) = ?', [strtolower(trim($validated['editUsername']))])->exists();
+            if ($usernameIdentityConflict) {
+                throw ValidationException::withMessages(['editUsername' => 'Username bentrok dengan identitas login Guru/Siswa lain.']);
+            }
             $oldValues = ['name' => $locked->name, 'username' => $locked->username, 'email' => $locked->email];
             $locked->name = trim($validated['editName']);
             $locked->username = strtolower(trim($validated['editUsername']));
