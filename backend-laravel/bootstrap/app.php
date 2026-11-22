@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'prevent_reinstall' => \App\Http\Middleware\PreventReinstallation::class,
             'installer_bootstrap' => \App\Http\Middleware\AuthorizeInstallerBootstrap::class,
             'license' => \App\Http\Middleware\EnsureLicenseActive::class,
+            'account.active' => \App\Http\Middleware\EnsureActiveAccount::class,
         ]);
         $middleware->priority([
             \Illuminate\Auth\Middleware\Authenticate::class,
