@@ -4,6 +4,8 @@ namespace App\Livewire\Admin;
 
 use App\Models\Role;
 use App\Models\StudentProfile;
+use App\Models\Tenant;
+use Illuminate\Validation\ValidationException;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\AuditService;
@@ -123,6 +125,38 @@ class UserManagement extends Component
         $tenantId = auth()->user()->tenant_id;
 
         DB::transaction(function () use ($tenantId): void {
+            // Serialize manual account creation with bulk imports for this installation.
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')
+                ->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+            $this->validate();
+
+            $loginIdentifier = $this->selectedRole === 'GURU'
+                ? ($this->employmentType === 'ASN' ? trim($this->nip) : trim($this->nik))
+                : trim($this->nisn);
+            $usernameConflict = $loginIdentifier !== '' && User::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)->whereRaw('LOWER(username) = ?', [strtolower($loginIdentifier)])->exists();
+            if ($usernameConflict) {
+                throw ValidationException::withMessages([
+                    $this->selectedRole === 'GURU' ? ($this->employmentType === 'ASN' ? 'nip' : 'nik') : 'nisn'
+                        => 'Identitas login sudah dipakai sebagai username akun lain pada instalasi ini.',
+                ]);
+            }
+            if ($this->selectedRole === 'GURU') {
+                $identityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where(function ($query) use ($loginIdentifier): void {
+                        $query->where('nip', $loginIdentifier)->orWhere('nik', $loginIdentifier)
+                            ->orWhere('employee_identifier', $loginIdentifier);
+                    })->exists();
+                if ($identityConflict) {
+                    throw ValidationException::withMessages([
+                        $this->employmentType === 'ASN' ? 'nip' : 'nik'
+                            => 'Identitas Guru sudah digunakan pada instalasi ini.',
+                    ]);
+                }
+            } elseif (StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists()) {
+                throw ValidationException::withMessages(['nisn' => 'NISN sudah digunakan pada instalasi ini.']);
+            }
+
             $user = User::create([
                 'tenant_id' => $tenantId,
                 'name' => trim($this->name),
@@ -208,7 +242,10 @@ class UserManagement extends Component
         }
         $validated = $this->validate($rules);
 
-        DB::transaction(function () use ($userId, $tenantId, $isGuru, $validated): void {
+        DB::transaction(function () use ($userId, $tenantId, $isGuru, $validated, $rules): void {
+            Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')
+                ->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+            $this->validate($rules);
             $locked = $this->manageableUserQuery()->whereKey($userId)->lockForUpdate()->firstOrFail();
             $oldValues = ['name' => $locked->name, 'username' => $locked->username, 'email' => $locked->email];
             $locked->name = trim($validated['editName']);
@@ -218,6 +255,22 @@ class UserManagement extends Component
 
             if ($isGuru) {
                 $profile = TeacherProfile::query()->where('tenant_id', $tenantId)->where('user_id', $locked->id)->lockForUpdate()->firstOrFail();
+                $loginIdentifier = $validated['editEmploymentType'] === 'ASN'
+                    ? trim($validated['editNip']) : trim($validated['editNik']);
+                $identityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where('id', '<>', $profile->id)
+                    ->where(function ($query) use ($loginIdentifier): void {
+                        $query->where('nip', $loginIdentifier)->orWhere('nik', $loginIdentifier)
+                            ->orWhere('employee_identifier', $loginIdentifier);
+                    })->exists();
+                $usernameConflict = User::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->whereKeyNot($locked->id)->whereRaw('LOWER(username) = ?', [strtolower($loginIdentifier)])->exists();
+                if ($identityConflict || $usernameConflict) {
+                    throw ValidationException::withMessages([
+                        $validated['editEmploymentType'] === 'ASN' ? 'editNip' : 'editNik'
+                            => 'Identitas login sudah digunakan pada instalasi ini.',
+                    ]);
+                }
                 $oldValues['employment_type'] = $profile->employment_type;
                 $oldValues['nip'] = $profile->nip;
                 $oldValues['nik'] = $profile->nik;
@@ -229,6 +282,13 @@ class UserManagement extends Component
                 $profile->save();
             } else {
                 $profile = StudentProfile::query()->where('tenant_id', $tenantId)->where('user_id', $locked->id)->lockForUpdate()->firstOrFail();
+                $nisnConflict = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where('id', '<>', $profile->id)->where('nisn', $validated['editNisn'])->exists();
+                $usernameConflict = User::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->whereKeyNot($locked->id)->whereRaw('LOWER(username) = ?', [strtolower($validated['editNisn'])])->exists();
+                if ($nisnConflict || $usernameConflict) {
+                    throw ValidationException::withMessages(['editNisn' => 'NISN sudah digunakan pada instalasi ini.']);
+                }
                 $oldValues['nisn'] = $profile->nisn;
                 $profile->full_name = $locked->name;
                 $profile->nisn = trim($validated['editNisn']);
