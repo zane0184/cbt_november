@@ -626,6 +626,10 @@
                 if (String(execution.data?.attempt?.id) !== String(state.attemptId)) {
                     throw new Error('Attempt aktif di server tidak cocok dengan Attempt yang pengiriman statusnya sedang dipulihkan.');
                 }
+                // Clear the previous unknown-submit notice before rendering the
+                // resumed runner. loadExecution() may raise a new conflict warning.
+                el('fatal-error').textContent = '';
+                el('fatal-error').classList.add('hidden');
                 await loadExecution(execution, state.attemptId);
                 await persistSubmitState('RESUMED');
                 state.submitOutcomeUnknown = false;
