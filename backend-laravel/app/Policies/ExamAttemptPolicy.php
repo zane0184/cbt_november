@@ -37,7 +37,9 @@ class ExamAttemptPolicy
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
         if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $attempt->exam);
+            return $this->isSingleRoleGuru($user)
+                && $user->hasPermission('report.view')
+                && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
         if ($user->hasRole('KAMAD')) {
@@ -91,7 +93,7 @@ class ExamAttemptPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
-        if (!$user->hasRole('GURU')) return false;
+        if (!$user->hasRole('GURU') || !$this->isSingleRoleGuru($user)) return false;
 
         $exam = $attempt->exam;
         $assessment = $exam?->assessment;
