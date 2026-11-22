@@ -14,6 +14,9 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Http\Controllers\Admin\ImportTemplateController;
+use App\Http\Controllers\Auth\ImportAccountActivationController;
+use App\Livewire\Admin\ImportManagement;
 
 Route::get('/', function () {
     if (auth()->check()) {
@@ -39,6 +42,8 @@ Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login')
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
+Route::get('/activate-import-account/{token}', [ImportAccountActivationController::class, 'show'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.show');
+Route::post('/activate-import-account/{token}', [ImportAccountActivationController::class, 'store'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.store');
 Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
 Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
 
@@ -82,6 +87,8 @@ Route::middleware(['auth', 'tenant', 'license', 'account.active'])->group(functi
 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);
+    Route::get('/admin/import', ImportManagement::class)->name('admin.import');
+    Route::get('/admin/import/template/{type}', [ImportTemplateController::class, 'download'])->name('admin.import.template');
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
     Route::get('/admin/curriculum', CurriculumManagement::class);
