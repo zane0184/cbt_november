@@ -64,7 +64,7 @@ class StudentWebLoginTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $year->id,
             'title' => 'Ujian Aktif',
-            'assessment_type' => 'SUMMATIVE',
+            'assessment_type' => 'DAILY',
             'created_by' => $this->student->id,
         ]);
         $exam = Exam::create([
