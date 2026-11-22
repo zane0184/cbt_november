@@ -375,16 +375,6 @@ class MonitoringController extends Controller
                 return response()->json(['success' => false, 'message' => 'Attempt not found.'], 404);
             }
 
-            if ($lockedAttempt->status !== 'IN_PROGRESS'
-                || !$lockedAttempt->expires_at
-                || $lockedAttempt->expires_at->lte(now())) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Attempt is no longer active.',
-                    'code' => 'ATTEMPT_NOT_ACTIVE'
-                ], 409);
-            }
-
             if (!app(\App\Services\AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
                 return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
             }
@@ -398,13 +388,30 @@ class MonitoringController extends Controller
                 ], 409);
             }
 
-            if (!app(\App\Services\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                $fenceMatches = app(\App\Services\AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
+            if (!app(\App\Services\AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
                 return response()->json([
                     'success' => false,
-                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
                     'current_fence_generation' => (int) $lockedAttempt->fence_generation,
-                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                ], 409);
+            }
+
+            if ($lockedAttempt->status !== 'IN_PROGRESS'
+                || !$lockedAttempt->expires_at
+                || $lockedAttempt->expires_at->lte(now())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attempt is no longer active.',
+                    'code' => 'ATTEMPT_NOT_ACTIVE'
+                ], 409);
+            }
+
+            if (!app(\App\Services\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_LEASE_INVALID',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => 'Lease Attempt tidak aktif atau tidak konsisten.',
                 ], 409);
             }
 
