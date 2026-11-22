@@ -42,7 +42,7 @@ const origin = 'http://127.0.0.1:' + address.port;
 function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
-    status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [],
+    status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
     questionType: 'MULTIPLE_CHOICE',
     questionOptions: [
       { id: 'opt-a', option_key: 'A', content: 'Empat' },
@@ -108,6 +108,7 @@ async function attachApiMock(page, scenario) {
       return json(route, 200, { success: true, data: { status: 'SUBMITTED' } });
     }
     if (method === 'GET' && path === '/attempts/attempt-1') {
+      scenario.statusChecks++;
       return json(route, 200, { success: true, data: { status: scenario.status } });
     }
     return json(route, 404, { success: false, message: 'Unexpected API ' + method + ' ' + path });
@@ -278,6 +279,10 @@ try {
     await start(page);
     await page.locator('#submit-button').click();
     await page.locator('#runner-panel:not(.hidden)').waitFor({ state: 'visible' });
+    for (let attempt = 0; attempt < 100 && scenario.statusChecks === 0; attempt++) {
+      await new Promise(resolveWait => setTimeout(resolveWait, 50));
+    }
+    assert.equal(scenario.statusChecks, 1, 'Unknown submit recovery must perform a read-only status check');
     await page.waitForFunction(() => document.querySelector('#check-submit-status').classList.contains('hidden'));
     assert.equal(scenario.startCalls, 1, 'Unknown submit recovery must not POST a second Attempt start');
     assert.equal(scenario.submitCalls, 1, 'Unknown submit recovery must not POST submit a second time');
