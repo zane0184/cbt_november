@@ -103,3 +103,22 @@ Dokumen status diperbarui pada commit report `8a1ea04a676bee3327c73614cce06f7db4
 - Agent1 branch HEAD `4e663cd84038b7c3337d776f702c499f20d8f537` hanya dua dokumen setelah tested SHA. Agent3 branch HEAD `25fe5e74a0754bcd110ceffac20141880c549ca8` hanya docs setelah tested SHA; tidak disentuh.
 - Gate Admin belum lulus; reset token belum diimplementasikan; auth_version/session fencing setelah reaktivasi belum diimplementasikan; histori akademik tidak dimigrasi.
 - Dokumen re-audit diperbarui pada report commit `26c24fed12819b8ff1bcc9bec208daacac55aedf` dan checkpoint commit `2ca0e3a67a1d393f8a8cfabbbcb3f2a1cccf091c`.
+
+
+## Backup auth version/session fencing
+
+| Source path | Backup path | Original blob SHA | Backup commit |
+|---|---|---|---|
+| docs/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md.before-auth-version-checkpoint | 40332f4ec1714de6d72fbea57478e8f114412ffb | 151c550d0a114dc77bd484012494e79906a6c1f6 |
+| docs/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md.before-auth-version-checkpoint | b809ab95b7e922176e06616836b7b424465bc5cf | 9a659a74078753d7f0f062846d602984b6bda196 |
+| docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md | docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-auth-version-checkpoint | 525a3bbade5398b7bc40495f34bec2d710e91775 | 095b4bc7ebe392a320c6f8e0223ab7c5ebbddcb1 |
+| backend-laravel/tests/Feature/WebAdminAuthTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/WebAdminAuthTest.php.before-active-after-reactivation-assertion-fix | 35facc82b879550bde8b39764fc734037a647933 | 41f8ef7f15b713f02ac46b24ce20f75a3d24365c |
+
+## Session fencing implementation and CI
+- Auth epoch migration: `2026_11_22_130002_add_auth_version_to_users.php`.
+- Middleware: `EnsureAccountSessionVersion.php`; web session key `cbt.auth_version.{user_id}`; mismatches logout, invalidate session, regenerate CSRF token, redirect login.
+- Web login binds current epoch; deactivate and reactivate increment it; API tokens revoked on deactivate.
+- Source commits: `ab40b6d55ad12a384dbe664e9cef1ccf09f071a4`, `f96d2a3f85d8be85950ab115ce73f15f928be9a9`, `bf5eba7b32050d93aadf3c5dd9d68609297ad1c8`, `d79382ca9b2be1dc5a0f65cd3c95f4dc02c1f443`, `518f324d124793d7843f33b223e1ef57638d9ff4`, `b2adaf95302f082a2c744fc7f3f5964ac716ad6e`.
+- Test commits: `2ef93713fedc40187cea1613f712a81abe3e2b94`, `9bbf64b21a67345f1720ec27277c8d3693de39f4`, `ac80026beced315acddb4c8adc8524d5779474c8`, assertion fix `0ac6dc938291e07fa871499f25983931282de5cf`.
+- Run `44989053716` (SHA `ac80026...`) IN_PROGRESS and run `44989260109` (SHA `0ac6dc9...`) PENDING when recorded; do not claim auth epoch tests PASS until exact latest run completes.
+- Reset password tenant-scoped not implemented; Admin CBT Gate not passed.
