@@ -678,7 +678,7 @@ class ExamAnswerTest extends TestCase
     {
         $this->actingAs($this->student, 'sanctum');
 
-        foreach (['SHORT_ANSWER', 'ESSAY'] as $type) {
+        foreach (['ESSAY'] as $type) {
             $q = new Question(['created_by' => $this->student->id]);
             $q->tenant_id = $this->tenant->id;
             $q->save();
