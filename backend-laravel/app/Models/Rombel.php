@@ -30,7 +30,7 @@ class Rombel extends Model
     {
         $relation = $this->belongsToMany(StudentProfile::class, 'rombel_student', 'rombel_id', 'student_id')
             ->using(RombelStudent::class)
-            ->withPivot('id', 'tenant_id')
+            ->withPivot('id', 'tenant_id', 'academic_year_id')
             ->withTimestamps();
 
         $parentTenantId = $this->tenant_id;
