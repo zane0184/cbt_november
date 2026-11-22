@@ -252,9 +252,9 @@ class TeacherPortalFoundationTest extends TestCase
         ]);
 
         app(TenantContext::class)->setTenantId($tenantB->id);
-        $this->expectException(\\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class);
+        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
 
-        app(\\App\\Support\\Security\\TeacherPortalAccess::class)->profile($this->teacher);
+        app(\App\Support\Security\TeacherPortalAccess::class)->profile($this->teacher);
     }
 
     public function test_curriculum_context_uses_only_registered_tenant_owned_versions_and_shows_unverified_source_state(): void
