@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Curriculum;
 use App\Models\GradeLevel;
 use App\Models\LearningObjective;
 use App\Models\LearningOutcome;
@@ -235,6 +236,10 @@ class ExcelQuestionImporter implements QuestionImportService
                     'minor_version' => 0,
                     'question_type' => $row['type'],
                     'stem' => $row['stem'],
+                    'explanation' => $row['explanation'] ?? null,
+                    'learning_outcome_id' => $row['learning_outcome_id'] ?? null,
+                    'learning_objective_id' => $row['learning_objective_id'] ?? null,
+                    'element_id' => $row['element_id'] ?? null,
                     'difficulty' => $row['difficulty'] ?? 'MEDIUM',
                     'default_points' => $row['points'] ?? 1,
                     'status' => 'DRAFT',
@@ -343,7 +348,7 @@ class ExcelQuestionImporter implements QuestionImportService
             $duplicate = Question::query()
                 ->where('tenant_id', $tenantId)
                 ->where('question_code', $questionCode)
-                ->when($question, fn ($query) => $query->whereKeyNot($question->id))
+                ->when($question, fn ($query) => $query->where('id', '<>', $question->id))
                 ->exists();
             if ($duplicate) {
                 $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kode Soal sudah digunakan oleh soal lain pada tenant ini.'];
@@ -425,6 +430,17 @@ class ExcelQuestionImporter implements QuestionImportService
         if ($outcome?->curriculum_id && $curriculumId !== $outcome->curriculum_id) {
             $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kurikulum tidak cocok dengan CP yang dipilih.'];
             return null;
+        }
+        if ($curriculumId) {
+            $curriculum = Curriculum::query()
+                ->whereKey($curriculumId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'ACTIVE')
+                ->first();
+            if (!$curriculum) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kurikulum tidak ditemukan atau tidak aktif pada tenant ini.'];
+                return null;
+            }
         }
 
         return [
