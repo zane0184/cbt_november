@@ -151,32 +151,36 @@ class ExamPolicy
 
     public function startAttempt(User $user, Exam $exam): bool
     {
-        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if (!$user->hasExactRole('SISWA')) return false;
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasExactRole('SISWA')) {
+            return false;
+        }
 
         $now = now();
         $participant = $exam->participants()
             ->where('tenant_id', $exam->tenant_id)
             ->where('user_id', $user->id)
-            ->where(function ($query) use ($now) {
-                $query->whereNull('eligible_from')->orWhere('eligible_from', '<=', $now);
-            })
-            ->where(function ($query) use ($now) {
-                $query->whereNull('eligible_until')->orWhere('eligible_until', '>', $now);
-            })
             ->first();
 
         if (!$participant) {
             return false;
         }
 
-        // Resume attempt yang sah tetap diizinkan setelah jadwal mulai berakhir,
-        // selama attempt masih IN_PROGRESS, belum kedaluwarsa, dan eligibility masih aktif.
-        return $exam->canStartAttempt() || $participant->attempts()
+        // An already valid IN_PROGRESS attempt remains recoverable after the
+        // admission window closes. Eligibility windows gate new attempts only.
+        $hasRecoverableAttempt = $participant->attempts()
             ->where('status', 'IN_PROGRESS')
+            ->whereNotNull('expires_at')
             ->where('expires_at', '>', $now)
             ->exists();
+
+        if ($hasRecoverableAttempt) {
+            return true;
+        }
+
+        $currentlyEligible = (!$participant->eligible_from || $participant->eligible_from->lte($now))
+            && (!$participant->eligible_until || $participant->eligible_until->gt($now));
+
+        return $currentlyEligible && $exam->canStartAttempt();
     }
 
     public function assignProctor(User $user, Exam $exam): bool
