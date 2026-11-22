@@ -133,6 +133,9 @@
                                     @foreach($student->rombels as $rombel)
                                         <div class="rounded-lg border border-slate-200 p-2">
                                             <div class="font-semibold text-slate-800">{{ $rombel->academicYear?->name }} · {{ $rombel->gradeLevel?->name }} {{ $rombel->name }}</div>
+                                            @if($rombel->trashed() || $rombel->status !== 'ACTIVE')
+                                                <span class="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">Rombel diarsipkan / nonaktif</span>
+                                            @endif
                                             <div class="mt-1 flex flex-wrap gap-1.5">
                                                 @if($student->academic_status === 'ACTIVE' && $rombel->academicYear?->is_active)
                                                     <button type="button" wire:click="openActionModal('TRANSFER', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-800">Mutasi</button>
