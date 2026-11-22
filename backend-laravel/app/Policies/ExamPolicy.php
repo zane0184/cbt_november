@@ -201,7 +201,7 @@ class ExamPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
 
-        if (!$user->hasRole('GURU') || !$user->hasPermission('exam.monitor')) {
+        if ($user->roles()->count() !== 1 || !$user->roles()->where('name', 'GURU')->exists() || !$user->hasPermission('exam.monitor')) {
             return false;
         }
 
