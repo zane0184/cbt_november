@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm">
         <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-bold border border-amber-200 mb-3">Kewenangan Admin Madrasah</div>
-        <h1 class="text-2xl font-bold text-navy-900">Penugasan Proktor Sementara</h1>
+        <h1 class="text-2xl font-bold text-navy-900">Penugasan Guru Pengawas Sementara</h1>
         <p class="text-sm text-textSecondary mt-2">Penugasan dibatasi pada ujian tertentu, tenant aktif, dan rentang waktu yang ditentukan. Proktor hanya memperoleh akses monitoring selama penugasan aktif; tidak memperoleh hak mengelola token, soal, peserta, atau nilai.</p>
     </div>
 
@@ -21,7 +21,7 @@
                 @error('selectedExamId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
             </div>
             <div>
-                <label class="block text-sm font-semibold mb-1">Akun Proktor</label>
+                <label class="block text-sm font-semibold mb-1">Guru aktif</label>
                 <select wire:model="selectedProctorId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
                     <option value="">Pilih Proktor tenant ini</option>
                     @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }} — {{ $proctor->email }}</option>@endforeach
