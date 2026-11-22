@@ -44,6 +44,8 @@ final class TeacherResultNavigationTest extends TestCase
         $this->assertSame('exams/{exam}/results/{attempt}', $routes->getByName('teacher.exams.results.detail')?->uri());
         $this->assertSame('exams/{exam}/analytics', $routes->getByName('teacher.exams.analytics')?->uri());
         $this->assertSame('exams/{exam}/analytics/items', $routes->getByName('teacher.exams.analytics.items')?->uri());
+        $this->assertSame('exams/{exam}/export/excel', $routes->getByName('teacher.exams.export.excel')?->uri());
+        $this->assertSame('exams/{exam}/export/pdf', $routes->getByName('teacher.exams.export.pdf')?->uri());
     }
 
     public function test_teacher_sidebar_links_results_and_analytics_to_exam_selection(): void
