@@ -17,6 +17,7 @@ class Tenant extends Model
     protected $fillable = [
         'id',
         'name',
+        'principal_name',
         'code',
         'nsm',
         'npsn',
