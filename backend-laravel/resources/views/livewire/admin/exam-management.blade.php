@@ -2,8 +2,8 @@
     <!-- Header Card -->
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-navy-900">Manajemen Pembuatan Ujian & Sesi</h1>
-            <p class="text-xs text-textSecondary mt-1">Daftar ujian madrasah dan status publikasi. Pengaturan akademik dan pelaksanaan ujian dikelola Guru.</p>
+            <h1 class="text-2xl font-bold text-navy-900">{{ auth()->user()->hasRole('GURU') ? 'Manajemen Pembuatan Ujian & Sesi' : 'Daftar Ujian Madrasah' }}</h1>
+            <p class="text-xs text-textSecondary mt-1">{{ auth()->user()->hasRole('GURU') ? 'Buat, jadwalkan, terbitkan, dan kelola asesmen sesuai penugasan.' : 'Daftar jadwal ujian yang diterbitkan Guru. Admin hanya melihat informasi ringkas dan mengelola penugasan Guru pengawas.' }}</p>
         </div>
         @can('create', \App\Models\Exam::class)
             <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
@@ -64,24 +64,14 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 text-xs text-textSecondary bg-contentBg p-3 rounded-xl border border-cardBorder">
-                        <div>
-                            <span class="font-bold text-navy-900">Durasi:</span> {{ floor($exam->duration_seconds / 60) }} Menit
-                        </div>
-                        <div>
-                            <span class="font-bold text-navy-900">Batas Attempt:</span> {{ $exam->attempt_limit }}x
-                        </div>
-                        <div>
-                            <span class="font-bold text-navy-900">Jumlah Soal Snapshot:</span> <strong class="text-emerald-700">{{ $exam->snapshots->count() }} Soal</strong>
-                        </div>
-                        <div>
-                            <span class="font-bold text-navy-900">Peserta Ditugaskan:</span> <strong class="text-indigo-700">{{ $exam->participants->count() }} Siswa</strong>
-                        </div>
-                        <div>
-                            <span class="font-bold text-navy-900">Mulai:</span> {{ $exam->start_at ? $exam->start_at->format('d M H:i') : '-' }}
-                        </div>
-                        <div>
-                            <span class="font-bold text-navy-900">Selesai:</span> {{ $exam->end_at ? $exam->end_at->format('d M H:i') : '-' }}
-                        </div>
+                        @if(auth()->user()->hasRole('GURU'))
+                            <div><span class="font-bold text-navy-900">Durasi:</span> {{ floor($exam->duration_seconds / 60) }} Menit</div>
+                            <div><span class="font-bold text-navy-900">Batas Attempt:</span> {{ $exam->attempt_limit }}x</div>
+                            <div><span class="font-bold text-navy-900">Jumlah Soal Snapshot:</span> <strong class="text-emerald-700">{{ $exam->snapshots->count() }} Soal</strong></div>
+                            <div><span class="font-bold text-navy-900">Peserta Ditugaskan:</span> <strong class="text-indigo-700">{{ $exam->participants->count() }} Siswa</strong></div>
+                        @endif
+                        <div><span class="font-bold text-navy-900">Mulai:</span> {{ $exam->start_at ? $exam->start_at->format('d M H:i') : '-' }}</div>
+                        <div><span class="font-bold text-navy-900">Selesai:</span> {{ $exam->end_at ? $exam->end_at->format('d M H:i') : '-' }}</div>
                     </div>
 
                     @if(auth()->user()->hasRole('GURU') && $exam->require_token)
@@ -108,12 +98,12 @@
                             🖥️ Live Monitoring
                         </a>
                     @endcan
-                    <a href="/exams/{{ $exam->id }}/results" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
-                        📊 Hasil & Finalisasi
-                    </a>
-                    <a href="/exams/{{ $exam->id }}/analytics" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
-                        📈 Analisis
-                    </a>
+                    @if(auth()->user()->hasRole('GURU'))
+                        <a href="/exams/{{ $exam->id }}/results" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">📊 Hasil & Finalisasi</a>
+                        <a href="/exams/{{ $exam->id }}/analytics" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">📈 Analisis</a>
+                    @elseif(auth()->user()->hasRole('ADMIN_MADRASAH') || auth()->user()->hasRole('OPERATOR'))
+                        <a href="/admin/proctor-assignments" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">Tugaskan Guru Pengawas</a>
+                    @endif
                     @can('lock', $exam)
                         @if(!$exam->isLocked())
                             <button wire:click="lockExam('{{ $exam->id }}')" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm ml-auto">
