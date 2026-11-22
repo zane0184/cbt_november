@@ -21,6 +21,10 @@ class ImportAccountActivationController extends Controller
             ->where('token_hash', hash('sha256', $token))
             ->whereNull('used_at')->where('expires_at', '>', now())->first();
         abort_unless($record, 410, 'Tautan aktivasi sudah digunakan atau kedaluwarsa.');
+        $activeUser = \App\Models\User::withoutGlobalScopes()
+            ->where('tenant_id', $record->tenant_id)->whereKey($record->user_id)
+            ->where('is_active', true)->whereNull('deleted_at')->exists();
+        abort_unless($activeUser, 410, 'Akun tidak aktif atau tidak tersedia.');
 
         return response()->view('auth.activate-import-account', [
             'token' => $token,
@@ -41,11 +45,18 @@ class ImportAccountActivationController extends Controller
                 ->lockForUpdate()->first();
             abort_unless($record && !$record->used_at && $record->expires_at->isFuture(), 410, 'Tautan aktivasi sudah digunakan atau kedaluwarsa.');
 
+            $tenantActive = \App\Models\Tenant::withoutGlobalScopes()
+                ->whereKey($record->tenant_id)->whereNull('deleted_at')->where('status', 'ACTIVE')->exists();
+            abort_unless($tenantActive, 410, 'Instalasi madrasah tidak aktif.');
             $user = \App\Models\User::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)
-                ->whereKey($record->user_id)->lockForUpdate()->firstOrFail();
-            abort_unless($user->roles()->whereIn('name', ['GURU', 'SISWA'])->count() === 1, 403);
-            $hasProfile = \App\Models\TeacherProfile::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)->where('user_id', $user->id)->exists()
-                || \App\Models\StudentProfile::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)->where('user_id', $user->id)->exists();
+                ->whereKey($record->user_id)->where('is_active', true)->whereNull('deleted_at')
+                ->lockForUpdate()->firstOrFail();
+            abort_unless($user->roles()->count() === 1
+                && $user->roles()->whereIn('name', ['GURU', 'SISWA'])->exists(), 403);
+            $hasProfile = \App\Models\TeacherProfile::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)
+                ->where('user_id', $user->id)->whereNull('deleted_at')->exists()
+                || \App\Models\StudentProfile::withoutGlobalScopes()->where('tenant_id', $record->tenant_id)
+                    ->where('user_id', $user->id)->whereNull('deleted_at')->exists();
             abort_unless($hasProfile, 403);
 
             $user->forceFill(['password' => Hash::make($validated['password'])])->save();
