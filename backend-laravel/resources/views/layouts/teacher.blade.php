@@ -80,7 +80,7 @@
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Ruang Kerja Guru</p>
                 <a href="{{ route('teacher.dashboard') }}" class="portal-nav-link {{ request()->routeIs('teacher.dashboard') ? 'active' : '' }}"><span>▦</span> Dashboard</a>
                 <a href="{{ route('teacher.learning') }}" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? 'active' : '' }}"><span>▤</span> Pembelajaran</a>
-                <a href="{{ route('teacher.learning') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? '' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
+                <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
                 <div class="my-3 border-t border-white/10"></div>
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Modul berikutnya</p>
                 @foreach (['Bank Soal', 'Asesmen', 'Ujian', 'Proktor', 'Monitoring Ujian', 'Penilaian', 'Hasil & Laporan'] as $menu)
@@ -116,10 +116,16 @@
                             <summary class="cursor-pointer rounded-lg border portal-border px-3 py-2 text-sm font-semibold">☰ Menu</summary>
                             <div class="portal-card absolute right-0 mt-2 w-64 p-2 shadow-xl">
                                 <a href="{{ route('teacher.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm">Dashboard</a>
-                                <a href="{{ route('teacher.learning') }}" class="block rounded-lg px-3 py-2 text-sm">Pembelajaran & Kurikulum</a>
-                                <a href="{{ route('teacher.profile') }}" class="block rounded-lg px-3 py-2 text-sm">Profil Guru</a>
+                                <a href="{{ route('teacher.learning') }}" class="block rounded-lg px-3 py-2 text-sm">Pembelajaran</a>
+                                <a href="{{ route('teacher.curriculum') }}#kurikulum" class="block rounded-lg px-3 py-2 text-sm">Kurikulum & Akademik</a>
                                 <div class="my-2 border-t portal-border"></div>
-                                <p class="px-3 py-2 text-xs portal-muted">Modul lainnya tersedia pada tahap berikutnya.</p>
+                                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul berikutnya</p>
+                                @foreach (['Bank Soal', 'Asesmen', 'Ujian', 'Proktor', 'Monitoring Ujian', 'Penilaian', 'Hasil & Laporan'] as $menu)
+                                    <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">{{ $menu }} · Tahap berikutnya</span>
+                                @endforeach
+                                <a href="{{ route('teacher.profile') }}" class="block rounded-lg px-3 py-2 text-sm">Profil Guru</a>
+                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Pengaturan · Tahap berikutnya</span>
+                                <div class="my-2 border-t portal-border"></div>
                                 <form method="POST" action="{{ route('logout') }}" class="p-2">
                                     @csrf
                                     <button type="submit" class="portal-button w-full">Keluar</button>
