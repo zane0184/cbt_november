@@ -72,7 +72,7 @@ class AnalyticsController extends Controller
             abort(403);
         }
         $this->authorize('viewExamResults', $exam);
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             abort_unless($exam->assessment && TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $exam->assessment), 403);
         }
 
@@ -89,7 +89,7 @@ class AnalyticsController extends Controller
         $this->authorize('viewStudentResults', $student);
 
         $filters = $request->only(['subject_id', 'academic_year_id', 'semester_id']);
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             $filters = $request->validate([
                 'subject_id' => ['required', 'uuid'],
                 'academic_year_id' => ['required', 'uuid'],
