@@ -115,3 +115,10 @@ STATUS: PARSIAL — menunggu run 44983824109 dan audit strict multi-role/stale p
 - Jangan menautkan menu legacy, merge, PR, atau deploy sebelum gate role/permission dan CI selesai.
 
 STATUS: PARSIAL — menunggu CI 44983955276.
+
+
+## CATATAN STALE PERMISSION MODUL EXISTING
+
+- QuestionBank dan ExamManagement mengulang assertCanAccess di boot/mount, tetapi exact-role guard masih perlu diperkuat.
+- ResultList, ResultDetail, AnalyticsDashboard, dan ItemAnalysis belum tampak memiliki otorisasi umum di boot untuk setiap Livewire request; beberapa aksi mutasi memang memanggil policy lagi.
+- Ini menjadi blocker untuk menu Guru: stale permission pada render/hydration harus diuji dan diperbaiki di source bersama setelah koordinasi. Tidak ada file komponen/policy legacy yang diubah.
