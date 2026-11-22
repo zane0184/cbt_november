@@ -3,7 +3,7 @@ Tanggal: 23 November 2026
 Repo: `zane0184/cbt_november`
 Branch: `work/agent4-web-siswa-emergency-20261122`
 PR #13: OPEN / DRAFT / UNMERGED
-PR head saat checkpoint: `2a51bed8e2a9c434f0b28a90b7a3b6d38d34f9c8`
+PR head saat checkpoint: `5154ea14b9ab0f9cc7c6c591df2e17f4ae87b580`
 PR base: `work/stage4d-account-lifecycle-20261122` @ `7642f8df7d20effe82dc1ba5b086147894332767`
 
 ## 1. AUDIT
@@ -74,8 +74,11 @@ Run ID `45068916198`, commit `5b167c...`:
 
 ### Run #209 — verifikasi ulang fix
 Run ID `45069223927`, commit `2a51bed8e2a9c434f0b28a90b7a3b6d38d34f9c8`:
-- Pada saat checkpoint dibuat: **IN PROGRESS**.
-- Hasil akhir belum boleh diklaim.
+- Static audit + Chromium browser E2E: **SUCCESS**.
+- **26 skenario browser PASS**, termasuk mobile/desktop responsive + drawer state, reconnect in-place setelah heartbeat generation advance, exact retry, receipt mismatch, fencing, heartbeat terminal, media 4 tipe/MIME/size/auth, RTL, offline reload, conflict, expiry dan unknown submit.
+- MySQL 8 disposable: **7 passed (22 assertions) + 6 passed (23 assertions)**.
+- Kedua job workflow: SUCCESS.
+- Fix harness request ID sebelum offline abort terbukti lulus; reconnect menggunakan request ID sama dan hanya satu answer commit.
 
 ## 5. GATE BERIKUTNYA
 
@@ -91,7 +94,7 @@ Run ID `45069223927`, commit `2a51bed8e2a9c434f0b28a90b7a3b6d38d34f9c8`:
 
 ## 6. STATUS
 
-Web Siswa client: **25 browser E2E PASS pada run #191; satu test reconnect in-place diperbaiki dan sedang diverifikasi ulang pada run #209**.
-Web Siswa route MySQL: **13 tests PASS / 45 assertions**.
+Web Siswa client: **26 Chromium browser E2E PASS + 9 static audit checks pada run #209**.
+Web Siswa route MySQL: **13 tests PASS / 45 assertions pada run #209**.
 Backend API/receipt/platform integration: **belum lengkap**.
 Production readiness: **NOT READY / NOT CLAIMED**.
