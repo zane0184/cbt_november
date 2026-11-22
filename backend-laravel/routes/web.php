@@ -102,8 +102,8 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/admin/exam-rooms-sessions', ExamRoomSessionManagement::class)->name('admin.exam-rooms-sessions');
 
     // Teacher & Results Routes
-    Route::get('/exams/{exam}/results', ResultList::class);
-    Route::get('/exams/{exam}/results/{attempt}', ResultDetail::class);
+    Route::get('/exams/{exam}/results', ResultList::class)->name('teacher.exams.results');
+    Route::get('/exams/{exam}/results/{attempt}', ResultDetail::class)->name('teacher.exams.results.detail');
 
     // Exports for Teacher Dashboard
     Route::get('/exams/{exam}/export/excel', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportExcel']);
