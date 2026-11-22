@@ -115,10 +115,10 @@
                 <a href="{{ route('teacher.questions.template') }}" class="portal-nav-link pl-6 text-xs"><span>⇩</span> Unduh Template Import Soal</a>
                 <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.exams.index') ? 'active' : '' }}"><span>▣</span> Asesmen & Ujian</a>
                 <div class="my-3 border-t border-white/10"></div>
-                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Akses per ujian / tahap berikutnya</p>
+                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Hasil dan Analitik</p>
                 <div class="portal-disabled" aria-disabled="true" title="Tautan monitoring tersedia dari ujian yang diizinkan"><span>Monitoring Ujian</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
-                <div class="portal-disabled" aria-disabled="true" title="Penilaian dan hasil dibuka dari ujian setelah pemeriksaan policy"><span>Penilaian & Hasil</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
-                <div class="portal-disabled" aria-disabled="true" title="Analitik dan ekspor dibuka dari ujian setelah pemeriksaan policy"><span>Analytics & Ekspor</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
+                <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link"><span>📊</span> Penilaian & Hasil <span class="ml-auto text-[10px] uppercase tracking-wide">Pilih ujian</span></a>
+                <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link"><span>📈</span> Analytics & Ekspor <span class="ml-auto text-[10px] uppercase tracking-wide">Pilih ujian</span></a>
                 <p class="px-3 py-2 text-[11px] leading-relaxed text-emerald-100/60">Pengawasan asesmen mandiri mengikuti lingkup Guru pembuat. Pengawasan ujian terpusat hanya tersedia melalui penugasan Proktor yang sah.</p>
                 <div class="my-3 border-t border-white/10"></div>
                 <a href="{{ route('teacher.profile') }}" class="portal-nav-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}"><span>♙</span> Profil Guru</a>
@@ -157,10 +157,10 @@
                                 <a href="{{ route('teacher.questions.template') }}" class="block rounded-lg px-3 py-2 text-sm">Unduh Template Import Soal</a>
                                 <a href="{{ route('teacher.exams.index') }}" class="block rounded-lg px-3 py-2 text-sm">Asesmen & Ujian</a>
                                 <div class="my-2 border-t portal-border"></div>
-                                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Akses per ujian / tahap berikutnya</p>
+                                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Hasil dan Analitik</p>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Monitoring Ujian · Per ujian</span>
-                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Penilaian & Hasil · Per ujian</span>
-                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Analytics & Ekspor · Per ujian</span>
+                                <a href="{{ route('teacher.exams.index') }}" class="block rounded-lg px-3 py-2 text-sm">Penilaian & Hasil · Pilih ujian</a>
+                                <a href="{{ route('teacher.exams.index') }}" class="block rounded-lg px-3 py-2 text-sm">Analytics & Ekspor · Pilih ujian</a>
                                 <p class="px-3 py-2 text-[11px] leading-relaxed portal-muted">Pengawasan ujian terpusat memerlukan penugasan Proktor yang sah.</p>
                                 <a href="{{ route('teacher.profile') }}" class="block rounded-lg px-3 py-2 text-sm">Profil Guru</a>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Pengaturan · Tahap berikutnya</span>
