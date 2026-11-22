@@ -5,6 +5,8 @@ namespace App\Livewire\Admin;
 use App\Models\AcademicYear;
 use App\Models\Role;
 use App\Models\StudentProfile;
+use App\Models\StudentAcademicEvent;
+use App\Contexts\TenantContext;
 use App\Models\Tenant;
 use Illuminate\Validation\ValidationException;
 use App\Models\TeacherProfile;
@@ -44,6 +46,9 @@ class UserManagement extends Component
     public $nik = '';
     public $nisn = '';
     public $entryAcademicYearId = '';
+    public $createReason = '';
+    public $editReason = '';
+    public $resetReason = '';
     public $editName = '';
     public $editUsername = '';
     public $editEmail = '';
@@ -97,6 +102,7 @@ class UserManagement extends Component
             'nip' => ['nullable','digits:18'],
             'nik' => ['nullable','digits:16'],
             'nisn' => ['nullable','digits:10'],
+            'createReason' => ['required','string','min:10','max:1000'],
         ];
 
         if ($this->selectedRole === 'GURU') {
@@ -118,7 +124,7 @@ class UserManagement extends Component
     public function openCreateModal(): void
     {
         $this->authorizeUserManagement();
-        $this->reset(['name','username','email','password','selectedRole','employmentType','nip','nik','nisn','entryAcademicYearId']);
+        $this->reset(['name','username','email','password','selectedRole','employmentType','nip','nik','nisn','entryAcademicYearId','createReason']);
         $this->resetValidation();
         $this->showCreateModal = true;
     }
@@ -208,13 +214,31 @@ class UserManagement extends Component
                     'employee_identifier' => $loginIdentifier,
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
-                StudentProfile::query()->create([
+                $studentProfile = StudentProfile::query()->create([
                     'user_id' => $user->id,
                     'full_name' => trim($this->name),
                     'nisn' => trim($this->nisn),
                     'academic_status' => 'ACTIVE',
                     'entry_academic_year_id' => $this->entryAcademicYearId,
                 ]);
+
+                $tenantContext = app(TenantContext::class);
+                $previousTenantId = $tenantContext->getTenantId();
+                $tenantContext->setTenantId($tenantId);
+                try {
+                    StudentAcademicEvent::create([
+                        'student_id' => $studentProfile->id,
+                        'academic_year_id' => $this->entryAcademicYearId,
+                        'event_type' => 'REGISTERED',
+                        'effective_date' => now()->toDateString(),
+                        'reason' => trim($this->createReason),
+                        'performed_by' => auth()->id(),
+                        'metadata' => ['source' => 'ADMIN_USER_MANAGEMENT'],
+                        'created_at' => now(),
+                    ]);
+                } finally {
+                    $tenantContext->setTenantId($previousTenantId);
+                }
             }
 
             app(AuditService::class)->log('USER_CREATED', 'User', $user->id, null, [
@@ -225,12 +249,13 @@ class UserManagement extends Component
                 'login_identifier_suffix' => $this->selectedRole === 'GURU'
                     ? substr($this->employmentType === 'ASN' ? trim($this->nip) : trim($this->nik), -4)
                     : substr(trim($this->nisn), -4),
+                'reason' => trim($this->createReason),
             ]);
         }, 3);
 
         $createdName = $this->name;
         $this->showCreateModal = false;
-        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn','entryAcademicYearId']);
+        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn','entryAcademicYearId','createReason']);
         $this->dispatch('notify', ['type' => 'success', 'message' => "Pengguna {$createdName} berhasil ditambahkan."]);
         session()->flash('message', "Pengguna {$createdName} berhasil ditambahkan.");
     }
