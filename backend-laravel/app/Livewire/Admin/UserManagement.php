@@ -137,7 +137,7 @@ class UserManagement extends Component
                 ->where('tenant_id', $tenantId)->whereRaw('LOWER(username) = ?', [strtolower($loginIdentifier)])->exists();
             if ($usernameConflict) {
                 throw ValidationException::withMessages([
-                    $this->selectedRole === 'GURU' ? ($this->employmentType === 'ASN' ? 'nip' : 'nik') : 'nisn'
+                    ($this->selectedRole === 'GURU' ? ($this->employmentType === 'ASN' ? 'nip' : 'nik') : 'nisn')
                         => 'Identitas login sudah dipakai sebagai username akun lain pada instalasi ini.',
                 ]);
             }
@@ -165,7 +165,7 @@ class UserManagement extends Component
                     ->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists();
                 if ($identityConflict || $studentIdentityConflict) {
                     throw ValidationException::withMessages([
-                        $this->employmentType === 'ASN' ? 'nip' : 'nik'
+                        ($this->employmentType === 'ASN' ? 'nip' : 'nik')
                             => 'Identitas login Guru sudah digunakan oleh akun lain pada instalasi ini.',
                     ]);
                 }
@@ -314,7 +314,7 @@ class UserManagement extends Component
                     ->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists();
                 if ($identityConflict || $usernameConflict || $studentIdentityConflict) {
                     throw ValidationException::withMessages([
-                        $validated['editEmploymentType'] === 'ASN' ? 'editNip' : 'editNik'
+                        ($validated['editEmploymentType'] === 'ASN' ? 'editNip' : 'editNik')
                             => 'Identitas login sudah digunakan pada instalasi ini.',
                     ]);
                 }
