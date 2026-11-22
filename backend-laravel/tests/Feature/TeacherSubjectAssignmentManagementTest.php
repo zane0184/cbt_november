@@ -379,8 +379,8 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'name' => 'Guru Inactive',
             'username' => '198801012026011010',
             'password' => bcrypt('password'),
-            'is_active' => false,
         ]);
+        $inactive->forceFill(['is_active' => false])->save();
         $inactive->roles()->attach($guruRole->id);
         TeacherProfile::create([
             'tenant_id' => $this->tenant->id,
