@@ -76,6 +76,22 @@ class ExamAnswerController extends Controller
                 ], 409);
             }
 
+            $activeAttemptCount = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->where('status', 'IN_PROGRESS')
+                ->where('expires_at', '>', now())
+                ->count();
+
+            if ($activeAttemptCount !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah Attempt aktif peserta tidak konsisten; pembacaan jawaban ditahan.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
+                ], 409);
+            }
+
             if (!$lockedAttempt->device_fingerprint
                 || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
@@ -186,6 +202,22 @@ class ExamAnswerController extends Controller
                     'success' => false,
                     'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
                     'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            $activeAttemptCount = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->where('status', 'IN_PROGRESS')
+                ->where('expires_at', '>', $serverNow)
+                ->count();
+
+            if ($activeAttemptCount !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah Attempt aktif peserta tidak konsisten; penyimpanan jawaban ditahan.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
                 ], 409);
             }
 
