@@ -5,6 +5,8 @@ namespace App\Livewire\Teacher;
 use App\Services\AuditService;
 use App\Services\ExcelQuestionImporter;
 use App\Services\QuestionImport\QuestionImportWorkbookParser;
+use App\Models\Question;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Livewire\WithFileUploads;
 use Throwable;
@@ -37,6 +39,8 @@ final class QuestionImportWizard extends TeacherPortalComponent
 
     public function previewImport(): void
     {
+        Gate::authorize('create', Question::class);
+
         $this->validate([
             'workbook' => ['required', 'file', 'mimes:xlsx', 'max:10240'],
         ]);
@@ -72,6 +76,8 @@ final class QuestionImportWizard extends TeacherPortalComponent
 
     public function confirmImport()
     {
+        Gate::authorize('create', Question::class);
+
         $this->validate([
             'workbook' => ['required', 'file', 'mimes:xlsx', 'max:10240'],
         ]);
