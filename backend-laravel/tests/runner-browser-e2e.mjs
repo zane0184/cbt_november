@@ -46,6 +46,7 @@ function makeScenario(mode = 'normal') {
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
+    questionStem: 'Berapakah hasil 2 + 2?',
     questionOptions: [
       { id: 'opt-a', option_key: 'A', content: 'Empat' },
       { id: 'opt-b', option_key: 'B', content: 'Lima' }
@@ -74,7 +75,7 @@ async function attachApiMock(page, scenario) {
         attempt: { id: 'attempt-1', expires_at: new Date(now.getTime() + scenario.expiresInMs).toISOString() },
         exam: { server_now: now.toISOString() },
         questions: [{
-          id: 'snapshot-1', snapshot_stem: 'Berapakah hasil 2 + 2?', points: 1,
+          id: 'snapshot-1', snapshot_stem: scenario.questionStem, points: 1,
           metadata: { question_type: scenario.questionType }, snapshot_media: [],
           snapshot_options: scenario.questionOptions
         }]
@@ -129,7 +130,7 @@ async function newPage(browser, scenario) {
 async function start(page) {
   await page.locator('#start-button').click();
   await page.locator('#runner-panel:not(.hidden)').waitFor({ state: 'visible' });
-  await page.waitForFunction(() => document.querySelector('#question-stem').textContent.includes('Berapakah hasil 2 + 2?'));
+  await page.waitForFunction(() => document.querySelector('#question-stem').textContent.trim().length > 0);
 }
 
 async function chooseFirstAnswer(page) {
@@ -238,7 +239,25 @@ try {
     }
   }
 
-  // 3. Offline write: local draft survives reload and is synchronized on resume.
+  // Arabic text and harakat use automatic direction in the stem, options, and answer editor.
+  {
+    const scenario = makeScenario();
+    scenario.questionStem = 'ٱلسَّلَامُ عَلَيْكُمْ — ٢ + ٢؟';
+    scenario.questionType = 'SHORT_ANSWER';
+    scenario.questionOptions = [];
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    assert.equal(await page.locator('#question-stem').getAttribute('dir'), 'auto');
+    assert.equal(await page.locator('#question-input textarea').getAttribute('dir'), 'auto');
+    await page.locator('#question-input textarea').fill('أَرْبَعَة');
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    assert.equal(scenario.serverAnswers[0].answer_payload.text, 'أَرْبَعَة');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: Arabic question and answer retain harakat with automatic RTL direction');
+  }
+
+  // 4. Offline write: local draft survives reload and is synchronized on resume.
   {
     const scenario = makeScenario('offline-recovery');
     const { context, page } = await newPage(browser, scenario);
@@ -259,7 +278,7 @@ try {
     console.log('PASS: IndexedDB draft survives reload and synchronizes after reconnect');
   }
 
-  // 4. Conflict: local draft is restored, server copy is retained, submit stays blocked.
+  // 5. Conflict: local draft is restored, server copy is retained, submit stays blocked.
   {
     const scenario = makeScenario('conflict');
     const { context, page } = await newPage(browser, scenario);
@@ -280,7 +299,7 @@ try {
     console.log('PASS: conflict draft restores after reload and submit remains blocked');
   }
 
-  // 5. Server expiry triggers one automatic submit and clears the timer interval.
+  // 6. Server expiry triggers one automatic submit and clears the timer interval.
   {
     const scenario = makeScenario();
     scenario.expiresInMs = -1000;
@@ -296,7 +315,7 @@ try {
     console.log('PASS: server expiry auto-submits once and clears timer');
   }
 
-  // 6. Lost submit response: status is checked; no second start/submit is posted.
+  // 7. Lost submit response: status is checked; no second start/submit is posted.
   {
     const scenario = makeScenario('unknown-submit');
     const { context, page } = await newPage(browser, scenario);
