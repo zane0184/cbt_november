@@ -264,7 +264,7 @@ class UserManagement extends Component
                             ->orWhere('employee_identifier', $loginIdentifier);
                     })->exists();
                 $usernameConflict = User::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                    ->whereKeyNot($locked->id)->whereRaw('LOWER(username) = ?', [strtolower($loginIdentifier)])->exists();
+                    ->where('id', '<>', $locked->id)->whereRaw('LOWER(username) = ?', [strtolower($loginIdentifier)])->exists();
                 if ($identityConflict || $usernameConflict) {
                     throw ValidationException::withMessages([
                         $validated['editEmploymentType'] === 'ASN' ? 'editNip' : 'editNik'
@@ -285,7 +285,7 @@ class UserManagement extends Component
                 $nisnConflict = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
                     ->where('id', '<>', $profile->id)->where('nisn', $validated['editNisn'])->exists();
                 $usernameConflict = User::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                    ->whereKeyNot($locked->id)->whereRaw('LOWER(username) = ?', [strtolower($validated['editNisn'])])->exists();
+                    ->where('id', '<>', $locked->id)->whereRaw('LOWER(username) = ?', [strtolower($validated['editNisn'])])->exists();
                 if ($nisnConflict || $usernameConflict) {
                     throw ValidationException::withMessages(['editNisn' => 'NISN sudah digunakan pada instalasi ini.']);
                 }
