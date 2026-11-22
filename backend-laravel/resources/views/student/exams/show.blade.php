@@ -6,22 +6,76 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $exam->title }} - CBT Madrasah</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        html, body { width: 100%; max-width: 100%; overflow-x: clip; }
+        body { min-width: 320px; padding-bottom: env(safe-area-inset-bottom); }
+        button, input, select, textarea { font: inherit; }
+        button { min-height: 44px; touch-action: manipulation; }
+        #exam-app { width: 100%; min-width: 0; }
+        .runner-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+        .question-card { min-width: 0; overflow-wrap: anywhere; padding-bottom: 5.5rem; }
+        #question-stem, #question-media, #question-input { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+        #question-stem { font-size: clamp(1rem, 4.2vw, 1.125rem); line-height: 1.75; }
+        #question-media img, #question-media video { display: block; max-width: 100%; max-height: 60vh; height: auto; object-fit: contain; }
+        #question-media audio { width: 100%; max-width: 100%; }
+        #question-input label { min-height: 48px; align-items: flex-start; }
+        #question-input input[type="radio"], #question-input input[type="checkbox"] { width: 1.25rem; height: 1.25rem; flex: 0 0 auto; }
+        #question-input textarea, #question-input select { width: 100%; min-width: 0; max-width: 100%; font-size: 16px; }
+        .question-copy-protected { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        .question-copy-protected input, .question-copy-protected textarea, .question-copy-protected select,
+        .question-copy-protected [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+        .question-nav-panel { position: fixed; z-index: 40; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); width: min(92vw, 340px); }
+        .question-nav-toggle { display: flex; min-height: 48px; align-items: center; justify-content: center; border-radius: 999px; background: #0f172a; padding: .75rem 1rem; color: white; font-weight: 700; box-shadow: 0 8px 24px rgb(15 23 42 / 25%); cursor: pointer; list-style: none; }
+        .question-nav-toggle::-webkit-details-marker { display: none; }
+        .question-nav-content { position: absolute; right: 0; bottom: calc(100% + 8px); width: 100%; max-height: min(65vh, 520px); overflow: auto; overscroll-behavior: contain; border: 1px solid #e2e8f0; border-radius: 1rem; background: white; padding: 1rem; box-shadow: 0 12px 32px rgb(15 23 42 / 20%); }
+        #question-nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+        #question-nav button { min-width: 0; min-height: 44px; padding: .5rem .25rem; }
+        #previous-button, #next-button, #submit-button { min-height: 48px; }
+        #fatal-error { overflow-wrap: anywhere; }
+        @media (min-width: 640px) {
+            .question-card { padding-bottom: 1.25rem; }
+            #question-nav { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        }
+        @media (min-width: 1024px) {
+            .runner-layout { grid-template-columns: minmax(0, 1fr) 220px; }
+            .question-card { padding-bottom: 1.25rem; }
+            .question-nav-panel { position: sticky; top: 6rem; right: auto; bottom: auto; width: auto; }
+            .question-nav-toggle { display: none; }
+            .question-nav-content { position: static; width: auto; max-height: none; overflow: visible; border: 0; padding: 1rem; box-shadow: none; }
+        }
+        @media (max-width: 639px) {
+            header > div { gap: .75rem; padding: .75rem; }
+            header h1 { max-width: 58vw; overflow-wrap: anywhere; font-size: .95rem; line-height: 1.25rem; }
+            header a { flex: 0 0 auto; padding: .55rem .7rem; }
+            #exam-app { padding-left: .75rem; padding-right: .75rem; padding-top: 1rem; }
+            #instruction-panel { padding: 1rem; border-radius: 1rem; }
+            #instruction-panel h2 { font-size: 1.25rem; line-height: 1.6rem; }
+            #runner-panel > div:first-child { position: sticky; top: 0; z-index: 20; padding: .75rem; border-radius: .9rem; }
+            #exam-timer { font-size: 1.5rem; }
+            #save-status { max-width: 58vw; overflow-wrap: anywhere; font-size: .75rem; }
+            #question-nav-content { padding: .85rem; }
+            #completion-panel { padding: 2rem 1rem; }
+        }
+        @media print { body { display: none !important; } }
+    </style>
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
     <header class="bg-slate-900 text-white shadow">
-        <div class="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4">
             <div><div class="text-xs uppercase tracking-widest text-slate-300">CBT Madrasah</div><h1 class="text-lg font-bold">{{ $exam->title }}</h1></div>
             <a href="{{ route('student.exams.index') }}" class="rounded-lg border border-slate-500 px-3 py-2 text-sm">Daftar Ujian</a>
         </div>
     </header>
-    <main class="mx-auto max-w-5xl px-4 py-8" id="exam-app"
+    <main class="mx-auto w-full max-w-5xl px-3 py-4 sm:px-4 sm:py-8" id="exam-app"
         data-exam-id="{{ $exam->id }}"
         data-student-id="{{ $student->id }}"
         data-device-binding="{{ $deviceBindingId }}"
         data-require-token="{{ $exam->require_token ? '1' : '0' }}"
         data-has-active-attempt="{{ $activeAttempt ? '1' : '0' }}"
         data-can-start="{{ $canStart ? '1' : '0' }}">
-        <section id="instruction-panel" class="rounded-2xl bg-white p-6 shadow-sm">
+        <section id="instruction-panel" class="rounded-2xl bg-white p-4 shadow-sm sm:p-6">
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p class="text-sm text-slate-500">Peserta: {{ $student->name }}</p>
@@ -52,19 +106,26 @@
         </section>
 
         <section id="runner-panel" class="hidden">
-            <div class="sticky top-0 z-10 mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow">
+            <div class="sticky top-0 z-10 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white p-3 shadow sm:mb-4 sm:gap-3 sm:p-4">
                 <div><div class="text-xs text-slate-500">Sisa waktu</div><div id="exam-timer" class="text-2xl font-black tabular-nums">--:--</div></div>
                 <div class="text-right"><div id="save-status" class="text-sm font-semibold" aria-live="polite">Memuat jawaban…</div><div id="question-progress" class="text-xs text-slate-500"></div></div>
             </div>
-            <div class="grid gap-4 lg:grid-cols-[1fr_220px]">
-                <div class="rounded-2xl bg-white p-5 shadow-sm">
-                    <div class="mb-4 flex items-center justify-between"><span id="question-number" class="text-sm font-semibold text-blue-700"></span><span id="question-points" class="text-xs text-slate-500"></span></div>
-                    <div id="question-media" class="mb-5 space-y-3"></div>
-                    <div id="question-stem" class="mb-6 whitespace-pre-wrap text-lg leading-relaxed"></div>
-                    <div id="question-input" class="space-y-3"></div>
-                    <div class="mt-8 flex justify-between gap-3"><button id="previous-button" class="rounded-xl border border-slate-300 px-4 py-3 font-semibold">Sebelumnya</button><button id="next-button" class="rounded-xl bg-blue-700 px-5 py-3 font-semibold text-white">Berikutnya</button></div>
+            <div class="runner-layout">
+                <div class="question-card rounded-2xl bg-white p-4 shadow-sm sm:p-5">
+                    <div class="mb-4 flex items-center justify-between gap-2"><span id="question-number" class="text-sm font-semibold text-blue-700"></span><span id="question-points" class="shrink-0 text-xs text-slate-500"></span></div>
+                    <div id="question-media" class="question-copy-protected mb-5 space-y-3"></div>
+                    <div id="question-stem" class="question-copy-protected mb-6 whitespace-pre-wrap text-lg leading-relaxed"></div>
+                    <div id="question-input" class="question-copy-protected space-y-3"></div>
+                    <div class="mt-8 flex justify-between gap-3"><button id="previous-button" class="flex-1 rounded-xl border border-slate-300 px-3 py-3 font-semibold sm:flex-none sm:px-4">Sebelumnya</button><button id="next-button" class="flex-1 rounded-xl bg-blue-700 px-3 py-3 font-semibold text-white sm:flex-none sm:px-5">Berikutnya</button></div>
                 </div>
-                <aside class="rounded-2xl bg-white p-4 shadow-sm"><h3 class="font-bold">Navigasi Soal</h3><div id="question-nav" class="mt-3 grid grid-cols-5 gap-2"></div><button id="submit-button" class="mt-6 w-full rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white">Kirim Ujian</button></aside>
+                <details id="question-nav-panel" class="question-nav-panel">
+                    <summary class="question-nav-toggle">Nomor soal &amp; kirim ujian</summary>
+                    <div class="question-nav-content">
+                        <h3 class="font-bold">Navigasi Soal</h3>
+                        <div id="question-nav" class="mt-3 grid grid-cols-5 gap-2"></div>
+                        <button id="submit-button" class="mt-5 w-full rounded-xl bg-emerald-700 px-4 py-3 font-bold text-white">Kirim Ujian</button>
+                    </div>
+                </details>
             </div>
         </section>
 
@@ -620,6 +681,40 @@
             event.returnValue = '';
         }
     });
+
+    function syncQuestionNavigationForViewport() {
+        const panel = el('question-nav-panel');
+        if (!panel) return;
+        panel.open = window.innerWidth >= 1024;
+    }
+    syncQuestionNavigationForViewport();
+    window.addEventListener('resize', syncQuestionNavigationForViewport);
+
+    function isEditableQuestionTarget(target) {
+        return !!(target && target.closest && target.closest('input, textarea, select, button, audio, video, a, [contenteditable="true"]'));
+    }
+    function installQuestionCopyDeterrents() {
+        ['question-stem', 'question-media', 'question-input'].forEach(id => {
+            const area = el(id);
+            if (!area) return;
+            ['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart'].forEach(type => {
+                area.addEventListener(type, event => {
+                    if (isEditableQuestionTarget(event.target)) return;
+                    event.preventDefault();
+                });
+            });
+        });
+        document.addEventListener('keydown', event => {
+            if (!(event.ctrlKey || event.metaKey) || !['c', 'x', 'p'].includes(String(event.key).toLowerCase())) return;
+            const selection = window.getSelection && window.getSelection();
+            const anchor = selection && selection.anchorNode;
+            const target = anchor && (anchor.nodeType === Node.ELEMENT_NODE ? anchor : anchor.parentElement);
+            if (target && target.closest && target.closest('#question-stem, #question-media, #question-input') && !isEditableQuestionTarget(event.target)) {
+                event.preventDefault();
+            }
+        });
+    }
+    installQuestionCopyDeterrents();
 
     el('start-button').addEventListener('click', startOrResume);
     el('previous-button').addEventListener('click', () => { if (state.current > 0) { state.current--; renderQuestion(); } });
