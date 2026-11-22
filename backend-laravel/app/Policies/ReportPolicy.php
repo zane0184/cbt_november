@@ -9,50 +9,43 @@ use App\Support\Security\TeacherAccess;
 class ReportPolicy
 {
     /**
-     * Determine if the user can view exam results.
+     * Exam answer-level and score reports are Guru capabilities only.
+     * Admin Madrasah and legacy KAMAD have no CBT result portal.
      */
     public function viewExamResults(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if (!$exam || $user->tenant_id !== $exam->tenant_id) return false;
-
-        if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $exam);
-        }
-
-        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
+        return $exam
+            && $user->tenant_id === $exam->tenant_id
+            && $user->hasExactRole('GURU')
+            && $user->hasPermission('report.view')
+            && TeacherAccess::canViewExam($user, $exam);
     }
 
     /**
-     * Determine if the user can view student results.
+     * Students may see only their own results through the published current
+     * score DTO. Guru access is further constrained by the report query.
      */
     public function viewStudentResults(User $user, User $student): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $student->tenant_id) return false;
-
-        if ($user->id === $student->id) return true;
-
-        if ($user->hasRole('GURU')) {
-            // Exact subject/year/semester/rombel authorization is enforced by
-            // studentResults/exportStudentPdf after required filters validate.
-            return $user->hasPermission('report.view') && TeacherAccess::profileIds($user) !== [];
+        if ($user->tenant_id !== $student->tenant_id) {
+            return false;
         }
 
-        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
+        if ($user->hasExactRole('SISWA')) {
+            return (string) $user->id === (string) $student->id;
+        }
+
+        return $user->hasExactRole('GURU')
+            && $user->hasPermission('report.view')
+            && TeacherAccess::profileIds($user) !== [];
     }
 
     /**
-     * Determine if the user can view subject results.
+     * Tenant-wide subject aggregates are not safe for a rombel-scoped Guru
+     * assignment. Keep this surface closed until the query is assignment-scoped.
      */
     public function viewSubjectResults(User $user, \App\Models\Subject $subject): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $subject->tenant_id) return false;
-
-        // Subject aggregates currently span all rombels. A teacher assignment is
-        // rombel-specific, so do not expose tenant-wide subject aggregates until
-        // the report query is constrained to the teacher's assigned rombels.
-        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) && $user->hasPermission('report.view');
+        return false;
     }
 }
