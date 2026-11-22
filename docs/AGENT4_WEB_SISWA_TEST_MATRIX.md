@@ -127,3 +127,28 @@ SHORT_ANSWER tetap BLOCKED sampai Agent 2/3 membuktikan accepted answers tersimp
 ## 10. Acceptance gate
 
 Web Siswa tidak siap operasional sebelum seluruh P0/P1 yang relevan lulus pada source SHA yang sama, termasuk F-01, F-02, lease/fencing, recovery, konflik, submit barrier, multi-tab, multi-device, tenant isolation, browser E2E, dan integration test Agent 1/2/3. Semua status di atas tetap NOT RUN/BLOCKED sampai ada bukti.
+
+
+## 11. KOORDINATOR PORTAL / KAMAD / PROKTOR BOUNDARY — ADDENDUM 22 NOVEMBER 2026
+
+Dasar: Issue #10 komentar `7078539953` oleh koordinator `zane0184`. Keputusan produk: portal aktif ADMIN_MADRASAH/GURU/SISWA; KAMAD frozen; Proktor adalah assignment sementara akun GURU di Web Guru; tidak ada akun/role/login/portal Proktor; SISWA bukan Proktor. Persetujuan teknis Agent 2/3 masih PENDING.
+
+| ID | Skenario | Hasil yang diwajibkan | Status | Owner |
+|---|---|---|---|---|
+| ROLE-01 | Exact-one SISWA | Hanya user dengan tepat satu role SISWA dapat memakai seluruh Student endpoint | BLOCKED | Agent 2 |
+| ROLE-02 | SISWA + GURU | Ditolak pada daftar/detail Exam, admission, Attempt, snapshot, media, answer, submit, result | NOT RUN | Agent 2 |
+| ROLE-03 | SISWA + KAMAD | Ditolak; tidak boleh lolos karena hanya ADMIN_MADRASAH yang dikecualikan | NOT RUN | Agent 2 |
+| ROLE-04 | GURU saja / Guru Proktor | Ditolak pada seluruh Student endpoint; Guru tetap memakai identitas Guru | NOT RUN | Agent 2 |
+| ROLE-05 | ADMIN_MADRASAH / legacy OPERATOR | Tidak dapat mengakses runner peserta | NOT RUN | Agent 2 |
+| ROLE-06 | KAMAD login Web/API | Tidak dapat login, memperoleh session/token, atau redirect ke dashboard CBT | BLOCKED | Agent 2 |
+| ROLE-07 | KAMAD policy/route/Livewire/export/monitoring | Seluruh jalur capability ditolak; tidak ada bypass author/KAMAD | BLOCKED | Agent 2 |
+| ROLE-08 | Role PROKTOR permanen | Tidak ada role/credential/portal/login PROKTOR yang dibuat | NOT RUN | Agent 1/2 |
+| ROLE-09 | Assignment Guru Proktor aktif | Assignment hanya membuka menu dan tindakan terbatas di Web Guru | BLOCKED | Agent 1/2/3 |
+| ROLE-10 | Assignment Proktor expired/revoked/wrong room/Exam/tenant/schedule revision | Akses monitoring ditolak fail-closed | BLOCKED | Agent 1/2/3 |
+| ROLE-11 | Guru Proktor memanggil API peserta | Ditolak oleh exact-one SISWA; tidak dapat start/resume/answer/submit sebagai peserta | NOT RUN | Agent 2 |
+| ROLE-12 | Siswa memanggil route/API Proktor | Ditolak; Web Siswa tidak menyediakan menu/route/action Proktor | NOT RUN | Agent 2/4 |
+| ROLE-13 | Proktor mencoba melihat jawaban/nilai/answer key | Ditolak kecuali ada permission terpisah yang secara eksplisit disetujui; default deny | BLOCKED | Agent 2/3 |
+| ROLE-14 | Proktor mencoba Force Submit/ubah Exam/bank soal/assignment Guru lain | Ditolak | BLOCKED | Agent 2/3 |
+| ROLE-15 | Audit tindakan Proktor | Actor adalah user_id akun GURU; tenant, Exam, Room, assignment, action, reason, timestamp tercatat | NOT RUN | Agent 1/2 |
+
+Test di atas harus dijalankan pada exact source SHA yang sama melalui PHPUnit/API integration dan browser E2E. Status kosong/UNKNOWN bukan PASS. Tidak ada Proktor UI/API client di Web Siswa; seluruh menu Proktor berada di Web Guru dan dimiliki Agent 3. Web Siswa tidak mengambil alih assignment atau monitoring.
