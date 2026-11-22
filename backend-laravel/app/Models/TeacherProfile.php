@@ -13,7 +13,7 @@ class TeacherProfile extends Model
     use HasUuids, SoftDeletes, TenantScoped;
 
     protected $fillable = [
-        'user_id', 'employee_identifier', 'nip', 'nik', 'nuptk', 'full_name', 'gender', 'phone'
+        'user_id', 'employee_identifier', 'employment_type', 'nip', 'nik', 'nuptk', 'full_name', 'gender', 'phone'
     ];
 
     public function subjectAssignments(): \Illuminate\Database\Eloquent\Relations\HasMany
