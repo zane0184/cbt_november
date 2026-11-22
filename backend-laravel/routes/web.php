@@ -28,7 +28,7 @@ Route::get('/', function () {
         }
 
         if ($user->hasRole('GURU')) {
-            return redirect('/admin/exams');
+            return redirect('/guru/dashboard');
         }
 
         if ($user->hasRole('SISWA')) {
@@ -114,3 +114,5 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/exams/{exam}/analytics', \App\Livewire\Teacher\AnalyticsDashboard::class);
     Route::get('/exams/{exam}/analytics/items', \App\Livewire\Teacher\ItemAnalysis::class);
 });
+
+require __DIR__.'/teacher.php';
