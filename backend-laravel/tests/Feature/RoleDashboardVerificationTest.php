@@ -12,6 +12,7 @@ use App\Models\GradeLevel;
 use App\Models\Phase;
 use App\Models\Role;
 use App\Models\Rombel;
+use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\RolePermissionBootstrapper;
@@ -323,7 +324,9 @@ class RoleDashboardVerificationTest extends TestCase
         $gradeLevelA = GradeLevel::create(['phase_id' => $phaseA->id, 'name' => 'Kelas X', 'code' => 'X', 'level' => 10]);
 
         $yearA = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
-        $rombelA = Rombel::create(['name' => 'X-1', 'academic_year_id' => $yearA->id, 'grade_level_id' => $gradeLevelA->id]);
+        $rombelA = Rombel::create(['name' => 'X-1', 'academic_year_id' => $yearA->id, 'grade_level_id' => $gradeLevelA->id, 'status' => 'ACTIVE']);
+        StudentProfile::create(['tenant_id' => $this->tenantA->id, 'user_id' => $this->siswaA->id, 'nis' => 'SISWA-A-001', 'nisn' => '1000000001', 'full_name' => 'Siswa A']);
+        \\App\\Models\\Semester::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $yearA->id, 'term' => 'GANJIL', 'is_active' => true]);
 
         $assessmentA = Assessment::create([
             'academic_year_id' => $yearA->id,
@@ -348,8 +351,8 @@ class RoleDashboardVerificationTest extends TestCase
         $gradeLevelB = GradeLevel::create(['phase_id' => $phaseB->id, 'name' => 'Kelas XI', 'code' => 'XI', 'level' => 11]);
 
         $yearB = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
-        $rombelB1 = Rombel::create(['name' => 'XI-1', 'academic_year_id' => $yearB->id, 'grade_level_id' => $gradeLevelB->id]);
-        $rombelB2 = Rombel::create(['name' => 'XI-2', 'academic_year_id' => $yearB->id, 'grade_level_id' => $gradeLevelB->id]);
+        $rombelB1 = Rombel::create(['name' => 'XI-1', 'academic_year_id' => $yearB->id, 'grade_level_id' => $gradeLevelB->id, 'status' => 'ACTIVE']);
+        $rombelB2 = Rombel::create(['name' => 'XI-2', 'academic_year_id' => $yearB->id, 'grade_level_id' => $gradeLevelB->id, 'status' => 'ACTIVE']);
 
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
 
@@ -358,7 +361,11 @@ class RoleDashboardVerificationTest extends TestCase
         Livewire::test(OperatorDashboard::class)
             ->assertViewHas('totalStudents', 1)
             ->assertViewHas('totalRombels', 1)
-            ->assertViewHas('totalExams', 1);
+            ->assertViewHas('totalExams', 1)
+            ->assertViewHas('activeSemester', fn ($semester) => $semester?->term === 'GANJIL')
+            ->assertSee('Madrasah Demo A')
+            ->assertSee('Pemeriksaan Dasar Sistem')
+            ->assertSee('Menu');
 
         // Test Kamad Dashboard for Tenant A
         $this->actingAs($this->kamadA);
