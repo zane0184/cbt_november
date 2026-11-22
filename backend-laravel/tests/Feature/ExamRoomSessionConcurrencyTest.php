@@ -16,7 +16,6 @@ use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\ExamRoomSessionService;
 use App\Services\ExamProctorAssignmentService;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,8 +23,6 @@ use Tests\TestCase;
 
 class ExamRoomSessionConcurrencyTest extends TestCase
 {
-    use DatabaseMigrations;
-
     private ?string $tenantId = null;
     private User $admin;
     private Exam $examOne;
@@ -40,6 +37,11 @@ class ExamRoomSessionConcurrencyTest extends TestCase
         if (DB::getDriverName() !== 'mysql') {
             $this->markTestSkipped('Concurrency locking test requires MySQL 8/InnoDB.');
         }
+
+        // Rebuild only the disposable test schema; do not roll back the full batch,
+        // which intentionally contains a separate forward-only Device Lease migration.
+        $this->artisan('migrate:fresh', ['--force' => true]);
+        $this->assertSame(1, (int) DB::selectOne('SELECT @@FOREIGN_KEY_CHECKS AS enabled')->enabled);
 
         $version = (string) DB::selectOne('SELECT VERSION() AS version')->version;
         $this->assertGreaterThanOrEqual(8, (int) explode('.', $version)[0], 'MySQL 8 or newer is required.');
