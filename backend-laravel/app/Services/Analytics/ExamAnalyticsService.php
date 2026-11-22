@@ -65,6 +65,7 @@ class ExamAnalyticsService
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
             ->where('grading_status', 'FINALIZED')
+            ->current()
             ->whereHas('attempt', function ($q) {
                 $q->whereIn('status', ['SUBMITTED', 'EXPIRED']);
             })
