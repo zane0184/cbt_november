@@ -16,6 +16,7 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\Support\CreatesTeacherExamScope;
