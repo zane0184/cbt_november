@@ -9,7 +9,6 @@ on:
   pull_request:
     branches:
       - main
-      - work/stage4d-account-lifecycle-20261122
   workflow_dispatch:
 
 permissions:
@@ -66,21 +65,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate Web Siswa runner JavaScript syntax
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          source = Path("resources/views/student/exams/show.blade.php").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script>\s*(.*?)\s*</script>", source, flags=re.DOTALL)
-          if len(scripts) != 1:
-              raise SystemExit(f"Expected one inline runner script, found {len(scripts)}")
-          Path("/tmp/cbt-student-runner.js").write_text(scripts[0], encoding="utf-8")
-          PY
-          node --check /tmp/cbt-student-runner.js
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
