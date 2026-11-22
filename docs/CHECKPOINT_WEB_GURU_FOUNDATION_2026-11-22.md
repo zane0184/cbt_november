@@ -4,7 +4,8 @@ Tanggal: 22 November 2026
 Repository: zane0184/cbt_november
 Branch: work/web-guru-foundation-20261122
 Baseline: 81b6c74d81d80bc483530802594f624fb4e0f3db
-HEAD checkpoint: 55e8557c30f427db97624b8c4837e8dc3c9d8784
+HEAD source: 55e8557c30f427db97624b8c4837e8dc3c9d8784
+Checkpoint document commit before this update: 27639f38bdf1bba0075cbbefc852068aa8603fd9
 Status: PARSIAL — implementasi awal tersedia; CI terbaru belum final.
 
 ## Selesai
@@ -24,10 +25,11 @@ Run 44982652810:
 - PHP lint dan route registration PASS.
 - Test step PASS: 7 test cases, 35 assertions, 7 warnings.
 - InnoDB verification PASS.
-- Cleanup disposable DB gagal karena heredoc workflow lama.
+- Cleanup disposable DB gagal pada run lama karena heredoc workflow lama.
+- Run 44982777697 pada SHA 20012d21: seluruh 16 langkah PASS, termasuk cleanup; PHPUnit 7 test cases / 35 assertions / 7 warnings.
 - Perbaikan workflow cleanup dan --display-warnings sudah masuk ke branch.
-- Test tambahan assignment kedaluwarsa sudah ditambahkan setelah run tersebut.
-- CI pada HEAD checkpoint terbaru belum selesai; hasil PASS belum boleh diklaim.
+- Test tambahan assignment kedaluwarsa sudah ditambahkan.
+- Run 44982836419 pada SHA 55e8557c masih berjalan; hasil HEAD terbaru belum boleh diklaim PASS.
 
 ## Blocker / tindak lanjut
 1. Periksa run terbaru pada branch dan pastikan cleanup DB disposable PASS.
