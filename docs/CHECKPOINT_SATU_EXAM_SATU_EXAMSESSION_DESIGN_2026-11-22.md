@@ -10,10 +10,10 @@ PENGUJIAN: NOT RUN untuk desain baru. CI Stage 4B–4C lama tetap PASS pada sour
 ## Git
 - Repository: zane0184/cbt_november
 - Branch: work/stage4b-room-session-20261122
-- HEAD dasar sebelum dokumen audit: 5d4d9dc7350fbab49a38842ce1f8964bed42cd88
+- HEAD aktual sebelum audit: 6815148248cb963b4083430fbea5e21056676a45
 - Commit dokumen audit: 140cd00a65ec96e8bd78221b9beee7173d5077a2
 - Source SHA CI lama: f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5
-- Compare SHA CI ke HEAD dasar: 3 commit docs-only; tidak ada source/migration/schema/workflow berubah.
+- Compare SHA CI ke HEAD aktual: 4 commit docs-only; tidak ada source/migration/schema/workflow berubah.
 - Working tree lokal tidak dapat diverifikasi melalui pemeriksaan GitHub remote.
 
 ## CI Stage 4B–4C sebelumnya
