@@ -135,7 +135,7 @@ async function newPage(browser, scenario) {
   page.on('pageerror', error => scenario.pageErrors.push(error.message));
   await attachApiMock(page, scenario);
   if (scenario.disableIndexedDb) {
-    await page.addInitScript(() => Object.defineProperty(window, 'indexedDB', { configurable: true, value: undefined }));
+    await page.addInitScript(() => { delete window.indexedDB; });
   }
   if (scenario.legacyPending) {
     await page.goto(origin + '/seed');
