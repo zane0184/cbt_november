@@ -46,7 +46,7 @@ class TeacherSubjectAssignmentConcurrencyTest extends TestCase
         app(TenantContext::class)->setTenantId($this->tenant->id);
 
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
         $permission = Permission::create(['name' => 'academic.manage', 'label' => 'Kelola akademik']);
         $adminRole->permissions()->attach($permission->id);
 
