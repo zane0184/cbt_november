@@ -400,4 +400,153 @@ class ExamSessionHardeningTest extends TestCase
 
         $response->assertStatus(404);
     }
+    public function test_valid_active_attempt_resumes_after_exam_closed_and_participant_admission_window_ends()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+
+        $first = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $first->assertStatus(201);
+        $attemptId = $first->json('data.id');
+
+        $this->participantA->update(['eligible_until' => now()->subMinute()]);
+        $this->examA->update(['status' => 'CLOSED']);
+
+        $resume = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+        $resume->assertStatus(200);
+        $resume->assertJsonPath('data.id', $attemptId);
+
+        $execution = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->getJson("/api/v1/exams/{$this->examA->id}/execution");
+        $execution->assertStatus(200);
+
+        $this->assertDatabaseCount('exam_attempts', 1);
+    }
+
+    public function test_new_attempt_is_denied_before_schedule_and_after_exam_closes()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+
+        $this->examA->update(['start_at' => now()->addHour()]);
+        $beforeSchedule = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $beforeSchedule->assertStatus(403);
+        $this->assertDatabaseCount('exam_attempts', 0);
+
+        $this->examA->update([
+            'start_at' => now()->subMinute(),
+            'status' => 'CLOSED',
+        ]);
+        $afterClose = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $afterClose->assertStatus(403);
+        $this->assertDatabaseCount('exam_attempts', 0);
+    }
+
+    public function test_exam_metadata_never_releases_question_snapshots_before_attempt_admission()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+
+        $metadata = $this->getJson("/api/v1/exams/{$this->examA->id}");
+        $metadata->assertStatus(200);
+        $metadata->assertJsonMissingPath('data.snapshots');
+
+        $beforeAdmission = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->getJson("/api/v1/exams/{$this->examA->id}/execution");
+        $beforeAdmission->assertStatus(404);
+
+        $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123'])
+            ->assertStatus(201);
+
+        $execution = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->getJson("/api/v1/exams/{$this->examA->id}/execution");
+        $execution->assertStatus(200);
+        $execution->assertJsonStructure(['data' => ['questions']]);
+    }
+
+    public function test_duplicate_submit_is_idempotent_and_does_not_duplicate_score_history()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        $first = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
+        $first->assertStatus(200);
+        $first->assertJsonPath('data.status', 'SUBMITTED');
+
+        $retry = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
+        $retry->assertStatus(200);
+        $retry->assertJsonPath('idempotent', true);
+        $retry->assertJsonPath('data.status', 'SUBMITTED');
+
+        $this->assertDatabaseCount('exam_attempt_scores', 1);
+        $this->assertDatabaseCount('exam_attempt_score_current', 1);
+    }
+
+    public function test_missing_device_binding_never_allows_implicit_takeover()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        ExamAttempt::whereKey($attemptId)->update(['device_fingerprint' => null]);
+
+        $resume = $this->withHeader('X-Device-Binding-ID', 'device-B')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts");
+        $resume->assertStatus(409)->assertJsonPath('code', 'CONCURRENT_DEVICE_DENIED');
+
+        $execution = $this->withHeader('X-Device-Binding-ID', 'device-B')
+            ->getJson("/api/v1/exams/{$this->examA->id}/execution");
+        $execution->assertStatus(409)->assertJsonPath('code', 'CONCURRENT_DEVICE_DENIED');
+
+        $heartbeat = $this->withHeader('X-Device-Binding-ID', 'device-B')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/heartbeat");
+        $heartbeat->assertStatus(409)->assertJsonPath('code', 'CONCURRENT_DEVICE_DENIED');
+
+        $submit = $this->withHeader('X-Device-Binding-ID', 'device-B')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
+        $submit->assertStatus(409)->assertJsonPath('code', 'CONCURRENT_DEVICE_DENIED');
+
+        $this->assertDatabaseHas('exam_attempts', [
+            'id' => $attemptId,
+            'device_fingerprint' => null,
+            'status' => 'IN_PROGRESS',
+        ]);
+    }
+
+    public function test_expired_in_progress_attempt_blocks_new_attempt_until_server_expiry_closes_it()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        ExamAttempt::whereKey($attemptId)->update(['expires_at' => now()->subSecond()]);
+
+        $blocked = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $blocked->assertStatus(409)->assertJsonPath('code', 'ATTEMPT_EXPIRY_PENDING');
+        $this->assertDatabaseCount('exam_attempts', 1);
+
+        $this->artisan('cbt:expire-attempts')->assertExitCode(0);
+        $this->assertDatabaseHas('exam_attempts', ['id' => $attemptId, 'status' => 'EXPIRED']);
+
+        $next = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $next->assertStatus(201);
+        $this->assertDatabaseCount('exam_attempts', 2);
+    }
+
 }
