@@ -16,7 +16,7 @@ class StudentLifecycleService
     public function enroll(string $tenantId, string $actorId, string $studentId, string $rombelId, string $effectiveDate, string $reason): StudentAcademicEvent
     {
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $rombelId, $effectiveDate, $reason) {
-            $this->lockTenant($tenantId);
+            $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
             $this->assertStudentEligible($tenantId, $student);
             $rombel = $this->lockRombel($tenantId, $rombelId, true);
@@ -40,7 +40,7 @@ class StudentLifecycleService
     public function transfer(string $tenantId, string $actorId, string $studentId, string $fromRombelId, string $toRombelId, string $effectiveDate, string $reason): StudentAcademicEvent
     {
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $fromRombelId, $toRombelId, $effectiveDate, $reason) {
-            $this->lockTenant($tenantId);
+            $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
             $this->assertStudentEligible($tenantId, $student);
             $from = $this->lockRombel($tenantId, $fromRombelId, false, true);
@@ -88,7 +88,7 @@ class StudentLifecycleService
     private function moveToNextYear(string $tenantId, string $actorId, string $studentId, string $fromRombelId, string $toRombelId, string $effectiveDate, string $reason, string $eventType, int $gradeDelta): StudentAcademicEvent
     {
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $fromRombelId, $toRombelId, $effectiveDate, $reason, $eventType, $gradeDelta) {
-            $this->lockTenant($tenantId);
+            $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
             $this->assertStudentEligible($tenantId, $student);
             $from = $this->lockRombel($tenantId, $fromRombelId, false, false);
@@ -124,7 +124,7 @@ class StudentLifecycleService
     public function remove(string $tenantId, string $actorId, string $studentId, string $rombelId, string $effectiveDate, string $reason): StudentAcademicEvent
     {
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $rombelId, $effectiveDate, $reason) {
-            $this->lockTenant($tenantId);
+            $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
             $rombel = $this->lockRombel($tenantId, $rombelId, false);
             $membership = $this->lockMembership($tenantId, $student->id, $rombel->id, $rombel->academic_year_id);
@@ -142,7 +142,7 @@ class StudentLifecycleService
     public function graduate(string $tenantId, string $actorId, string $studentId, string $fromRombelId, string $effectiveDate, string $reason): StudentAcademicEvent
     {
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $fromRombelId, $effectiveDate, $reason) {
-            $this->lockTenant($tenantId);
+            $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
             $rombel = $this->lockRombel($tenantId, $fromRombelId, false);
             $membership = $this->lockMembership($tenantId, $student->id, $rombel->id, $rombel->academic_year_id);
@@ -173,7 +173,7 @@ class StudentLifecycleService
     public function changeStatus(string $tenantId, string $actorId, string $studentId, string $targetStatus, string $effectiveDate, string $reason): StudentAcademicEvent
     {
         return DB::transaction(function () use ($tenantId, $actorId, $studentId, $targetStatus, $effectiveDate, $reason) {
-            $this->lockTenant($tenantId);
+            $this->lockTenant($tenantId, $actorId);
             $student = $this->lockStudent($tenantId, $studentId);
             $allowed = ['ACTIVE', 'INACTIVE', 'ARCHIVED', 'ALUMNI'];
             if (!in_array($targetStatus, $allowed, true)) {
@@ -208,10 +208,20 @@ class StudentLifecycleService
         }, 3);
     }
 
-    private function lockTenant(string $tenantId): void
+    private function lockTenant(string $tenantId, string $actorId): void
     {
         Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')
             ->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
+
+        $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($actorId)
+            ->whereNull('deleted_at')->where('is_active', true)->firstOrFail();
+        abort_unless(
+            $actor->roles()->count() === 1
+                && $actor->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+                && $actor->hasPermission('academic.manage'),
+            403,
+            'Hanya Admin Madrasah aktif dengan satu role dan permission academic.manage yang dapat mengubah status/penempatan siswa.'
+        );
     }
 
     private function lockStudent(string $tenantId, string $studentId): StudentProfile
