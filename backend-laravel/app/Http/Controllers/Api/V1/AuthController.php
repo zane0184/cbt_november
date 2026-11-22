@@ -42,14 +42,14 @@ class AuthController extends Controller
 
         $token = DB::transaction(function () use ($user, $validated) {
             // Same user-row mutex as Web login and Attempt creation.
-            $lockedUser = \\App\\Models\\User::query()->whereKey($user->id)->lockForUpdate()->first();
+            $lockedUser = \App\Models\User::query()->whereKey($user->id)->lockForUpdate()->first();
             if (!$lockedUser || !$lockedUser->is_active) {
                 return null;
             }
             $lockedUser->load('roles');
 
             if ($lockedUser->hasExactRole('SISWA')
-                && app(\\App\\Services\\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
                 return null;
             }
 
