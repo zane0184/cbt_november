@@ -59,3 +59,10 @@ Note: This preserved test snapshot predates both the valid cross-year relationsh
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-canonical-siswa-fixture | 8b7a84dd3fcce18c6a803acc44ebd081cbd7aa45 | 13225 | a76b215b5cf60946e37e9a47d12016381b7ea6a8 |
+
+
+## Supplemental snapshot — canonical Guru role fixture correction
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-ensure-canonical-guru-fixture | f1877b045140ea1482536f6a8c4bc3367f453533 | 7592 | ada0becdeef8f59576713f81cd9b45419449a2b2 |
