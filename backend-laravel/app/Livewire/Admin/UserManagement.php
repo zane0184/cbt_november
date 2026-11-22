@@ -274,6 +274,7 @@ class UserManagement extends Component
         $this->editNip = $user->teacherProfile?->nip ?? '';
         $this->editNik = $user->teacherProfile?->nik ?? '';
         $this->editNisn = $user->studentProfile?->nisn ?? '';
+        $this->editReason = '';
         abort_unless(($user->teacherProfile && !$user->studentProfile) || ($user->studentProfile && !$user->teacherProfile), 409, 'Profil akun tidak konsisten.');
         $this->resetValidation();
         $this->showEditModal = true;
@@ -292,6 +293,7 @@ class UserManagement extends Component
             'editName' => ['required','string','max:255'],
             'editUsername' => ['nullable','string','min:3','max:80','regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users','username')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->id)],
             'editEmail' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->id)],
+            'editReason' => ['required','string','min:10','max:1000'],
         ];
         if ($isGuru) {
             $rules['editEmploymentType'] = ['required', Rule::in(['ASN', 'HONORER'])];
@@ -387,12 +389,14 @@ class UserManagement extends Component
                 'name' => $locked->name, 'username' => $locked->username, 'email' => $locked->email,
                 'role' => $isGuru ? 'GURU' : 'SISWA',
                 'employment_type' => $isGuru ? $profile->employment_type : null,
+                'reason' => trim($validated['editReason']),
             ]);
         }, 3);
 
         $this->showEditModal = false;
         $this->editingUserId = null;
         $this->editingRole = '';
+        $this->editReason = '';
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Data pengguna berhasil diperbarui.']);
         session()->flash('message', 'Data pengguna berhasil diperbarui.');
     }
@@ -403,6 +407,7 @@ class UserManagement extends Component
         $user = $this->manageableUserQuery()->whereKey($userId)->firstOrFail();
         $this->resetPasswordUserId = (string) $user->id;
         $this->resetPassword = '';
+        $this->resetReason = '';
         $this->resetValidation();
         $this->showResetPasswordModal = true;
     }
@@ -410,7 +415,10 @@ class UserManagement extends Component
     public function resetUserPassword(): void
     {
         $this->authorizeUserManagement();
-        $validated = $this->validate(['resetPassword' => ['required','string','min:14']]);
+        $validated = $this->validate([
+            'resetPassword' => ['required','string','min:14'],
+            'resetReason' => ['required','string','min:10','max:1000'],
+        ]);
         $userId = (string) $this->resetPasswordUserId;
 
         DB::transaction(function () use ($userId, $validated): void {
@@ -422,12 +430,14 @@ class UserManagement extends Component
             app(AuditService::class)->log('USER_PASSWORD_RESET', 'User', $user->id, null, [
                 'username' => $user->username,
                 'role' => $user->roles()->value('name'),
+                'reason' => trim($validated['resetReason']),
             ]);
         }, 3);
 
         $this->showResetPasswordModal = false;
         $this->resetPasswordUserId = null;
         $this->resetPassword = '';
+        $this->resetReason = '';
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Password pengguna berhasil direset.']);
         session()->flash('message', 'Password pengguna berhasil direset.');
     }
