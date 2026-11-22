@@ -428,6 +428,7 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $teachers = TeacherProfile::query()
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->where(function ($profile) {
                 $profile->where(fn ($asn) => $asn->where('employment_type', 'ASN')->whereNotNull('nip')->whereRaw('LENGTH(nip) = 18'))
                     ->orWhere(fn ($honorer) => $honorer->where('employment_type', 'HONORER')->whereNotNull('nik')->whereRaw('LENGTH(nik) = 16'));
