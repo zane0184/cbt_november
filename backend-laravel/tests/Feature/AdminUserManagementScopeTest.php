@@ -219,6 +219,7 @@ class AdminUserManagementScopeTest extends TestCase
 
         Livewire::test(UserManagement::class)
             ->set('name', 'Guru Tanpa NIP')
+            ->set('username', 'guru.tanpa.nip')
             ->set('selectedRole', 'GURU')
             ->set('password', 'StrongPassword123!')
             ->call('createUser')
