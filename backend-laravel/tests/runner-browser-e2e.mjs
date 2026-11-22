@@ -29,9 +29,10 @@ const fixture = [
   '<script>', runnerScript, '</script></body></html>'
 ].join('');
 
-const server = createServer((_request, response) => {
+const server = createServer((request, response) => {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-  response.end(fixture);
+  const requireToken = new URL(request.url, 'http://127.0.0.1').searchParams.get('require-token') === '1';
+  response.end(requireToken ? fixture.replace('data-require-token="0"', 'data-require-token="1"') : fixture);
 });
 await new Promise((resolveListen, reject) => {
   server.once('error', reject);
@@ -129,8 +130,7 @@ async function newPage(browser, scenario) {
   const page = await context.newPage();
   page.on('pageerror', error => scenario.pageErrors.push(error.message));
   await attachApiMock(page, scenario);
-  await page.goto(origin);
-  if (scenario.requireToken) await page.locator('#exam-app').evaluate(element => { element.dataset.requireToken = '1'; });
+  await page.goto(scenario.requireToken ? origin + '/?require-token=1' : origin);
   return { context, page };
 }
 
