@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ExamAttempt extends Model
 {
@@ -28,6 +29,9 @@ class ExamAttempt extends Model
         'submitted_at' => 'datetime',
         'last_activity_at' => 'datetime',
         'auth_session_bound_at' => 'datetime',
+        'fence_generation' => 'integer',
+        'device_lease_expires_at' => 'datetime',
+        'last_lease_heartbeat_at' => 'datetime',
     ];
 
     public function exam(): BelongsTo
@@ -107,7 +111,7 @@ class ExamAttempt extends Model
         );
     }
 
-    public function deviceLeases(): \\Illuminate\\Database\\Eloquent\\Relations\\HasMany
+    public function deviceLeases(): HasMany
     {
         return $this->hasMany(DeviceLease::class, 'exam_attempt_id');
     }
