@@ -817,7 +817,7 @@ class ExamAnswerTest extends TestCase
         return $snapshot;
     }
 
-    public function test_late_retry_of_superseded_request_cannot_overwrite_newer_answer()
+    public function test_late_retry_of_superseded_request_replays_receipt_without_overwriting_newer_answer()
     {
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
@@ -846,7 +846,9 @@ class ExamAnswerTest extends TestCase
             'answer_state' => 'ANSWERED',
         ]);
 
-        $lateRetry->assertStatus(409)->assertJsonPath('error', 'ANSWER_REVISION_CONFLICT');
+        $lateRetry->assertOk()
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('data.revision_number', 1);
         $this->assertDatabaseCount('exam_attempt_answers', 1);
         $this->assertDatabaseHas('exam_attempt_answers', [
             'exam_attempt_id' => $this->attempt->id,
