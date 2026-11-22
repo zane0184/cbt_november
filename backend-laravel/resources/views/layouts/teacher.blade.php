@@ -6,6 +6,33 @@
     <meta name="color-scheme" content="light dark">
     <title>{{ config('app.name', 'CBT Madrasah') }} — Portal Guru</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emerald: {
+                            50: '#E6F4F1',
+                            100: '#D0EAE4',
+                            500: '#10B981',
+                            600: '#0F8B72',
+                            700: '#0B6B58',
+                            900: '#053B30',
+                        },
+                        navy: {
+                            800: '#1E3452',
+                            900: '#14243A',
+                            950: '#0D1827',
+                        },
+                        contentBg: '#F7F9FB',
+                        cardBorder: '#E4E9EF',
+                        textPrimary: '#172536',
+                        textSecondary: '#68778A',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         :root {
             color-scheme: light dark;
@@ -82,16 +109,16 @@
                 <a href="{{ route('teacher.learning') }}" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? 'active' : '' }}"><span>▤</span> Pembelajaran</a>
                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
                 <div class="my-3 border-t border-white/10"></div>
-                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Modul existing — menunggu gate akses</p>
+                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Perangkat Asesmen</p>
                 <a href="{{ route('teacher.questions.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.questions.index') ? 'active' : '' }}"><span>▧</span> Bank Soal</a>
                 <a href="{{ route('teacher.questions.template') }}" class="portal-nav-link pl-6 text-xs"><span>⇩</span> Unduh Template Import Soal</a>
-                <div class="portal-disabled" aria-disabled="true" title="Komponen existing ditemukan; gate multi-role perlu diperketat sebelum ditautkan"><span>Asesmen & Ujian</span><span class="text-[10px] uppercase tracking-wide">Audit akses</span></div>
+                <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.exams.index') ? 'active' : '' }}"><span>▣</span> Asesmen & Ujian</a>
                 <div class="my-3 border-t border-white/10"></div>
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Akses per ujian / tahap berikutnya</p>
                 <div class="portal-disabled" aria-disabled="true" title="Tautan monitoring tersedia dari ujian yang diizinkan"><span>Monitoring Ujian</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
                 <div class="portal-disabled" aria-disabled="true" title="Penilaian dan hasil dibuka dari ujian setelah pemeriksaan policy"><span>Penilaian & Hasil</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
                 <div class="portal-disabled" aria-disabled="true" title="Analitik dan ekspor dibuka dari ujian setelah pemeriksaan policy"><span>Analytics & Ekspor</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
-                <p class="px-3 py-2 text-[11px] leading-relaxed text-emerald-100/60">Penugasan Proktor bersifat sementara dan dikelola Admin. Guru hanya memperoleh akses monitoring jika policy dan penugasan mengizinkan.</p>
+                <p class="px-3 py-2 text-[11px] leading-relaxed text-emerald-100/60">Pengawasan asesmen mandiri mengikuti lingkup Guru pembuat. Pengawasan ujian terpusat hanya tersedia melalui penugasan Proktor yang sah.</p>
                 <div class="my-3 border-t border-white/10"></div>
                 <a href="{{ route('teacher.profile') }}" class="portal-nav-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}"><span>♙</span> Profil Guru</a>
                 <div class="portal-disabled" aria-disabled="true" title="Belum diimplementasikan pada fondasi Web Guru"><span>Pengaturan</span><span class="text-[10px] uppercase tracking-wide">Tahap berikutnya</span></div>
@@ -126,13 +153,13 @@
                                 <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul existing — menunggu gate akses</p>
                                 <a href="{{ route('teacher.questions.index') }}" class="block rounded-lg px-3 py-2 text-sm">Bank Soal</a>
                                 <a href="{{ route('teacher.questions.template') }}" class="block rounded-lg px-3 py-2 text-sm">Unduh Template Import Soal</a>
-                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Asesmen & Ujian · Audit akses</span>
+                                <a href="{{ route('teacher.exams.index') }}" class="block rounded-lg px-3 py-2 text-sm">Asesmen & Ujian</a>
                                 <div class="my-2 border-t portal-border"></div>
                                 <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Akses per ujian / tahap berikutnya</p>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Monitoring Ujian · Per ujian</span>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Penilaian & Hasil · Per ujian</span>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Analytics & Ekspor · Per ujian</span>
-                                <p class="px-3 py-2 text-[11px] leading-relaxed portal-muted">Penugasan Proktor bersifat sementara dan dikelola Admin.</p>
+                                <p class="px-3 py-2 text-[11px] leading-relaxed portal-muted">Pengawasan ujian terpusat memerlukan penugasan Proktor yang sah.</p>
                                 <a href="{{ route('teacher.profile') }}" class="block rounded-lg px-3 py-2 text-sm">Profil Guru</a>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Pengaturan · Tahap berikutnya</span>
                                 <div class="my-2 border-t portal-border"></div>
