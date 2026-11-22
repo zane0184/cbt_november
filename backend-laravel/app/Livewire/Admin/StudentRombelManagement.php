@@ -140,15 +140,16 @@ class StudentRombelManagement extends Component
         $needsTarget = in_array($this->actionType, ['TRANSFER', 'PROMOTE', 'RETAIN'], true);
         $needsFrom = in_array($this->actionType, ['TRANSFER', 'PROMOTE', 'RETAIN', 'REMOVE', 'GRADUATE'], true);
 
-        $data = $this->validate([
+        $rules = [
             'actionType' => ['required', Rule::in(['TRANSFER', 'REMOVE', 'PROMOTE', 'RETAIN', 'GRADUATE', 'STATUS'])],
             'actionStudentId' => ['required', 'uuid'],
-            'actionFromRombelId' => [$needsFrom ? 'required' : 'nullable', 'uuid'],
-            'actionToRombelId' => [$needsTarget ? 'required' : 'nullable', 'uuid'],
-            'targetStatus' => [$this->actionType === 'STATUS' ? 'required' : 'nullable', Rule::in(['ACTIVE', 'INACTIVE', 'ARCHIVED', 'ALUMNI'])],
             'actionEffectiveDate' => ['required', 'date'],
             'actionReason' => ['required', 'string', 'min:10', 'max:1000'],
-        ]);
+        ];
+        if ($needsFrom) $rules['actionFromRombelId'] = ['required', 'uuid'];
+        if ($needsTarget) $rules['actionToRombelId'] = ['required', 'uuid'];
+        if ($this->actionType === 'STATUS') $rules['targetStatus'] = ['required', Rule::in(['ACTIVE', 'INACTIVE', 'ARCHIVED', 'ALUMNI'])];
+        $data = $this->validate($rules);
 
         $tenantId = (string) auth()->user()->tenant_id;
         $actorId = (string) auth()->id();
