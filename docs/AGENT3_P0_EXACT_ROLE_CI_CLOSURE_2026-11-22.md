@@ -2,16 +2,16 @@
 Tanggal: 22 November 2026
 Repository: `zane0184/cbt_november`
 Branch: `work/web-guru-foundation-20261122`
-HEAD Agent 3 pada saat laporan dibuat: `c9d8f7e723be64467d759b921ebc3346fb4dfe46`
+HEAD Agent 3 saat test fix dibuat: `88b5c1354971bfb7b03d715014b40b9026f1fbed`
 Status: **P0 OPEN — EVIDENCE INCOMPLETE**
 
 ## AUDIT
 
 ### 1. HEAD dan perubahan sejak checkpoint
-- Branch Agent 3 diverifikasi dengan compare: base `c9d8f7e723be64467d759b921ebc3346fb4dfe46` terhadap branch menghasilkan `identical`, 0 ahead / 0 behind.
-- HEAD sebelum pekerjaan lanjutan ini: `a955a439b1b3fa4c149f0153f283951d2bfb88d2`.
-- Compare dari HEAD sebelumnya: 4 commit ahead, 0 behind. Empat commit pada tahap ini terdiri dari backup source/test, registrasi backup, dan test regresi tambahan. Tidak ada perubahan source komponen Agent 3 pada tahap ini.
-- Commit test sebelumnya `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f` diperluas; test file sekarang memiliki blob SHA `0a48cede38639093e5bd53e5b99ae0526babd8c9`.
+- Branch Agent 3 diverifikasi dengan compare: base `88b5c1354971bfb7b03d715014b40b9026f1fbed` terhadap branch menghasilkan `identical`, 0 ahead / 0 behind.
+- HEAD saat refresh sebelum koreksi dua kegagalan CI: `c9d8f7e723be64467d759b921ebc3346fb4dfe46`.
+- Perubahan setelah refresh ini hanya test file dan dokumentasi/backup. Tidak ada perubahan source komponen Agent 3.
+- Test file terbaru memiliki blob SHA `747989ed491dc1ead67b8a990434837df47c8af1` pada commit `88b5c1354971bfb7b03d715014b40b9026f1fbed`.
 
 ### 2. Source aktual Agent 3 yang diperiksa
 | File | Blob SHA | Temuan |
@@ -20,7 +20,7 @@ Status: **P0 OPEN — EVIDENCE INCOMPLETE**
 | `backend-laravel/app/Livewire/Admin/ExamManagement.php` | `d45293ea8cfd01bf6eaeea17ced0579a8d8bc4cc` | Boundary di boot/mount dan action/query diperiksa |
 | `backend-laravel/app/Support/Security/TeacherPortalAccess.php` | `8c60fb6db17512d6bbf8845027f69841172e2f60` | Exactly-one role, persisted user, tenant context, satu profil Guru |
 | `backend-laravel/app/Support/Security/TeacherAccess.php` | `766289c5163b6cf367d511c0bf35207ccbc97684` | Assignment tenant-scoped, status ACTIVE dan tanggal berlaku |
-| `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php` | `0a48cede38639093e5bd53e5b99ae0526babd8c9` | 21 test method |
+| `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php` | `747989ed491dc1ead67b8a990434837df47c8af1` | 21 test method |
 | `backend-laravel/app/Models/User.php` | `74dd080f703d7ef3256b406176e53dad5786a937` | Model tidak memakai trait SoftDeletes dan tidak mendefinisikan status aktif |
 | `backend-laravel/app/Models/TeacherProfile.php` | `437ed33366007c26a071a08fb0b8a9e165dbdbc6` | SoftDeletes; tidak ada atribut status aktif |
 | `backend-laravel/app/Models/Question.php` | `737b7cefa945f448aeea3a236c4015fab539e4fb` | TenantScoped + SoftDeletes |
@@ -87,10 +87,10 @@ Source diperiksa pada branch `work/stage4d-account-lifecycle-20261122`:
 - Dampak: Livewire Guru sudah menolak multi-role, tetapi boundary policy/API Exam belum dapat dinyatakan konsisten untuk seluruh platform. Ini blocker P0 lintas portal yang harus ditangani Agent 2.
 
 ### 7. Issue dan kontrak lintas agent
-- Issue #8 tetap OPEN, 4 komentar setelah komentar koordinasi Agent 3 #7077281338. Ada permintaan exact-role awal, update regresi, dan temuan Agent 3 bahwa ExamPolicy Agent 2 belum konsisten; belum ada persetujuan kontrak import XLSX/PDF.
-- Issue #9 tetap OPEN, 0 komentar. Kontrak DOCX belum dijawab Agent 2.
-- Issue #10 tetap OPEN, 4 komentar. Review Agent 2 menyatakan NEEDS DESIGN / COORDINATION; gap lock order, lifecycle session/assignment Proktor, relasi histori masih menunggu koordinasi. Tidak ada approval Agent 1/2/3/4.
-- Branch Agent 2 dibanding ref SHA yang disebut pada issue #10 `808a7a917f1addbf8b8b67b4929dd1cbb6992cbd`: 13 commit ahead, 0 behind. File policy yang disebut di atas diambil dari branch ref Agent 2 saat audit, bukan disalin atau diubah.
+- Issue #8 tetap OPEN, 6 komentar. Agent 2 telah mengusulkan kontrak import: adapter XLSX/DOCX terpisah → satu `QuestionDraftDTO` → reuse `ImportBatch/ImportBatchRow` dan satu lifecycle staging. Ini **usulan**, bukan approval implementasi.
+- Issue #9 tetap OPEN, 1 komentar Agent 2: DOCX adalah adapter kedua menuju `QuestionDraftDTO` dan lifecycle batch yang sama; tidak ada dependency/parser/schema kedua yang disetujui.
+- Issue #10 tetap OPEN, 7 komentar. Agent 2 berstatus NEEDS DESIGN / COORDINATION; Agent 1 menambahkan rekonsiliasi Stage 4B. Approval Agent 2/3/4 tetap PENDING.
+- Branch Agent 2 pada refresh: HEAD dokumentasi `32d383eb1564cdbcf084b8677fe8b750a4b45a11`, source runtime baseline `74bf7178f46673e9be90523671490c0749034acd`. Tidak ada source Agent 2 yang disalin atau diubah.
 
 ## DESAIN
 
@@ -120,8 +120,8 @@ Livewire `boot()` berjalan pada request komponen dan mengulang pemeriksaan pada 
 Hanya file test yang diubah:
 - `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php`
 - Blob SHA sebelum: `a0e9f03412c64e08e54922c6d5b8b49911915586`
-- Blob SHA sesudah: `0a48cede38639093e5bd53e5b99ae0526babd8c9`
-- Commit: `c9d8f7e723be64467d759b921ebc3346fb4dfe46`
+- Blob SHA sesudah: `747989ed491dc1ead67b8a990434837df47c8af1`
+- Commit: `88b5c1354971bfb7b03d715014b40b9026f1fbed`
 
 Tidak ada perubahan pada `QuestionBank.php`, `ExamManagement.php`, helper security, policy, API controller, model, migration, schema, Composer, CBT Engine, Android, atau database.
 
@@ -132,20 +132,20 @@ Backup dibuat sebelum test file dan manifest diubah:
 - Manifest backup: `docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-post-mount-regressions`
 - Blob SHA backup: `a8260bb6ab8c4a6834fc2a15938183605f35c69b` — MATCH.
 - Manifest terbaru: `docs/backup/web-guru-exact-role-20261122/MANIFEST.md`, blob SHA `c8c30ae7311d55adaed2f2058c3f85c421c61ca8`.
-- Seluruh 18 path backup dalam manifest diverifikasi ulang: **18/18 MATCH**.
+- Manifest terbaru memuat 28 path backup. Seluruhnya diverifikasi ulang pada akhir tahap: **28/28 MATCH**.
 
 ### 3. Koordinasi
-Temuan exact-role Agent 2 pada `ExamPolicy` dikirim sebagai komentar koordinasi Issue #8 (comment ID `7077281338`). Tidak ada source Agent 2 yang diubah.
+Temuan exact-role Agent 2 dan koreksi dua kegagalan CI dikirim sebagai komentar Issue #8 (comment ID `7077352886`). Tidak ada source Agent 2 yang diubah.
 
 ## PENGUJIAN
 
 | Item | Status | Bukti |
 |---|---|---|
-| HEAD branch aktual | PASS | Compare `c9d8f7e...` terhadap branch = identical |
+| HEAD branch saat test fix | PASS | Compare `88b5c135...` terhadap branch = identical |
 | Source blob aktual | PASS | Blob SHA setiap file dicatat pada bagian AUDIT |
-| Backup | PASS | 18/18 blob SHA MATCH |
+| Backup | PASS | 28/28 blob SHA MATCH |
 | Jumlah test method | PASS (statis) | 21 method ditemukan pada test file; bukan bukti test dijalankan |
-| PHPUnit pada SHA HEAD `c9d8f7e...` | NOT VERIFIED | Combined status kosong; tidak ada workflow run SHA ini yang dapat diakses |
+| PHPUnit pada SHA `88b5c135...` | NOT VERIFIED | Combined status kosong; belum ada workflow run exact SHA yang dapat diakses |
 | PHP lint pada SHA HEAD | NOT VERIFIED | Tidak dijalankan lokal; CI yang tersedia menggunakan SHA lama |
 | Browser/E2E | NOT RUN | Tidak ada browser QA aktif dan akun uji |
 | Database produksi | NOT TOUCHED | Tidak ada akses/mutasi/migration produksi |
@@ -164,11 +164,11 @@ Temuan exact-role Agent 2 pada `ExamPolicy` dikirim sebagai komentar koordinasi 
 - Run ini bukan pada `834a59f...` dan bukan pada HEAD `c9d8f7e...`; karena source/test berubah setelah SHA `a338679...`, hasil lama tidak dapat menutup P0 sekarang.
 
 ### CI HEAD saat ini
-- Commit `c9d8f7e...` mengubah path `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php`, yang cocok dengan trigger `push` workflow `.github/workflows/web-guru-foundation-ci.yml`.
+- Commit `88b5c135...` mengubah path `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php`, yang cocok dengan trigger `push` workflow `.github/workflows/web-guru-foundation-ci.yml`.
 - Combined commit status: kosong.
 - `fetch_commit_workflow_runs` tidak mengembalikan run untuk SHA ini; fungsi konektor tersebut hanya menampilkan run yang dipicu pull request.
 - Tidak tersedia action GitHub connector untuk menjalankan `workflow_dispatch` atau menelusuri seluruh push-triggered workflow run.
-- Commit test sudah dipush melalui branch yang trigger-nya dikonfigurasi, tetapi hasil run aktual belum dapat dibuktikan. Tidak ada klaim runner gagal karena tidak ada bukti kegagalan runner.
+- Commit test fix sudah dipush melalui branch yang trigger-nya dikonfigurasi, tetapi hasil run aktual belum dapat dibuktikan. Tidak ada klaim runner gagal karena tidak ada bukti kegagalan runner.
 
 ## CHECKPOINT
 
@@ -176,7 +176,7 @@ Temuan exact-role Agent 2 pada `ExamPolicy` dikirim sebagai komentar koordinasi 
 **P0 OPEN — EVIDENCE INCOMPLETE.**
 
 Alasan:
-1. Test post-mount terbaru belum terbukti berjalan pada disposable MySQL 8/InnoDB dengan SHA HEAD.
+1. Test post-mount terbaru dan dua koreksi ekspektasi CI belum terbukti berjalan pada disposable MySQL 8/InnoDB dengan SHA `88b5c135...`.
 2. Agent 2 `ExamPolicy` masih belum menerapkan exact-role konsisten pada jalur Guru/Siswa.
 3. Tidak ada bukti browser/E2E pada environment aktif.
 
@@ -185,12 +185,12 @@ Alasan:
 - Audit seluruh action/query kedua komponen.
 - Audit helper exact-role dan assignment.
 - Enam regresi post-mount ditambahkan.
-- Backup 18/18 diverifikasi.
+- Backup 28/28 diverifikasi.
 - Issue #8/#9/#10 dan policy Agent 2 diperiksa.
 - Temuan policy Agent 2 dikirim untuk koordinasi.
 
 ### Tertunda / blocker
-1. Verifikasi GitHub Actions pada SHA `c9d8f7e723be64467d759b921ebc3346fb4dfe46`, termasuk checkout SHA, PHP lint, PHPUnit, MySQL 8/InnoDB, dan log.
+1. Verifikasi GitHub Actions pada SHA `88b5c1354971bfb7b03d715014b40b9026f1fbed`, termasuk checkout SHA, PHP lint, PHPUnit, MySQL 8/InnoDB, dan log.
 2. Agent 2 meninjau serta memperbaiki exact-role pada seluruh `ExamPolicy` dan menambahkan regresi multi-role API/policy.
 3. Agent 2 menetapkan apakah soft-delete cukup sebagai status aktif atau diperlukan status eksplisit.
 4. Setelah P0 terbukti, lakukan browser QA dan uji integrasi pada akun uji non-produksi.
@@ -200,3 +200,52 @@ Alasan:
 - Tidak ada perubahan source Agent 1/2/4.
 - Tidak melanjutkan branding dinamis, PDF final, atau import XLSX/DOCX.
 - Setelah laporan ini, berhenti pada P0 sampai bukti CI exact-SHA dan review Agent 2 tersedia.
+
+
+## ADDENDUM — review Agent 2 dan koreksi kegagalan CI
+
+### Bukti kegagalan CI pada source sebelumnya
+- Run: `45003191589`; job: `137148981065`; SHA checkout `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f`.
+- Environment: PHP 8.3 dan disposable MySQL 8.0.46.
+- PHP lint dan route registration: PASS.
+- PHPUnit: **18 passed, 2 failed, 86 assertions**.
+- Migrated-table InnoDB check dilewati karena PHPUnit gagal; cleanup disposable DB berhasil.
+
+### Root cause dan koreksi test
+1. Tenant context mismatch:
+   - Test lama mengubah context ke Tenant B lalu mengirim Livewire HTTP request dan mengharapkan 403.
+   - `IdentifyTenant` mereset context pada setiap request dan mengambil tenant dari User terautentikasi; header override memang diabaikan. Karena itu request kembali ke tenant User yang sah dan menghasilkan 200.
+   - Test dikoreksi: setelah komponen di-mount, context server-side diubah ke Tenant B dan `boot()` pada instance komponen yang sama dipanggil langsung. Boundary harus melempar HTTP 403. Test helper mismatch yang lama tetap ada.
+   - Tidak ada perubahan middleware, helper, atau authorization source.
+
+2. Manipulasi ID lintas tenant:
+   - Tenant-scoped `Question::findOrFail()` menghasilkan `ModelNotFoundException`; Livewire test harness melempar exception sebelum assertion `assertNotFound()` dijalankan.
+   - Test sekarang menangkap exception dan memverifikasi model yang tidak ditemukan adalah Question atau Exam yang diminta.
+   - Ini mempertahankan denial dan tenant isolation; tidak mengubah query agar melonggarkan akses.
+
+### Test fix
+- File: `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php`
+- Blob sebelum: `0a48cede38639093e5bd53e5b99ae0526babd8c9`
+- Blob sesudah: `747989ed491dc1ead67b8a990434837df47c8af1`
+- Commit: `88b5c1354971bfb7b03d715014b40b9026f1fbed`
+- Jumlah test method tetap 21; enam post-mount test tetap dipertahankan.
+- Backup byte-exact tercatat dalam manifest; backup test sebelum koreksi: `TeacherPortalFoundationTest.php.before-ci-failure-fixes`, blob `0a48cede38639093e5bd53e5b99ae0526babd8c9`.
+
+### Usulan kontrak import Agent 2 — belum disetujui
+- XLSX dan DOCX memakai adapter berbeda, satu `QuestionDraftDTO`.
+- Reuse `ImportBatch/ImportBatchRow` yang sudah ada; jangan membuat batch table/service kedua.
+- Lifecycle: upload → security validation → extract → stage → preview/correction → revalidate → confirm → persist → audit.
+- Tidak ada auto-publish. SHORT_ANSWER tetap BLOCKED sampai accepted answers masuk snapshot dan scoring; ESSAY manual review.
+- Tidak ada dependency DOCX yang disetujui. Usulan ini belum menjadi izin implementasi; Issue #8/#9 tetap OPEN.
+
+### Status koordinasi
+- Issue #8: OPEN, 6 komentar.
+- Issue #9: OPEN, 1 komentar Agent 2.
+- Issue #10: OPEN, 7 komentar. Agent 2 NEEDS DESIGN / COORDINATION; approval Agent 2/3/4 PENDING.
+- Laporan Agent 2 mengaudit 99 file PHP dan menyatakan exact-role belum konsisten pada Assessment/Exam/Attempt/Report policy, beberapa analytics, media/student endpoints, Admin service entrypoints, dan KAMAD monitoring. Agent 3 tidak mengubah source Agent 2.
+
+### CI setelah koreksi
+- Combined status SHA `88b5c135...`: kosong.
+- Workflow run exact SHA belum dapat diakses melalui konektor; fungsi run yang tersedia tidak menampilkan push-triggered runs dan tidak tersedia action manual workflow_dispatch.
+- Commit test fix sudah dikirim pada branch yang memiliki push trigger untuk `backend-laravel/**`; hasil run tetap NOT VERIFIED.
+- Status P0 tetap OPEN sampai workflow membuktikan checkout SHA yang benar dan seluruh test lulus.
