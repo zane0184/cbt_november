@@ -178,7 +178,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        $this->assertDriverAndPrerequisites(false);
+        $this->assertPrerequisites(false);
 
         foreach (self::TABLES as $table) {
             if (Schema::hasTable($table) && DB::table($table)->exists()) {
