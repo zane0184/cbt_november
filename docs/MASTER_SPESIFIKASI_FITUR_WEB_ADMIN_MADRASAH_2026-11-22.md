@@ -57,16 +57,14 @@ Nama label boleh mengikuti konsistensi UI yang ada, tetapi cakupan fungsi beriku
    - Daftar UTS/UAS/UM yang memerlukan Proktor
    - Penetapan/pencabutan Guru sebagai Proktor
    - Riwayat penugasan Proktor
-8. Laporan
+7. Laporan
    - Rekap akademik
-   - Rekap peserta/kehadiran
-   - Hasil/nilai sesuai kewenangan
    - Export dan cetak
-9. Audit dan Keamanan
+8. Audit dan Keamanan
    - Log aktivitas
    - Riwayat login dan akses ditolak
    - Riwayat tindakan sensitif
-10. Pengaturan
+9. Pengaturan
    - Umum
    - Identitas dan branding
    - Logo/favicon
@@ -161,7 +159,7 @@ Kurikulum Merdeka terintegrasi, bukan label Bank Soal saja. Kelola daftar dan ve
 
 ### 8.1 Batas tugas Admin Madrasah dalam ujian
 
-Tugas Admin Madrasah terkait operasional ujian **hanya menetapkan Guru yang ditugaskan sebagai Proktor untuk ujian terpusat**, yaitu UTS, UAS, dan UM. Admin tidak mengelola pelaksanaan ujian, tidak membuat atau mengubah soal, tidak mengatur konfigurasi akademik ujian, tidak mengelola peserta/roster/ruang, tidak memantau ujian atau peserta, dan tidak melakukan tindakan terhadap Attempt/perangkat.
+Tugas Admin Madrasah terkait operasional ujian **hanya menetapkan Guru yang ditugaskan sebagai Proktor untuk ujian terpusat**, yaitu UTS, UAS, dan UM. Admin tidak mengelola pelaksanaan ujian, tidak membuat atau mengubah soal, tidak mengatur konfigurasi akademik ujian, tidak mengelola peserta/roster/ruang, tidak melihat aktivitas atau progres ujian/peserta, dan tidak melakukan tindakan terhadap Attempt/perangkat.
 
 Ujian reguler/mandiri tetap menjadi tanggung jawab Guru pembuat sesuai penugasan mengajarnya. Ujian tersebut tidak memerlukan penetapan Proktor oleh Admin.
 
@@ -324,7 +322,7 @@ DEFERRED sampai Juni 2027:
 
 ### Keputusan pengguna 23 November 2026 — batas kewenangan Admin dalam ujian
 
-Dalam seluruh jenis ujian, tugas Admin hanya menetapkan/mencabut Guru sebagai Proktor untuk ujian terpusat UTS, UAS, dan UM. Admin tidak mengelola ujian reguler/mandiri Guru, soal, jadwal akademik, konfigurasi, ruang, peserta, roster, pelaksanaan, pemantauan, Attempt, atau perangkat.
+Dalam seluruh jenis ujian, tugas Admin hanya menetapkan/mencabut Guru sebagai Proktor untuk ujian terpusat UTS, UAS, dan UM. Admin tidak mengelola ujian reguler/mandiri Guru, soal, jadwal akademik, konfigurasi, ruang, peserta, roster, pelaksanaan, aktivitas/progres peserta, Attempt, atau perangkat.
 
 ### Keputusan pengguna 23 November 2026 — batas fitur operasional CBT pada Web Admin
 
