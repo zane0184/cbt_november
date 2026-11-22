@@ -42,7 +42,12 @@ const origin = 'http://127.0.0.1:' + address.port;
 function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
-    status: 'IN_PROGRESS', serverAnswers: [], pageErrors: []
+    status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [],
+    questionType: 'MULTIPLE_CHOICE',
+    questionOptions: [
+      { id: 'opt-a', option_key: 'A', content: 'Empat' },
+      { id: 'opt-b', option_key: 'B', content: 'Lima' }
+    ]
   };
 }
 
@@ -68,11 +73,8 @@ async function attachApiMock(page, scenario) {
         exam: { server_now: now.toISOString() },
         questions: [{
           id: 'snapshot-1', snapshot_stem: 'Berapakah hasil 2 + 2?', points: 1,
-          metadata: { question_type: 'MC' }, snapshot_media: [],
-          snapshot_options: [
-            { id: 'opt-a', content: 'Empat' },
-            { id: 'opt-b', content: 'Lima' }
-          ]
+          metadata: { question_type: scenario.questionType }, snapshot_media: [],
+          snapshot_options: scenario.questionOptions
         }]
       }});
     }
@@ -154,7 +156,80 @@ try {
     console.log('PASS: browser answer save and terminal submit');
   }
 
-  // 2. Offline write: local draft survives reload and is synchronized on resume.
+  // 2. All six question types published by the question bank render and serialize correctly.
+  {
+    const cases = [
+      {
+        type: 'MULTIPLE_RESPONSE',
+        options: [
+          { id: 'mr-a', option_key: 'A', content: 'Pernyataan A' },
+          { id: 'mr-b', option_key: 'B', content: 'Pernyataan B' }
+        ],
+        answer: async page => {
+          await page.locator('#question-input input[type="checkbox"]').nth(0).check();
+          await page.locator('#question-input input[type="checkbox"]').nth(1).check();
+        },
+        expected: { selected_option_ids: ['mr-a', 'mr-b'] }
+      },
+      {
+        type: 'TRUE_FALSE',
+        options: [
+          { id: 'tf-a', option_key: 'A', content: 'BENAR' },
+          { id: 'tf-b', option_key: 'B', content: 'SALAH' }
+        ],
+        answer: async page => page.locator('#question-input input[value="tf-b"]').check(),
+        expected: { selected_option_id: 'tf-b' }
+      },
+      {
+        type: 'MATCHING',
+        options: [
+          { id: 'left-1', option_key: 'pair_1', matching_key: null, content: '2 + 2' },
+          { id: 'left-2', option_key: 'pair_2', matching_key: null, content: '3 + 3' },
+          { id: 'right-1', option_key: null, matching_key: 'pair_1', content: '4' },
+          { id: 'right-2', option_key: null, matching_key: 'pair_2', content: '6' }
+        ],
+        answer: async page => {
+          const selects = page.locator('#question-input select');
+          assert.equal(await selects.count(), 2, 'Matching must render one select for each left item');
+          await selects.nth(0).selectOption('right-2');
+          await selects.nth(1).selectOption('right-1');
+        },
+        expected: { matches: [
+          { left_id: 'left-1', right_id: 'right-2' },
+          { left_id: 'left-2', right_id: 'right-1' }
+        ]}
+      },
+      {
+        type: 'SHORT_ANSWER',
+        options: [],
+        answer: async page => page.locator('#question-input textarea').fill('Jawaban singkat'),
+        expected: { text: 'Jawaban singkat' }
+      },
+      {
+        type: 'ESSAY',
+        options: [],
+        answer: async page => page.locator('#question-input textarea').fill('Jawaban uraian panjang'),
+        expected: { text: 'Jawaban uraian panjang' }
+      }
+    ];
+
+    for (const item of cases) {
+      const scenario = makeScenario();
+      scenario.questionType = item.type;
+      scenario.questionOptions = item.options;
+      const { context, page } = await newPage(browser, scenario);
+      await start(page);
+      await item.answer(page);
+      await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+      assert.deepEqual(scenario.serverAnswers[0].answer_payload, item.expected, item.type + ' payload must match the API contract');
+      assert.equal(scenario.answerWrites, 1, item.type + ' answer must be persisted');
+      assert.deepEqual(scenario.pageErrors, []);
+      await context.close();
+      console.log('PASS: question type ' + item.type + ' renders and saves');
+    }
+  }
+
+  // 3. Offline write: local draft survives reload and is synchronized on resume.
   {
     const scenario = makeScenario('offline-recovery');
     const { context, page } = await newPage(browser, scenario);
@@ -175,7 +250,7 @@ try {
     console.log('PASS: IndexedDB draft survives reload and synchronizes after reconnect');
   }
 
-  // 3. Conflict: local draft is restored, server copy is retained, submit stays blocked.
+  // 4. Conflict: local draft is restored, server copy is retained, submit stays blocked.
   {
     const scenario = makeScenario('conflict');
     const { context, page } = await newPage(browser, scenario);
@@ -195,7 +270,7 @@ try {
     console.log('PASS: conflict draft restores after reload and submit remains blocked');
   }
 
-  // 4. Lost submit response: status is checked; no second start/submit is posted.
+  // 5. Lost submit response: status is checked; no second start/submit is posted.
   {
     const scenario = makeScenario('unknown-submit');
     const { context, page } = await newPage(browser, scenario);
