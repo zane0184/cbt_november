@@ -55,20 +55,36 @@ class AuthWebController extends Controller
             if (!$lockedUser) {
                 return 'INVALID';
             }
-            if (!$lockedUser->is_active) {
-                return 'INACTIVE';
+            // The users table has no is_active column. Use the canonical
+            // persisted role + ACTIVE tenant + non-deleted academic profile checks.
+            // This login route runs before IdentifyTenant can resolve the context.
+            $tenantContext = app(TenantContext::class);
+            $previousTenantId = $tenantContext->getTenantId();
+            $tenantContextInstance = TenantContext::getInstance();
+            $previousInstanceTenantId = $tenantContextInstance?->getTenantId();
+            $tenantContext->setTenantId((string) $lockedUser->tenant_id);
+            $tenantContextInstance?->setTenantId((string) $lockedUser->tenant_id);
+
+            try {
+                $roleNames = $lockedUser->roles()->pluck('name');
+                if ($roleNames->count() !== 1
+                    || !$lockedUser->hasExactRole((string) $roleNames->first())) {
+                    return 'INACTIVE';
+                }
+
+                if ($roleNames->first() === 'SISWA'
+                    && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                    return 'ACTIVE_EXAM';
+                }
+
+                Auth::login($lockedUser, $request->boolean('remember'));
+                $request->session()->regenerate();
+
+                return 'OK';
+            } finally {
+                $tenantContext->setTenantId($previousTenantId);
+                $tenantContextInstance?->setTenantId($previousInstanceTenantId);
             }
-            $lockedUser->load('roles');
-
-            if ($lockedUser->hasExactRole('SISWA')
-                && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
-                return 'ACTIVE_EXAM';
-            }
-
-            Auth::login($lockedUser, $request->boolean('remember'));
-            $request->session()->regenerate();
-
-            return 'OK';
         });
 
         if ($loginStatus !== 'OK') {
