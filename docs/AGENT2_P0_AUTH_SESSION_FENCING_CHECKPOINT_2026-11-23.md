@@ -70,6 +70,8 @@ Pemeriksaan dilakukan pada source Agent 2 yang aktual, bukan hanya tabel/skema.
 ### Test source baru/diubah
 - `tests/Feature/AttemptAuthSessionBindingTest.php` — dua Web session berbeda dengan fingerprint perangkat sama.
 - `tests/Feature/AttemptTransactionConcurrencyTest.php` — dua koneksi MySQL/InnoDB, contention Exam/Participant/Attempt, submit-vs-answer dan expiry-vs-answer.
+- `tests/Feature/DeviceLeaseSchemaIntegrityTest.php` — membuktikan lease Web dapat disimpan tanpa registered_device_id.
+- `tests/Feature/ExpireExamAttemptsCommandTest.php` — membuktikan scheduler expiry melepaskan lease ACTIVE dalam transaksi.
 - `tests/Feature/StudentWebLoginTest.php` — login Web/API ditolak saat Attempt aktif; login diizinkan setelah Attempt terminal.
 - `tests/Feature/ParticipantAuthorizationAndAttemptLimitTest.php` — API test menggunakan bearer token stabil dan fence generation.
 - `tests/Feature/ExamAnswerTest.php` — real Sanctum tokens, second-session rejection untuk execution/answer/heartbeat/submit/status/media, lease recovery, stale fence, immutable receipt replay, payload mismatch, rollback receipt, dan submit retry.
@@ -95,6 +97,8 @@ File backup:
 - `backend-laravel__tests__Feature__AuthTest.php.before`
 - `backend-laravel__tests__Feature__MediaAuthorizationTest.php.before`
 - `ExpireExamAttemptsCommand.php.before`
+- `DeviceLeaseSchemaIntegrityTest.php.before`
+- `ExpireExamAttemptsCommandTest.php.before`
 
 File baru (service/model/migration/test/workflow) tidak menimpa source lama. ZIP baseline tidak diubah.
 
@@ -108,6 +112,7 @@ File baru (service/model/migration/test/workflow) tidak menimpa source lama. ZIP
 - Retry request lama setelah revisi baru tidak menimpa jawaban terbaru.
 - Kegagalan AuditService di tengah transaksi tidak meninggalkan answer atau receipt ledger.
 - Lease expiry recovery oleh sesi yang sama menaikkan fence generation; request dengan generation lama ditolak.
+- Server expiry memfinalisasi Attempt dan melepaskan lease; skema menerima Web lease tanpa registered_device_id.
 - Submit retry idempotent dan lease dilepas.
 - Dua koneksi MySQL/InnoDB membuktikan row-lock contention dan status terminal setelah submit/expiry.
 
