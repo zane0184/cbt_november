@@ -96,6 +96,7 @@ final class QuestionImportTemplateDownloadTest extends TestCase
             $this->assertSame('"EASY,MEDIUM,HARD"', $data->getCell('P2')->getDataValidation()->getFormula1());
             $instructions = $workbook->getSheetByName('Petunjuk');
             $this->assertStringContainsString('hanya MULTIPLE_CHOICE', (string) $instructions->getCell('B8')->getValue());
+            $this->assertStringContainsString('Import XLSX aktif', (string) $instructions->getCell('B3')->getValue());
             $this->assertStringContainsString('BLOCKED', (string) $instructions->getCell('B10')->getValue());
 
 
@@ -112,7 +113,7 @@ final class QuestionImportTemplateDownloadTest extends TestCase
             $this->assertStringContainsString('Opsi E', (string) $types->getCell('C8')->getValue());
 
             $this->assertSame(
-                'NEEDS_BACKEND_CONTRACT',
+                'PARTIAL_CONTRACT',
                 $workbook->getSheetByName('Referensi Akademik')->getCell('G2')->getValue()
             );
         } finally {
