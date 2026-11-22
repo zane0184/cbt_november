@@ -321,6 +321,9 @@ class ExamRoomSessionConcurrencyTest extends TestCase
         config(['database.connections.mysql_concurrent' => $secondaryConfig]);
         DB::purge('mysql_concurrent');
         $secondary = DB::connection('mysql_concurrent');
+        $primaryConnectionId = (int) $primary->selectOne('SELECT CONNECTION_ID() AS id')->id;
+        $secondaryConnectionId = (int) $secondary->selectOne('SELECT CONNECTION_ID() AS id')->id;
+        $this->assertNotSame($primaryConnectionId, $secondaryConnectionId, 'The race test must use two independent MySQL sessions.');
         $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
         DB::setDefaultConnection('mysql_concurrent');
 
