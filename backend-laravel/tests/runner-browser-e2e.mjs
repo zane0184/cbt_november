@@ -48,7 +48,7 @@ const origin = 'http://127.0.0.1:' + address.port;
 function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
-    requireToken: false, startTokens: [], media: [], legacyPending: false,
+    requireToken: false, startTokens: [], media: [], legacyPending: false, disableIndexedDb: false,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
@@ -134,6 +134,9 @@ async function newPage(browser, scenario) {
   const page = await context.newPage();
   page.on('pageerror', error => scenario.pageErrors.push(error.message));
   await attachApiMock(page, scenario);
+  if (scenario.disableIndexedDb) {
+    await page.addInitScript(() => Object.defineProperty(window, 'indexedDB', { configurable: true, value: undefined }));
+  }
   if (scenario.legacyPending) {
     await page.goto(origin + '/seed');
     await page.waitForFunction(() => window.__legacySeedDone === true);
@@ -181,7 +184,21 @@ try {
     console.log('PASS: browser answer save and terminal submit');
   }
 
-  // Required exam token is trimmed and normalized to uppercase before the start request.
+  // Missing IndexedDB fails closed before the server creates an Attempt.
+  {
+    const scenario = makeScenario();
+    scenario.disableIndexedDb = true;
+    const { context, page } = await newPage(browser, scenario);
+    await page.locator('#start-button').click();
+    await page.waitForFunction(() => document.querySelector('#start-status').textContent.includes('Browser tidak mendukung IndexedDB'));
+    assert.equal(scenario.startCalls, 0, 'Attempt must not start without durable local storage');
+    assert.equal(await page.locator('#runner-panel').isVisible(), false);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: runner fails closed when IndexedDB is unavailable');
+  }
+
+  // 2. Required exam token is trimmed and normalized to uppercase before the start request.
   {
     const scenario = makeScenario();
     scenario.requireToken = true;
