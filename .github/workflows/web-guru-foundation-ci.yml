@@ -1,6 +1,7 @@
 name: Web Guru Foundation — Isolated MySQL Verification
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - work/web-guru-foundation-20261122
