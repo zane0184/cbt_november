@@ -64,6 +64,7 @@ class TeacherSubjectAssignmentManagement extends Component
 
     public function updatedStatusFilter(): void
     {
+        abort_unless(in_array($this->statusFilter, ['ALL', 'ACTIVE', 'INACTIVE'], true), 422);
         $this->resetPage();
     }
 
@@ -191,9 +192,18 @@ class TeacherSubjectAssignmentManagement extends Component
                 $teacher = TeacherProfile::query()
                     ->where('tenant_id', $tenantId)
                     ->whereKey($attributes['teacher_profile_id'])
+                    ->where(function ($profile) {
+                        $profile->where(function ($asn) {
+                            $asn->where('employment_type', 'ASN')->whereNotNull('nip');
+                        })->orWhere(function ($honorer) {
+                            $honorer->where('employment_type', 'HONORER')->whereNotNull('nik');
+                        });
+                    })
                     ->whereHas('user', function ($query) use ($tenantId) {
                         $query->where('tenant_id', $tenantId)
                             ->whereNull('deleted_at')
+                            ->where('is_active', true)
+                            ->has('roles', '=', 1)
                             ->whereHas('roles', fn ($roles) => $roles->where('name', 'GURU'));
                     })
                     ->lockForUpdate()
@@ -243,7 +253,7 @@ class TeacherSubjectAssignmentManagement extends Component
                     ->where('rombel_id', $attributes['rombel_id'])
                     ->where('academic_year_id', $attributes['academic_year_id'])
                     ->where('semester_id', $attributes['semester_id'])
-                    ->when($assignment, fn ($query) => $query->whereKeyNot($assignment->id))
+                    ->when($assignment, fn ($query) => $query->where('id', '<>', $assignment->id))
                     ->lockForUpdate()
                     ->first();
 
@@ -380,11 +390,12 @@ class TeacherSubjectAssignmentManagement extends Component
         $user = auth()->user();
 
         abort_unless(
-            $user && $user->tenant_id
-                && $user->hasRole('ADMIN_MADRASAH')
+            $user && $user->tenant_id && $user->is_active
+                && $user->roles()->count() === 1
+                && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
                 && $user->hasPermission('academic.manage'),
             403,
-            'Hanya Admin Madrasah dengan permission academic.manage yang dapat mengelola penugasan Guru.'
+            'Hanya Admin Madrasah aktif dengan satu role dan permission academic.manage yang dapat mengelola penugasan Guru.'
         );
     }
 
@@ -417,8 +428,14 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $teachers = TeacherProfile::query()
             ->where('tenant_id', $tenantId)
+            ->where(function ($profile) {
+                $profile->where(fn ($asn) => $asn->where('employment_type', 'ASN')->whereNotNull('nip'))
+                    ->orWhere(fn ($honorer) => $honorer->where('employment_type', 'HONORER')->whereNotNull('nik'));
+            })
             ->whereHas('user', fn ($query) => $query->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')
+                ->where('is_active', true)
+                ->has('roles', '=', 1)
                 ->whereHas('roles', fn ($roles) => $roles->where('name', 'GURU')))
             ->orderBy('full_name')
             ->get(['id', 'full_name']);
