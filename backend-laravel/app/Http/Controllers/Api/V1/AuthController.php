@@ -7,6 +7,7 @@ use App\Models\LocalInstallationIdentity;
 use App\Services\LoginIdentityResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
