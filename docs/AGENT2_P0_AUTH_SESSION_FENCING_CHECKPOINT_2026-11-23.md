@@ -99,6 +99,8 @@ File backup:
 - `ExpireExamAttemptsCommand.php.before`
 - `DeviceLeaseSchemaIntegrityTest.php.before`
 - `ExpireExamAttemptsCommandTest.php.before`
+- `DeviceLeaseSchemaIntegrityTest.php.before`
+- `ExpireExamAttemptsCommandTest.php.before`
 
 File baru (service/model/migration/test/workflow) tidak menimpa source lama. ZIP baseline tidak diubah.
 
@@ -131,7 +133,7 @@ Perubahan kontrak:
 - API login saat Attempt aktif: `409 ACTIVE_EXAM_SESSION`.
 - Attempt-scoped request setelah start wajib mengirim `X-CBT-Fence-Generation`.
 - Start/resume, execution, heartbeat, answer, submit, dan status mengembalikan generation; start juga mengembalikan lease expiry.
-- Fencing mismatch: `409 ATTEMPT_FENCE_MISMATCH`.
+- Fencing mismatch pada JSON Attempt endpoints: `409 ATTEMPT_FENCE_MISMATCH`; media file endpoint menolak akses dengan `403` jika sesi/lease/fence tidak sah.
 - Answer response menambah receipt dan `idempotent`; bentuk `success/data` lama tetap ada.
 - Existing `X-Device-Binding-ID` tetap dipakai sebagai pemeriksaan tambahan.
 
