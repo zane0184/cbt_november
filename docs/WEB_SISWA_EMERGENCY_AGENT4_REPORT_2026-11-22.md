@@ -3,6 +3,7 @@ Tanggal: 22 November 2026
 Repository: `zane0184/cbt_november`
 Branch: `work/agent4-web-siswa-emergency-20261122`
 Base: `7642f8df7d20effe82dc1ba5b086147894332767` (`work/stage4d-account-lifecycle-20261122`)
+Final HEAD saat checkpoint: `b784d456b4812085395bcd78ea45e2aec3ba13e3`
 
 ## AUDIT
 - Acuan: `docs/MASTER_SPESIFIKASI_FITUR_WEB_SISWA_CBT_MADRASAH_2026-11-22.md`.
@@ -41,7 +42,7 @@ Perubahan:
 Backup:
 - Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`; byte-exact dengan baseline.
 - Sebelum IndexedDB v2: `.../show.blade.php.before-indexeddb-v2`, blob `3a2037b7ac88c07cbcba96a13971e90873e5f57a`.
-- Sebelum conflict race refinement: `.../show.blade.php.before-conflict-race-fix`.
+- Sebelum conflict race refinement: `.../show.blade.php.before-conflict-race-fix`, blob `9047c4a9d0baa18114166c898a3f5fc26edd92fc`.
 - Sebelum conflict UI: `.../show.blade.php.before-conflict-ui`.
 - Sebelum ack/scope refinement: `.../show.blade.php.before-ack-and-scope-fix`.
 
@@ -57,7 +58,7 @@ Commit implementasi utama:
 Dilakukan:
 - Fetch ulang baseline, backup, dan source hasil melalui GitHub.
 - Baseline backup pertama byte-exact terverifikasi.
-- Compare base → branch: branch ahead 8, behind 0 pada saat checkpoint awal; compare final perlu diperbarui setelah dokumen ini.
+- Compare base → branch final: ahead 22, behind 0; 8 file berubah (runner, 5 backup runner, laporan, checkpoint).
 - Pemeriksaan source statis atas call sites IndexedDB, persist conflict, frozen base_revision, no old store calls, dan skip conflict saat flush.
 
 Belum dilakukan:
