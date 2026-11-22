@@ -6,6 +6,7 @@ on:
       - source-import/p0-87
       - work/schema-dump-export-20261119
       - fix/web-portal-usability-rbac-20261120
+      - work/agent2-p0-attempt-answer-scoring-20261122
   pull_request:
     branches:
       - main
@@ -130,6 +131,15 @@ jobs:
 
       - name: Run focused Web login and tenant identity smoke tests
         run: php artisan test --display-warnings --filter='WebAdminAuthTest|StudentWebLoginTest'
+
+      - name: Run Admin permission bootstrap and direct HTTP boundary tests
+        run: php artisan test --display-warnings tests/Feature/AdminCbtBoundaryTest.php
+
+      - name: Run Attempt and Answer lifecycle tests
+        run: php artisan test --display-warnings tests/Feature/ExamAnswerTest.php tests/Feature/ExamSessionHardeningTest.php
+
+      - name: Run Stage4C Teacher Subject Assignment regression
+        run: php artisan test --display-warnings --filter=TeacherSubjectAssignment
 
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
