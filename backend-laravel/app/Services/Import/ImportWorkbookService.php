@@ -35,7 +35,7 @@ use Throwable;
 
 class ImportWorkbookService
 {
-    private const GURU_HEADERS = ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika PNS', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)'];
+    private const GURU_HEADERS = ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika ASN', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)'];
     private const SISWA_HEADERS = ['NIS (opsional)', 'NISN*', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Tempat Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Nama Orang Tua/Wali', 'No. HP Orang Tua/Wali', 'Alamat', 'Rombel*', 'Tahun Pelajaran*'];
     private const ASSIGNMENT_HEADERS = ['Identitas Guru (NIP/NIK)*', 'Mata Pelajaran*', 'Rombel*', 'Tahun Pelajaran*', 'Semester*', 'Tanggal Mulai (YYYY-MM-DD)', 'Tanggal Selesai (YYYY-MM-DD)', 'Status (ACTIVE/INACTIVE)'];
 
@@ -454,7 +454,7 @@ class ImportWorkbookService
         if (!in_array($payload['gender'], ['L','P',''], true)) $errors[] = 'Jenis kelamin harus L atau P.';
         if ($type === 'GURU') {
             if (!in_array($payload['category'], ['ASN','HONORER'], true)) $errors[] = 'Kategori kepegawaian harus ASN atau HONORER.';
-            if ($payload['category'] === 'PNS' && (!preg_match('/^\d{18}$/', $payload['nip']) || $payload['nik'] !== '')) $errors[] = 'Guru ASN wajib mengisi NIP 18 digit dan mengosongkan NIK.';
+            if ($payload['category'] === 'ASN' && (!preg_match('/^\d{18}$/', $payload['nip']) || $payload['nik'] !== '')) $errors[] = 'Guru ASN wajib mengisi NIP 18 digit dan mengosongkan NIK.';
             if ($payload['category'] === 'HONORER' && (!preg_match('/^\d{16}$/', $payload['nik']) || $payload['nip'] !== '')) $errors[] = 'Guru honorer wajib mengisi NIK 16 digit dan mengosongkan NIP.';
             if ($payload['nuptk'] !== '' && !preg_match('/^\d{16}$/', $payload['nuptk'])) $errors[] = 'NUPTK harus 16 digit teks.';
             if ($payload['nip'] === '__NUMERIC_IDENTIFIER__' || $payload['nik'] === '__NUMERIC_IDENTIFIER__' || $payload['nuptk'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas harus disimpan sebagai teks agar nol di depan tidak hilang.';
