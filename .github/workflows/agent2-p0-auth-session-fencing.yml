@@ -113,6 +113,9 @@ jobs:
             tests/Feature/DeviceLeaseSchemaIntegrityTest.php \
             --display-warnings 2>&1 | tee ../agent2-p0-integration.log
 
+      - name: Two-connection InnoDB lock race test
+        run: php artisan test tests/Feature/AttemptTransactionConcurrencyTest.php --display-warnings
+
       - name: Upload integration evidence
         if: always()
         uses: actions/upload-artifact@v4
