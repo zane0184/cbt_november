@@ -44,6 +44,24 @@ class RombelStudent extends Pivot
             }
 
             $pivot->setAttribute('tenant_id', $tenantId);
+
+            $parentAcademicYearId = $pivot->pivotParent?->getAttribute('academic_year_id');
+            $rombelId = $pivot->getAttribute('rombel_id');
+            $rombel = $parentAcademicYearId
+                ? null
+                : Rombel::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($rombelId)->first();
+            $academicYearId = $parentAcademicYearId ?: $rombel?->academic_year_id;
+
+            if (!$academicYearId) {
+                throw new LogicException('Rombel membership requires a resolved academic year.');
+            }
+
+            if ($pivot->getAttribute('academic_year_id')
+                && (string) $pivot->getAttribute('academic_year_id') !== (string) $academicYearId) {
+                throw new LogicException('Rombel membership academic year does not match its parent rombel.');
+            }
+
+            $pivot->setAttribute('academic_year_id', $academicYearId);
         });
     }
 }
