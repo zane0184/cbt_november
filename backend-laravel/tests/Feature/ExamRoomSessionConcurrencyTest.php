@@ -144,9 +144,17 @@ class ExamRoomSessionConcurrencyTest extends TestCase
             DB::setDefaultConnection('mysql');
             $connection = DB::connection('mysql');
 
-            // Preserve the test's production-like foreign-key enforcement.
-            // Only this disposable tenant's child records are removed, in
-            // dependency order, before parent room/session and test fixtures.
+            // Restore nullable references while the parent scope rows still
+            // exist, then delete dependent placement rows before their parents.
+            if (\Illuminate\Support\Facades\Schema::hasTable('exam_proctor_assignments')) {
+                $connection->table('exam_proctor_assignments')->where('tenant_id', $this->tenantId)
+                    ->update(['exam_session_room_id' => null, 'schedule_revision' => null]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('exam_participants')) {
+                $connection->table('exam_participants')->where('tenant_id', $this->tenantId)
+                    ->update(['rombel_id' => null]);
+            }
+
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_participant_room_assignments')) {
                 $connection->table('exam_participant_room_assignments')->where('tenant_id', $this->tenantId)->delete();
             }
@@ -165,20 +173,12 @@ class ExamRoomSessionConcurrencyTest extends TestCase
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_rooms')) {
                 $connection->table('exam_rooms')->where('tenant_id', $this->tenantId)->delete();
             }
-            if (\Illuminate\Support\Facades\Schema::hasTable('exam_proctor_assignments')) {
-                $connection->table('exam_proctor_assignments')->where('tenant_id', $this->tenantId)
-                    ->update(['exam_session_room_id' => null, 'schedule_revision' => null]);
-            }
-            if (\Illuminate\Support\Facades\Schema::hasTable('exam_participants')) {
-                $connection->table('exam_participants')->where('tenant_id', $this->tenantId)->update(['rombel_id' => null]);
-            }
         }
 
         DB::setDefaultConnection('mysql');
         DB::purge('mysql_concurrent');
         parent::tearDown();
     }
-
     public function test_concurrent_room_attach_is_serialized_and_second_writer_observes_overlap(): void
     {
         $sessionOne = $this->service->createSession(
