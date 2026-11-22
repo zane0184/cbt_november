@@ -201,3 +201,39 @@ Migration 000004 harus diuji pada disposable MySQL 8 dengan fixture kasus akun K
 
 ### STATUS
 Keputusan desain diterapkan pada source branch, tetapi belum lulus pengujian dan belum diterima. Role OPERATOR lama dipetakan menjadi ADMIN_MADRASAH oleh migration 000003 yang sudah ada. KAMAD lama diarsipkan oleh migration 000004. Tidak boleh menjalankan migration pada VPS sebelum preflight inventaris, backup terverifikasi, uji clone, rehearsal rollback, dan persetujuan eksplisit pengguna.
+
+
+
+## ADDENDUM KEPUTUSAN ROLE KAMAD/OPERATOR & PROKTOR GURU (22 NOV 2026)
+
+### KEPUTUSAN DESAIN DIKUNCI
+Role aktif portal madrasah hanya:
+1. ADMIN_MADRASAH
+2. GURU
+3. SISWA
+
+KAMAD bukan role dan bukan akun portal. Nama Kepala Madrasah merupakan atribut identitas madrasah pada `tenants.principal_name`, dikelola Admin di Profil & Identitas Madrasah. Laporan PDF hasil ujian dan laporan siswa sudah membaca `principal_name` untuk blok tanda tangan “Mengetahui, Kepala Madrasah”, berpasangan dengan nama Guru yang sedang membuat/mengeluarkan laporan. Data ini tidak memberi hak login atau akses hasil/ujian kepada Kamad.
+
+OPERATOR bukan role. Migrasi legacy `LegacyRoleMigrationService` memetakan akun OPERATOR lama menjadi ADMIN_MADRASAH, dengan pemeriksaan konflik, transaksi, pencatatan rollback, dan arsip role lama. Akun tidak dihapus. KAMAD lama ditangani `RetireKamadRoleService`: assignment KAMAD dilepas dan role diarsipkan; jika akun hanya memiliki role KAMAD maka akun tetap ada tanpa role portal (users.role menjadi UNASSIGNED), sedangkan role portal canonical yang sah dipertahankan. Konflik multi-role di luar daftar canonical harus gagal tertutup dan direkonsiliasi manual.
+
+PROKTOR bukan role permanen. Akun Guru dapat diberi penugasan Proktor sementara yang dibatasi exam, tenant, rentang waktu, dan audit log. Penugasan hanya memberi monitoring ujian yang ditugaskan, tidak memberi akses jawaban, nilai, token, atau kewenangan mengubah ujian.
+
+### AUDIT SOURCE
+- `DatabaseSeeder.php` dan `RolePermissionBootstrapper.php` sudah hanya membentuk role ADMIN_MADRASAH dan GURU pada bootstrapper; katalog portal tiga role juga diverifikasi oleh `RoleDashboardVerificationTest`.
+- Migration `2026_11_22_000003_migrate_legacy_roles_to_canonical_roles.php` mencakup OPERATOR -> ADMIN_MADRASAH dan PROKTOR -> GURU; role lama diarsipkan, bukan dihapus fisik agar histori/rollback tetap tersedia.
+- Migration `2026_11_22_000004_retire_kamad_role.php` mengarsipkan KAMAD dan merekam pelepasan role.
+- Migration `2026_11_22_000005_add_principal_name_to_tenants.php`, model Tenant, dan UI Profil Madrasah sudah menyediakan principal_name.
+- ReportController sudah mengirim `$tenant->principal_name` sebagai `principalName` ke kedua template PDF (hasil ujian dan hasil siswa).
+- Ditemukan celah lama: AssessmentPolicy, ExamPolicy, ExamAttemptPolicy, ReportPolicy masih memberi jalur tertentu untuk KAMAD/OPERATOR; penugasan Proktor masih mensyaratkan role PROKTOR permanen.
+
+### IMPLEMENTASI BRANCH KOORDINATOR
+- Menghapus otorisasi KAMAD/OPERATOR dari AssessmentPolicy, ExamPolicy, ExamAttemptPolicy, ReportPolicy.
+- Penugasan Proktor di UI dan service sekarang memilih akun GURU dengan tepat satu role GURU dan TeacherProfile aktif pada tenant yang sama.
+- ExamPolicy.monitor memberi Guru akses monitoring melalui cakupan mengajar atau penugasan Proktor aktif yang spesifik ujian; akses detail jawaban/nilai tetap hanya melalui TeacherAccess, sehingga penugasan Proktor tidak menjadi akses nilai.
+- Guard Profil Madrasah dan pengelolaan penugasan Proktor mewajibkan tepat satu role ADMIN_MADRASAH.
+- UI menampilkan “Guru yang ditugaskan sebagai Proktor” agar jelas bahwa Proktor adalah tugas sementara, bukan role akun.
+- Test ProctorAssignmentSecurityTest dipindah dari role PROKTOR ke akun GURU + TeacherProfile. Test profil madrasah memverifikasi principal_name tersimpan.
+- Backup dibuat sebelum patch untuk ProctorAssignmentManagement, ExamProctorAssignmentService, ProctorAssignmentSecurityTest, proctor-assignment-management view, TenantProfileManagement, TenantProfileManagementTest, dan empat Policy. Lokasi backup berada di docs/backup/coordinator-web-admin-2026-11-22/ dengan suffix yang menjelaskan kondisi sebelum patch.
+
+### PENGUJIAN DAN BATAS
+Belum ada hasil PHPUnit/lint yang dapat diklaim. Runner GitHub Actions sebelumnya tidak memberikan steps/log yang dapat dibaca. Perubahan ini hanya branch kerja, belum merge, belum deploy, dan belum menjalankan migration pada VPS/database mana pun. Role legacy tidak boleh diarsipkan pada database aktif sampai inventory akun, backup terverifikasi, clone DB test, hasil migrasi, dan rollback diuji serta ada persetujuan eksplisit.
