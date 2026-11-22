@@ -126,22 +126,15 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_access_all_admin_routes()
+    public function admin_can_access_administrative_routes_and_exam_register_but_not_question_bank()
     {
         $this->actingAs($this->admin);
 
-        $routes = [
-            '/admin/users',
-            '/admin/academic',
-            '/admin/curriculum',
-            '/admin/questions',
-            '/admin/exams',
-        ];
-
-        foreach ($routes as $route) {
-            $response = $this->get($route);
-            $response->assertStatus(200);
+        foreach (['/admin/dashboard', '/admin/users', '/admin/academic', '/admin/curriculum', '/admin/exams'] as $route) {
+            $this->get($route)->assertOk();
         }
+
+        $this->get('/admin/questions')->assertForbidden();
     }
 
     /** @test */
