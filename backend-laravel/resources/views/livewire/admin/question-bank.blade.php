@@ -393,6 +393,7 @@
                             <p class="mt-1 text-xs text-textSecondary">File disimpan pada storage privat tenant dan dipasang ke versi draft ini. Versi terbit tidak dapat diubah.</p>
                         </div>
 
+                        @if($editingQuestionVersionStatus === 'DRAFT')
                         <form action="{{ route('teacher.questions.media.store', ['question' => $editingQuestionId, 'version' => $editingQuestionVersionId]) }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
                             @csrf
                             <div class="md:col-span-2">
@@ -415,6 +416,9 @@
                                 <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Unggah & Pasang Media</button>
                             </div>
                         </form>
+                        @else
+                            <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Versi ini sudah terbit dan tidak dapat diubah. Simpan revisi soal terlebih dahulu untuk membuat versi draft sebelum memasang atau melepas media.</p>
+                        @endif
 
                         @if($editingVersionMedia->isNotEmpty())
                             <div class="space-y-2">
@@ -427,11 +431,13 @@
                                         </div>
                                         <div class="flex items-center gap-2 shrink-0">
                                             <a href="{{ route('teacher.questions.media.show', ['media' => $media->id]) }}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-indigo-700 hover:underline">Lihat</a>
-                                            <form action="{{ route('teacher.questions.media.detach', ['question' => $editingQuestionId, 'version' => $editingQuestionVersionId, 'media' => $media->id]) }}" method="POST">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-xs font-bold text-red-600 hover:underline">Lepas</button>
-                                            </form>
+                                            @if($editingQuestionVersionStatus === 'DRAFT')
+                                                <form action="{{ route('teacher.questions.media.detach', ['question' => $editingQuestionId, 'version' => $editingQuestionVersionId, 'media' => $media->id]) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-xs font-bold text-red-600 hover:underline">Lepas</button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </div>
                                 @endforeach
