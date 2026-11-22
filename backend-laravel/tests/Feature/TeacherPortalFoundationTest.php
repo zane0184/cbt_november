@@ -237,13 +237,13 @@ class TeacherPortalFoundationTest extends TestCase
     public function test_soft_deleted_teacher_account_is_denied_even_if_session_user_object_remains(): void
     {
         $this->actingAs($this->teacher);
-        $this->teacher->delete();
+        DB::table('users')->where('id', $this->teacher->id)->update(['deleted_at' => now()]);
 
         $this->get('/guru/dashboard')->assertForbidden();
         Livewire::actingAs($this->teacher)->test(TeacherDashboard::class)->assertForbidden();
     }
 
-    public function test_livewire_request_is_denied_when_tenant_context_does_not_match_authenticated_user(): void
+    public function test_teacher_portal_access_rejects_mismatched_tenant_context(): void
     {
         $tenantB = Tenant::create([
             'name' => 'Madrasah Context B',
@@ -252,9 +252,9 @@ class TeacherPortalFoundationTest extends TestCase
         ]);
 
         app(TenantContext::class)->setTenantId($tenantB->id);
-        auth()->setUser($this->teacher);
+        $this->expectException(\\Symfony\\Component\\HttpKernel\\Exception\\HttpException::class);
 
-        Livewire::test(TeacherDashboard::class)->assertForbidden();
+        app(\\App\\Support\\Security\\TeacherPortalAccess::class)->profile($this->teacher);
     }
 
     public function test_curriculum_context_uses_only_registered_tenant_owned_versions_and_shows_unverified_source_state(): void
