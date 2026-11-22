@@ -60,8 +60,8 @@ class WebAdminAuthTest extends TestCase
 
         TeacherProfile::create([
             'user_id' => $this->guru->id,
+            'employment_type' => 'ASN',
             'nip' => '198001012006041001',
-            'nik' => '3171000000000001',
             'full_name' => 'Guru Uji',
         ]);
         StudentProfile::create([
@@ -236,6 +236,54 @@ class WebAdminAuthTest extends TestCase
 
         $this->get('/admin/exams')->assertRedirect('/login');
         $this->assertGuest();
+    }
+
+
+    public function test_honorer_can_login_only_with_nik(): void
+    {
+        $honorer = $this->makeUser('1987010100000001', 'Guru Honorer', Role::where('name', 'GURU')->firstOrFail());
+        TeacherProfile::create([
+            'user_id' => $honorer->id,
+            'employment_type' => 'HONORER',
+            'nik' => '3171000000000002',
+            'nip' => '1987010100000001',
+            'employee_identifier' => '3171000000000002',
+            'full_name' => 'Guru Honorer',
+        ]);
+
+        $this->post('/login', [
+            'identifier' => '3171000000000002',
+            'password' => $this->password,
+        ])->assertRedirect('/admin/exams');
+        $this->assertAuthenticatedAs($honorer);
+
+        auth()->logout();
+        $this->post('/login', [
+            'identifier' => '1987010100000001',
+            'password' => $this->password,
+        ])->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_asn_nip_is_valid_but_nik_and_username_are_not_guru_login_fallbacks(): void
+    {
+        $profile = TeacherProfile::where('user_id', $this->guru->id)->firstOrFail();
+        $profile->nik = '3171000000000003'; // Simulate legacy/malformed data; ASN login remains NIP-only.
+        $profile->save();
+
+        foreach (['3171000000000003', 'guru.uji'] as $identifier) {
+            $this->post('/login', [
+                'identifier' => $identifier,
+                'password' => $this->password,
+            ])->assertSessionHasErrors('identifier');
+            $this->assertGuest();
+        }
+
+        $this->post('/login', [
+            'identifier' => '198001012006041001',
+            'password' => $this->password,
+        ])->assertRedirect('/admin/exams');
+        $this->assertAuthenticatedAs($this->guru);
     }
 
 }
