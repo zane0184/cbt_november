@@ -94,6 +94,33 @@ class UserSecurityTest extends TestCase
             ->assertJsonPath('data.tenant_id', $this->tenantA->id);
     }
 
+
+    public function test_soft_deleted_user_cannot_authenticate_with_existing_sanctum_token(): void
+    {
+        $plainToken = $this->userA->createToken('before-deactivation')->plainTextToken;
+        $this->userA->delete();
+
+        $this->assertSoftDeleted('users', ['id' => $this->userA->id]);
+        $this->withToken($plainToken)
+            ->getJson('/api/v1/auth/me')
+            ->assertUnauthorized();
+
+        $this->assertNotNull(User::withTrashed()->find($this->userA->id));
+        $this->assertNull(User::query()->find($this->userA->id));
+    }
+
+    public function test_soft_deleted_user_cannot_login_with_identifier_and_password(): void
+    {
+        $this->userA->delete();
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'student@a.com',
+            'password' => 'password',
+        ])->assertUnprocessable();
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
     /**
      * Test that IdentifyTenant middleware sets the correct context from authenticated user.
      */
