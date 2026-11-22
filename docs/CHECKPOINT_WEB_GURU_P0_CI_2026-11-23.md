@@ -4,58 +4,65 @@ Tanggal: 23 November 2026
 Agent: Agent 3 — Web Guru  
 Repository: `zane0184/cbt_november`  
 Branch: `work/web-guru-phase1-audit-implementation-20261122`  
-HEAD checkpoint: `0635aecfd8d8a94c6a73dc3fcdc7223d1f09c793`  
-Status: **P0 BLOCKED — SOURCE AUDITED, RUNTIME TEST NOT VERIFIED**
+HEAD sebelum commit checkpoint ini: `7c781e4fc5f428158dc004751dc4a2d7e2128b8d`  
+Status: **P0 BLOCKED — SOURCE AUDITED, CI JOB FAILS BEFORE STEPS**
 
 ## 1. Posisi source
 
-- Source ExamManagement: `453879ef8ad42a7dbea9cd6a78c5eb7c8face219`.
-- Regression test Exam Builder: `0271a7836c5fefe76b97e9bca70ded23ae35619e`.
+- ExamManagement: `453879ef8ad42a7dbea9cd6a78c5eb7c8face219`.
+- TeacherPracticeWorkflowTest: `0271a7836c5fefe76b97e9bca70ded23ae35619e`.
 - TeacherPortalFoundationTest: `c3ba6a2f938990d1e9cbd2cb6503c3dda51f73f5`.
 - TeacherPortalAccess: `8c60fb6db17512d6bbf8845027f69841172e2f60`.
+- TeacherPortalComponent: `d1bba0a7d731f4637e3f096b661730c46ce6aae9`.
 - ExamSnapshotService: `d0bfcd70b2777a3884c7f92b7c256f05492645ec`.
+- Workflow blob pada branch: `6a683c99d8ae0631095f447f0c791f034d900979`.
 
-HEAD `0635aec...` hanya menambahkan laporan audit P0; tidak mengubah source runtime, test, policy, service, workflow, migration, atau database.
+Source/test runtime tidak berubah dalam pekerjaan pemulihan ini. Phase 4B tetap utuh dan tidak diulang.
 
-## 2. Laporan terbaru
+## 2. AUDIT — CI trigger dan hasil terbaru
 
-- `docs/WEB_GURU_P0_AUDIT_CI_RECOVERY_2026-11-23.md`
-- Commit laporan: `0635aecfd8d8a94c6a73dc3fcdc7223d1f09c793`.
+1. Workflow branch memiliki `workflow_dispatch` dan `push`; push hanya untuk branch Web Guru dengan perubahan `backend-laravel/**` atau file workflow.
+2. File workflow yang sama tidak ditemukan pada `main` (HTTP 404). Karena itu manual `workflow_dispatch` dari UI belum tersedia/andal tanpa menyalin workflow ke default branch; `main` tidak diubah.
+3. Dokumentasi audit baru di `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md` memicu push check pada exact SHA `e33517929421810dc8519aedb02fd18b571a43a4`.
+4. Hasil push: check suite `121916153101`, run `45050222534`, job `137293473966`; status `completed/failure`, `steps=[]`, log `BlobNotFound`. Job selesai sekitar empat detik.
+5. Ini bukan bukti PHPUnit gagal/lulus. Tidak ada langkah PHP lint, route:list, PHPUnit, atau MySQL yang terbukti berjalan. Detail annotation tidak tersedia melalui koneksi saat audit.
+6. Penyebab job gagal sebelum steps belum diketahui dan tidak boleh ditebak. Laporan pemulihan lengkap: `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md`.
 
-## 3. Pekerjaan yang sudah selesai
+## 3. DESAIN — Langkah aman berikutnya
 
-1. Refresh branch, HEAD, commit, checkpoint, master spec, dan source terkait.
-2. Verifikasi Phase 4B source/test tetap ada; backup pra-patch 2/2 blob SHA cocok.
-3. Buat matriks fitur Web Guru berbasis source aktual.
-4. Audit post-mount Livewire: hanya tenant reassignment yang sudah diuji melalui HTTP update nyata; revokasi permission/assignment/profile/user/role masih memakai Livewire test harness.
-5. Audit dependency Agent 2: policy aktif masih memuat hasRole/KAMAD; branch Agent 2 P0 belum terintegrasi dan tidak boleh diambil sebagian.
-6. Rerun job CI exact test SHA `616dc82f006e0c8327f5738857cd33d53ec9f071`; attempt 2 tetap gagal sebelum steps, log tidak tersedia (`BlobNotFound`).
+1. Minta owner/repository administrator memeriksa GitHub Actions runner/service availability, Actions policy, dan kegagalan job pre-step; jangan mengubah workflow atau main hanya untuk menyamarkan kegagalan.
+2. Setelah job menjalankan steps, wajib buktikan PHP lint, route:list, PHPUnit filter Web Guru, MySQL 8 disposable, dan InnoDB.
+3. Baru setelah CI dapat menjalankan test, tambahkan HTTP Livewire POST regression untuk revokasi permission, assignment, TeacherProfile soft-delete, User soft-delete, dan role revoke.
+4. Koordinasikan Agent 2 untuk exact-role policy, snapshot PUBLISHED, sanitasi snapshot public/private, dan lock order. Jangan mengubah file owner Agent 2.
+5. Pilih gap Web Guru lain setelah P0 lulus dan dependency kontraknya jelas.
 
-## 4. Belum selesai / blocker
+## 4. IMPLEMENTASI
 
-- PHPUnit, PHP lint, route:list, dan MySQL 8/InnoDB pada exact SHA belum terbukti berjalan.
-- HTTP Livewire POST untuk permission revoke, assignment revoke, TeacherProfile soft-delete, User soft-delete, dan role revoke setelah mount belum ada.
-- Agent 2 belum memberi approval teknis yang dapat diverifikasi pada Issue #10 untuk exact-role/policy, snapshot private/public, dan lock order.
-- `ExamSnapshotService` belum terbukti menegakkan Question + QuestionVersion PUBLISHED untuk semua caller.
-- Browser E2E, responsive/RTL QA, dan UAT belum dijalankan.
-- Monitoring, Penilaian, Hasil, Analytics, Import, Media, dan Proktor tetap PARTIAL/BLOCKED sesuai dependency.
+- Ditambahkan dokumentasi baru `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md`.
+- Commit awal trigger: `e33517929421810dc8519aedb02fd18b571a43a4`.
+- Commit pembaruan hasil trigger: `7c781e4fc5f428158dc004751dc4a2d7e2128b8d`.
+- Checkpoint ini diperbarui pada commit terpisah.
+- Tidak ada source runtime, test, policy, service, migration, database, workflow, main, branch Agent lain, VPS, atau deployment yang diubah.
+- Tidak ada backup source dibuat karena hanya file dokumentasi baru/ubah dokumentasi yang dikerjakan.
 
-## 5. Aturan yang dipertahankan
+## 5. PENGUJIAN
 
-- Fokus eksklusif Web Guru.
-- Jangan mengubah `main`.
-- Jangan merge/rebase/cherry-pick.
-- Jangan mengubah file ownership Agent 1/2/4.
-- Jangan migration atau menyentuh database produksi.
-- Jangan mengaktifkan menu yang dependency backend/policy/test-nya belum siap.
-- Jangan mengklaim PASS tanpa log exact SHA.
+| Pemeriksaan | Hasil |
+|---|---|
+| Branch/commit dokumentasi | Terverifikasi |
+| Workflow push path filter | Terverifikasi statis |
+| Push trigger | Check suite terbuat |
+| Job steps | Kosong |
+| Job logs | `BlobNotFound` |
+| PHP lint | NOT RUN / NOT VERIFIED |
+| Laravel route:list | NOT RUN / NOT VERIFIED |
+| PHPUnit Web Guru | NOT RUN / NOT VERIFIED |
+| MySQL 8 disposable | NOT RUN / NOT VERIFIED |
+| InnoDB verification | NOT RUN / NOT VERIFIED |
+| Browser E2E / UAT | NOT RUN |
 
-## 6. Langkah berikutnya
+## 6. Status fitur Web Guru
 
-1. Pulihkan akses runner/Actions atau jalankan workflow manual dari GitHub Actions pada branch ini; pastikan checkout exact SHA dan simpan steps/log/artifact. Kegagalan job saat ini tidak cukup untuk menyimpulkan penyebabnya.
-2. Setelah runner berjalan, jalankan PHP lint, route:list, seluruh PHPUnit filter Web Guru, dan verifikasi MySQL 8/InnoDB disposable.
-3. Tambahkan HTTP Livewire post-mount revocation tests pada file test Agent 3 setelah CI runtime tersedia.
-4. Koordinasikan dengan Agent 2 untuk approval exact-role, policy, snapshot PUBLISHED, dan lock order; jangan ubah file mereka.
-5. Setelah P0 lulus, pilih satu gap Web Guru dengan ownership Agent 3 dan acceptance test yang jelas.
+Web Guru tetap **PARTIAL — NOT READY FOR OPERATIONAL EXAM**. Monitoring Mode A, Proktor Mode B, Penilaian Essay, Hasil/Laporan, Analytics, Import, Media, dan preferensi masih ditahan sesuai audit dan ownership. Jangan aktifkan menu yang belum memiliki backend, policy, dan test terverifikasi.
 
-**Checkpoint ini menggantikan asumsi posisi sebelumnya. Source aktual tetap menjadi dasar kebenaran; Phase 4B tidak diulang.**
+**P0 CI: BLOCKED. Source audit selesai, tetapi runtime execution belum terbukti.**
