@@ -172,6 +172,7 @@ class AdminUserManagementScopeTest extends TestCase
             ->set('employmentType', 'ASN')
             ->set('nip', '198701012021011001')
             ->set('password', 'StrongPassword123!')
+            ->set('createReason', 'Pembuatan akun Guru untuk penugasan madrasah.')
             ->call('createUser')
             ->assertHasNoErrors();
 
@@ -185,12 +186,15 @@ class AdminUserManagementScopeTest extends TestCase
             ->set('entryAcademicYearId', $activeYear->id)
             ->set('nisn', '0099887766')
             ->set('password', 'StrongPassword123!')
+            ->set('createReason', 'Pendaftaran siswa baru tahun pelajaran aktif.')
             ->call('createUser')
             ->assertHasNoErrors();
 
         $student = User::query()->where('name', 'Siswa Baru')->firstOrFail();
         $this->assertTrue($student->roles()->where('name', 'SISWA')->exists());
         $this->assertSame('0099887766', $student->studentProfile->nisn);
+        $this->assertSame('ACTIVE', $student->studentProfile->academic_status);
+        $this->assertDatabaseHas('student_academic_events', ['student_id' => $student->studentProfile->id, 'event_type' => 'REGISTERED', 'reason' => 'Pendaftaran siswa baru tahun pelajaran aktif.']);
         $this->assertSame(2, AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_CREATED')->count());
 
         $this->assertSame($permissionRowsBefore, Permission::query()->count());
@@ -265,6 +269,7 @@ class AdminUserManagementScopeTest extends TestCase
             ->set('editEmploymentType', 'ASN')
             ->set('editNip', '198701012021011001')
             ->set('editNik', '')
+            ->set('editReason', 'Perubahan identitas Guru sesuai data kepegawaian.')
             ->call('updateUser')
             ->assertHasNoErrors()
             ->assertSet('showEditModal', false);
@@ -275,12 +280,14 @@ class AdminUserManagementScopeTest extends TestCase
         $this->assertSame('guru.sesudah', $guru->username);
         $this->assertSame('198701012021011001', $profile->nip);
         $this->assertSame('198701012021011001', $profile->employee_identifier);
-        $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_UPDATED')->where('entity_id', $guru->id)->exists());
+        $editLog = AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_UPDATED')->where('entity_id', $guru->id)->firstOrFail();
+        $this->assertSame('Perubahan identitas Guru sesuai data kepegawaian.', $editLog->new_values['reason']);
 
         Livewire::test(UserManagement::class)
             ->call('openResetPasswordModal', $guru->id)
             ->assertSet('showResetPasswordModal', true)
             ->set('resetPassword', 'NewStrongPassword123!')
+            ->set('resetReason', 'Reset password atas permintaan pemilik akun.')
             ->call('resetUserPassword')
             ->assertHasNoErrors()
             ->assertSet('showResetPasswordModal', false);
@@ -290,6 +297,7 @@ class AdminUserManagementScopeTest extends TestCase
         $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_PASSWORD_RESET')->where('entity_id', $guru->id)->exists());
         $resetLog = AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_PASSWORD_RESET')->where('entity_id', $guru->id)->firstOrFail();
         $this->assertStringNotContainsString('NewStrongPassword123!', json_encode($resetLog->new_values));
+        $this->assertSame('Reset password atas permintaan pemilik akun.', $resetLog->new_values['reason']);
     }
 
     public function test_admin_cannot_edit_or_reset_password_for_other_tenant_user(): void
