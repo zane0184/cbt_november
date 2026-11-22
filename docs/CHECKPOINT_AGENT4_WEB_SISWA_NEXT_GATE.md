@@ -412,3 +412,62 @@ The compare endpoint caps returned file lists for diverged branches; counts abov
 No tests were executed by Agent 4 in this refresh. F-01/F-02 adversarial, lease/fencing runtime, Answer receipt/conflict, IndexedDB, multi-tab, offline/reload/crash, browser E2E, submit race, room recovery and disposable MySQL integration remain NOT RUN/BLOCKED. No PASS claim.
 
 Final state: **AUDIT/DESIGN — CROSS-AGENT CONTRACT PENDING**; Web Siswa **NOT READY FOR OPERATIONAL EXAM**. No implementation permission.
+
+
+## 14. REMOTE REFRESH — OWNERSHIP / ISSUE #10 / CI EXACT-SHA (22 NOVEMBER 2026)
+
+### AUDIT — remote refs
+
+HEAD remote sebelum commit dokumentasi refresh ini:
+
+| Owner/jenis | Branch | HEAD aktual | Ahead/behind `main` |
+|---|---|---|---:|
+| Agent 1 | `work/stage4b-room-session-20261122` | `51571ca54ec922466e6230b4e8137a85336bc024` | 1216 / 15 |
+| Agent 2 | `work/stage4d-account-lifecycle-20261122` | `462cadc96a95d091bd89819dbc106b4fbd67e1cd` | 1352 / 15 |
+| Agent 3 | `work/web-guru-foundation-20261122` | `6db04429613537c8219e6d8d873332d25f8c1ced` | 1180 / 15 |
+| Agent 4 dokumentasi | `work/agent4-web-siswa-audit-20261122` | `f7166abff090d1cc8cdd49d0ebbea6509d5d0886` | 16 / 0 |
+| Kandidat Agent 4 | `work/import-guru-siswa-implementation-20261122` | `f38ceec7b0653fcf3363eec40f3d4577c323cca8` | 930 / 15 |
+| Main | `main` | `feab77228f7108f7f7a45325d7f1fb878c07310b` | — |
+
+Branch owner dan kandidat divergen. Cross-compare: Agent1→Agent2 234/98; Agent1→Agent3 207/243; Agent1→Agent4 docs 31/1216; Agent1→candidate 80/366; Agent2→Agent3 207/379; Agent2→Agent4 docs 31/1352; Agent3→Agent4 docs 31/1180 (ahead/behind). Dokumentasi Agent4 berbasis main dan bukan basis runtime. Tip commits yang diperiksa tercatat dari `zane0184`; identitas owner agent terpisah belum diverifikasi.
+
+### AUDIT — Issue #10 dan keputusan owner
+
+Issue #10 OPEN, 14 komentar; semua author login yang dikembalikan adalah `zane0184`. Komentar terbaru `7078306561` menyatakan technical review Agent3 **NEEDS DESIGN** untuk QuestionVersion/snapshot/media, tetapi ditulis oleh akun koordinator dan secara eksplisit bukan approval final. Komentar `7078261415` adalah keputusan koordinator mengenai instalasi/database terpisah per madrasah; bukan approval teknis Agent2. Komentar `7078273774` adalah permintaan konfirmasi owner. Tidak ada jawaban langsung owner yang dapat diverifikasi.
+
+`AGENT 4 OWNERSHIP — PENDING CONFIRMATION`. Kandidat `f38ceec...` tidak dikonfirmasi, tidak diubah dan tidak boleh dijadikan basis implementasi. Tidak ada base commit/izin coding.
+
+### AUDIT — source findings
+
+- Agent1 migration `9551b1dd...`: unique `(tenant_id, exam_id, session_number)`, belum one operational session per Exam. Scheduler `8e34152...` menyelesaikan session/assignment berdasar waktu tanpa guard Attempt IN_PROGRESS. Proktor recovery window belum ditetapkan.
+- Agent2 ExamController `c7c62e...`: snapshot masih dilepas berdasar `canStartAttempt()`; F-01 P0 OPEN. MediaController `f852c1...`: `question_order`, lease dan fencing belum lengkap; F-02 P0 OPEN. AttemptController `13e898...`: parent lock Exam→Participant→Attempt; resume Attempt aktif valid setelah close didukung. AnswerController `b4ddec...`: lock Attempt→Answer; durable receipt belum terbukti. Device Lease runtime model/service/middleware tidak ditemukan. ExamPolicy `c05d96...` masih non-exact role/KAMAD.
+- Agent3 QuestionController `7ded534...` membatasi enam tipe; QuestionVersion `5f937a...` dan SnapshotService `d0bfcd...` tidak menyimpan/meng-copy accepted_answers; ScoringService `1fc74e...` membacanya dari snapshot metadata. SHORT_ANSWER BLOCKED; ESSAY manual review. AttemptController `e915bf...` belum membuktikan room scope.
+
+### DESAIN — status
+
+| Subkontrak | Status |
+|---|---|
+| Agent4 ownership/branch/base | PENDING |
+| F-01 admission | PENDING — P0 OPEN |
+| F-02 media | PENDING — P0 OPEN |
+| Device Lease/Fencing | PENDING / NOT VERIFIED |
+| Answer receipt/conflict | NEEDS DESIGN / PENDING |
+| Submit/expiry/Force Submit | PENDING |
+| QuestionVersion/snapshot/media | NEEDS DESIGN / PENDING; koordinator review bukan owner approval |
+| SHORT_ANSWER | BLOCKED |
+| Room/Proktor/recovery | PENDING |
+| Integration base/coding permission | PENDING |
+
+### PENGUJIAN
+
+CI exact-SHA untuk branch heads dan source baseline yang diperiksa tidak dapat diverifikasi melalui connector: combined statuses kosong dan tidak ada PR-triggered workflow run yang dikembalikan. Run historis di checkpoint Agent1/2/3/kandidat bukan PASS untuk exact HEAD saat ini. Semua acceptance test Web Siswa tetap NOT RUN/BLOCKED.
+
+### IMPLEMENTASI
+
+Dokumentasi saja. Tidak ada source runtime, route, API, policy, model, service, middleware, migration, schema, database, konfigurasi, branch Agent1/2/3/kandidat, merge/rebase/cherry-pick, PR atau deployment yang diubah. Backup byte-exact checkpoint dan reconciliation tercatat pada `docs/backup/agent4-contract-closure-2026-11-22/MANIFEST_REMOTE_REFRESH_F7166AB.md`.
+
+### NEXT GATE
+
+Menunggu respons langsung owner Agent1/2/3 dan konfirmasi owner Agent4. Setelah itu verifikasi exact source/blob/CI; koordinator menetapkan branch resmi/base/izin coding; lakukan preflight disposable MySQL8 dan browser E2E hanya setelah semua kontrak disetujui.
+
+Status: `BLOCKED — CROSS-AGENT CONTRACT PENDING`; Web Siswa `NOT READY FOR OPERATIONAL EXAM`.
