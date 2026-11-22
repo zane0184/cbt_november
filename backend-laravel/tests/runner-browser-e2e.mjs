@@ -25,7 +25,8 @@ const fixture = [
   '<details id="question-nav-panel"><summary>Nomor soal</summary><div id="question-nav"></div><button id="submit-button" type="button">Kirim Ujian</button></details></section>',
   '<section id="completion-panel" class="hidden"><h2 id="completion-title"></h2><p id="completion-message"></p></section>',
   '<div id="fatal-error" class="hidden"></div><button id="check-submit-status" class="hidden" type="button">Periksa status</button>',
-  '</main><script>', runnerScript, '</script></body></html>'
+  '</main><script>window.__intervalIds = new Set(); const nativeSetInterval = window.setInterval.bind(window); const nativeClearInterval = window.clearInterval.bind(window); window.setInterval = (...args) => { const id = nativeSetInterval(...args); window.__intervalIds.add(id); return id; }; window.clearInterval = id => { window.__intervalIds.delete(id); return nativeClearInterval(id); };</script>',
+  '<script>', runnerScript, '</script></body></html>'
 ].join('');
 
 const server = createServer((_request, response) => {
@@ -43,6 +44,7 @@ function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
+    expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
     questionOptions: [
       { id: 'opt-a', option_key: 'A', content: 'Empat' },
@@ -69,7 +71,7 @@ async function attachApiMock(page, scenario) {
     if (method === 'GET' && path === '/execution') {
       const now = new Date();
       return json(route, 200, { success: true, data: {
-        attempt: { id: 'attempt-1', expires_at: new Date(now.getTime() + 30 * 60 * 1000).toISOString() },
+        attempt: { id: 'attempt-1', expires_at: new Date(now.getTime() + scenario.expiresInMs).toISOString() },
         exam: { server_now: now.toISOString() },
         questions: [{
           id: 'snapshot-1', snapshot_stem: 'Berapakah hasil 2 + 2?', points: 1,
@@ -104,8 +106,8 @@ async function attachApiMock(page, scenario) {
       if (scenario.mode === 'unknown-submit' && scenario.submitCalls === 1) {
         return route.abort('failed');
       }
-      scenario.status = 'SUBMITTED';
-      return json(route, 200, { success: true, data: { status: 'SUBMITTED' } });
+      scenario.status = scenario.submitStatus;
+      return json(route, 200, { success: true, data: { status: scenario.submitStatus } });
     }
     if (method === 'GET' && path === '/attempts/attempt-1') {
       scenario.statusChecks++;
@@ -278,7 +280,23 @@ try {
     console.log('PASS: conflict draft restores after reload and submit remains blocked');
   }
 
-  // 5. Lost submit response: status is checked; no second start/submit is posted.
+  // 5. Server expiry triggers one automatic submit and clears the timer interval.
+  {
+    const scenario = makeScenario();
+    scenario.expiresInMs = -1000;
+    scenario.submitStatus = 'EXPIRED';
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
+    assert.equal(scenario.submitCalls, 1, 'Expired Attempt must trigger one automatic submit');
+    assert.equal(await page.locator('#completion-title').textContent(), 'Ujian ditutup oleh server');
+    assert.equal(await page.evaluate(() => window.__intervalIds.size), 0, 'Terminal completion must clear the timer interval');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: server expiry auto-submits once and clears timer');
+  }
+
+  // 6. Lost submit response: status is checked; no second start/submit is posted.
   {
     const scenario = makeScenario('unknown-submit');
     const { context, page } = await newPage(browser, scenario);
