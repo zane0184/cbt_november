@@ -31,6 +31,10 @@ const fixture = [
 
 const server = createServer((request, response) => {
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+  if (new URL(request.url, 'http://127.0.0.1').pathname === '/seed') {
+    response.end('<!doctype html><script>window.__legacySeedDone = false; const request = indexedDB.open("cbt-madrasah-student-v1", 1); request.onupgradeneeded = () => request.result.createObjectStore("pending-answers", { keyPath: "key" }); request.onsuccess = () => { const db = request.result; const tx = db.transaction("pending-answers", "readwrite"); tx.objectStore("pending-answers").put({ key: "attempt-1:snapshot-1", attemptId: "attempt-1", snapshotId: "snapshot-1", payload: { selected_option_id: "opt-b" }, clientRequestId: "legacy-request-1", updatedAt: Date.now() }); tx.oncomplete = () => { db.close(); window.__legacySeedDone = true; }; };</script>');
+    return;
+  }
   const requireToken = new URL(request.url, 'http://127.0.0.1').searchParams.get('require-token') === '1';
   response.end(requireToken ? fixture.replace('data-require-token="0"', 'data-require-token="1"') : fixture);
 });
@@ -44,7 +48,7 @@ const origin = 'http://127.0.0.1:' + address.port;
 function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
-    requireToken: false, startTokens: [], media: [],
+    requireToken: false, startTokens: [], media: [], legacyPending: false,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
@@ -130,6 +134,10 @@ async function newPage(browser, scenario) {
   const page = await context.newPage();
   page.on('pageerror', error => scenario.pageErrors.push(error.message));
   await attachApiMock(page, scenario);
+  if (scenario.legacyPending) {
+    await page.goto(origin + '/seed');
+    await page.waitForFunction(() => window.__legacySeedDone === true);
+  }
   await page.goto(scenario.requireToken ? origin + '/?require-token=1' : origin);
   return { context, page };
 }
@@ -314,7 +322,22 @@ try {
     console.log('PASS: IndexedDB draft survives reload and synchronizes after reconnect');
   }
 
-  // 6. Conflict: local draft is restored, server copy is retained, submit stays blocked.
+  // IndexedDB v1 pending-answer records migrate into v2 and are synchronized.
+  {
+    const scenario = makeScenario();
+    scenario.legacyPending = true;
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    assert.equal(await page.locator('#question-input input[value="opt-b"]').isChecked(), true);
+    assert.equal(scenario.answerWrites, 1);
+    assert.equal(scenario.serverAnswers[0].answer_payload.selected_option_id, 'opt-b');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: IndexedDB v1 pending answer migrates and synchronizes');
+  }
+
+  // 7. Conflict: local draft is restored, server copy is retained, submit stays blocked.
   {
     const scenario = makeScenario('conflict');
     const { context, page } = await newPage(browser, scenario);
@@ -335,7 +358,7 @@ try {
     console.log('PASS: conflict draft restores after reload and submit remains blocked');
   }
 
-  // 7. Server expiry triggers one automatic submit and clears the timer interval.
+  // 8. Server expiry triggers one automatic submit and clears the timer interval.
   {
     const scenario = makeScenario();
     scenario.expiresInMs = -1000;
@@ -351,7 +374,7 @@ try {
     console.log('PASS: server expiry auto-submits once and clears timer');
   }
 
-  // 8. Lost submit response: status is checked; no second start/submit is posted.
+  // 9. Lost submit response: status is checked; no second start/submit is posted.
   {
     const scenario = makeScenario('unknown-submit');
     const { context, page } = await newPage(browser, scenario);
