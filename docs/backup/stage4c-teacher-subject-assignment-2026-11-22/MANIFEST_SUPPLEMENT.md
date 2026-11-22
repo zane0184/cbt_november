@@ -17,3 +17,5 @@ The original Stage 4C backup manifest remains unchanged. This supplement records
 New files `TeacherSubjectAssignmentManagement.php`, its Blade view, and `TeacherSubjectAssignmentConcurrencyTest.php` had no pre-existing source file to snapshot.
 
 All backups are separate Git files. No original file or ZIP baseline was overwritten.
+
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-mysql-role-and-year-relation-fixes | bfd4b0950fa7293cde7e59cf7a36e5c6e9fe6bd9 | 9412 | 813c01fc9939d66876100b489bec762aee4e51ee |
