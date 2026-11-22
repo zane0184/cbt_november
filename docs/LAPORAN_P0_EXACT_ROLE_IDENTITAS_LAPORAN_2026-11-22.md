@@ -4,7 +4,7 @@ Repository: `zane0184/cbt_november`
 Branch Agent 3: `work/web-guru-foundation-20261122`
 Branch Agent 2 (audit read-only): `work/stage4d-account-lifecycle-20261122`
 Source Agent 3 sebelum patch: `702274d5298930f5f1dd13b71b7e402c12868109`
-Source commit Agent 3 terakhir pada tahap ini: `fc91263f4922bb30c4d9933147abdd8f6860f26d`
+Source commit test Agent 3 terakhir pada tahap ini: `24f743cd96ac8be15a881aac96157f4d5caf98c2`
 
 ## 1. AUDIT
 
@@ -76,7 +76,7 @@ Temuan:
 - Data peserta, jumlah Attempt, dan skor belum dipisahkan sepenuhnya menurut definisi laporan yang diminta.
 
 ### 1.5 Status branch dan CI
-- Branch Agent 3 dibandingkan dengan HEAD checkpoint `702274d5298930f5f1dd13b71b7e402c12868109`: 7 commit ahead, 0 behind.
+- Branch Agent 3 dibandingkan dengan HEAD checkpoint `702274d5298930f5f1dd13b71b7e402c12868109`: hasil final compare dicatat pada checkpoint setelah rekonsiliasi.
 - Tujuh path yang berubah pada rentang ini adalah dua komponen, satu test, dan empat file backup/manifest. Tidak ada file Agent 2, migration, schema, Composer, atau database yang diubah.
 - Connector tidak menampilkan daftar status/check run untuk commit test `fc91263f4922bb30c4d9933147abdd8f6860f26d`; status CI belum dapat diverifikasi pada saat laporan ini dibuat.
 - Branch Agent 2 diperiksa secara read-only melalui ref yang disebut di atas. Compare metadata menunjukkan branch divergen terhadap main (1340 ahead / 15 behind), tetapi connector tidak mengembalikan SHA HEAD branch secara eksplisit. Blob SHA setiap file yang diperiksa dicatat di atas.
@@ -129,7 +129,7 @@ Livewire `boot()` dan `mount()` tetap menjalankan pemeriksaan. Boot dievaluasi p
 Commit:
 - QuestionBank: `901ab9a05ab678c3c8882131d5463d72a0202382`
 - ExamManagement: `8ac0253fcf1cafaf0e5808ee66107a691ba0a7e0`
-- Test: `fc91263f4922bb30c4d9933147abdd8f6860f26d`
+- Test: `24f743cd96ac8be15a881aac96157f4d5caf98c2`
 
 ### 3.2 Backup
 Folder: `docs/backup/web-guru-exact-role-20261122/`
@@ -137,7 +137,7 @@ Folder: `docs/backup/web-guru-exact-role-20261122/`
 - `ExamManagement.php.before` — blob SHA `d5380dd931aae00aadb9769fb22bdffcac20ad51`, MATCH.
 - `TeacherPortalFoundationTest.php.before` — blob SHA `414a0a7fca80898c4e9d3aceceac31378208aa30`, MATCH.
 - Manifest: `docs/backup/web-guru-exact-role-20261122/MANIFEST.md`.
-- Ketiga backup dibuat sebagai file baru; tidak ada backup lama ditimpa.
+- Backup source awal dan snapshot tambahan dibuat sebagai file baru; tidak ada backup lama ditimpa. Manifest akhir mencatat seluruh snapshot yang diverifikasi.
 
 ### 3.3 Koordinasi
 - Update exact-role diposting pada Issue #8: https://github.com/zane0184/cbt_november/issues/8
