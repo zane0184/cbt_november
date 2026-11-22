@@ -156,6 +156,32 @@ class StudentWebLoginTest extends TestCase
         $this->assertAuthenticatedAs($this->student->fresh());
     }
 
+    public function test_valid_remember_me_cookie_can_establish_a_new_epoch_bound_session(): void
+    {
+        $login = $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+            'remember' => '1',
+        ]);
+        $login->assertRedirect('/student/exams');
+
+        $sessionCookieName = config('session.cookie');
+        $rememberCookie = collect($login->headers->getCookies())
+            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'));
+        $this->assertNotNull($rememberCookie);
+
+        // Simulate a new browser session after the session cookie expired while
+        // retaining the valid remember-me recaller issued by the same account.
+        $this->withoutCookie($sessionCookieName)
+            ->withCookie($rememberCookie->getName(), $rememberCookie->getValue());
+        $this->app['auth']->forgetGuards();
+
+        $response = $this->get('/student/exams');
+        $response->assertOk();
+        $this->assertAuthenticatedAs($this->student);
+        $this->assertNotNull($response->getCookie($sessionCookieName, false));
+    }
+
     public function test_student_can_login_on_web_using_nisn_and_password_without_email(): void
     {
         $response = $this->post('/login', [
