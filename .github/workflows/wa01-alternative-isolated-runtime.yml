@@ -377,7 +377,7 @@ jobs:
         run: |
           set -euo pipefail
           vendor/bin/phpunit tests/Feature/AssessmentPolicyTeacherCreateTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-guru-policy.log"
-          php artisan test tests/Feature/WebAdminAuthTest.php             --filter='test_teacher_can_login_using_nip'             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-guru-login.log"
+          php artisan test tests/Feature/WebAdminAuthTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-web-auth-role-matrix.log"
           php artisan test tests/Feature/StudentWebLoginTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-siswa-login.log"
           php artisan test tests/Feature/StudentResultVisibilityTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-siswa-results.log"
 
