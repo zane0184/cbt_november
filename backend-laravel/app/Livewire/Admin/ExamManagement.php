@@ -243,6 +243,23 @@ class ExamManagement extends Component
             abort(403, 'Soal yang dipilih tidak seluruhnya berasal dari mata pelajaran dan tenant yang diizinkan.');
         }
 
+        // Exam authoring may only consume a published Question and its published
+        // current version. This Livewire guard improves the Guru workflow, while
+        // ExamSnapshotService must enforce the same invariant for every caller.
+        $publishedSelectedVersions = QuestionVersion::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $selectedVersionIds)
+            ->where('status', 'PUBLISHED')
+            ->whereHas('question', fn ($query) => $query
+                ->where('tenant_id', $tenantId)
+                ->where('subject_id', $this->selectedSubjectId)
+                ->where('status', 'PUBLISHED'))
+            ->count();
+        if ($publishedSelectedVersions !== count($selectedVersionIds)) {
+            $this->addError('selectedQuestionVersionIds', 'Hanya soal yang sudah dipublikasikan dan memiliki versi aktif terpublikasi yang dapat dimasukkan ke ujian.');
+            return;
+        }
+
         $editingExamId = $this->editingExamId;
         DB::transaction(function () use ($tenantId, $activeYear, $semester, $user, $editingExamId) {
             $oldExamValues = null;
@@ -537,19 +554,24 @@ class ExamManagement extends Component
         }
         $rombels = $rombelsQuery->get();
 
-        // Available questions for selection based on selectedSubjectId
-        $availableQuestions = [];
-        if ($this->selectedSubjectId) {
-            $availableQuestions = Question::with('currentVersion')
+        // Exam selection must not offer drafts, archived questions, or a draft
+        // current version. Backend snapshot validation remains the authoritative
+        // boundary and must repeat this invariant for non-Livewire callers.
+        $availableQuestionsQuery = Question::with('currentVersion')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'PUBLISHED')
+            ->whereHas('currentVersion', fn ($query) => $query
                 ->where('tenant_id', $tenantId)
+                ->where('status', 'PUBLISHED'))
+            ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)));
+
+        if ($this->selectedSubjectId) {
+            $availableQuestions = $availableQuestionsQuery
                 ->where('subject_id', $this->selectedSubjectId)
-                ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)))
                 ->latest()
                 ->get();
         } else {
-            $availableQuestions = Question::with('currentVersion')
-                ->where('tenant_id', $tenantId)
-                ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)))
+            $availableQuestions = $availableQuestionsQuery
                 ->latest()
                 ->take(30)
                 ->get();
