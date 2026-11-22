@@ -175,13 +175,12 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function proktor_has_only_an_assignment_surface_not_a_permanent_dashboard()
+    public function legacy_proktor_role_has_no_permanent_portal_or_monitoring_access()
     {
         $this->get('/proktor/dashboard')->assertNotFound();
         $this->actingAs($this->proctorA)->get('/proktor/dashboard')->assertNotFound();
 
-        // The assignment surface is restricted to a Proktor identity; no tenant-wide
-        // exam list is exposed until a temporary assignment record exists.
+        // A legacy PROKTOR role is retained only for historical compatibility and cannot authenticate as a portal.
         $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertForbidden();
         $this->actingAs($this->adminA)->get('/proktor/assignments')->assertStatus(403);
         $this->actingAs($this->superAdmin)->get('/proktor/assignments')->assertStatus(403);
@@ -288,6 +287,8 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
         $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertForbidden();
         $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertForbidden();
+        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/results")->assertForbidden();
+        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::forUser($this->adminA)->allows('close', $exam));
 
         // The monitoring detail response must be an allowlist, not a raw attempt model.
         $attemptResponse = $this->actingAs($this->kamadA, 'sanctum')
