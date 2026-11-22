@@ -12,19 +12,19 @@ class QuestionPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         return $user->tenant_id !== null
-            && $user->hasRole('GURU')
+            && $user->hasExactRole('GURU')
             && $user->hasPermission('question.view');
     }
 
     public function view(User $user, $model): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if (!$model instanceof Question
             || !$user->tenant_id
             || $user->tenant_id !== $model->tenant_id
-            || !$user->hasRole('GURU')
+            || !$user->hasExactRole('GURU')
             || !$user->hasPermission('question.view')) {
             return false;
         }
@@ -33,7 +33,7 @@ class QuestionPolicy extends BasePolicy
             'PERSONAL' => $model->owner_user_id === $user->id
                 && (!$model->subject_id || TeacherAccess::canManageSubject($user, $model->subject_id)),
             'SUBJECT' => $this->canAccessSubject($user, $model),
-            'MADRASAH' => $user->hasRole('ADMIN_MADRASAH')
+            'MADRASAH' => $user->hasExactRole('ADMIN_MADRASAH')
                 || $this->canAccessSubject($user, $model),
             'SHARED' => $model->publications()
                 ->where('tenant_id', $user->tenant_id)
@@ -46,22 +46,22 @@ class QuestionPolicy extends BasePolicy
 
     public function create(User $user): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         // Question authoring is a Guru responsibility; Admin Madrasah does not
         // implicitly gain authoring rights merely by administering the tenant.
         return $user->tenant_id !== null
-            && $user->hasRole('GURU')
+            && $user->hasExactRole('GURU')
             && $user->hasPermission('question.manage');
     }
 
     public function update(User $user, $model): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if (!$model instanceof Question
             || $model->status === 'ARCHIVED'
             || $user->tenant_id === null
             || $user->tenant_id !== $model->tenant_id
-            || !$user->hasRole('GURU')
+            || !$user->hasExactRole('GURU')
             || !$user->hasPermission('question.manage')) {
             return false;
         }
@@ -82,20 +82,20 @@ class QuestionPolicy extends BasePolicy
      */
     public function delete(User $user, $model): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         return false;
     }
 
     public function publish(User $user, Question $question): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         return $this->update($user, $question);
     }
 
     private function canAccessSubject(User $user, Question $question): bool
     {
         return $question->subject_id !== null
-            && $user->hasRole('GURU')
+            && $user->hasExactRole('GURU')
             && TeacherAccess::canManageSubject($user, $question->subject_id);
     }
 }
