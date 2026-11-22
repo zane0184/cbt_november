@@ -54,3 +54,19 @@ Web Siswa belum siap operasional.
 3. Jalankan browser E2E setelah runner dapat dijalankan pada environment test yang tersedia.
 4. Sinkronkan kontrak receipt/conflict/submit dengan Agent 2 sebelum mengubah client.
 5. Update laporan berdasarkan hasil nyata; jangan merge/deploy sendiri.
+
+
+## UPDATE CHECKPOINT 23 NOVEMBER 2026 — MOBILE-FIRST WEB SISWA
+
+- Latest runtime blob SHA: `75412ee693d92f6b7483903f009aefa7202fe3fd`.
+- Commit implementasi mobile-first: `dad5ef350ea2f31a13320a28370e91f069f56039`.
+- Backup sebelum patch: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before-mobile-first-copy-deterrent`, blob SHA `8222aa80a588abfb476c1ff94b153f6ee6ef1ee1`, byte-exact.
+- Runner mobile-first: layout satu kolom pada HP, panel nomor soal ringkas, desktop dua kolom, touch target 44–48px, media/text wrap, no horizontal overflow.
+- Deterrent copy pada area soal: select/copy/cut/context menu/drag dan shortcut copy/cut/print dibatasi; kontrol input, audio/video, dan link dikecualikan.
+- IndexedDB v2, autosave, conflict, submit barrier, dan submit recovery tetap dipertahankan.
+- Halaman daftar ujian dan hasil ujian diaudit; keduanya telah memiliki struktur responsif dasar dan tidak diubah.
+- Static test: JavaScript parse PASS; 11/11 assertion statis PASS.
+- Belum ada browser E2E/perangkat nyata, PHPUnit, PHP lint, CI, API integration, MySQL concurrency, fencing, atau UAT.
+- P0 backend dual-login/auth-session binding belum terbukti selesai. Anti-copy Web hanya deterrent; bukan jaminan anti-screenshot/AI.
+- PR #13 tetap Draft/unmerged. Tidak ada deployment, migration, database change, atau perubahan portal Guru/Admin.
+- Langkah berikutnya tetap khusus Web Siswa: browser E2E pada environment uji, perbaikan hasil nyata, lalu review integrasi backend P0 sebelum status operasional.
