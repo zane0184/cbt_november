@@ -246,3 +246,16 @@ Belum ada hasil PHPUnit/lint yang dapat diklaim. Runner GitHub Actions sebelumny
 - Workflow isolasi diperluas agar menjalankan `RoleDashboardVerificationTest`, `RetireKamadRoleServiceTest`, dan `ProctorAssignmentSecurityTest` ketika runner tersedia. Ini menutup gap bahwa perubahan role dan assignment sementara harus masuk regresi CI, bukan hanya test profil.
 - Pemeriksaan GitHub Actions terbaru untuk SHA `8196edd91a70f9d176a70d8bcc94f32951210a51`: job gagal dalam sekitar 3 detik setelah mulai; check run tidak memiliki title/summary/text, `steps=null`, `logs_url=null`, tidak ada artifacts, dan unduhan log menghasilkan BlobNotFound. Bukti ini menunjukkan job tidak menyediakan eksekusi test yang bisa diverifikasi; bukan bukti kegagalan PHPUnit dan bukan PASS.
 - Koreksi assertion test profil, penghapusan template Kamad yatim, dan perluasan workflow berada di branch kerja saja. Tidak ada perubahan ke main, VPS, atau database.
+
+
+
+### HARDENING ROLE TUNGGAL PADA PERMUKAAN ADMIN/GURU
+Audit lanjutan menemukan beberapa komponen Admin yang sebelumnya hanya memeriksa keberadaan role ADMIN_MADRASAH, bukan memastikan tepat satu role. Komponen Guru Bank Soal/Manajemen Ujian juga hanya memeriksa role Guru dan mengecualikan Admin, sehingga akun multi-role non-Admin tertentu masih berpotensi masuk.
+- `AcademicManagement` dan `StudentRombelManagement` kini mensyaratkan tepat satu role ADMIN_MADRASAH.
+- `QuestionBank` dan `ExamManagement` kini mensyaratkan tepat satu role GURU.
+- Sebelum setiap perubahan dibuat backup source di folder backup branch.
+- `AdminUserManagementScopeTest` diperbaiki: test daftar pengguna sekarang memakai Admin satu-role (sesuai kebijakan), dan ditambah regresi yang memastikan akun Admin dengan role Guru stale ditolak oleh Dashboard, User Management, Academic Management, Student-Rombel, Profil, Penugasan Proktor, Bank Soal, dan Manajemen Ujian.
+- Assertion yang bertentangan pada `TenantProfileManagementTest` sudah diperbaiki; nilai principal yang diinput "H. Asim, M.A." kini menjadi nilai yang diuji.
+
+### STATUS WORKFLOW SETELAH PENAMBAHAN REGRESI
+Workflow `wa01-alternative-isolated-runtime.yml` sekarang mencantumkan test role canonical, retirement Kamad + rollback, dan penugasan Proktor sementara pada Guru. Namun setiap Actions run terbaru masih berakhir sebelum step berjalan; check run tidak memberikan summary, steps, logs, maupun artifact. Oleh sebab itu belum ada hasil PHP lint/PHPUnit dari perubahan terakhir. Jangan tandai hardening sebagai lulus sampai ada runner yang benar-benar mengeksekusi langkah tersebut.
