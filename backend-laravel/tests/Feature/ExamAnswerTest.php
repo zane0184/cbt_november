@@ -308,11 +308,12 @@ class ExamAnswerTest extends TestCase
         $requestId = (string) Str::uuid();
 
         // 1. Initial Request
-        $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
+        $firstResponse = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => $requestId,
             'answer_payload' => ['selected_option_id' => $optionId],
             'answer_state' => 'ANSWERED'
         ]);
+        $firstResponse->assertStatus(200);
 
         $revision1 = \App\Models\ExamAttemptAnswer::first()->revision_number;
 
@@ -324,8 +325,93 @@ class ExamAnswerTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $response->assertJson(['message' => 'Idempotent request handled.']);
+        $response->assertJsonPath('idempotent', true);
+        $response->assertJsonPath('data.revision_number', $revision1);
         $this->assertEquals($revision1, \App\Models\ExamAttemptAnswer::first()->revision_number);
+    }
+
+    public function test_reused_request_id_with_different_payload_is_rejected_without_mutation()
+    {
+        $this->actingAs($this->student, 'sanctum');
+        $requestId = (string) Str::uuid();
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+
+        $this->putJson($url, [
+            'client_request_id' => $requestId,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+            'base_revision' => 0,
+        ])->assertStatus(200);
+
+        $response = $this->putJson($url, [
+            'client_request_id' => $requestId,
+            'answer_payload' => null,
+            'answer_state' => 'CLEARED',
+            'base_revision' => 1,
+        ]);
+
+        $response->assertStatus(409)->assertJsonPath('code', 'IDEMPOTENCY_KEY_REUSED');
+        $this->assertDatabaseCount('exam_attempt_answers', 1);
+        $this->assertDatabaseHas('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $this->snapshot->id,
+            'revision_number' => 1,
+            'answer_state' => 'ANSWERED',
+        ]);
+    }
+
+    public function test_reused_request_id_on_another_assigned_snapshot_is_rejected()
+    {
+        $this->actingAs($this->student, 'sanctum');
+        $requestId = (string) Str::uuid();
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+
+        $this->putJson($url, [
+            'client_request_id' => $requestId,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+            'base_revision' => 0,
+        ])->assertStatus(200);
+
+        $anotherSnapshot = $this->createUnassignedSnapshot('Second assigned question');
+        $this->attempt->update([
+            'question_order' => array_values(array_merge(
+                $this->attempt->fresh()->question_order ?? [],
+                [(string) $anotherSnapshot->id]
+            )),
+        ]);
+
+        $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$anotherSnapshot->id}", [
+            'client_request_id' => $requestId,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+            'base_revision' => 0,
+        ]);
+
+        $response->assertStatus(409)->assertJsonPath('code', 'IDEMPOTENCY_KEY_REUSED');
+        $this->assertDatabaseCount('exam_attempt_answers', 1);
+    }
+
+    public function test_answer_read_and_write_are_rejected_after_attempt_is_terminal_or_expired()
+    {
+        $this->actingAs($this->student, 'sanctum');
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers";
+
+        $this->attempt->update(['status' => 'SUBMITTED']);
+        $this->getJson($url)->assertStatus(409)->assertJsonPath('code', 'ATTEMPT_NOT_RESUMABLE');
+        $this->putJson($url . "/{$this->snapshot->id}", [
+            'client_request_id' => (string) Str::uuid(),
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(422)->assertJsonPath('code', 'ATTEMPT_CLOSED');
+
+        $this->attempt->update(['status' => 'IN_PROGRESS', 'expires_at' => now()->subSecond()]);
+        $this->getJson($url)->assertStatus(409)->assertJsonPath('code', 'ATTEMPT_NOT_RESUMABLE');
+        $this->putJson($url . "/{$this->snapshot->id}", [
+            'client_request_id' => (string) Str::uuid(),
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(422)->assertJsonPath('code', 'ATTEMPT_EXPIRED');
     }
 
     public function test_all_question_types_payload_validation()
