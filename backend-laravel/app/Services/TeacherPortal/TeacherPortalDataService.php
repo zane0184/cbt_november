@@ -5,9 +5,7 @@ namespace App\Services\TeacherPortal;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
-use App\Models\Rombel;
 use App\Models\Semester;
-use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
@@ -87,6 +85,8 @@ class TeacherPortalDataService
             ->whereHas('teacher', fn ($query) => $query->where('tenant_id', $tenantId)->where('user_id', $profile->user_id))
             ->whereHas('subject', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('rombel', fn ($query) => $query->where('tenant_id', $tenantId))
+            ->whereHas('rombel.gradeLevel.phase', fn ($query) => $query->where('tenant_id', $tenantId))
+            ->whereHas('rombel.gradeLevel.phase', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('academicYear', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('semester', fn ($query) => $query->where('tenant_id', $tenantId))
             ->with([
@@ -105,6 +105,10 @@ class TeacherPortalDataService
                 && $assignment->semester
                 && (string) $assignment->subject->tenant_id === $tenantId
                 && (string) $assignment->rombel->tenant_id === $tenantId
+                && (string) $assignment->rombel->gradeLevel?->tenant_id === $tenantId
+                && (string) $assignment->rombel->gradeLevel?->phase?->tenant_id === $tenantId
+                && (string) $assignment->rombel->academic_year_id === (string) $assignment->academic_year_id
+                && (string) $assignment->semester->academic_year_id === (string) $assignment->academic_year_id
                 && (string) $assignment->academicYear->tenant_id === $tenantId
                 && (string) $assignment->semester->tenant_id === $tenantId
             )
