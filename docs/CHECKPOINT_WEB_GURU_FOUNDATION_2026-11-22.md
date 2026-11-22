@@ -92,3 +92,15 @@ Source test commit: `9afc0a0fd489227a67310edec67223457fe42139`; commit HEAD sete
 5. Perbarui checkpoint dengan SHA dan bukti CI terbaru.
 
 STATUS: PARSIAL — tidak siap produksi, tidak merge, tidak PR, tidak deploy.
+
+
+## ADDENDUM CI TERBARU
+
+- Tujuh warning run 44982777697 diidentifikasi satu per satu sebagai warning file `.env` hilang pada tujuh method test (lihat audit §9). Run 44982836419 menghasilkan delapan warning yang sama setelah test assignment kedaluwarsa ditambahkan.
+- Run 44983639700 membuktikan warning `.env` tidak lagi muncul, tetapi dua test lifecycle baru gagal karena fixture: User::delete() melakukan hard delete yang ditolak FK, dan middleware tenant pada Livewire test harness memulihkan konteks sehingga test mismatch salah sasaran.
+- Fixture diperbaiki: soft-delete disimulasikan dengan update kolom `deleted_at` pada DB disposable; mismatch diuji langsung pada TeacherPortalAccess.
+- Run 44983824109 pada SHA d78992ba19cb8df3b4ba1e21d5bcf1d64b50b409 sedang berjalan; belum ada hasil PASS.
+- Deprecation PHPUnit metadata doc-comment dari test legacy tetap terlihat dan belum diperbaiki.
+- Backup blob SHA diverifikasi identik dengan sumber pra-perubahan; ukuran manifest memakai byte UTF-8.
+
+STATUS: PARSIAL — menunggu run 44983824109 dan audit strict multi-role/stale permission. Tidak siap produksi.
