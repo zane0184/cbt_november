@@ -213,11 +213,14 @@
     }
 
     async function sendHeartbeat() {
-        if (!state.attemptId || state.heartbeatBusy || state.submitting || state.submitOutcomeUnknown || state.expired) return;
+        if (!state.attemptId || state.heartbeatBusy || state.submitting || state.submitOutcomeUnknown || state.expired) return false;
         state.heartbeatBusy = true;
+        let heartbeatSucceeded = false;
         try {
             await api(`/attempts/${encodeURIComponent(state.attemptId)}/heartbeat`, { method: 'POST', body: JSON.stringify({}) });
+            heartbeatSucceeded = true;
             setSaveStatus('Koneksi server dan lease ujian aktif');
+            return true;
         } catch (error) {
             const code = error.body?.code;
             if (error.status === 409 && code === 'ATTEMPT_NOT_ACTIVE') {
@@ -226,7 +229,7 @@
                     if (status.data?.status === 'SUBMITTED' || status.data?.status === 'EXPIRED') {
                         await persistSubmitState('CONFIRMED', status.data.status).catch(() => {});
                         showCompletion(status.data.status);
-                        return;
+                        return false;
                     }
                 } catch (_) {
                     // A terminal status could not be proven; keep the runner fail-closed.
@@ -241,8 +244,15 @@
             } else {
                 setSaveStatus(`Heartbeat belum tersambung: ${error.message}. Draft tetap disimpan di perangkat.`, true);
             }
+            return false;
         } finally {
             state.heartbeatBusy = false;
+            // On reconnect, never race answer writes against a lease-recovery
+            // response that may advance fence_generation.
+            if (heartbeatSucceeded && state.pending.size && !state.submitting && !state.submitOutcomeUnknown) {
+                flushPendingSaves().then(() => setSaveStatus('Koneksi pulih; jawaban tertunda tersimpan dan receipt terverifikasi'))
+                    .catch(error => setSaveStatus(`Sinkronisasi ulang gagal: ${error.message}`, true));
+            }
         }
     }
 
@@ -1036,11 +1046,7 @@
     el('next-button').addEventListener('click', () => { if (state.current < state.questions.length - 1) { state.current++; renderQuestion(); } });
     el('submit-button').addEventListener('click', () => submitExam(false));
     el('check-submit-status').addEventListener('click', recoverSubmitStatus);
-    window.addEventListener('online', () => {
-        if (!state.attemptId || state.submitting || state.pending.size === 0) return;
-        flushPendingSaves().then(() => setSaveStatus('Koneksi pulih; jawaban tertunda sudah tersimpan'))
-            .catch(error => setSaveStatus(`Sinkronisasi ulang gagal: ${error.message}`, true));
-    });
+
 })();
 </script>
 </body>
