@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
@@ -47,12 +48,26 @@ await new Promise((resolveListen, reject) => {
 const address = server.address();
 const origin = 'http://127.0.0.1:' + address.port;
 
+function canonicalizeJson(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeJson);
+  if (value && typeof value === 'object') {
+    const normalized = {};
+    for (const key of Object.keys(value).sort()) normalized[key] = canonicalizeJson(value[key]);
+    return normalized;
+  }
+  return value;
+}
+function answerPayloadHash(snapshotId, payload) {
+  const canonical = canonicalizeJson({ snapshot_id: String(snapshotId), answer_state: 'ANSWERED', answer_payload: payload });
+  return createHash('sha256').update(JSON.stringify(canonical), 'utf8').digest('hex');
+}
+
 function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
     requireToken: false, startTokens: [], media: [], legacyPending: false, disableIndexedDb: false,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
-    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], executionCalls: 0, omitStartFence: false, mediaStatus: 200, mediaResponseMime: null, mediaBodySize: 0, leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], executionCalls: 0, omitStartFence: false, mediaStatus: 200, mediaResponseMime: null, mediaBodySize: 0, answerRequestLedger: new Map(), answerRequestIds: [], answerCommits: 0, leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
     questionStem: 'Berapakah hasil 2 + 2?',
@@ -129,13 +144,39 @@ async function attachApiMock(page, scenario) {
         });
       }
       const payload = request.postDataJSON();
+      const payloadHash = answerPayloadHash('snapshot-1', payload.answer_payload);
+      scenario.answerRequestIds.push(payload.client_request_id);
+      const existing = scenario.answerRequestLedger.get(payload.client_request_id);
+      if (existing) {
+        if (existing.payloadHash !== payloadHash) return json(route, 409, { success: false, code: 'IDEMPOTENCY_KEY_REUSED' });
+        return json(route, 200, { ...existing.response, idempotent: true, message: 'Request yang sama telah diterima sebelumnya.' });
+      }
+      scenario.answerCommits++;
       scenario.serverAnswers = [{
         exam_question_snapshot_id: 'snapshot-1',
         answer_payload: payload.answer_payload,
         answer_state: 'ANSWERED',
         revision_number: 1
       }];
-      return json(route, 200, { success: true, data: { revision_number: 1 }, fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt, receipt: { id: 'receipt-1', attempt_id: 'attempt-1', snapshot_id: 'snapshot-1', revision_number: 1, payload_hash: 'mock-hash', committed_at: new Date().toISOString() } });
+      const receipt = {
+        id: 'receipt-' + payload.client_request_id,
+        client_request_id: scenario.mode === 'bad-receipt' ? 'wrong-request-id' : payload.client_request_id,
+        attempt_id: 'attempt-1',
+        snapshot_id: 'snapshot-1',
+        revision_number: 1,
+        payload_hash: payloadHash,
+        committed_at: new Date().toISOString()
+      };
+      const response = {
+        success: true,
+        data: { attempt_id: 'attempt-1', snapshot_id: 'snapshot-1', revision_number: 1, answer_state: 'ANSWERED', fence_generation: scenario.generation },
+        receipt,
+        fence_generation: scenario.generation,
+        lease_expires_at: scenario.leaseExpiresAt
+      };
+      scenario.answerRequestLedger.set(payload.client_request_id, { payloadHash, response });
+      if (scenario.mode === 'answer-unknown' && scenario.answerCommits === 1) return route.abort('failed');
+      return json(route, 200, response);
     }
     if (method === 'POST' && path === '/attempts/attempt-1/heartbeat') {
       scenario.heartbeatCalls++;
@@ -202,7 +243,7 @@ try {
     page.on('dialog', dialog => dialog.accept());
     await start(page);
     await chooseFirstAnswer(page);
-    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     await openQuestionNavigation(page);
     await page.locator('#submit-button').click();
     await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
@@ -214,6 +255,50 @@ try {
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
     console.log('PASS: browser answer save and terminal submit');
+  }
+
+  // A committed answer whose response is lost is retried with the exact same request ID and payload.
+  {
+    const scenario = makeScenario('answer-unknown');
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await chooseFirstAnswer(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Gagal menyimpan'));
+    await page.reload();
+    await start(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
+    assert.equal(scenario.answerWrites, 2);
+    assert.equal(scenario.answerCommits, 1, 'Exact retry must replay the immutable server receipt without a second commit');
+    assert.equal(scenario.answerRequestLedger.size, 1);
+    assert.equal(scenario.answerRequestIds[0], scenario.answerRequestIds[1]);
+    assert.equal(scenario.serverAnswers[0].answer_payload.selected_option_id, 'opt-a');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: response-loss answer retry reuses exact request ID/payload and verifies original receipt');
+  }
+
+  // A mismatched client request ID in a receipt is never acknowledged or removed from the local queue.
+  {
+    const scenario = makeScenario('bad-receipt');
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await chooseFirstAnswer(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Receipt server tidak mengikat client_request_id'));
+    const queue = await page.evaluate(() => new Promise(resolve => {
+      const request = indexedDB.open('cbt-madrasah-student-v1', 2);
+      request.onsuccess = () => {
+        const db = request.result; const tx = db.transaction('sync_queue', 'readonly');
+        const get = tx.objectStore('sync_queue').getAll();
+        get.onsuccess = () => { const rows = get.result; db.close(); resolve(rows); };
+        get.onerror = () => { db.close(); resolve([]); };
+      };
+      request.onerror = () => resolve([]);
+    }));
+    assert.equal(queue.length, 1);
+    assert.equal(scenario.answerCommits, 1);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: mismatched receipt never clears the durable local answer queue');
   }
 
   // Missing IndexedDB fails closed before the server creates an Attempt.
@@ -323,7 +408,7 @@ try {
       const { context, page } = await newPage(browser, scenario);
       await start(page);
       await item.answer(page);
-      await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+      await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
       assert.deepEqual(scenario.serverAnswers[0].answer_payload, item.expected, item.type + ' payload must match the API contract');
       assert.equal(scenario.answerWrites, 1, item.type + ' answer must be persisted');
       assert.deepEqual(scenario.pageErrors, []);
