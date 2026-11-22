@@ -4,7 +4,7 @@ Repository: `zane0184/cbt_november`
 Branch Agent 3: `work/web-guru-foundation-20261122`
 Branch Agent 2 (read-only): `work/stage4d-account-lifecycle-20261122`
 Source HEAD Agent 3 sebelum patch: `702274d5298930f5f1dd13b71b7e402c12868109`
-Commit test terakhir tahap ini: `24f743cd96ac8be15a881aac96157f4d5caf98c2`
+Commit test terakhir tahap ini: `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f`
 
 ## Tahap terakhir
 P0 exact-role sudah dipatch pada dua komponen Livewire Agent 3 dan test regresi ditambahkan. **Belum selesai/closed** sampai CI PHPUnit menunjukkan PASS.
