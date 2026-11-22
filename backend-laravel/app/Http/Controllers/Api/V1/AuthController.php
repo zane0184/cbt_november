@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Contexts\TenantContext;
 use App\Models\LocalInstallationIdentity;
 use App\Services\LoginIdentityResolver;
 use Illuminate\Http\Request;
@@ -47,17 +48,35 @@ class AuthController extends Controller
             if (!$lockedUser) {
                 return ['status' => 'INVALID'];
             }
-            if (!$lockedUser->is_active) {
-                return ['status' => 'INACTIVE'];
-            }
-            $lockedUser->load('roles');
+            // The users schema has no is_active column. Account eligibility is
+            // derived from a persisted, non-deleted user, an ACTIVE tenant, one
+            // canonical role, and the corresponding non-deleted academic profile.
+            // Login runs before tenant middleware, so establish the trusted tenant
+            // context from the resolved user row for this check only.
+            $tenantContext = app(TenantContext::class);
+            $previousTenantId = $tenantContext->getTenantId();
+            $tenantContextInstance = TenantContext::getInstance();
+            $previousInstanceTenantId = $tenantContextInstance?->getTenantId();
+            $tenantContext->setTenantId((string) $lockedUser->tenant_id);
+            $tenantContextInstance?->setTenantId((string) $lockedUser->tenant_id);
 
-            if ($lockedUser->hasExactRole('SISWA')
-                && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
-                return ['status' => 'ACTIVE_EXAM'];
-            }
+            try {
+                $roleNames = $lockedUser->roles()->pluck('name');
+                if ($roleNames->count() !== 1
+                    || !$lockedUser->hasExactRole((string) $roleNames->first())) {
+                    return ['status' => 'INACTIVE'];
+                }
 
-            return ['status' => 'OK', 'token' => $lockedUser->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken];
+                if ($roleNames->first() === 'SISWA'
+                    && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                    return ['status' => 'ACTIVE_EXAM'];
+                }
+
+                return ['status' => 'OK', 'token' => $lockedUser->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken];
+            } finally {
+                $tenantContext->setTenantId($previousTenantId);
+                $tenantContextInstance?->setTenantId($previousInstanceTenantId);
+            }
         });
 
         if ($loginResult['status'] === 'ACTIVE_EXAM') {
