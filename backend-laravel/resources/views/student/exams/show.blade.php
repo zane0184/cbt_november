@@ -176,6 +176,12 @@
         el('save-status').textContent = message;
         el('save-status').className = `text-sm font-semibold ${bad ? 'text-red-700' : 'text-slate-700'}`;
     }
+    function setRunnerLocked(locked) {
+        const panel = el('runner-panel');
+        if (!panel) return;
+        panel.inert = Boolean(locked);
+        panel.setAttribute('aria-busy', locked ? 'true' : 'false');
+    }
     function requestId() {
         return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
@@ -333,6 +339,7 @@
             if (uncertainSubmit) {
                 state.attemptId = String(uncertainSubmit.context.attemptId);
                 state.submitOutcomeUnknown = true;
+                setRunnerLocked(true);
                 await persistSubmitState('UNKNOWN').catch(() => {});
                 el('submit-button').disabled = true;
                 el('check-submit-status').classList.remove('hidden');
@@ -613,6 +620,7 @@
     async function recoverSubmitStatus() {
         if (!state.attemptId || !state.submitOutcomeUnknown) return;
         const button = el('check-submit-status');
+        setRunnerLocked(true);
         button.disabled = true;
         button.textContent = 'Memeriksa status…';
         try {
@@ -638,6 +646,7 @@
                 await loadExecution(execution, state.attemptId);
                 await persistSubmitState('RESUMED');
                 state.submitOutcomeUnknown = false;
+                setRunnerLocked(false);
                 // The unknown-submit path locks this control before checking
                 // the server. Once the server confirms the same Attempt is
                 // still IN_PROGRESS and execution data is restored, allow the
@@ -682,6 +691,7 @@
             state.submitting = false;
             if (submitRequestStarted) {
                 state.submitOutcomeUnknown = true;
+                setRunnerLocked(true);
                 el('submit-button').disabled = true;
                 el('check-submit-status').classList.remove('hidden');
                 showError('Respons pengiriman tidak dapat dipastikan. Sistem tidak akan mengirim ulang secara otomatis. Periksa status Attempt di server.');
