@@ -18,13 +18,13 @@ final class TeacherQuestionMediaController extends Controller
      */
     public function storeAndAttach(
         Request $request,
-        string $questionId,
-        string $versionId,
+        string $question,
+        string $version,
         MediaController $mediaController
     ): RedirectResponse {
         $request->merge([
             'owner_type' => 'QUESTION',
-            'owner_id' => $questionId,
+            'owner_id' => $question,
         ]);
 
         $storeResponse = $mediaController->store($request);
@@ -40,12 +40,12 @@ final class TeacherQuestionMediaController extends Controller
         $attachRequest->setUserResolver(fn () => $request->user());
 
         try {
-            $mediaController->attachToQuestionVersion($attachRequest, $questionId, $versionId);
+            $mediaController->attachToQuestionVersion($attachRequest, $question, $version);
         } catch (Throwable $exception) {
             // Do not leave an orphaned private upload when attachment is rejected.
             $asset = MediaAsset::query()
                 ->where('owner_type', 'QUESTION')
-                ->where('owner_id', $questionId)
+                ->where('owner_id', $question)
                 ->where('uploaded_by', $request->user()->id)
                 ->find($mediaId);
 
@@ -64,21 +64,21 @@ final class TeacherQuestionMediaController extends Controller
         }
 
         return redirect()
-            ->route('teacher.questions.index', ['edit_question' => $questionId])
+            ->route('teacher.questions.index', ['edit_question' => $question])
             ->with('message', 'Media berhasil diunggah dan dipasang pada versi draft soal.');
     }
 
     public function detach(
         Request $request,
-        string $questionId,
-        string $versionId,
-        string $mediaId,
+        string $question,
+        string $version,
+        string $media,
         MediaController $mediaController
     ): RedirectResponse {
         $detachRequest = Request::create($request->url(), 'DELETE');
         $detachRequest->setUserResolver(fn () => $request->user());
 
-        $mediaController->detachFromQuestionVersion($detachRequest, $questionId, $versionId, $mediaId);
+        $mediaController->detachFromQuestionVersion($detachRequest, $question, $version, $media);
 
         return redirect()
             ->route('teacher.questions.index', ['edit_question' => $questionId])
