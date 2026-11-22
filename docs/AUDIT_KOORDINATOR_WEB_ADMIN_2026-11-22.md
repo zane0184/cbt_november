@@ -237,3 +237,12 @@ PROKTOR bukan role permanen. Akun Guru dapat diberi penugasan Proktor sementara 
 
 ### PENGUJIAN DAN BATAS
 Belum ada hasil PHPUnit/lint yang dapat diklaim. Runner GitHub Actions sebelumnya tidak memberikan steps/log yang dapat dibaca. Perubahan ini hanya branch kerja, belum merge, belum deploy, dan belum menjalankan migration pada VPS/database mana pun. Role legacy tidak boleh diarsipkan pada database aktif sampai inventory akun, backup terverifikasi, clone DB test, hasil migrasi, dan rollback diuji serta ada persetujuan eksplisit.
+
+
+
+### TINDAK LANJUT KONTROL MUTU (22 NOV 2026)
+- Pemeriksaan ulang menemukan satu assertion sisa yang tidak konsisten pada `TenantProfileManagementTest`: nilai yang diset adalah "H. Asim, M.A.", tetapi ada assertion lama yang masih mengharapkan nilai lain. Assertion yang salah dihapus setelah backup baru dibuat; assertion terhadap nilai yang benar tetap dipertahankan.
+- Template dashboard Kamad yang tidak lagi memiliki komponen/route aktif dihapus setelah backup sebelumnya diverifikasi. Tidak menghapus template tanda tangan PDF; bagian tanda tangan tetap menggunakan data identitas `principal_name`.
+- Workflow isolasi diperluas agar menjalankan `RoleDashboardVerificationTest`, `RetireKamadRoleServiceTest`, dan `ProctorAssignmentSecurityTest` ketika runner tersedia. Ini menutup gap bahwa perubahan role dan assignment sementara harus masuk regresi CI, bukan hanya test profil.
+- Pemeriksaan GitHub Actions terbaru untuk SHA `8196edd91a70f9d176a70d8bcc94f32951210a51`: job gagal dalam sekitar 3 detik setelah mulai; check run tidak memiliki title/summary/text, `steps=null`, `logs_url=null`, tidak ada artifacts, dan unduhan log menghasilkan BlobNotFound. Bukti ini menunjukkan job tidak menyediakan eksekusi test yang bisa diverifikasi; bukan bukti kegagalan PHPUnit dan bukan PASS.
+- Koreksi assertion test profil, penghapusan template Kamad yatim, dan perluasan workflow berada di branch kerja saja. Tidak ada perubahan ke main, VPS, atau database.
