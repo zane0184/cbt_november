@@ -59,30 +59,31 @@ class StudentWebLoginTest extends TestCase
 
     public function test_student_browser_cookie_is_invalidated_by_admin_deactivation_and_reactivation(): void
     {
-        // Client A: student logs in and keeps its own browser cookie jar.
         $studentApiToken = $this->student->createToken('before-account-deactivation')->plainTextToken;
-        $studentLogin = $this->post('/login', [
+        $studentBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $adminBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $sessionCookieName = (string) config('session.cookie');
+
+        // Browser A: student login and a persistent, independent cookie jar.
+        $studentLogin = $studentBrowser->request('POST', '/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
             'remember' => '1',
         ]);
-        $studentLogin->assertRedirect('/student/exams');
-        $sessionCookieName = config('session.cookie');
-        $studentSessionCookie = $studentLogin->getCookie($sessionCookieName);
+        $this->assertSame(302, $studentLogin->getStatusCode());
+        $this->assertStringEndsWith('/student/exams', (string) $studentLogin->headers->get('Location'));
+        $studentSessionCookie = $studentBrowser->cookie($sessionCookieName);
         $this->assertNotNull($studentSessionCookie);
-        $studentSessionCookieValue = $studentSessionCookie->getValue();
-
-        $studentRememberCookieName = collect($studentLogin->headers->getCookies())
-            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'))?->getName();
+        $studentRememberCookieName = collect(array_keys($studentBrowser->cookies()))
+            ->first(fn (string $name): bool => str_starts_with($name, 'remember_web_'));
         $this->assertNotNull($studentRememberCookieName);
-        $studentRememberCookie = $studentLogin->getCookie($studentRememberCookieName);
+        $studentRememberCookie = $studentBrowser->cookie($studentRememberCookieName);
         $this->assertNotNull($studentRememberCookie);
-        $studentRememberCookieValue = $studentRememberCookie->getValue();
 
-        // Prepare a separate Admin account with only the user-management permission.
-        $this->setTenantContext($this->tenant->id);
+        // Create an Admin with only the account-management permission.
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
-        $permission = \App\Models\Permission::firstOrCreate(
+        $permission = \\App\\Models\\Permission::firstOrCreate(
             ['name' => 'user.manage'],
             ['label' => 'Kelola Pengguna']
         );
@@ -93,77 +94,75 @@ class StudentWebLoginTest extends TestCase
             'password' => bcrypt('SandiAdmin#2026'),
         ]);
         $admin->roles()->attach($adminRole);
-        $this->setTenantContext(null);
+        app(TenantContext::class)->setTenantId(null);
 
-        // Client B: remove Client A's cookie and perform a distinct Admin login.
-        $this->withCookie($sessionCookieName, '');
-        $adminLogin = $this->post('/login', [
+        // Browser B: a separate Admin login and cookie jar.
+        $adminLogin = $adminBrowser->request('POST', '/login', [
             'identifier' => 'admin.session.test',
             'password' => 'SandiAdmin#2026',
         ]);
-        $adminLogin->assertRedirect('/admin/dashboard');
-        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName);
+        $this->assertSame(302, $adminLogin->getStatusCode());
+        $this->assertStringEndsWith('/admin/dashboard', (string) $adminLogin->headers->get('Location'));
+        $adminSessionCookie = $adminBrowser->cookie($sessionCookieName);
         $this->assertNotNull($adminSessionCookie);
-        $this->assertNotSame($studentSessionCookieValue, $adminSessionCookie->getValue());
-        $this->assertAuthenticatedAs($admin);
+        $this->assertNotSame($studentSessionCookie, $adminSessionCookie);
+        $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
 
-        // The actual Admin Livewire lifecycle action performs deactivation.
-        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
+        // Admin performs the official UserManagement action.
+        \\Livewire\\Livewire::actingAs($admin)
+            ->test(\\App\\Livewire\\Admin\\UserManagement::class)
             ->call('deactivateUser', $this->student->id)
             ->assertHasNoErrors();
         $this->assertSoftDeleted('users', ['id' => $this->student->id]);
 
-        // Client A replays its original cookie while the account is inactive.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($sessionCookieName, $studentSessionCookieValue);
-        $this->app['auth']->forgetGuards();
-        $this->get('/student/exams')->assertRedirect('/login');
-        $this->assertGuest();
+        // Browser A replays the original session cookie while the account is inactive.
+        $studentBrowser->setCookie($sessionCookieName, $studentSessionCookie);
+        $inactiveResponse = $studentBrowser->request('GET', '/student/exams');
+        $this->assertSame(302, $inactiveResponse->getStatusCode());
+        $this->assertStringEndsWith('/login', (string) $inactiveResponse->headers->get('Location'));
 
-        // Client B restores the same account through the official Admin action.
-        \Livewire\Livewire::actingAs($admin)
-            ->test(\App\Livewire\Admin\UserManagement::class)
+        // Browser B remains authenticated and restores the same account identity.
+        $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
+        \\Livewire\\Livewire::actingAs($admin)
+            ->test(\\App\\Livewire\\Admin\\UserManagement::class)
             ->set('statusFilter', 'INACTIVE')
             ->call('restoreUser', $this->student->id)
             ->assertHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $this->student->id, 'deleted_at' => null]);
 
-        // Verify the old API credential independently of the Admin browser session.
+        // Replaying Browser A's exact pre-deactivation session after restore must fail.
+        $studentBrowser->setCookie($sessionCookieName, $studentSessionCookie);
+        $reactivatedResponse = $studentBrowser->request('GET', '/student/exams');
+        $this->assertSame(302, $reactivatedResponse->getStatusCode());
+        $this->assertStringEndsWith('/login', (string) $reactivatedResponse->headers->get('Location'));
+
+        // A separate client with only the old remember-me cookie must also fail.
+        $rememberBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $rememberBrowser->setCookie($studentRememberCookieName, $studentRememberCookie);
+        $rememberResponse = $rememberBrowser->request('GET', '/student/exams');
+        $this->assertSame(302, $rememberResponse->getStatusCode());
+        $this->assertStringEndsWith('/login', (string) $rememberResponse->headers->get('Location'));
+
+        // A stateless client proves the old Sanctum bearer token is revoked after reactivation.
         $studentTokenId = explode('|', $studentApiToken, 2)[0];
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $studentTokenId]);
+        $apiBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $apiResponse = $apiBrowser->request('GET', '/api/v1/auth/me', [], [
+            'Authorization' => 'Bearer ' . $studentApiToken,
+            'Accept' => 'application/json',
+        ]);
+        $this->assertSame(401, $apiResponse->getStatusCode());
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $studentTokenId]);
 
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($studentRememberCookie->getName(), '');
-        $this->app['auth']->forgetGuards();
-
-        $this->withToken($studentApiToken)
-            ->getJson('/api/v1/auth/me')
-            ->assertUnauthorized();
-
-        $this->assertNull(PersonalAccessToken::query()->find($studentTokenId));
-
-        // Client A replays the same pre-deactivation browser cookie after reactivation.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($sessionCookieName, $studentSessionCookieValue);
-        $this->app['auth']->forgetGuards();
-        $this->get('/student/exams')->assertRedirect('/login');
-        $this->assertGuest();
-
-        // The pre-deactivation remember-me cookie must also be rejected.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($studentRememberCookie->getName(), $studentRememberCookieValue);
-        $this->app['auth']->forgetGuards();
-        $this->get('/student/exams')->assertRedirect('/login');
-        $this->assertGuest();
-
-        // A fresh login obtains a new session and can access the student portal.
-        $this->withCookie($studentRememberCookie->getName(), '');
-        $freshLogin = $this->post('/login', [
+        // A new browser login is required to obtain a fresh authenticated session.
+        $freshBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $freshLogin = $freshBrowser->request('POST', '/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
         ]);
-        $freshLogin->assertRedirect('/student/exams');
-        $this->assertAuthenticatedAs($this->student->fresh());
+        $this->assertSame(302, $freshLogin->getStatusCode());
+        $this->assertStringEndsWith('/student/exams', (string) $freshLogin->headers->get('Location'));
+        $this->assertSame(200, $freshBrowser->request('GET', '/student/exams')->getStatusCode());
     }
 
     public function test_valid_remember_me_cookie_can_establish_a_new_epoch_bound_session(): void
