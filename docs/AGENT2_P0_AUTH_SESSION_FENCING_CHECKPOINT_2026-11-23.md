@@ -117,7 +117,7 @@ File baru (service/model/migration/test/workflow) tidak menimpa source lama. ZIP
 - Dua koneksi MySQL/InnoDB membuktikan row-lock contention dan status terminal setelah submit/expiry.
 
 ### Runtime belum dapat dijalankan
-- GitHub Actions workflow sudah terdaftar dan terpicu, tetapi job berakhir sebelum step pertama: `logs_url=null`, `steps=[]`. Run terbaru pada pemeriksaan akhir: `45052970074`, job `137301935230`; `logs_url=null`, `steps=null`. Job selesai failure sebelum step pertama. Penyebab runner tidak dapat dipastikan dari bukti yang tersedia.
+- GitHub Actions workflow sudah terdaftar dan terpicu, tetapi job berakhir sebelum step pertama: `logs_url=null`, `steps=[]`. Run terbaru pada pemeriksaan akhir: `45053144875`, job `137302473159`; `logs_url=null`, `steps=null`. Job selesai failure sebelum step pertama. Penyebab runner tidak dapat dipastikan dari bukti yang tersedia.
 - Ini diklasifikasikan **BLOCKED runner/observability**, bukan PHPUnit PASS dan bukan test failure dari source.
 - Runtime container saat audit tidak mempunyai Composer, MySQL client/server, `pdo_mysql`, atau `pdo_sqlite`; database pengujian MySQL 8 tidak dapat dijalankan lokal.
 - Karena itu: PHP lint, migration MySQL 8, PHPUnit, contention test, multi-device, dan end-to-end API **NOT VERIFIED**.
