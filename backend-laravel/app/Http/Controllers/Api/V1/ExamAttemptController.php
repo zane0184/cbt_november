@@ -123,10 +123,12 @@ class ExamAttemptController extends Controller
                 }
 
                 if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($existingAttempt, $request)) {
+                    $fenceMatches = app(AttemptDeviceLeaseService::class)->requestFenceMatches($existingAttempt, $request);
                     return response()->json([
                         'success' => false,
-                        'message' => 'Lease Attempt tidak aktif atau tidak konsisten. Pemulihan resmi diperlukan.',
-                        'code' => 'ATTEMPT_LEASE_INVALID'
+                        'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                        'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                        'current_fence_generation' => (int) $existingAttempt->fence_generation,
                     ], 409);
                 }
 
@@ -349,7 +351,13 @@ class ExamAttemptController extends Controller
             }
 
             if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
+                $fenceMatches = app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
+                return response()->json([
+                    'success' => false,
+                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                ], 409);
             }
 
             $lockedAttempt->last_activity_at = now();
@@ -452,6 +460,8 @@ class ExamAttemptController extends Controller
                     'attempt_number' => $attempt->attempt_number,
                     'started_at' => $attempt->started_at,
                     'expires_at' => $attempt->expires_at,
+                    'fence_generation' => (int) $attempt->fence_generation,
+                    'lease_expires_at' => $attempt->device_lease_expires_at?->toIso8601String(),
                 ],
                 'questions' => $orderedQuestions->values()
             ]
@@ -520,6 +530,15 @@ class ExamAttemptController extends Controller
                 return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
             }
 
+            if (!app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => 'Fencing generation tidak cocok atau belum dikirim.',
+                ], 409);
+            }
+
             if (!$lockedAttempt->device_fingerprint
                 || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
@@ -538,6 +557,7 @@ class ExamAttemptController extends Controller
                     'data' => [
                         'status' => $lockedAttempt->status,
                         'submitted_at' => $lockedAttempt->submitted_at?->toIso8601String(),
+                        'fence_generation' => (int) $lockedAttempt->fence_generation,
                     ],
                     'idempotent' => true,
                 ]);
@@ -589,6 +609,7 @@ class ExamAttemptController extends Controller
             $oldStatus = $lockedAttempt->status;
             $lockedAttempt->update([
                 'status' => $terminalStatus,
+                    'fence_generation' => (int) $lockedAttempt->fence_generation,
                 'submitted_at' => $serverNow,
                 'last_activity_at' => $serverNow
             ]);
@@ -661,6 +682,7 @@ class ExamAttemptController extends Controller
         if ($request->user()->hasExactRole('SISWA')) {
             abort_unless($participant->user_id === $request->user()->id, 404);
             abort_unless(app(AttemptAuthSessionBinding::class)->matches($attempt, $request), 404);
+            abort_unless(app(AttemptDeviceLeaseService::class)->requestFenceMatches($attempt, $request), 409, 'Fencing generation tidak cocok atau belum dikirim.');
             if ($attempt->status === 'IN_PROGRESS') {
                 abort_unless(app(AttemptDeviceLeaseService::class)->isCurrent($attempt, $request), 409, 'Lease Attempt tidak aktif; pemulihan resmi diperlukan.');
             }
@@ -706,6 +728,8 @@ class ExamAttemptController extends Controller
             'started_at' => $attempt->started_at?->toIso8601String(),
             'expires_at' => $attempt->expires_at?->toIso8601String(),
             'submitted_at' => $attempt->submitted_at?->toIso8601String(),
+            'fence_generation' => (int) $attempt->fence_generation,
+            'lease_expires_at' => $attempt->device_lease_expires_at?->toIso8601String(),
         ];
     }
 }
