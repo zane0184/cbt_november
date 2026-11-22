@@ -77,12 +77,24 @@ class ExamAttemptController extends Controller
                 ], 409);
             }
 
-            // Lock the active child attempt only after its parent rows.
-            $existingAttempt = $participant->attempts()
+            // Lock all valid active attempts after their parent rows. More than one
+            // active attempt is legacy corruption; fail closed instead of choosing one.
+            $activeAttempts = $participant->attempts()
                 ->where('status', 'IN_PROGRESS')
                 ->where('expires_at', '>', now())
+                ->orderBy('id')
                 ->lockForUpdate()
-                ->first();
+                ->get();
+
+            if ($activeAttempts->count() > 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ditemukan lebih dari satu Attempt aktif untuk peserta ini. Pemeriksaan integritas diperlukan.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
+                ], 409);
+            }
+
+            $existingAttempt = $activeAttempts->first();
 
             if ($existingAttempt) {
                 if (!$existingAttempt->device_fingerprint
