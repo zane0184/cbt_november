@@ -47,7 +47,6 @@ class StudentLifecycleServiceTest extends TestCase
         $adminRole->permissions()->attach($permission->id);
 
         $this->admin = User::create([
-            'tenant_id' => $this->tenant->id,
             'name' => 'Admin Lifecycle',
             'username' => 'admin.lifecycle',
             'email' => 'admin.lifecycle@madrasah.test',
@@ -68,7 +67,6 @@ class StudentLifecycleServiceTest extends TestCase
     private function createStudent(string $nisn = '1234567890', string $name = 'Siswa Lifecycle'): StudentProfile
     {
         $user = User::create([
-            'tenant_id' => $this->tenant->id,
             'name' => $name,
             'username' => $nisn,
             'password' => bcrypt('StudentPassword123!'),
@@ -76,7 +74,6 @@ class StudentLifecycleServiceTest extends TestCase
         $user->roles()->attach($this->studentRole->id);
 
         return StudentProfile::create([
-            'tenant_id' => $this->tenant->id,
             'user_id' => $user->id,
             'full_name' => $name,
             'nisn' => $nisn,
@@ -87,7 +84,6 @@ class StudentLifecycleServiceTest extends TestCase
     private function createRombel(AcademicYear $year, GradeLevel $grade, string $name, string $status = 'ACTIVE'): Rombel
     {
         return Rombel::create([
-            'tenant_id' => $this->tenant->id,
             'academic_year_id' => $year->id,
             'grade_level_id' => $grade->id,
             'name' => $name,
