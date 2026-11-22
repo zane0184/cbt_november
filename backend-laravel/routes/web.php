@@ -67,15 +67,15 @@ Route::get('/exams/{exam}/monitoring', function (\App\Models\Exam $exam) {
         abort(403, 'Anda tidak memiliki izin untuk mengakses monitoring ujian ini.');
     }
     return view('monitoring.dashboard', ['examId' => $exam->id]);
-})->middleware(['auth', 'tenant', 'license']);
+})->middleware(['auth', 'tenant', 'license', 'account.active']);
 
-Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('student.')->group(function () {
+Route::middleware(['auth', 'tenant', 'license', 'account.active'])->prefix('student')->name('student.')->group(function () {
     Route::get('/exams', [StudentExamController::class, 'index'])->name('exams.index');
     Route::get('/exams/{exam}', [StudentExamController::class, 'show'])->name('exams.show');
     Route::get('/results/{attempt}', [StudentExamController::class, 'result'])->name('results.show');
 });
 
-Route::middleware(['auth', 'tenant', 'license'])->group(function () {
+Route::middleware(['auth', 'tenant', 'license', 'account.active'])->group(function () {
     // Dedicated Dashboards
     Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');
     Route::get('/admin/profile', TenantProfileManagement::class)->name('admin.profile');
