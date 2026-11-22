@@ -206,3 +206,35 @@ Urutan berikut:
 8. Saat Gate minimum Admin benar-benar lulus pada SHA tertentu, segera laporkan kepada koordinator dan serahkan WG-01 kepada Agent 3 tanpa menunggu backlog minor.
 
 Pembagian kepemilikan: Agent 1 tetap pemilik Stage 4B; branch ini mengelola Stage 4C–4G; Agent 3 pemilik Web Guru WG-01.
+
+---
+
+## ADDENDUM CI — 22 November 2026
+
+### Hasil final run 44982023649 pada SHA 0038028...
+
+- PHPUnit Stage 4C lifecycle/tenant boundary: **7 tests / 26 assertions PASS**.
+- PHPUnit Stage 4C concurrency: **1 test FAIL / 6 assertions**.
+- Penyebab: test menggunakan `DatabaseMigrations`; teardown mencoba rollback seluruh migration dan terkena migration `2026_11_20_100002_harden_device_lease_tenant_constraints.php` yang memang forward-only. Exception berasal dari `down()` baris 201 dan dipanggil dari `tests/TestCase.php:56`.
+- Verifikasi engine: 71 base tables; non-InnoDB = 0; `all_tables_innodb=true`. Step tetap exit 1 karena workflow branch Stage4D mensyaratkan lima tabel Stage4B yang tidak ada pada branch ini.
+- Run final: FAILURE; URL https://github.com/zane0184/cbt_november/actions/runs/44982023649.
+
+### Patch perbaikan lanjutan
+
+- `TeacherSubjectAssignmentConcurrencyTest.php` commit `11b927dd422075e4ef3139a511456596e5be1445`: menghapus `DatabaseMigrations`; test memverifikasi schema yang sudah disiapkan dan tidak melakukan rollback migration saat teardown.
+- Workflow commit `af4e26ad974e0cded776ca552cafa77bcf4ae4d7`:
+  - menyiapkan schema test dengan `migrate:fresh` hanya setelah preflight membuktikan database disposable, APP_ENV testing, host 127.0.0.1, dan nama DB/user cocok pola run;
+  - required schema Stage4B hanya diwajibkan pada branch Agent1;
+  - test room/session dan MySQL concurrency Stage4B hanya berjalan pada branch Agent1;
+  - branch Stage4D tetap menjalankan suite Stage4C tanpa mengimpor source Stage4B.
+- Run untuk commit test `11b927d...`: 44982509444 masih berjalan ketika diperiksa.
+- Run untuk workflow `af4e26a...`: 44982525201 masih pending ketika diperiksa.
+- Tidak ada hasil PASS atas patch lanjutan sampai run exact SHA selesai.
+
+### Stage4B Agent1
+
+- HEAD Agent1 saat pemeriksaan: `5d45b8404f225c105016a25976939afe3774abef`.
+- Run exact HEAD: `44982090117`, masih in progress.
+- Tidak ada file pada branch Agent1 yang diubah.
+- Catatan untuk Agent1: test `ExamRoomSessionConcurrencyTest` juga menggunakan `DatabaseMigrations`; periksa risiko teardown terhadap migration forward-only yang sama. Jangan mengubah migration keamanan untuk membuat teardown lolos. Migration Stage4B `down()` memiliki guard histori, tetapi belum ditemukan test eksplisit yang membuktikan rollback kosong berhasil dan rollback dengan histori ditolak.
+
