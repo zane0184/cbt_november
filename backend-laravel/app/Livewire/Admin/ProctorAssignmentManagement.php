@@ -173,7 +173,7 @@ class ProctorAssignmentManagement extends Component
 
         $assignments = ExamProctorAssignment::query()
             ->where('tenant_id', $tenantId)
-            ->with(['exam:id,title', 'sessionRoom.session', 'sessionRoom.room', 'proctor:id,name', 'assigner:id,name', 'revoker:id,name'])
+            ->with(['exam:id,title', 'sessionRoom.session', 'sessionRoom.room', 'proctorForHistory:id,name', 'assigner:id,name', 'revoker:id,name'])
             ->latest()
             ->paginate(20);
 
