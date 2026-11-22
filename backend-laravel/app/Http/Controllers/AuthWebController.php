@@ -48,9 +48,33 @@ class AuthWebController extends Controller
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
         }
 
+        $loginAllowed = DB::transaction(function () use ($user, $request): bool {
+            // Serialize login against Attempt creation on the same persisted User row.
+            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
+            if (!$lockedUser || !$lockedUser->is_active) {
+                return false;
+            }
+            $lockedUser->load('roles');
+
+            if ($lockedUser->hasExactRole('SISWA')
+                && app(\\App\\Services\\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                return false;
+            }
+
+            Auth::login($lockedUser, $request->boolean('remember'));
+            $request->session()->regenerate();
+
+            return true;
+        });
+
+        if (!$loginAllowed) {
+            return back()->withErrors([
+                'identifier' => 'Ujian Anda sedang aktif pada sesi/perangkat lain. Selesaikan atau pulihkan Attempt yang sama sebelum login kembali.',
+            ])->withInput($request->only('identifier'));
+        }
+
         RateLimiter::clear($throttleKey);
-        Auth::login($user, $request->boolean('remember'));
-        $request->session()->regenerate();
+        $user = Auth::user();
         $identity = LocalInstallationIdentity::query()->first();
         if ($identity && $user->tenant_id) {
             TenantContext::getInstance()?->setTenantId($identity->tenant_id);
