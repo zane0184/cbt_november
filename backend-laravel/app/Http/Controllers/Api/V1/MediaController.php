@@ -26,7 +26,7 @@ class MediaController extends Controller
         $user = $request->user();
 
         abort_unless(
-            $user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH'),
+            $user->hasExactRole('GURU'),
             ResponseCode::HTTP_FORBIDDEN
         );
 
@@ -60,7 +60,7 @@ class MediaController extends Controller
             $ownerId = $user->id;
         } else {
             abort_unless(
-                $user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH'),
+                $user->hasExactRole('GURU'),
                 ResponseCode::HTTP_FORBIDDEN
             );
 
@@ -132,7 +132,7 @@ class MediaController extends Controller
         $user = $request->user();
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($user->hasExactRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
 
         $result = DB::transaction(function () use ($questionId, $versionId, $validated, $user, $tenantId) {
             // Consistent lock order: Question -> QuestionVersion -> MediaAsset.
@@ -207,7 +207,7 @@ class MediaController extends Controller
         $user = $request->user();
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($user->hasExactRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
 
         DB::transaction(function () use ($questionId, $versionId, $mediaId, $user, $tenantId) {
             // Keep the same lock order as attach to reduce deadlock risk.
@@ -273,11 +273,11 @@ class MediaController extends Controller
                 ->find($media->owner_id);
 
             $questionReadable = false;
-            if ($question && $user->hasRole('GURU') && !$user->hasRole('ADMIN_MADRASAH')) {
+            if ($question && $user->hasExactRole('GURU')) {
                 $questionReadable = Gate::allows('view', $question);
             }
 
-            $activeAttemptReadable = !$user->hasRole('ADMIN_MADRASAH')
+            $activeAttemptReadable = $user->hasExactRole('SISWA')
                 && $this->isReferencedByOwnActiveAttempt($media, $user->id, $user->tenant_id);
 
             abort_unless($questionReadable || $activeAttemptReadable, ResponseCode::HTTP_FORBIDDEN);
@@ -317,7 +317,7 @@ class MediaController extends Controller
                 ->findOrFail($media->owner_id);
 
             Gate::authorize('update', $question);
-            if ($user->hasRole('GURU')) {
+            if ($user->hasExactRole('GURU')) {
                 abort_unless($media->uploaded_by === $user->id, ResponseCode::HTTP_FORBIDDEN);
             } else {
                 abort(ResponseCode::HTTP_FORBIDDEN);
