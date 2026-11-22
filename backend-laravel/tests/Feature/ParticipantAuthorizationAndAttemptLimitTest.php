@@ -44,6 +44,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withHeader('X-CBT-Fence-Generation', '1');
 
         $this->tenantA = Tenant::create(['name' => 'Madrasah A', 'code' => 'TA']);
         $this->tenantB = Tenant::create(['name' => 'Madrasah B', 'code' => 'TB']);
