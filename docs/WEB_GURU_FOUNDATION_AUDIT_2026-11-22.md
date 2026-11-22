@@ -96,7 +96,7 @@ Run 44982652810 pada SHA af92f58d:
 - Verifikasi engine InnoDB: PASS.
 - Cleanup disposable DB: FAIL pada versi workflow lama karena terminator heredoc tidak sejajar. Ini kegagalan workflow cleanup, bukan kegagalan assertion atau test aplikasi.
 
-Perbaikan heredoc/YAML sudah masuk ke branch. Workflow saat ini menggunakan --display-warnings agar rincian warning dapat diperiksa. Run pada HEAD terbaru masih pending/in progress ketika checkpoint ini dibuat; jangan menyatakan seluruh CI terbaru PASS sebelum run tersebut selesai.
+Perbaikan heredoc/YAML sudah masuk ke branch. Run 44982777697 pada SHA 20012d216cdef9b80a47dc344e505125755e24f9 selesai dengan seluruh 16 langkah PASS, termasuk cleanup disposable DB. PHPUnit step PASS dengan 7 test cases dan 35 assertions; terdapat 7 warnings yang masih perlu diperiksa. Workflow saat ini menggunakan --display-warnings. Run 44982836419 pada SHA 55e8557c30f427db97624b8c4837e8dc3c9d8784 masih berjalan dan mencakup test tambahan assignment kedaluwarsa. Jangan menyatakan HEAD terbaru lulus sebelum run ini selesai.
 
 ### Pengujian yang belum dilakukan
 - Browser visual test desktop/tablet/mobile.
