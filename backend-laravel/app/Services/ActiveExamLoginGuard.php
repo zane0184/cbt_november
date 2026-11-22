@@ -14,13 +14,14 @@ class ActiveExamLoginGuard
             return false;
         }
 
-        return ExamAttempt::query()
+        return ExamAttempt::withoutGlobalScope('tenant')
             ->where('tenant_id', $user->tenant_id)
             ->where('status', 'IN_PROGRESS')
             ->whereNotNull('expires_at')
             ->where('expires_at', '>', now())
             ->whereHas('participant', function ($query) use ($user) {
-                $query->where('tenant_id', $user->tenant_id)
+                $query->withoutGlobalScope('tenant')
+                    ->where('tenant_id', $user->tenant_id)
                     ->where('user_id', $user->id);
             })
             ->exists();
