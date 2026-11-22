@@ -20,10 +20,10 @@ class ExamProctorAssignmentService
             $lockedExam = Exam::query()->where('tenant_id', $tenantId)->whereKey($exam->id)->lockForUpdate()->firstOrFail();
             Gate::forUser($actor)->authorize('assignProctor', $lockedExam);
 
-            $proctor = User::query()->where('tenant_id', $tenantId)->whereKey($proctorUserId)
+            $guru = User::query()->where('tenant_id', $tenantId)->whereKey($proctorUserId)
                 ->whereNull('deleted_at')->lockForUpdate()->first();
-            if (!$proctor || !$proctor->hasRole('PROKTOR')) {
-                throw ValidationException::withMessages(['selectedProctorId' => 'Akun Proktor tidak ditemukan atau bukan anggota tenant aktif.']);
+            if (!$guru || !$guru->hasRole('GURU') || !$guru->teacherProfile()->exists()) {
+                throw ValidationException::withMessages(['selectedProctorId' => 'Guru pengawas tidak ditemukan, tidak aktif, atau bukan anggota tenant ini.']);
             }
 
             $reason = trim($reason);
@@ -40,14 +40,14 @@ class ExamProctorAssignmentService
             }
 
             $assignment = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
-                ->where('exam_id', $lockedExam->id)->where('proctor_user_id', $proctor->id)
+                ->where('exam_id', $lockedExam->id)->where('proctor_user_id', $guru->id)
                 ->lockForUpdate()->first();
             $isNew = !$assignment;
             $oldValues = $assignment?->only(['status', 'starts_at', 'expires_at', 'assignment_reason', 'assigned_by', 'revoked_at', 'revoked_by', 'revoke_reason']);
 
             $assignment ??= new ExamProctorAssignment();
             $assignment->fill([
-                'tenant_id' => $tenantId, 'exam_id' => $lockedExam->id, 'proctor_user_id' => $proctor->id,
+                'tenant_id' => $tenantId, 'exam_id' => $lockedExam->id, 'proctor_user_id' => $guru->id,
                 'assigned_by' => $actor->id, 'starts_at' => $start, 'expires_at' => $expiry,
                 'status' => 'ACTIVE', 'assignment_reason' => $reason,
                 'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null,
