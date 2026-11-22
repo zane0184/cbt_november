@@ -43,7 +43,7 @@ class AuthController extends Controller
 
         $token = DB::transaction(function () use ($user, $validated) {
             // Same user-row mutex as Web login and Attempt creation.
-            $lockedUser = \App\Models\User::query()->whereKey($user->id)->lockForUpdate()->first();
+            $lockedUser = \App\Models\User::query()->where('tenant_id', $user->tenant_id)->whereKey($user->id)->lockForUpdate()->first();
             if (!$lockedUser || !$lockedUser->is_active) {
                 return null;
             }
