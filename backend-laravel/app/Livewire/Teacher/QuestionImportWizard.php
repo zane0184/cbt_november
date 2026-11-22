@@ -27,6 +27,11 @@ final class QuestionImportWizard extends TeacherPortalComponent
 
     public bool $previewReady = false;
 
+    public function mount(): void
+    {
+        Gate::authorize('create', Question::class);
+    }
+
     public function updatedWorkbook(): void
     {
         $this->resetValidation();
