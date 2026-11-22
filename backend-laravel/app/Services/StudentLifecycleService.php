@@ -213,6 +213,7 @@ class StudentLifecycleService
         Tenant::withoutGlobalScopes()->whereKey($tenantId)->whereNull('deleted_at')
             ->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
 
+        abort_unless((string) auth()->id() === $actorId, 403, 'Aktor audit tidak sesuai dengan sesi Admin yang terautentikasi.');
         $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereKey($actorId)
             ->whereNull('deleted_at')->where('is_active', true)->firstOrFail();
         abort_unless(
