@@ -232,7 +232,7 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
 
         // Fresh credentials establish a new browser session.
-        $this->withCookie($rememberCookie->getName(), ''));
+        $this->withCookie($rememberCookie->getName(), '');
         $freshLogin = $this->post('/login', [
             'identifier' => '198001012006041001',
             'password' => $this->password,
