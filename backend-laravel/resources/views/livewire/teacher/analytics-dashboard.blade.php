@@ -5,8 +5,8 @@
             <p class="text-xs text-textSecondary">Ringkasan statistik perolehan nilai dan distribusi hasil peserta</p>
         </div>
         <div class="flex gap-2">
-            <a href="/exams/{{ $exam->id }}/results" class="bg-navy-900 hover:bg-navy-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">Hasil Attempt</a>
-            <a href="/exams/{{ $exam->id }}/analytics/items" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">Analisis Butir Soal</a>
+            <a href="{{ route('teacher.exams.results', ['exam' => $exam->id]) }}" class="bg-navy-900 hover:bg-navy-800 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">Hasil Attempt</a>
+            <a href="{{ route('teacher.exams.analytics.items', ['exam' => $exam->id]) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">Analisis Butir Soal</a>
         </div>
     </div>
 
