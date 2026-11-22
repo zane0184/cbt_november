@@ -17,7 +17,8 @@ class AttemptAuthSessionBinding
     public function identity(Request $request): ?array
     {
         $user = $request->user();
-        if (!$user) {
+        $applicationKey = $applicationKey;
+        if (!$user || trim($applicationKey) === '') {
             return null;
         }
 
