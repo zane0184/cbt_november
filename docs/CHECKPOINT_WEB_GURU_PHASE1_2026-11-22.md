@@ -6,7 +6,7 @@ Tanggal: 22 November 2026
 - Branch kerja: `work/web-guru-phase1-audit-implementation-20261122`.
 - Baseline: Agent 3 `cf9a6ed871314b289505c9ef4cd4319ee7590ffb`.
 - Source/test SHA terakhir: `a64caefb2ab683fb910c6fe4bf8ff3b14cc182dc`.
-- HEAD branch terbaru setelah laporan + checkpoint: `ce0b6b58ec1c0ab6793a86acd796068264e71e34` (commit dokumentasi).
+- HEAD branch setelah Phase 2 audit: `128b35853eb2e40eb3c16c91677d776cfe687124` (commit dokumen audit).
 - Branch Agent 3 lama dan `main` tidak diubah.
 - Laporan fase: `docs/WEB_GURU_PHASE1_REPORT_2026-11-22.md`.
 
@@ -26,8 +26,14 @@ Tanggal: 22 November 2026
 - Media, RTL/harakat, formula editor belum terbukti end-to-end.
 - Tidak ada perubahan database, migration, VPS, deployment, merge, atau main.
 
+## Audit Phase 2 yang telah dicatat
+- Dokumen: `docs/WEB_GURU_PHASE2_BANK_SOAL_AUDIT_2026-11-22.md`.
+- Hasil: Bank Soal ada tetapi parsial; media/RTL/formula/import belum siap; CP/TP pada QuestionBank masih memakai model legacy yang belum terbukti sinkron dengan multi-curriculum registry.
+- Snapshot menyimpan field `is_correct` dan explanation; privasi Student API/media wajib diverifikasi oleh Agent 2/4.
+- Tidak ada source Bank Soal yang diubah pada audit Phase 2.
+
 ## Tahap berikutnya
-**Phase 2 — Bank Soal dan Asesmen Guru hardening**
+**Phase 2B — Bank Soal dan Asesmen Guru hardening**
 1. Pulihkan CI runner/log dan jalankan test exact SHA.
 2. Audit QuestionBank seluruh action/IDOR, owner, versioning, key privacy, type validation, filters.
 3. Audit ExamManagement transaction/publish/snapshot/token/roster/update schedule and status.
