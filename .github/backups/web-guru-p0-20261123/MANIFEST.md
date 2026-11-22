@@ -24,3 +24,4 @@ Semua salinan dibuat sebelum perubahan source. Nilai `original_blob_sha` adalah 
 | `backend-laravel/app/Policies/ExamAttemptPolicy.php` | `00a3a4119f3983de6d940fd8f352a541336c9e12` | `.github/backups/web-guru-p0-20261123/backend-laravel/app/Policies/ExamAttemptPolicy.php.original` |
 | `backend-laravel/tests/Feature/Analytics/ItemAnalysisTest.php` | `2958265e30e45377961b3b7042f2077228df035a` | `.github/backups/web-guru-p0-20261123/backend-laravel/tests/Feature/Analytics/ItemAnalysisTest.php.original` |
 | `.github/workflows/web-guru-foundation-ci.yml` | `6a683c99d8ae0631095f447f0c791f034d900979` | `.github/backups/web-guru-p0-20261123/.github/workflows/web-guru-foundation-ci.yml.original` |
+| `backend-laravel/resources/views/livewire/teacher/result-detail.blade.php` | `c72c6b95703a105225a084ffab8344a83f9ec6dc` | `.github/backups/web-guru-p0-20261123/backend-laravel/resources/views/livewire/teacher/result-detail.blade.php.original` |
