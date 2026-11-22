@@ -144,7 +144,7 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, heartbeatIntervalId: null, heartbeatBusy: false, fenceGeneration: null, leaseExpiresAt: null, mediaObjectUrls: new Set(), mediaRenderVersion: 0, submitting: false, submitOutcomeUnknown: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, heartbeatIntervalId: null, heartbeatBusy: false, fenceGeneration: null, leaseExpiresAt: null, fenceBlocked: false, mediaObjectUrls: new Set(), mediaRenderVersion: 0, submitting: false, submitOutcomeUnknown: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
@@ -220,7 +220,20 @@
             setSaveStatus('Koneksi server dan lease ujian aktif');
         } catch (error) {
             const code = error.body?.code;
-            if (error.status === 409 && ['ATTEMPT_FENCE_MISMATCH', 'ATTEMPT_SESSION_MISMATCH', 'ATTEMPT_LEASE_INVALID', 'CONCURRENT_DEVICE_DENIED'].includes(code)) {
+            if (error.status === 409 && code === 'ATTEMPT_NOT_ACTIVE') {
+                try {
+                    const status = await api(`/attempts/${encodeURIComponent(state.attemptId)}`, { method: 'GET' });
+                    if (status.data?.status === 'SUBMITTED' || status.data?.status === 'EXPIRED') {
+                        await persistSubmitState('CONFIRMED', status.data.status).catch(() => {});
+                        showCompletion(status.data.status);
+                        return;
+                    }
+                } catch (_) {
+                    // A terminal status could not be proven; keep the runner fail-closed.
+                }
+            }
+            if (error.status === 409 && ['ATTEMPT_FENCE_MISMATCH', 'ATTEMPT_SESSION_MISMATCH', 'ATTEMPT_LEASE_INVALID', 'ATTEMPT_NOT_ACTIVE', 'CONCURRENT_DEVICE_DENIED'].includes(code)) {
+                state.fenceBlocked = true;
                 stopHeartbeat();
                 setRunnerLocked(true);
                 setSaveStatus('Sesi atau fencing ujian tidak lagi valid. Draft lokal dipertahankan; pengiriman dihentikan.', true);
@@ -244,8 +257,9 @@
     function setRunnerLocked(locked) {
         const panel = el('runner-panel');
         if (!panel) return;
-        panel.inert = Boolean(locked);
-        panel.setAttribute('aria-busy', locked ? 'true' : 'false');
+        const shouldLock = Boolean(locked) || state.fenceBlocked;
+        panel.inert = shouldLock;
+        panel.setAttribute('aria-busy', shouldLock ? 'true' : 'false');
     }
     function requestId() {
         return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -643,6 +657,7 @@
             } catch (error) {
                 const warning = document.createElement('p'); warning.className = 'text-amber-700'; warning.textContent = `Media tidak dapat dimuat: ${error.message}`; mediaArea.appendChild(warning);
                 if (error.status === 409 || error.status === 401 || error.status === 403) {
+                    state.fenceBlocked = true;
                     setRunnerLocked(true);
                     showError('Otorisasi media atau fencing tidak valid. Draft jawaban tetap dipertahankan dan pengiriman ditahan. Hubungi Guru/Admin.');
                 }
@@ -763,6 +778,7 @@
                     showError('Terjadi konflik revisi. Draft lokal dan versi server diarsipkan terpisah. Pengiriman ditahan; minta Guru/Admin membantu pemulihan sebelum mengirim ujian.');
                     renderNavigation();
                 } else if (error.status === 409 && ['ATTEMPT_FENCE_MISMATCH', 'ATTEMPT_SESSION_MISMATCH', 'ATTEMPT_LEASE_INVALID', 'CONCURRENT_DEVICE_DENIED'].includes(error.body?.code)) {
+                    state.fenceBlocked = true;
                     stopHeartbeat();
                     setRunnerLocked(true);
                     setSaveStatus('Sesi atau fencing ujian tidak lagi valid. Draft lokal dipertahankan; sinkronisasi dan submit dihentikan.', true);
