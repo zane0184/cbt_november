@@ -41,7 +41,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         app(TenantContext::class)->setTenantId($this->tenant->id);
 
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruRole = Role::query()->firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $permission = Permission::create(['name' => 'academic.manage', 'label' => 'Kelola akademik']);
         $adminRole->permissions()->attach($permission->id);
 
@@ -180,7 +180,16 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
 
         Livewire::actingAs($this->admin)
             ->test(TeacherSubjectAssignmentManagement::class)
-            ->set(array_merge($this->validPayload(), ['academicYearId' => $otherYear->id]))
+            // Change the year first, then deliberately restore the old semester
+            // and rombel values to exercise the server-side cross-period guard.
+            ->set('academicYearId', $otherYear->id)
+            ->set('teacherProfileId', $this->teacher->id)
+            ->set('subjectId', $this->subject->id)
+            ->set('rombelId', $this->rombel->id)
+            ->set('semesterId', $this->semester->id)
+            ->set('startsAt', '2026-07-01')
+            ->set('endsAt', '2027-06-30')
+            ->set('assignmentStatus', 'ACTIVE')
             ->call('save')
             ->assertHasErrors(['academicYearId']);
 
