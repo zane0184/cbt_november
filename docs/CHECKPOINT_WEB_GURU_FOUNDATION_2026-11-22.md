@@ -104,3 +104,14 @@ STATUS: PARSIAL — tidak siap produksi, tidak merge, tidak PR, tidak deploy.
 - Backup blob SHA diverifikasi identik dengan sumber pra-perubahan; ukuran manifest memakai byte UTF-8.
 
 STATUS: PARSIAL — menunggu run 44983824109 dan audit strict multi-role/stale permission. Tidak siap produksi.
+
+
+## CHECKPOINT RUN ULANG TERBARU
+
+- Run 44983824109 gagal sebelum PHPUnit: PHP lint menemukan namespace escape ganda pada TeacherPortalFoundationTest.php baris 255/257. PHPUnit dilewati.
+- File test dibackup (blob SHA 993bb3c5ceecafc20393744ce33a1cdde4540816; 11.912 byte) lalu diperbaiki pada SHA 67ccd99f7ae14a8c0e9ddb71ce773d627d182231.
+- Run 44983955276 sedang menguji SHA 67ccd99f7ae14a8c0e9ddb71ce773d627d182231; belum ada hasil.
+- HEAD branch aktual pada update checkpoint: a9456a2eab3a2a8e1bb367e92bc02ca5f8af6b83 (perubahan sesudah source SHA hanya dokumentasi/manifest).
+- Jangan menautkan menu legacy, merge, PR, atau deploy sebelum gate role/permission dan CI selesai.
+
+STATUS: PARSIAL — menunggu CI 44983955276.
