@@ -34,6 +34,9 @@ class AuthTest extends TestCase
             'password' => bcrypt('password')
         ]);
 
+        // Login tests must model an explicitly active account; production checks stay strict.
+        $this->user->forceFill(['is_active' => true])->save();
+
         // LoginIdentityResolver deliberately rejects users without an authorized
         // madrasah role. Give this fixture the minimum valid staff role.
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
