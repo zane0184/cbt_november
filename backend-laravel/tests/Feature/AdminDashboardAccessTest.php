@@ -44,7 +44,7 @@ class AdminDashboardAccessTest extends TestCase
             'email' => 'admin.a@madrasah.test',
             'password' => bcrypt('password123'),
         ]);
-        $admin->roles()->attach([$adminRole->id, $guruRole->id]);
+        $admin->roles()->attach($adminRole);
 
         $studentUser = User::create([
             'name' => 'Siswa A',
@@ -170,6 +170,24 @@ class AdminDashboardAccessTest extends TestCase
             'tenant_id' => $tenant->id,
             'is_active' => true,
         ]);
+    }
+
+
+    public function test_admin_dashboard_rejects_multi_role_admin_identity(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Multi Role', 'code' => 'MULTI']);
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
+
+        $this->setTenantContext($tenant->id);
+        $user = User::create([
+            'name' => 'Admin Multi Role',
+            'email' => 'admin.multi@madrasah.test',
+            'password' => bcrypt('password123'),
+        ]);
+        $user->roles()->attach([$adminRole->id, $guruRole->id]);
+
+        $this->actingAs($user)->get('/admin/dashboard')->assertForbidden();
     }
 
     public function test_non_admin_user_cannot_open_admin_dashboard(): void
