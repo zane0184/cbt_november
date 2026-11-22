@@ -470,6 +470,9 @@ class ImportWorkbookService
             if ($existing) return $this->result('Data Guru',$number,'SKIPPED','Identitas Guru sudah terdaftar; data existing tidak diubah.',$payload);
             $loginIdentifier = $payload['category'] === 'ASN' ? $payload['nip'] : $payload['nik'];
             if ($loginIdentifier !== '' && $this->loginUsernameExists($tenantId, $loginIdentifier)) $errors[] = 'Identitas login sudah digunakan sebagai username akun lain pada tenant ini.';
+            if ($loginIdentifier !== '' && StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists()) {
+                $errors[] = 'Identitas login Guru bentrok dengan NISN Siswa pada instalasi ini.';
+            }
             if ($payload['email'] !== '' && User::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('email',$payload['email'])->exists()) $errors[] = 'Email sudah digunakan pada tenant ini.';
         } else {
             if ($payload['nisn'] === '__NUMERIC_IDENTIFIER__' || $payload['nis'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'NIS/NISN harus disimpan sebagai teks agar nol di depan tidak hilang.';
@@ -484,6 +487,13 @@ class ImportWorkbookService
             })->exists();
             if ($existing) return $this->result('Data Siswa',$number,'SKIPPED','Identitas Siswa sudah terdaftar; data existing tidak diubah.',$payload);
             if ($payload['nisn'] !== '' && $this->loginUsernameExists($tenantId, $payload['nisn'])) $errors[] = 'NISN sudah digunakan sebagai username akun lain pada tenant ini.';
+            if ($payload['nisn'] !== '' && TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                ->where(function ($query) use ($payload): void {
+                    $query->where('nip', $payload['nisn'])->orWhere('nik', $payload['nisn'])
+                        ->orWhere('employee_identifier', $payload['nisn']);
+                })->exists()) {
+                $errors[] = 'NISN bentrok dengan identitas login Guru pada instalasi ini.';
+            }
             $rombel = $this->resolveRombel($payload['rombel'], $payload['academic_year'], $tenantId);
             if (!$rombel) $errors[] = 'Rombel atau tahun pelajaran tidak dikenal/tidak cocok pada tenant ini.';
         }
@@ -566,7 +576,10 @@ class ImportWorkbookService
             ->where(fn($q) => collect($identityValues)->each(fn ($value) => $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value)->orWhere('employee_identifier',$value)))->exists();
         if ($exists) return ['status'=>'SKIPPED','reason'=>'Identitas sudah terdaftar sebelum konfirmasi.'];
         $loginIdentifier = $p['category'] === 'ASN' ? $p['nip'] : $p['nik'];
-        if ($this->loginUsernameExists($tenantId, $loginIdentifier)) throw new RuntimeException('Identitas login sudah digunakan sebagai username akun lain pada tenant ini.');
+        if ($this->loginUsernameExists($tenantId, $loginIdentifier)
+            || StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->where('nisn', $loginIdentifier)->exists()) {
+            throw new RuntimeException('Identitas login Guru sudah digunakan oleh akun lain pada tenant ini.');
+        }
         $role = Role::query()->where('name','GURU')->firstOrFail();
         $temporaryPassword = Str::random(64);
         $user = User::create(['name'=>$p['name'],'username'=>$loginIdentifier,'email'=>$p['email'] ?: null,'password'=>Hash::make($temporaryPassword)]);
@@ -591,6 +604,14 @@ class ImportWorkbookService
         if ($this->loginUsernameExists($tenantId, $p['nisn'])) throw new RuntimeException('NISN sudah digunakan sebagai username akun lain pada tenant ini.');
         $rombel = $this->resolveRombel($p['rombel'],$p['academic_year'],$tenantId);
         if (!$rombel) throw new RuntimeException('Rombel tidak lagi valid saat konfirmasi.');
+        $teacherIdentityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+            ->where(function ($query) use ($p): void {
+                $query->where('nip', $p['nisn'])->orWhere('nik', $p['nisn'])
+                    ->orWhere('employee_identifier', $p['nisn']);
+            })->exists();
+        if ($teacherIdentityConflict || $this->loginUsernameExists($tenantId, $p['nisn'])) {
+            throw new RuntimeException('NISN sudah digunakan sebagai identitas login akun lain pada tenant ini.');
+        }
         $role = Role::query()->where('name','SISWA')->firstOrFail();
         $user = User::create(['name'=>$p['name'],'username'=>$p['nisn'],'email'=>null,'password'=>Hash::make(Str::random(64))]);
         $user->roles()->sync([$role->id]);
