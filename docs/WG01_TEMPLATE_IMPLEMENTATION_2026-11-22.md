@@ -133,3 +133,148 @@ Backup dibuat sebelum file existing diedit:
 **WG01-TEMPLATE: IMPLEMENTASI AWAL DITULIS, PENGUJIAN BELUM TERBUKTI.**
 **WG01-XLSX-UI / XLSX-INTEGRATION / PDF / PROKTOR-UI: BELUM DIMULAI.**
 Tidak ada merge, PR, rebase, deployment, migration produksi, atau perubahan branch Agent 1/2.
+
+
+---
+
+# VERIFIKASI ULANG & TAMBAHAN DOCX — 22 NOVEMBER 2026
+
+## AUDIT TERBARU
+
+### Branch dan sumber
+- HEAD Agent 3 saat pencatatan bagian ini: 1dd626bbd8547a1387935438aa6327733294f1bf.
+- Source PHP/test yang diuji CI: a33867928711b456d2414a675bef1a929861dee8.
+- Perubahan setelah SHA yang diuji hanya dokumentasi desain DOCX; tidak ada perubahan PHP, route, workflow, Composer atau schema setelah SHA uji.
+- Tidak ada checkout Git lokal pada runtime ini; working tree lokal NOT VERIFIED.
+- Pemeriksaan filesystem: /mnt/data/CBT_MADRASAH_RECONSTRUCTION tidak ditemukan dan tidak ada ZIP baseline CBT REVISI 6 NOPEMBER 2026.zip pada listing /mnt/data sesi ini. File laporan/checkpoint yang dilampirkan tersedia terpisah; pemeriksaan ini tidak mengklaim seluruh arsip baseline telah tersedia pada runtime.
+- Branch Agent 1: work/stage4b-room-session-20261122, HEAD 338fd45d02a019bbe44cc70aa846b5e76f611323.
+- Branch Agent 2 Web Admin: work/web-admin-package1-implementation-20261122, HEAD d7e2034ede3b044fc4ab0b900335eff3669b41ed.
+- Branch Agent 2 import Guru/Siswa: work/import-guru-siswa-implementation-20261122, HEAD f38ceec7b0653fcf3363eec40f3d4577c323cca8.
+- Perbandingan daftar file menunjukkan tidak ada path source yang sama antara file Agent 3 pada WG01 dan daftar perubahan branch Agent 1/2 yang diperiksa. Tidak ada branch Agent 1/2 yang diubah.
+
+### Source template dan akses
+- Template export: backend-laravel/app/Exports/QuestionImport/QuestionImportTemplateExport.php.
+- Controller: backend-laravel/app/Http/Controllers/Teacher/QuestionImportTemplateController.php.
+- Route: GET /guru/bank-soal/template, name teacher.questions.template.
+- Route berada dalam middleware auth, tenant, license, EnsureTeacherPortalAccess.
+- TeacherPortalAccess source memeriksa akun tenant, persisted account aktif, tepat satu role GURU, dan tepat satu TeacherProfile tenant-local.
+- Controller menolak jika user/tenant tidak tersedia dan mengatur Cache-Control private/no-store/max-age=0 serta Pragma no-cache.
+- Menu desktop/mobile memiliki link unduh template. Menu Bank Soal utama tetap disabled; template download tidak mengaktifkan editor atau modul Bank Soal lama.
+
+### Dependency XLSX dan DOCX
+- composer.json/lock memuat maatwebsite/excel dan phpoffice/phpspreadsheet; versi PhpSpreadsheet yang tercatat adalah 1.30.8.
+- PHPWord tidak ditemukan pada composer.json/composer.lock yang diperiksa.
+- Tidak ada dependency baru yang ditambahkan.
+- Tidak ada parser DOCX yang tersedia atau disetujui pada source yang diperiksa.
+
+### Issue Agent 2
+- Issue #8 Import XLSX/PDF: OPEN, 0 komentar.
+- Issue #9 Import DOCX: OPEN, 0 komentar.
+- Issue #8 body sudah ditambah ketentuan DOCX agar XLSX dan DOCX menggunakan satu normalized draft DTO, satu batch/idempotency/audit lifecycle, dan satu storage.
+- Belum ada jawaban/approval Agent 2. Tidak ada backend import tandingan yang dibuat.
+
+## DESAIN TERBARU
+
+### DOCX
+Dokumen desain baru:
+docs/DESAIN_IMPORT_SOAL_DOCX_WG01_2026-11-22.md
+
+Rancangan:
+- DOCX dan XLSX mempunyai adapter upload/parser berbeda.
+- Keduanya wajib menghasilkan normalized draft yang sama dan memakai batch, staging, idempotency, duplicate detection, audit, preview, correction, revalidation, confirm, report dan storage yang sama.
+- Guru memilih document profile atau menerima saran auto-detect terbatas; profil harus versioned.
+- Parsing mempertahankan source mapping paragraph, automatic numbering, tables, image relationships, OMML equation blocks dan metadata bidi/RTL sejauh terbukti.
+- Gambar/tabel/persamaan yang tidak terbaca wajib diberi warning di preview; tidak boleh hilang diam-diam.
+- Kunci jawaban hanya candidate jika marker eksplisit, nomor cocok dan opsi lengkap. Selain itu NEEDS_REVIEW. Tidak ada tebakan AI/heuristik.
+- SHORT_ANSWER tetap BLOCKED sampai accepted answers tersimpan, masuk ExamSnapshot dan digunakan Scoring.
+- ESSAY tetap manual review.
+- DOC lama ditunda; PDF/OCR tetap jalur terpisah dan tidak dikerjakan sekarang.
+- Tidak ada parser library atau Composer dependency dipilih.
+
+### Peristiwa penempatan dokumen DOCX
+- Commit f1bb5c9e4edaa4d18529d428ed2c4978ae00ec1d sempat menambahkan dokumen desain DOCX ke branch default main karena parameter branch terlewat pada satu operasi dokumentasi.
+- Dokumen yang sama kemudian disalin ke branch Agent 3 pada commit 1dd626bbd8547a1387935438aa6327733294f1bf dan blob SHA diverifikasi identik.
+- File yang tidak sengaja ditambahkan ke main dihapus kembali pada commit feab77228f7108f7f7a45325d7f1fb878c07310b; pemeriksaan setelahnya menunjukkan path tersebut tidak ada lagi pada main.
+- Ini hanya menyangkut file dokumentasi baru; tidak ada source aplikasi, workflow, dependency, migration, database atau konfigurasi produksi yang berubah pada main.
+- Riwayat commit add/delete tetap ada di histori main; tree saat ini untuk path tersebut telah dikembalikan. Peristiwa ini dicatat transparan, bukan dihilangkan dari histori.
+
+## IMPLEMENTASI DAN BACKUP
+
+### Test template diperluas
+QuestionImportTemplateDownloadTest kini menguji:
+- GURU exact-role dapat mengunduh route template.
+- Response Content-Type XLSX, Content-Disposition nama file, Pragma no-cache, dan Cache-Control private/no-store/max-age=0.
+- Workbook XLSX benar-benar dihasilkan sebagai ZIP/XLSX dan dibuka kembali menggunakan PhpSpreadsheet IOFactory.
+- Enam sheet, header utama, dropdown jenis soal, kesulitan, detail opsi, option key A-D.
+- SHORT_ANSWER tetap BLOCKED, opsi E tidak didukung, referensi akademik masih NEEDS_BACKEND_CONTRACT.
+- Pengguna belum login ditolak.
+- Role tunggal ADMIN_MADRASAH dan SISWA ditolak.
+- Akun multi-role GURU + ADMIN_MADRASAH ditolak.
+
+### Backup
+Manifest terbaru:
+docs/backup/web-guru-wg01-template-20261122/MANIFEST.md
+
+- 12 snapshot backup terdaftar.
+- 12 hash cocok; 0 hash tidak cocok.
+- Backup mencakup route, layout, workflow, test sebelum setiap rangkaian revisi, serta report/checkpoint sebelum verifikasi.
+- Seluruh backup tetap dipertahankan.
+- Kalimat manifest yang sebelumnya salah menyebut "Kedua backup" telah diperbaiki.
+
+## PENGUJIAN TERBARU
+
+### CI yang lulus
+<https://github.com/zane0184/cbt_november/actions/runs/44995889398>
+
+- Run: 44995889398, run number 34.
+- SHA diuji: a33867928711b456d2414a675bef1a929861dee8.
+- Status: completed / success.
+- PHP 8.3 + Composer v2.
+- PHP lint dan route registration: PASS.
+- PHPUnit command: php artisan test --filter='TeacherPortalFoundationTest|QuestionImportTemplateDownloadTest' --display-warnings.
+- Hasil: 16 tests passed, 69 assertions.
+- QuestionImportTemplateDownloadTest: PASS untuk unduh route, workbook parse, unauthenticated, ADMIN/SISWA, dan multi-role.
+- Database MySQL 8 disposable: PASS; 80 base tables terverifikasi menggunakan InnoDB.
+- Identitas database disposable diverifikasi sebelum PHPUnit.
+- Cleanup database dan user disposable: PASS.
+- Tidak menggunakan database produksi.
+
+### Run gagal sebelumnya dan koreksi
+- Run 44995766591 pada SHA 5e8fdbe6095575329d3995867dbf5a8daa78f87b gagal karena test membandingkan urutan string Cache-Control secara persis; framework menormalisasi urutan menjadi max-age=0, no-store, private.
+- Run 44995790498 pada SHA cdf3e4283d6e5c8629372f801002eb8d70bd8122 juga gagal pada assertion urutan yang sama.
+- Assertion diperbaiki pada test menjadi perbandingan direktif tanpa bergantung pada urutan.
+- Run 44995889398 pada SHA a338679... lulus penuh setelah koreksi.
+- Kegagalan tersebut berasal dari assertion test, bukan bukti kerusakan route/controller.
+
+### Batas verifikasi
+- PASS: workbook XLSX aktual dihasilkan oleh Laravel Excel dan dibuka ulang dengan PhpSpreadsheet pada CI.
+- PASS: route unduh HTTP dan header respons diuji pada CI.
+- PASS: exact-role dan akses negatif diuji melalui PHPUnit.
+- NOT RUN: browser E2E visual, desktop/tablet/mobile layout, keyboard navigation, accessibility, dan uji Excel desktop/LibreOffice.
+- NOT RUN: upload XLSX, preview, koreksi, confirm, batch report; backend import belum tersedia.
+- BLOCKED: DOCX parser, upload, preview dan koreksi sampai kontrak Agent 2 disetujui.
+- BLOCKED: PDF/OCR.
+- Tidak ada klaim siap produksi.
+
+## CHECKPOINT DAN LANGKAH BERIKUTNYA
+
+Status:
+- WG01-TEMPLATE: implementasi dan verifikasi CI lulus untuk source SHA a338679...; belum ada browser E2E.
+- WG01-CONTRACT XLSX: PENDING Agent 2.
+- WG01-DOCX DESIGN: selesai sebagai desain awal; parser/API/UI belum dimulai.
+- WG01-XLSX-UI/INTEGRATION: BLOCKED BY AGENT 2 CONTRACT.
+- WG01-DOCX PARSER/UI: BLOCKED BY AGENT 2 CONTRACT dan dependency decision gate.
+- PDF/OCR: DEFERRED.
+- PROCTOR-UI: belum dimulai.
+
+Langkah berikutnya:
+1. Tunggu jawaban Agent 2 pada issue #8 dan #9.
+2. Cocokkan approval dengan source backend yang benar-benar diimplementasikan.
+3. Lakukan browser E2E download template jika runtime tersedia.
+4. Setelah kontrak backend disetujui, implementasikan satu halaman Guru dengan dua pilihan jalur: DOCX dan XLSX, memakai satu lifecycle draft bersama.
+5. Jangan mengaktifkan tombol upload sebelum API tersedia.
+6. Jangan menambah Composer dependency DOCX sebelum lisensi, kompatibilitas, keamanan dan pengujian disetujui.
+7. Jangan mengubah schema, CBT Engine, production DB atau branch Agent lain.
+
+## STATUS OPERASIONAL
+Portal Guru hanya layak untuk uji terbatas pada dashboard/profil dan unduh template yang telah diuji CI. Bank Soal/import soal belum siap digunakan operasional karena parser, preview, correction, confirm dan integrasi penyimpanan belum tersedia. Bukan siap produksi.
