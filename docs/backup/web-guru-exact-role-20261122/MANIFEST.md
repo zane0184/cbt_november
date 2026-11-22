@@ -63,3 +63,12 @@ Jumlah snapshot backup terdaftar: 13. Seluruh blob SHA yang tercantum: MATCH.
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 37c329641d86baec17c1313366effca23a24e088 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-final-head-and-CI-reconcile | 37c329641d86baec17c1313366effca23a24e088 | 7d76860e446d1b7315371a56902c34db7a3a1d78 | MATCH |
 
 Jumlah snapshot backup terdaftar: 16. Seluruh blob SHA yang tercantum: MATCH.
+
+## Backup tambahan — regresi post-mount permission/assignment/profile/user/tenant
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| backend-laravel/tests/Feature/TeacherPortalFoundationTest.php | a0e9f03412c64e08e54922c6d5b8b49911915586 | docs/backup/web-guru-exact-role-20261122/TeacherPortalFoundationTest.php.before-post-mount-regressions | a0e9f03412c64e08e54922c6d5b8b49911915586 | fc78a504de9a2d0ee8959bd07ea9e2c91faf8d4e | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | a8260bb6ab8c4a6834fc2a15938183605f35c69b | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-post-mount-regressions | a8260bb6ab8c4a6834fc2a15938183605f35c69b | 59fe4f85c790dfaf52185be45df56e916ff2485e | MATCH |
+
+Jumlah snapshot backup terdaftar: 18. Seluruh blob SHA yang tercantum harus diverifikasi sebelum P0 dinyatakan selesai.
