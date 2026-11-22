@@ -7,108 +7,105 @@ use App\Models\ExamAttemptScore;
 use App\Models\ExamQuestionScore;
 use App\Models\ExamQuestionSnapshot;
 use App\Models\ExamAttemptAnswer;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 class ItemAnalysisService
 {
     /**
-     * Get item analysis for all questions in an exam.
+     * Analyze items from one authoritative finalized score per submitted attempt.
+     * Question scores are matched by attempt_id and the exact active scoring_version.
      */
     public function getAnalysis(Exam $exam): array
     {
-        // 1. Fetch snapshots in bulk
         $snapshots = $exam->snapshots()->orderBy('sequence')->get();
-        if ($snapshots->isEmpty()) return [];
+        if ($snapshots->isEmpty()) {
+            return [];
+        }
 
-        // 2. Identify official population (finalized attempts of SUBMITTED/EXPIRED status)
-        // Hardened population check
         $participants = ExamAttemptScore::query()
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
             ->where('grading_status', 'FINALIZED')
-            ->whereHas('attempt', function ($q) {
-                $q->whereIn('status', ['SUBMITTED', 'EXPIRED']);
+            ->current()
+            ->whereHas('attempt', function ($query): void {
+                $query->whereIn('status', ['SUBMITTED', 'EXPIRED']);
             })
             ->orderByDesc('percentage')
-            ->orderBy('student_id') // Deterministic tie-breaker
-            ->get();
+            ->orderBy('attempt_id')
+            ->get(['id', 'attempt_id', 'student_id', 'scoring_version', 'percentage']);
 
-        $n = $participants->count();
-        if ($n === 0) {
-            return $snapshots->map(fn($s) => $this->emptyAnalysis($s, 'no_participants'))->toArray();
+        $participantCount = $participants->count();
+        if ($participantCount === 0) {
+            return $snapshots->map(
+                fn (ExamQuestionSnapshot $snapshot): array => $this->emptyAnalysis($snapshot, 'no_participants')
+            )->toArray();
         }
 
-        $canCalculateDiscrimination = $n >= 20;
-        $groupSize = $canCalculateDiscrimination ? (int) round($n * 0.27) : 0;
+        $canCalculateDiscrimination = $participantCount >= 20;
+        $groupSize = $canCalculateDiscrimination ? (int) round($participantCount * 0.27) : 0;
+        $allAttemptIds = $participants->pluck('attempt_id')->all();
+        $topAttemptIds = $canCalculateDiscrimination
+            ? $participants->take($groupSize)->pluck('attempt_id')->all()
+            : [];
+        $bottomAttemptIds = $canCalculateDiscrimination
+            ? $participants->take(-$groupSize)->pluck('attempt_id')->all()
+            : [];
 
-        $topStudentIds = $canCalculateDiscrimination ? $participants->take($groupSize)->pluck('student_id')->toArray() : [];
-        $bottomStudentIds = $canCalculateDiscrimination ? $participants->take(-$groupSize)->pluck('student_id')->toArray() : [];
-        $allParticipantStudentIds = $participants->pluck('student_id')->toArray();
-
-        // 3. Fetch item score aggregates in bulk to avoid N+1
-        // Difficulty: average awarded score across all finalized participants
-        $difficultyStats = ExamQuestionScore::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->whereIn('student_id', $allParticipantStudentIds)
+        $difficultyStats = $this->currentQuestionScores($exam, $allAttemptIds)
             ->groupBy('snapshot_id')
             ->select('snapshot_id', DB::raw('AVG(awarded_score) as avg_score'))
             ->get()
             ->keyBy('snapshot_id');
 
-        // Discrimination: aggregates for top and bottom groups
         $topStats = collect();
         $bottomStats = collect();
         if ($canCalculateDiscrimination) {
-            $topStats = ExamQuestionScore::query()
-                ->where('tenant_id', $exam->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->whereIn('student_id', $topStudentIds)
+            $topStats = $this->currentQuestionScores($exam, $topAttemptIds)
                 ->groupBy('snapshot_id')
                 ->select('snapshot_id', DB::raw('AVG(awarded_score) as avg_score'))
                 ->get()
                 ->keyBy('snapshot_id');
 
-            $bottomStats = ExamQuestionScore::query()
-                ->where('tenant_id', $exam->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->whereIn('student_id', $bottomStudentIds)
+            $bottomStats = $this->currentQuestionScores($exam, $bottomAttemptIds)
                 ->groupBy('snapshot_id')
                 ->select('snapshot_id', DB::raw('AVG(awarded_score) as avg_score'))
                 ->get()
                 ->keyBy('snapshot_id');
         }
 
-        // Response counts in bulk
         $responseCounts = ExamAttemptAnswer::query()
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
+            ->whereIn('exam_attempt_id', $allAttemptIds)
             ->where('answer_state', 'ANSWERED')
             ->groupBy('exam_question_snapshot_id')
             ->select('exam_question_snapshot_id', DB::raw('COUNT(*) as count'))
             ->get()
             ->keyBy('exam_question_snapshot_id');
 
-        // 4. Map snapshots to metrics using in-memory collections
-        return $snapshots->map(function ($snapshot) use (
-            $n,
+        return $snapshots->map(function (ExamQuestionSnapshot $snapshot) use (
+            $participantCount,
             $canCalculateDiscrimination,
             $difficultyStats,
             $topStats,
             $bottomStats,
             $responseCounts
-        ) {
+        ): array {
             $maxPoints = (float) $snapshot->points;
-            $diffStat = $difficultyStats->get($snapshot->id);
-            $difficulty = ($diffStat && $maxPoints > 0) ? round((float) $diffStat->avg_score / $maxPoints, 3) : null;
+            $difficultyStat = $difficultyStats->get($snapshot->id);
+            $difficulty = ($difficultyStat && $maxPoints > 0)
+                ? round((float) $difficultyStat->avg_score / $maxPoints, 3)
+                : null;
 
             $discrimination = null;
             $discriminationStatus = $canCalculateDiscrimination ? 'success' : 'insufficient_sample';
 
             if ($canCalculateDiscrimination && $maxPoints > 0) {
-                $pTop = ($topStats->get($snapshot->id)->avg_score ?? 0) / $maxPoints;
-                $pBottom = ($bottomStats->get($snapshot->id)->avg_score ?? 0) / $maxPoints;
-                $discrimination = round($pTop - $pBottom, 3);
+                $topAverage = (float) ($topStats->get($snapshot->id)->avg_score ?? 0);
+                $bottomAverage = (float) ($bottomStats->get($snapshot->id)->avg_score ?? 0);
+                $discrimination = round(($topAverage / $maxPoints) - ($bottomAverage / $maxPoints), 3);
             }
 
             return [
@@ -116,13 +113,32 @@ class ItemAnalysisService
                 'sequence' => $snapshot->sequence + 1,
                 'question_type' => $snapshot->metadata['question_type'] ?? 'MC',
                 'max_points' => $maxPoints,
-                'response_count' => $responseCounts->get($snapshot->id)->count ?? 0,
+                'response_count' => (int) ($responseCounts->get($snapshot->id)->count ?? 0),
                 'difficulty_index' => $difficulty,
                 'difficulty_status' => $this->interpretDifficulty($difficulty),
                 'discrimination_index' => $discrimination,
                 'discrimination_status' => $discriminationStatus,
             ];
         })->toArray();
+    }
+
+    /**
+     * Question-level scores must match the attempt's active pointer version.
+     * The attempt IDs are already drawn from valid, finalized current scores.
+     */
+    private function currentQuestionScores(Exam $exam, array $attemptIds): Builder
+    {
+        return ExamQuestionScore::query()
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->whereIn('attempt_id', $attemptIds)
+            ->whereExists(function (QueryBuilder $pointerQuery): void {
+                $pointerQuery->selectRaw('1')
+                    ->from('exam_attempt_score_current as current_score_pointer')
+                    ->whereColumn('current_score_pointer.attempt_id', 'exam_question_scores.attempt_id')
+                    ->whereColumn('current_score_pointer.tenant_id', 'exam_question_scores.tenant_id')
+                    ->whereColumn('current_score_pointer.scoring_version', 'exam_question_scores.scoring_version');
+            });
     }
 
     protected function emptyAnalysis(ExamQuestionSnapshot $snapshot, string $status): array
@@ -140,11 +156,18 @@ class ItemAnalysisService
         ];
     }
 
-    protected function interpretDifficulty(?float $p): ?string
+    protected function interpretDifficulty(?float $difficulty): ?string
     {
-        if ($p === null) return null;
-        if ($p < 0.30) return 'Sulit';
-        if ($p <= 0.70) return 'Sedang';
+        if ($difficulty === null) {
+            return null;
+        }
+        if ($difficulty < 0.30) {
+            return 'Sulit';
+        }
+        if ($difficulty <= 0.70) {
+            return 'Sedang';
+        }
+
         return 'Mudah';
     }
 }
