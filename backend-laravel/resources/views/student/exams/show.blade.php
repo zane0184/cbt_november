@@ -404,9 +404,12 @@
         }
         el('instruction-panel').classList.add('hidden');
         el('runner-panel').classList.remove('hidden');
-        renderNavigation(); renderQuestion(); updateTimer(data.attempt.expires_at);
+        renderNavigation(); renderQuestion();
         if (state.timerIntervalId !== null) window.clearInterval(state.timerIntervalId);
         state.timerIntervalId = window.setInterval(() => updateTimer(data.attempt.expires_at), 1000);
+        // Install the interval before the first tick: an already-expired Attempt
+        // may auto-submit immediately, and its terminal path must be able to clear it.
+        updateTimer(data.attempt.expires_at);
         setSaveStatus(localPending.length ? `${localPending.length} draft lokal menunggu sinkronisasi` : 'Jawaban dipulihkan dari server', localPending.length > 0);
         if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Respons server berhasil untuk draft lokal; receipt terverifikasi belum tersedia')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
     }
@@ -605,6 +608,10 @@
     }
 
     function showCompletion(status) {
+        if (state.timerIntervalId !== null) {
+            window.clearInterval(state.timerIntervalId);
+            state.timerIntervalId = null;
+        }
         state.submitOutcomeUnknown = false;
         el('check-submit-status').classList.add('hidden');
         el('completion-title').textContent = status === 'EXPIRED'
@@ -684,6 +691,10 @@
             setRunnerLocked(true);
             await persistSubmitState('SUBMITTING');
             submitRequestStarted = true;
+            if (state.timerIntervalId !== null) {
+                window.clearInterval(state.timerIntervalId);
+                state.timerIntervalId = null;
+            }
             const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/submit`, { method: 'POST', body: JSON.stringify({}) });
             const status = result.data?.status;
             if (status !== 'SUBMITTED' && status !== 'EXPIRED') {
