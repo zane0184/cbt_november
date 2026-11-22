@@ -260,7 +260,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
 
     public function test_non_admin_cannot_open_assignment_management(): void
     {
-        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
         $guru = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Guru Bukan Admin',
