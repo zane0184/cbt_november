@@ -39,8 +39,8 @@ class QuestionBank extends Component
         abort_unless(
             $user
                 && $user->tenant_id
-                && $user->hasRole('GURU')
-                && !$user->hasRole('ADMIN_MADRASAH')
+                && $user->roles()->count() === 1
+                && $user->roles()->where('name', 'GURU')->exists()
                 && $user->hasPermission('question.view'),
             403,
             'Bank soal hanya dapat diakses Guru sesuai penugasan.'
