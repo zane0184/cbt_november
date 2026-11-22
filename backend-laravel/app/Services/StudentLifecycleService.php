@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Contexts\TenantContext;
-use App\Models\AcademicYear;
 use App\Models\Rombel;
 use App\Models\StudentAcademicEvent;
 use App\Models\StudentProfile;
@@ -11,7 +10,6 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
-use RuntimeException;
 
 class StudentLifecycleService
 {
@@ -45,8 +43,8 @@ class StudentLifecycleService
             $this->lockTenant($tenantId);
             $student = $this->lockStudent($tenantId, $studentId);
             $this->assertStudentEligible($tenantId, $student);
-            $from = $this->lockRombel($tenantId, $fromRombelId, false);
-            $to = $this->lockRombel($tenantId, $toRombelId, true);
+            $from = $this->lockRombel($tenantId, $fromRombelId, false, false);
+            $to = $this->lockRombel($tenantId, $toRombelId, true, true);
 
             if ((string) $from->academic_year_id !== (string) $to->academic_year_id) {
                 throw ValidationException::withMessages(['actionToRombelId' => 'Mutasi rombel harus tetap pada tahun pelajaran yang sama. Gunakan Naik Kelas atau Tinggal Kelas untuk tahun berikutnya.']);
@@ -236,11 +234,12 @@ class StudentLifecycleService
         }
     }
 
-    private function lockRombel(string $tenantId, string $rombelId, bool $requireActiveYear): Rombel
+    private function lockRombel(string $tenantId, string $rombelId, bool $requireActiveYear, bool $requireActiveRombel = true): Rombel
     {
-        $rombel = Rombel::withoutGlobalScopes()->where('tenant_id', $tenantId)
-            ->whereNull('deleted_at')->where('status', 'ACTIVE')
-            ->whereKey($rombelId)->lockForUpdate()->firstOrFail();
+        $query = Rombel::withoutGlobalScopes()->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')->whereKey($rombelId);
+        if ($requireActiveRombel) $query->where('status', 'ACTIVE');
+        $rombel = $query->lockForUpdate()->firstOrFail();
         $rombel->load(['gradeLevel', 'academicYear']);
         if (!$rombel->gradeLevel || !$rombel->academicYear) {
             throw ValidationException::withMessages(['rombel' => 'Rombel tidak memiliki tingkat atau tahun pelajaran yang valid.']);
