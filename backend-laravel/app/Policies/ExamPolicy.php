@@ -167,7 +167,7 @@ class ExamPolicy
     public function assignProctor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id
-            || !$user->hasRole('ADMIN_MADRASAH')
+            || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists()
             || !$user->hasPermission('exam.proctor.assign')
             || $exam->status !== 'PUBLISHED'
             || !$exam->locked_at
@@ -181,7 +181,7 @@ class ExamPolicy
     public function revokeProctor(User $user, Exam $exam): bool
     {
         return $user->tenant_id === $exam->tenant_id
-            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists()
             && $user->hasPermission('exam.proctor.assign');
     }
 
@@ -200,9 +200,10 @@ class ExamPolicy
                 ->exists();
         }
 
-        return $user->hasRole('GURU')
+        return ($user->hasRole('KAMAD') && $user->hasPermission('exam.monitor'))
+            || ($user->hasRole('GURU')
             && $user->hasPermission('exam.monitor')
-            && TeacherAccess::canViewExam($user, $exam);
+            && TeacherAccess::canViewExam($user, $exam));
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
