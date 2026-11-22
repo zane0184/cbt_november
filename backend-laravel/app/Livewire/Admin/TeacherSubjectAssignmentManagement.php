@@ -194,9 +194,9 @@ class TeacherSubjectAssignmentManagement extends Component
                     ->whereKey($attributes['teacher_profile_id'])
                     ->where(function ($profile) {
                         $profile->where(function ($asn) {
-                            $asn->where('employment_type', 'ASN')->whereNotNull('nip');
+                            $asn->where('employment_type', 'ASN')->whereNotNull('nip')->whereRaw('LENGTH(nip) = 18');
                         })->orWhere(function ($honorer) {
-                            $honorer->where('employment_type', 'HONORER')->whereNotNull('nik');
+                            $honorer->where('employment_type', 'HONORER')->whereNotNull('nik')->whereRaw('LENGTH(nik) = 16');
                         });
                     })
                     ->whereHas('user', function ($query) use ($tenantId) {
@@ -429,8 +429,8 @@ class TeacherSubjectAssignmentManagement extends Component
         $teachers = TeacherProfile::query()
             ->where('tenant_id', $tenantId)
             ->where(function ($profile) {
-                $profile->where(fn ($asn) => $asn->where('employment_type', 'ASN')->whereNotNull('nip'))
-                    ->orWhere(fn ($honorer) => $honorer->where('employment_type', 'HONORER')->whereNotNull('nik'));
+                $profile->where(fn ($asn) => $asn->where('employment_type', 'ASN')->whereNotNull('nip')->whereRaw('LENGTH(nip) = 18'))
+                    ->orWhere(fn ($honorer) => $honorer->where('employment_type', 'HONORER')->whereNotNull('nik')->whereRaw('LENGTH(nik) = 16'));
             })
             ->whereHas('user', fn ($query) => $query->where('tenant_id', $tenantId)
                 ->whereNull('deleted_at')
