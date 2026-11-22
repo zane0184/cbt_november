@@ -69,6 +69,25 @@ class Exam extends Model
         return $this->hasMany(ExamAttempt::class);
     }
 
+    /** Direct room allocations for the simultaneous Exam model. */
+    public function roomAllocations(): HasMany
+    {
+        return $this->hasMany(ExamRoomExam::class, 'exam_id');
+    }
+
+    public function rooms(): \\Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany
+    {
+        return $this->belongsToMany(ExamRoom::class, 'exam_room_exam', 'exam_id', 'exam_room_id')
+            ->withPivot(['id', 'tenant_id', 'capacity_override', 'status', 'assigned_by'])
+            ->withTimestamps();
+    }
+
+    public function roomPlacements(): HasMany
+    {
+        return $this->hasMany(ExamParticipantRoomPlacement::class, 'exam_id');
+    }
+
+    /** Legacy history relation; new operational code must not use it. */
     public function sessions(): HasMany
     {
         return $this->hasMany(ExamSession::class, 'exam_id');
