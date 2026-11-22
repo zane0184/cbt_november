@@ -15,3 +15,12 @@ Seluruh backup dibuat sebagai file baru sebelum perubahan source. Blob SHA backu
 - Backup source: 3/3 MATCH.
 - Backup tidak menimpa file lama.
 - Tidak ada file Agent 2, migration, schema, Composer, CBT Engine, atau database yang diubah pada tahap backup.
+
+## Backup tambahan — foreign-tenant record ID regression
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| backend-laravel/tests/Feature/TeacherPortalFoundationTest.php | b3e4204701277aad53ef88a86b33e2d7fdd41098 | docs/backup/web-guru-exact-role-20261122/TeacherPortalFoundationTest.php.before-foreign-tenant-id-test | b3e4204701277aad53ef88a86b33e2d7fdd41098 | 6862a1914a9c960a43d6f46aa216d06d54395ad7 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 7e98a904f205acd0c8f3201a2e9aea13fcbb805b | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-foreign-tenant-id-test | 7e98a904f205acd0c8f3201a2e9aea13fcbb805b | c594652f420b222b51027725bdccded4d6549bdb | MATCH |
+
+Jumlah snapshot backup terdaftar: 5. Seluruh blob SHA yang tercantum: MATCH. Backup awal tiga file tetap dipertahankan; backup test tambahan melindungi revisi test berikutnya.
