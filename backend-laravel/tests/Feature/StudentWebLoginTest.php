@@ -9,6 +9,7 @@ use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
 class StudentWebLoginTest extends TestCase
@@ -127,10 +128,19 @@ class StudentWebLoginTest extends TestCase
             ->assertHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $this->student->id, 'deleted_at' => null]);
 
-        // The API token issued before the official lifecycle transition remains revoked.
+        // Verify the old API credential independently of the Admin browser session.
+        $studentTokenId = explode('|', $studentApiToken, 2)[0];
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $studentTokenId]);
+
+        $this->withCookie($sessionCookieName, '')
+            ->withCookie($studentRememberCookie->getName(), '');
+        $this->app['auth']->forgetGuards();
+
         $this->withToken($studentApiToken)
             ->getJson('/api/v1/auth/me')
             ->assertUnauthorized();
+
+        $this->assertNull(PersonalAccessToken::query()->find($studentTokenId));
 
         // Client A replays the same pre-deactivation browser cookie after reactivation.
         $this->withCookie($sessionCookieName, '')
