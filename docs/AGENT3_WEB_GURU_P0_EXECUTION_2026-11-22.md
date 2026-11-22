@@ -168,3 +168,33 @@ Backup tambahan untuk file yang diperbarui oleh pekerjaan paralel tercatat denga
 - Tidak ada merge/deployment. Tidak ada permintaan SSH/kredensial. Tidak ada migration produksi.
 
 **Kesimpulan:** route Bank Soal dan Asesmen mandiri Guru telah tersedia di source dan tes pendukung telah ditambahkan, tetapi belum ada hasil CI exact-SHA atau browser/E2E untuk HEAD terbaru. Proktor ujian terpusat dan operasi ujian end-to-end tetap BLOCKED. **P0 OPEN — BELUM BOLEH DINYATAKAN SIAP DIGUNAKAN BESOK.**
+
+
+## ADDENDUM — CI exact-SHA dan deployment compatibility (22 Nov 2026, pembaruan)
+
+### Identitas source dan workflow
+- Source terakhir yang mengubah runtime/test: `91d484b34b7e01fa6652138761ccbcab80370349`.
+- Branch Agent 3 tetap `work/web-guru-foundation-20261122`; HEAD saat audit dokumen ini: `2b85995403df4fbc47adb5692370bdbbe1d6c180` (commit dokumentasi/backup setelah source SHA di atas).
+- Test source blob: `dc82958d8ac9557859b471e551ca456b8a83e774` (26 metode `test_*` statis pada `TeacherPortalFoundationTest`).
+- Login role test blob: `1c2001d25d3bd878e6dbe7374fe7e13a86ff611f` (7 metode statis).
+- Workflow blob: `a1422371b6a4a20fc7201221099f99e4fc28cf38`; filter memasukkan `TeacherPortalFoundationTest`, `TeacherPracticeWorkflowTest`, `QuestionImportTemplateDownloadTest`, dan `PortalLoginRoleBoundaryTest`.
+
+### Hasil CI exact-SHA
+- Run [#45028604234](https://github.com/zane0184/cbt_november/actions/runs/45028604234) dipicu event `push` pada source SHA `91d484b34b7e01fa6652138761ccbcab80370349`.
+- Attempt 1 berakhir `failure`; job `teacher-portal-tests` tidak memiliki step, runner belum teralokasi, dan log tidak tersedia.
+- Rerun job sekali (attempt 2) juga berakhir `failure`; step tetap kosong, `runner_id` null, dan endpoint log mengembalikan `BlobNotFound`.
+- Run sebelumnya #45028590509 pada SHA `915379f7fa0e04c186fa9f604b4b21f007a10a9e` juga gagal sebelum step berjalan.
+- Kesimpulan yang dapat dibuktikan: **workflow gagal pada tahap sebelum runner/step dimulai**. Ini bukan bukti PHPUnit gagal atau lulus. Penyebab layanan/runner tidak dipaparkan pada metadata/log yang tersedia; jangan menebak akar masalah.
+- PHPUnit, PHP lint, route:list, dan tes MySQL pada source SHA tersebut **belum berjalan**. Status CI acceptance: **BLOCKED / NOT EXECUTED**.
+
+### Deployment aktif / upgrade compatibility
+- URL deployment yang diinformasikan pemilik: `https://cbt.min15jakarta.sch.id/login`; Agent 3 tidak memiliki akses SSH dan tidak mengakses VPS.
+- Prompt eksekusi terbaru menyebut database aplikasi masih kosong dan akan dibuat baru. Addendum pemilik Issue #10 sebelumnya menyatakan ini revisi aplikasi yang sudah terpasang dan meminta seluruh data/riwayat dipertahankan.
+- Karena tidak ada akses read-only ke release marker, manifest deployment, schema database, migration ledger, atau storage, kondisi database aktual **BELUM TERVERIFIKASI**. Kedua pernyataan tersebut tidak boleh diselaraskan dengan tebakan.
+- Tidak ada reset, fresh-install, migration, perubahan konfigurasi, atau deployment produksi. Sampai bukti metadata/schema non-secret tersedia, perlakukan produksi secara non-destruktif dan jangan menghapus/mengganti data.
+
+### Status setelah addendum
+- Route Bank Soal dan Asesmen mandiri Guru tersedia pada source, dengan tes ditambahkan tetapi belum dieksekusi.
+- Statistik siswa kini menyaring akun soft-deleted dan role yang bukan tepat satu `SISWA`; membership dianggap aktif bila pivot tenant-local masih ada pada rombel aktif karena tabel `rombel_student` tidak memiliki kolom status.
+- Browser/E2E, light/dark QA, media/RTL/formula, Penilaian ESSAY, Proktor Mode B, dan end-to-end ujian tetap belum diterima.
+- **P0 OPEN — BELUM SIAP OPERASIONAL.**
