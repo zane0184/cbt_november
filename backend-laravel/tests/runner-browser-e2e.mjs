@@ -52,6 +52,7 @@ function makeScenario(mode = 'normal') {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
     requireToken: false, startTokens: [], media: [], legacyPending: false, disableIndexedDb: false,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
+    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
     questionStem: 'Berapakah hasil 2 + 2?',
@@ -74,18 +75,25 @@ async function attachApiMock(page, scenario) {
     const method = request.method();
 
     if (method === 'GET' && url.pathname.startsWith('/api/v1/media/')) {
+      scenario.mediaHeaders.push(request.headers());
+      if (request.headers()['x-cbt-fence-generation'] !== String(scenario.generation) || !request.headers()['x-device-binding-id']) return json(route, 409, { success: false, code: 'ATTEMPT_FENCE_MISMATCH' });
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5ZkAAAAASUVORK5CYII=', 'base64');
       return route.fulfill({ status: 200, contentType: 'image/png', body: png });
+    }
+    if ((path === '/execution' || path.startsWith('/attempts/')) && !(method === 'POST' && path === '/attempts')) {
+      const headers = request.headers();
+      scenario.attemptHeaders.push({ method, path, fence: headers['x-cbt-fence-generation'] || null, device: headers['x-device-binding-id'] || null });
+      if (headers['x-cbt-fence-generation'] !== String(scenario.generation) || !headers['x-device-binding-id']) return json(route, 409, { success: false, code: 'ATTEMPT_FENCE_MISMATCH' });
     }
     if (method === 'POST' && path === '/attempts') {
       scenario.startCalls++;
       scenario.startTokens.push(request.postDataJSON().token ?? null);
-      return json(route, 200, { success: true, data: { id: 'attempt-1' } });
+      return json(route, 200, { success: true, data: { id: 'attempt-1', fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt } });
     }
     if (method === 'GET' && path === '/execution') {
       const now = new Date();
       return json(route, 200, { success: true, data: {
-        attempt: { id: 'attempt-1', expires_at: new Date(now.getTime() + scenario.expiresInMs).toISOString() },
+        attempt: { id: 'attempt-1', expires_at: new Date(now.getTime() + scenario.expiresInMs).toISOString(), fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt },
         exam: { server_now: now.toISOString() },
         questions: [{
           id: 'snapshot-1', snapshot_stem: scenario.questionStem, points: 1,
@@ -95,7 +103,7 @@ async function attachApiMock(page, scenario) {
       }});
     }
     if (method === 'GET' && path === '/attempts/attempt-1/answers') {
-      return json(route, 200, { success: true, data: scenario.serverAnswers });
+      return json(route, 200, { success: true, data: scenario.serverAnswers, fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt });
     }
     if (method === 'PUT' && path === '/attempts/attempt-1/answers/snapshot-1') {
       scenario.answerWrites++;
@@ -113,7 +121,13 @@ async function attachApiMock(page, scenario) {
         answer_state: 'ANSWERED',
         revision_number: 1
       }];
-      return json(route, 200, { success: true, data: { revision_number: 1 } });
+      return json(route, 200, { success: true, data: { revision_number: 1 }, fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt, receipt: { id: 'receipt-1', attempt_id: 'attempt-1', snapshot_id: 'snapshot-1', revision_number: 1, payload_hash: 'mock-hash', committed_at: new Date().toISOString() } });
+    }
+    if (method === 'POST' && path === '/attempts/attempt-1/heartbeat') {
+      scenario.heartbeatCalls++;
+      scenario.generation++;
+      scenario.leaseExpiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+      return json(route, 200, { success: true, server_now: new Date().toISOString(), status: 'IN_PROGRESS', fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt });
     }
     if (method === 'POST' && path === '/attempts/attempt-1/submit') {
       scenario.submitCalls++;
@@ -125,7 +139,7 @@ async function attachApiMock(page, scenario) {
     }
     if (method === 'GET' && path === '/attempts/attempt-1') {
       scenario.statusChecks++;
-      return json(route, 200, { success: true, data: { status: scenario.status } });
+      return json(route, 200, { success: true, data: { status: scenario.status, fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt } });
     }
     return json(route, 404, { success: false, message: 'Unexpected API ' + method + ' ' + path });
   });
@@ -305,7 +319,34 @@ try {
     console.log('PASS: Arabic question and answer retain harakat with automatic RTL direction');
   }
 
-  // Image media from the immutable snapshot is rendered through the same-origin media endpoint.
+  // Heartbeat returns a new monotonic generation; the client persists it before later writes.
+  {
+    const scenario = makeScenario();
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await page.waitForFunction(async () => {
+      return await new Promise(resolve => {
+        const request = indexedDB.open('cbt-madrasah-student-v1', 2);
+        request.onsuccess = () => {
+          const db = request.result; const tx = db.transaction('attempt_context', 'readonly');
+          const get = tx.objectStore('attempt_context').get('attempt-1');
+          get.onsuccess = () => { const value = get.result; db.close(); resolve(value?.fenceGeneration === 2); };
+          get.onerror = () => { db.close(); resolve(false); };
+        };
+        request.onerror = () => resolve(false);
+      });
+    });
+    assert.equal(scenario.heartbeatCalls, 1);
+    await chooseFirstAnswer(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    assert.ok(scenario.attemptHeaders.some(item => item.path.endsWith('/answers/snapshot-1') && item.fence === '2'));
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: heartbeat generation is persisted before subsequent answer writes');
+  }
+
+  // Image media from the immutable snapshot is fetched with bound-session and fencing headers.
   {
     const scenario = makeScenario();
     scenario.media = [{ id: 'media-1', role: 'STEM', mime_type: 'image/png' }];
@@ -314,7 +355,10 @@ try {
     const image = page.locator('#question-media img');
     await image.waitFor({ state: 'visible' });
     await page.waitForFunction(() => document.querySelector('#question-media img').naturalWidth === 1);
-    assert.ok((await image.getAttribute('src')).includes('/api/v1/media/media-1'));
+    assert.ok((await image.getAttribute('src')).startsWith('blob:'));
+    assert.equal(scenario.mediaHeaders.length, 1);
+    assert.equal(scenario.mediaHeaders[0]['x-cbt-fence-generation'], '1');
+    assert.ok(scenario.mediaHeaders[0]['x-device-binding-id']);
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
     console.log('PASS: snapshot image media loads from same-origin media endpoint');
