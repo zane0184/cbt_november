@@ -34,6 +34,7 @@ class ExamAnswerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withHeader('X-CBT-Fence-Generation', '1');
         $this->tenant = Tenant::create(['name' => 'T1', 'code' => 'T1']);
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
 
