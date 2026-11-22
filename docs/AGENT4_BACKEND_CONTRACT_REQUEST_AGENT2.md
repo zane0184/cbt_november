@@ -244,3 +244,36 @@ Current Agent 2 branch HEAD: `462cadc96a95d091bd89819dbc106b4fbd67e1cd`. Its lat
 For each section A–F in this document, Agent 2 must respond APPROVED / REJECTED / NEEDS DESIGN and provide canonical payload, status/error behavior, transaction/lock order, audit event, test and exact-SHA CI evidence. No endpoint/header/DTO is invented by Agent 4.
 
 Status: **NEEDS DESIGN / COORDINATION — CONTRACT APPROVAL PENDING**.
+
+
+## 12. ADDENDUM — KOORDINATOR PORTAL/KAMAD/PROKTOR DAN EXACT-ROLE WEB SISWA
+
+Dasar: Issue #10 komentar `7078539953` dari koordinator. Keputusan produk final: portal aktif ADMIN_MADRASAH/GURU/SISWA; KAMAD frozen dari semua akses CBT; Proktor assignment sementara untuk akun exact-one GURU, menu di Web Guru; tidak ada role/login/portal Proktor; SISWA hanya peserta dan bukan identitas Proktor. Komentar ini bukan approval teknis Agent 2.
+
+Agent 2 diminta memberi jawaban langsung dengan status APPROVED / REJECTED / NEEDS DESIGN / PENDING untuk subkontrak berikut. Sertakan identitas owner GitHub, branch + exact HEAD, source path/blob SHA, canonical request/response atau authorization state, transaction/lock order, audit event, acceptance test dan CI exact-SHA.
+
+### A. Exact-one SISWA pada Web Siswa
+
+- Pastikan seluruh Student entrypoint (StudentExamController, ExamController, ExamAttemptController, ExamAnswerController, MediaController, result endpoint, policies, routes, services) menolak semua role set selain tepat satu SISWA.
+- Khususnya SISWA+GURU, SISWA+KAMAD, SISWA+ADMIN_MADRASAH, SISWA+OPERATOR, SISWA+role legacy, GURU-only, KAMAD-only harus fail closed.
+- Validasi harus berlaku pada API/controller/policy/service, termasuk existing Sanctum token/session dan direct invocation; login exact-one saja tidak cukup.
+- Konfirmasi tidak ada route, endpoint atau action Proktor di Web Siswa.
+
+### B. KAMAD frozen
+
+- Tolak KAMAD pada login Web dan API token issuance, resolver, redirect, middleware, route, policy, permission bootstrap, Livewire, monitoring, report, export, queue dan service entrypoint.
+- Pastikan exam author/KAMAD broad scope tidak membuka seluruh participant/attempt; tidak ada bypass KAMAD.
+- Pertahankan histori appointment/jabatan sebagai data administratif non-authorizing; jangan hapus record atau permission historis tanpa inventory/migrasi terpisah yang disetujui.
+
+### C. Proktor sebagai assignment Guru
+
+- Target assignment harus tepat satu role GURU, TeacherProfile aktif, tenant/installation sama, assignment CONFIRMED/aktif, time-bounded, tidak revoked, Exam/Session/Room/SessionRoom/schedule revision sesuai.
+- Guru menggunakan akun dan session Guru sendiri. Tidak ada role PROKTOR permanen, akun/login/credential/portal Proktor.
+- Menu dan route Proktor berada di Web Guru; Agent 3 owner UI. Backend tetap wajib authorize setiap action.
+- Room scope harus berlaku pada summary, participant list, attempt detail, event, heartbeat, export, Livewire, service dan queue. Tidak ada akses assignment Guru lain.
+- Assignment Proktor tidak otomatis memberikan hak melihat jawaban/nilai/answer key, bank soal, konfigurasi Exam, Force Submit, takeover atau operasi administratif.
+- Audit event mencatat actor Guru, assignment, Exam, Room, action, reason, time, dan status sebelum/sesudah.
+
+### D. Batas persetujuan
+
+Permintaan ini tidak mengubah endpoint, DTO, HTTP status, enum, route atau schema dan tidak memberi izin Agent 4 melakukan patch backend. Persetujuan parsial hanya berlaku untuk butir yang disetujui eksplisit. Sampai exact-role SISWA, KAMAD freeze, dan assignment-based Guru Proktor teruji, Web Siswa tetap tidak siap ujian operasional.
