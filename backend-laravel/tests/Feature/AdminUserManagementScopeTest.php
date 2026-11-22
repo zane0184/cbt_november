@@ -167,6 +167,7 @@ class AdminUserManagementScopeTest extends TestCase
         Livewire::test(UserManagement::class)
             ->set('name', 'Guru Baru')
             ->set('selectedRole', 'GURU')
+            ->set('employmentType', 'ASN')
             ->set('nip', '198701012021011001')
             ->set('password', 'StrongPassword123!')
             ->call('createUser')
@@ -210,7 +211,7 @@ class AdminUserManagementScopeTest extends TestCase
         $this->assertSame(0, User::query()->where('name', 'Akun Terlarang')->count());
     }
 
-    public function test_admin_can_create_guru_without_nip_or_nik(): void
+    public function test_admin_cannot_create_guru_without_employment_type_and_login_identity(): void
     {
         $tenant = Tenant::create(['name' => 'Madrasah Guru Tanpa Identitas Opsional', 'code' => 'GURUNO']);
         $this->signInAdmin($tenant);
@@ -218,20 +219,14 @@ class AdminUserManagementScopeTest extends TestCase
         Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
 
         Livewire::test(UserManagement::class)
-            ->set('name', 'Guru Tanpa NIP')
-            ->set('username', 'guru.tanpa.nip')
+            ->set('name', 'Guru Tanpa Identitas')
+            ->set('username', 'guru.tanpa.identitas')
             ->set('selectedRole', 'GURU')
             ->set('password', 'StrongPassword123!')
             ->call('createUser')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['employmentType']);
 
-        $guru = User::query()->where('name', 'Guru Tanpa NIP')->firstOrFail();
-        $this->assertTrue($guru->roles()->where('name', 'GURU')->exists());
-        $this->assertNotNull($guru->teacherProfile);
-        $this->assertNull($guru->teacherProfile->nip);
-        $this->assertNull($guru->teacherProfile->nik);
-        $this->assertNull($guru->teacherProfile->employee_identifier);
-        $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_CREATED')->where('entity_id', $guru->id)->exists());
+        $this->assertSame(0, User::query()->where('name', 'Guru Tanpa Identitas')->count());
     }
 
 
@@ -264,6 +259,7 @@ class AdminUserManagementScopeTest extends TestCase
             ->set('editName', 'Guru Sesudah Edit')
             ->set('editUsername', 'guru.sesudah')
             ->set('editEmail', 'guru.sesudah@madrasah.test')
+            ->set('editEmploymentType', 'ASN')
             ->set('editNip', '198701012021011001')
             ->set('editNik', '')
             ->call('updateUser')
