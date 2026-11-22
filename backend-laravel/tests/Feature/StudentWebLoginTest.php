@@ -56,6 +56,100 @@ class StudentWebLoginTest extends TestCase
         app(TenantContext::class)->setTenantId(null);
     }
 
+    public function test_student_browser_cookie_is_invalidated_by_admin_deactivation_and_reactivation(): void
+    {
+        // Client A: student logs in and keeps its own browser cookie jar.
+        $studentLogin = $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+            'remember' => '1',
+        ]);
+        $studentLogin->assertRedirect('/student/exams');
+        $sessionCookieName = config('session.cookie');
+        $studentSessionCookie = $studentLogin->getCookie($sessionCookieName, false);
+        $this->assertNotNull($studentSessionCookie);
+        $studentSessionCookieValue = $studentSessionCookie->getValue();
+
+        $studentRememberCookie = collect($studentLogin->headers->getCookies())
+            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'));
+        $this->assertNotNull($studentRememberCookie);
+        $studentRememberCookieValue = $studentRememberCookie->getValue();
+
+        // Prepare a separate Admin account with only the user-management permission.
+        $this->setTenantContext($this->tenant->id);
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $permission = \App\Models\Permission::firstOrCreate(
+            ['name' => 'user.manage'],
+            ['label' => 'Kelola Pengguna']
+        );
+        $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
+        $admin = User::create([
+            'name' => 'Admin Uji',
+            'username' => 'admin.session.test',
+            'password' => bcrypt('SandiAdmin#2026'),
+        ]);
+        $admin->roles()->attach($adminRole);
+        $this->setTenantContext(null);
+
+        // Client B: remove Client A's cookie and perform a distinct Admin login.
+        $this->withoutCookie($sessionCookieName);
+        $adminLogin = $this->post('/login', [
+            'identifier' => 'admin.session.test',
+            'password' => 'SandiAdmin#2026',
+        ]);
+        $adminLogin->assertRedirect('/admin/dashboard');
+        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName, false);
+        $this->assertNotNull($adminSessionCookie);
+        $this->assertNotSame($studentSessionCookieValue, $adminSessionCookie->getValue());
+        $this->assertAuthenticatedAs($admin);
+
+        // The actual Admin Livewire lifecycle action performs deactivation.
+        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
+            ->call('deactivateUser', $this->student->id)
+            ->assertHasNoErrors();
+        $this->assertSoftDeleted('users', ['id' => $this->student->id]);
+
+        // Client A replays its original cookie while the account is inactive.
+        $this->withoutCookie($sessionCookieName)
+            ->withCookie($sessionCookieName, $studentSessionCookieValue);
+        $this->app['auth']->forgetGuards();
+        $this->get('/student/exams')->assertRedirect('/login');
+        $this->assertGuest();
+
+        // Client B restores the same account through the official Admin action.
+        $this->withoutCookie($sessionCookieName)
+            ->withCookie($sessionCookieName, $adminSessionCookie->getValue());
+        $this->app['auth']->forgetGuards();
+        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
+            ->set('statusFilter', 'INACTIVE')
+            ->call('restoreUser', $this->student->id)
+            ->assertHasNoErrors();
+        $this->assertDatabaseHas('users', ['id' => $this->student->id, 'deleted_at' => null]);
+
+        // Client A replays the same pre-deactivation browser cookie after reactivation.
+        $this->withoutCookie($sessionCookieName)
+            ->withCookie($sessionCookieName, $studentSessionCookieValue);
+        $this->app['auth']->forgetGuards();
+        $this->get('/student/exams')->assertRedirect('/login');
+        $this->assertGuest();
+
+        // The pre-deactivation remember-me cookie must also be rejected.
+        $this->withoutCookie($sessionCookieName)
+            ->withCookie($studentRememberCookie->getName(), $studentRememberCookieValue);
+        $this->app['auth']->forgetGuards();
+        $this->get('/student/exams')->assertRedirect('/login');
+        $this->assertGuest();
+
+        // A fresh login obtains a new session and can access the student portal.
+        $this->withoutCookie($studentRememberCookie->getName());
+        $freshLogin = $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+        ]);
+        $freshLogin->assertRedirect('/student/exams');
+        $this->assertAuthenticatedAs($this->student->fresh());
+    }
+
     public function test_student_can_login_on_web_using_nisn_and_password_without_email(): void
     {
         $response = $this->post('/login', [
