@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExamQuestionSnapshot;
+use App\Models\ExamAttempt;
 use App\Models\MediaAsset;
 use App\Models\Question;
 use App\Models\QuestionVersion;
