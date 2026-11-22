@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Contexts\TenantContext;
 use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
 use App\Models\Curriculum;
 use App\Models\GradeLevel;
 use App\Models\Phase;
@@ -142,6 +143,14 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
 
         $component->call('save')->assertHasNoErrors();
         $this->assertDatabaseCount('teacher_subject_assignments', 1);
+
+        $assignment = TeacherSubjectAssignment::query()->firstOrFail();
+        $this->assertDatabaseCount('audit_logs', 1);
+        $audit = AuditLog::query()->where('action', 'TEACHER_ASSIGNMENT_CREATE')->firstOrFail();
+        $this->assertSame($this->tenant->id, $audit->tenant_id);
+        $this->assertSame($this->admin->id, $audit->user_id);
+        $this->assertSame($assignment->id, $audit->entity_id);
+        $this->assertSame('ACTIVE', $audit->new_values['status']);
     }
 
     public function test_deactivation_preserves_assignment_record_and_history(): void
@@ -168,6 +177,39 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'status' => 'INACTIVE',
         ]);
         $this->assertDatabaseCount('teacher_subject_assignments', 1);
+
+        $audit = AuditLog::query()->where('action', 'TEACHER_ASSIGNMENT_DEACTIVATE')->firstOrFail();
+        $this->assertSame($assignment->id, $audit->entity_id);
+        $this->assertSame('ACTIVE', $audit->old_values['status']);
+        $this->assertSame('INACTIVE', $audit->new_values['status']);
+    }
+
+    public function test_edit_updates_assignment_and_records_before_after_audit(): void
+    {
+        $assignment = TeacherSubjectAssignment::create([
+            'teacher_profile_id' => $this->teacher->id,
+            'subject_id' => $this->subject->id,
+            'rombel_id' => $this->rombel->id,
+            'academic_year_id' => $this->year->id,
+            'semester_id' => $this->semester->id,
+            'starts_at' => '2026-07-01',
+            'ends_at' => '2027-06-30',
+            'status' => 'ACTIVE',
+            'created_by' => $this->admin->id,
+        ]);
+
+        Livewire::actingAs($this->admin)
+            ->test(TeacherSubjectAssignmentManagement::class)
+            ->call('edit', $assignment->id)
+            ->set('endsAt', '2027-05-31')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame('2027-05-31', $assignment->fresh()->ends_at->toDateString());
+        $audit = AuditLog::query()->where('action', 'TEACHER_ASSIGNMENT_UPDATE')->firstOrFail();
+        $this->assertSame($assignment->id, $audit->entity_id);
+        $this->assertSame('2027-06-30', \\Illuminate\\Support\\Carbon::parse($audit->old_values['ends_at'])->toDateString());
+        $this->assertSame('2027-05-31', \\Illuminate\\Support\\Carbon::parse($audit->new_values['ends_at'])->toDateString());
     }
 
     public function test_assignment_rejects_rombel_and_semester_from_different_academic_year(): void
@@ -274,18 +316,33 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertDatabaseCount('teacher_subject_assignments', 0);
     }
 
-    public function test_non_admin_cannot_open_assignment_management(): void
+    public function test_non_admin_guru_and_siswa_cannot_open_assignment_management(): void
     {
-        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
-        $guru = User::create([
-            'tenant_id' => $this->tenant->id,
-            'name' => 'Guru Bukan Admin',
-            'email' => 'guru-denied@example.test',
-            'password' => bcrypt('password'),
-        ]);
-        $guru->roles()->attach($guruRole->id);
+        foreach ([
+            ['role' => 'GURU', 'name' => 'Guru Bukan Admin', 'email' => 'guru-denied@example.test'],
+            ['role' => 'SISWA', 'name' => 'Siswa Bukan Admin', 'email' => 'siswa-denied@example.test'],
+        ] as $fixture) {
+            $role = Role::query()->where('name', $fixture['role'])->firstOrFail();
+            $user = User::create([
+                'tenant_id' => $this->tenant->id,
+                'name' => $fixture['name'],
+                'email' => $fixture['email'],
+                'password' => bcrypt('password'),
+            ]);
+            $user->roles()->attach($role->id);
 
-        Livewire::actingAs($guru)
+            Livewire::actingAs($user)
+                ->test(TeacherSubjectAssignmentManagement::class)
+                ->assertForbidden();
+        }
+    }
+
+    public function test_admin_without_academic_manage_permission_cannot_open_assignment_management(): void
+    {
+        $permissionId = Permission::query()->where('name', 'academic.manage')->value('id');
+        $this->admin->roles()->firstOrFail()->permissions()->detach($permissionId);
+
+        Livewire::actingAs($this->admin)
             ->test(TeacherSubjectAssignmentManagement::class)
             ->assertForbidden();
     }
