@@ -41,3 +41,5 @@ Semua backup berikut dibuat sebagai file baru sebelum file sumber terkait diubah
 | 15 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 4bbfca0a9f3d893f5d44975904a1820192f44fb8 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-qa-ui-design-20261122 | 4bbfca0a9f3d893f5d44975904a1820192f44fb8 | MATCH |
 
 Jumlah snapshot terdaftar setelah tambahan: 15. Hash backup tambahan: 3/3 MATCH. Backup dibuat sebagai file baru; tidak ada snapshot lama yang ditimpa.
+
+| 16 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md (before duplicate-section correction) | b355f0825430b2d34a6a07073f24705ddfd0dd2c | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-duplicate-entry-correction-20261122 | b355f0825430b2d34a6a07073f24705ddfd0dd2c | 96d7cf463ed4e2fd78ec7640bc514af37063ae1b | MATCH |
