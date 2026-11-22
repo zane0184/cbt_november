@@ -179,6 +179,11 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_a_authorized_participant_start()
     {
+        $context = app(\App\Contexts\TenantContext::class);
+        $context->setTenantId($this->tenantA->id);
+        $this->assertTrue($this->userA1->hasExactRole('SISWA'), 'Fixture must satisfy the persisted active Siswa identity contract.');
+        $context->setTenantId(null);
+
         $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $this->assertEquals(0, $this->participantA1->attempts()->count());
@@ -186,6 +191,9 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
+        if ($response->status() !== 201) {
+            fwrite(STDERR, "ATTEMPT_START_RESPONSE=".$response->getContent().PHP_EOL);
+        }
         $response->assertStatus(201);
         $response->assertJson(['success' => true]);
         $this->assertNotNull($response->json('data.id'));
