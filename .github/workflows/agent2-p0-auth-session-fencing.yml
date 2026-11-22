@@ -104,6 +104,7 @@ jobs:
           set -o pipefail
           php artisan test \
             tests/Feature/StudentWebLoginTest.php \
+            tests/Feature/AttemptAuthSessionBindingTest.php \
             tests/Feature/AuthTest.php \
             tests/Feature/ParticipantAuthorizationAndAttemptLimitTest.php \
             tests/Feature/ExamAnswerTest.php \
