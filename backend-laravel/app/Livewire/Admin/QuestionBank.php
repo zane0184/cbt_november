@@ -61,7 +61,7 @@ class QuestionBank extends Component
     public $editingQuestionId = null;
 
     public $questionCode = '';
-    public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, SHORT_ANSWER, ESSAY
+    public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, ESSAY
     public $selectedSubjectId = '';
     public $selectedOutcomeId = ''; // CP
     public $selectedObjectiveId = ''; // TP
@@ -219,7 +219,7 @@ class QuestionBank extends Component
     {
         $this->validate([
             'questionCode' => 'required|string|max:50',
-            'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,SHORT_ANSWER,ESSAY',
+            'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,ESSAY',
             'selectedSubjectId' => 'required|exists:subjects,id',
             'stem' => 'required|string',
             'defaultPoints' => 'required|numeric|min:0.5',
