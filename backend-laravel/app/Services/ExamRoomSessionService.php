@@ -855,16 +855,9 @@ class ExamRoomSessionService
 
             $this->bumpScheduleRevision($actor, $session, $reason);
 
-            $window = ExamSession::query()
-                ->where('tenant_id', $actor->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->whereIn('status', ['SCHEDULED', 'ACTIVE'])
-                ->selectRaw('MIN(starts_at) AS starts_at, MAX(ends_at) AS ends_at')
-                ->first();
-
-            if ($window?->starts_at && $window?->ends_at) {
-                $exam->update(['start_at' => $window->starts_at, 'end_at' => $window->ends_at]);
-            }
+            // Exam.start_at/end_at is owned by the Guru who publishes the exam.
+            // Admin may reschedule this operational session only; never recalculate
+            // or take ownership of the overall exam window from session metadata.
 
             $this->auditService->log('EXAM_SESSION_RESCHEDULE', 'ExamSession', $session->id, $old, [
                 'starts_at' => $session->starts_at,
