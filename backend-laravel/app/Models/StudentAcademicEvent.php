@@ -35,8 +35,12 @@ class StudentAcademicEvent extends Model
 
     protected static function booted(): void
     {
-        static::updating(fn () => throw new LogicException('Student academic events are append-only and cannot be updated.'));
-        static::deleting(fn () => throw new LogicException('Student academic events are append-only and cannot be deleted.'));
+        static::updating(function (self $event): void {
+            throw new LogicException('Student academic events are append-only and cannot be updated.');
+        });
+        static::deleting(function (self $event): void {
+            throw new LogicException('Student academic events are append-only and cannot be deleted.');
+        });
     }
 
     public function student(): BelongsTo
