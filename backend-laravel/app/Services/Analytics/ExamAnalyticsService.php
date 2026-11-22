@@ -18,7 +18,6 @@ class ExamAnalyticsService
             ->where('exam_id', $exam->id)
             ->where('grading_status', 'FINALIZED')
             ->current()
-            ->current()
             ->whereHas('attempt', function ($q) {
                 $q->whereIn('status', ['SUBMITTED', 'EXPIRED']);
             });
@@ -36,6 +35,8 @@ class ExamAnalyticsService
             ->first();
 
         $percentages = $query->clone()
+            ->reorder()
+            ->select('percentage')
             ->orderBy('percentage')
             ->pluck('percentage')
             ->toArray();
