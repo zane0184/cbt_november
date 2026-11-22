@@ -77,6 +77,32 @@ class PortalLoginRoleBoundaryTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_exact_admin_madrasah_role_is_redirected_to_admin_portal(): void
+    {
+        $user = $this->userWithRoles(['ADMIN_MADRASAH']);
+        $this->resolveTo($user);
+
+        $this->post('/login', [
+            'identifier' => 'portal-test',
+            'password' => 'password123',
+        ])->assertRedirect('/admin/dashboard');
+
+        $this->assertAuthenticatedAs($user);
+    }
+
+    public function test_exact_siswa_role_is_redirected_to_student_portal(): void
+    {
+        $user = $this->userWithRoles(['SISWA']);
+        $this->resolveTo($user);
+
+        $this->post('/login', [
+            'identifier' => 'portal-test',
+            'password' => 'password123',
+        ])->assertRedirect('/student/exams');
+
+        $this->assertAuthenticatedAs($user);
+    }
+
     public function test_kamad_role_is_not_a_login_portal(): void
     {
         $user = $this->userWithRoles(['KAMAD']);
