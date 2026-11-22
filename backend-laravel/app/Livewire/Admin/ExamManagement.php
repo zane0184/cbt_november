@@ -326,19 +326,32 @@ class ExamManagement extends Component
             $targetUserIds = [];
             if ($this->selectedRombelId === 'ALL') {
                 if ($user->hasRole('GURU')) abort(403, 'Guru tidak dapat menugaskan ujian kepada seluruh siswa madrasah.');
-                $targetUserIds = User::where('tenant_id', $tenantId)
-                    ->whereHas('roles', fn($q) => $q->where('name', 'SISWA'))
-                    ->pluck('id')->toArray();
+                $targetUserIds = StudentProfile::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('academic_status', 'ACTIVE')
+                    ->whereHas('user', fn ($query) => $query->where('tenant_id', $tenantId)
+                        ->whereNull('deleted_at')
+                        ->where('is_active', true)
+                        ->has('roles', '=', 1)
+                        ->whereHas('roles', fn ($roles) => $roles->where('name', 'SISWA')))
+                    ->pluck('user_id')->toArray();
             } elseif ($this->selectedRombelId) {
                 $studentProfileIds = DB::table('rombel_student')
                     ->where('tenant_id', $tenantId)
                     ->where('rombel_id', $this->selectedRombelId)
+                    ->where('academic_year_id', $activeYear->id)
                     ->pluck('student_id');
 
-                $targetUserIds = StudentProfile::where('tenant_id', $tenantId)
+                $targetUserIds = StudentProfile::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('academic_status', 'ACTIVE')
                     ->whereIn('id', $studentProfileIds)
-                    ->pluck('user_id')
-                    ->toArray();
+                    ->whereHas('user', fn ($query) => $query->where('tenant_id', $tenantId)
+                        ->whereNull('deleted_at')
+                        ->where('is_active', true)
+                        ->has('roles', '=', 1)
+                        ->whereHas('roles', fn ($roles) => $roles->where('name', 'SISWA')))
+                    ->pluck('user_id')->toArray();
             }
 
             foreach ($targetUserIds as $uid) {
