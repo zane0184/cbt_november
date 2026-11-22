@@ -73,7 +73,7 @@ Commit implementasi utama:
 ## PENGUJIAN
 Dilakukan:
 - Fetch ulang baseline, backup, dan source hasil melalui GitHub.
-- Baseline backup pertama byte-exact terverifikasi.
+- Seluruh 11 backup snapshot runner diverifikasi ulang berdasarkan blob SHA; 11/11 cocok. Backup baseline byte-exact terhadap source awal.
 - Compare base → branch: status ahead, behind 0; perubahan terbatas pada runner, backup runner, laporan, dan checkpoint. Jumlah commit bertambah saat laporan/checkpoint diperbarui.
 - Pemeriksaan source statis atas call sites IndexedDB, persist conflict, frozen base_revision, no old store calls, dan skip conflict saat flush.
 - JavaScript syntax parse/compile terhadap inline runner aktual pada blob `5b8aa0efc2f180d675f401315e43ce578b722925`: PASS; setelah patch label terminal, parse ulang pada blob `8222aa80a588abfb476c1ff94b153f6ee6ef1ee1`: PASS.
