@@ -561,3 +561,21 @@ Dokumen Agent 4 ditambahkan addendum keputusan koordinator setelah lima dokumen 
 5. Sampai semua gate disetujui, hanya audit/dokumentasi; tidak ada runtime patch.
 
 Status: `BLOCKED — CROSS-AGENT CONTRACT PENDING`; Web Siswa `NOT READY FOR OPERATIONAL EXAM`.
+
+## 17. FINAL CHECKPOINT — DOKUMENTASI KEPUTUSAN PORTAL/PROKTOR
+
+Checkpoint ini dibackup sebelum koreksi final. Original blob `0031616b792b244944ae4bd117c2ed35b61a5154`; backup `docs/backup/agent4-contract-closure-2026-11-22/CHECKPOINT_AGENT4_WEB_SISWA_NEXT_GATE.before-final-proctor-head-20261122.md` blob `0031616b792b244944ae4bd117c2ed35b61a5154` — **byte-exact PASS**.
+
+Dokumen Agent 4 yang mendapat addendum keputusan koordinator setelah backup:
+- `docs/CHECKPOINT_AGENT4_WEB_SISWA_NEXT_GATE.md` — perubahan pada sesi ini; blob final dicatat setelah commit.
+- `docs/AGENT4_WEB_SISWA_CONTRACT_RECONCILIATION.md` — blob `32d5d3b1d9e48ccc569fc60653aae98b89aed285`.
+- `docs/AGENT4_WEB_SISWA_TEST_MATRIX.md` — blob `9d25859578f879601e4dfcdba34a9f378b185e10`.
+- `docs/AGENT4_WEB_SISWA_ADMISSION_MEDIA_THREAT_MODEL.md` — blob `97b4991065905ef9c0564eab0dd2c8c48ef31fc6`.
+- `docs/AGENT4_BACKEND_CONTRACT_REQUEST_AGENT2.md` — blob `210005fe1011564b46a19035174ae6a504958d85`.
+- Backup manifest lima dokumen: `docs/backup/agent4-contract-closure-2026-11-22/MANIFEST_COORDINATOR_PORTAL_PROCTOR_ADDENDUM.md` blob `f8c8b674f1feb1c89f908195b66cfe60045e8bc9`.
+
+Commit addendum: checkpoint `0459e24152a74b2baac4e4383f4baf175f7e11f6`; reconciliation `6eaf4a062673e4e0a8766231b1b92a38e173c248`; test matrix `db1b932a2ad37dc91e688b9ebbb3e4cb45f22a6c`; threat model `b88dd1934f0fbd6365ddee3e0ae6f65337993ce9`; backend contract request Agent 2 `ae0251529d1063a30fe51bdba47f1c3be8dddfd3`.
+
+Perubahan hanya dokumentasi. Tidak ada source runtime/test code/route/API/controller/policy/model/service/middleware/migration/schema/database/config, source Agent 1/2/3, kandidat, merge/PR/deployment yang diubah.
+
+Status akhir tetap `BLOCKED — CROSS-AGENT CONTRACT PENDING`; ownership Agent 4, approval owner Agent 1/2/3, F-01/F-02, lease/fencing, answer receipt/conflict, submit/expiry, snapshot/media, scheduler/recovery dan izin implementasi belum selesai. Web Siswa `NOT READY FOR OPERATIONAL EXAM`.
