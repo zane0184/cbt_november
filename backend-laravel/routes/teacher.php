@@ -8,6 +8,8 @@ use App\Livewire\Teacher\TeacherProfilePage;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Http\Controllers\Teacher\QuestionImportTemplateController;
+use App\Http\Controllers\Teacher\TeacherQuestionMediaController;
+use App\Http\Controllers\Api\V1\MediaController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'tenant', 'license', EnsureTeacherPortalAccess::class])
