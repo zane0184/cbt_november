@@ -32,6 +32,11 @@ class QuestionBank extends Component
     public function mount(): void
     {
         $this->assertCanAccess();
+
+        $questionId = request()->query('edit_question');
+        if (is_string($questionId) && $questionId !== '') {
+            $this->openEditModal($questionId);
+        }
     }
 
     private function assertCanAccess(): void
@@ -59,6 +64,7 @@ class QuestionBank extends Component
     // Modal Form State
     public $showModal = false;
     public $editingQuestionId = null;
+    public $editingQuestionVersionId = null;
 
     public $questionCode = '';
     public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, ESSAY
@@ -88,7 +94,7 @@ class QuestionBank extends Component
     public function openCreateModal()
     {
         Gate::authorize('create', Question::class);
-        $this->reset(['editingQuestionId', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
+        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
         $this->questionType = 'MULTIPLE_CHOICE';
         $this->correctOption = 'A';
         $this->correctOptions = [];
@@ -109,6 +115,7 @@ class QuestionBank extends Component
         $version = $question->currentVersion;
 
         $this->editingQuestionId = $question->id;
+        $this->editingQuestionVersionId = $version?->id;
         $this->questionCode = $question->question_code;
         $this->selectedSubjectId = $question->subject_id;
 
@@ -678,11 +685,24 @@ class QuestionBank extends Component
             ? LearningObjective::where('learning_outcome_id', $this->selectedOutcomeId)->get()
             : collect();
 
+        $editingVersionMedia = collect();
+        if ($this->editingQuestionId && $this->editingQuestionVersionId && $user) {
+            $editingVersion = QuestionVersion::query()
+                ->whereKey($this->editingQuestionVersionId)
+                ->where('question_id', $this->editingQuestionId)
+                ->where('tenant_id', $user->tenant_id)
+                ->with('media')
+                ->first();
+
+            $editingVersionMedia = $editingVersion?->media ?? collect();
+        }
+
         return view('livewire.admin.question-bank', [
             'questions' => $questions,
             'subjects' => $subjects,
             'outcomes' => $outcomes,
             'objectives' => $objectives,
+            'editingVersionMedia' => $editingVersionMedia,
         ])->layout('layouts.teacher');
     }
 }
