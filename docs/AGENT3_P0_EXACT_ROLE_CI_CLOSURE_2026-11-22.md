@@ -87,7 +87,7 @@ Source diperiksa pada branch `work/stage4d-account-lifecycle-20261122`:
 - Dampak: Livewire Guru sudah menolak multi-role, tetapi boundary policy/API Exam belum dapat dinyatakan konsisten untuk seluruh platform. Ini blocker P0 lintas portal yang harus ditangani Agent 2.
 
 ### 7. Issue dan kontrak lintas agent
-- Issue #8 tetap OPEN, 3 komentar. Ada permintaan exact-role awal dan update Agent 3; belum ada persetujuan kontrak import XLSX/PDF.
+- Issue #8 tetap OPEN, 4 komentar setelah komentar koordinasi Agent 3 #7077281338. Ada permintaan exact-role awal, update regresi, dan temuan Agent 3 bahwa ExamPolicy Agent 2 belum konsisten; belum ada persetujuan kontrak import XLSX/PDF.
 - Issue #9 tetap OPEN, 0 komentar. Kontrak DOCX belum dijawab Agent 2.
 - Issue #10 tetap OPEN, 4 komentar. Review Agent 2 menyatakan NEEDS DESIGN / COORDINATION; gap lock order, lifecycle session/assignment Proktor, relasi histori masih menunggu koordinasi. Tidak ada approval Agent 1/2/3/4.
 - Branch Agent 2 dibanding ref SHA yang disebut pada issue #10 `808a7a917f1addbf8b8b67b4929dd1cbb6992cbd`: 13 commit ahead, 0 behind. File policy yang disebut di atas diambil dari branch ref Agent 2 saat audit, bukan disalin atau diubah.
@@ -135,7 +135,7 @@ Backup dibuat sebelum test file dan manifest diubah:
 - Seluruh 18 path backup dalam manifest diverifikasi ulang: **18/18 MATCH**.
 
 ### 3. Koordinasi
-Temuan exact-role Agent 2 pada `ExamPolicy` dikirim sebagai komentar koordinasi Issue #8. Tidak ada source Agent 2 yang diubah.
+Temuan exact-role Agent 2 pada `ExamPolicy` dikirim sebagai komentar koordinasi Issue #8 (comment ID `7077281338`). Tidak ada source Agent 2 yang diubah.
 
 ## PENGUJIAN
 
