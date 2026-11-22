@@ -46,8 +46,8 @@ Backup:
 - Sebelum conflict race refinement: `.../show.blade.php.before-conflict-race-fix`, blob `9047c4a9d0baa18114166c898a3f5fc26edd92fc`.
 - Sebelum conflict UI: `.../show.blade.php.before-conflict-ui`.
 - Sebelum ack/scope refinement: `.../show.blade.php.before-ack-and-scope-fix`.
-- Sebelum undurable submit gate: `.../show.blade.php.before-undurable-submit-gate`.
-- Sebelum submit response recovery: `.../show.blade.php.before-submit-response-recovery`.
+- Sebelum undurable submit gate: `.../show.blade.php.before-undurable-submit-gate`, blob `5dcf49ca53bed57a5ec4b840d4a2c87355bbfe28`.
+- Sebelum submit response recovery: `.../show.blade.php.before-submit-response-recovery`, blob `e11d60f8d5dac203b9fda3d130528ad463be3991`.
 
 Commit implementasi utama:
 - `61abd0dc6c6a3fab4a139ae0ffdcc488ccddfd9f` — IndexedDB draft + submit barrier.
