@@ -145,6 +145,12 @@ class TenantProfileAndAcademicPeriodTest extends TestCase
         $semesterOne = Semester::where('tenant_id', $this->tenant->id)->where('academic_year_id', $yearOne->id)->where('term', 'GANJIL')->firstOrFail();
         $component->call('activateSemester', $semesterOne->id)->assertHasNoErrors();
 
+        $component->set('semesterTerm', 'GENAP')->call('createSemester')->assertHasNoErrors();
+        $semesterTwo = Semester::where('tenant_id', $this->tenant->id)->where('academic_year_id', $yearOne->id)->where('term', 'GENAP')->firstOrFail();
+        $component->call('activateSemester', $semesterTwo->id)->assertHasNoErrors();
+        $this->assertDatabaseHas('semesters', ['id' => $semesterOne->id, 'is_active' => false]);
+        $this->assertDatabaseHas('semesters', ['id' => $semesterTwo->id, 'is_active' => true]);
+
         $component->set('yearName', '2027/2028')->call('createAcademicYear')->assertHasNoErrors();
         $yearTwo = AcademicYear::where('tenant_id', $this->tenant->id)->where('name', '2027/2028')->firstOrFail();
         $component->call('activateAcademicYear', $yearTwo->id)->assertHasNoErrors();
@@ -153,7 +159,7 @@ class TenantProfileAndAcademicPeriodTest extends TestCase
         $this->assertDatabaseHas('academic_years', ['id' => $yearTwo->id, 'is_active' => true]);
         $this->assertDatabaseHas('semesters', ['id' => $semesterOne->id, 'is_active' => false]);
         $this->assertSame(2, AcademicYear::where('tenant_id', $this->tenant->id)->count());
-        $this->assertSame(1, Semester::where('tenant_id', $this->tenant->id)->count());
+        $this->assertSame(2, Semester::where('tenant_id', $this->tenant->id)->count());
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'ACADEMIC_YEAR_ACTIVATED']);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $this->tenant->id, 'action' => 'SEMESTER_ACTIVATED']);
     }
