@@ -269,6 +269,7 @@ jobs:
           test -f tests/Feature/ImportDeadlockRetryTest.php
           test -f tests/Feature/TeacherSubjectAssignmentManagementTest.php
           test -f tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php
+          test -f tests/Feature/StudentLifecycleServiceTest.php
           test -f tests/Feature/LegacyRoleMigrationServiceTest.php
           test -f tests/Feature/AcademicPeriodManagementTest.php
           grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
@@ -373,6 +374,7 @@ jobs:
           php artisan test tests/Feature/ImportWorkbookServiceTest.php tests/Feature/ImportDeadlockRetryTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-import-workbook.log"
           php artisan test tests/Feature/TeacherSubjectAssignmentManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-assignment.log"
           php artisan test tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-assignment-concurrency.log"
+          php artisan test tests/Feature/StudentLifecycleServiceTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-student-lifecycle.log"
 
       - name: PHPUnit — API authentication and tenant isolation
         shell: bash
