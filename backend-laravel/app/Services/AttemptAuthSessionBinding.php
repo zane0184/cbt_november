@@ -17,7 +17,7 @@ class AttemptAuthSessionBinding
     public function identity(Request $request): ?array
     {
         $user = $request->user();
-        $applicationKey = $applicationKey;
+        $applicationKey = (string) config('app.key');
         if (!$user || trim($applicationKey) === '') {
             return null;
         }
@@ -33,7 +33,7 @@ class AttemptAuthSessionBinding
             }
 
             return [
-                'hash' => hash_hmac('sha256', 'sanctum-token:'.$tokenId, (string) config('app.key')),
+                'hash' => hash_hmac('sha256', 'sanctum-token:'.$tokenId, $applicationKey),
                 'type' => 'SANCTUM_TOKEN',
             ];
         }
@@ -42,7 +42,7 @@ class AttemptAuthSessionBinding
             $sessionId = $request->session()->getId();
             if (is_string($sessionId) && $sessionId !== '') {
                 return [
-                    'hash' => hash_hmac('sha256', 'web-session:'.$sessionId, (string) config('app.key')),
+                    'hash' => hash_hmac('sha256', 'web-session:'.$sessionId, $applicationKey),
                     'type' => 'WEB_SESSION',
                 ];
             }
