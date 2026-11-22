@@ -80,6 +80,18 @@ class AttemptDeviceLeaseService
 
         if (!$lease->expires_at || $lease->expires_at->lte($now)) {
             $lease->update(['status' => 'EXPIRED', 'released_at' => $now]);
+            DeviceLease::query()
+                ->where('tenant_id', $attempt->tenant_id)
+                ->where('exam_attempt_id', $attempt->id)
+                ->where('status', 'ACTIVE')
+                ->where('id', '<>', $lease->id)
+                ->lockForUpdate()
+                ->get()
+                ->each(fn (DeviceLease $staleLease) => $staleLease->update([
+                    'status' => 'REVOKED',
+                    'released_at' => $now,
+                    'release_reason' => 'SUPERSEDED_FENCE_GENERATION',
+                ]));
             $attempt->forceFill(['fence_generation' => ((int) $attempt->fence_generation) + 1])->save();
 
             $newLease = DeviceLease::create([
@@ -139,7 +151,6 @@ class AttemptDeviceLeaseService
         DeviceLease::query()
             ->where('tenant_id', $attempt->tenant_id)
             ->where('exam_attempt_id', $attempt->id)
-            ->where('fence_generation', $generation)
             ->where('status', 'ACTIVE')
             ->lockForUpdate()
             ->get()
