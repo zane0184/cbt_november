@@ -45,3 +45,21 @@ Matriks ini tidak memberi hak mengubah source owner lain dan bukan izin implemen
 Backend harus menolak Guru tanpa assignment aktif, assignment expired/revoked, room/Exam/Session berbeda, tenant/installation berbeda, dan actor bukan akun GURU yang memenuhi exact-role. Menu frontend bukan kontrol keamanan. Semua endpoint, Livewire, query monitoring, export dan media harus room-scoped. Histori identitas/assignment tetap dipertahankan.
 
 Status matriks ini tetap usulan ownership sampai pemilik teknis mengonfirmasi scope masing-masing. Keputusan produk di atas sudah final dari koordinator; bukan approval source atau izin implementasi.
+
+
+## KOREKSI SCOPE FINAL — berlaku menggantikan rumusan lama
+- Sampai Juni 2027: HANYA WEB CBT. Android native/Android Studio dan Web Super Admin ditunda; bukan blocker/dependency/prasyarat.
+- Portal aktif: ADMIN_MADRASAH, GURU, SISWA saja.
+- Fungsi Operator berada pada Admin Madrasah; tidak ada akun/role OPERATOR.
+- Proktor adalah penugasan sementara pada akun GURU; menu di Web Guru; tidak ada akun/login/credential/portal/role permanen Proktor.
+- SISWA hanya peserta ujian, bukan Proktor.
+- KAMAD tidak termasuk ruang lingkup identitas/kewenangan CBT. Jangan mencantumkannya sebagai aktor, kebutuhan, atau acceptance criterion. Referensi legacy hanya dicatat bila berdampak pada allowlist otorisasi atau fungsi Web CBT.
+- Distribusi: satu ZIP untuk semua madrasah, instalasi terpisah per madrasah, database akademik dan seluruh resource operasional terisolasi per instalasi, tenant_id sebagai defense-in-depth.
+
+## Ownership yang berlaku untuk Web CBT
+- Agent 1: Exam/ExamSession canonical, Room/SessionRoom, placement, temporary Guru-Proktor assignment, scheduler, close/recovery barrier, audit dan integritas relasi.
+- Agent 2: kontrak backend Exam/Attempt/Answer/Score, auth/exact-role tiga akun, tenant/installation defense, global lock order, idempotensi dan lifecycle transaksi. Agent 1 wajib meminta keputusan lock/recovery yang beririsan sebelum patch lintas-service.
+- Agent 3: Web Admin Madrasah dan Web Guru, termasuk menu Proktor di Web Guru; UI hanya consumer backend authorization dan room-scoped data.
+- Agent 4: Web Siswa admission, token, jadwal, Attempt/Answer persistence, submit/resume/expiry/recovery; SISWA hanya peserta.
+
+Ownership tetap tidak mengizinkan satu agent mengubah branch milik agent lain atau menganggap persetujuan tanpa bukti langsung.
