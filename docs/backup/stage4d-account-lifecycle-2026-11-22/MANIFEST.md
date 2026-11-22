@@ -161,3 +161,12 @@ Manifest sebelum penambahan disalin ke `docs/backup/stage4d-account-lifecycle-20
 | backend-laravel/tests/Support/IndependentBrowserClient.php | docs/backup/stage4d-account-lifecycle-2026-11-22/IndependentBrowserClient.php.before-reset-default-guard-2026-11-22 | af140b8e4b71fcc12d1f25cc364062b9caf795db | 2086 | ee94deb364ecbf5f9923621a3fc51c31f246e454 |
 
 Manifest sebelumnya disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-browser-client-guard-reset-2026-11-22` (blob SHA `407614023cf9cb955ee63b889bee4f4241d1d261`, backup commit `ffd83140772ea88bf723de3ec998128cba243803`). Backup source diverifikasi identik berdasarkan Git blob SHA.
+
+
+## Snapshot tambahan — sebelum diagnostic body HTTP 500 pada browser Admin (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/StudentWebLoginTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/StudentWebLoginTest.php.before-admin-login-response-diagnostic-2026-11-22 | 44ee3349ae51c91293d1dcd1fd0473fa19912e35 | 15589 | c13cf3c3f2419e4ee7ba56b2e923cc0bf4a6c0d4 |
+
+Manifest sebelumnya disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-admin-login-response-diagnostic-2026-11-22` (blob SHA `527ebf0905ac3f31af89bd58439da554736c909d`, backup commit `4fed94bb171aac0ace533406c3978de6ad2d3662`). Backup source diverifikasi identik berdasarkan Git blob SHA.
