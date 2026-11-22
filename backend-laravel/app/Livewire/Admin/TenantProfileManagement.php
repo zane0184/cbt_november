@@ -16,6 +16,7 @@ class TenantProfileManagement extends Component
     use WithFileUploads;
 
     public string $name = '';
+    public string $principalName = '';
     public string $nsm = '';
     public string $npsn = '';
     public string $address = '';
@@ -28,6 +29,7 @@ class TenantProfileManagement extends Component
         $this->authorizeProfileManagement();
         $tenant = $this->currentTenant();
         $this->name = (string) $tenant->name;
+        $this->principalName = (string) ($tenant->principal_name ?? '');
         $this->nsm = (string) ($tenant->nsm ?? '');
         $this->npsn = (string) ($tenant->npsn ?? '');
         $this->address = (string) ($tenant->address ?? '');
@@ -55,6 +57,7 @@ class TenantProfileManagement extends Component
         $tenantId = (string) auth()->user()->tenant_id;
         return [
             'name' => ['required', 'string', 'max:255'],
+            'principalName' => ['nullable', 'string', 'max:255'],
             'nsm' => ['nullable', 'digits:12', Rule::unique('tenants', 'nsm')->ignore($tenantId, 'id')],
             'npsn' => ['nullable', 'digits:8', Rule::unique('tenants', 'npsn')->ignore($tenantId, 'id')],
             'address' => ['nullable', 'string', 'max:2000'],
@@ -78,6 +81,7 @@ class TenantProfileManagement extends Component
                 $tenant = Tenant::query()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
                 $oldValues = [
                     'name' => $tenant->name,
+                    'principal_name' => $tenant->principal_name,
                     'nsm' => $tenant->nsm,
                     'npsn' => $tenant->npsn,
                     'address' => $tenant->address,
@@ -87,6 +91,7 @@ class TenantProfileManagement extends Component
                 ];
                 $newValues = [
                     'name' => trim($this->name),
+                    'principal_name' => trim($this->principalName) !== '' ? trim($this->principalName) : null,
                     'nsm' => trim($this->nsm) !== '' ? trim($this->nsm) : null,
                     'npsn' => trim($this->npsn) !== '' ? trim($this->npsn) : null,
                     'address' => trim($this->address) !== '' ? trim($this->address) : null,
