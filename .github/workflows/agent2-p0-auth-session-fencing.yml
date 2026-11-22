@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - work/agent2-p0-auth-session-fencing-20261123
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -38,6 +39,8 @@ jobs:
 
     env:
       APP_ENV: testing
+      # This bypass is guarded by APP_ENV=testing in EnsureLicenseActive.
+      CBT_LICENSE_TEST_BYPASS: "true"
       APP_DEBUG: "true"
       APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       DB_CONNECTION: mysql
@@ -86,6 +89,7 @@ jobs:
 
       - name: Prepare Laravel runtime
         run: |
+          touch .env
           mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
           chmod -R u+rwX bootstrap/cache storage/framework storage/logs
           php artisan package:discover --ansi
