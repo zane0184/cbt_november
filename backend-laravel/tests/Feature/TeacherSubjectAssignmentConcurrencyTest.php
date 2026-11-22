@@ -18,15 +18,12 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class TeacherSubjectAssignmentConcurrencyTest extends TestCase
 {
-    use DatabaseMigrations;
-
     private Tenant $tenant;
     private User $admin;
     private array $payload;
@@ -38,6 +35,11 @@ class TeacherSubjectAssignmentConcurrencyTest extends TestCase
         if (DB::getDriverName() !== 'mysql') {
             $this->markTestSkipped('Tenant mutex concurrency test requires MySQL 8/InnoDB.');
         }
+
+        // Rebuild only the disposable test schema; do not roll back the full batch,
+        // which intentionally contains a separate forward-only Device Lease migration.
+        $this->artisan('migrate:fresh', ['--force' => true]);
+        $this->assertSame(1, (int) DB::selectOne('SELECT @@FOREIGN_KEY_CHECKS AS enabled')->enabled);
 
         $version = (string) DB::selectOne('SELECT VERSION() AS version')->version;
         $this->assertGreaterThanOrEqual(8, (int) explode('.', $version)[0]);
