@@ -177,3 +177,64 @@ Inventaris di atas adalah seluruh referensi yang berhasil diverifikasi pada file
 
 ### Status
 Keputusan produk untuk portal/KAMAD/identitas Proktor: FINAL dari koordinator. Implementasi backend/UI tetap GATED karena approval owner Agent 2/3/4 dan izin implementasi runtime belum lengkap. Status Stage 4B keseluruhan tetap `BLOCKED — CROSS-AGENT DECISION PENDING`.
+
+
+# KOREKSI FINAL KOORDINATOR — WEB CBT ONLY (22 NOVEMBER 2026)
+
+Bagian ini menggantikan setiap rumusan terdahulu yang bertentangan pada dokumen ini. Riwayat audit lama dipertahankan sebagai catatan historis; keputusan dan status aktif mengikuti bagian koreksi ini.
+
+## Ruang lingkup produk
+- Sampai Juni 2027, pekerjaan aktif hanya WEB CBT.
+- Android native/Android Studio dan Web Super Admin ditunda sampai Juni 2027. Keduanya bukan blocker, dependency, atau prasyarat penyelesaian Web CBT.
+- Portal/akun aktif hanya ADMIN_MADRASAH, GURU, SISWA.
+- Fungsi administrasi operator ditangani ADMIN_MADRASAH; tidak ada akun/role OPERATOR.
+- Proktor adalah assignment sementara untuk akun GURU; menu Proktor berada di Web Guru. Tidak ada akun, login, credential, portal, atau role permanen Proktor.
+- SISWA hanya peserta ujian, bukan Proktor.
+- KAMAD tidak termasuk ruang lingkup identitas maupun kewenangan CBT. Tidak ada fitur akun, role, portal, permission, dashboard, monitoring, atau approval KAMAD yang perlu disiapkan. Referensi source lama dicatat hanya jika berdampak pada allowlist otorisasi atau fungsi Web CBT; jangan jadikan pencarian kata KAMAD sebagai pekerjaan produk tersendiri.
+
+## Model distribusi final
+- Satu ZIP distribusi untuk seluruh madrasah; setiap madrasah memiliki instalasi Web CBT sendiri.
+- Setiap instalasi memiliki database akademik, credential, konfigurasi, domain, session, cache, queue, storage, log, ekspor, temporary files, dan backup sendiri.
+- Tidak ada database akademik bersama dan tidak ada akses akademik silang antarinstalasi.
+- tenant_id dipertahankan sebagai defense-in-depth di dalam instalasi masing-masing.
+- Web Super Admin yang direncanakan setelah Juni 2027 hanya untuk lisensi, pembayaran, dan status layanan; tidak mengakses data akademik.
+
+## Audit Stage 4B aktual — source Agent 1 (read-only)
+| File | Blob SHA | Fakta yang diperiksa |
+|---|---|---|
+| `database/migrations/2026_11_22_110001_create_exam_room_session_scope.php` | `9551b1dd79397bd0432f03eefc970852b675fd25` | Unique key adalah tenant_id + exam_id + session_number. Tidak ada penanda/constraint canonical operational session; unique nomor sesi tidak menjamin satu Exam hanya memiliki satu ExamSession operasional. |
+| `app/Services/ExamSessionLifecycleService.php` | `8e34152afd817f30cc2f81b5f25fc450571463ac` | Scheduler mengunci ExamSession dan memperbarui status serta assignment; komentar source menyebut tidak membaca Attempt/Answer. Session dapat menjadi COMPLETED berdasarkan ends_at tanpa recovery barrier Attempt aktif. |
+| `app/Services/ExamRoomSessionService.php` | `e514fa9f751584e54af1125d48b5673e013f2339` | Service memuat operasi Room/Session/placement/assignment; transaksi dan lock perlu diaudit per method terhadap satu global parent-first order. |
+| `app/Services/ExamProctorAssignmentService.php` | `c968ce68c0decace1c35a0ccb3b2b4449c057656` | Assignment memvalidasi exact satu role GURU dan profil Guru aktif pada tenant; lockScope mengunci Exam, Room, SessionRoom, Session; beberapa operasi membaca/lock User dan Assignment dengan urutan yang perlu diselaraskan. |
+| `app/Http/Controllers/Api/V1/ExamAttemptController.php` | `13e8981cca4653ff4e9b9448a50e4d0ec8a74bae` | Start/resume menggunakan Exam → Participant → Attempt dan resume Attempt IN_PROGRESS yang belum expired; memakai X-Device-Binding-ID, bukan bukti Device Lease/Fencing. |
+| `app/Services/ExamMonitoringScope.php` | `11b455954f974d1c60ed5c49700368f8d37c09c1` | Scope Proktor memakai confirmed assignment dan active participant placement, tetapi masih memiliki jalur author-level yang melampaui Room. Ini tidak sesuai aturan bahwa capability Proktor harus assignment + Room scoped. |
+| `app/Models/ExamSession.php` | `d1d41ad8c7063edbd6b17e094a3b39bdec71664a` | Model session belum memiliki atribut canonical/operational flag. |
+| `app/Models/ExamSessionRoom.php` | `d55c16e8a84432a1283d90418b29aa9833d28d59` | Relasi Exam, Session, Room, rombel mapping, participant assignment tersedia. |
+
+Temuan di atas adalah audit file yang dibuka, bukan klaim bahwa seluruh method/route/consumer sudah diperiksa. Audit lanjutan perlu membaca per-method untuk cancellation/reschedule, placement/capacity, scheduler job registration, authorization surfaces, dan assignment expiry/recovery.
+
+## DESAIN — keputusan yang sudah final vs kontrak teknis terbuka
+**Final koordinator:** Web CBT only; tiga akun aktif; tidak ada Operator; Proktor adalah assignment sementara akun Guru di Web Guru; Siswa hanya peserta; distribusi per madrasah dengan instalasi dan database terpisah; tenant_id defense-in-depth.
+
+**Target teknis wajib:** satu Exam = satu ExamSession operasional = satu pelaksanaan serentak; banyak Room dalam session tersebut; jadwal resmi dan waktu server menjadi otoritas; Attempt aktif yang masih sah dapat resume setelah Exam ditutup; Attempt baru ditolak setelah close.
+
+**Belum disetujui/terverifikasi:** bentuk DB guard canonical session; global lock order; recovery grace/window dan barrier; aturan kapan assignment/Session boleh diselesaikan; cancel/reschedule; serialisasi race placement/kapasitas; kontrak Attempt/Answer/Score dengan Agent 2; kontrak UI dengan Agent 3; admission/resume/submit dengan Agent 4. Jangan mengubah proposal lama menjadi approval tanpa respons owner yang dapat diverifikasi.
+
+## Koordinasi dan status owner
+- Issue #10 memiliki 16 komentar saat refresh terbaru. Komentar #7078921888 adalah instruksi koordinator terbaru; bukan approval teknis owner.
+- Komentar yang terlihat masih berasal dari akun `zane0184`; tidak ada respons owner Agent 2/3/4 yang terverifikasi secara terpisah pada refresh ini.
+- Agent 2 checkpoint yang dibaca masih menyatakan audit/design complete dan implementation gated; source baseline yang dinyatakan dalam dokumen adalah `74bf7178f46673e9be90523671490c0749034acd`.
+- Agent 3 checkpoint yang dibaca menyatakan Web Guru parsial; source HEAD dalam dokumen `55e8557c30f427db97624b8c4837e8dc3c9d8784`, sedangkan dokumen/komentar lain merujuk checkpoint berbeda. Exact branch HEAD perlu dikonfirmasi lewat owner/remote ref yang dapat dibaca.
+- Agent 4 dokumentasi branch ditemukan berbasis main; kandidat implementasi tetap belum dikonfirmasi owner sebagai branch resmi.
+- Perbandingan ref dengan main: Agent1 1223 ahead/15 behind; Agent2 1356/15; Agent3 1187/15; Agent4 docs 37/0; kandidat Agent4 930/15. Perbandingan memiliki batas 300 file dari connector dan tidak menggantikan verifikasi SHA HEAD langsung.
+
+## IMPLEMENTASI
+Tidak ada source runtime, migration/schema, test, workflow, database, branch Agent2/3/4, merge/rebase/cherry-pick, deployment, Android, atau Web Super Admin yang diubah. Perubahan dokumen ini hanya mengoreksi scope dan merekam audit aktual.
+
+## PENGUJIAN
+- Branch existence, compare terhadap main, Issue #10 comments, fetch source dan blob SHA: dilakukan.
+- PHPUnit, migration, disposable DB restore, MySQL concurrency/deadlock, browser/Livewire E2E, scheduler runtime, Attempt recovery, dan UAT: NOT RUN.
+- CI exact-SHA current branch tidak diverifikasi pada refresh ini. Status lama tidak dinaikkan menjadi PASS.
+
+## STATUS
+`AUDIT IN PROGRESS — WEB CBT ONLY`. Tidak semua pekerjaan Agent 1 selesai. Tidak ada izin merge/deploy/produksi. Lanjutkan audit dan desain Stage 4B serta koordinasi kontrak; implementasi runtime hanya setelah scope method, backup, lock contract yang bergantung Agent 2, dan izin perubahan yang sesuai tersedia.
