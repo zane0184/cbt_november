@@ -1,0 +1,474 @@
+name: WA-01 Alternative Isolated Runtime Verification
+
+on:
+  push:
+    branches:
+      - work/web-admin-package1-implementation-20261122
+      - work/import-guru-siswa-implementation-20261122
+      - work/stage4a-monitoring-rbac-20261122
+      - work/stage4b-room-session-20261122
+    paths:
+      - 'backend-laravel/**'
+      - '.github/workflows/wa01-alternative-isolated-runtime.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wa01-alt-runtime-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  safe-runtime-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-alt-ephemeral-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    defaults:
+      run:
+        working-directory: backend-laravel
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      CBT_LICENSE_TEST_BYPASS: "true"
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Mask temporary MySQL root credential
+        working-directory: .
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-alt-ephemeral-root
+        run: echo "::add-mask::$DB_ROOT_PASSWORD"
+
+      - name: Checkout exact pushed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up PHP 8.3 and Composer v2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, tokenizer, xml, xmlreader, xmlwriter, curl, dom, gd, zip, intl, exif, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Record runtime and validate locked dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/wa01-alt"
+          php -v | tee "$RUNNER_TEMP/wa01-alt/php-version.log"
+          composer --version --no-ansi | tee "$RUNNER_TEMP/wa01-alt/composer-version.log"
+          php -m | sort | tee "$RUNNER_TEMP/wa01-alt/php-extensions.log"
+          test "$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')" = "8.3"
+          composer validate --strict --no-check-publish 2>&1 | tee "$RUNNER_TEMP/wa01-alt/composer-validate.log"
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts 2>&1 | tee "$RUNNER_TEMP/wa01-alt/composer-install.log"
+          composer check-platform-reqs 2>&1 | tee "$RUNNER_TEMP/wa01-alt/composer-platform.log"
+
+      - name: Prepare Laravel package discovery without MySQL
+        shell: bash
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: |
+          set -euo pipefail
+          test ! -e .env
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+          php artisan package:discover --ansi 2>&1 | tee "$RUNNER_TEMP/wa01-alt/package-discover.log"
+
+      - name: Provision unique disposable database and schema-limited app user
+        id: db
+        shell: bash
+        env:
+          DB_ROOT_HOST: 127.0.0.1
+          DB_ROOT_PORT: "3306"
+          DB_ROOT_USER: root
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-alt-ephemeral-root
+        run: |
+          set -euo pipefail
+          DB_NAME="cbt_wa01_alt_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_USER="wa01_alt_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$DB_ROOT_PASSWORD"
+          echo "::add-mask::$DB_PASSWORD"
+          if [[ ! "$DB_NAME" =~ ^cbt_wa01_alt_[0-9]+_[0-9]+$ || ! "$DB_USER" =~ ^wa01_alt_[0-9]+_[0-9]+$ ]]; then
+            echo "Refusing unexpected disposable database identity" >&2
+            exit 70
+          fi
+          mysql --protocol=tcp --host="$DB_ROOT_HOST" --port="$DB_ROOT_PORT" --user="$DB_ROOT_USER" --password="$DB_ROOT_PASSWORD" <<SQL
+          CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          CREATE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
+          GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'%';
+          SQL
+          {
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=3306"
+            echo "DB_DATABASE=$DB_NAME"
+            echo "DB_USERNAME=$DB_USER"
+            echo "DB_PASSWORD=$DB_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "database=$DB_NAME" >> "$GITHUB_OUTPUT"
+          echo "db_user=$DB_USER" >> "$GITHUB_OUTPUT"
+
+      - name: Verify MySQL 8 InnoDB identity, empty schema and grants
+        id: preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-alt/mysql-preflight.json"
+          <?php
+          $db = getenv('DB_DATABASE');
+          $user = getenv('DB_USERNAME');
+          $expectedDb = 'cbt_wa01_alt_' . getenv('GITHUB_RUN_ID') . '_' . getenv('GITHUB_RUN_ATTEMPT');
+          $expectedUser = 'wa01_alt_' . getenv('GITHUB_RUN_ID') . '_' . getenv('GITHUB_RUN_ATTEMPT');
+          if (getenv('APP_ENV') !== 'testing' ||
+              getenv('DB_CONNECTION') !== 'mysql' ||
+              getenv('DB_HOST') !== '127.0.0.1' ||
+              getenv('DB_PORT') !== '3306' ||
+              $db !== $expectedDb || $user !== $expectedUser ||
+              file_exists('.env')) {
+              fwrite(STDERR, "Disposable database identity gate refused execution.\n");
+              exit(71);
+          }
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=' . $db,
+              $user,
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $identity = $pdo->query(
+              'SELECT DATABASE() AS db, VERSION() AS version, @@hostname AS hostname, ' .
+              '@@port AS port, @@default_storage_engine AS engine, CURRENT_USER() AS db_user'
+          )->fetch(PDO::FETCH_ASSOC);
+          $tables = (int) $pdo->query(
+              "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'"
+          )->fetchColumn();
+          $grants = $pdo->query('SHOW GRANTS FOR CURRENT_USER()')->fetchAll(PDO::FETCH_COLUMN);
+          $schemaGrant = false;
+          $unsafe = false;
+          foreach ($grants as $grant) {
+              if (stripos($grant, 'ON `' . $db . '`.*') !== false) $schemaGrant = true;
+              if (stripos($grant, 'ON *.*') !== false &&
+                  stripos($grant, 'GRANT USAGE ON *.*') !== 0) $unsafe = true;
+              if (stripos($grant, 'WITH GRANT OPTION') !== false) $unsafe = true;
+          }
+          $ok = $identity['db'] === $expectedDb &&
+              str_starts_with($identity['version'], '8.0.') &&
+              strtoupper($identity['engine']) === 'INNODB' &&
+              (int) $identity['port'] === 3306 &&
+              $tables === 0 && $schemaGrant && !$unsafe;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'mysql_hostname' => $identity['hostname'],
+              'database' => $identity['db'],
+              'database_user' => $identity['db_user'],
+              'mysql_version' => $identity['version'],
+              'engine' => $identity['engine'],
+              'base_tables_before_tests' => $tables,
+              'schema_scoped_grant_verified' => $schemaGrant,
+              'unexpected_global_privilege_or_grant_option' => $unsafe,
+              'grants' => $grants,
+              'production_or_vps_credentials_used' => false,
+              'checkout_env_file_present' => file_exists('.env')
+          ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+          if (!$ok) exit(72);
+          PHP
+
+      - name: Verify Laravel resolves only the disposable MySQL account
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-alt/laravel-db-config.json"
+          <?php
+          require 'vendor/autoload.php';
+          $app = require 'bootstrap/app.php';
+          $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+          $mysql = config('database.connections.mysql');
+          $expected = [
+              'driver' => 'mysql',
+              'host' => getenv('DB_HOST'),
+              'port' => getenv('DB_PORT'),
+              'database' => getenv('DB_DATABASE'),
+              'username' => getenv('DB_USERNAME')
+          ];
+          $actual = [
+              'driver' => $mysql['driver'] ?? null,
+              'host' => $mysql['host'] ?? null,
+              'port' => (string) ($mysql['port'] ?? ''),
+              'database' => $mysql['database'] ?? null,
+              'username' => $mysql['username'] ?? null
+          ];
+          $unsafe = is_file('storage/app/private/installer-database.php') ||
+              is_file('bootstrap/cache/config.php') ||
+              !empty($mysql['url']) || !empty(getenv('DB_URL'));
+          $ok = config('database.default') === 'mysql' &&
+              $actual === $expected &&
+              $actual['username'] !== 'root' &&
+              hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? '')) &&
+              !$unsafe;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'default_connection' => config('database.default'),
+              'resolved_connection' => $actual,
+              'application_user_is_root' => $actual['username'] === 'root',
+              'installer_database_override_present' => is_file('storage/app/private/installer-database.php'),
+              'cached_database_config_present' => is_file('bootstrap/cache/config.php'),
+              'database_url_override_present' => !empty($mysql['url']) || !empty(getenv('DB_URL')),
+              'password_matches_ephemeral_credential' => hash_equals((string) getenv('DB_PASSWORD'), (string) ($mysql['password'] ?? ''))
+          ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+          if (!$ok) exit(73);
+          PHP
+
+      - name: Prepare empty test-only environment file after DB identity verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -s .env
+          touch .env
+          test -f .env
+          test ! -s .env
+
+      - name: Static guard — selected test paths exclude seeders and permission writes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f tests/Feature/AdminCbtBoundaryTest.php
+          test -f tests/Feature/AuthTest.php
+          test -f tests/Feature/MultiTenantAuthTest.php
+          test -f tests/Feature/TenantIsolationTest.php
+          test -f tests/Feature/AssessmentPolicyTeacherCreateTest.php
+          test -f tests/Feature/WebAdminAuthTest.php
+          test -f tests/Feature/StudentWebLoginTest.php
+          test -f tests/Feature/StudentResultVisibilityTest.php
+          test -f tests/Feature/AdminDashboardAccessTest.php
+          test -f tests/Feature/AcademicPeriodManagementTest.php
+          test -f tests/Feature/TenantProfileManagementTest.php
+          test -f tests/Feature/AdminUserManagementScopeTest.php
+          test -f tests/Feature/ImportTemplateGeneratorTest.php
+          test -f tests/Feature/ImportWorkbookServiceTest.php
+          test -f tests/Feature/ImportDeadlockRetryTest.php
+          test -f tests/Feature/LegacyRoleMigrationServiceTest.php
+          test -f tests/Feature/MonitoringDuplicationTest.php
+          test -f tests/Feature/ProctorAssignmentSecurityTest.php
+          test -f tests/Feature/ExamRoomSessionManagementTest.php
+          test -f tests/Feature/ExamRoomSessionConcurrencyTest.php
+          test -f tests/Feature/AcademicPeriodManagementTest.php
+          grep -Fq 'function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces' tests/Feature/AdminCbtBoundaryTest.php
+          if awk '/function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces/{selected=1} selected && /public function test_admin_bootstrap_grants_only_administrative_and_temporary_proctor_assignment_permissions/{selected=0} selected{print}' tests/Feature/AdminCbtBoundaryTest.php | grep -E 'RolePermissionBootstrapper|Permission::(create|firstOrCreate|updateOrCreate)|permissions\(\)->(sync|attach|detach)|permission_role.*(insert|update|delete)'; then
+            echo "Selected Admin boundary method contains a prohibited permission mutation/bootstrapper." >&2
+            exit 1
+          fi
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions|DatabaseSeeder|->seed\('             tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php tests/Feature/TenantIsolationTest.php             tests/Feature/AssessmentPolicyTeacherCreateTest.php tests/Feature/WebAdminAuthTest.php             tests/Feature/StudentWebLoginTest.php tests/Feature/StudentResultVisibilityTest.php; then
+            echo "Prohibited seeder/bootstrapper path found in selected regression tests." >&2
+            exit 1
+          fi
+          if sed -n '/protected function setUp()/,/^    }/p' tests/TestCase.php | grep -F 'bootstrapCbtRolePermissions'; then
+            echo "Base TestCase setUp invokes prohibited permission bootstrapper." >&2
+            exit 1
+          fi
+          if grep -nE 'RolePermissionBootstrapper|bootstrapCbtRolePermissions' app/Providers/AppServiceProvider.php; then
+            echo "Application provider invokes prohibited permission bootstrapper." >&2
+            exit 1
+          fi
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/AcademicPeriodManagementTest.php; then
+            echo "Academic period test contains prohibited permission table writes." >&2
+            exit 1
+          fi
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/TenantProfileManagementTest.php; then
+            echo "Tenant profile test contains prohibited permission table writes." >&2
+            exit 1
+          fi
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/AdminUserManagementScopeTest.php; then
+            echo "Admin user test contains prohibited permission table writes." >&2
+            exit 1
+          fi
+          if grep -nE 'Permission::(create|firstOrCreate|updateOrCreate)|permissions\\(\\)->(sync|attach|detach)|permission_role.*(insert|update|delete)' tests/Feature/LegacyRoleMigrationServiceTest.php; then
+            echo "Legacy role migration test contains prohibited permission table writes." >&2
+            exit 1
+          fi
+          echo "Static guard PASS: selected Admin tests contain no permission writes; no seeder/bootstrapper is selected."
+
+      - name: PHP lint — application, migrations, routes and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app bootstrap config database routes tests -type f -name '*.php' -print0 |
+            xargs -0 -n1 php -l 2>&1 | tee "$RUNNER_TEMP/wa01-alt/php-lint.log"
+
+      - name: PHPUnit — Admin CBT boundary without permission-table mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AdminCbtBoundaryTest.php             --filter='test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces'             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-cbt-boundary.log"
+
+      - name: PHPUnit — Admin dashboard, tenant scope and CBT-free surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AdminDashboardAccessTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-dashboard.log"
+
+      - name: PHPUnit — Academic period activation, audit and tenant boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AcademicPeriodManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-academic-periods.log"
+
+      - name: PHPUnit — Legacy role migration without permission mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/LegacyRoleMigrationServiceTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-legacy-role-migration.log"
+
+      - name: PHPUnit — Tenant profile management
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/TenantProfileManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-tenant-profile.log"
+
+      - name: PHPUnit — Admin user-management tenant scope and role restrictions
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AdminUserManagementScopeTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-admin-users.log"
+
+      - name: PHPUnit — Excel import template generation and workbook lifecycle
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ImportTemplateGeneratorTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-import-template.log"
+          php artisan test tests/Feature/ImportWorkbookServiceTest.php tests/Feature/ImportDeadlockRetryTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-import-workbook.log"
+
+      - name: PHPUnit — API authentication and tenant isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/AuthTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-api-auth.log"
+          php artisan test tests/Feature/MultiTenantAuthTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-multi-tenant-auth.log"
+          php artisan test tests/Feature/TenantIsolationTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-tenant-isolation.log"
+
+      - name: PHPUnit — Guru and Siswa regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          vendor/bin/phpunit tests/Feature/AssessmentPolicyTeacherCreateTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-guru-policy.log"
+          php artisan test tests/Feature/WebAdminAuthTest.php             --filter='test_teacher_can_login_using_nip'             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-guru-login.log"
+          php artisan test tests/Feature/StudentWebLoginTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-siswa-login.log"
+          php artisan test tests/Feature/StudentResultVisibilityTest.php             --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-siswa-results.log"
+
+      - name: PHPUnit — monitoring duplication with Guru author fixture and Admin denial
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/MonitoringDuplicationTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-monitoring-duplication.log"
+
+      - name: PHPUnit — temporary Guru proctor assignment and tenant isolation
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ProctorAssignmentSecurityTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-proctor-assignment.log"
+
+      - name: PHPUnit — Stage 4C teacher subject assignment lifecycle and tenant boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/TeacherSubjectAssignmentManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-subject-assignment.log"
+
+      - name: PHPUnit — Stage 4B room, session and participant placement integrity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ExamRoomSessionManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-room-session.log"
+
+      - name: Verify every migrated base table uses InnoDB
+        if: always() && steps.preflight.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-alt/mysql-post-test-engine.json"
+          <?php
+          $pdo = new PDO(
+              'mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE'),
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $rows = $pdo->query(
+              "SELECT ENGINE, COUNT(*) AS total FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' GROUP BY ENGINE"
+          )->fetchAll(PDO::FETCH_ASSOC);
+          $total = 0;
+          $nonInnoDb = 0;
+          foreach ($rows as $row) {
+              $total += (int) $row['total'];
+              if (strtoupper((string) $row['ENGINE']) !== 'INNODB') $nonInnoDb += (int) $row['total'];
+          }
+          echo json_encode([
+              'database' => getenv('DB_DATABASE'),
+              'base_table_count' => $total,
+              'non_innodb_table_count' => $nonInnoDb,
+              'all_tables_innodb' => $total > 0 && $nonInnoDb === 0
+          ], JSON_PRETTY_PRINT) . PHP_EOL;
+          $requiredTables = ['tenants', 'users', 'academic_years', 'semesters', 'roles', 'permissions', 'permission_role', 'audit_logs', 'exams', 'exam_attempts', 'exam_rooms', 'exam_sessions', 'exam_session_rooms', 'exam_session_room_rombels', 'exam_participant_room_assignments'];
+          $missingTables = [];
+          foreach ($requiredTables as $table) {
+              $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? AND table_type = ?');
+              $stmt->execute([$table, 'BASE TABLE']);
+              if ((int) $stmt->fetchColumn() !== 1) $missingTables[] = $table;
+          }
+          $schemaReady = $total >= 60 && $missingTables === [];
+          echo json_encode(['required_schema_ready' => $schemaReady, 'missing_required_tables' => $missingTables], JSON_PRETTY_PRINT) . PHP_EOL;
+          if (!$schemaReady || $total === 0 || $nonInnoDb !== 0) exit(1);
+          PHP
+
+      - name: PHPUnit — MySQL 8 InnoDB concurrent room conflict
+        if: steps.preflight.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ExamRoomSessionConcurrencyTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-room-session-concurrency.log"
+
+      - name: Cleanup disposable database and app user
+        if: always()
+        working-directory: .
+        shell: bash
+        env:
+          DB_ROOT_HOST: 127.0.0.1
+          DB_ROOT_PORT: "3306"
+          DB_ROOT_USER: root
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-wa01-alt-ephemeral-root
+        run: |
+          echo "::add-mask::$DB_ROOT_PASSWORD"
+          set -euo pipefail
+          DB_NAME="cbt_wa01_alt_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_USER="wa01_alt_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          mysql --protocol=tcp --host="$DB_ROOT_HOST" --port="$DB_ROOT_PORT" --user="$DB_ROOT_USER" --password="$DB_ROOT_PASSWORD"             --execute="DROP DATABASE IF EXISTS $DB_NAME; DROP USER IF EXISTS '$DB_USER'@'%';"
+          echo "Disposable schema and app user dropped." | tee "$RUNNER_TEMP/wa01-alt/cleanup.log"
+
+      - name: Upload runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wa01-alternative-runtime-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/wa01-alt/
+          if-no-files-found: warn
+          retention-days: 30
