@@ -18,15 +18,13 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 class TeacherSubjectAssignmentConcurrencyTest extends TestCase
 {
-    use DatabaseMigrations;
-
     private Tenant $tenant;
     private User $admin;
     private array $payload;
@@ -41,6 +39,12 @@ class TeacherSubjectAssignmentConcurrencyTest extends TestCase
 
         $version = (string) DB::selectOne('SELECT VERSION() AS version')->version;
         $this->assertGreaterThanOrEqual(8, (int) explode('.', $version)[0]);
+
+        // The CI workflow migrates its disposable database before this test.
+        // Do not use DatabaseMigrations here: it rolls back every migration at
+        // teardown, but some security migrations are intentionally forward-only.
+        $this->assertTrue(Schema::hasTable('tenants'));
+        $this->assertTrue(Schema::hasTable('teacher_subject_assignments'));
 
         $this->tenant = Tenant::create(['name' => 'Tenant Assignment Race', 'code' => 'TAR1']);
         app(TenantContext::class)->setTenantId($this->tenant->id);
