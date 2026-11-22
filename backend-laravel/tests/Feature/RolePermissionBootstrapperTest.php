@@ -33,6 +33,7 @@ class RolePermissionBootstrapperTest extends TestCase
     public function test_role_permissions_are_granted_least_privilege_and_idempotently(): void
     {
         $this->createRequiredRoles();
+        $legacyProctor = Role::create(['name' => 'PROKTOR', 'label' => 'Legacy Proktor']);
         $manage = Permission::create(['name' => 'curriculum.manage', 'label' => 'Kelola Struktur Kurikulum']);
         Role::whereIn('name', ['KAMAD', 'GURU', 'OPERATOR'])->get()->each(fn (Role $role) => $role->permissions()->attach($manage->id));
 
@@ -43,6 +44,7 @@ class RolePermissionBootstrapperTest extends TestCase
             ['name' => 'exam.grade', 'label' => 'Kelola nilai'],
             ['name' => 'question.manage', 'label' => 'Kelola bank soal'],
         ]);
+        $legacyProctor->permissions()->attach(Permission::insertOrIgnore([['name' => 'legacy.proctor', 'label' => 'Legacy']]) ? Permission::where('name', 'legacy.proctor')->value('id') : Permission::where('name', 'legacy.proctor')->value('id'));
         Role::where('name', 'ADMIN_MADRASAH')->firstOrFail()->permissions()->syncWithoutDetaching(
             Permission::whereIn('name', ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'question.manage'])->pluck('id')->all()
         );
