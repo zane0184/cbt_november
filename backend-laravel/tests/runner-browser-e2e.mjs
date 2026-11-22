@@ -450,6 +450,7 @@ try {
     await start(page);
     assert.equal(await page.locator('#question-stem').getAttribute('dir'), 'auto');
     assert.equal(await page.locator('#question-input textarea').getAttribute('dir'), 'auto');
+    assert.equal(await page.locator('#question-input textarea').getAttribute('aria-label'), 'Jawaban singkat untuk soal 1');
     await page.locator('#question-input textarea').fill('أَرْبَعَة');
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     assert.equal(scenario.serverAnswers[0].answer_payload.text, 'أَرْبَعَة');
@@ -463,6 +464,8 @@ try {
     const scenario = makeScenario();
     const { context, page } = await newPage(browser, scenario);
     await start(page);
+    assert.equal(await page.locator('#question-announcement').textContent(), 'Soal 1 dari 1');
+    assert.equal(await page.locator('#question-nav button').first().getAttribute('aria-current'), 'step');
     await page.evaluate(() => window.dispatchEvent(new Event('online')));
     await page.waitForFunction(async () => {
       return await new Promise(resolve => {
