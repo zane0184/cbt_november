@@ -11,6 +11,8 @@ use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
 use App\Models\ExamAttempt;
+use App\Models\ExamAttemptScore;
+use App\Models\ExamAttemptScoreCurrent;
 use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\ExamQuestionSnapshot;
@@ -651,6 +653,56 @@ class ExamSessionHardeningTest extends TestCase
             'raw_score' => 10,
             'percentage' => 100,
         ]);
+    }
+
+    public function test_exam_summary_uses_only_authoritative_current_score_pointer()
+    {
+        $this->actingAs($this->userA, 'sanctum');
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit")
+            ->assertStatus(200);
+
+        $currentPointer = ExamAttemptScoreCurrent::query()
+            ->where('tenant_id', $this->tenantA->id)
+            ->where('attempt_id', $attemptId)
+            ->firstOrFail();
+        $currentScore = ExamAttemptScore::query()
+            ->whereKey($currentPointer->current_score_id)
+            ->firstOrFail();
+
+        // Insert a historical score version that must not enter current reports.
+        ExamAttemptScore::create([
+            'tenant_id' => $this->tenantA->id,
+            'exam_id' => $this->examA->id,
+            'attempt_id' => $attemptId,
+            'student_id' => $this->userA->id,
+            'raw_score' => 0,
+            'max_score' => 10,
+            'percentage' => 0,
+            'question_count' => 1,
+            'correct_count' => 0,
+            'incorrect_count' => 1,
+            'unanswered_count' => 0,
+            'grading_status' => 'FINALIZED',
+            'scoring_version' => max(0, ((int) $currentScore->scoring_version) - 1),
+            'scoring_rule_version' => 'historical-test-version',
+            'scored_at' => now()->subMinute(),
+            'finalized_at' => now()->subMinute(),
+            'finalized_by' => $this->userA->id,
+        ]);
+
+        $summary = app(\App\Services\Reporting\ExamSummaryReportService::class)
+            ->getSummary($this->examA->fresh());
+
+        $this->assertSame(1, $summary['total_scored']);
+        $this->assertSame(1, $summary['finalized_count']);
+        $this->assertEquals(100.0, $summary['average_percentage']);
+        $this->assertEquals(10.0, $summary['average_score']);
     }
 
 }
