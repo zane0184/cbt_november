@@ -360,4 +360,71 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->test(TeacherSubjectAssignmentManagement::class)
             ->assertForbidden();
     }
+
+    public function test_admin_with_stale_second_role_is_denied_from_teacher_assignment_management(): void
+    {
+        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
+        $this->admin->roles()->attach($guruRole->id);
+
+        Livewire::test(TeacherSubjectAssignmentManagement::class)->assertForbidden();
+    }
+
+    public function test_teacher_picker_excludes_inactive_unclassified_and_multi_role_accounts(): void
+    {
+        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
+        $siswaRole = Role::query()->firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+
+        $inactive = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Inactive',
+            'username' => '198801012026011010',
+            'password' => bcrypt('password'),
+            'is_active' => false,
+        ]);
+        $inactive->roles()->attach($guruRole->id);
+        TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $inactive->id,
+            'employment_type' => 'ASN',
+            'nip' => '198801012026011010',
+            'employee_identifier' => '198801012026011010',
+            'full_name' => 'Guru Inactive',
+        ]);
+
+        $unclassified = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Unclassified',
+            'username' => '198801012026011011',
+            'password' => bcrypt('password'),
+        ]);
+        $unclassified->roles()->attach($guruRole->id);
+        TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $unclassified->id,
+            'full_name' => 'Guru Unclassified',
+        ]);
+
+        $multiRole = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Multi Role',
+            'username' => '198801012026011012',
+            'password' => bcrypt('password'),
+        ]);
+        $multiRole->roles()->attach([$guruRole->id, $siswaRole->id]);
+        TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $multiRole->id,
+            'employment_type' => 'ASN',
+            'nip' => '198801012026011012',
+            'employee_identifier' => '198801012026011012',
+            'full_name' => 'Guru Multi Role',
+        ]);
+
+        Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->assertViewHas('teachers', fn ($teachers) => $teachers->pluck('id')->all() === [$this->teacher->id])
+            ->assertDontSee('Guru Inactive')
+            ->assertDontSee('Guru Unclassified')
+            ->assertDontSee('Guru Multi Role');
+    }
+
 }
