@@ -4,6 +4,11 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Models\LocalInstallationIdentity;
+use App\Models\AcademicYear;
+use App\Models\Assessment;
+use App\Models\Exam;
+use App\Models\ExamParticipant;
+use App\Models\ExamAttempt;
 use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\Tenant;
