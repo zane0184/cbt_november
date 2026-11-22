@@ -43,6 +43,7 @@ const origin = 'http://127.0.0.1:' + address.port;
 function makeScenario(mode = 'normal') {
   return {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
+    requireToken: false, startTokens: [], media: [],
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
@@ -65,8 +66,13 @@ async function attachApiMock(page, scenario) {
     const path = url.pathname.replace('/api/v1/exams/exam-1', '');
     const method = request.method();
 
+    if (method === 'GET' && url.pathname.startsWith('/api/v1/media/')) {
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5ZkAAAAASUVORK5CYII=', 'base64');
+      return route.fulfill({ status: 200, contentType: 'image/png', body: png });
+    }
     if (method === 'POST' && path === '/attempts') {
       scenario.startCalls++;
+      scenario.startTokens.push(request.postDataJSON().token ?? null);
       return json(route, 200, { success: true, data: { id: 'attempt-1' } });
     }
     if (method === 'GET' && path === '/execution') {
@@ -76,7 +82,7 @@ async function attachApiMock(page, scenario) {
         exam: { server_now: now.toISOString() },
         questions: [{
           id: 'snapshot-1', snapshot_stem: scenario.questionStem, points: 1,
-          metadata: { question_type: scenario.questionType }, snapshot_media: [],
+          metadata: { question_type: scenario.questionType }, snapshot_media: scenario.media,
           snapshot_options: scenario.questionOptions
         }]
       }});
@@ -124,6 +130,7 @@ async function newPage(browser, scenario) {
   page.on('pageerror', error => scenario.pageErrors.push(error.message));
   await attachApiMock(page, scenario);
   await page.goto(origin);
+  if (scenario.requireToken) await page.locator('#exam-app').evaluate(element => { element.dataset.requireToken = '1'; });
   return { context, page };
 }
 
@@ -166,7 +173,21 @@ try {
     console.log('PASS: browser answer save and terminal submit');
   }
 
-  // 2. All six question types published by the question bank render and serialize correctly.
+  // Required exam token is trimmed and normalized to uppercase before the start request.
+  {
+    const scenario = makeScenario();
+    scenario.requireToken = true;
+    const { context, page } = await newPage(browser, scenario);
+    await page.locator('#exam-token').fill('  ab12cd  ');
+    await page.locator('#start-button').click();
+    await page.locator('#runner-panel:not(.hidden)').waitFor({ state: 'visible' });
+    assert.equal(scenario.startTokens[0], 'AB12CD');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: required token is trimmed and normalized before Attempt start');
+  }
+
+  // 3. All six question types published by the question bank render and serialize correctly.
   {
     const cases = [
       {
@@ -257,7 +278,22 @@ try {
     console.log('PASS: Arabic question and answer retain harakat with automatic RTL direction');
   }
 
-  // 4. Offline write: local draft survives reload and is synchronized on resume.
+  // Image media from the immutable snapshot is rendered through the same-origin media endpoint.
+  {
+    const scenario = makeScenario();
+    scenario.media = [{ id: 'media-1', role: 'STEM', mime_type: 'image/png' }];
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    const image = page.locator('#question-media img');
+    await image.waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelector('#question-media img').naturalWidth === 1);
+    assert.ok((await image.getAttribute('src')).includes('/api/v1/media/media-1'));
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: snapshot image media loads from same-origin media endpoint');
+  }
+
+  // 5. Offline write: local draft survives reload and is synchronized on resume.
   {
     const scenario = makeScenario('offline-recovery');
     const { context, page } = await newPage(browser, scenario);
@@ -278,7 +314,7 @@ try {
     console.log('PASS: IndexedDB draft survives reload and synchronizes after reconnect');
   }
 
-  // 5. Conflict: local draft is restored, server copy is retained, submit stays blocked.
+  // 6. Conflict: local draft is restored, server copy is retained, submit stays blocked.
   {
     const scenario = makeScenario('conflict');
     const { context, page } = await newPage(browser, scenario);
@@ -299,7 +335,7 @@ try {
     console.log('PASS: conflict draft restores after reload and submit remains blocked');
   }
 
-  // 6. Server expiry triggers one automatic submit and clears the timer interval.
+  // 7. Server expiry triggers one automatic submit and clears the timer interval.
   {
     const scenario = makeScenario();
     scenario.expiresInMs = -1000;
@@ -315,7 +351,7 @@ try {
     console.log('PASS: server expiry auto-submits once and clears timer');
   }
 
-  // 7. Lost submit response: status is checked; no second start/submit is posted.
+  // 8. Lost submit response: status is checked; no second start/submit is posted.
   {
     const scenario = makeScenario('unknown-submit');
     const { context, page } = await newPage(browser, scenario);
