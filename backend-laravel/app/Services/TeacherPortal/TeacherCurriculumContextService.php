@@ -123,7 +123,7 @@ class TeacherCurriculumContextService
             ],
             'has_registered_reference' => $registrations->isNotEmpty(),
             'official_cp_verified' => false,
-            'official_cp_note' => 'Skema baseline belum menyimpan metadata provenance sumber resmi CP. Data tersimpan tidak otomatis dinyatakan sebagai CP resmi terverifikasi.',
+            'official_cp_note' => 'CP yang tersimpan belum terverifikasi sumber resminya karena skema baseline belum menyimpan metadata provenance sumber resmi CP.',
             'deep_learning_available' => false,
             'graduate_dimensions_available' => false,
             'integration_note' => 'Pemetaan Panca Cinta, Pembelajaran Mendalam, dan delapan dimensi profil lulusan hanya ditampilkan sebagai status integrasi. Data referensi tidak dibuat atau ditebak oleh Portal Guru.',
