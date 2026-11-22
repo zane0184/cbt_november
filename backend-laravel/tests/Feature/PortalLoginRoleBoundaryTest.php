@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contexts\TenantContext;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -27,6 +28,8 @@ class PortalLoginRoleBoundaryTest extends TestCase
             'code' => 'MLRT01',
             'status' => 'ACTIVE',
         ]);
+
+        app(TenantContext::class)->setTenantId($this->tenant->id);
     }
 
     private function userWithRoles(array $roleNames): User
