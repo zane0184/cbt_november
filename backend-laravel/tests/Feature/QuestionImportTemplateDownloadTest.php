@@ -70,7 +70,7 @@ final class QuestionImportTemplateDownloadTest extends TestCase
                 $this->assertContains('SHORT_ANSWER', array_column($typeRows, 0));
                 $this->assertContains('ESSAY', array_column($typeRows, 0));
                 $this->assertStringContainsString('BLOCKED', implode(' ', $typeRows[5]));
-                $this->assertStringContainsString('Opsi E', implode(' ', $typeRows[6]));
+                $this->assertStringContainsString('Opsi E', implode(' ', $typeRows[7]));
 
                 return true;
             }
