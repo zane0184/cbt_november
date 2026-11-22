@@ -189,3 +189,12 @@ CI exposed that Admin rescheduling still recalculated `Exam.start_at/end_at` fro
 | backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-information-schema-column-alias-fix | 620cc2a57e01f34efd03997c020012e0530b1e34 | 14496 |
 
 The first concurrency CI run confirmed all Stage 4B functional suites and the migration-wide InnoDB check passed. The two concurrency cases then exposed a test-query issue: MySQL returned uppercase metadata column names while the test read lowercase object properties. The query now aliases `TABLE_NAME` and `ENGINE` explicitly to lowercase. This is a test assertion correction, not an engine or migration change.
+
+## Additional snapshots — migration rollback guard and concurrency teardown
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-down-prerequisite-call-fix | 83f6cacc2341c8e0a836ac06bbe26beb21683700 | 16257 |
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-test-cleanup-before-rollback | 98539a62144da02aab564d00e92ea3508afac411 | 14569 |
+
+The second concurrency CI run passed the InnoDB metadata assertion and both race scenarios, but test teardown exposed an undefined migration guard method in `down()`. The migration now calls its existing `assertPrerequisites(false)` guard. Test teardown continues to remove only its disposable tenant's placement/session rows and restore the nullable legacy scope fields before rollback; the migration's production-history refusal guard remains intact.
