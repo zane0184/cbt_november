@@ -51,6 +51,7 @@ class AuthWebController extends Controller
         RateLimiter::clear($throttleKey);
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+        $request->session()->put('cbt.auth_version.' . $user->getAuthIdentifier(), (int) ($user->auth_version ?? 1));
         $identity = LocalInstallationIdentity::query()->first();
         if ($identity && $user->tenant_id) {
             TenantContext::getInstance()?->setTenantId($identity->tenant_id);
