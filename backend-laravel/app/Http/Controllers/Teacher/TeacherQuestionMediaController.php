@@ -65,7 +65,7 @@ final class TeacherQuestionMediaController extends Controller
 
         return redirect()
             ->route('teacher.questions.index', ['edit_question' => $questionId])
-            ->with('status', 'Media berhasil diunggah dan dipasang pada versi draft soal.');
+            ->with('message', 'Media berhasil diunggah dan dipasang pada versi draft soal.');
     }
 
     public function detach(
@@ -82,6 +82,6 @@ final class TeacherQuestionMediaController extends Controller
 
         return redirect()
             ->route('teacher.questions.index', ['edit_question' => $questionId])
-            ->with('status', 'Media dilepas dari versi draft soal.');
+            ->with('message', 'Media dilepas dari versi draft soal.');
     }
 }
