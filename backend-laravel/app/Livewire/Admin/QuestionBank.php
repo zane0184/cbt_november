@@ -683,6 +683,6 @@ class QuestionBank extends Component
             'subjects' => $subjects,
             'outcomes' => $outcomes,
             'objectives' => $objectives,
-        ])->layout('layouts.app');
+        ])->layout('layouts.teacher');
     }
 }
