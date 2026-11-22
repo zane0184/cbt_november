@@ -907,8 +907,14 @@ class ExamAnswerTest extends TestCase
     {
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
-        $firstPayload = ['selected_option_id' => 'option-first'];
-        $secondPayload = ['selected_option_id' => 'option-second'];
+        $optionA = (string) data_get($this->snapshot->snapshot_options, '0.id');
+        $optionB = (string) Str::uuid();
+        $this->snapshot->update(['snapshot_options' => array_merge(
+            $this->snapshot->snapshot_options,
+            [['id' => $optionB, 'content' => 'Option 2']]
+        )]);
+        $firstPayload = ['selected_option_id' => $optionA];
+        $secondPayload = ['selected_option_id' => $optionB];
 
         $first = $this->putJson($url, [
             'client_request_id' => 'immutable-request-1',
@@ -942,7 +948,11 @@ class ExamAnswerTest extends TestCase
             'exam_attempt_id' => $this->attempt->id,
             'revision_number' => 2,
         ]);
-        $this->assertSame($secondPayload, $this->attempt->fresh()->load('answers')->answers->first()?->answer_payload);
+        $savedAnswer = ExamAttemptAnswer::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_attempt_id', $this->attempt->id)
+            ->firstOrFail();
+        $this->assertSame($secondPayload, $savedAnswer->answer_payload);
         $this->assertDatabaseCount('exam_attempt_answer_requests', 2);
     }
 
