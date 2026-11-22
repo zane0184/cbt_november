@@ -59,11 +59,6 @@ Nama label boleh mengikuti konsistensi UI yang ada, tetapi cakupan fungsi beriku
    - Ruang ujian
    - Penempatan peserta per ruang
    - Penugasan Proktor
-7. Monitoring CBT
-   - Monitoring ujian
-   - Monitoring peserta
-   - Status Attempt/perangkat/sinkronisasi bila tersedia
-   - Tindakan operasional berotorisasi
 8. Laporan
    - Rekap akademik
    - Rekap peserta/kehadiran
@@ -90,10 +85,9 @@ Dashboard bukan pengganti menu fungsional. Setiap menu harus punya list, detail,
 
 Tampilkan data real dari database dan filter menurut tahun pelajaran aktif:
 - jumlah siswa aktif, Guru aktif, kelas, rombel, mata pelajaran;
-- ujian terjadwal, berlangsung, selesai;
-- jumlah peserta dan status belum mulai/sedang mengerjakan/sudah submit;
-- jadwal ujian terdekat;
-- aktivitas terbaru (import, perubahan data, penerbitan ujian, penugasan Proktor, tindakan operasional);
+- jumlah ujian terdaftar;
+- jadwal ujian terdekat sebagai informasi administratif (tanpa status real-time ujian/peserta);
+- aktivitas administrasi terbaru (import, perubahan data, penerbitan ujian, penugasan Proktor);
 - peringatan data master yang belum lengkap dan kendala operasional.
 
 Tidak boleh menampilkan angka dummy/hard-coded. Dashboard Admin tidak membuka jawaban atau kunci jawaban tanpa kewenangan terpisah.
@@ -186,13 +180,9 @@ Admin memilih Exam, Room, akun Guru, interval waktu, alasan. Catat assigned_by, 
 ### 8.5 Model serentak
 Jadwal Exam `start_at/end_at`, waktu server resmi. Token dibuat saat publish, dapat dilihat sebelum jadwal, Siswa tidak boleh mulai sebelum jadwal. Jangan implementasikan wave/session/session_number/ExamSession/SessionRoom sebagai lifecycle operasional atau syarat admission. Pertahankan kompatibilitas historis seperlunya tanpa mengaktifkan model lama.
 
-## 9. MONITORING CBT
+## 9. MONITORING CBT — DIHAPUS DARI WEB ADMIN
 
-Admin melihat ujian berjalan, Guru pembuat, mapel, kelas/rombel, ruang, total peserta, belum hadir/belum mulai/sedang mengerjakan/sudah submit/bermasalah, jadwal, status Attempt dan status teknis yang benar-benar tersedia.
-
-Detail minimum: nama dan identitas yang diperlukan, kelas, ruang, kehadiran, status Attempt, started_at, sisa waktu berdasar server, status submit, lease/perangkat bila telah terbukti terintegrasi.
-
-Tindakan sensitif hanya dengan policy/permission backend, alasan wajib, transaksi, konfirmasi, dan audit: Reset Attempt, Force Submit, perpanjangan waktu, release/takeover perangkat. Catat aktor, waktu, alasan, hasil, nilai/state sebelum-sesudah yang relevan. Jangan membuat tombol palsu. Monitoring tidak boleh membocorkan jawaban/kunci. Fencing belum production-ready tanpa integration dan MySQL 8 concurrency/multi-device tests.
+Tidak ada menu, halaman, widget, panel dashboard, endpoint, atau tindakan Monitoring CBT pada Web Admin Madrasah. Admin tidak memantau ujian berjalan, kehadiran, progres peserta, Attempt, perangkat, sinkronisasi, maupun status teknis peserta. Admin juga tidak melakukan Reset Attempt, Force Submit, perpanjangan waktu, release/takeover perangkat dari Web Admin. Informasi administratif dasar tentang daftar ujian dan jadwal tetap boleh ditampilkan di Manajemen Ujian, tetapi tanpa status real-time ujian/peserta. Laporan hasil/rekap akademik pada Bagian 10 tetap berlaku dan bukan monitoring ujian berjalan.
 
 ## 10. LAPORAN DAN CETAK
 
@@ -230,7 +220,7 @@ Jangan expose DB credentials, .env, private key, signing key, server secret, dep
 ## 13. PORTAL GURU DAN SISWA — DEPENDENSI MENU ADMIN
 
 Walaupun dokumen ini berfokus Admin, Admin harus mendukung alur portal lain:
-- Guru: dashboard, penugasan saya, bank soal/media, kurikulum CP/TP/ATP, asesmen, builder ujian, publish/token/jadwal/peserta, ruang/Proktor bila ditugaskan, monitoring dalam lingkup sendiri, penilaian essay dan laporan sesuai izin.
+- Guru: dashboard, penugasan saya, bank soal/media, kurikulum CP/TP/ATP, asesmen, builder ujian, publish/token/jadwal/peserta, ruang/Proktor bila ditugaskan, penilaian essay dan laporan sesuai izin.
 - Guru boleh membuat/menerbitkan ujian tanpa persetujuan Admin selama sesuai penugasan.
 - Menu Proktor hanya muncul pada akun Guru ketika assignment aktif dan hanya menampilkan Exam/Room yang ditugaskan.
 - Siswa: profil minimum, daftar ujian, token, aturan ujian, start sesuai jadwal server, pengerjaan, autosave/penyimpanan jawaban, resume sesuai eligibility, submit, status hasil bila diizinkan.
@@ -310,7 +300,7 @@ P0 — Agar Web dapat digunakan:
 5. Bank soal dan builder/publish ujian sesuai penugasan Guru.
 6. Token, jadwal server, peserta, ruang/placement.
 7. Portal Siswa: login, daftar ujian, start, save, resume, submit.
-8. Monitoring dan laporan minimum.
+8. Laporan minimum.
 9. Audit log dan hardening akses.
 10. Instalasi fresh melalui aaPanel dan UAT.
 
@@ -321,6 +311,12 @@ DEFERRED sampai Juni 2027:
 - Android native.
 - Web Super Admin.
 - Fitur yang hanya diperlukan oleh dua komponen deferred tersebut.
+
+
+
+### Keputusan pengguna 23 November 2026 — pengecualian Monitoring CBT
+
+Seluruh fungsi Monitoring CBT di Web Admin dikeluarkan dari ruang lingkup. Jangan membuat menu/halaman/panel/widget monitoring, status kehadiran/progres/Attempt/perangkat/sinkronisasi secara real-time, maupun tindakan Reset Attempt, Force Submit, perpanjangan waktu, release/takeover perangkat dari Web Admin. Daftar ujian/jadwal dan laporan hasil/rekap akademik tetap boleh ada sesuai bagian masing-masing, tanpa monitoring ujian berjalan.
 
 ## 18. INSTRUKSI PERTAMA UNTUK AGENT PENGGANTI
 
