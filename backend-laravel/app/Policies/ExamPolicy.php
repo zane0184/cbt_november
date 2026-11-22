@@ -203,9 +203,24 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
-            && $user->hasPermission('exam.monitor')
-            && TeacherAccess::canViewExam($user, $exam);
+        if (!$user->hasRole('GURU') || !$user->hasPermission('exam.monitor')) {
+            return false;
+        }
+
+        // A Guru may monitor through their normal teaching scope or a temporary,
+        // exam-specific Proktor assignment. The assignment grants monitoring only,
+        // never answer-key, grading, or result-detail access.
+        $temporaryProctorAssignment = \\App\\Models\\ExamProctorAssignment::query()
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->where('proctor_user_id', $user->id)
+            ->where('status', 'ACTIVE')
+            ->whereNull('revoked_at')
+            ->where('starts_at', '<=', now())
+            ->where('expires_at', '>', now())
+            ->exists();
+
+        return $temporaryProctorAssignment || TeacherAccess::canViewExam($user, $exam);
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
