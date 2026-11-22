@@ -301,3 +301,108 @@ Patch UI exact-role dibuat pada branch koordinator dan menunggu verifikasi runti
 - Regresi AdminUserManagementScopeTest ditambah untuk memastikan akun multi-role Guru+Siswa tidak dihitung sebagai Guru/Siswa dan akun Siswa soft-deleted tidak muncul pada dashboard, daftar pengguna, maupun pemilih rombel.
 - Audit skema menemukan unique constraint lama pada pasangan (rombel_id, student_id) masih ada setelah hardening tenant 230003 menambahkan index tenant lookup dan composite foreign keys. Karena itu pencegahan duplikasi membership sudah memiliki lapisan DB selain pemeriksaan transaksi pada Livewire; tidak dibuat migration unik baru.
 - Test/runtime belum dieksekusi karena GitHub Actions gagal sebelum steps; semua hasil tetap NOT VERIFIED sampai runner tersedia.
+
+
+# Audit Gap Web Admin — 22 November 2026
+Repository: zane0184/cbt_november
+Branch: work/coordinator-web-admin-audit-20261122
+Tree SHA: 76e387504a1451ed25883da6380b97098ec1c9a0
+Acuan: docs/MASTER_SPESIFIKASI_FITUR_WEB_ADMIN_MADRASAH_2026-11-22.md (main, blob 68150acf7b9abf130776bee27444c99889ce53a5)
+
+## AUDIT
+Inventory source aktual menunjukkan komponen Admin:
+- backend-laravel/app/Livewire/Admin/AcademicManagement.php
+- backend-laravel/app/Livewire/Admin/AdminDashboard.php
+- backend-laravel/app/Livewire/Admin/CurriculumManagement.php
+- backend-laravel/app/Livewire/Admin/ExamManagement.php
+- backend-laravel/app/Livewire/Admin/ProctorAssignmentManagement.php
+- backend-laravel/app/Livewire/Admin/QuestionBank.php
+- backend-laravel/app/Livewire/Admin/StudentRombelManagement.php
+- backend-laravel/app/Livewire/Admin/TenantProfileManagement.php
+- backend-laravel/app/Livewire/Admin/UserManagement.php
+
+View Admin:
+- backend-laravel/resources/views/livewire/admin/academic-management.blade.php
+- backend-laravel/resources/views/livewire/admin/admin-dashboard.blade.php
+- backend-laravel/resources/views/livewire/admin/curriculum-management.blade.php
+- backend-laravel/resources/views/livewire/admin/exam-management.blade.php
+- backend-laravel/resources/views/livewire/admin/proctor-assignment-management.blade.php
+- backend-laravel/resources/views/livewire/admin/question-bank.blade.php
+- backend-laravel/resources/views/livewire/admin/student-rombel-management.blade.php
+- backend-laravel/resources/views/livewire/admin/tenant-profile-management.blade.php
+- backend-laravel/resources/views/livewire/admin/user-management.blade.php
+
+Route utama: backend-laravel/routes/web.php
+
+Test feature kandidat:
+- backend-laravel/tests/Feature/AcademicPeriodManagementTest.php
+- backend-laravel/tests/Feature/AdminCbtBoundaryTest.php
+- backend-laravel/tests/Feature/AdminDashboardAccessTest.php
+- backend-laravel/tests/Feature/AdminUiVerificationTest.php
+- backend-laravel/tests/Feature/AdminUserManagementScopeTest.php
+- backend-laravel/tests/Feature/CurriculumIntegrityTest.php
+- backend-laravel/tests/Feature/CurriculumVersioningTest.php
+- backend-laravel/tests/Feature/Fase1cMultiCurriculumIntegrityTest.php
+- backend-laravel/tests/Feature/LegacySuperAdminInventoryCommandTest.php
+- backend-laravel/tests/Feature/MultiTenantAuthTest.php
+- backend-laravel/tests/Feature/Phase7DCurriculumAchievementTest.php
+- backend-laravel/tests/Feature/Phase7DReportingTest.php
+- backend-laravel/tests/Feature/ProctorAssignmentSecurityTest.php
+- backend-laravel/tests/Feature/QuestionImportTest.php
+- backend-laravel/tests/Feature/TenantIsolationTest.php
+- backend-laravel/tests/Feature/TenantProfileManagementTest.php
+- backend-laravel/tests/Feature/UserSecurityTest.php
+- backend-laravel/tests/Feature/WebAdminAuthTest.php
+
+### Status matriks awal (statis; belum runtime-verified)
+| Kelompok spesifikasi | Status | Bukti awal / gap |
+|---|---|---|
+| Dashboard | EXISTS BUT BLOCKED | AdminDashboard, view dan AdminDashboardAccessTest ada; dashboard menggunakan data riil untuk sebagian kartu. Belum terbukti seluruh ujian/status peserta/aktivitas sesuai master dan hasil runtime belum tersedia. |
+| Profil/identitas madrasah | EXISTS BUT BLOCKED | TenantProfileManagement + test + principal_name; kelengkapan seluruh field, logo, favicon, branding, kop dan preview belum dibuktikan. |
+| Data Guru/Siswa | PARTIAL | UserManagement membuat dan mendaftar akun dengan filter/pagination. Dari source yang diperiksa belum tampak edit, aktif/nonaktif, reset password, detail, riwayat, import/export, template. |
+| Akun dan akses | PARTIAL | Create account dan exact-one role guard; belum terlihat workflow disable/reset/force password/session revoke. |
+| Import/export Guru/Siswa | MISSING / BLOCKED | Tidak ditemukan komponen Admin import/export khusus Guru/Siswa dalam inventory awal. QuestionImportTest adalah import soal, bukan bukti import data Guru/Siswa. Perlu telusur service/job/template terpisah. |
+| Data akademik | PARTIAL | AcademicManagement, StudentRombelManagement, models/migrations and tests exist. Full create/edit/archive/history, mutasi beralasan, mapel dan teacher assignment need action-by-action verification. |
+| Kurikulum | PARTIAL | CurriculumManagement dan versioning/integrity tests exist; registration, structure, CP/TP/ATP mapping/history completeness not yet flow-verified. |
+| Manajemen ujian | PARTIAL / BOUNDARY REVIEW | Route /admin/questions and /admin/exams use Teacher-owned components. Admin navigation hides them but routes themselves are in common auth/tenant/license group; exact backend denial to Admin must be proven. |
+| Ruang ujian | MISSING / BLOCKED | No Admin room-management component found in active Livewire/Admin tree. Check existing non-Livewire services or other namespace before final status. |
+| Penempatan peserta per ruang | MISSING / BLOCKED | No active Admin placement component found. No ExamSession lifecycle to be introduced; design against concurrent Exam + room placement only. |
+| Penugasan Proktor | EXISTS BUT BLOCKED | ProctorAssignmentManagement and ProctorAssignmentSecurityTest exist; scope/time/overlap/room isolation must be fully integration-tested. |
+| Monitoring CBT | PARTIAL / BLOCKED | Monitoring API/controller and ExamPolicy exist; Admin-specific monitoring menu/action scope, privacy and operational-action authorization not established by current Admin menu inventory. |
+| Laporan | PARTIAL | ReportController and Teacher result components exist; Admin academic/attendance/exam aggregate reports, PDF/XLSX filter/export and role-specific policies not proven. |
+| Audit & keamanan | PARTIAL | AuditLog model/service, recent activity card, and security tests exist. No dedicated Admin audit/security UI identified. Full login/denied/sensitive-action coverage not proven. |
+| Pengaturan web | MISSING / PARTIAL | Tenant profile exists; General/branding/logo/favicon/printhead/theme/notification/preferences pages not identified. |
+| UX/search/pagination/accessibility | PARTIAL | User listing search/filter/pagination; other components need per-page inspection and browser/responsive/accessibility tests. |
+
+### Prinsip klasifikasi
+- Status "EXISTS & VERIFIED" tidak digunakan tanpa alur UI→database dan tes runtime yang dapat diperiksa.
+- "MISSING / BLOCKED" bermakna belum ada bukti dari inventory source saat ini; sebelum menutup sebagai missing, periksa seluruh app/services/jobs/imports/routes/tests.
+- Tidak ada bukti dari tree statis yang menyatakan kesiapan produksi.
+
+## DESAIN
+Urutan audit/perbaikan Web Admin tetap P0 dan tidak mengaktifkan portal Guru/Siswa lebih jauh:
+1. Login/session dan exact role/tenant context.
+2. Batas route/policy Admin vs Guru (terutama QuestionBank, ExamManagement, results/export/analytics).
+3. Selesaikan Data Madrasah + pengaturan branding/kop berdasarkan kebutuhan master.
+4. Lengkapi Guru/Siswa + akun dan akses.
+5. Lengkapi import/export Guru/Siswa.
+6. Lengkapi akademik, penugasan Guru, kurikulum.
+7. Ruang/placement dan assignment Proktor sesuai Exam serentak (tanpa ExamSession/SessionRoom operational model).
+8. Monitoring/reporting dan audit-security UI.
+9. UX, browser/responsive, UAT.
+
+## IMPLEMENTASI
+Belum ada source aplikasi diubah pada checkpoint audit gap awal ini. Tidak ada migration/database/VPS/deployment/main branch change. Langkah selanjutnya hanya setelah pemeriksaan isi file satu per satu dan backup tepat sebelum tiap patch.
+
+## PENGUJIAN
+- GitHub recursive tree statis: berhasil; Tree SHA 76e387504a1451ed25883da6380b97098ec1c9a0.
+- Route/view/component/test files terinventaris.
+- PHPUnit, PHP lint, MySQL 8 integration/concurrency, browser/E2E, UAT: NOT RUN / NOT VERIFIED.
+- Tidak ada klaim siap produksi.
+
+## Batas penting
+- Gunakan hanya spesifikasi master dan source GitHub aktif.
+- Ujian serentak; jangan menambah ExamSession/SessionRoom/session number atau lifecycle sesi.
+- Tidak ada role/portal Operator/Kamad/Proktor permanen.
+- Tidak ada perubahan main, merge, deployment, atau migration produksi.
+- Web Admin belum diterima.
