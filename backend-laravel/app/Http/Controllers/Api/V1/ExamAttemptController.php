@@ -8,6 +8,8 @@ use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\AttemptAuthSessionBinding;
+use App\Services\AttemptDeviceLeaseService;
 use App\Services\ExamMonitoringScope;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
