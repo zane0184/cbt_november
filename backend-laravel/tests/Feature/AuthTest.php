@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\LocalInstallationIdentity;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\StudentProfile;
 use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -169,6 +170,36 @@ class AuthTest extends TestCase
         $plainTextToken = $this->user->createToken('before-deactivation')->plainTextToken;
         $tokenId = explode('|', $plainTextToken)[0];
         $this->user->forceFill(['is_active' => false])->save();
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$plainTextToken])
+            ->getJson('/api/v1/auth/me')
+            ->assertForbidden()
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $tokenId]);
+    }
+
+
+    public function test_non_active_student_academic_status_denies_login_and_revokes_existing_api_session(): void
+    {
+        $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $this->user->roles()->sync([$studentRole->id]);
+        StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->user->id,
+            'nisn' => '1234567890',
+            'full_name' => 'Siswa Nonaktif',
+            'academic_status' => 'INACTIVE',
+        ]);
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => '1234567890',
+            'password' => 'password',
+            'device_name' => 'student-test',
+        ])->assertStatus(422)->assertJsonValidationErrors(['identifier']);
+
+        $plainTextToken = $this->user->createToken('student-before-status-change')->plainTextToken;
+        $tokenId = explode('|', $plainTextToken)[0];
 
         $this->withHeaders(['Authorization' => 'Bearer '.$plainTextToken])
             ->getJson('/api/v1/auth/me')
