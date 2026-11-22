@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use App\Contexts\TenantContext;
 use App\Livewire\Teacher\TeacherDashboard;
 use App\Livewire\Admin\ExamManagement;
+use App\Models\Assessment;
+use App\Models\Exam;
+use App\Models\Question;
 use App\Livewire\Admin\QuestionBank;
 use App\Models\Permission;
 use App\Livewire\Teacher\TeacherLearning;
@@ -215,6 +218,71 @@ class TeacherPortalFoundationTest extends TestCase
         $questionAction->call('addMatchingPair')->assertForbidden();
         $examHydration->set('search', 'blocked')->assertForbidden();
         $examAction->call('createExam')->assertForbidden();
+    }
+
+    public function test_guru_cannot_open_question_or_exam_ids_from_another_tenant(): void
+    {
+        $tenantB = Tenant::create([
+            'name' => 'Madrasah Foreign',
+            'code' => 'MUG03',
+            'status' => 'ACTIVE',
+        ]);
+        app(TenantContext::class)->setTenantId($tenantB->id);
+
+        $teacherB = User::create([
+            'tenant_id' => $tenantB->id,
+            'name' => 'Guru Tenant Foreign',
+            'email' => 'guru.foreign@mug.test',
+            'password' => bcrypt('password123'),
+        ]);
+        $teacherB->roles()->attach($this->guruRole->id);
+        $foreignScope = $this->createTeacherExamScope($tenantB, $teacherB, [], 'FOREIGN');
+
+        $foreignQuestion = Question::create([
+            'owner_type' => 'SUBJECT',
+            'question_code' => 'FOREIGN-QUESTION',
+            'status' => 'DRAFT',
+            'subject_id' => $foreignScope['subject']->id,
+            'created_by' => $teacherB->id,
+            'updated_by' => $teacherB->id,
+        ]);
+
+        $foreignAssessment = Assessment::create([
+            'academic_year_id' => $foreignScope['academicYear']->id,
+            'semester_id' => $foreignScope['semester']->id,
+            'subject_id' => $foreignScope['subject']->id,
+            'title' => 'Asesmen Tenant Foreign',
+            'assessment_type' => 'SUMMATIVE',
+            'status' => 'ACTIVE',
+            'weight' => 1.0,
+            'created_by' => $teacherB->id,
+        ]);
+        $foreignExam = Exam::create([
+            'assessment_id' => $foreignAssessment->id,
+            'title' => 'Ujian Tenant Foreign',
+            'instructions' => 'Uji isolasi tenant',
+            'status' => 'DRAFT',
+            'duration_seconds' => 3600,
+            'start_at' => now()->addDay(),
+            'end_at' => now()->addDays(2),
+            'attempt_limit' => 1,
+            'shuffle_questions' => true,
+            'shuffle_options' => true,
+            'require_token' => true,
+            'created_by' => $teacherB->id,
+        ]);
+
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+
+        Livewire::actingAs($this->teacher)
+            ->test(QuestionBank::class)
+            ->call('openEditModal', $foreignQuestion->id)
+            ->assertNotFound();
+
+        Livewire::actingAs($this->teacher)
+            ->test(ExamManagement::class)
+            ->call('openEditModal', $foreignExam->id)
+            ->assertNotFound();
     }
 
     public function test_guru_without_exactly_one_tenant_local_teacher_profile_is_denied(): void
