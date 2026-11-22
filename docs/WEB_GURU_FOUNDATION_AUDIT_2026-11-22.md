@@ -128,3 +128,78 @@ Langkah berikutnya:
 3. Jika CI bersih, lakukan audit keamanan lanjutan dan browser visual test.
 4. Audit halaman Guru existing dan hubungkan menu ke route existing yang aman, tanpa duplikasi.
 5. Perbarui checkpoint setelah hasil tersebut benar-benar tersedia.
+
+
+## 7. AUDIT LANJUTAN — 22 NOVEMBER 2026
+
+### A. Posisi source dan bukti CI
+- HEAD branch aktual sebelum pembaruan audit ini: `7c8be7668bd039b56680f030a2f1778021d75eb1`.
+- Commit source test terbaru pada saat checkpoint: `9afc0a0fd489227a67310edec67223457fe42139`; commit setelahnya hanya memperbarui manifest backup.
+- Run `44982836419` telah diperiksa dari job log: checkout memakai SHA `55e8557c30f427db97624b8c4837e8dc3c9d8784`; perintah `git log -1` di runner menghasilkan SHA yang sama.
+- Run `44982777697` dan `44982836419`: job selesai SUCCESS pada SHA masing-masing. Bukti dipertahankan; tidak berarti siap produksi.
+- Run `44983508195` pada SHA `7d6d80cacc72def49fbe63731537dae773fa055f`: job PHPUnit dan cleanup database disposable SUCCESS setelah penghapusan predicate relasi duplikat.
+- Run `44983639700` pada SHA `9afc0a0fd489227a67310edec67223457fe42139`: menunggu/queued ketika checkpoint ini ditulis. Run ini mencakup tiga test lifecycle tambahan.
+- Run `44983510471` dibatalkan oleh antrean/concurrency ketika commit baru masuk; tidak dihitung sebagai hasil pengujian.
+- Tidak ada perubahan pada branch Agent 1 atau Agent 2, merge, rebase, PR, deployment, VPS, Android, Web Siswa, atau database produksi.
+
+### B. Warning PHPUnit dan perbaikan
+- Pada run `44982836419`, delapan test menghasilkan warning yang sama: pembacaan `.env` yang tidak ada melalui `vlucas/phpdotenv`, dipanggil saat bootstrap Laravel di `tests/TestCase.php:12`. Jumlahnya delapan karena run terbaru memuat delapan test method.
+- Output juga menunjukkan deprecation PHPUnit 11 untuk metadata test dalam doc-comment pada sejumlah test legacy; ini terpisah dari warning `.env` dan belum diperbaiki.
+- Workflow isolasi diperbarui agar membuat file `.env` kosong hanya selama langkah PHPUnit dan menghapusnya melalui shell trap. Output warning tetap ditampilkan dengan `--display-warnings`; tidak ada suppression.
+- Hasil perbaikan warning harus menunggu run `44983639700`; belum dinyatakan selesai.
+
+### C. Audit query penugasan dan membership
+- Predicate `whereHas('rombel.gradeLevel.phase')` duplikat di `TeacherPortalDataService::assignments()` telah dihapus.
+- Assignment query tetap memvalidasi tenant pada assignment, teacher profile, subject, rombel, grade level, phase, academic year, dan semester; konsistensi tahun ajaran rombel dan semester terhadap assignment juga diperiksa.
+- Skema pivot `rombel_student` tidak memiliki kolom academic-year atau status membership. Tahun ajaran dimiliki oleh `rombels`. Karena itu hitungan siswa dibatasi ke ID rombel yang berasal dari assignment terverifikasi; query juga membatasi tenant pada pivot, profil siswa dan rombel, mengecualikan profil soft-deleted dan rombel nonaktif, serta memakai distinct student profile.
+- Hitungan total lintas rombel memakai distinct profile agar siswa yang tercatat pada lebih dari satu rombel terpilih tidak terhitung ganda.
+- Pengujian multi-tahun dan edge-case keanggotaan lintas rombel masih perlu diperluas. Tidak ada perubahan schema/migration.
+
+### D. Audit asesmen dan reuse fitur Guru existing
+Inventaris dari source branch:
+
+| Fitur | Web / Livewire | API / Controller | Policy / batas akses yang ditemukan | Keputusan menu |
+|---|---|---|---|---|
+| Bank Soal | `GET /admin/questions`, `App\\Livewire\\Admin\\QuestionBank` | `/api/v1/questions`, QuestionController | QuestionPolicy; permission `question.view` untuk baca, `question.manage` untuk authoring, TeacherAccess untuk mapel/tenant | Existing, tetapi tautan portal tetap ditahan sampai audit strict multi-role selesai |
+| Asesmen | Terintegrasi dalam `GET /admin/exams` / ExamManagement; belum ditemukan halaman asesmen web terpisah | `/api/v1/assessments`, AssessmentController | AssessmentPolicy; Guru perlu `exam.manage`, tenant, penugasan aktif; update/delete juga creator | Reuse, bukan modul baru; belum ditautkan |
+| Ujian | `GET /admin/exams`, `App\\Livewire\\Admin\\ExamManagement` | `/api/v1/exams`, ExamController | ExamPolicy; permission exam.manage/question.manage/exam.assign/exam.token sesuai aksi, assignment dan peserta harus dalam scope | Reuse, bukan modul baru; belum ditautkan |
+| Proktor | `GET /admin/proctor-assignments`, ProctorAssignmentManagement (Admin) | ExamProctorAssignmentService dan API terkait | Admin + `exam.proctor.assign`; Guru dipilih sebagai penerima penugasan sementara | Tidak ada portal Proktor permanen; tidak dibuat menu Guru |
+| Monitoring | `GET /exams/{exam}/monitoring`; tautan per ujian pada ExamManagement | `/api/v1/exams/{exam}/monitoring/*`, MonitoringController | ExamPolicy::monitor; permission `exam.monitor`, tenant, penulis ujian atau penugasan Proktor sementara yang memenuhi syarat | Akses per ujian; bukan menu global |
+| Penilaian | `/exams/{exam}/results/{attempt}`, ResultDetail | ScoringController: score/recalculate/grading/finalize/reopen | ExamAttemptPolicy; `exam.grade`, tenant, assessment dan cakupan assignment | Existing, akses per attempt; belum ditautkan sebagai menu global |
+| Hasil & Laporan | `/exams/{exam}/results`, ResultList | ReportController: results, summary, rombel/student report | ReportPolicy, `report.view`, TeacherAccess, scope subject/year/semester/rombel | Existing, akses per ujian; belum ditautkan |
+| Analytics | `/exams/{exam}/analytics`, AnalyticsDashboard; `/analytics/items`, ItemAnalysis | AnalyticsController dan Analytics services | `viewExamResults` / `viewStudentResults` / `viewSubjectResults`, ReportPolicy dan TeacherAccess | Existing, akses per ujian; belum ditautkan |
+| Ekspor | Route web export ujian/siswa | ReportController exportExcel/exportPdf/exportStudentPdf/exportSummaryPdf | Policy laporan dan scope tenant/rombel/siswa | Existing, akses per ujian; belum ditautkan |
+
+- Komponen Bank Soal dan ExamManagement berada pada namespace `Admin`, tetapi guard komponennya memang mengizinkan Guru dengan permission yang sesuai.
+- Pemeriksaan saat ini menemukan guard legacy tersebut mengecek `hasRole('GURU')` dan menolak `ADMIN_MADRASAH`, tetapi belum secara eksplisit menolak setiap kombinasi multi-role lain seperti GURU+SISWA atau GURU+KAMAD. Policy terkait juga perlu diperiksa untuk konsistensi exact-role.
+- Karena itu menu portal Guru saat ini sengaja menampilkan status “Audit akses”, bukan tautan aktif ke route legacy. Ini mencegah integrasi UI sebelum gate kewenangan lolos.
+- Tidak dibuat fitur Bank Soal, Asesmen, Ujian, Proktor, Monitoring, Penilaian, Laporan, Analytics, atau Ekspor duplikat.
+
+### E. Lifecycle access dan profil
+- Portal baru memakai `TeacherPortalAccess`: role database dibaca ulang melalui query relation, user harus masih ada dan tidak soft-deleted, tenant context harus sama, dan tepat satu TeacherProfile tenant-local wajib ada.
+- Test yang telah ada: direct URL Guru, Admin ditolak, multi-role Guru+Admin ditolak, Guru tanpa profil unik ditolak, tenant lain tidak tampil, nomor kontak saja dapat diubah dan audit log tercatat.
+- Ditambahkan test untuk role dicabut saat session user object masih dipakai, akun soft-deleted dengan session lama, dan tenant context mismatch pada Livewire. Menunggu run `44983639700`.
+- Test manipulasi profil saat ini memastikan NIP/email tidak berubah pada penyimpanan nomor kontak. Belum ada test browser adversarial untuk mencoba payload Livewire di luar properti publik.
+- Audit stale permission untuk komponen legacy Bank Soal/Ujian masih terbuka. Menu belum ditautkan karena guard multi-role belum lolos audit.
+
+### F. Kurikulum
+- Status CP tetap “belum terverifikasi sumber resmi”; tidak ada klaim provenance baru.
+- KBC tetap ditampilkan dari data yang tersedia; mapping rinci Panca Cinta tidak diasumsikan.
+- Pembelajaran Mendalam dan delapan dimensi Profil Lulusan tetap dinyatakan belum tersedia/terverifikasi. Tidak ada referensi yang dikarang.
+
+### G. Uji browser yang disiapkan
+- Belum ada browser E2E/visual test yang dijalankan dalam tahap ini.
+- Matriks uji yang disiapkan: desktop 1440×900 dan 1024×768; tablet 768×1024; mobile 390×844 dan 320×640; masing-masing Light dan Dark.
+- Cakupan: sidebar desktop, menu mobile, overflow tabel/kartu, form profil dan validasi, empty state, navigasi, fokus keyboard, kontras, tema sistem, serta akses langsung ke modul existing.
+- PHPUnit/CI tidak dianggap sebagai bukti browser E2E.
+
+### H. Implementasi tahap audit
+- Duplikasi predicate tenant relation di TeacherPortalDataService dihapus.
+- Workflow CI menyiapkan file `.env` kosong hanya selama PHPUnit agar tidak menimbulkan warning file hilang; output warning tetap aktif.
+- Test lifecycle role revoke, soft-delete, dan tenant mismatch ditambahkan.
+- Menu Guru tidak mengaktifkan link ke modul legacy sebelum audit strict multi-role selesai.
+- Backup semua file yang disentuh ditambahkan ke manifest.
+
+## 8. STATUS SETELAH AUDIT LANJUTAN
+
+PARSIAl — reuse fitur telah diinventaris dan query duplikat dibersihkan; gate CI terbaru dan test lifecycle tambahan masih menunggu hasil. Menu modul legacy tetap tidak ditautkan sampai multi-role/stale-permission audit selesai. Tidak siap produksi.
