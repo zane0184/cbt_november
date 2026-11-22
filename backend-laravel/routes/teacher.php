@@ -22,4 +22,7 @@ Route::middleware(['auth', 'tenant', 'license', EnsureTeacherPortalAccess::class
         Route::get('/bank-soal', QuestionBank::class)->name('questions.index');
         Route::get('/asesmen', ExamManagement::class)->name('exams.index');
         Route::get('/bank-soal/template', QuestionImportTemplateController::class)->name('questions.template');
+        Route::post('/bank-soal/{question}/versions/{version}/media', [TeacherQuestionMediaController::class, 'storeAndAttach'])->name('questions.media.store');
+        Route::delete('/bank-soal/{question}/versions/{version}/media/{media}', [TeacherQuestionMediaController::class, 'detach'])->name('questions.media.detach');
+        Route::get('/bank-soal/media/{media}', [MediaController::class, 'show'])->name('questions.media.show');
     });
