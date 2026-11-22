@@ -66,6 +66,9 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->teacher = TeacherProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $guru->id,
+            'employment_type' => 'ASN',
+            'nip' => '198801012026011001',
+            'employee_identifier' => '198801012026011001',
             'full_name' => 'Guru Assignment',
         ]);
 
