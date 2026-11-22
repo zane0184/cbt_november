@@ -37,3 +37,21 @@ Perubahan setelah snapshot hanya memperbaiki fixture test non-Admin agar memakai
 | docs/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md.before-ci-root-cause-addendum | 2c783c115fba0db40492b7def4e4bc1900032621 | 4bbf31a283cc2e372a7311eb034696999608305f |
 
 Patch 4C concurrency menghapus trait DatabaseMigrations dari test yang dijalankan pada database disposable yang sudah dimigrasikan. Workflow menjalankan migrate:fresh pada schema disposable yang identitasnya telah diverifikasi sebelum race test, sehingga teardown tidak memanggil down() pada migration keamanan forward-only. Workflow Stage4D juga melewatkan test dan required schema Stage4B; Stage4B tetap diuji hanya pada branch Agent1.
+
+
+## Snapshot tambahan — sebelum checkpoint CI terbaru
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| docs/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md.before-final-ci-update | 900fac446d4743d67caa1757d48dd1014c47bc9d | 3132 | e3fbb27a5509c0ebe665a84a5039e137265e6807 |
+| docs/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md.before-final-ci-update | 7226563c4ba09074b0652523f34248d0c5d3a9cf | 19253 | 9dd1c3ab1a08175418e051c2021c376920305341 |
+| docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md | docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-final-ci-update | ab23fb49f7a0fd01c165a0c8a288853cc5b50af4 | 3733 | d265d5c96942ceb3f62ba3ca9915052522135dcb |
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-forward-only-migration-fix | 80e282e0023e0f058f07d185f03d363c667c2f6a | 7595 | see branch history |
+
+## Dokumen audit tambahan
+- `docs/AUDIT_STAGE4E_4G_SOURCE_MATRIX_2026-11-22.md` (blob 68435d9a87beca5b9afb18fc4fd459bc7f497ed8) memuat inventory route, controller, model, migration, policy, permission, test, serta gap authorization API kurikulum dan desain histori akademik.
+- Functional source commit terakhir: `af4e26ad974e0cded776ca552cafa77bcf4ae4d7`.
+- HEAD branch setelah commit dokumentasi/backup: `d265d5c96942ceb3f62ba3ca9915052522135dcb` (docs/backup only setelah functional source commit).
+- CI run `44982525201` pada SHA `af4e26ad974e0cded776ca552cafa77bcf4ae4d7` masih berjalan saat manifest ini disusun.
+
+Tidak ada source runtime Stage4D, migration, DB produksi, VPS, Android, atau ZIP baseline yang diubah.
