@@ -86,14 +86,14 @@
             <!-- Identitas pengguna -->
             <div>
                 <label for="identifier" class="block text-xs font-bold text-navy-900 uppercase tracking-wider mb-1.5">
-                    Username / NIP / NIK / NISN <span class="text-red-500">*</span>
+                    Identitas Login <span class="text-red-500">*</span>
                 </label>
                 <div class="relative">
                     <input type="text" id="identifier" name="identifier" value="{{ old('identifier') }}"
-                        placeholder="Masukkan username, NIP, NIK, atau NISN" required autofocus autocomplete="username"
+                        placeholder="Masukkan identitas sesuai peran" required autofocus autocomplete="username"
                         class="w-full px-4 py-3 bg-contentBg border border-cardBorder rounded-xl text-sm text-navy-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition">
                 </div>
-                <p class="text-[11px] text-textSecondary mt-1">Admin: username · Guru: NIP, NIK, atau username · Siswa: NISN.</p>
+                <p class="text-[11px] text-textSecondary mt-1">Admin Madrasah: username · Guru ASN: NIP · Guru Honorer: NIK · Siswa: NISN. NIP dan NIK tidak saling menggantikan.</p>
             </div>
 
             <!-- Password -->
