@@ -4,7 +4,7 @@ Tanggal: 23 November 2026
 Agent: Agent 3 — Web Guru  
 Repository: `zane0184/cbt_november`  
 Branch: `work/web-guru-phase1-audit-implementation-20261122`  
-HEAD sebelum commit checkpoint ini: `7c781e4fc5f428158dc004751dc4a2d7e2128b8d`  
+HEAD sebelum commit checkpoint ini: `badc14fc980147bbb006d09ee2a25e6d438e5245`  
 Status: **P0 BLOCKED — SOURCE AUDITED, CI JOB FAILS BEFORE STEPS**
 
 ## 1. Posisi source
@@ -22,28 +22,28 @@ Source/test runtime tidak berubah dalam pekerjaan pemulihan ini. Phase 4B tetap 
 ## 2. AUDIT — CI trigger dan hasil terbaru
 
 1. Workflow branch memiliki `workflow_dispatch` dan `push`; push hanya untuk branch Web Guru dengan perubahan `backend-laravel/**` atau file workflow.
-2. File workflow yang sama tidak ditemukan pada `main` (HTTP 404). Karena itu manual `workflow_dispatch` dari UI belum tersedia/andal tanpa menyalin workflow ke default branch; `main` tidak diubah.
-3. Dokumentasi audit baru di `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md` memicu push check pada exact SHA `e33517929421810dc8519aedb02fd18b571a43a4`.
-4. Hasil push: check suite `121916153101`, run `45050222534`, job `137293473966`; status `completed/failure`, `steps=[]`, log `BlobNotFound`. Job selesai sekitar empat detik.
-5. Ini bukan bukti PHPUnit gagal/lulus. Tidak ada langkah PHP lint, route:list, PHPUnit, atau MySQL yang terbukti berjalan. Detail annotation tidak tersedia melalui koneksi saat audit.
-6. Penyebab job gagal sebelum steps belum diketahui dan tidak boleh ditebak. Laporan pemulihan lengkap: `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md`.
+2. File workflow yang sama tidak ditemukan pada `main` (HTTP 404). Manual `workflow_dispatch` dari UI tidak dapat diandalkan/tersedia selama workflow tidak ada pada default branch. `main` tidak diubah.
+3. Commit dokumentasi awal `e33517929421810dc8519aedb02fd18b571a43a4` menghasilkan check suite `121916153101`, run `45050222534`, job `137293473966`.
+4. Commit dokumentasi pembaruan `7c781e4fc5f428158dc004751dc4a2d7e2128b8d` menghasilkan check suite `121916286507`, run `45050276763`, job `137293638335`.
+5. Kedua job berakhir `completed/failure` dalam beberapa detik; keduanya memiliki `steps=[]` dan unduhan log mengembalikan `BlobNotFound`. Detail annotation tidak tersedia melalui koneksi audit.
+6. Ini bukan bukti PHPUnit gagal/lulus. PHP lint, route:list, PHPUnit, MySQL 8/InnoDB tidak terbukti berjalan. Penyebab job gagal sebelum steps belum diketahui dan tidak boleh ditebak.
+7. Laporan: `docs/WEB_GURU_P0_AUDIT_CI_RECOVERY_2026-11-23.md`; catatan trigger: `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md`.
 
 ## 3. DESAIN — Langkah aman berikutnya
 
-1. Minta owner/repository administrator memeriksa GitHub Actions runner/service availability, Actions policy, dan kegagalan job pre-step; jangan mengubah workflow atau main hanya untuk menyamarkan kegagalan.
+1. Owner/repository administrator perlu memeriksa GitHub Actions policy, runner/service availability, dan error job pre-step. Jangan mengubah workflow atau main hanya untuk menyamarkan kegagalan.
 2. Setelah job menjalankan steps, wajib buktikan PHP lint, route:list, PHPUnit filter Web Guru, MySQL 8 disposable, dan InnoDB.
-3. Baru setelah CI dapat menjalankan test, tambahkan HTTP Livewire POST regression untuk revokasi permission, assignment, TeacherProfile soft-delete, User soft-delete, dan role revoke.
+3. Baru setelah CI dapat mengeksekusi test, tambahkan HTTP Livewire POST regression untuk revokasi permission, assignment, TeacherProfile soft-delete, User soft-delete, dan role revoke.
 4. Koordinasikan Agent 2 untuk exact-role policy, snapshot PUBLISHED, sanitasi snapshot public/private, dan lock order. Jangan mengubah file owner Agent 2.
-5. Pilih gap Web Guru lain setelah P0 lulus dan dependency kontraknya jelas.
+5. Pilih gap Web Guru berikutnya setelah P0 lulus dan dependency kontraknya jelas.
 
 ## 4. IMPLEMENTASI
 
-- Ditambahkan dokumentasi baru `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md`.
-- Commit awal trigger: `e33517929421810dc8519aedb02fd18b571a43a4`.
-- Commit pembaruan hasil trigger: `7c781e4fc5f428158dc004751dc4a2d7e2128b8d`.
+- Ditambahkan satu file audit baru: `backend-laravel/docs/WEB_GURU_P0_CI_TRIGGER_RECOVERY_2026-11-23.md`.
+- Commit dokumen: `e33517929421810dc8519aedb02fd18b571a43a4`; pembaruan hasil trigger: `7c781e4fc5f428158dc004751dc4a2d7e2128b8d`.
 - Checkpoint ini diperbarui pada commit terpisah.
 - Tidak ada source runtime, test, policy, service, migration, database, workflow, main, branch Agent lain, VPS, atau deployment yang diubah.
-- Tidak ada backup source dibuat karena hanya file dokumentasi baru/ubah dokumentasi yang dikerjakan.
+- Tidak ada backup source dibuat karena hanya dokumentasi baru/ubah dokumentasi yang dikerjakan.
 
 ## 5. PENGUJIAN
 
@@ -51,9 +51,9 @@ Source/test runtime tidak berubah dalam pekerjaan pemulihan ini. Phase 4B tetap 
 |---|---|
 | Branch/commit dokumentasi | Terverifikasi |
 | Workflow push path filter | Terverifikasi statis |
-| Push trigger | Check suite terbuat |
-| Job steps | Kosong |
-| Job logs | `BlobNotFound` |
+| Push trigger | 2 check suites terbuat |
+| Job steps | Keduanya kosong |
+| Job logs | Keduanya `BlobNotFound` |
 | PHP lint | NOT RUN / NOT VERIFIED |
 | Laravel route:list | NOT RUN / NOT VERIFIED |
 | PHPUnit Web Guru | NOT RUN / NOT VERIFIED |
