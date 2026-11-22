@@ -165,12 +165,12 @@ class ExamRoomSessionConcurrencyTest extends TestCase
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_rooms')) {
                 $connection->table('exam_rooms')->where('tenant_id', $this->tenantId)->delete();
             }
-            if (\Illuminate\Support\Facades\Schema::hasTable('exam_participants')) {
-                $connection->table('exam_participants')->where('tenant_id', $this->tenantId)->update(['rombel_id' => null]);
-            }
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_proctor_assignments')) {
                 $connection->table('exam_proctor_assignments')->where('tenant_id', $this->tenantId)
                     ->update(['exam_session_room_id' => null, 'schedule_revision' => null]);
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('exam_participants')) {
+                $connection->table('exam_participants')->where('tenant_id', $this->tenantId)->update(['rombel_id' => null]);
             }
         }
 
