@@ -40,7 +40,7 @@
 </head>
 <body class="bg-contentBg text-textPrimary antialiased flex min-h-screen">
     <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-navy-900 text-white flex flex-col justify-between hidden md:flex shrink-0">
+    <aside class="w-64 bg-navy-900 text-white flex flex-col justify-between hidden md:flex h-screen sticky top-0 overflow-y-auto shrink-0">
         <div>
             <!-- Brand Header -->
             <div class="px-6 py-5 border-b border-navy-800 flex items-center gap-3">
@@ -54,7 +54,7 @@
             </div>
 
             <!-- Navigation Links -->
-            <nav class="p-4 space-y-1.5 text-sm font-medium">
+            <nav class="p-4 space-y-1.5 text-sm font-medium overflow-y-auto">
                 @php
                     $u = auth()->user();
                 @endphp
@@ -144,9 +144,40 @@
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col min-w-0">
         <!-- Top Navbar -->
-        <header class="bg-white border-b border-cardBorder px-6 py-4 flex justify-between items-center shadow-sm">
-            <div class="flex items-center gap-3">
-                <h2 class="text-lg font-bold text-navy-900">Asesmen Digital Madrasah</h2>
+        <header class="sticky top-0 z-30 bg-white border-b border-cardBorder px-4 md:px-6 py-3 md:py-4 flex justify-between items-center gap-3 shadow-sm">
+            <div class="flex min-w-0 items-center gap-3">
+                <details class="relative md:hidden">
+                    <summary class="cursor-pointer list-none rounded-lg border border-cardBorder bg-white px-3 py-2 text-sm font-semibold text-navy-900 shadow-sm">Menu</summary>
+                    <nav class="absolute left-0 top-full z-50 mt-2 max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-cardBorder bg-navy-900 p-3 text-sm text-white shadow-xl">
+                        @php $mobileUser = auth()->user(); @endphp
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/dashboard">Dashboard Admin Madrasah</a>
+                        @endif
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')) && $mobileUser->hasPermission('user.manage'))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/users">Pengguna & Akun</a>
+                        @endif
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')) && $mobileUser->hasPermission('academic.manage'))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/academic">Data Akademik & Rombel</a>
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/rombel-students">Keanggotaan Rombel</a>
+                        @endif
+                        @if($mobileUser && $mobileUser->hasPermission('curriculum.view') && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR') || $mobileUser->hasRole('GURU')))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/curriculum">Kurikulum</a>
+                        @endif
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')) && $mobileUser->hasPermission('exam.proctor.assign'))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/proctor-assignments">Penugasan Guru Pengawas</a>
+                        @endif
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR') || $mobileUser->hasRole('GURU')))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/exams">Daftar Ujian</a>
+                        @endif
+                        @if($mobileUser && $mobileUser->hasRole('GURU') && $mobileUser->hasPermission('question.view'))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/questions">Bank Soal</a>
+                        @endif
+                        @if($mobileUser && $mobileUser->hasRole('GURU') && \App\Models\ExamProctorAssignment::query()->activeNow()->where('tenant_id', $mobileUser->tenant_id)->where('proctor_user_id', $mobileUser->id)->exists())
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/proktor/assignments">Tugas Pengawasan Aktif</a>
+                        @endif
+                    </nav>
+                </details>
+                <h2 class="truncate text-base font-bold text-navy-900 sm:text-lg">Asesmen Digital Madrasah</h2>
             </div>
             <div class="flex items-center gap-4">
                 <span class="text-sm font-semibold text-textSecondary bg-gray-100 px-3 py-1.5 rounded-full border border-cardBorder">
@@ -162,7 +193,7 @@
         </header>
 
         <!-- Page Content -->
-        <main class="flex-1 p-6 md:p-8 overflow-y-auto">
+        <main class="min-h-0 flex-1 p-4 md:p-8 overflow-y-auto">
             {{ $slot }}
         </main>
     </div>
