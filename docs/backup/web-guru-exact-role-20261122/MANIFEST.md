@@ -72,3 +72,12 @@ Jumlah snapshot backup terdaftar: 16. Seluruh blob SHA yang tercantum: MATCH.
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | a8260bb6ab8c4a6834fc2a15938183605f35c69b | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-post-mount-regressions | a8260bb6ab8c4a6834fc2a15938183605f35c69b | 59fe4f85c790dfaf52185be45df56e916ff2485e | MATCH |
 
 Jumlah snapshot backup terdaftar: 18. Seluruh blob SHA yang tercantum harus diverifikasi sebelum P0 dinyatakan selesai.
+
+## Backup tambahan — koreksi jumlah komentar Issue #8
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| docs/AGENT3_P0_EXACT_ROLE_CI_CLOSURE_2026-11-22.md | 7563f646c375bc632143bf1b72db87f0a11902fa | docs/backup/web-guru-exact-role-20261122/AGENT3_P0_EXACT_ROLE_CI_CLOSURE.before-issue8-comment-count-correction.md | 7563f646c375bc632143bf1b72db87f0a11902fa | 3e1894318c8b1929bd77a0c849ea30ec054f6536 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | c8c30ae7311d55adaed2f2058c3f85c421c61ca8 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-issue8-comment-count-correction | c8c30ae7311d55adaed2f2058c3f85c421c61ca8 | 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23 | MATCH |
+
+Jumlah snapshot backup terdaftar: 20. Seluruh blob SHA yang tercantum: MATCH.
