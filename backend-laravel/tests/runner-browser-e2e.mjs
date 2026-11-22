@@ -13,6 +13,8 @@ const scripts = [...blade.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .filter((match) => !/\bsrc\s*=/.test(match[1]));
 assert.equal(scripts.length, 1, 'Expected exactly one inline runner script');
 const runnerScript = scripts[0][2];
+assert.match(blade, /id="question-stem" dir="auto"/, 'Question stem must declare automatic bidirectional text direction');
+assert.ok(runnerScript.includes("label.dir = 'auto'") && runnerScript.includes("text.dir = 'auto'"), 'Answer options must use automatic text direction');
 
 const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
@@ -20,7 +22,7 @@ const fixture = [
   '<main id="exam-app" data-exam-id="exam-1" data-student-id="student-1" data-device-binding="11111111-1111-4111-8111-111111111111" data-require-token="0">',
   '<section id="instruction-panel"><input id="exam-token"><button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
   '<section id="runner-panel" class="hidden"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
-  '<div id="question-number"></div><div id="question-points"></div><div id="question-media"></div><div id="question-stem"></div><div id="question-input"></div>',
+  '<div id="question-number"></div><div id="question-points"></div><div id="question-media"></div><div id="question-stem" dir="auto"></div><div id="question-input"></div>',
   '<button id="previous-button" type="button">Sebelumnya</button><button id="next-button" type="button">Berikutnya</button>',
   '<details id="question-nav-panel"><summary>Nomor soal</summary><div id="question-nav"></div><button id="submit-button" type="button">Kirim Ujian</button></details></section>',
   '<section id="completion-panel" class="hidden"><h2 id="completion-title"></h2><p id="completion-message"></p></section>',
