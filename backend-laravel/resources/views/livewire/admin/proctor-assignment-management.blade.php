@@ -23,7 +23,7 @@
             <div>
                 <label class="block text-sm font-semibold mb-1">Guru aktif</label>
                 <select wire:model="selectedProctorId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                    <option value="">Pilih Proktor tenant ini</option>
+                    <option value="">Pilih Guru aktif tenant ini</option>
                     @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }} — {{ $proctor->email }}</option>@endforeach
                 </select>
                 @error('selectedProctorId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
@@ -58,7 +58,7 @@
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
-                <thead><tr class="text-left border-b border-cardBorder text-textSecondary"><th class="py-3 pr-3">Ujian</th><th class="py-3 pr-3">Proktor</th><th class="py-3 pr-3">Masa berlaku</th><th class="py-3 pr-3">Status</th><th class="py-3">Aksi</th></tr></thead>
+                <thead><tr class="text-left border-b border-cardBorder text-textSecondary"><th class="py-3 pr-3">Ujian</th><th class="py-3 pr-3">Guru Pengawas</th><th class="py-3 pr-3">Masa berlaku</th><th class="py-3 pr-3">Status</th><th class="py-3">Aksi</th></tr></thead>
                 <tbody>
                 @forelse ($assignments as $assignment)
                     <tr class="border-b border-cardBorder/70">
@@ -77,7 +77,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="py-6 text-center text-textSecondary">Belum ada penugasan Proktor.</td></tr>
+                    <tr><td colspan="5" class="py-6 text-center text-textSecondary">Belum ada penugasan Guru Pengawas.</td></tr>
                 @endforelse
                 </tbody>
             </table>
