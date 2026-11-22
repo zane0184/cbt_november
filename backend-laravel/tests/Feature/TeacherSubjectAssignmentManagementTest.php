@@ -132,6 +132,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'startsAt' => '2026-07-01',
             'endsAt' => '2027-06-30',
             'assignmentStatus' => 'ACTIVE',
+            'changeReason' => 'Penugasan disusun berdasarkan pembagian tugas akademik.',
         ];
     }
 
@@ -155,6 +156,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame($this->admin->id, $audit->user_id);
         $this->assertSame($assignment->id, $audit->entity_id);
         $this->assertSame('ACTIVE', $audit->new_values['status']);
+        $this->assertSame('Penugasan disusun berdasarkan pembagian tugas akademik.', $audit->new_values['reason']);
     }
 
     public function test_deactivation_preserves_assignment_record_and_history(): void
@@ -173,7 +175,10 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
 
         Livewire::actingAs($this->admin)
             ->test(TeacherSubjectAssignmentManagement::class)
-            ->call('deactivate', $assignment->id)
+            ->call('openDeactivateModal', $assignment->id)
+            ->assertSet('showDeactivateModal', true)
+            ->set('deactivationReason', 'Penugasan dicabut karena perubahan pembagian tugas.')
+            ->call('deactivate')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('teacher_subject_assignments', [
@@ -186,6 +191,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame($assignment->id, $audit->entity_id);
         $this->assertSame('ACTIVE', $audit->old_values['status']);
         $this->assertSame('INACTIVE', $audit->new_values['status']);
+        $this->assertSame('Penugasan dicabut karena perubahan pembagian tugas.', $audit->new_values['reason']);
     }
 
     public function test_edit_updates_assignment_and_records_before_after_audit(): void
@@ -206,6 +212,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->test(TeacherSubjectAssignmentManagement::class)
             ->call('edit', $assignment->id)
             ->set('endsAt', '2027-05-31')
+            ->set('changeReason', 'Tanggal penugasan disesuaikan dengan kalender akademik.')
             ->call('save')
             ->assertHasNoErrors();
 
@@ -214,6 +221,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame($assignment->id, $audit->entity_id);
         $this->assertSame('2027-06-30', Carbon::parse($audit->old_values['ends_at'])->toDateString());
         $this->assertSame('2027-05-31', Carbon::parse($audit->new_values['ends_at'])->toDateString());
+        $this->assertSame('Tanggal penugasan disesuaikan dengan kalender akademik.', $audit->new_values['reason']);
     }
 
     public function test_assignment_rejects_rombel_and_semester_from_different_academic_year(): void
