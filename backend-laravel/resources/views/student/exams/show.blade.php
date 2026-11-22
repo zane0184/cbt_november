@@ -169,8 +169,10 @@
 
     async function startOrResume() {
         el('start-button').disabled = true;
-        el('start-status').textContent = 'Menghubungkan ke server…';
+        el('start-status').textContent = 'Memeriksa penyimpanan perangkat…';
         try {
+            state.localDb = await openLocalDatabase();
+            el('start-status').textContent = 'Menghubungkan ke server…';
             const payload = {};
             if (requireToken) payload.token = (el('exam-token')?.value || '').trim().toUpperCase();
             const started = await api('/attempts', { method: 'POST', body: JSON.stringify(payload) });
@@ -184,7 +186,6 @@
     }
 
     async function loadExecution() {
-        state.localDb = await openLocalDatabase();
         const execution = await api('/execution');
         const data = execution.data;
         state.attemptId = data.attempt.id;
@@ -319,7 +320,6 @@
         state.answers.set(question.id, { payload, state: 'ANSWERED' });
         const pendingItem = { payload, clientRequestId: requestId() };
         state.pending.set(question.id, pendingItem);
-        state.conflicts.delete(question.id);
         setSaveStatus('Menyimpan draft pada perangkat…');
         try {
             await persistPending(question.id, pendingItem);
@@ -397,6 +397,13 @@
             showError(`Ujian belum dapat dikirim: ${error.message}. Draft lokal dipertahankan. Jangan tutup halaman; periksa koneksi lalu coba lagi.`);
         }
     }
+
+    window.addEventListener('beforeunload', event => {
+        if (state.pending.size || state.conflicts.size || state.saving.size) {
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
 
     el('start-button').addEventListener('click', startOrResume);
     el('previous-button').addEventListener('click', () => { if (state.current > 0) { state.current--; renderQuestion(); } });
