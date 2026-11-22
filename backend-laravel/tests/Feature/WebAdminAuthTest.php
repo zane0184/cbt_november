@@ -140,12 +140,12 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_kamad_cannot_open_the_operator_dashboard(): void
+    public function test_retired_operator_dashboard_url_does_not_exist(): void
     {
         $this->withoutMiddleware(EnsureLicenseActive::class);
-        $this->actingAs($this->kamad);
+        $this->actingAs($this->admin);
 
-        $this->get('/operator/dashboard')->assertForbidden();
+        $this->get('/operator/dashboard')->assertNotFound();
     }
 
     public function test_proktor_role_without_guru_identity_is_rejected(): void
