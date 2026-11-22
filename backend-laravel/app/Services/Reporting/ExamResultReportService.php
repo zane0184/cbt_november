@@ -24,9 +24,9 @@ class ExamResultReportService
                             ->whereHas('studentProfile', fn ($profileQuery) => $profileQuery->where('tenant_id', $exam->tenant_id));
                     });
             })
-            ->with(['participant.user.studentProfile.rombels', 'score', 'exam.assessment.subject', 'exam.assessment.academicYear', 'exam.assessment.semester'])
+            ->with(['participant.userForHistory.studentProfile.rombels', 'score', 'exam.assessment.subject', 'exam.assessment.academicYear', 'exam.assessment.semester'])
             ->when($filters['search'] ?? null, function (Builder $q, $search) {
-                $q->whereHas('participant.user', function ($sq) use ($search) {
+                $q->whereHas('participant.userForHistory', function ($sq) use ($search) {
                     $sq->where('name', 'like', "%{$search}%");
                 });
             })
@@ -44,7 +44,7 @@ class ExamResultReportService
                 });
             })
             ->when($filters['rombel_id'] ?? null, function (Builder $q, $rombelId) use ($exam) {
-                $q->whereHas('participant.user.studentProfile.rombels', function ($sq) use ($rombelId) {
+                $q->whereHas('participant.userForHistory.studentProfile.rombels', function ($sq) use ($rombelId) {
                     $sq->where('rombels.id', $rombelId)
                         ->where('rombels.tenant_id', $exam->tenant_id)
                         ->where('rombels.academic_year_id', $exam->assessment?->academic_year_id);
@@ -70,7 +70,7 @@ class ExamResultReportService
                             ->whereHas('studentProfile', fn ($profileQuery) => $profileQuery->where('tenant_id', $exam->tenant_id));
                     });
             })
-            ->with(['participant.user.studentProfile.rombels', 'score', 'exam.assessment.subject', 'exam.assessment.academicYear', 'exam.assessment.semester'])
+            ->with(['participant.userForHistory.studentProfile.rombels', 'score', 'exam.assessment.subject', 'exam.assessment.academicYear', 'exam.assessment.semester'])
             ->when($filters['status'] ?? null, function (Builder $q, $status) {
                 $q->where('status', $status);
             })
@@ -85,7 +85,7 @@ class ExamResultReportService
                 });
             })
             ->when($filters['rombel_id'] ?? null, function (Builder $q, $rombelId) use ($exam) {
-                $q->whereHas('participant.user.studentProfile.rombels', function ($sq) use ($rombelId) {
+                $q->whereHas('participant.userForHistory.studentProfile.rombels', function ($sq) use ($rombelId) {
                     $sq->where('rombels.id', $rombelId)
                     ->where('rombels.tenant_id', $exam->tenant_id)
                     ->where('rombels.academic_year_id', $exam->assessment?->academic_year_id);
