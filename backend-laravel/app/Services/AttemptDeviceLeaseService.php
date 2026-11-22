@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\DeviceLease;
 use App\Models\ExamAttempt;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class AttemptDeviceLeaseService
 {
