@@ -17,6 +17,7 @@ const runnerScript = scripts[0][2];
 assert.match(blade, /id="question-stem" dir="auto"/, 'Question stem must declare automatic bidirectional text direction');
 assert.ok(runnerScript.includes("label.dir = 'auto'") && runnerScript.includes("text.dir = 'auto'"), 'Answer options must use automatic text direction');
 const runnerStyles = [...blade.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1]).join('\n');
+assert.ok(runnerStyles.includes('.runner-layout') && runnerStyles.includes('.question-nav-panel'), 'Viewport fixture must use the actual Blade runner responsive styles');
 
 const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
