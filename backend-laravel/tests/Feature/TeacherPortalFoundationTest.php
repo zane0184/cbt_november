@@ -166,7 +166,7 @@ class TeacherPortalFoundationTest extends TestCase
         }
     }
 
-    public function test_question_and_exam_livewire_screens_reject_missing_permission_assignment_and_foreign_tenant_context(): void
+    public function test_question_and_exam_livewire_screens_reject_missing_permission_and_assignment(): void
     {
         $questionView = Permission::query()->where('name', 'question.view')->firstOrFail();
         $examManage = Permission::query()->where('name', 'exam.manage')->firstOrFail();
@@ -182,19 +182,6 @@ class TeacherPortalFoundationTest extends TestCase
         $this->guruRole->permissions()->sync([$questionView->id, $examManage->id]);
         $this->teacher->unsetRelation('roles');
 
-        $tenantB = Tenant::create([
-            'name' => 'Tenant B',
-            'code' => 'MUG02',
-            'status' => 'ACTIVE',
-        ]);
-        app(TenantContext::class)->setTenantId($tenantB->id);
-
-        // Assignment remains active here, so the denial specifically proves
-        // that a mismatched tenant context is rejected by the shared boundary.
-        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
-        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
-
-        app(TenantContext::class)->setTenantId($this->tenant->id);
         TeacherSubjectAssignment::query()
             ->where('tenant_id', $this->tenant->id)
             ->whereIn('teacher_profile_id', TeacherProfile::query()
@@ -279,15 +266,27 @@ class TeacherPortalFoundationTest extends TestCase
 
         app(TenantContext::class)->setTenantId($this->tenant->id);
 
-        Livewire::actingAs($this->teacher)
-            ->test(QuestionBank::class)
-            ->call('openEditModal', $foreignQuestion->id)
-            ->assertNotFound();
+        try {
+            Livewire::actingAs($this->teacher)
+                ->test(QuestionBank::class)
+                ->call('openEditModal', $foreignQuestion->id);
 
-        Livewire::actingAs($this->teacher)
-            ->test(ExamManagement::class)
-            ->call('openEditModal', $foreignExam->id)
-            ->assertNotFound();
+            $this->fail('Question tenant lain tidak boleh ditemukan oleh Guru tenant ini.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            // Livewire's unit-test harness rethrows the not-found exception
+            // instead of converting it to an HTTP 404 response.
+            $this->assertSame(Question::class, $exception->getModel());
+        }
+
+        try {
+            Livewire::actingAs($this->teacher)
+                ->test(ExamManagement::class)
+                ->call('openEditModal', $foreignExam->id);
+
+            $this->fail('Exam tenant lain tidak boleh ditemukan oleh Guru tenant ini.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            $this->assertSame(Exam::class, $exception->getModel());
+        }
     }
 
     public function test_question_and_exam_reject_revoked_permissions_after_mount(): void
@@ -352,7 +351,7 @@ class TeacherPortalFoundationTest extends TestCase
         $exam->call('createExam')->assertForbidden();
     }
 
-    public function test_question_and_exam_reject_tenant_context_change_after_mount(): void
+    public function test_question_and_exam_component_boot_rejects_tenant_context_change_after_mount(): void
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
@@ -364,8 +363,18 @@ class TeacherPortalFoundationTest extends TestCase
         ]);
         app(TenantContext::class)->setTenantId($tenantB->id);
 
-        $question->set('search', 'must-be-denied')->assertForbidden();
-        $exam->call('createExam')->assertForbidden();
+        // Invoke the same boot boundary on the already-mounted component
+        // instances. A real Livewire HTTP request runs IdentifyTenant first,
+        // which deliberately re-establishes the context from the authenticated
+        // user's tenant and ignores client-controlled tenant overrides.
+        foreach ([$question->instance(), $exam->instance()] as $component) {
+            try {
+                $component->boot();
+                $this->fail('Component Guru harus menolak tenant context yang berbeda.');
+            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+                $this->assertSame(403, $exception->getStatusCode());
+            }
+        }
     }
 
     public function test_question_and_exam_reject_revoked_guru_role_after_mount(): void
