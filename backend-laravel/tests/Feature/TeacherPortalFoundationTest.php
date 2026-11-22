@@ -139,11 +139,17 @@ class TeacherPortalFoundationTest extends TestCase
 
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $kamadRole = Role::create(['name' => 'KAMAD', 'label' => 'Kepala Madrasah']);
+        $portalPermissionIds = $this->guruRole->permissions()->pluck('permissions.id')->all();
 
         foreach ([
             [$adminRole, 'admin.component@mug.test'],
             [$studentRole, 'siswa.component@mug.test'],
+            [$kamadRole, 'kamad.component@mug.test'],
         ] as [$role, $email]) {
+            // Give denied roles the same component permissions so denial proves
+            // the exact-one-GURU boundary, not merely a missing permission.
+            $role->permissions()->sync($portalPermissionIds);
             $user = User::create([
                 'tenant_id' => $this->tenant->id,
                 'name' => 'Akun Ditolak',
@@ -156,7 +162,7 @@ class TeacherPortalFoundationTest extends TestCase
             Livewire::actingAs($user)->test(ExamManagement::class)->assertForbidden();
         }
 
-        foreach ([$studentRole, $adminRole] as $additionalRole) {
+        foreach ([$studentRole, $adminRole, $kamadRole] as $additionalRole) {
             $this->teacher->roles()->attach($additionalRole->id);
             $this->teacher->unsetRelation('roles');
 
@@ -167,7 +173,6 @@ class TeacherPortalFoundationTest extends TestCase
             $this->teacher->unsetRelation('roles');
         }
     }
-
     public function test_question_and_exam_livewire_screens_reject_missing_permission_and_assignment(): void
     {
         $questionView = Permission::query()->where('name', 'question.view')->firstOrFail();
@@ -203,6 +208,7 @@ class TeacherPortalFoundationTest extends TestCase
         $questionAction = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $examHydration = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
         $examAction = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
         $this->teacher->roles()->attach($studentRole->id);
@@ -212,6 +218,7 @@ class TeacherPortalFoundationTest extends TestCase
         $questionAction->call('addMatchingPair')->assertForbidden();
         $examHydration->set('search', 'blocked')->assertForbidden();
         $examAction->call('createExam')->assertForbidden();
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_guru_cannot_open_question_or_exam_ids_from_another_tenant(): void
@@ -378,6 +385,7 @@ class TeacherPortalFoundationTest extends TestCase
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         $questionView = Permission::query()->where('name', 'question.view')->firstOrFail();
         $examManage = Permission::query()->where('name', 'exam.manage')->firstOrFail();
@@ -387,12 +395,14 @@ class TeacherPortalFoundationTest extends TestCase
 
         $question->call('openCreateModal')->assertForbidden();
         $exam->call('createExam')->assertForbidden();
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_question_and_exam_reject_revoked_assignment_after_mount(): void
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         $profile = TeacherProfile::query()
             ->where('tenant_id', $this->tenant->id)
@@ -405,12 +415,14 @@ class TeacherPortalFoundationTest extends TestCase
 
         $question->set('search', 'must-be-denied')->assertForbidden();
         $exam->call('createExam')->assertForbidden();
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_question_and_exam_reject_deleted_teacher_profile_after_mount(): void
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         TeacherProfile::query()
             ->where('tenant_id', $this->tenant->id)
@@ -420,12 +432,14 @@ class TeacherPortalFoundationTest extends TestCase
 
         $question->call('openCreateModal')->assertForbidden();
         $exam->call('createExam')->assertForbidden();
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_question_and_exam_reject_soft_deleted_user_after_mount(): void
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         DB::table('users')
             ->where('id', $this->teacher->id)
@@ -434,12 +448,14 @@ class TeacherPortalFoundationTest extends TestCase
 
         $question->call('openCreateModal')->assertForbidden();
         $exam->call('createExam')->assertForbidden();
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_question_and_exam_component_boot_rejects_tenant_context_change_after_mount(): void
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         $tenantB = Tenant::create([
             'name' => 'Tenant Context Changed',
@@ -460,6 +476,7 @@ class TeacherPortalFoundationTest extends TestCase
                 $this->assertSame(403, $exception->getStatusCode());
             }
         }
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_http_livewire_update_rebuilds_tenant_context_and_rejects_stale_tenant_identity(): void
@@ -484,6 +501,7 @@ class TeacherPortalFoundationTest extends TestCase
         // be discarded and rebuilt from the authenticated tenant identity.
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertOk();
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertOk();
+        $before = $this->tenantQuestionExamSnapshot();
         $tenantB = Tenant::create([
             'name' => 'Tenant Reassignment Target',
             'code' => 'MUG05',
@@ -518,18 +536,21 @@ class TeacherPortalFoundationTest extends TestCase
             'id' => $this->teacher->id,
             'tenant_id' => $tenantB->id,
         ]);
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_question_and_exam_reject_revoked_guru_role_after_mount(): void
     {
         $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
         $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+        $before = $this->tenantQuestionExamSnapshot();
 
         $this->teacher->roles()->detach($this->guruRole->id);
         $this->teacher->unsetRelation('roles');
 
         $question->call('openCreateModal')->assertForbidden();
         $exam->call('createExam')->assertForbidden();
+        $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
     public function test_guru_without_exactly_one_tenant_local_teacher_profile_is_denied(): void
@@ -735,4 +756,21 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Delapan Dimensi Profil Lulusan')
             ->assertSee('belum terverifikasi sumber resminya');
     }
+    private function tenantQuestionExamSnapshot(): array
+    {
+        $tables = ['questions', 'question_versions', 'question_options', 'assessments', 'exams'];
+        $snapshot = [];
+
+        foreach ($tables as $table) {
+            $snapshot[$table] = DB::table($table)
+                ->where('tenant_id', $this->tenant->id)
+                ->orderBy('id')
+                ->get()
+                ->map(fn ($row) => (array) $row)
+                ->all();
+        }
+
+        return $snapshot;
+    }
+
 }
