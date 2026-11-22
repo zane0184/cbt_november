@@ -395,13 +395,29 @@ jobs:
           set -euo pipefail
           php artisan test tests/Feature/TeacherSubjectAssignmentManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-subject-assignment.log"
 
+      - name: Prepare isolated schema for Stage 4C MySQL concurrency test
+        if: steps.preflight.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_DB="cbt_wa01_alt_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          EXPECTED_USER="wa01_alt_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          test "$APP_ENV" = "testing"
+          test "$DB_CONNECTION" = "mysql"
+          test "$DB_HOST" = "127.0.0.1"
+          test "$DB_DATABASE" = "$EXPECTED_DB"
+          test "$DB_USERNAME" = "$EXPECTED_USER"
+          php artisan migrate:fresh --force --no-interaction 2>&1 | tee "$RUNNER_TEMP/wa01-alt/stage4c-concurrency-migrate-fresh.log"
+
       - name: PHPUnit — Stage 4C MySQL 8 tenant mutex concurrency
+        if: steps.preflight.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
           php artisan test tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-subject-assignment-concurrency.log"
 
       - name: PHPUnit — Stage 4B room, session and participant placement integrity
+        if: github.ref == 'refs/heads/work/stage4b-room-session-20261122'
         shell: bash
         run: |
           set -euo pipefail
@@ -435,7 +451,16 @@ jobs:
               'non_innodb_table_count' => $nonInnoDb,
               'all_tables_innodb' => $total > 0 && $nonInnoDb === 0
           ], JSON_PRETTY_PRINT) . PHP_EOL;
-          $requiredTables = ['tenants', 'users', 'academic_years', 'semesters', 'roles', 'permissions', 'permission_role', 'audit_logs', 'exams', 'exam_attempts', 'exam_rooms', 'exam_sessions', 'exam_session_rooms', 'exam_session_room_rombels', 'exam_participant_room_assignments'];
+          $requiredTables = ['tenants', 'users', 'academic_years', 'semesters', 'roles', 'permissions', 'permission_role', 'audit_logs', 'exams', 'exam_attempts'];
+          if (getenv('GITHUB_REF') === 'refs/heads/work/stage4b-room-session-20261122') {
+              $requiredTables = array_merge($requiredTables, [
+                  'exam_rooms',
+                  'exam_sessions',
+                  'exam_session_rooms',
+                  'exam_session_room_rombels',
+                  'exam_participant_room_assignments',
+              ]);
+          }
           $missingTables = [];
           foreach ($requiredTables as $table) {
               $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? AND table_type = ?');
@@ -448,7 +473,7 @@ jobs:
           PHP
 
       - name: PHPUnit — MySQL 8 InnoDB concurrent room conflict
-        if: steps.preflight.outcome == 'success'
+        if: steps.preflight.outcome == 'success' && github.ref == 'refs/heads/work/stage4b-room-session-20261122'
         shell: bash
         run: |
           set -euo pipefail
