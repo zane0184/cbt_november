@@ -183,7 +183,7 @@ class WebAdminAuthTest extends TestCase
         $this->assertNotNull($rememberCookie);
 
         // Client B: a distinct Admin browser session authenticates independently.
-        $this->withoutCookie($sessionCookieName);
+        $this->withCookie($sessionCookieName, '');
         $adminLogin = $this->post('/login', [
             'identifier' => 'admin.uji',
             'password' => $this->password,
@@ -201,14 +201,14 @@ class WebAdminAuthTest extends TestCase
         $this->assertSoftDeleted('users', ['id' => $this->guru->id]);
 
         // Client A's original cookie is denied while the account is inactive.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $guruSessionCookieValue);
         $this->app['auth']->forgetGuards();
         $this->get('/admin/exams')->assertRedirect('/login');
         $this->assertGuest();
 
         // Client B restores the same Guru identity using the official Admin action.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $adminSessionCookie->getValue());
         $this->app['auth']->forgetGuards();
         \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
@@ -218,21 +218,21 @@ class WebAdminAuthTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $this->guru->id, 'deleted_at' => null]);
 
         // Client A cannot revive its pre-deactivation session after reactivation.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $guruSessionCookieValue);
         $this->app['auth']->forgetGuards();
         $this->get('/admin/exams')->assertRedirect('/login');
         $this->assertGuest();
 
         // The old remember-me cookie was invalidated by remember_token rotation.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($rememberCookie->getName(), $rememberCookie->getValue());
         $this->app['auth']->forgetGuards();
         $this->get('/admin/exams')->assertRedirect('/login');
         $this->assertGuest();
 
         // Fresh credentials establish a new browser session.
-        $this->withoutCookie($rememberCookie->getName());
+        $this->withCookie($rememberCookie->getName(, ''));
         $freshLogin = $this->post('/login', [
             'identifier' => '198001012006041001',
             'password' => $this->password,
