@@ -331,7 +331,7 @@ class MonitoringController extends Controller
             return response()->json(['success' => false, 'message' => 'Only an active Student account can send an exam heartbeat.'], 403);
         }
 
-        if (!app(\\App\\Services\\AttemptAuthSessionBinding::class)->identity($request)) {
+        if (!app(\App\Services\AttemptAuthSessionBinding::class)->identity($request)) {
             return response()->json(['success' => false, 'code' => 'AUTH_SESSION_REQUIRED'], 401);
         }
 
@@ -385,11 +385,11 @@ class MonitoringController extends Controller
                 ], 409);
             }
 
-            if (!app(\\App\\Services\\AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+            if (!app(\App\Services\AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
                 return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
             }
 
-            if (!app(\\App\\Services\\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+            if (!app(\App\Services\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
                 return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
