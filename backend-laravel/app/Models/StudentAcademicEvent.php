@@ -61,6 +61,6 @@ class StudentAcademicEvent extends Model
 
     public function actor(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'performed_by');
+        return $this->belongsTo(User::class, 'performed_by')->withTrashed();
     }
 }
