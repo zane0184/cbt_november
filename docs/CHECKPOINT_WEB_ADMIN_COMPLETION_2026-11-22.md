@@ -109,3 +109,63 @@ Satu owner integrasi: branch `work/web-admin-completion-20261122`. Tidak ada pat
 
 ## NEXT ACTION
 Mulai audit dan implementasi P0 pada branch ini: periksa seluruh file auth/model/migration/session dan tests, desain account active/inactive tanpa soft-delete, backup tiap file sebelum patch, lalu jalankan CI disposable MySQL 8 pada exact SHA. Setelah P0 teruji, lanjut P1 dan seterusnya.
+
+
+## ADDENDUM P0 — STATUS AKUN AKTIF/NONAKTIF (22 NOV 2026)
+
+### AUDIT
+- Baseline `users` tidak memiliki flag status akun eksplisit.
+- Kolom `deleted_at` ada pada tabel, tetapi model User tidak menggunakan SoftDeletes; field tersebut tidak boleh dijadikan status aktif/nonaktif.
+- Login Web dan API memakai LoginIdentityResolver yang sama; karena itu pemeriksaan status akun diletakkan pada resolver dan middleware request terautentikasi.
+- Tabel `sessions.user_id` dibuat sebagai foreignId numerik sedangkan `users.id` UUID. Jangan menghapus sesi dengan membandingkan UUID ke kolom numerik tersebut. Request berikutnya untuk sesi Web ditolak middleware; bearer token dicabut saat deaktivasi.
+
+### DESAIN
+- Flag `users.is_active` boolean, default true untuk mempertahankan akses akun lama saat migrasi.
+- Akun nonaktif ditolak saat login Web/API.
+- Middleware `account.active` dipasang pada semua route Web/API yang membutuhkan autentikasi, termasuk student routes, monitoring, /auth/me, dan logout.
+- Deaktivasi hanya tersedia bagi Guru/Siswa single-role pada tenant Admin yang sedang aktif.
+- Deaktivasi mewajibkan alasan, mengubah flag dalam transaksi/row lock, merotasi remember_token, mencabut seluruh Sanctum token, dan menulis audit event USER_DEACTIVATED.
+- Aktivasi kembali mewajibkan alasan dan menulis USER_REACTIVATED; token/sesi lama tidak dipulihkan.
+- Filter daftar akun mendukung semua/aktif/nonaktif. Status tidak mengubah histori akademik dan tidak memakai soft-delete.
+
+### IMPLEMENTASI
+Branch: `work/web-admin-completion-20261122`.
+Source changes:
+- `backend-laravel/database/migrations/2026_11_22_000006_add_is_active_to_users_table.php` — flag aktif default true.
+- `backend-laravel/app/Models/User.php` — cast is_active boolean.
+- `backend-laravel/app/Services/LoginIdentityResolver.php` — hanya resolve user aktif; profile tables tidak memiliki flag is_active.
+- `backend-laravel/app/Http/Middleware/EnsureActiveAccount.php` — menolak request sesi/token untuk akun nonaktif; token aktif yang dipakai pada request ditarik.
+- `backend-laravel/bootstrap/app.php` — alias account.active.
+- `backend-laravel/routes/web.php` dan `routes/api.php` — middleware aktif dipasang pada seluruh route terautentikasi.
+- `backend-laravel/app/Http/Controllers/Api/V1/AuthController.php` — role login API dibatasi ADMIN_MADRASAH/GURU/SISWA; KAMAD dihapus dari allow-list.
+- `backend-laravel/app/Livewire/Admin/UserManagement.php` dan view — filter status, modal alasan, aktivasi/deaktivasi, token revocation, audit.
+- `tests/Feature/AdminUserManagementScopeTest.php` — lifecycle, audit, token revocation dan tenant denial.
+- `tests/Feature/WebAdminAuthTest.php` — login nonaktif dan session denial.
+- `tests/Feature/AuthTest.php` — login API nonaktif dan token revocation.
+- `.github/workflows/wa01-alternative-isolated-runtime.yml` — workflow ditambahkan untuk branch completion; suite test terkait sudah termasuk dalam workflow.
+
+Backup exact pre-patch dibuat di `docs/backup/web-admin-completion-2026-11-22/`:
+- User.php.before-account-active-status
+- LoginIdentityResolver.php.before-account-active-status
+- AuthController.php.before-account-active-status
+- app.php.before-account-active-status
+- web.php.before-account-active-status
+- api.php.before-account-active-status
+- UserManagement.php.before-account-active-status
+- user-management.blade.php.before-account-active-status
+- WebAdminAuthTest.php.before-account-active-status
+- AuthTest.php.before-account-active-status
+- wa01-alternative-isolated-runtime.yml.before-account-active-status
+
+Commits utama source: migration `eaddb5ad`; middleware `168747b1`; model `e71b85c6`; resolver final correction `8511d1fe`; API role allow-list `b0df6c85`; bootstrap `482398ad`; Web routes `ad60f508`; API routes `6924bba4`; UserManagement `cea54ccd`; view `4eb6a134`; Web auth tests `c1f01ee5`; API auth tests `bc0c40e1`; UserManagement tests `9f0534dc`; workflow `32444d5a`.
+
+### PENGUJIAN
+- GitHub Actions run `45047019233`, job `137283740235`, exact source SHA `8511d1fe7a643f82473cf6cc0c15e4cfe3065cbe`: FAILURE pada level job sebelum steps; GitHub job steps kosong dan log artifact 404 BlobNotFound.
+- Klasifikasi: BLOCKED — RUNNER/OBSERVABILITY. Bukan bukti PHPUnit gagal dan bukan PASS.
+- PHPUnit, PHP lint, MySQL 8/InnoDB migration, Browser/E2E: NOT VERIFIED. Tidak ada test runtime lokal pada sesi ini.
+- Tidak ada database produksi/VPS, branch main, migration production, atau deployment yang diubah.
+
+### NEXT
+1. Pulihkan runtime CI yang dapat diamati. Jangan melakukan rerun berulang ketika job tidak memiliki steps.
+2. Jalankan exact HEAD di PHP 8.3 + disposable MySQL 8/InnoDB; periksa migration, login Web/API, middleware token/session, Livewire status lifecycle, tenant denial, audit dan regression semua portal.
+3. Jika P0 lulus, lanjut P1: adopsi terpilih Import Guru/Siswa dari branch `work/import-guru-siswa-implementation-20261122`; jangan merge branch karena diverged dan berisi perubahan Stage 4A yang memerlukan rekonsiliasi.
