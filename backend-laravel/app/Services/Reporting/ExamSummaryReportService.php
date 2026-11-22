@@ -59,7 +59,7 @@ class ExamSummaryReportService
 
         $participantCount = $exam->participants()
             ->where('exam_participants.tenant_id', $exam->tenant_id)
-            ->whereHas('user', function ($userQuery) use ($exam, $rombel) {
+            ->whereHas('userForHistory', function ($userQuery) use ($exam, $rombel) {
                 $userQuery->where('tenant_id', $exam->tenant_id)
                     ->whereHas('studentProfile', function ($profileQuery) use ($exam, $rombel) {
                         $profileQuery->where('tenant_id', $exam->tenant_id)
