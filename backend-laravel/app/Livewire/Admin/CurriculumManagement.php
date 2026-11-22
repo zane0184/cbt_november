@@ -18,8 +18,22 @@ class CurriculumManagement extends Component
 
     public function mount()
     {
+        $this->authorizeCurriculumView();
+    }
+
+    private function authorizeCurriculumView(): void
+    {
         $user = auth()->user();
-        abort_unless($user && $user->hasPermission('curriculum.view'), 403, 'Akses ditolak. Permission curriculum.view diperlukan.');
+
+        abort_unless(
+            $user
+            && $user->tenant_id
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            && $user->hasPermission('curriculum.view'),
+            403,
+            'Akses ditolak. Diperlukan satu role Admin Madrasah pada tenant aktif dan permission curriculum.view.'
+        );
     }
 
     // Modal Form State for TP (LearningObjective)
@@ -34,10 +48,12 @@ class CurriculumManagement extends Component
         $user = auth()->user();
         abort_unless(
             $user
-            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN'])->exists()
+            && $user->tenant_id
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('curriculum.manage'),
             403,
-            'Akses ditolak. Hanya Admin Madrasah dengan permission curriculum.manage yang dapat mengubah struktur kurikulum.'
+            'Akses ditolak. Diperlukan satu role Admin Madrasah pada tenant aktif dan permission curriculum.manage.'
         );
     }
 
@@ -89,7 +105,11 @@ class CurriculumManagement extends Component
 
     public function render()
     {
+        $this->authorizeCurriculumView();
+
+        $tenantId = (string) auth()->user()->tenant_id;
         $outcomes = LearningOutcome::with(['subject', 'phase', 'currentVersion', 'objectives'])
+            ->where('tenant_id', $tenantId)
             ->when($this->subjectFilter, fn($q) => $q->where('subject_id', $this->subjectFilter))
             ->when($this->search, function ($q) {
                 // Keep all search alternatives grouped so they cannot bypass
@@ -107,7 +127,7 @@ class CurriculumManagement extends Component
             ->latest()
             ->paginate(10);
 
-        $subjects = Subject::query()->orderBy('name')->get();
+        $subjects = Subject::query()->where('tenant_id', $tenantId)->orderBy('name')->get();
         $canManageCurriculum = auth()->user()?->hasPermission('curriculum.manage') ?? false;
 
         return view('livewire.admin.curriculum-management', [
