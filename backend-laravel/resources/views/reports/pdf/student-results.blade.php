@@ -9,6 +9,10 @@
         .results-table th, .results-table td { border: 1px solid #ccc; padding: 8px; text-align: left; }
         .results-table th { bg-color: #f2f2f2; }
         .footer { position: fixed; bottom: 0; width: 100%; text-align: right; font-size: 10px; }
+    .signature { width: 100%; margin-top: 48px; page-break-inside: avoid; }
+    .signature td { width: 50%; text-align: center; vertical-align: top; padding: 4px 18px; }
+    .signature .sign-space { height: 64px; }
+    .signature .sign-name { font-weight: bold; text-decoration: underline; }
     </style>
 </head>
 <body>
@@ -45,6 +49,20 @@
             @endforeach
         </tbody>
     </table>
+
+    @if(!empty($teacherName) || !empty($principalName))
+        <table class="signature">
+            <tr>
+                <td>Mengetahui,<br>Kepala Madrasah</td>
+                <td>{{ $exam ?? null ? 'Guru Mata Pelajaran' : 'Guru' }}</td>
+            </tr>
+            <tr><td class="sign-space"></td><td class="sign-space"></td></tr>
+            <tr>
+                <td class="sign-name">{{ $principalName ?: '........................................' }}</td>
+                <td class="sign-name">{{ $teacherName ?: '........................................' }}</td>
+            </tr>
+        </table>
+    @endif
 
     <div class="footer">
         Dicetak pada: {{ now()->format('d/m/Y H:i:s') }}
