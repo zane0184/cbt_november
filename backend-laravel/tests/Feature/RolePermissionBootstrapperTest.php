@@ -36,6 +36,8 @@ class RolePermissionBootstrapperTest extends TestCase
         $legacyProctor = Role::create(['name' => 'PROKTOR', 'label' => 'Legacy Proktor']);
         $legacyPermission = Permission::create(['name' => 'exam.monitor', 'label' => 'Monitoring']);
         $legacyProctor->permissions()->attach($legacyPermission->id);
+        $unknownLegacyPermission = Permission::create(['name' => 'legacy.proctor', 'label' => 'Legacy Proktor']);
+        $legacyProctor->permissions()->attach($unknownLegacyPermission->id);
         $manage = Permission::create(['name' => 'curriculum.manage', 'label' => 'Kelola Struktur Kurikulum']);
         Role::whereIn('name', ['KAMAD', 'GURU', 'OPERATOR'])->get()->each(fn (Role $role) => $role->permissions()->attach($manage->id));
 
