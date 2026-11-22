@@ -86,7 +86,6 @@ class TeacherPortalDataService
             ->whereHas('subject', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('rombel', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('rombel.gradeLevel.phase', fn ($query) => $query->where('tenant_id', $tenantId))
-            ->whereHas('rombel.gradeLevel.phase', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('academicYear', fn ($query) => $query->where('tenant_id', $tenantId))
             ->whereHas('semester', fn ($query) => $query->where('tenant_id', $tenantId))
             ->with([
