@@ -53,3 +53,13 @@ Jumlah snapshot backup terdaftar: 10. Seluruh blob SHA yang tercantum: MATCH.
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 2340c8f5a2dc7770b6be7b1068359e7c86d44719 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-final-test-reorder-reconcile | 2340c8f5a2dc7770b6be7b1068359e7c86d44719 | 8352a0be107aeca46ac9393b28379b06fc4ea269 | MATCH |
 
 Jumlah snapshot backup terdaftar: 13. Seluruh blob SHA yang tercantum: MATCH.
+
+## Backup tambahan — final branch/CI report reconciliation
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| docs/LAPORAN_P0_EXACT_ROLE_IDENTITAS_LAPORAN_2026-11-22.md | ccafc38868d4b379148391506446657c826d3212 | docs/backup/web-guru-exact-role-20261122/LAPORAN_P0_EXACT_ROLE.before-final-head-and-CI-reconcile.md | ccafc38868d4b379148391506446657c826d3212 | a014d9974ccc7f32ca199f6012612c953aa7f560 | MATCH |
+| docs/CHECKPOINT_P0_EXACT_ROLE_IDENTITAS_LAPORAN_2026-11-22.md | 140102fdf729f2cb82520c57da892d1d5f417bbd | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_P0_EXACT_ROLE.before-final-head-and-CI-reconcile.md | 140102fdf729f2cb82520c57da892d1d5f417bbd | 14106f505ede0e5dff046e18e66649a18120e8a1 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 37c329641d86baec17c1313366effca23a24e088 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-final-head-and-CI-reconcile | 37c329641d86baec17c1313366effca23a24e088 | 7d76860e446d1b7315371a56902c34db7a3a1d78 | MATCH |
+
+Jumlah snapshot backup terdaftar: 16. Seluruh blob SHA yang tercantum: MATCH.
