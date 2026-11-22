@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - work/web-guru-foundation-20261122
+      - work/web-guru-phase1-audit-implementation-20261122
     paths:
       - 'backend-laravel/**'
       - '.github/workflows/web-guru-foundation-ci.yml'
