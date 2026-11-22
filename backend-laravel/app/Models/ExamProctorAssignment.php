@@ -74,7 +74,8 @@ class ExamProctorAssignment extends Model
                     ->where('direct_exam_rooms.status', 'ACTIVE');
             })
             ->whereHas('exam', function (Builder $examQuery): void {
-                $examQuery->where('exams.status', 'PUBLISHED')
+                $examQuery->where('exams.proctoring_mode', 'CENTRALIZED')
+                    ->where('exams.status', 'PUBLISHED')
                     ->whereNotNull('exams.locked_at')
                     ->whereColumn('exams.tenant_id', 'exam_proctor_assignments.tenant_id');
             });
