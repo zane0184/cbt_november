@@ -230,3 +230,44 @@ Backup:
 1. Jalankan PHP lint + seluruh suite pada disposable PHP 8.3/MySQL 8/InnoDB; jika runner GitHub tetap tidak menyediakan steps, siapkan runtime runner yang dapat diamati tanpa mengubah DB produksi.
 2. Audit/fix semua test import yang terdampak employment_type dan template 1.1.0.
 3. Setelah P0/P1 lulus, lanjut P2 Penugasan Guru, P3 lifecycle akademik siswa, P4 kurikulum, P5 ruang/placement/pengawas, P6 monitoring Admin, P7 laporan, P8 audit/pengaturan, P9 UAT.
+
+
+## ADDENDUM P2 — PENUGASAN GURU MATA PELAJARAN (22 NOV 2026)
+
+### AUDIT
+- Baseline memiliki model/tabel `TeacherSubjectAssignment` dan API controller, tetapi belum ada halaman Livewire Admin pada branch koordinator.
+- Branch Stage 4B memiliki komponen dan test penugasan Guru yang dapat dipisahkan dari perubahan Room/Session. Implementasi Stage 4B yang memperkenalkan `ExamRoomSession` dan `SessionRoom` tidak diambil.
+- Komponen upstream tidak membatasi Admin ke satu role, dan picker Guru belum mengecualikan akun nonaktif, multi-role, atau profil yang belum memiliki kategori login. Komponen juga belum mewajibkan alasan perubahan.
+
+### DESAIN
+- Admin dengan satu role ADMIN_MADRASAH dan permission academic.manage dapat membuat, mengubah, menonaktifkan penugasan Guru.
+- Guru yang dapat dipilih harus akun aktif, tepat satu role GURU, profil aktif/non-deleted, dan identitas login valid: ASN+NIP 18 digit atau HONORER+NIK 16 digit.
+- Penugasan mengikat Guru, mapel, rombel, tahun ajaran, semester, rentang tanggal, dan status.
+- Referensi harus berasal dari tenant yang sama; rombel dan semester harus berada pada tahun ajaran yang sama.
+- Tenant row lock + row lock penugasan + unique constraint menjaga race/duplikasi. Penonaktifan tidak menghapus histori.
+- Alasan wajib (10–1000 karakter) untuk create/update/deactivate dan disimpan di AuditLog before/after. Tidak ada perubahan operasional ExamSession/SessionRoom.
+
+### IMPLEMENTASI
+- `backend-laravel/app/Livewire/Admin/TeacherSubjectAssignmentManagement.php` — komponen dari branch Stage 4B yang direkonsiliasi; role Admin exact-one, filter Guru aktif/single-role/terklasifikasi, tenant checks, duplicate handling, reason, audit, dan lock.
+- `backend-laravel/resources/views/livewire/admin/teacher-subject-assignment-management.blade.php` — form create/edit dengan alasan wajib dan modal konfirmasi penonaktifan dengan alasan.
+- `backend-laravel/routes/web.php` — route `/admin/teacher-subject-assignments` di group auth/tenant/license/account.active.
+- `backend-laravel/resources/views/layouts/app.blade.php` — menu desktop/mobile Penugasan Guru Mapel di bawah academic.manage.
+- `TeacherSubjectAssignmentManagementTest.php` — create/idempotency, update, deactivate, year mismatch, tenant denial, permission, stale Admin role, picker filter, audit reason.
+- `TeacherSubjectAssignmentConcurrencyTest.php` — dua koneksi MySQL/InnoDB dan tenant mutex; fixture Guru mengikuti employment_type ASN.
+- `.github/workflows/wa01-alternative-isolated-runtime.yml` — test management dan MySQL concurrency dimasukkan ke workflow.
+- `whereKeyNot` diganti ke kondisi UUID eksplisit; profil soft-deleted tidak masuk picker.
+- Tidak ada file/migration/route `ExamRoomSession` atau `SessionRoom` yang diambil dari branch Stage 4B.
+
+Backup:
+- Route, layout dan workflow: `docs/backup/web-admin-completion-2026-11-22/teacher-assignment/`.
+- File upstream component/view/tests: `docs/backup/web-admin-completion-2026-11-22/teacher-assignment/upstream-*.before-admin-boundary-hardening`.
+
+### PENGUJIAN
+- Test suite ditambahkan ke workflow, tetapi belum dapat dieksekusi pada branch completion.
+- GitHub Actions runner sebelumnya gagal sebelum steps (job steps kosong). P2 management/concurrency: NOT VERIFIED.
+- MySQL 8/InnoDB independent-session test, PHP lint, PHPUnit, browser UI: NOT RUN pada exact HEAD ini.
+
+### NEXT
+1. Verifikasi P0/P1/P2 pada runtime PHP 8.3 + disposable MySQL 8/InnoDB yang dapat diamati.
+2. Lanjut P3 lifecycle akademik Siswa (mutasi/naik kelas/tinggal kelas/kelulusan/alumni) tanpa menghapus histori.
+3. Lanjut P4 kurikulum dan integrasi kurikulum; lalu P5 ruang/placement/pengawas tanpa session model.
