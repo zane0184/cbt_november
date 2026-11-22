@@ -142,3 +142,13 @@ Manifest sebelum penambahan ini disalin ke `docs/backup/stage4d-account-lifecycl
 | backend-laravel/tests/Feature/StudentWebLoginTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/StudentWebLoginTest.php.before-stateful-api-session-epoch-2026-11-22 | f2d5022755ce3fcd84d0c3a35f3386471e382f03 | 13778 | 5e807f53df2b23757f0b73ef2e3a3c3b98616822 |
 
 Manifest sebelum penambahan ini disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-stateful-api-session-epoch-2026-11-22` (blob SHA `82c7d108874cb45dba6fc5b72ded98305ffd45f8`, backup commit `4f95ea18fcfd27a0c17641bfbc3a644d78a20c93`). Seluruh backup source diverifikasi identik dengan source aktif berdasarkan Git blob SHA sebelum modifikasi.
+
+
+## Snapshot tambahan — sebelum perbaikan no-session guard dan fixture Sanctum stateful (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/app/Http/Middleware/EnsureAccountSessionVersion.php | docs/backup/stage4d-account-lifecycle-2026-11-22/EnsureAccountSessionVersion.php.before-session-no-store-guard-2026-11-22 | e08e25526617ae83a70e5952cca988504705acbf | 1758 | e251e64616face990e1a79f65247225d334c3e12 |
+| backend-laravel/tests/Feature/StudentWebLoginTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/StudentWebLoginTest.php.before-stateful-domain-fixture-2026-11-22 | 7d6d31d42fed9df1c54e1de8732aca6055fb5dd9 | 15446 | d8097ad40190c214b586cfbdfbef9a07f5e29e07 |
+
+Manifest sebelum penambahan disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-stateful-api-session-no-store-guard-2026-11-22` (blob SHA `2a85da4d1c3bd78a1b08215604aa87b4b3205ae6`, backup commit `64aec86c7d41a4b2b922eda99d17c775b22a748c`). Backup source diverifikasi identik dengan source aktif berdasarkan Git blob SHA.
