@@ -53,8 +53,8 @@ final class TeacherResultNavigationTest extends TestCase
         $response = $this->actingAs($this->teacher)->get(route('teacher.dashboard'));
 
         $response->assertOk()
-            ->assertSee('Penilaian & Hasil')
-            ->assertSee('Analytics & Ekspor')
+            ->assertSee('Penilaian & Hasil', false)
+            ->assertSee('Analytics & Ekspor', false)
             ->assertSee(route('teacher.exams.index'), false)
             ->assertDontSee('aria-disabled="true" title="Penilaian dan hasil dibuka dari ujian');
     }
