@@ -212,6 +212,9 @@ class ExamRoomSessionConcurrencyTest extends TestCase
         config(['database.connections.mysql_concurrent' => $secondaryConfig]);
         DB::purge('mysql_concurrent');
         $secondary = DB::connection('mysql_concurrent');
+        $primaryConnectionId = (int) $primary->selectOne('SELECT CONNECTION_ID() AS id')->id;
+        $secondaryConnectionId = (int) $secondary->selectOne('SELECT CONNECTION_ID() AS id')->id;
+        $this->assertNotSame($primaryConnectionId, $secondaryConnectionId, 'The room race test must use two independent MySQL sessions.');
         $secondary->statement('SET SESSION innodb_lock_wait_timeout = 1');
         DB::setDefaultConnection('mysql_concurrent');
 
@@ -245,7 +248,7 @@ class ExamRoomSessionConcurrencyTest extends TestCase
     }
     public function test_concurrent_proctor_confirmation_is_serialized_by_guru_row_and_rejects_overlap(): void
     {
-        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
         $proctor = User::create([
             'tenant_id' => $this->tenantId,
             'name' => 'Guru Proktor Concurrent',
