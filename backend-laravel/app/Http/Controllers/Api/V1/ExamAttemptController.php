@@ -24,6 +24,11 @@ class ExamAttemptController extends Controller
         $user = $this->requireSingleStudent($request);
         $this->authorize('startAttempt', $exam);
 
+        $authIdentity = app(AttemptAuthSessionBinding::class)->identity($request);
+        if (!$authIdentity) {
+            return response()->json(['success' => false, 'code' => 'AUTH_SESSION_REQUIRED', 'message' => 'Sesi autentikasi server tidak dapat diidentifikasi.'], 401);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -33,9 +38,10 @@ class ExamAttemptController extends Controller
             ], 400);
         }
 
-        return DB::transaction(function () use ($exam, $user, $request, $deviceId) {
+        return DB::transaction(function () use ($exam, $user, $request, $deviceId, $authIdentity) {
             // Global lifecycle lock order: Exam -> Participant -> Attempt.
             $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -97,6 +103,22 @@ class ExamAttemptController extends Controller
             $existingAttempt = $activeAttempts->first();
 
             if ($existingAttempt) {
+                if (!app(AttemptAuthSessionBinding::class)->matches($existingAttempt, $request)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Attempt terikat pada sesi autentikasi lain. Login kedua tidak dapat mengambil alih ujian.',
+                        'code' => 'ATTEMPT_SESSION_MISMATCH'
+                    ], 409);
+                }
+
+                if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($existingAttempt, $request)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Lease Attempt tidak aktif atau tidak konsisten. Pemulihan resmi diperlukan.',
+                        'code' => 'ATTEMPT_LEASE_INVALID'
+                    ], 409);
+                }
+
                 if (!$existingAttempt->device_fingerprint
                     || !hash_equals((string) $existingAttempt->device_fingerprint, (string) $deviceId)) {
                     return response()->json([
@@ -160,6 +182,16 @@ class ExamAttemptController extends Controller
                 ], 422);
             }
 
+            // Serialize Attempt creation with Web/API login checks on the User row.
+            $lockedUser = User::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->first();
+            if (!$lockedUser || !$lockedUser->is_active || !$lockedUser->hasExactRole('SISWA')) {
+                return response()->json(['success' => false, 'message' => 'Identitas Siswa tidak lagi aktif atau valid.'], 403);
+            }
+
             $startedAt = now();
             $expiresAt = $startedAt->copy()->addSeconds($lockedExam->duration_seconds);
             if ($lockedExam->end_at && $expiresAt->gt($lockedExam->end_at)) {
@@ -201,6 +233,9 @@ class ExamAttemptController extends Controller
                 'attempt_number' => $attemptsCount + 1,
                 'status' => 'IN_PROGRESS',
                 'device_fingerprint' => $deviceId,
+                'auth_session_hash' => $authIdentity['hash'],
+                'auth_session_type' => $authIdentity['type'],
+                'auth_session_bound_at' => $startedAt,
                 'started_at' => $startedAt,
                 'expires_at' => $expiresAt,
                 'server_start_reference' => $startedAt->toIso8601String(),
@@ -208,6 +243,10 @@ class ExamAttemptController extends Controller
                 'options_order' => $optionsOrder,
                 'last_activity_at' => $startedAt
             ]);
+
+            if (!app(AttemptDeviceLeaseService::class)->createForAttempt($attempt, $request)) {
+                throw new \\RuntimeException('Attempt auth-session lease could not be created.');
+            }
 
             $participant->update(['status' => 'STARTED']);
 
@@ -232,6 +271,11 @@ class ExamAttemptController extends Controller
     public function execution(Request $request, Exam $exam)
     {
         $user = $this->requireSingleStudent($request);
+        $authIdentity = app(AttemptAuthSessionBinding::class)->identity($request);
+        if (!$authIdentity) {
+            return response()->json(['success' => false, 'code' => 'AUTH_SESSION_REQUIRED', 'message' => 'Sesi autentikasi server tidak dapat diidentifikasi.'], 401);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -241,9 +285,10 @@ class ExamAttemptController extends Controller
             ], 400);
         }
 
-        $lockedState = DB::transaction(function () use ($exam, $user, $deviceId) {
+        $lockedState = DB::transaction(function () use ($exam, $user, $deviceId, $request) {
             // Execution heartbeat/binding mutation follows lifecycle parent-first locks.
             $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -286,6 +331,14 @@ class ExamAttemptController extends Controller
                     'success' => false,
                     'message' => 'No active attempt found. Start an attempt first.'
                 ], 404);
+            }
+
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
             if (!$lockedAttempt->device_fingerprint
@@ -408,6 +461,11 @@ class ExamAttemptController extends Controller
         public function submit(Request $request, Exam $exam, ExamAttempt $attempt)
     {
         $user = $this->requireSingleStudent($request);
+        $authIdentity = app(AttemptAuthSessionBinding::class)->identity($request);
+        if (!$authIdentity) {
+            return response()->json(['success' => false, 'code' => 'AUTH_SESSION_REQUIRED', 'message' => 'Sesi autentikasi server tidak dapat diidentifikasi.'], 401);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -417,9 +475,10 @@ class ExamAttemptController extends Controller
             ], 400);
         }
 
-        return DB::transaction(function () use ($exam, $attempt, $user, $deviceId) {
+        return DB::transaction(function () use ($exam, $attempt, $user, $deviceId, $request) {
             // Match Start: Exam -> Participant -> Attempt.
             $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
                 ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -455,6 +514,10 @@ class ExamAttemptController extends Controller
                 ], 404);
             }
 
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
             if (!$lockedAttempt->device_fingerprint
                 || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
@@ -476,6 +539,11 @@ class ExamAttemptController extends Controller
                     ],
                     'idempotent' => true,
                 ]);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)
+                && $lockedAttempt->status === 'IN_PROGRESS') {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
             if ($lockedAttempt->status !== 'IN_PROGRESS') {
@@ -522,6 +590,8 @@ class ExamAttemptController extends Controller
                 'submitted_at' => $serverNow,
                 'last_activity_at' => $serverNow
             ]);
+
+            app(AttemptDeviceLeaseService::class)->release($lockedAttempt, $expiredByDeadline ? 'SERVER_DEADLINE_REACHED' : 'STUDENT_SUBMITTED');
 
             $participant->update(['status' => 'COMPLETED']);
 
@@ -588,6 +658,10 @@ class ExamAttemptController extends Controller
 
         if ($request->user()->hasExactRole('SISWA')) {
             abort_unless($participant->user_id === $request->user()->id, 404);
+            abort_unless(app(AttemptAuthSessionBinding::class)->matches($attempt, $request), 404);
+            if ($attempt->status === 'IN_PROGRESS') {
+                abort_unless(app(AttemptDeviceLeaseService::class)->isCurrent($attempt, $request), 409, 'Lease Attempt tidak aktif; pemulihan resmi diperlukan.');
+            }
             $this->authorize('view', $exam);
         } else {
             $this->authorize('monitor', $exam);
