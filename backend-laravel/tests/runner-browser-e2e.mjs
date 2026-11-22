@@ -192,10 +192,10 @@ try {
       {
         type: 'MATCHING',
         options: [
-          { id: 'left-1', option_key: 'pair_1', matching_key: null, content: '2 + 2' },
-          { id: 'left-2', option_key: 'pair_2', matching_key: null, content: '3 + 3' },
-          { id: 'right-1', option_key: null, matching_key: 'pair_1', content: '4' },
-          { id: 'right-2', option_key: null, matching_key: 'pair_2', content: '6' }
+          { id: 'left-1', option_key: 'LEFT', matching_key: null, content: '2 + 2' },
+          { id: 'left-2', option_key: 'LEFT', matching_key: null, content: '3 + 3' },
+          { id: 'right-1', option_key: null, matching_key: 'RIGHT', content: '4' },
+          { id: 'right-2', option_key: null, matching_key: 'RIGHT', content: '6' }
         ],
         answer: async page => {
           const selects = page.locator('#question-input select');
