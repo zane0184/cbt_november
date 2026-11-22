@@ -1012,7 +1012,7 @@ class ExamAnswerTest extends TestCase
     {
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit")
-            ->assertOk();
+            ->assertSuccessful();
 
         $retry = $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit");
