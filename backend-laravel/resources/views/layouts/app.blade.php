@@ -111,7 +111,7 @@
                     </a>
                 @endif
 
-                @if($u && $u->hasRole('ADMIN_MADRASAH') && $u->hasPermission('academic.manage'))
+                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR')) && $u->hasPermission('academic.manage'))
                     <a href="/admin/rombel-students" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/rombel-students*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.4-1.8M17 20H7m10 0v-2c0-.7-.14-1.36-.4-1.95M7 20H2v-2a3 3 0 015.4-1.8M7 20v-2c0-.7.14-1.36.4-1.95m0 0a5 5 0 019.2 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                         <span>Keanggotaan Rombel</span>
