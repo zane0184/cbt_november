@@ -45,3 +45,10 @@ Note: This preserved test snapshot predates both the valid cross-year relationsh
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-audit-edit-and-access-coverage | 47262b3c26df154d83b2602d25dc24144e7af0b6 | 10357 | 0952bca9e9a04874c0fafcd104e9434d6a0b889b |
+
+
+## Supplemental snapshot — Carbon audit assertion import correction
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-carbon-import-syntax-fix | 864c31547a900d24cb5b55792b63adc8b9c21a75 | 13240 | a6bb82a01bd642bb7613fa77946aa4be27ae9380 |
