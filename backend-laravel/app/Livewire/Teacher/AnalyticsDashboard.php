@@ -4,9 +4,8 @@ namespace App\Livewire\Teacher;
 
 use App\Models\Exam;
 use App\Services\Analytics\ExamAnalyticsService;
-use Livewire\Component;
 
-class AnalyticsDashboard extends Component
+class AnalyticsDashboard extends TeacherResultComponent
 {
     public Exam $exam;
     public $summary = [];
