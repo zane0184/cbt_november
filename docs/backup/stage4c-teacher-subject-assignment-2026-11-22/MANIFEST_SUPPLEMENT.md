@@ -66,3 +66,10 @@ Note: This preserved test snapshot predates both the valid cross-year relationsh
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-ensure-canonical-guru-fixture | f1877b045140ea1482536f6a8c4bc3367f453533 | 7592 | ada0becdeef8f59576713f81cd9b45419449a2b2 |
+
+
+## Supplemental snapshot — isolated concurrency migration strategy and rollback proof
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-manual-fresh-migration-strategy | e1ee31f4cfbf0ccd171262219ce9de9b37c08ac6 | 7644 | 6bd47f199085fe5ba3f43a64d13ecacdc6a0f946 |
