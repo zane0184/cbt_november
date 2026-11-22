@@ -15,6 +15,7 @@ class ExamAttempt extends Model
 
     protected $fillable = [
         'exam_id', 'participant_id', 'attempt_number', 'status', 'device_fingerprint',
+        'auth_session_hash', 'auth_session_type', 'auth_session_bound_at',
         'started_at', 'expires_at', 'submitted_at', 'server_start_reference',
         'question_order', 'options_order', 'last_activity_at'
     ];
@@ -26,6 +27,7 @@ class ExamAttempt extends Model
         'expires_at' => 'datetime',
         'submitted_at' => 'datetime',
         'last_activity_at' => 'datetime',
+        'auth_session_bound_at' => 'datetime',
     ];
 
     public function exam(): BelongsTo
@@ -103,6 +105,11 @@ class ExamAttempt extends Model
             'exam_attempt_scores.scoring_version',
             'exam_attempt_score_current.scoring_version'
         );
+    }
+
+    public function deviceLeases(): \\Illuminate\\Database\\Eloquent\\Relations\\HasMany
+    {
+        return $this->hasMany(DeviceLease::class, 'exam_attempt_id');
     }
 
     public function questionScores(): \Illuminate\Database\Eloquent\Relations\HasMany
