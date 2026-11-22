@@ -24,6 +24,7 @@ class StudentAcademicEvent extends Model
         'reason',
         'performed_by',
         'metadata',
+        'created_at',
     ];
 
     protected $casts = [
