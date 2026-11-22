@@ -113,20 +113,20 @@ class ExamAttemptController extends Controller
                     ], 409);
                 }
 
-                if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($existingAttempt, $request)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Lease Attempt tidak aktif atau tidak konsisten. Pemulihan resmi diperlukan.',
-                        'code' => 'ATTEMPT_LEASE_INVALID'
-                    ], 409);
-                }
-
                 if (!$existingAttempt->device_fingerprint
                     || !hash_equals((string) $existingAttempt->device_fingerprint, (string) $deviceId)) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Perangkat belum terikat atau berbeda. Pergantian perangkat memerlukan prosedur pelepasan yang berotorisasi.',
                         'code' => 'CONCURRENT_DEVICE_DENIED'
+                    ], 409);
+                }
+
+                if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($existingAttempt, $request)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Lease Attempt tidak aktif atau tidak konsisten. Pemulihan resmi diperlukan.',
+                        'code' => 'ATTEMPT_LEASE_INVALID'
                     ], 409);
                 }
 
