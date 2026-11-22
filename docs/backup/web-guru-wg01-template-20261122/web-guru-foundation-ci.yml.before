@@ -1,0 +1,210 @@
+name: Web Guru Foundation — Isolated MySQL Verification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work/web-guru-foundation-20261122
+    paths:
+      - 'backend-laravel/**'
+      - '.github/workflows/web-guru-foundation-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-guru-foundation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  teacher-portal-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-web-guru-ephemeral-root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    defaults:
+      run:
+        working-directory: backend-laravel
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      CBT_LICENSE_TEST_BYPASS: "true"
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Mask temporary MySQL root credential
+        working-directory: .
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-web-guru-ephemeral-root
+        run: echo "::add-mask::$DB_ROOT_PASSWORD"
+
+      - name: Checkout exact pushed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up PHP 8.3 and Composer v2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, tokenizer, xml, xmlreader, xmlwriter, curl, dom, gd, zip, intl, exif, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Validate and install locked dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -v
+          composer --version --no-ansi
+          composer validate --strict --no-check-publish
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          composer check-platform-reqs
+
+      - name: Prepare Laravel package discovery without a database
+        shell: bash
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: |
+          set -euo pipefail
+          test ! -e .env
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+          php artisan package:discover --ansi
+
+      - name: Provision isolated disposable MySQL database and application user
+        id: db
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-web-guru-ephemeral-root
+        run: |
+          set -euo pipefail
+          DB_NAME="cbt_web_guru_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_USER="web_guru_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          DB_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$DB_ROOT_PASSWORD"
+          echo "::add-mask::$DB_PASSWORD"
+          [[ "$DB_NAME" =~ ^cbt_web_guru_[0-9]+_[0-9]+$ ]]
+          [[ "$DB_USER" =~ ^web_guru_[0-9]+_[0-9]+$ ]]
+          mysql --protocol=tcp --host=127.0.0.1 --port=3306 --user=root --password="$DB_ROOT_PASSWORD" <<SQL
+          CREATE DATABASE $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+          CREATE USER '$DB_USER'@'%' IDENTIFIED BY '$DB_PASSWORD';
+          GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'%';
+          SQL
+          {
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=3306"
+            echo "DB_DATABASE=$DB_NAME"
+            echo "DB_USERNAME=$DB_USER"
+            echo "DB_PASSWORD=$DB_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "database=$DB_NAME" >> "$GITHUB_OUTPUT"
+          echo "db_user=$DB_USER" >> "$GITHUB_OUTPUT"
+
+      - name: Verify disposable database identity before PHPUnit
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          $expectedDb = 'cbt_web_guru_' . getenv('GITHUB_RUN_ID') . '_' . getenv('GITHUB_RUN_ATTEMPT');
+          $expectedUser = 'web_guru_' . getenv('GITHUB_RUN_ID') . '_' . getenv('GITHUB_RUN_ATTEMPT');
+          if (getenv('APP_ENV') !== 'testing'
+              || getenv('DB_CONNECTION') !== 'mysql'
+              || getenv('DB_HOST') !== '127.0.0.1'
+              || getenv('DB_PORT') !== '3306'
+              || getenv('DB_DATABASE') !== $expectedDb
+              || getenv('DB_USERNAME') !== $expectedUser
+              || file_exists('.env')) {
+              fwrite(STDERR, "Disposable database identity gate refused execution.\n");
+              exit(71);
+          }
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=' . $expectedDb,
+              $expectedUser,
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $engine = $pdo->query("SELECT VERSION()")->fetchColumn();
+          $tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+          if (!str_starts_with($engine, '8.') || $tables !== []) {
+              fwrite(STDERR, "Disposable MySQL preflight failed.\n");
+              exit(72);
+          }
+          echo "Disposable MySQL 8 identity verified; schema is empty.\n";
+          PHP
+
+      - name: PHP lint and route registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app routes tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+          php artisan route:list --path=guru --json
+
+      - name: PHPUnit — Web Guru foundation security and data scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test ! -e .env
+          : > .env
+          trap 'rm -f .env' EXIT
+          php artisan test --filter=TeacherPortalFoundationTest --display-warnings
+
+      - name: Verify migrated tables use InnoDB
+        shell: bash
+        run: |
+          set -euo pipefail
+          php <<'PHP'
+          <?php
+          $pdo = new PDO(
+              'mysql:host=127.0.0.1;port=3306;dbname=' . getenv('DB_DATABASE'),
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $count = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE'")->fetchColumn();
+          $nonInnoDb = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND engine <> 'InnoDB'")->fetchColumn();
+          if ($count < 1 || $nonInnoDb !== 0) {
+              fwrite(STDERR, "InnoDB verification failed.\n");
+              exit(73);
+          }
+          echo "Verified $count base tables; all use InnoDB.\n";
+          PHP
+
+      - name: Cleanup disposable database and user
+        if: always()
+        working-directory: .
+        shell: bash
+        env:
+          DB_ROOT_PASSWORD: ${{ github.run_id }}-${{ github.run_attempt }}-web-guru-ephemeral-root
+          DB_NAME: ${{ steps.db.outputs.database }}
+          DB_USER: ${{ steps.db.outputs.db_user }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$DB_ROOT_PASSWORD"
+          if [[ "$DB_NAME" =~ ^cbt_web_guru_[0-9]+_[0-9]+$ && "$DB_USER" =~ ^web_guru_[0-9]+_[0-9]+$ ]]; then
+            mysql --protocol=tcp --host=127.0.0.1 --port=3306 --user=root --password="$DB_ROOT_PASSWORD" <<SQL
+            DROP USER IF EXISTS '$DB_USER'@'%';
+            DROP DATABASE IF EXISTS $DB_NAME;
+          SQL
+          fi
