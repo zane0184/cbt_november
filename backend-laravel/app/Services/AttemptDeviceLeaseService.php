@@ -54,14 +54,14 @@ class AttemptDeviceLeaseService
 
     public function assertAndRenew(ExamAttempt $attempt, Request $request): bool
     {
-        if (!$this->requestFenceMatches($attempt, $request)) {
-            return false;
-        }
-
         $identity = app(AttemptAuthSessionBinding::class)->identity($request);
         if (!$identity || !$attempt->auth_session_hash
             || !hash_equals($attempt->auth_session_hash, $identity['hash'])
             || $attempt->auth_session_type !== $identity['type']) {
+            return false;
+        }
+
+        if (!$this->requestFenceMatches($attempt, $request)) {
             return false;
         }
 
@@ -112,14 +112,14 @@ class AttemptDeviceLeaseService
 
     public function isCurrent(ExamAttempt $attempt, Request $request): bool
     {
-        if (!$this->requestFenceMatches($attempt, $request)) {
-            return false;
-        }
-
         $identity = app(AttemptAuthSessionBinding::class)->identity($request);
         if (!$identity || !$attempt->auth_session_hash
             || !hash_equals($attempt->auth_session_hash, $identity['hash'])
             || $attempt->auth_session_type !== $identity['type']) {
+            return false;
+        }
+
+        if (!$this->requestFenceMatches($attempt, $request)) {
             return false;
         }
 
