@@ -37,6 +37,8 @@ Perubahan:
 10. Draft/conflict yang tidak sesuai snapshot Attempt menghentikan runner.
 11. Submit manual/otomatis ditahan selama antrean/conflict belum terselesaikan.
 12. IndexedDB diperiksa sebelum start/resume; beforeunload memperingatkan saat ada pekerjaan pending.
+13. Jika draft gagal ditulis ke IndexedDB (mis. quota/error), item ditandai undurable dan submit diblokir; tidak fallback diam-diam ke memory.
+14. Setelah submit request dimulai tetapi respons tidak dapat dipastikan, client tidak mengirim ulang otomatis; client melakukan GET Attempt status dan hanya menampilkan completion setelah server menyatakan SUBMITTED/EXPIRED.
 
 Backup:
 - Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`; byte-exact dengan baseline.
@@ -44,6 +46,8 @@ Backup:
 - Sebelum conflict race refinement: `.../show.blade.php.before-conflict-race-fix`, blob `9047c4a9d0baa18114166c898a3f5fc26edd92fc`.
 - Sebelum conflict UI: `.../show.blade.php.before-conflict-ui`.
 - Sebelum ack/scope refinement: `.../show.blade.php.before-ack-and-scope-fix`.
+- Sebelum undurable submit gate: `.../show.blade.php.before-undurable-submit-gate`.
+- Sebelum submit response recovery: `.../show.blade.php.before-submit-response-recovery`.
 
 Commit implementasi utama:
 - `61abd0dc6c6a3fab4a139ae0ffdcc488ccddfd9f` — IndexedDB draft + submit barrier.
@@ -52,6 +56,8 @@ Commit implementasi utama:
 - `3069a4f42d9cc8df0ff13194ae00832469c69d35` — stale 409 rebase handling.
 - `8c770c1a31083718d28776c548938357a1f05e09` — conflict visibility in navigation.
 - `5672e3581069f4d56c4a87a06d07d50067b334fd` — durable ack ordering and fail-closed orphaned state.
+- `df29e5d2f66262d744460821f56dcf85fb64fa81` — undurable draft submit gate.
+- `57b0e407e72c0583172fab8342781cd76cbd0f9f` — submit response recovery through authoritative Attempt status.
 
 ## PENGUJIAN
 Dilakukan:
