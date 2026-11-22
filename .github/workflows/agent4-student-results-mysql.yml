@@ -76,4 +76,4 @@ jobs:
         run: php -r '$pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=cbt_agent4_test", "root", "root"); echo $pdo->query("SELECT VERSION()")->fetchColumn(), PHP_EOL;'
 
       - name: Run Student result visibility feature tests
-        run: php artisan test tests/Feature/StudentResultVisibilityTest.php
+        run: php artisan test tests/Feature/StudentResultVisibilityTest.php --display-warnings --display-deprecations
