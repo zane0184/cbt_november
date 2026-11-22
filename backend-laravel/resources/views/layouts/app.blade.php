@@ -67,6 +67,17 @@
                     </a>
                 @endif
 
+                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR')) && $u->hasPermission('tenant.manage'))
+                    <a href="/admin/madrasah-profile" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/madrasah-profile*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
+                        <span class="text-lg">🏛️</span><span>Identitas Madrasah</span>
+                    </a>
+                @endif
+                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR')) && $u->hasPermission('academic.manage'))
+                    <a href="/admin/academic-periods" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/academic-periods*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
+                        <span class="text-lg">📅</span><span>Tahun Ajaran & Semester</span>
+                    </a>
+                @endif
+
                 @if($u && $u->hasRole('GURU') && \App\Models\ExamProctorAssignment::query()->activeNow()->where('tenant_id', $u->tenant_id)->where('proctor_user_id', $u->id)->exists())
                     <a href="/proktor/assignments" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('proktor/assignments') ? 'bg-navy-800 text-white font-bold border-l-4 border-amber-500' : '' }}">
                         <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
@@ -152,6 +163,12 @@
                         @php $mobileUser = auth()->user(); @endphp
                         @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')))
                             <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/dashboard">Dashboard Admin Madrasah</a>
+                        @endif
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')) && $mobileUser->hasPermission('tenant.manage'))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/madrasah-profile">Identitas Madrasah</a>
+                        @endif
+                        @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')) && $mobileUser->hasPermission('academic.manage'))
+                            <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/academic-periods">Tahun Ajaran & Semester</a>
                         @endif
                         @if($mobileUser && ($mobileUser->hasRole('ADMIN_MADRASAH') || $mobileUser->hasRole('OPERATOR')) && $mobileUser->hasPermission('user.manage'))
                             <a class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" href="/admin/users">Pengguna & Akun</a>
