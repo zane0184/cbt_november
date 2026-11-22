@@ -62,6 +62,7 @@ class TenantProfileManagementTest extends TestCase
         $tenantA->refresh();
         $tenantB->refresh();
         $this->assertSame('MIN 15 Jakarta Selatan', $tenantA->name);
+        $this->assertSame('Kepala Madrasah MIN 15 Jakarta Selatan', $tenantA->principal_name);
         $this->assertSame('H. Asim, M.A.', $tenantA->principal_name);
         $this->assertSame('121231740015', $tenantA->nsm);
         $this->assertSame('20104876', $tenantA->npsn);
