@@ -7,6 +7,7 @@ Implementation base HEAD: 3bf04829a07930ecc0e4e97de45501795248ad69
 The original Stage 4C backup manifest remains unchanged. This supplement records subsequent pre-change snapshots.
 
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-reuse-canonical-guru-role | c87892e310582d63e4c2920ccdff52aec081e7fe | 7266 | 9ec2e76629d40c5eb698355735e47f8169e6ff08 |
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-mysql-role-and-year-relation-fixes | bfd4b0950fa7293cde7e59cf7a36e5c6e9fe6bd9 | 9412 | 813c01fc9939d66876100b489bec762aee4e51ee |
 |---|---|---|---:|---|
 | backend-laravel/routes/web.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/routes/web.php.before | 0a794fcaddaa5941226d1674d6fbcf1d38bfb647 | 7101 | 8fbb0a8bcd2d5751309c8e24552c8db9fbe295ca |
