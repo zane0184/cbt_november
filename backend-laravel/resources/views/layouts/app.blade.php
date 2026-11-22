@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <h1 class="text-base font-bold leading-tight">CBT MADRASAH</h1>
-                    <p class="text-xs text-gray-400">Panel Admin & Guru</p>
+                    <p class="text-xs text-gray-400">Portal Admin Madrasah & Guru</p>
                 </div>
             </div>
 
@@ -61,9 +61,9 @@
 
                 <!-- Dashboards Per Role -->
                 @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('OPERATOR')))
-                    <a href="/operator/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('operator/dashboard') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
+                    <a href="/admin/dashboard" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('operator/dashboard') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                        <span>Dashboard Operator</span>
+                        <span>Dashboard Admin Madrasah</span>
                     </a>
                 @endif
 
@@ -74,7 +74,7 @@
                     </a>
                 @endif
 
-                <div class="pt-3 pb-1 px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Modul Operasional</div>
+                <div class="pt-3 pb-1 px-4 text-[11px] font-bold text-gray-400 uppercase tracking-wider">Administrasi Madrasah</div>
 
                 @if($u && $u->hasRole('ADMIN_MADRASAH') && $u->hasPermission('exam.proctor.assign'))
                     <a href="/admin/proctor-assignments" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/proctor-assignments*') ? 'bg-navy-800 text-white font-bold border-l-4 border-amber-500' : '' }}">
@@ -90,7 +90,7 @@
                     </a>
                 @endif
 
-                @if($u && ($u->hasRole('ADMIN_MADRASAH') || $u->hasRole('GURU')) && $u->hasPermission('question.view'))
+                @if($u && $u->hasRole('GURU') && $u->hasPermission('question.view'))
                     <a href="/admin/questions" class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-gray-300 hover:bg-navy-800 hover:text-white transition {{ request()->is('admin/questions*') ? 'bg-navy-800 text-white font-bold border-l-4 border-emerald-500' : '' }}">
                         <svg class="w-5 h-5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 20H3V15M21 4h-5V9M16 4l5 5M8 20l-5-5M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/></svg>
                         <span>Bank Soal</span>
