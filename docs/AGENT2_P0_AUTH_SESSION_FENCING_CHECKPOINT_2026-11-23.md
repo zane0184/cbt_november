@@ -99,8 +99,6 @@ File backup:
 - `ExpireExamAttemptsCommand.php.before`
 - `DeviceLeaseSchemaIntegrityTest.php.before`
 - `ExpireExamAttemptsCommandTest.php.before`
-- `DeviceLeaseSchemaIntegrityTest.php.before`
-- `ExpireExamAttemptsCommandTest.php.before`
 
 File baru (service/model/migration/test/workflow) tidak menimpa source lama. ZIP baseline tidak diubah.
 
