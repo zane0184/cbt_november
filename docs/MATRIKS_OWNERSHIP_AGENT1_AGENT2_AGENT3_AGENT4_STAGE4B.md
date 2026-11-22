@@ -17,3 +17,31 @@ Status: USULAN KOORDINASI — MENUNGGU KONFIRMASI PEMILIK
 Setiap owner harus membalas langsung pada Issue #10 dengan status APPROVED / REJECTED / NEEDS DESIGN / PENDING, scope file/class, bagian matriks diterima/ditolak, transaksi/lock order, audit event, acceptance criteria, regression/integration test, dependensi dan risiko.
 
 Matriks ini tidak memberi hak mengubah source owner lain dan bukan izin implementasi.
+
+
+## Keputusan Koordinator yang mengikat — Portal, KAMAD, Proktor
+
+| Komponen | Keputusan final |
+|---|---|
+| Admin Madrasah | Akun dan portal aktif |
+| Guru | Akun dan portal aktif |
+| Siswa | Akun dan portal aktif |
+| KAMAD | `KAMAD PORTAL/ACCESS — FROZEN, NOT IN CURRENT CBT SCOPE` |
+| Proktor | Penugasan operasional sementara kepada akun GURU |
+| Menu Proktor | Menu khusus di dalam Web Guru |
+| Portal/login/akun Proktor terpisah | Tidak ada |
+| Role permanen PROKTOR | Tidak dibuat |
+| Akun SISWA sebagai Proktor | Dilarang |
+
+**Koreksi wajib terhadap isi lama:** setiap rumusan yang menyebut Proktor memakai akun Siswa atau memiliki portal tersendiri dinyatakan superseded. KAMAD bukan role CBT aktif dan tidak mendapat akses/monitoring/approval khusus.
+
+### Pembagian ownership yang diperbarui
+- Agent 1: assignment sementara Guru-Proktor per SessionRoom/Room, lifecycle, expiry/revocation, history dan audit.
+- Agent 2: authentication, exact-role GURU, backend authorization, tenant/installation checks, larangan akses KAMAD.
+- Agent 3: menu PROKTOR dalam Web Guru; UI tidak memberi capability dan tidak membuat login/portal baru.
+- Agent 4: SISWA tetap peserta; tidak mengimplementasikan Proktor.
+
+### Enforcement dan acceptance
+Backend harus menolak Guru tanpa assignment aktif, assignment expired/revoked, room/Exam/Session berbeda, tenant/installation berbeda, dan actor bukan akun GURU yang memenuhi exact-role. Menu frontend bukan kontrol keamanan. Semua endpoint, Livewire, query monitoring, export dan media harus room-scoped. Histori identitas/assignment tetap dipertahankan.
+
+Status matriks ini tetap usulan ownership sampai pemilik teknis mengonfirmasi scope masing-masing. Keputusan produk di atas sudah final dari koordinator; bukan approval source atau izin implementasi.
