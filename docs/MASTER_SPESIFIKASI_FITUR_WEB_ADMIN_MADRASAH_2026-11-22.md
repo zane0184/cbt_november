@@ -53,12 +53,10 @@ Nama label boleh mengikuti konsistensi UI yang ada, tetapi cakupan fungsi beriku
    - Fase/kelas/mata pelajaran
    - CP, TP, ATP
    - Pemetaan dan histori kurikulum
-6. Manajemen Ujian
-   - Daftar ujian
-   - Detail/status ujian
-   - Ruang ujian
-   - Penempatan peserta per ruang
-   - Penugasan Proktor
+6. Penugasan Proktor Ujian Terpusat
+   - Daftar UTS/UAS/UM yang memerlukan Proktor
+   - Penetapan/pencabutan Guru sebagai Proktor
+   - Riwayat penugasan Proktor
 8. Laporan
    - Rekap akademik
    - Rekap peserta/kehadiran
@@ -85,9 +83,7 @@ Dashboard bukan pengganti menu fungsional. Setiap menu harus punya list, detail,
 
 Tampilkan data real dari database dan filter menurut tahun pelajaran aktif:
 - jumlah siswa aktif, Guru aktif, kelas, rombel, mata pelajaran;
-- jumlah ujian terdaftar (informasi administratif saja);
-- jadwal ujian terdekat sebagai informasi administratif (tanpa status real-time ujian/peserta);
-- aktivitas administrasi terbaru (import, perubahan data, penerbitan ujian, penugasan Proktor);
+- aktivitas administrasi terbaru (import, perubahan data, penugasan Proktor ujian terpusat);
 - peringatan data master yang belum lengkap dan kendala operasional.
 
 Tidak boleh menampilkan angka dummy/hard-coded. Dashboard Admin tidak membuka jawaban atau kunci jawaban tanpa kewenangan terpisah.
@@ -201,8 +197,7 @@ Web Admin tidak menyediakan tampilan real-time kehadiran/progres peserta, status
 ## 10. LAPORAN DAN CETAK
 
 Akademik: rekap Siswa per kelas/rombel/tahun, Guru, mapel, penugasan.
-Ujian: rekap daftar ujian, peserta terdaftar, dan hasil/nilai per mapel/kelas/tahun. Rekap kehadiran pasca-ujian hanya jika bersumber dari data final yang tersedia; tidak menampilkan status live seperti belum mulai atau sedang mengerjakan.
-Hasil: nilai per Siswa/kelas/mapel/ujian, distribusi, histori, status penilaian. Essay dinilai manual oleh Guru/pemeriksa berwenang; Admin tidak otomatis menjadi penilai.
+Ujian dan hasil/nilai dikelola serta dilaporkan oleh Guru/pihak pemeriksa yang berwenang melalui portal masing-masing. Web Admin tidak menyediakan rekap peserta, kehadiran, hasil, atau nilai ujian; kewenangan Admin terkait ujian hanya penetapan Proktor untuk UTS/UAS/UM.
 Fitur: filter, preview, cetak PDF, export XLSX, kop madrasah, header/footer, tanggal, nomor halaman bila diperlukan. Semua export tunduk pada authorization dan audit; jangan menyertakan credential.
 
 ## 11. AUDIT DAN KEAMANAN
@@ -334,7 +329,7 @@ Dalam seluruh jenis ujian, tugas Admin hanya menetapkan/mencabut Guru sebagai Pr
 
 ### Keputusan pengguna 23 November 2026 — batas fitur operasional CBT pada Web Admin
 
-Web Admin hanya mengelola informasi administratif ujian dan laporan hasil/rekap akademik sesuai kewenangan. Web Admin tidak menyediakan tampilan real-time status peserta/Attempt/perangkat/sinkronisasi atau tindakan operasional peserta/Attempt/perangkat.
+Web Admin hanya menyediakan alur penetapan/pencabutan Proktor untuk ujian terpusat UTS/UAS/UM. Daftar ujian yang terlihat Admin dibatasi pada ujian tersebut untuk keperluan assignment. Admin tidak mengelola ujian reguler/mandiri, ruang, peserta, pelaksanaan, laporan hasil/nilai ujian, pemantauan, Attempt, atau perangkat.
 
 ## 18. INSTRUKSI PERTAMA UNTUK AGENT PENGGANTI
 
