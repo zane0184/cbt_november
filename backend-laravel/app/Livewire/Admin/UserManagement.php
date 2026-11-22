@@ -22,6 +22,11 @@ class UserManagement extends Component
     public $showCreateModal = false;
     public $showEditModal = false;
     public $showResetPasswordModal = false;
+    public $showAccountStatusModal = false;
+    public $statusUserId = null;
+    public $statusTarget = null;
+    public $statusReason = '';
+    public $statusFilter = '';
     public $editingUserId = null;
     public $editingRole = '';
     public $resetPasswordUserId = null;
@@ -258,6 +263,85 @@ class UserManagement extends Component
         session()->flash('message', 'Password pengguna berhasil direset.');
     }
 
+    public function openAccountStatusModal(string $userId, bool $activate): void
+    {
+        $this->authorizeUserManagement();
+        $user = $this->manageableUserQuery()->whereKey($userId)->firstOrFail();
+
+        $this->statusUserId = (string) $user->id;
+        $this->statusTarget = $activate;
+        $this->statusReason = '';
+        $this->resetValidation();
+        $this->showAccountStatusModal = true;
+    }
+
+    public function updateAccountStatus(): void
+    {
+        $this->authorizeUserManagement();
+        $validated = $this->validate([
+            'statusUserId' => ['required', 'uuid'],
+            'statusTarget' => ['required', 'boolean'],
+            'statusReason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+
+        DB::transaction(function () use ($validated): void {
+            $user = $this->manageableUserQuery()
+                ->whereKey((string) $validated['statusUserId'])
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $targetActive = (bool) $validated['statusTarget'];
+            if ((bool) $user->is_active === $targetActive) {
+                return;
+            }
+
+            $oldValues = [
+                'is_active' => (bool) $user->is_active,
+                'username' => $user->username,
+                'role' => $user->roles()->value('name'),
+            ];
+
+            $user->is_active = $targetActive;
+            $user->setRememberToken(\\Illuminate\\Support\\Str::random(60));
+            $user->save();
+
+            if (!$targetActive) {
+                // Revocation is immediate for bearer tokens. Web sessions are denied
+                // by EnsureActiveAccount on their next request.
+                $user->tokens()->delete();
+                if (\\Illuminate\\Support\\Facades\\Schema::hasTable('sessions')) {
+                    DB::table('sessions')->where('user_id', $user->id)->delete();
+                }
+            }
+
+            app(AuditService::class)->log(
+                $targetActive ? 'USER_REACTIVATED' : 'USER_DEACTIVATED',
+                'User',
+                $user->id,
+                $oldValues,
+                [
+                    'is_active' => $targetActive,
+                    'username' => $user->username,
+                    'role' => $user->roles()->value('name'),
+                    'reason' => trim($validated['statusReason']),
+                ]
+            );
+        }, 3);
+
+        $this->showAccountStatusModal = false;
+        $this->statusUserId = null;
+        $this->statusTarget = null;
+        $this->statusReason = '';
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Status akun berhasil diperbarui.']);
+        session()->flash('message', 'Status akun berhasil diperbarui.');
+    }
+
+    public function updatingStatusFilter(string $value): void
+    {
+        abort_unless(in_array($value, ['', 'active', 'inactive'], true), 422);
+        $this->resetPage();
+    }
+
     public function updatingSearch(): void { $this->resetPage(); }
 
     public function updatingRoleFilter(string $value): void
@@ -279,6 +363,8 @@ class UserManagement extends Component
                 });
             })
             ->when($this->roleFilter, fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', $this->roleFilter)))
+            ->when($this->statusFilter === 'active', fn ($query) => $query->where('is_active', true))
+            ->when($this->statusFilter === 'inactive', fn ($query) => $query->where('is_active', false))
             ->latest()->paginate(15);
         $roles = Role::query()->whereIn('name', ['GURU','SISWA'])->orderBy('label')->get();
 
