@@ -79,9 +79,9 @@ final class QuestionImportTemplateExport implements WithMultipleSheets
             ]),
             new QuestionImportTemplateSheet('Referensi Akademik', [
                 ['Jenis Referensi', 'Ref ID', 'Kode', 'Nama/Deskripsi', 'Lingkup Tenant', 'Versi', 'Status Verifikasi'],
-                ['STATUS', '', '', 'Referensi akademik tenant-scoped belum dimuat ke template statis ini.', '', '', 'NEEDS_BACKEND_CONTRACT'],
-                ['CP/TP', '', '', 'Gunakan hanya CP/TP yang benar-benar tersedia dan sesuai subject/kelas/tenant.', '', '', 'JANGAN MENGARANG'],
-                ['KBC', '', '', 'Gunakan hanya KBC_CINTA dan struktur aktif/terdaftar yang tervalidasi.', '', '', 'JANGAN MENGARANG'],
+                ['STATUS', '', '', 'Kontrak parsial: CP/TP dan kelas tervalidasi; referensi KBC/tahun ajaran belum didukung.', '', '', 'PARTIAL_CONTRACT'],
+                ['CP/TP', '', '', 'Gunakan UUID CP/TP aktif yang sesuai tenant, mata pelajaran, dan fase.', '', '', 'ACTIVE_SUBSET'],
+                ['KBC', '', '', 'Belum didukung pada import ini; kosongkan sampai mapping versi soal dan snapshot terkoordinasi.', '', '', 'BLOCKED'],
             ]),
         ];
     }
