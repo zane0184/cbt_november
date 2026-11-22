@@ -64,11 +64,17 @@ Catatan: hasil CI lama hanya berlaku untuk commit SHA yang benar-benar diuji. Ti
 | Pengaturan | BELUM TERVERIFIKASI | Tema, preferensi, zona waktu, branding dan operasional perlu audit |
 | Backup/restore & health | BELUM TERVERIFIKASI | Tidak boleh dianggap ada hanya dari dokumentasi deployment |
 
-### 5. Konflik keputusan identitas login yang wajib ditahan
-- Dokumen master/Issue #12 menyebut NIP/NUPTK Guru opsional dan melarang mewajibkan NIP untuk semua Guru.
-- Lampiran percakapan agent sebelumnya menyatakan ada ketentuan login yang lebih spesifik: Guru ASN login NIP, Guru Honorer login NIK, Siswa login NISN, Admin login username; tetapi percakapan yang dilampirkan tidak memuat pesan keputusan asli pengguna yang menetapkan klasifikasi tersebut.
-- Kedua aturan tidak boleh direkonsiliasi dengan tebakan. Implementasi field klasifikasi ASN/Honorer, migrasi data, dan perubahan resolver login ditahan sampai keputusan asli dapat dipastikan. Fitur Web Admin lain yang tidak bergantung pada konflik ini tetap dapat dilanjutkan.
-- Source baseline koordinator mengizinkan Guru tanpa NIP/NIK; ini selaras dengan teks master yang saat ini tersedia.
+### 5. Keputusan identitas login final
+Keputusan terbaru pengguna yang ditemukan pada percakapan sebelumnya:
+- Admin Madrasah: login hanya dengan username.
+- Guru ASN: login hanya dengan NIP (18 digit).
+- Guru Honorer: login hanya dengan NIK (16 digit).
+- Siswa: login hanya dengan NISN (10 digit).
+- NIP dan NIK bukan alternatif silang. NUPTK bukan identitas login.
+- Username tambahan untuk Guru/Siswa boleh disimpan sebagai data akun, tetapi tidak menjadi fallback login.
+- Keputusan spesifik dan lebih baru ini menjadi aturan operasional login. Catatan master spec bahwa NIP/NUPTK dapat opsional untuk data umum tidak boleh dipakai untuk membolehkan login silang atau membuat Guru tanpa identitas login sesuai kategorinya.
+- Nilai kategori kanonis di source adalah `ASN` dan `HONORER`. Workbook lama yang menulis `PNS` dinormalisasi ke `ASN`; data baru/template menampilkan `ASN`.
+- Profil Guru lama yang belum memiliki kategori tidak di-auto-infer dari kolom NIP/NIK. Admin harus mengklasifikasikan dan melengkapi identitas melalui edit akun sebelum login Guru diizinkan. Resolver fail-closed.
 
 ### 6. Risiko/ketidaksesuaian yang harus ditangani
 1. `routes/web.php` mengelompokkan sejumlah route Admin dan Guru di grup auth/tenant/license umum. Setiap komponen/policy/action harus fail-closed; route grouping belum cukup sebagai bukti RBAC.
@@ -169,3 +175,58 @@ Commits utama source: migration `eaddb5ad`; middleware `168747b1`; model `e71b85
 1. Pulihkan runtime CI yang dapat diamati. Jangan melakukan rerun berulang ketika job tidak memiliki steps.
 2. Jalankan exact HEAD di PHP 8.3 + disposable MySQL 8/InnoDB; periksa migration, login Web/API, middleware token/session, Livewire status lifecycle, tenant denial, audit dan regression semua portal.
 3. Jika P0 lulus, lanjut P1: adopsi terpilih Import Guru/Siswa dari branch `work/import-guru-siswa-implementation-20261122`; jangan merge branch karena diverged dan berisi perubahan Stage 4A yang memerlukan rekonsiliasi.
+
+
+## ADDENDUM P0/P1 — IDENTITAS LOGIN DAN IMPORT/EXPORT (22 NOV 2026)
+
+### AUDIT
+- Keputusan login dari percakapan pengguna yang lebih baru telah ditemukan; konflik dengan catatan umum spesifikasi terselesaikan.
+- Baseline TeacherProfile belum menyimpan klasifikasi ASN/HONORER, sehingga resolver sebelumnya tidak dapat membedakan NIP vs NIK dengan aman.
+- Branch import lama telah memiliki workbook, preview/confirm, staging encrypted, activation link, dan test suite; namun belum menyimpan kategori kepegawaian ke TeacherProfile dan belum dapat dipakai bersama resolver strict.
+- Branch import diverged dari branch koordinator; merge keseluruhan dilarang karena juga memuat Stage 4A/Proktor/monitoring yang perlu direkonsiliasi.
+- ImportWorkbookService memakai tenant row lock; UserManagement manual create/edit sekarang diselaraskan untuk mengunci row Tenant dan mencegah benturan username vs NIP/NIK/NISN pada instalasi yang sama.
+
+### DESAIN
+- Login Admin = username saja; Guru ASN = NIP saja; Guru Honorer = NIK saja; Siswa = NISN saja.
+- Resolver Web/API sama dan role harus tepat satu dari tiga portal.
+- Kategori Guru disimpan pada `teacher_profiles.employment_type` dengan nilai `ASN` atau `HONORER`.
+- NIP 18 digit wajib hanya untuk ASN; NIK 16 digit wajib hanya untuk Honorer. Field silang dilarang pada form dan tidak dipakai resolver. NUPTK opsional dan bukan login.
+- Profil lama tanpa employment_type tetap null; tidak ada backfill tebakan. Admin wajib melakukan klasifikasi.
+- Import template versi 1.1.0 menampilkan ASN/HONORER. Nilai PNS dari workbook lama diterima sebagai alias legacy lalu disimpan sebagai ASN.
+- Import Guru/Siswa menggunakan preview, validasi baris, konfirmasi transaksional, staging, idempotensi, error report, activation link satu kali, dan retensi tujuh hari sesuai service branch yang direview.
+
+### IMPLEMENTASI
+Branch: `work/web-admin-completion-20261122`.
+Identitas:
+- `2026_11_22_000007_add_employment_type_to_teacher_profiles.php` — kolom klasifikasi nullable dan index.
+- `TeacherProfile.php` — employment_type fillable.
+- `LoginIdentityResolver.php` — Guru ASN hanya NIP; Guru Honorer hanya NIK; Guru tidak fallback ke username/employee_identifier.
+- `UserManagement.php` dan view — kategori wajib, NIP/NIK conditional, username tambahan opsional, collision checks, tenant lock, audit.
+- `WebAdminAuthTest.php` — NIP ASN, NIK Honorer, penolakan NIK ASN/NIP Honorer dan username Guru.
+- `AdminUserManagementScopeTest.php` — Guru tanpa kategori/identitas ditolak; create/edit menggunakan kategori.
+
+Import:
+- Integrasi terpilih dari branch `work/import-guru-siswa-implementation-20261122`: ImportWorkbookService, ImportManagement, ImportBatch/Row/ActivationToken, exception, template export/data/instruction/reference sheets, activation/template controllers, views, migrations, dan tiga test suite.
+- `routes/web.php` — admin import, template download, signed one-time account activation; admin routes tetap memakai account.active.
+- `app.blade.php` — menu Import Data di desktop dan mobile dengan permission user.manage.
+- `routes/console.php` — jadwal cleanup staging tujuh hari.
+- `wa01-alternative-isolated-runtime.yml` — test suite import dan deadlock ditambahkan ke CI completion branch.
+- `ImportWorkbookService.php` — kategori ASN/HONORER dinormalisasi dan disimpan; assignment guru memakai identity sesuai kategori.
+- `ImportTemplateExport.php`, `ImportInstructionSheet.php`, `ImportTemplateVersion.php` — template 1.1.0 dengan ASN/HONORER.
+
+Backup:
+- Sebelum identity patch: `docs/backup/web-admin-completion-2026-11-22/identity-classification/`.
+- Sebelum import integration: `docs/backup/web-admin-completion-2026-11-22/import-integration/`.
+- Backup P0 account active sebelumnya tetap ada di folder utama `docs/backup/web-admin-completion-2026-11-22/`.
+- File baru (migration, middleware, Import* components/services/models/controllers/views/tests) tidak menimpa file lama; file existing yang diubah memiliki backup sebelum perubahan terkait.
+
+### PENGUJIAN
+- Import branch terdahulu melaporkan test PASS pada SHA yang dicatat dalam `CHECKPOINT_IMPORT_GURU_SISWA_2026-11-22.md`; hasil itu hanya bukti branch/SHA lama dan tidak dipindahkan menjadi klaim PASS pada branch completion.
+- GitHub Actions run `45048216908`, job `137287362762`, exact HEAD `729d25b7b707f0bb861b5b4d19df35a0117f6022`: FAILURE sebelum job steps; API mengembalikan `steps=[]`, tanpa logs_url. Klasifikasi BLOCKED runner/observability, bukan test failure dan bukan PASS.
+- PHP lint, PHPUnit, MySQL 8/InnoDB migration, deadlock/concurrency, browser E2E dan UAT branch completion: NOT VERIFIED.
+- Import module belum boleh dipakai produksi sampai seluruh test dijalankan pada exact HEAD dan hasilnya terekam.
+
+### NEXT
+1. Jalankan PHP lint + seluruh suite pada disposable PHP 8.3/MySQL 8/InnoDB; jika runner GitHub tetap tidak menyediakan steps, siapkan runtime runner yang dapat diamati tanpa mengubah DB produksi.
+2. Audit/fix semua test import yang terdampak employment_type dan template 1.1.0.
+3. Setelah P0/P1 lulus, lanjut P2 Penugasan Guru, P3 lifecycle akademik siswa, P4 kurikulum, P5 ruang/placement/pengawas, P6 monitoring Admin, P7 laporan, P8 audit/pengaturan, P9 UAT.
