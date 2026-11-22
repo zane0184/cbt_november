@@ -30,6 +30,16 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     private $examA;
     private $participantA1;
     private $snapshot;
+    private array $apiTokens = [];
+
+    private function apiTokenFor(User $user): string
+    {
+        if (!isset($this->apiTokens[$user->id])) {
+            $this->apiTokens[$user->id] = $user->createToken('attempt-test-session')->plainTextToken;
+        }
+
+        return $this->apiTokens[$user->id];
+    }
 
     protected function setUp(): void
     {
@@ -149,7 +159,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_a_authorized_participant_start()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $this->assertEquals(0, $this->participantA1->attempts()->count());
 
@@ -224,7 +234,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_b_non_participant_start()
     {
-        $this->actingAs($this->userA2, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA2));
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a2')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
@@ -319,7 +329,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_f_foreign_tenant_attempt_access()
     {
-        $this->actingAs($this->userB, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userB));
 
         // User B from Tenant B trying to start Exam A from Tenant A
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-b')
