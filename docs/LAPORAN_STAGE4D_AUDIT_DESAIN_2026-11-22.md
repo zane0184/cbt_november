@@ -283,3 +283,106 @@ Gate minimum Admin tetap **BELUM LULUS**. WG-01 Agent 3 belum boleh dianggap sia
 ### IMPLEMENTASI / BACKUP
 
 Pada addendum ini tidak ada source runtime, migration, atau database yang diubah. Perubahan hanya dokumentasi/checkpoint/manifest setelah snapshot backup. Stage 4D runtime implementation belum dimulai. Histori akademik tetap desain saja; tidak ada migration/backfill. Tidak ada perubahan Agent 1 atau Agent 3.
+
+
+## ADDENDUM — RE-AUDIT BRANCH, ACCOUNT LIFECYCLE, DAN TEST GATE (22 NOVEMBER 2026)
+
+### 1. AUDIT BRANCH DAN KONTINUITAS
+
+- Branch Agent 2: `work/stage4d-account-lifecycle-20261122`.
+- HEAD aktual pada saat audit: `3e052d97ce692b9c2301761aad978dfee727423e`.
+- Checkpoint historis: `879a9b497ee83dc9b54d33161b57c733ae188eb0`.
+- Perbandingan dari checkpoint historis ke SHA `8bc75302636f78fe2155fee49299d2a375566e7b`: 49 commit dan 44 file berubah/ditambahkan (source, migration, test, backup). Setelah itu ada tiga commit test-only: `465f7c7b10b87d76ff3b03c85cc437608457a4e0`, `6113ea50322a56378df3839311677f8124ffad0c`, dan `3e052d97ce692b9c2301761aad978dfee727423e`.
+- Tidak ada checkout lokal pada `/mnt/data/CBT_MADRASAH_RECONSTRUCTION/` di runtime ini; karena itu working tree lokal/uncommitted changes tidak dapat diperiksa. Audit branch dilakukan pada commit dan file remote GitHub yang terlihat. Tidak ada klaim bahwa working tree lokal bersih.
+- Source dan commit yang terlihat pada branch Agent 2 adalah milik branch tersebut. Tidak ada merge, rebase, PR, deployment, VPS, atau database produksi.
+
+### 2. BATAS ANTAR-AGENT — HASIL PEMERIKSAAN AKTUAL
+
+**Agent 1 / Stage 4B**
+- Branch: `work/stage4b-room-session-20261122`; HEAD saat audit: `4e663cd84038b7c3337d776f702c499f20d8f537`.
+- Run [44984303003](https://github.com/zane0184/cbt_november/actions/runs/44984303003) final SUCCESS pada source SHA `f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5`.
+- Perbandingan source SHA run ke HEAD saat ini hanya dua dokumen checkpoint/laporan; tidak ada source code berubah setelah CI yang dibuktikan.
+- Bukti suite: ExamRoomSessionManagement 12/49 PASS; ExamRoomSessionConcurrency 2/22 PASS; ProctorAssignmentSecurity 8/34 PASS; MonitoringDuplication 15/151 PASS; TeacherSubjectAssignmentManagement 9/41 PASS; TeacherSubjectAssignmentConcurrency 1/8 PASS.
+- MySQL 8.0.46; 80 base tables; 0 non-InnoDB; semua tabel InnoDB; required Stage4B schema tersedia.
+- Rollback Stage4B: workflow menjalankan rollback child-first dengan `FOREIGN_KEY_CHECKS=1`; lima tabel Stage4B hilang setelah rollback; FK tenant dan index tenant pada `exam_participants` tetap ada; migration kemudian dijalankan kembali dan postflight memastikan kelima tabel tersedia. Ini membuktikan jalur rollback schema kosong yang diuji; belum membuktikan rollback ditolak dengan benar ketika tabel telah berisi histori/assignment nyata.
+- Setelah SHA yang diuji, HEAD Agent 1 hanya menambah `docs/CHECKPOINT_STAGE4B_STAGE4C_VERIFIED_2026-11-22.md` dan `docs/LAPORAN_STAGE4B_STAGE4C_VERIFIKASI_2026-11-22.md`. Tidak ada branch/file Agent 1 yang diubah oleh Agent 2.
+
+**Agent 3 / Web Guru WG-01**
+- Branch: `work/web-guru-foundation-20261122`; HEAD: `25fe5e74a0754bcd110ceffac20141880c549ca8`.
+- Run [44984094200](https://github.com/zane0184/cbt_november/actions/runs/44984094200) final SUCCESS pada SHA `e9c6867d40b134538e791bbbba02f5743afec7ea`.
+- Perbandingan setelah SHA CI ke HEAD saat ini hanya dokumen checkpoint/audit/manifest; tidak ada source berubah setelah run tersebut.
+- Branch Agent 3 tidak diubah. Agent 2 tidak mengerjakan file Web Guru.
+
+### 3. AUDIT SOURCE ACCOUNT LIFECYCLE — IMPLEMENTASI SUDAH ADA
+
+Perbandingan 49 commit pertama menunjukkan pekerjaan runtime Stage4D sudah dilakukan setelah checkpoint lama; jangan mengulangnya.
+
+- `User.php` memakai `SoftDeletes`; default Eloquent query menyembunyikan akun nonaktif.
+- `UserManagement.php` menyediakan create/list, edit, deactivate, reactivate untuk target role tunggal GURU atau SISWA; query target selalu dibatasi tenant dan role; transaksi memakai lock pada tenant, user, dan profile.
+- Deaktivasi mencabut seluruh Sanctum token, merotasi `remember_token`, dan soft-delete User; profil Guru/Siswa tidak ikut dihapus.
+- Reaktivasi mengembalikan User yang sama dan mempertahankan ID/profile. Unique identity tetap dipertahankan.
+- Audit action `USER_CREATED`, `USER_UPDATED`, `USER_DEACTIVATED`, `USER_REACTIVATED` telah dibuat; test memastikan old/new value tidak mencantumkan password dan actor deactivation tercatat.
+- Relasi historis `withTrashed()` ditambahkan untuk AuditLog, peserta/score ujian, assignment ruang, penugasan proktor, assignment Guru, ImportBatch, profil dan laporan. Relasi operasional tetap mengecualikan akun nonaktif; relasi histori dipisah dengan nama `*ForHistory` pada beberapa model.
+- Migration `2026_11_22_130001_add_tenant_unique_profile_login_identifiers.php` melakukan preflight duplikasi NIP/NIK/NISN termasuk soft-deleted profile sebelum menambah unique index tenant. Migration hanya dijalankan pada database disposable CI; belum ada migration produksi.
+- Login web dan API memakai `LoginIdentityResolver`, yang mengecualikan akun/profil soft-deleted. Existing Sanctum token diharapkan gagal karena model user tidak dapat di-resolve; test HTTP khusus sedang dimasukkan ke suite CI.
+
+**Gap yang masih ada:**
+1. Reset password tenant-scoped belum diimplementasikan. Tidak ditemukan model/tabel/route/controller/UI reset token khusus. Tetap dilarang menggunakan broker Laravel standar.
+2. Session web lama ditolak selama User soft-deleted melalui Eloquent auth provider, tetapi belum ada mekanisme version/fencing session yang menjamin session lama tetap invalid setelah akun direaktivasi. Ini risiko yang harus ditutup sebelum Gate Stage4D.
+3. Uji HTTP session lama dan Sanctum token lama harus dijalankan dalam suite CI yang benar-benar mengeksekusi test, bukan hanya file test yang tidak dipanggil workflow.
+4. Reset password completion harus menolak akun soft-deleted dan tidak boleh memulihkan akses akun nonaktif.
+
+### 4. PENGUJIAN CI AGENT 2 — PEMISAHAN SHA
+
+**Run 44984685015**: final SUCCESS pada SHA `8bc75302636f78fe2155fee49299d2a375566e7b`; PHP 8.3.37, MySQL 8.0.46.
+- AdminCbtBoundary: 1 test / 27 assertions PASS.
+- AdminUserManagementScope: 8 tests / 54 assertions PASS.
+- MonitoringDuplication: 15 tests / 151 assertions PASS.
+- ProctorAssignmentSecurity: 8 tests / 34 assertions PASS.
+- TeacherSubjectAssignmentManagement: 7 tests / 26 assertions PASS.
+- TeacherSubjectAssignmentConcurrency: 1 test / 8 assertions PASS.
+- InnoDB: 80 base tables, 0 non-InnoDB; all tables InnoDB.
+- Stage4B room/session dan room conflict concurrency pada branch Agent 2 berstatus SKIPPED, bukan PASS.
+
+**Run 44988322932**: final SUCCESS pada SHA `465f7c7b10b87d76ff3b03c85cc437608457a4e0`. Namun pada SHA ini test session tambahan masih berdiri sebagai method terpisah yang tidak dipilih oleh filter workflow; run tersebut tidak boleh dipakai sebagai bukti test session lama.
+
+**Perbaikan pemilihan test CI:**
+- Commit `6113ea50322a56378df3839311677f8124ffad0c`: test HTTP sesi lama dipindah ke dalam method `test_teacher_can_login_using_nip` yang memang dipanggil workflow. Backup: `docs/backup/stage4d-account-lifecycle-2026-11-22/WebAdminAuthTest.php.before-session-test-ci-selection-fix` (backup commit `2a6976d4f14ff1474284d5a25850bdd0e0789820`).
+- Commit `3e052d97ce692b9c2301761aad978dfee727423e`: test HTTP bahwa akun soft-deleted tidak dapat memakai Sanctum token lama ditambahkan ke `AuthTest.php`, file yang memang dijalankan workflow. Backup: `docs/backup/stage4d-account-lifecycle-2026-11-22/AuthTest.php.before-soft-deleted-sanctum-http-test` (backup commit `4b21e7c303479af62e7af07685220702b5645699`).
+- Run [44988674922](https://github.com/zane0184/cbt_november/actions/runs/44988674922) pada SHA `6113ea50322a56378df3839311677f8124ffad0c` masih berjalan saat addendum dibuat.
+- Run [44988721095](https://github.com/zane0184/cbt_november/actions/runs/44988721095) pada SHA terbaru `3e052d97ce692b9c2301761aad978dfee727423e` masih pending saat addendum dibuat. Belum ada klaim PASS untuk dua test HTTP baru.
+
+### 5. ADMIN SECURITY GATE — BELUM LULUS
+
+Bukti yang ada lebih luas dari checkpoint lama, tetapi belum exhaustive:
+- `AdminCbtBoundaryTest`: 1 test / 27 assertions; policy/Gate model question, assessment, exam, attempt, score/report dan Livewire mount QuestionBank/ExamManagement serta route student.
+- `MonitoringDuplicationTest`: 15 tests / 151 assertions; termasuk dua skenario direct Admin API GET/POST terhadap monitoring, peserta, attempt, jawaban, score, reports, analytics, execution, token, lock, close, submit, finalize/reopen, assign-rombel dan publish-results.
+- `ProctorAssignmentSecurityTest`: 8 tests / 34 assertions; Admin boleh mengelola assignment sementara, tetapi tidak mendapat monitoring; mencakup revoke/expiry, overlap, tenant dan profile.
+
+Gap matriks yang masih harus ditutup:
+- PUT/PATCH/DELETE untuk answer, grading, participant, question/media/publication, exam/question snapshot dan seluruh resource yang relevan.
+- HTTP denial matrix untuk seluruh endpoint CBT/resource dan method yang ditemukan pada `routes/api.php`, menggunakan model/parameter valid agar tidak sekadar 404 akibat binding.
+- Web route export/report/analytics dan direct URL.
+- Livewire hydration, action, render, request tampering, stale/multi-role session.
+- Service/query/repository/cache/media/export yang dapat dicapai melalui jalur request.
+- Pengguna nonaktif, tanpa autentikasi, lintas tenant, Admin dengan stale permission dan Admin + role Guru/Siswa tambahan.
+
+Route inventory source saat ini: 74 deklarasi Route di `routes/api.php` (termasuk apiResource yang expand ke beberapa HTTP method) dan 50 deklarasi Route di `routes/web.php` (termasuk installer dan compatibility routes). Cakupan akhir harus dihitung setelah ekspansi apiResource dan pengelompokan route administratif vs CBT.
+
+**Gate minimum Admin: BELUM LULUS.** Jangan beri notifikasi bahwa WG-01 siap dimulai sampai matriks lengkap lulus pada SHA yang sama. Agent 3 tetap pemilik WG-01.
+
+### 6. DESAIN LANJUTAN
+
+**Session invalidation:** SoftDeletes menolak session saat akun nonaktif, tetapi session payload lama dapat berpotensi hidup kembali setelah restore karena ID user sama. Desain penutupan yang diusulkan adalah `auth_version` monotonik pada User; web login menulis versi ke session; middleware membandingkan versi pada setiap request; deactivate, restore, dan password reset menaikkan versi; API token dicabut. Ini belum diimplementasikan dan perlu diuji bersama TestCase/actingAs agar tidak merusak suite.
+
+**Reset password tenant-scoped:** tabel khusus berisi tenant_id, user_id, token_hash, created_by, expires_at, consumed_at, revoked_at; token random kriptografis, hash saja disimpan, raw hanya sekali ditampilkan kepada Admin untuk disampaikan lewat kanal madrasah; masa berlaku usulan 15 menit; satu token aktif per user; token baru mencabut yang lama; rate limit; completion mengunci token+user, menolak user soft-deleted, konsumsi sekali, mengubah password, menaikkan auth_version, merotasi remember_token, mencabut Sanctum token, dan audit tanpa secret. Belum ada migration atau route yang dibuat.
+
+**Histori akademik:** tetap desain append-only dan rekonsiliasi read-only. Tidak ada migration/backfill.
+
+### 7. IMPLEMENTASI / BACKUP / STATUS
+
+Pada pembaruan ini source runtime tidak berubah; perubahan setelah checkpoint adalah test-only pada WebAdminAuthTest dan AuthTest serta backup-nya. Semua file yang diubah dibackup sebelum patch.
+
+Tidak ada perubahan Agent 1 atau Agent 3. Tidak ada production DB/VPS/deployment, merge, rebase, PR, migration produksi atau perubahan database produksi.
+
+Status: account lifecycle dasar sudah ada; session HTTP + Sanctum HTTP proof sedang diuji; reset token belum ada; Admin Gate belum lulus; histori akademik tetap desain; Stage 4B Agent1 CI terbukti lulus pada source SHA f1d01ea..., dengan dua commit dokumentasi saja setelahnya.
