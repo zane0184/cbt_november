@@ -12,7 +12,6 @@ class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
         'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'],
-        'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
         'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
     ];
 
@@ -24,7 +23,7 @@ class RolePermissionBootstrapper
 
         // Validate every required role before creating permissions or writing pivots.
         if ($missing !== []) {
-            throw new RuntimeException('Required curriculum roles are missing: ' . implode(', ', $missing));
+            throw new RuntimeException('Required portal roles are missing: ' . implode(', ', $missing));
         }
 
         DB::transaction(function () use ($roles): void {
@@ -62,7 +61,6 @@ class RolePermissionBootstrapper
             // Revoke stale grants that contradict the current tenant role matrix.
             $revokedGrants = [
                 'ADMIN_MADRASAH' => ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
-                'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
                 'GURU' => ['curriculum.manage'],
             ];
 
