@@ -970,11 +970,21 @@ class ExamAnswerTest extends TestCase
             'expires_at' => now()->subSecond(),
         ]);
 
-        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
-            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat")
-            ->assertOk();
+        $renewed = $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat");
+        $renewed->assertOk()->assertJsonPath('fence_generation', 2);
 
-        $this->assertSame(2, (int) $this->attempt->fresh()->fence_generation);
+        $this->assertSame(1, (int) $this->attempt->fresh()->fence_generation);
+        $this->withHeader('X-CBT-Fence-Generation', '1')
+            ->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers")
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_FENCE_MISMATCH');
+
+        $this->withHeader('X-CBT-Fence-Generation', '2')
+            ->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers")
+            ->assertOk();
         $this->assertDatabaseHas('device_leases', [
             'exam_attempt_id' => $this->attempt->id,
             'fence_generation' => 1,
@@ -992,7 +1002,7 @@ class ExamAnswerTest extends TestCase
             ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
     }
 
-    public function test_submit_releases_lease_and_increments_fence_generation(): void
+    public function test_submit_releases_lease_and_preserves_terminal_fence_generation(): void
     {
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit")
