@@ -161,6 +161,11 @@ class TeacherPortalDataService
                     ->where('student_profiles.tenant_id', '=', $tenantId)
                     ->whereNull('student_profiles.deleted_at');
             })
+            ->join('users', function ($join) use ($tenantId): void {
+                $join->on('users.id', '=', 'student_profiles.user_id')
+                    ->where('users.tenant_id', '=', $tenantId)
+                    ->whereNull('users.deleted_at');
+            })
             ->join('rombels', function ($join) use ($tenantId): void {
                 $join->on('rombels.id', '=', 'rombel_student.rombel_id')
                     ->where('rombels.tenant_id', '=', $tenantId)
@@ -169,6 +174,7 @@ class TeacherPortalDataService
             })
             ->where('rombel_student.tenant_id', $tenantId)
             ->whereIn('rombel_student.rombel_id', $rombelIds)
+            ->whereIn('student_profiles.user_id', $this->eligibleStudentUserIds($tenantId))
             ->groupBy('rombel_student.rombel_id')
             ->selectRaw('rombel_student.rombel_id, COUNT(DISTINCT student_profiles.id) AS students_count')
             ->pluck('students_count', 'rombel_id')
@@ -187,6 +193,11 @@ class TeacherPortalDataService
                     ->where('student_profiles.tenant_id', '=', $tenantId)
                     ->whereNull('student_profiles.deleted_at');
             })
+            ->join('users', function ($join) use ($tenantId): void {
+                $join->on('users.id', '=', 'student_profiles.user_id')
+                    ->where('users.tenant_id', '=', $tenantId)
+                    ->whereNull('users.deleted_at');
+            })
             ->join('rombels', function ($join) use ($tenantId): void {
                 $join->on('rombels.id', '=', 'rombel_student.rombel_id')
                     ->where('rombels.tenant_id', '=', $tenantId)
@@ -195,6 +206,7 @@ class TeacherPortalDataService
             })
             ->where('rombel_student.tenant_id', $tenantId)
             ->whereIn('rombel_student.rombel_id', $rombelIds)
+            ->whereIn('student_profiles.user_id', $this->eligibleStudentUserIds($tenantId))
             ->distinct()
             ->count('student_profiles.id');
     }
@@ -220,6 +232,23 @@ class TeacherPortalDataService
         });
 
         return $query->pluck('id');
+    }
+
+    /**
+     * Dashboard statistics count only users with exactly one persisted portal role: SISWA.
+     * The legacy users.role column is not authoritative; role_user + roles is canonical.
+     */
+    private function eligibleStudentUserIds(string $tenantId)
+    {
+        return DB::table('users as eligible_users')
+            ->join('role_user as eligible_role_user', 'eligible_role_user.user_id', '=', 'eligible_users.id')
+            ->join('roles as eligible_roles', 'eligible_roles.id', '=', 'eligible_role_user.role_id')
+            ->where('eligible_users.tenant_id', $tenantId)
+            ->whereNull('eligible_users.deleted_at')
+            ->groupBy('eligible_users.id')
+            ->havingRaw('COUNT(DISTINCT eligible_roles.id) = 1')
+            ->havingRaw('MAX(eligible_roles.name) = ?', ['SISWA'])
+            ->select('eligible_users.id');
     }
 
     private function academicContext(string $tenantId): array
