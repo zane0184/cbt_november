@@ -140,7 +140,7 @@
                                                     @if($rombel->gradeLevel && (int) $rombel->gradeLevel->level === 6)
                                                         <button type="button" wire:click="openActionModal('GRADUATE', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-indigo-200 px-2 py-1 text-xs font-semibold text-indigo-800">Luluskan</button>
                                                     @endif
-                                                @elseif($student->academic_status === 'ACTIVE' && $activeYear && $rombel->academicYear && !$rombel->academicYear->is_active)
+                                                @elseif($student->academic_status === 'ACTIVE' && $activeYear && $rombel->academicYear && !$rombel->academicYear->is_active && (int) substr($activeYear->name, 0, 4) === ((int) substr($rombel->academicYear->name, 0, 4) + 1))
                                                     <button type="button" wire:click="openActionModal('PROMOTE', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-800">Naik Kelas</button>
                                                     <button type="button" wire:click="openActionModal('RETAIN', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-orange-200 px-2 py-1 text-xs font-semibold text-orange-800">Tinggal Kelas</button>
                                                 @endif
