@@ -73,6 +73,9 @@ class TeacherSubjectAssignmentConcurrencyTest extends TestCase
         $teacher = TeacherProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $guru->id,
+            'employment_type' => 'ASN',
+            'nip' => '198801012026011003',
+            'employee_identifier' => '198801012026011003',
             'full_name' => 'Guru Assignment Race',
         ]);
 
