@@ -11,30 +11,26 @@ class ExamPolicy
 {
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        return $user->hasRole('KAMAD') || $user->hasRole('GURU') || $user->hasRole('SISWA');
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
+        return $user->hasExactRole('GURU') || $user->hasExactRole('SISWA');
     }
 
     public function view(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) {
             return false;
         }
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             return TeacherAccess::canManageExam($user, $exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH')) {
+        if ($user->hasExactRole('ADMIN_MADRASAH')) {
             return false;
         }
 
-        if ($user->hasRole('KAMAD')) {
-            return true;
-        }
-
-        if ($user->hasRole('SISWA')) {
+        if ($user->hasExactRole('SISWA')) {
             return $exam->participants()->where('user_id', $user->id)->exists();
         }
 
@@ -47,8 +43,8 @@ class ExamPolicy
      */
     public function preview(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('GURU')) {
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasExactRole('GURU')) {
             return false;
         }
 
@@ -66,17 +62,17 @@ class ExamPolicy
 
     public function create(User $user): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        return $user->hasRole('GURU') && $user->hasPermission('exam.manage');
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
+        return $user->hasExactRole('GURU') && $user->hasPermission('exam.manage');
     }
 
     public function update(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($exam->isLocked()) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -85,11 +81,11 @@ class ExamPolicy
 
     public function delete(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($exam->isLocked()) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -98,25 +94,25 @@ class ExamPolicy
 
     public function manageQuestions(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        return $user->hasRole('GURU')
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('question.manage')
             && $this->update($user, $exam);
     }
 
     public function manageParticipants(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         return $this->update($user, $exam) && $user->hasPermission('exam.assign');
     }
 
     public function generateToken(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
         if ($exam->status !== 'PUBLISHED' || !$exam->locked_at) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.token')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -126,7 +122,7 @@ class ExamPolicy
 
     public function lock(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         return $this->update($user, $exam);
     }
 
@@ -137,7 +133,7 @@ class ExamPolicy
      */
     public function close(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id || !$exam->locked_at) {
             return false;
         }
@@ -146,7 +142,7 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -155,9 +151,9 @@ class ExamPolicy
 
     public function startAttempt(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
-        if (!$user->hasRole('SISWA')) return false;
+        if (!$user->hasExactRole('SISWA')) return false;
 
         $now = now();
         $participant = $exam->participants()
@@ -186,7 +182,7 @@ class ExamPolicy
     public function assignProctor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id) return false;
-        if (!$user->hasRole('ADMIN_MADRASAH') || !$user->hasPermission('exam.proctor.assign')) return false;
+        if (!$user->hasExactRole('ADMIN_MADRASAH') || !$user->hasPermission('exam.proctor.assign')) return false;
         if ($exam->status !== 'PUBLISHED' || !$exam->locked_at || !$exam->end_at) return false;
 
         return $exam->end_at->isFuture();
@@ -195,7 +191,7 @@ class ExamPolicy
     public function confirmProctor(User $user, Exam $exam): bool
     {
         return $user->tenant_id === $exam->tenant_id
-            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasExactRole('ADMIN_MADRASAH')
             && $user->hasPermission('exam.proctor.assign')
             && $exam->status === 'PUBLISHED'
             && $exam->locked_at !== null
@@ -206,18 +202,14 @@ class ExamPolicy
     public function revokeProctor(User $user, Exam $exam): bool
     {
         return $user->tenant_id === $exam->tenant_id
-            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->hasExactRole('ADMIN_MADRASAH')
             && $user->hasPermission('exam.proctor.assign');
     }
 
     public function monitor(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
-
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('exam.monitor');
-        }
 
         // A Guru monitoring capability must not survive a stale or mixed
         // role assignment (for example GURU + SISWA). The active portal role
@@ -250,17 +242,17 @@ class ExamPolicy
 
     public function viewExamResults(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         return app(\App\Policies\ReportPolicy::class)->viewExamResults($user, $exam);
     }
 
     public function publishResults(User $user, Exam $exam): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($user->hasRole('KAMAD') || $user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->hasExactRole('SISWA') || $user->hasExactRole('ADMIN_MADRASAH')) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.grade')
             && ($exam->assessment
                 && $user->hasPermission('exam.grade')
