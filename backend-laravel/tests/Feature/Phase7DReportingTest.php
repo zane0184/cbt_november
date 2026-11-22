@@ -62,7 +62,7 @@ class Phase7DReportingTest extends TestCase
         // Setup Tenant A resources
         app(TenantContext::class)->setTenantId($this->tenantA->id);
 
-        $adminRoleA = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $adminRoleA = Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
         $guruRoleA = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $siswaRoleA = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
