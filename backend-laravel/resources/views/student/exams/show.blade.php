@@ -81,7 +81,7 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), localDb: null, submitting: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, submitting: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
@@ -293,7 +293,7 @@
         renderNavigation(); renderQuestion(); updateTimer(data.attempt.expires_at);
         window.setInterval(() => updateTimer(data.attempt.expires_at), 1000);
         setSaveStatus(localPending.length ? `${localPending.length} draft lokal menunggu sinkronisasi` : 'Jawaban dipulihkan dari server', localPending.length > 0);
-        if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Draft lokal telah diterima server')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
+        if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Respons server berhasil untuk draft lokal; receipt terverifikasi belum tersedia')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
     }
 
     function updateTimer(expiresAt) {
@@ -406,10 +406,12 @@
         state.answers.set(question.id, { payload, state: 'ANSWERED' });
         const pendingItem = { payload, clientRequestId: requestId(), baseRevision: null };
         state.pending.set(question.id, pendingItem);
+        state.undurable.add(question.id);
         setSaveStatus('Menyimpan draft pada perangkat…');
         try {
             await persistPending(question.id, pendingItem);
             if (state.pending.get(question.id) !== pendingItem) return;
+            state.undurable.delete(question.id);
             setSaveStatus('Draft tersimpan di perangkat; menunggu server');
             if (state.timers.has(question.id)) clearTimeout(state.timers.get(question.id));
             state.timers.set(question.id, setTimeout(() => saveAnswer(question, pendingItem).catch(() => {}), 500));
@@ -432,6 +434,7 @@
                 pendingItem.baseRevision = state.revisions.get(question.id) || 0;
                 await persistPending(question.id, pendingItem);
             }
+            if (state.pending.get(question.id) !== pendingItem) return;
             try {
                 const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/answers/${encodeURIComponent(question.id)}`, {
                     method: 'PUT', body: JSON.stringify({ client_request_id: pendingItem.clientRequestId, base_revision: pendingItem.baseRevision, answer_payload: payload, answer_state: 'ANSWERED' })
@@ -470,6 +473,7 @@
     }
 
     async function flushPendingSaves() {
+        if (state.undurable.size) throw new Error('Ada jawaban yang gagal disimpan secara lokal. Ubah kembali jawaban tersebut agar draft dapat disimpan sebelum sinkronisasi.');
         await Promise.all([...state.saving.values()].map(promise => promise.catch(() => {})));
         const pendingSaves = [...state.pending.entries()].filter(([snapshotId]) => !state.conflicts.has(snapshotId)).map(([snapshotId, pendingItem]) => {
             const question = state.questions.find(item => item.id === snapshotId);
@@ -498,7 +502,7 @@
     }
 
     window.addEventListener('beforeunload', event => {
-        if (state.pending.size || state.conflicts.size || state.saving.size) {
+        if (state.pending.size || state.conflicts.size || state.undurable.size || state.saving.size) {
             event.preventDefault();
             event.returnValue = '';
         }
