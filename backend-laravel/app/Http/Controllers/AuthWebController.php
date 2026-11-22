@@ -16,11 +16,16 @@ class AuthWebController extends Controller
 {
     public function showLoginForm()
     {
-        if (Auth::check()) {
-            if (Auth::user()->hasRole('SUPER_ADMIN')) {
-                Auth::logout(); request()->session()->invalidate(); request()->session()->regenerateToken();
+        $guard = Auth::guard('web');
+        if ($guard->check()) {
+            $user = $guard->user();
+            $roles = $user->roles()->pluck('name');
+            if ($roles->count() !== 1 || $roles->first() === 'SUPER_ADMIN') {
+                $guard->logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
             } else {
-                return $this->redirectForUser(Auth::user());
+                return $this->redirectForUser($user);
             }
         }
         return view('auth.login');
@@ -49,7 +54,7 @@ class AuthWebController extends Controller
         }
 
         RateLimiter::clear($throttleKey);
-        Auth::login($user, $request->boolean('remember'));
+        Auth::guard('web')->login($user, $request->boolean('remember'));
         $request->session()->regenerate();
         $request->session()->put('cbt.auth_version.' . $user->getAuthIdentifier(), (int) ($user->auth_version ?? 1));
         $identity = LocalInstallationIdentity::query()->first();
@@ -62,17 +67,31 @@ class AuthWebController extends Controller
 
     public function logout(Request $request)
     {
-        Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
         TenantContext::getInstance()?->setTenantId(null); app(TenantContext::class)->setTenantId(null);
         return redirect('/login')->with('status', 'Anda telah berhasil keluar dari CBT Madrasah.');
     }
 
     protected function redirectForUser(User $user)
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return redirect('/admin/dashboard');
-        if ($user->hasRole('KAMAD')) return redirect('/');
-        if ($user->hasRole('GURU')) return redirect('/admin/exams');
-        if ($user->hasRole('SISWA')) return redirect('/student/exams');
+        $roles = $user->roles()->pluck('name');
+        if ($roles->count() !== 1) {
+            return redirect('/login')->withErrors([
+                'identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.',
+            ]);
+        }
+
+        return match ($roles->first()) {
+            'ADMIN_MADRASAH' => redirect('/admin/dashboard'),
+            'KAMAD' => redirect('/'),
+            'GURU' => redirect('/admin/exams'),
+            'SISWA' => redirect('/student/exams'),
+            default => redirect('/login')->withErrors([
+                'identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.',
+            ]),
+        };
 
         return redirect('/login')->withErrors([
             'identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.',

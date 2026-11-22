@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\AuthWebController;
 use App\Http\Controllers\StudentExamController;
 use App\Livewire\Teacher\ResultList;
@@ -21,20 +22,21 @@ use App\Livewire\Admin\ImportManagement;
 use App\Http\Controllers\Auth\ImportAccountActivationController;
 
 Route::get('/', function () {
-    if (auth()->check()) {
-        $user = auth()->user();
+    $guard = Auth::guard('web');
+    if ($guard->check()) {
+        $user = $guard->user();
+        $roles = $user->roles()->pluck('name');
 
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return redirect('/admin/dashboard');
+        if ($roles->count() === 1) {
+            return match ($roles->first()) {
+                'ADMIN_MADRASAH' => redirect('/admin/dashboard'),
+                'GURU' => redirect('/admin/exams'),
+                'SISWA' => redirect('/student/exams'),
+                default => redirect('/login'),
+            };
         }
 
-        if ($user->hasRole('GURU')) {
-            return redirect('/admin/exams');
-        }
-
-        if ($user->hasRole('SISWA')) {
-            return redirect('/student/exams');
-        }
+        return redirect('/login');
     }
 
     return view('welcome');
@@ -46,8 +48,8 @@ Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
 Route::get('/activate-import-account/{token}', [ImportAccountActivationController::class, 'show'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.show');
 Route::post('/activate-import-account/{token}', [ImportAccountActivationController::class, 'store'])->middleware(['signed', 'throttle:10,1'])->name('import-account.activate.store');
-Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
-Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
+Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth:web')->name('license.status');
+Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth:web', 'throttle:5,1'])->name('license.refresh');
 
 // Web Installer Wizard Routes
 Route::middleware(['prevent_reinstall', 'installer_bootstrap'])->prefix('install')->name('installer.')->group(function () {
@@ -70,19 +72,20 @@ Route::middleware(['prevent_reinstall', 'installer_bootstrap'])->prefix('install
 });
 
 Route::get('/exams/{exam}/monitoring', function (\App\Models\Exam $exam) {
-    if (auth()->user()->cannot('monitor', $exam)) {
+    $user = Auth::guard('web')->user();
+    if (! $user || $user->cannot('monitor', $exam)) {
         abort(403, 'Anda tidak memiliki izin untuk mengakses monitoring ujian ini.');
     }
     return view('monitoring.dashboard', ['examId' => $exam->id]);
-})->middleware(['auth', 'tenant', 'license']);
+})->middleware(['auth:web', 'tenant', 'license']);
 
-Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('student.')->group(function () {
+Route::middleware(['auth:web', 'tenant', 'license'])->prefix('student')->name('student.')->group(function () {
     Route::get('/exams', [StudentExamController::class, 'index'])->name('exams.index');
     Route::get('/exams/{exam}', [StudentExamController::class, 'show'])->name('exams.show');
     Route::get('/results/{attempt}', [StudentExamController::class, 'result'])->name('results.show');
 });
 
-Route::middleware(['auth', 'tenant', 'license'])->group(function () {
+Route::middleware(['auth:web', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
     Route::get('/admin/dashboard', AdminDashboard::class)->name('admin.dashboard');
     Route::get('/admin/profile', TenantProfileManagement::class)->name('admin.profile');
