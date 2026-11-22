@@ -356,4 +356,76 @@ class TeacherPracticeWorkflowTest extends TestCase
             'snapshot_stem' => 'Stem Asli Sebelum Diedit',
         ]);
     }
+
+    /** @test */
+    public function exam_roster_excludes_users_with_multiple_roles_and_keeps_exact_siswa_users(): void
+    {
+        $this->actingAs($this->teacher);
+
+        // A student account carrying SISWA plus another portal role is not eligible.
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        $this->student1->roles()->attach($guruRole);
+
+        // Keep one valid exact-role SISWA in the same official rombel as a positive control.
+        $validStudent = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Valid',
+            'email' => 'siswa.valid@man2.sch.id',
+            'password' => bcrypt('password123'),
+        ]);
+        $siswaRole = Role::where('name', 'SISWA')->firstOrFail();
+        $validStudent->roles()->attach($siswaRole);
+        $validProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $validStudent->id,
+            'full_name' => 'Siswa Valid',
+        ]);
+
+        \\Illuminate\\Support\\Facades\\DB::table('rombel_student')->insert([
+            'id' => (string) \\Illuminate\\Support\\Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $this->rombel->id,
+            'student_id' => $validProfile->id,
+        ]);
+
+        Livewire::test(QuestionBank::class)
+            ->set('questionCode', 'FIQ-ROSTER-ROLE-01')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('stem', 'Soal uji kelayakan roster peserta.')
+            ->set('optionA', 'Benar')
+            ->set('optionB', 'Salah')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $question = Question::where('question_code', 'FIQ-ROSTER-ROLE-01')->firstOrFail();
+        Livewire::test(QuestionBank::class)->call('publishQuestion', $question->id);
+        $version = $question->fresh()->currentVersion;
+
+        Livewire::test(ExamManagement::class)
+            ->set('title', 'Ujian Roster Exact Role')
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('selectedSemesterId', $this->semester->id)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('selectedQuestionVersionIds', [$version->id])
+            ->set('durationMinutes', 60)
+            ->set('startAt', now()->addHour()->format('Y-m-d\\TH:i'))
+            ->set('endAt', now()->addDays(2)->format('Y-m-d\\TH:i'))
+            ->call('saveExam')
+            ->assertHasNoErrors();
+
+        $exam = Exam::where('title', 'Ujian Roster Exact Role')->firstOrFail();
+
+        $this->assertDatabaseMissing('exam_participants', [
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'user_id' => $this->student1->id,
+        ]);
+        $this->assertDatabaseHas('exam_participants', [
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'user_id' => $validStudent->id,
+        ]);
+    }
 }
