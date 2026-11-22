@@ -73,6 +73,9 @@
                         <a href="/admin/users" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/users*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span class="text-emerald-400">♙</span><span>Guru & Siswa</span>
                         </a>
+                        <a href="/admin/import" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/import*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span class="text-emerald-400">⇧</span><span>Import Data</span>
+                        </a>
                     @endif
                     @if($currentUser->hasPermission('academic.manage'))
                         <a href="/admin/academic" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/academic*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
@@ -133,6 +136,7 @@
                                 <a href="/admin/dashboard" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Dashboard Eksekutif</a>
                                 <a href="/admin/profile" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Profil Madrasah</a>
                                 @if($currentUser->hasPermission('user.manage'))<a href="/admin/users" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Guru & Siswa</a>@endif
+                                @if($currentUser->hasPermission('user.manage'))<a href="/admin/import" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Import Data</a>@endif
                                 @if($currentUser->hasPermission('academic.manage'))
                                     <a href="/admin/academic" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Data Akademik</a>
                                     <a href="/admin/rombel-students" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Keanggotaan Rombel</a>
