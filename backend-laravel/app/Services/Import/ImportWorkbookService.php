@@ -639,17 +639,24 @@ class ImportWorkbookService
             'created_at'=>now(),
             'updated_at'=>now(),
         ]);
-        StudentAcademicEvent::create([
-            'student_id'=>$profile->id,
-            'academic_year_id'=>$rombel->academic_year_id,
-            'from_rombel_id'=>null,
-            'to_rombel_id'=>$rombel->id,
-            'event_type'=>'ENROLLED',
-            'effective_date'=>now()->toDateString(),
-            'reason'=>'Penempatan awal melalui import batch '.$batchId.'.',
-            'performed_by'=>$userId,
-            'metadata'=>['source'=>'IMPORT','batch_id'=>$batchId],
-        ]);
+        $tenantContext = app(TenantContext::class);
+        $previousTenantId = $tenantContext->getTenantId();
+        $tenantContext->setTenantId($tenantId);
+        try {
+            StudentAcademicEvent::create([
+                'student_id'=>$profile->id,
+                'academic_year_id'=>$rombel->academic_year_id,
+                'from_rombel_id'=>null,
+                'to_rombel_id'=>$rombel->id,
+                'event_type'=>'ENROLLED',
+                'effective_date'=>now()->toDateString(),
+                'reason'=>'Penempatan awal melalui import batch '.$batchId.'.',
+                'performed_by'=>$userId,
+                'metadata'=>['source'=>'IMPORT','batch_id'=>$batchId],
+            ]);
+        } finally {
+            $tenantContext->setTenantId($previousTenantId);
+        }
         app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'SISWA','profile_id'=>$profile->id,'login_identifier_suffix'=>substr($p['nisn'], -4),'rombel_id'=>$rombel->id,'academic_year_id'=>$rombel->academic_year_id]);
         app(AuditService::class)->log('STUDENT_ENROLLED','StudentProfile',$profile->id,null,['rombel_id'=>$rombel->id,'academic_year_id'=>$rombel->academic_year_id,'reason'=>'Penempatan awal melalui import batch '.$batchId.'.']);
         return $this->createActivation($user,$p['name'],$p['nisn'],$tenantId);
