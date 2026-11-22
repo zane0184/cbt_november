@@ -4,7 +4,7 @@
             <h2 class="text-xl font-bold text-navy-900">Analisis Butir Soal: {{ $exam->title }}</h2>
             <p class="text-xs text-textSecondary">Evaluasi tingkat kesulitan (P) dan daya pembeda (D) butir soal</p>
         </div>
-        <a href="/exams/{{ $exam->id }}/analytics" class="text-emerald-600 hover:text-emerald-700 text-xs font-bold bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+        <a href="{{ route('teacher.exams.analytics', ['exam' => $exam->id]) }}" class="text-emerald-600 hover:text-emerald-700 text-xs font-bold bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
             &larr; Kembali ke Dashboard
         </a>
     </div>
