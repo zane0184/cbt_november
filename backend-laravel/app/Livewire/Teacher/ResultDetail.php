@@ -128,7 +128,8 @@ class ResultDetail extends Component
             $this->attempt->refresh();
             $this->dispatch('notify', ['type' => 'success', 'message' => 'Question score updated.']);
         } catch (\Throwable $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
+            report($e);
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Terjadi kesalahan saat menyimpan penilaian. Silakan coba kembali.']);
         }
     }
 
@@ -194,7 +195,8 @@ class ResultDetail extends Component
             $this->attempt->refresh();
             $this->dispatch('notify', ['type' => 'success', 'message' => 'Result finalized successfully.']);
         } catch (\Throwable $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
+            report($e);
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Terjadi kesalahan saat finalisasi nilai. Silakan coba kembali.']);
         }
     }
 
@@ -231,8 +233,9 @@ class ResultDetail extends Component
             $this->reopenReason = '';
             $this->attempt->refresh();
             $this->dispatch('notify', ['type' => 'success', 'message' => 'Result reopened successfully.']);
-        } catch (\Exception $e) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => $e->getMessage()]);
+        } catch (\Throwable $e) {
+            report($e);
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Terjadi kesalahan saat membuka kembali penilaian. Silakan coba kembali.']);
         }
     }
 
