@@ -20,6 +20,7 @@ use App\Models\MultiCurriculumStructure;
 use App\Models\MultiCurriculumVersion;
 use App\Models\MultiLearningOutcome;
 use App\Models\Role;
+use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
@@ -584,12 +585,11 @@ class TeacherPortalFoundationTest extends TestCase
         $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
-    public function test_http_livewire_update_rebuilds_tenant_context_and_rejects_stale_tenant_identity(): void
+    public function test_http_livewire_update_rebuilds_tenant_context_and_database_rejects_tenant_reassignment(): void
     {
         $this->actingAs($this->teacher);
 
-        // These real page requests exercise the auth, tenant and license middleware
-        // used for the initial full-page Livewire component mount.
+        // Initial page requests exercise the auth, tenant and license middleware.
         $questionPage = $this->get('/guru/bank-soal')->assertOk();
         $questionSnapshot = $this->extractLivewireSnapshot($questionPage);
         $this->assertSame(
@@ -637,29 +637,52 @@ class TeacherPortalFoundationTest extends TestCase
             (string) app(TenantContext::class)->getTenantId()
         );
 
-        // Persisted tenant reassignment invalidates the original authenticated
-        // identity. Subsequent real Livewire HTTP updates must fail closed.
-        DB::table('users')
-            ->where('id', $this->teacher->id)
-            ->where('tenant_id', $this->tenant->id)
-            ->update(['tenant_id' => $tenantB->id]);
+        // The composite user/tenant foreign key intentionally prevents moving
+        // an identity while its tenant-owned TeacherProfile still references it.
+        // Keep that integrity protection: do not disable constraints or weaken
+        // the schema just to simulate a stale identity.
+        try {
+            DB::table('users')
+                ->where('id', $this->teacher->id)
+                ->where('tenant_id', $this->tenant->id)
+                ->update(['tenant_id' => $tenantB->id]);
 
+            $this->fail('Tenant reassignment must be rejected while the tenant-local TeacherProfile exists.');
+        } catch (\\Illuminate\\Database\\QueryException $exception) {
+            $this->assertStringContainsString('teacher_profiles_user_tenant_fk', $exception->getMessage());
+        }
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->teacher->id,
+            'tenant_id' => $this->tenant->id,
+        ]);
+        $this->assertDatabaseMissing('users', [
+            'id' => $this->teacher->id,
+            'tenant_id' => $tenantB->id,
+        ]);
+
+        // Since the identity remains in its original tenant, subsequent genuine
+        // Livewire requests must still rebuild that same tenant context.
         app(TenantContext::class)->setTenantId(null);
         $this->postLivewireUpdate(
             $questionSnapshot,
-            ['search' => 'must-be-denied-after-tenant-reassignment']
-        )->assertForbidden();
+            ['search' => 'tenant-context-still-valid-question']
+        )->assertOk();
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
 
         app(TenantContext::class)->setTenantId(null);
         $this->postLivewireUpdate(
             $examSnapshot,
-            ['search' => 'must-be-denied-after-tenant-reassignment']
-        )->assertForbidden();
+            ['search' => 'tenant-context-still-valid-exam']
+        )->assertOk();
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
 
-        $this->assertDatabaseHas('users', [
-            'id' => $this->teacher->id,
-            'tenant_id' => $tenantB->id,
-        ]);
         $this->assertSame($before, $this->tenantQuestionExamSnapshot());
     }
 
