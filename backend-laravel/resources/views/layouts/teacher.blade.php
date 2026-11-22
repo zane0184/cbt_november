@@ -106,6 +106,7 @@
             <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-5 text-sm">
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Ruang Kerja Guru</p>
                 <a href="{{ route('teacher.dashboard') }}" class="portal-nav-link {{ request()->routeIs('teacher.dashboard') ? 'active' : '' }}"><span>▦</span> Dashboard</a>
+                <a href="{{ route('teacher.assignments') }}" class="portal-nav-link {{ request()->routeIs('teacher.assignments') ? 'active' : '' }}"><span>▤</span> Penugasan Saya</a>
                 <a href="{{ route('teacher.learning') }}" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? 'active' : '' }}"><span>▤</span> Pembelajaran</a>
                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
                 <div class="my-3 border-t border-white/10"></div>
@@ -147,6 +148,7 @@
                             <summary class="cursor-pointer rounded-lg border portal-border px-3 py-2 text-sm font-semibold">☰ Menu</summary>
                             <div class="portal-card absolute right-0 mt-2 w-64 p-2 shadow-xl">
                                 <a href="{{ route('teacher.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm">Dashboard</a>
+                                <a href="{{ route('teacher.assignments') }}" class="block rounded-lg px-3 py-2 text-sm">Penugasan Saya</a>
                                 <a href="{{ route('teacher.learning') }}" class="block rounded-lg px-3 py-2 text-sm">Pembelajaran</a>
                                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="block rounded-lg px-3 py-2 text-sm">Kurikulum & Akademik</a>
                                 <div class="my-2 border-t portal-border"></div>
