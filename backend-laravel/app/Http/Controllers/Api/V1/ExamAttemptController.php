@@ -417,11 +417,15 @@ class ExamAttemptController extends Controller
 
             // Scheduler may win the expiry race. An already-expired attempt from
             // the same authenticated participant/device is an idempotent success.
-            if ($lockedAttempt->status === 'EXPIRED') {
+            if (in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Attempt already expired and closed.',
-                    'data' => ['status' => 'EXPIRED']
+                    'message' => 'Attempt already closed.',
+                    'data' => [
+                        'status' => $lockedAttempt->status,
+                        'submitted_at' => $lockedAttempt->submitted_at?->toIso8601String(),
+                    ],
+                    'idempotent' => true,
                 ]);
             }
 
