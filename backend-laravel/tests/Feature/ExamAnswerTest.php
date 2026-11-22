@@ -27,6 +27,7 @@ class ExamAnswerTest extends TestCase
     private $exam;
     private $attempt;
     private $snapshot;
+    private string $apiToken;
 
     protected function setUp(): void
     {
@@ -109,15 +110,35 @@ class ExamAnswerTest extends TestCase
         $this->snapshot->tenant_id = $this->tenant->id;
         $this->snapshot->exam_id = $this->exam->id;
         $this->snapshot->save();
-        $this->attempt->update(['question_order' => [(string) $this->snapshot->id]]);
+        $this->apiToken = $this->student->createToken('answer-test-session')->plainTextToken;
+        $tokenId = explode('|', $this->apiToken, 2)[0];
+        $sessionHash = hash_hmac('sha256', 'sanctum-token:'.$tokenId, (string) config('app.key'));
+        $this->attempt->update([
+            'question_order' => [(string) $this->snapshot->id],
+            'auth_session_hash' => $sessionHash,
+            'auth_session_type' => 'SANCTUM_TOKEN',
+            'auth_session_bound_at' => now(),
+            'fence_generation' => 1,
+        ]);
+        DeviceLease::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'registered_device_id' => null,
+            'auth_session_hash' => $sessionHash,
+            'fence_generation' => 1,
+            'status' => 'ACTIVE',
+            'leased_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+        ]);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-test');
+        $this->withHeader('X-Device-Binding-ID', 'device-test')
+            ->withHeader('Authorization', 'Bearer '.$this->apiToken);
     }
 
 
     public function test_matching_payload_rejects_foreign_or_duplicate_pair_ids()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $this->snapshot->update([
             'snapshot_options' => [
                 ['id' => 'LEFT-1', 'content' => 'Kiri 1', 'option_key' => 'PAIR-1'],
@@ -302,7 +323,7 @@ class ExamAnswerTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        $this->actingAs($otherStudent, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$otherStudent->createToken('foreign-answer-test')->plainTextToken);
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers");
         $response->assertStatus(403);
