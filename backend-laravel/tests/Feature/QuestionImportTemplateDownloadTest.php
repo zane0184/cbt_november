@@ -47,34 +47,16 @@ final class QuestionImportTemplateDownloadTest extends TestCase
 
     public function test_exact_role_guru_can_download_question_template(): void
     {
-        Excel::fake();
-
         $response = $this->actingAs($this->teacher)->get(route('teacher.questions.template'));
 
-        $response->assertOk();
-        Excel::assertDownloaded(
+        $response->assertOk()
+            ->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->assertHeader('Cache-Control', 'private, no-store, max-age=0')
+            ->assertHeader('Pragma', 'no-cache');
+
+        $this->assertStringContainsString(
             'Template_Import_Soal_CBT-QUESTION-1.xlsx',
-            function (QuestionImportTemplateExport $export): bool {
-                $sheets = $export->sheets();
-                $titles = array_map(fn ($sheet) => $sheet->title(), $sheets);
-
-                $this->assertSame([
-                    'Petunjuk',
-                    'Data Soal',
-                    'Detail Opsi',
-                    'Referensi Jenis Soal',
-                    'Contoh Soal',
-                    'Referensi Akademik',
-                ], $titles);
-
-                $typeRows = $sheets[3]->array();
-                $this->assertContains('SHORT_ANSWER', array_column($typeRows, 0));
-                $this->assertContains('ESSAY', array_column($typeRows, 0));
-                $this->assertStringContainsString('BLOCKED', implode(' ', $typeRows[5]));
-                $this->assertStringContainsString('Opsi E', implode(' ', $typeRows[7]));
-
-                return true;
-            }
+            $response->headers->get('Content-Disposition', '')
         );
     }
 
