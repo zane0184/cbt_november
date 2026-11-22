@@ -44,7 +44,16 @@ abstract class TestCase extends BaseTestCase
             $this->setTenantContext($user->tenant_id);
         }
 
-        return parent::actingAs($user, $guard);
+        $result = parent::actingAs($user, $guard);
+
+        if ($guard === null || $guard === 'web') {
+            $this->app['session']->put(
+                'cbt.auth_version.' . $user->getAuthIdentifier(),
+                (int) ($user->auth_version ?? 1)
+            );
+        }
+
+        return $result;
     }
 
     protected function tearDown(): void
