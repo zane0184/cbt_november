@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: agent2-p0-attempt-{{ github.ref }}
+  group: agent2-p0-attempt-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
     env:
       APP_ENV: testing
       APP_DEBUG: "true"
-      APP_KEY: base64:YWdlbnQyLXBvLWF1dGgtc2Vzc2lvbi10ZXN0LWtleS0yMDI2
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: "3306"
@@ -54,7 +54,7 @@ jobs:
       - name: Checkout exact Agent 2 source
         uses: actions/checkout@v4
         with:
-          ref: ${'{'}{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up PHP 8.3 and Composer
         uses: shivammathur/setup-php@v2
@@ -74,7 +74,7 @@ jobs:
             exit 70
           fi
           echo "DB_DATABASE=$RUN_DB" >> "$GITHUB_ENV"
-          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "CREATE DATABASE `$RUN_DB` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "CREATE DATABASE $RUN_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
           php -r '$pdo=new PDO("mysql:host=127.0.0.1;port=3306;dbname=".getenv("DB_DATABASE"),getenv("DB_USERNAME"),getenv("DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]); $r=$pdo->query("SELECT DATABASE() db, VERSION() version, @@default_storage_engine engine")->fetch(PDO::FETCH_ASSOC); if($r["db"]!==getenv("DB_DATABASE") || !str_starts_with($r["version"],"8.") || strtoupper($r["engine"])!=="INNODB") exit(1); echo json_encode($r,JSON_PRETTY_PRINT),PHP_EOL;'
 
       - name: Validate Composer lock
@@ -117,9 +117,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: agent2-p0-auth-session-fencing-${'{'}{ github.run_id }}-${'{'}{ github.run_attempt }}
+          name: agent2-p0-auth-session-fencing-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
-            backend-laravel/../agent2-p0-integration.log
+            agent2-p0-integration.log
           if-no-files-found: warn
           retention-days: 30
 
@@ -130,7 +130,7 @@ jobs:
           set -euo pipefail
           RUN_DB="cbt_agent2_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
           if [[ ! "$RUN_DB" =~ ^cbt_agent2_[0-9]+_[0-9]+$ ]]; then exit 90; fi
-          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "DROP DATABASE IF EXISTS `$RUN_DB`;"
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "DROP DATABASE IF EXISTS $RUN_DB;"
           remaining=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='$RUN_DB'")
           test "$remaining" = "0"
           echo "disposable_database_cleanup=PASS"
