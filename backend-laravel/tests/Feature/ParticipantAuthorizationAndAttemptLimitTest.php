@@ -12,6 +12,7 @@ use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\QuestionOption;
 use App\Models\Role;
+use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -62,6 +63,12 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userA1->roles()->attach($siswaRole);
+        StudentProfile::create([
+            'user_id' => $this->userA1->id,
+            'nis' => 'NIS-A1',
+            'nisn' => '1000000001',
+            'full_name' => $this->userA1->name,
+        ]);
 
         $this->userA2 = User::create([
             'tenant_id' => $this->tenantA->id,
@@ -70,6 +77,12 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userA2->roles()->attach($siswaRole);
+        StudentProfile::create([
+            'user_id' => $this->userA2->id,
+            'nis' => 'NIS-A2',
+            'nisn' => '1000000002',
+            'full_name' => $this->userA2->name,
+        ]);
 
         $yearA = AcademicYear::create(['tenant_id' => $this->tenantA->id, 'name' => '2024/2025']);
         $assessmentA = Assessment::create([
@@ -152,6 +165,12 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userB->roles()->attach($siswaRole);
+        StudentProfile::create([
+            'user_id' => $this->userB->id,
+            'nis' => 'NIS-B1',
+            'nisn' => '2000000001',
+            'full_name' => $this->userB->name,
+        ]);
 
         // Clear tenant context for controller requests
         $context->setTenantId(null);
