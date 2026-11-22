@@ -1,14 +1,14 @@
 <?php
 
-namespace App\\Services;
+namespace App\Services;
 
-use App\\Models\\Exam;
-use App\\Models\\ExamParticipant;
-use App\\Models\\ExamParticipantRoomPlacement;
-use App\\Models\\ExamProctorAssignment;
-use App\\Models\\User;
-use App\\Support\\Security\\TeacherAccess;
-use Illuminate\\Database\\Eloquent\\Builder;
+use App\Models\Exam;
+use App\Models\ExamParticipant;
+use App\Models\ExamParticipantRoomPlacement;
+use App\Models\ExamProctorAssignment;
+use App\Models\User;
+use App\Support\Security\TeacherAccess;
+use Illuminate\Database\Eloquent\Builder;
 
 class ExamMonitoringScope
 {
@@ -72,7 +72,7 @@ class ExamMonitoringScope
     /** IDs only: callers must build a status/progress allowlist, never load Answer/Score. */
     public function attemptIdsQuery(User $user, Exam $exam): Builder
     {
-        return \\App\\Models\\ExamAttempt::query()
+        return \App\Models\ExamAttempt::query()
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
             ->whereIn('participant_id', $this->participantQuery($user, $exam)->select('exam_participants.id'))
