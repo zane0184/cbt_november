@@ -240,7 +240,7 @@ Blob backup telah diverifikasi identik dengan blob sumber pra-perubahan untuk Te
 ## 12. HASIL RUN TERBARU DAN STATUS TEST
 
 - Run `44983955276` pada SHA `67ccd99f7ae14a8c0e9ddb71ce773d627d182231`: PHP lint dan route registration PASS; PHPUnit gagal pada 1 test, 10 test lulus (42 assertions). Penyebab satu-satunya: test soft-delete menggunakan facade `DB` tanpa import `Illuminate\\Support\\Facades\\DB`, sehingga PHP melempar `Class "Tests\\Feature\\DB" not found`.
-- File test dibackup sebelum penambahan import. Backup blob SHA `dfaa6a937752e1351ad99319969d2a54b8bce5fa`? Tidak; SHA yang terverifikasi pada manifest adalah `dfaa6a937752e1351ad99319969d2a54b8bce5fa` tidak cocok dengan blob yang diambil, maka rujuk manifest untuk nilai final yang benar.
+- File test dibackup sebelum penambahan import. Backup blob SHA yang terverifikasi: `dfaa6a9377520b8a8dc81a6d5f65046af0b5138f`, ukuran 11.903 byte UTF-8; nilainya sama dengan blob sumber sebelum perubahan.
 - Import DB facade telah ditambahkan pada source SHA `e9c6867d40b134538e791bbbba02f5743afec7ea`. Run `44984094200` sedang berjalan untuk SHA tersebut; hasil belum diketahui.
 - Warning `.env` tidak muncul lagi pada run `44983955276`. Deprecation PHPUnit metadata doc-comment legacy tetap muncul.
 - HEAD branch aktual saat pembaruan ini: `10277d766a0050e83cc7ab451b8462be245dfb70`; commit setelah source test SHA hanya manifest/dokumentasi.
