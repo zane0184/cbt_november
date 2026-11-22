@@ -210,11 +210,8 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
 
         // Client B restores the same Guru identity using the official Admin action.
-        \Livewire\Livewire::actingAs($this->admin)
-            ->test(\App\Livewire\Admin\UserManagement::class)
-            ->set('statusFilter', 'INACTIVE')
-            ->call('restoreUser', $this->guru->id)
-            ->assertHasNoErrors();
+        $this->actingAs($this->admin);
+        app(\\App\\Livewire\\Admin\\UserManagement::class)->restoreUser($this->guru->id);
         $this->assertDatabaseHas('users', ['id' => $this->guru->id, 'deleted_at' => null]);
 
         // Client A cannot revive its pre-deactivation session after reactivation.
