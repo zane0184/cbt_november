@@ -435,6 +435,10 @@
             } catch (error) {
                 if (error.status === 409 && error.body?.current_revision !== undefined) {
                     state.revisions.set(question.id, Number(error.body.current_revision));
+                    // A newer edit may already be queued while this older request was in flight.
+                    // Rebase only that not-yet-sent newer item; do not archive the stale item as a
+                    // user-visible conflict because the latest local answer is still available.
+                    if (state.pending.get(question.id) !== pendingItem) throw error;
                     const conflict = { local: pendingItem.payload, server: error.body.current_answer || null, revision: Number(error.body.current_revision) };
                     state.conflicts.set(question.id, conflict);
                     await persistConflict(question.id, pendingItem, conflict.server, conflict.revision);
