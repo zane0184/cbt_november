@@ -4,7 +4,7 @@ Branch: work/agent2-p0-attempt-answer-scoring-20261122
 Baseline: 4e663cd84038b7c3337d776f702c499f20d8f537
 Backup folder: backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/
 Method: GitHub contents API; each backup was re-fetched and its Git blob SHA matched the source blob SHA exactly.
-Source files: 19
+Source files: 24
 Restore rule: copy the corresponding .before file back to the original path using a new commit; do not reset the branch.
 
 | Source path | Original Git blob SHA | Backup path | Verified |
@@ -28,3 +28,9 @@ Restore rule: copy the corresponding .before file back to the original path usin
 | backend-laravel/tests/Feature/AdminCbtBoundaryTest.php | fc8e99c971485a9021bf7c6d7ca765c6426b89ac | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/AdminCbtBoundaryTest.php.before | YES |
 | backend-laravel/tests/Feature/ExamAnswerTest.php | c6ac21f3db9591e37ffbdf21228f4736d7bd962a | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/ExamAnswerTest.php.before | YES |
 | backend-laravel/tests/Feature/ExamSessionHardeningTest.php | 95f2708b5aaf4948571d21b0a3bb3ae60edb2215 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/ExamSessionHardeningTest.php.before | YES |
+
+| backend-laravel/app/Http/Controllers/Api/V1/TagController.php | a9d5101ac2e63a047d0527d0c82d141ee5bb5301 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/TagController.php.before | YES |
+| backend-laravel/app/Http/Controllers/Api/V1/ReportController.php | c78442de0f5b4b40a7773bb2af0cf0ffd852d055 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/ReportController.php.before | YES |
+| backend-laravel/app/Http/Controllers/Api/V1/AnalyticsController.php | 3339103d64d06427896344c6e4f3bb45db8a680b | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/AnalyticsController.php.before | YES |
+| backend-laravel/app/Http/Controllers/Api/V1/MonitoringController.php | 90fcfea595c10918e2c3866363356f688452a0a4 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/MonitoringController.php.before | YES |
+| backend-laravel/app/Http/Controllers/Api/V1/TeacherSubjectAssignmentController.php | 78ae77982a4f0035a6744beaf5aab1e0946d9a67 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/TeacherSubjectAssignmentController.php.before | YES |
