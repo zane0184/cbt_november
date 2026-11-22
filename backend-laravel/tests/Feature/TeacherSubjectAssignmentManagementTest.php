@@ -187,6 +187,57 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertDatabaseCount('teacher_subject_assignments', 0);
     }
 
+    public function test_assignment_rejects_teacher_profile_from_another_tenant(): void
+    {
+        $otherTenant = Tenant::create(['name' => 'Tenant Foreign', 'code' => 'TAS2']);
+        $context = app(TenantContext::class);
+        $context->setTenantId($otherTenant->id);
+
+        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
+        $foreignUser = User::create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Guru Foreign',
+            'email' => 'guru-foreign-assignment@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $foreignUser->roles()->attach($guruRole->id);
+        $foreignTeacher = TeacherProfile::create([
+            'tenant_id' => $otherTenant->id,
+            'user_id' => $foreignUser->id,
+            'full_name' => 'Guru Foreign',
+        ]);
+
+        $context->setTenantId($this->tenant->id);
+
+        Livewire::actingAs($this->admin)
+            ->test(TeacherSubjectAssignmentManagement::class)
+            ->set(array_merge($this->validPayload(), ['teacherProfileId' => $foreignTeacher->id]))
+            ->call('save')
+            ->assertHasErrors(['teacherProfileId']);
+
+        $this->assertDatabaseCount('teacher_subject_assignments', 0);
+    }
+
+    public function test_same_assignment_key_with_different_dates_is_rejected_as_conflict(): void
+    {
+        $component = Livewire::actingAs($this->admin)
+            ->test(TeacherSubjectAssignmentManagement::class)
+            ->set($this->validPayload())
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $component
+            ->set('endsAt', '2027-05-31')
+            ->call('save')
+            ->assertHasErrors(['teacherProfileId']);
+
+        $this->assertDatabaseCount('teacher_subject_assignments', 1);
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'teacher_profile_id' => $this->teacher->id,
+            'ends_at' => '2027-06-30',
+        ]);
+    }
+
     public function test_assignment_rejects_end_date_before_start_date(): void
     {
         Livewire::actingAs($this->admin)
