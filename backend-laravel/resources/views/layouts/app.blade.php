@@ -85,7 +85,7 @@
                             <span class="text-emerald-400">♙</span><span>Penugasan Guru Mapel</span>
                         </a>
                         <a href="/admin/rombel-students" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/rombel-students*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
-                            <span class="text-emerald-400">♧</span><span>Keanggotaan Rombel</span>
+                            <span class="text-emerald-400">♧</span><span >Siswa & Riwayat Akademik</span>
                         </a>
                     @endif
                     @if($currentUser->hasPermission('curriculum.view'))
@@ -143,7 +143,7 @@
                                 @if($currentUser->hasPermission('academic.manage'))
                                     <a href="/admin/academic" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Data Akademik</a>
                                     <a href="/admin/teacher-subject-assignments" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Penugasan Guru Mapel</a>
-                                    <a href="/admin/rombel-students" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Keanggotaan Rombel</a>
+                                    <a href="/admin/rombel-students" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800" >Siswa & Riwayat Akademik</a>
                                 @endif
                                 @if($currentUser->hasPermission('curriculum.view'))<a href="/admin/curriculum" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Master Kurikulum</a>@endif
                                 @if($currentUser->hasPermission('exam.proctor.assign'))<a href="/admin/proctor-assignments" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Penugasan Pengawas</a>@endif
