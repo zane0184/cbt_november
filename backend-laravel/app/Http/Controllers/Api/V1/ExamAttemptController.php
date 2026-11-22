@@ -684,10 +684,19 @@ class ExamAttemptController extends Controller
 
         if ($request->user()->hasExactRole('SISWA')) {
             abort_unless($participant->user_id === $request->user()->id, 404);
-            abort_unless(app(AttemptAuthSessionBinding::class)->matches($attempt, $request), 404);
-            abort_unless(app(AttemptDeviceLeaseService::class)->requestFenceMatches($attempt, $request), 409, 'Fencing generation tidak cocok atau belum dikirim.');
-            if ($attempt->status === 'IN_PROGRESS') {
-                abort_unless(app(AttemptDeviceLeaseService::class)->isCurrent($attempt, $request), 409, 'Lease Attempt tidak aktif; pemulihan resmi diperlukan.');
+            if (!app(AttemptAuthSessionBinding::class)->matches($attempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH'], 409);
+            }
+            if (!app(AttemptDeviceLeaseService::class)->requestFenceMatches($attempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $attempt->fence_generation,
+                ], 409);
+            }
+            if ($attempt->status === 'IN_PROGRESS'
+                && !app(AttemptDeviceLeaseService::class)->isCurrent($attempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID'], 409);
             }
             $this->authorize('view', $exam);
         } else {
