@@ -192,7 +192,7 @@
 
     function openLocalDatabase() {
         return new Promise((resolve, reject) => {
-            if (!('indexedDB' in window)) return reject(new Error('Browser tidak mendukung IndexedDB. Gunakan browser terbaru; ujian belum dimulai.'));
+            if (!window.indexedDB) return reject(new Error('Browser tidak mendukung IndexedDB. Gunakan browser terbaru; ujian belum dimulai.'));
             const request = indexedDB.open(LOCAL_DB_NAME, 2);
             request.onupgradeneeded = event => {
                 const db = request.result;
