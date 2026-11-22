@@ -37,7 +37,7 @@ class CurriculumStructureService
 
             $parent = $parentId
                 ? MultiCurriculumStructure::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                    ->where('multi_curriculum_version_id', $version->id)->whereNull('deleted_at')
+                    ->where('multi_curriculum_version_id', $version->id)->where('status', 'ACTIVE')->whereNull('deleted_at')
                     ->whereKey($parentId)->lockForUpdate()->firstOrFail()
                 : null;
 
@@ -91,15 +91,20 @@ class CurriculumStructureService
 
             $parent = $parentId
                 ? MultiCurriculumStructure::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                    ->where('multi_curriculum_version_id', $version->id)->whereNull('deleted_at')
+                    ->where('multi_curriculum_version_id', $version->id)->where('status', 'ACTIVE')->whereNull('deleted_at')
                     ->whereKey($parentId)->lockForUpdate()->firstOrFail()
                 : null;
 
             $cursor = $parent;
+            $visited = [];
             while ($cursor) {
                 if ((string) $cursor->id === (string) $node->id) {
                     throw ValidationException::withMessages(['parentId' => 'Struktur tidak boleh menjadi anak dari dirinya sendiri atau turunannya.']);
                 }
+                if (in_array((string) $cursor->id, $visited, true)) {
+                    throw ValidationException::withMessages(['parentId' => 'Struktur induk memiliki siklus data dan perlu diaudit sebelum diubah.']);
+                }
+                $visited[] = (string) $cursor->id;
                 $cursor = $cursor->parent_id
                     ? MultiCurriculumStructure::withoutGlobalScopes()->where('tenant_id', $tenantId)
                         ->where('multi_curriculum_version_id', $version->id)->whereNull('deleted_at')
@@ -144,8 +149,10 @@ class CurriculumStructureService
             $hasActiveChildren = MultiCurriculumStructure::withoutGlobalScopes()->where('tenant_id', $tenantId)
                 ->where('multi_curriculum_version_id', $node->multi_curriculum_version_id)
                 ->where('parent_id', $node->id)->where('status', 'ACTIVE')->whereNull('deleted_at')->exists();
-            if ($hasActiveChildren) {
-                throw ValidationException::withMessages(['node' => 'Arsipkan anak struktur aktif terlebih dahulu.']);
+            $hasActiveOutcomes = MultiLearningOutcome::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                ->where('multi_curriculum_structure_id', $node->id)->where('status', 'ACTIVE')->whereNull('deleted_at')->exists();
+            if ($hasActiveChildren || $hasActiveOutcomes) {
+                throw ValidationException::withMessages(['node' => 'Arsipkan anak struktur dan capaian aktif terlebih dahulu.']);
             }
 
             $before = ['status' => $node->status];
@@ -200,6 +207,46 @@ class CurriculumStructureService
             app(AuditService::class)->log('CURRICULUM_OUTCOME_CREATED', 'MultiLearningOutcome', $outcome->id, null, [
                 'version_id' => $version->id, 'structure_id' => $structure->id,
                 'code' => $code, 'outcome_type' => $outcomeType,
+                'reason' => trim($reason),
+            ]);
+
+            return $outcome;
+        }, 3);
+    }
+
+    public function updateOutcome(string $tenantId, string $actorId, string $outcomeId, string $code, string $outcomeType, string $description, string $reason): MultiLearningOutcome
+    {
+        return DB::transaction(function () use ($tenantId, $actorId, $outcomeId, $code, $outcomeType, $description, $reason) {
+            $this->lockTenantAndActor($tenantId, $actorId);
+            $outcome = MultiLearningOutcome::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')->whereKey($outcomeId)->lockForUpdate()->firstOrFail();
+            $version = $this->lockEditableVersion($tenantId, $outcome->multi_curriculum_version_id);
+            $this->validateReason($reason);
+
+            $code = strtoupper(trim($code));
+            $outcomeType = strtoupper(trim($outcomeType));
+            $description = trim($description);
+            Validator::make(
+                ['code' => $code, 'outcomeType' => $outcomeType, 'description' => $description],
+                [
+                    'code' => ['required', 'string', 'min:1', 'max:60', 'regex:/^[A-Z0-9][A-Z0-9._-]*$/'],
+                    'outcomeType' => ['required', 'string', 'min:2', 'max:50', 'regex:/^[A-Z][A-Z0-9_]+$/'],
+                    'description' => ['required', 'string', 'min:10', 'max:10000'],
+                ]
+            )->validate();
+
+            if (MultiLearningOutcome::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                ->where('multi_curriculum_version_id', $version->id)->where('code', $code)
+                ->where('id', '<>', $outcome->id)->exists()) {
+                throw ValidationException::withMessages(['outcomeCode' => 'Kode capaian sudah digunakan pada versi kurikulum ini.']);
+            }
+
+            $before = $outcome->only(['code', 'outcome_type', 'description', 'status']);
+            $outcome->fill(['code' => $code, 'outcome_type' => $outcomeType, 'description' => $description]);
+            $outcome->save();
+
+            app(AuditService::class)->log('CURRICULUM_OUTCOME_UPDATED', 'MultiLearningOutcome', $outcome->id, $before, [
+                ...$outcome->only(['code', 'outcome_type', 'description', 'status']),
                 'reason' => trim($reason),
             ]);
 
