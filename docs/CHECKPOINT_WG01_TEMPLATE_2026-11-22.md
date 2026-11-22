@@ -126,3 +126,65 @@ Koordinasi:
 
 ## Keamanan operasional
 Portal Guru hanya layak untuk uji terbatas pada dashboard/profil dan unduh template yang diuji CI. Bank Soal dan seluruh alur import belum siap digunakan operasional atau produksi. Tidak ada merge, PR, deployment, migration produksi atau perubahan branch Agent 1/2.
+
+
+---
+
+# CHECKPOINT QA DAN DESAIN UI XLSX/DOCX — 22 NOVEMBER 2026
+
+## Identitas dan posisi
+- Branch: `work/web-guru-foundation-20261122`.
+- HEAD sebelum pembaruan dokumentasi tahap ini: `de165f59a22ab9f72c94a8e086cf6883f08a784e`.
+- CI source SHA: `a33867928711b456d2414a675bef1a929861dee8`.
+- CI Run #34: `44995889398`, completed/success.
+- Desain UI: `docs/DESAIN_UI_IMPORT_SOAL_XLSX_DOCX_WG01_2026-11-22.md`.
+- Issue #8 dan #9: OPEN, masing-masing 0 komentar.
+
+## AUDIT
+- Source route, layout, controller download, dan export template diperiksa ulang.
+- Link template ada di navigasi desktop dan mobile; modul Bank Soal tetap disabled.
+- Lima commit setelah SHA CI hanya mengubah dokumentasi; tidak ada perubahan source aplikasi/workflow. CI tetap relevan untuk source template.
+- CI: 16 tests, 69 assertions; PHP lint/route registration PASS; MySQL 8 disposable, 80 tabel InnoDB, cleanup PASS.
+- Browser QA NOT RUN karena environment aplikasi/browser interaktif dan akun uji non-produksi tidak tersedia.
+- Backup report/checkpoint/manifest dibuat dan diverifikasi sebelum perubahan. Backup tambahan 3/3 MATCH; manifest diperbarui dan koreksi duplikasi section dicatat.
+- Tidak ada path source Agent 1/2 yang diubah. Seluruh write eksplisit ke branch Agent 3.
+
+## DESAIN
+- Satu wizard UI Guru dengan jalur file XLSX dan DOCX terpisah.
+- DOCX memakai document profile atau auto-detect terbatas.
+- Kedua jalur menuju normalized draft DTO dan lifecycle backend bersama.
+- Preview, source mapping, warnings, koreksi, revalidation, confirm, dan report.
+- Referensi akademik tenant-scoped; Kurmer + KBC/Panca Cinta terintegrasi.
+- Confirm hanya menyimpan DRAFT, tidak publish.
+- DOCX key hanya marker eksplisit; tidak ada tebakan AI.
+- SHORT_ANSWER BLOCKED; ESSAY manual.
+- Desain responsif dan accessibility dicatat dalam dokumen desain.
+- Semua endpoint/DTO/status/batch/storage final masih menunggu Agent 2.
+
+## IMPLEMENTASI
+- Hanya dokumen desain UI baru serta pembaruan laporan/checkpoint/manifest.
+- Tidak ada source aplikasi, API, parser, schema, migration, dependency, batch service, QuestionController/Policy, atau CBT Engine yang diubah.
+- Backup:
+  - Report sebelum update: `docs/backup/web-guru-wg01-template-20261122/WG01_TEMPLATE_IMPLEMENTATION.before-qa-ui-design-20261122.md`, SHA `796386c72e045574c2349a2768aa0a2290b54fc2`.
+  - Checkpoint sebelum update: `docs/backup/web-guru-wg01-template-20261122/CHECKPOINT_WG01_TEMPLATE.before-qa-ui-design-20261122.md`, SHA `901f2f88092a60a8dd9213183b27368b2b3445ee`.
+  - Manifest sebelum update: `docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-qa-ui-design-20261122`, SHA `4bbfca0a9f3d893f5d44975904a1820192f44fb8`.
+  - Manifest saat koreksi duplikasi juga dibackup; seluruh hash backup yang diuji cocok.
+- Branch Agent 3 saja; tidak ada merge/PR/deploy.
+
+## PENGUJIAN
+- CI VERIFIED: Run 44995889398, SHA a338679..., 16 tests/69 assertions.
+- CI source applicability: PASS; lima commit setelah SHA hanya dokumentasi.
+- BROWSER QA: NOT RUN.
+- Desktop/mobile, actual browser download, session expiry, cross-tenant, keyboard/accessibility: NOT RUN.
+- Upload/preview/confirm XLSX/DOCX: BLOCKED.
+
+## STATUS
+- Template XLSX: CI VERIFIED.
+- Portal Guru browser: NOT RUN.
+- XLSX/DOCX UI: DESIGN ONLY.
+- Agent 2 contract #8/#9: BLOCKED / waiting.
+- Bank Soal operational: NOT READY FOR OPERATIONAL USE.
+- PDF/OCR: DEFERRED.
+
+## Instruksi tahap berikutnya
+Tunggu jawaban Agent 2. Audit keputusan terhadap source aktual. Jangan implementasikan UI import, parser, API, schema, batch service, atau dependency sebelum kontrak disetujui dan tahap baru diizinkan.
