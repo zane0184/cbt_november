@@ -142,6 +142,7 @@ class UserManagement extends Component
         $tenantId = auth()->user()->tenant_id;
         $users = User::query()
             ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->whereHas('roles', fn ($roleQuery) => $roleQuery->whereIn('name', ['GURU', 'SISWA']))
             ->whereDoesntHave('roles', fn ($roleQuery) => $roleQuery->whereNotIn('name', ['GURU', 'SISWA']))
             ->withCount('roles')
