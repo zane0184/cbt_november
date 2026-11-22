@@ -106,6 +106,7 @@
         </section>
 
         <section id="runner-panel" class="hidden">
+            <div id="question-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div>
             <div class="sticky top-0 z-10 mb-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-white p-3 shadow sm:mb-4 sm:gap-3 sm:p-4">
                 <div><div class="text-xs text-slate-500">Sisa waktu</div><div id="exam-timer" class="text-2xl font-black tabular-nums">--:--</div></div>
                 <div class="text-right"><div id="save-status" class="text-sm font-semibold" aria-live="polite">Memuat jawaban…</div><div id="question-progress" class="text-xs text-slate-500"></div></div>
@@ -652,9 +653,10 @@
             const conflicted = state.conflicts.has(question.id);
             button.className = `rounded-lg border px-2 py-2 text-sm font-semibold ${conflicted ? 'border-red-500 bg-red-50 text-red-800' : (state.answers.has(question.id) && state.answers.get(question.id).state === 'ANSWERED' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300')} ${index === state.current ? 'ring-2 ring-blue-600' : ''}`;
             button.setAttribute('aria-label', conflicted ? `Soal ${index + 1}, konflik jawaban` : `Soal ${index + 1}, ${state.answers.has(question.id) ? 'ada draft jawaban' : 'belum dijawab'}`);
+            if (index === state.current) button.setAttribute('aria-current', 'step');
             button.addEventListener('click', () => { state.current = index; renderQuestion(); }); nav.appendChild(button);
         });
-        el('question-progress').textContent = `${state.questions.length} soal`;
+        el('question-progress').textContent = `${state.current + 1} dari ${state.questions.length} soal`;
     }
 
     function currentPayload(question) {
@@ -731,6 +733,7 @@
         const metadata = question.metadata || {}; const type = metadata.question_type || 'MC';
         const saved = state.answers.get(question.id); const payload = currentPayload(question) || {};
         el('question-number').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
+        el('question-announcement').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
         el('question-points').textContent = `${question.points ?? 0} poin`;
         el('question-stem').textContent = question.snapshot_stem || '';
         const mediaArea = el('question-media');
@@ -746,6 +749,7 @@
             options.forEach(option => inputArea.appendChild(createOptionControl(question, option, 'checkbox', payload.selected_option_ids || [])));
         } else if (type === 'SHORT_ANSWER' || type === 'ESSAY') {
             const textarea = document.createElement('textarea'); textarea.dir = 'auto'; textarea.rows = type === 'ESSAY' ? 8 : 3; textarea.maxLength = 20000;
+            textarea.setAttribute('aria-label', `${type === 'ESSAY' ? 'Jawaban uraian' : 'Jawaban singkat'} untuk soal ${state.current + 1}`);
             textarea.className = 'w-full rounded-xl border border-slate-300 p-4'; textarea.placeholder = 'Ketik jawaban Anda…'; textarea.value = payload.text || '';
             textarea.addEventListener('input', () => queueSave(question, { text: textarea.value })); inputArea.appendChild(textarea);
         } else if (type === 'MATCHING') {
@@ -759,6 +763,7 @@
                     const wrap = document.createElement('label'); wrap.dir = 'auto'; wrap.className = 'block rounded-xl border border-slate-200 p-3';
                     const title = document.createElement('span'); title.dir = 'auto'; title.className = 'mb-2 block font-semibold'; title.textContent = optionLabel(leftOption);
                     const select = document.createElement('select'); select.dir = 'auto'; select.className = 'w-full rounded-lg border border-slate-300 p-3';
+                    select.setAttribute('aria-label', `Pasangan untuk ${optionLabel(leftOption)}`);
                     const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Pilih pasangan…'; select.appendChild(empty);
                     right.forEach(rightOption => { const option = document.createElement('option'); option.value = rightOption.id; option.textContent = optionLabel(rightOption); select.appendChild(option); });
                     const prior = existing.find(item => item.left_id === leftOption.id); if (prior) select.value = prior.right_id;
