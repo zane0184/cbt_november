@@ -653,6 +653,7 @@ class ImportWorkbookService
                 'reason'=>'Penempatan awal melalui import batch '.$batchId.'.',
                 'performed_by'=>$userId,
                 'metadata'=>['source'=>'IMPORT','batch_id'=>$batchId],
+                'created_at'=>now(),
             ]);
         } finally {
             $tenantContext->setTenantId($previousTenantId);
