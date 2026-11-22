@@ -37,17 +37,23 @@ class ExamProctorAssignment extends Model
 
     public function proctor(): BelongsTo
     {
+        // Active operational lookup: deactivated Guru must not retain capability.
         return $this->belongsTo(User::class, 'proctor_user_id');
+    }
+
+    public function proctorForHistory(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'proctor_user_id')->withTrashed();
     }
 
     public function assigner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_by');
+        return $this->belongsTo(User::class, 'assigned_by')->withTrashed();
     }
 
     public function revoker(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'revoked_by');
+        return $this->belongsTo(User::class, 'revoked_by')->withTrashed();
     }
 
     public function scopeConfirmedNow(Builder $query, $at = null): Builder
