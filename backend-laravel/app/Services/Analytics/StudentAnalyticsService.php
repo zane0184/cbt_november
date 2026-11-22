@@ -17,6 +17,7 @@ class StudentAnalyticsService
             ->where('tenant_id', $student->tenant_id)
             ->where('student_id', $student->id)
             ->where('grading_status', 'FINALIZED')
+            ->current()
             ->whereHas('exam', function ($q) {
                 $q->where('show_result', true);
             })
