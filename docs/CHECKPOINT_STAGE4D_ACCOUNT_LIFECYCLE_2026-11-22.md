@@ -84,3 +84,22 @@ Tidak merge/rebase/PR/deploy/VPS/production migration/production DB changes. Jan
 4. Lengkapi matriks Admin CBT seluruh route/method; fokus PUT/PATCH/DELETE dan Livewire hydration/action/render.
 5. Setelah Admin Gate PASS exact SHA, segera kabari koordinator agar Agent3 melanjutkan WG-01.
 6. Histori akademik tetap desain/reconciliation only sampai persetujuan.
+
+
+## CHECKPOINT AUTH VERSION — 22 NOVEMBER 2026
+
+- Branch Agent2: `work/stage4d-account-lifecycle-20261122`.
+- Source HEAD terakhir diverifikasi: `0ac6dc938291e07fa871499f25983931282de5cf`.
+- Auth version/session fencing sudah diimplementasikan: migration `2026_11_22_130002_add_auth_version_to_users.php`, middleware `EnsureAccountSessionVersion`, session binding setelah web login, dan kenaikan epoch pada deactivate/reactivate.
+- Test HTTP Guru menguji sesi lama tetap ditolak setelah deactivate+reactivate. Test Siswa menguji sesi ditolak selama nonaktif. Test API menguji Sanctum token lama ditolak saat akun nonaktif.
+- Koreksi assertion test reaktivasi commit `0ac6dc938291e07fa871499f25983931282de5cf`; backup source commit `41f8ef7f15b713f02ac46b24ce20f75a3d24365c`.
+- Run `44989053716` SHA `ac80026beced315acddb4c8adc8524d5779474c8` masih IN_PROGRESS; run `44989260109` SHA `0ac6dc938291e07fa871499f25983931282de5cf` PENDING saat checkpoint dibuat.
+- Lint dan tahap CI sampai Admin user management sukses pada run lama; import sedang berlangsung. Belum ada bukti final untuk test auth/session baru.
+- Reset password tenant scoped belum diimplementasikan. Admin CBT denial matrix belum exhaustive/Gate belum lulus. Student academic history migration/backfill tidak dilakukan.
+- Tidak ada perubahan Agent1/Agent3, production DB/VPS/deployment, merge/rebase/PR.
+
+## LANGKAH BERIKUTNYA
+1. Poll run `44989053716` dan `44989260109`; periksa test HTTP pada exact SHA dan logs.
+2. Jika auth version test gagal, diagnosis log; backup file sebelum patch; jangan klaim selesai.
+3. Lanjutkan desain dan implementasi custom reset token tenant+user scoped, tanpa broker standar; tambah test expiry, one-time, revoke, rate limit, inactive account, audit redaction, session/token invalidation.
+4. Lengkapi Admin CBT denial matrix seluruh route/method dan Livewire lifecycle. WG-01 Agent3 hanya boleh mulai setelah Gate minimum Admin lulus pada exact SHA.
