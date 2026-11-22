@@ -20,3 +20,20 @@ No application migration, production database, VPS, Android source, or baseline 
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-nonadmin-fixture-fix | b402b25a88518d426da37d13b54708492b8b7e45 | 9897 | 9c18882e4202c6a43fcf660614b1436c46167f20 |
 
 Perubahan setelah snapshot hanya memperbaiki fixture test non-Admin agar memakai role GURU yang sudah dibuat setUp(), bukan membuat role duplikat. Source runtime tidak diubah.
+
+## Snapshot tambahan — perbaikan concurrency test dan isolasi workflow
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-forward-only-and-branch-isolation-fix | c87892e310582d63e4c2920ccdff52aec081e7fe | 7266 | 586539e659103278b8a1b16dfbe12fb0137ec6eb |
+| .github/workflows/wa01-alternative-isolated-runtime.yml | docs/backup/stage4d-account-lifecycle-2026-11-22/wa01-alternative-isolated-runtime.yml.before-forward-only-and-branch-isolation-fix | fc707c3847195b8deeee36318296baad3911184c | 24922 | b0e7257eac640b4ab2f13bef879cf6965cf38458 |
+
+## Snapshot dokumen sebelum addendum CI
+
+| Source path | Backup path | Original blob SHA | Backup commit |
+|---|---|---|---|
+| docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md | docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-ci-root-cause-addendum | 8a98f57c5d9fffff017cad9537cc85c96ca0125e | 6f1fd42b8ade49305f4d70d3309c3f3a46c3c1ab |
+| docs/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md.before-ci-root-cause-addendum | 06a4ba1281a61c06962cfa140f44c826d85c2b99 | a0c20076ed72c43c2f913cc521acca2fe996050e |
+| docs/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md.before-ci-root-cause-addendum | 2c783c115fba0db40492b7def4e4bc1900032621 | 4bbf31a283cc2e372a7311eb034696999608305f |
+
+Patch 4C concurrency menghapus trait DatabaseMigrations dari test yang dijalankan pada database disposable yang sudah dimigrasikan. Workflow menjalankan migrate:fresh pada schema disposable yang identitasnya telah diverifikasi sebelum race test, sehingga teardown tidak memanggil down() pada migration keamanan forward-only. Workflow Stage4D juga melewatkan test dan required schema Stage4B; Stage4B tetap diuji hanya pada branch Agent1.
