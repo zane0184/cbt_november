@@ -17,6 +17,10 @@ class ExcelQuestionImporter implements QuestionImportService
 
     public function import(string $filePath, array $options = []): array
     {
+        // Service-level guard: callers cannot bypass the QuestionPolicy by
+        // invoking this importer from a different controller or Livewire action.
+        $this->assertQuestionAuthor();
+
         $results = [
             'success' => true,
             'total_rows' => 0,
@@ -257,4 +261,25 @@ class ExcelQuestionImporter implements QuestionImportService
             ]);
         }
     }
+    private function assertQuestionAuthor(): void
+    {
+        $user = auth()->user();
+        if (!$user || !$user->tenant_id) {
+            abort(403);
+        }
+
+        $roles = $user->roles()->with('permissions')->get();
+        if ($roles->count() !== 1 || $roles->first()->name !== 'GURU') {
+            abort(403);
+        }
+
+        $canManageQuestions = $roles->first()->permissions->contains(
+            fn ($permission): bool => $permission->name === 'question.manage'
+        );
+
+        if (!$canManageQuestions) {
+            abort(403);
+        }
+    }
+
 }
