@@ -122,7 +122,11 @@ class StudentWebLoginTest extends TestCase
             'identifier' => 'admin.session.test',
             'password' => 'SandiAdmin#2026',
         ]);
-        $this->assertSame(302, $adminLogin->getStatusCode());
+        $this->assertSame(
+            302,
+            $adminLogin->getStatusCode(),
+            'Admin login response body: '.$adminLogin->getContent()
+        );
         $this->assertStringEndsWith('/admin/dashboard', (string) $adminLogin->headers->get('Location'));
         $adminSessionCookie = $adminBrowser->cookie($sessionCookieName);
         $this->assertNotNull($adminSessionCookie);
