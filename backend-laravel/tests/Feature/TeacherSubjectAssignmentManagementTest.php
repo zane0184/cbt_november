@@ -177,10 +177,16 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'name' => '2027/2028',
             'is_active' => false,
         ]);
+        $otherSemester = Semester::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $otherYear->id,
+            'term' => 'GANJIL',
+            'is_active' => true,
+        ]);
 
         Livewire::actingAs($this->admin)
             ->test(TeacherSubjectAssignmentManagement::class)
-            ->set(array_merge($this->validPayload(), ['academicYearId' => $otherYear->id]))
+            ->set(array_merge($this->validPayload(), ['semesterId' => $otherSemester->id]))
             ->call('save')
             ->assertHasErrors(['academicYearId']);
 
