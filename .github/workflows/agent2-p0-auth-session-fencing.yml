@@ -74,6 +74,7 @@ jobs:
             exit 70
           fi
           echo "DB_DATABASE=$RUN_DB" >> "$GITHUB_ENV"
+          export DB_DATABASE="$RUN_DB"
           mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "CREATE DATABASE $RUN_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
           php -r '$pdo=new PDO("mysql:host=127.0.0.1;port=3306;dbname=".getenv("DB_DATABASE"),getenv("DB_USERNAME"),getenv("DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]); $r=$pdo->query("SELECT DATABASE() db, VERSION() version, @@default_storage_engine engine")->fetch(PDO::FETCH_ASSOC); if($r["db"]!==getenv("DB_DATABASE") || !str_starts_with($r["version"],"8.") || strtoupper($r["engine"])!=="INNODB") exit(1); echo json_encode($r,JSON_PRETTY_PRINT),PHP_EOL;'
 
