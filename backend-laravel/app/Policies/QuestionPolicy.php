@@ -12,20 +12,15 @@ class QuestionPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        return $user->tenant_id !== null
-            && $user->hasRole('GURU')
-            && $user->hasPermission('question.view');
+        return $this->hasExactGuruPermission($user, 'question.view');
     }
 
     public function view(User $user, $model): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if (!$model instanceof Question
             || !$user->tenant_id
             || $user->tenant_id !== $model->tenant_id
-            || !$user->hasRole('GURU')
-            || !$user->hasPermission('question.view')) {
+            || !$this->hasExactGuruPermission($user, 'question.view')) {
             return false;
         }
 
@@ -33,8 +28,7 @@ class QuestionPolicy extends BasePolicy
             'PERSONAL' => $model->owner_user_id === $user->id
                 && (!$model->subject_id || TeacherAccess::canManageSubject($user, $model->subject_id)),
             'SUBJECT' => $this->canAccessSubject($user, $model),
-            'MADRASAH' => $user->hasRole('ADMIN_MADRASAH')
-                || $this->canAccessSubject($user, $model),
+            'MADRASAH' => $this->canAccessSubject($user, $model),
             'SHARED' => $model->publications()
                 ->where('tenant_id', $user->tenant_id)
                 ->where('status', 'APPROVED')
@@ -46,23 +40,16 @@ class QuestionPolicy extends BasePolicy
 
     public function create(User $user): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        // Question authoring is a Guru responsibility; Admin Madrasah does not
-        // implicitly gain authoring rights merely by administering the tenant.
-        return $user->tenant_id !== null
-            && $user->hasRole('GURU')
-            && $user->hasPermission('question.manage');
+        return $this->hasExactGuruPermission($user, 'question.manage');
     }
 
     public function update(User $user, $model): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if (!$model instanceof Question
             || $model->status === 'ARCHIVED'
             || $user->tenant_id === null
             || $user->tenant_id !== $model->tenant_id
-            || !$user->hasRole('GURU')
-            || !$user->hasPermission('question.manage')) {
+            || !$this->hasExactGuruPermission($user, 'question.manage')) {
             return false;
         }
 
@@ -70,7 +57,7 @@ class QuestionPolicy extends BasePolicy
             'PERSONAL' => $model->owner_user_id === $user->id
                 && (!$model->subject_id || TeacherAccess::canManageSubject($user, $model->subject_id)),
             'SUBJECT' => $this->canAccessSubject($user, $model),
-            // Madrasah-owned content is not editable by an individual Guru.
+            // Madrasah-owned and shared content is not editable by an individual Guru.
             'MADRASAH', 'SHARED' => false,
             default => false,
         };
@@ -82,20 +69,37 @@ class QuestionPolicy extends BasePolicy
      */
     public function delete(User $user, $model): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return false;
     }
 
     public function publish(User $user, Question $question): bool
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) return false;
         return $this->update($user, $question);
     }
 
     private function canAccessSubject(User $user, Question $question): bool
     {
         return $question->subject_id !== null
-            && $user->hasRole('GURU')
             && TeacherAccess::canManageSubject($user, $question->subject_id);
+    }
+
+    /**
+     * Read current role and permission rows from the database rather than
+     * trusting potentially stale in-memory role relations from an old session.
+     */
+    private function hasExactGuruPermission(User $user, string $permission): bool
+    {
+        if (!$user->tenant_id) {
+            return false;
+        }
+
+        $roles = $user->roles()->with('permissions')->get();
+        if ($roles->count() !== 1 || $roles->first()->name !== 'GURU') {
+            return false;
+        }
+
+        return $roles->first()->permissions->contains(
+            fn ($rolePermission): bool => $rolePermission->name === $permission
+        );
     }
 }
