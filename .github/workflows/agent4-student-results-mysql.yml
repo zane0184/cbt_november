@@ -80,3 +80,6 @@ jobs:
 
       - name: Run Student result visibility feature tests
         run: php artisan test tests/Feature/StudentResultVisibilityTest.php --display-warnings --display-deprecations
+
+      - name: Run Student exam portal feature tests
+        run: php artisan test tests/Feature/StudentExamPortalTest.php --display-warnings --display-deprecations
