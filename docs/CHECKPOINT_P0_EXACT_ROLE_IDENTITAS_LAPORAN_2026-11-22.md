@@ -28,21 +28,21 @@ P0 exact-role sudah dipatch pada dua komponen Livewire Agent 3 dan test regresi 
 Branch Agent 3:
 - `QuestionBank.php` diubah; commit `901ab9a05ab678c3c8882131d5463d72a0202382`.
 - `ExamManagement.php` diubah; commit `8ac0253fcf1cafaf0e5808ee66107a691ba0a7e0`.
-- `TeacherPortalFoundationTest.php` ditambah 3 test; commit `fc91263f4922bb30c4d9933147abdd8f6860f26d`.
-- Backup source dan dokumen tercatat di `docs/backup/web-guru-exact-role-20261122/`; manifest akhir memuat seluruh snapshot yang diverifikasi MATCH.
+- `TeacherPortalFoundationTest.php` ditambah 4 test; commit `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f`.
+- Backup source dan dokumen tercatat di `docs/backup/web-guru-exact-role-20261122/`; manifest akhir memuat 16 snapshot; 16/16 blob SHA MATCH.
 - Issue #8 diberi update untuk koordinasi Agent 2.
-- Hasil final compare branch Agent 3 dicatat setelah rekonsiliasi checkpoint.
+- Compare dari checkpoint HEAD `702274d5298930f5f1dd13b71b7e402c12868109`: 29 ahead, 0 behind, 19 changed paths. HEAD tepat sebelum rekonsiliasi dokumen terakhir: `574b0ff603c4101e24bc6e3b0b4a43d4e1fbbaed`.
 - Tidak ada source Agent 2, migration, schema, Composer, CBT Engine, atau database diubah.
 
 ## PENGUJIAN
-- Backup SHA: PASS 3/3.
+- Backup SHA: PASS 16/16.
 - PHPUnit: PENDING CI; combined status belum menampilkan check run.
 - PHP lint lokal: NOT RUN (tidak ada checkout lokal).
 - Browser QA, PDF aktual, print, mobile, dan tenant branding E2E: NOT RUN.
 - Tidak ada akses atau perubahan database produksi.
 
 ## BLOCKER DAN LANGKAH BERIKUTNYA
-1. Periksa hasil GitHub Actions untuk commit `fc91263f4922bb30c4d9933147abdd8f6860f26d`. Jika gagal, baca log dan perbaiki pada branch Agent 3 dengan backup tambahan.
+1. Periksa hasil GitHub Actions untuk commit `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f`. Jika gagal, baca log dan perbaiki pada branch Agent 3 dengan backup tambahan.
 2. Jangan lanjutkan WG-01 import sebelum P0 exact-role CI PASS.
 3. Minta Agent 2 meninjau exact-role backend/policy dan menyepakati kontrak identitas tenant, Kamad, status kepegawaian, NIP, layanan branding, serta report snapshot.
 4. Audit kontrak Agent 2 terhadap source aktual sebelum integrasi login/PDF.
