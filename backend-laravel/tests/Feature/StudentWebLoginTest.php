@@ -60,8 +60,8 @@ class StudentWebLoginTest extends TestCase
     public function test_student_browser_cookie_is_invalidated_by_admin_deactivation_and_reactivation(): void
     {
         $studentApiToken = $this->student->createToken('before-account-deactivation')->plainTextToken;
-        $studentBrowser = new \\Tests\\Support\\IndependentBrowserClient();
-        $adminBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $studentBrowser = new \Tests\Support\IndependentBrowserClient();
+        $adminBrowser = new \Tests\Support\IndependentBrowserClient();
         $sessionCookieName = (string) config('session.cookie');
 
         // Browser A: student login and a persistent, independent cookie jar.
@@ -83,7 +83,7 @@ class StudentWebLoginTest extends TestCase
         // Create an Admin with only the account-management permission.
         app(TenantContext::class)->setTenantId($this->tenant->id);
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
-        $permission = \\App\\Models\\Permission::firstOrCreate(
+        $permission = \App\Models\Permission::firstOrCreate(
             ['name' => 'user.manage'],
             ['label' => 'Kelola Pengguna']
         );
@@ -109,8 +109,8 @@ class StudentWebLoginTest extends TestCase
         $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
 
         // Admin performs the official UserManagement action.
-        \\Livewire\\Livewire::actingAs($admin)
-            ->test(\\App\\Livewire\\Admin\\UserManagement::class)
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\Admin\UserManagement::class)
             ->call('deactivateUser', $this->student->id)
             ->assertHasNoErrors();
         $this->assertSoftDeleted('users', ['id' => $this->student->id]);
@@ -123,8 +123,8 @@ class StudentWebLoginTest extends TestCase
 
         // Browser B remains authenticated and restores the same account identity.
         $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
-        \\Livewire\\Livewire::actingAs($admin)
-            ->test(\\App\\Livewire\\Admin\\UserManagement::class)
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\Admin\UserManagement::class)
             ->set('statusFilter', 'INACTIVE')
             ->call('restoreUser', $this->student->id)
             ->assertHasNoErrors();
@@ -137,7 +137,7 @@ class StudentWebLoginTest extends TestCase
         $this->assertStringEndsWith('/login', (string) $reactivatedResponse->headers->get('Location'));
 
         // A separate client with only the old remember-me cookie must also fail.
-        $rememberBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $rememberBrowser = new \Tests\Support\IndependentBrowserClient();
         $rememberBrowser->setCookie($studentRememberCookieName, $studentRememberCookie);
         $rememberResponse = $rememberBrowser->request('GET', '/student/exams');
         $this->assertSame(302, $rememberResponse->getStatusCode());
@@ -146,7 +146,7 @@ class StudentWebLoginTest extends TestCase
         // A stateless client proves the old Sanctum bearer token is revoked after reactivation.
         $studentTokenId = explode('|', $studentApiToken, 2)[0];
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $studentTokenId]);
-        $apiBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $apiBrowser = new \Tests\Support\IndependentBrowserClient();
         $apiResponse = $apiBrowser->request('GET', '/api/v1/auth/me', [], [
             'Authorization' => 'Bearer ' . $studentApiToken,
             'Accept' => 'application/json',
@@ -155,7 +155,7 @@ class StudentWebLoginTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $studentTokenId]);
 
         // A new browser login is required to obtain a fresh authenticated session.
-        $freshBrowser = new \\Tests\\Support\\IndependentBrowserClient();
+        $freshBrowser = new \Tests\Support\IndependentBrowserClient();
         $freshLogin = $freshBrowser->request('POST', '/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
