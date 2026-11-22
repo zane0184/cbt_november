@@ -99,20 +99,21 @@ class StudentWebLoginTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_duplicate_nisn_across_two_student_accounts_is_rejected(): void
+    public function test_same_nisn_in_different_tenants_fails_closed_without_tenant_selection(): void
     {
-        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $otherTenant = Tenant::create(['name' => 'Madrasah Kedua', 'code' => 'MADUJI2']);
+        app(TenantContext::class)->setTenantId($otherTenant->id);
         $studentRole = Role::where('name', 'SISWA')->firstOrFail();
         $second = User::create([
-            'name' => 'Siswa Duplikat',
-            'username' => 'siswa.duplikat',
+            'name' => 'Siswa Tenant Kedua',
+            'username' => 'siswa.tenant.kedua',
             'password' => bcrypt('SandiUji#2026'),
         ]);
         $second->roles()->attach($studentRole);
         StudentProfile::create([
             'user_id' => $second->id,
             'nisn' => $this->nisn,
-            'full_name' => 'Siswa Duplikat',
+            'full_name' => 'Siswa Tenant Kedua',
         ]);
         app(TenantContext::class)->setTenantId(null);
 
@@ -123,6 +124,7 @@ class StudentWebLoginTest extends TestCase
 
         $response->assertSessionHasErrors('identifier');
         $this->assertGuest();
+        $this->assertDatabaseCount('student_profiles', 2);
     }
 
     public function test_student_role_combined_with_another_role_is_rejected(): void
