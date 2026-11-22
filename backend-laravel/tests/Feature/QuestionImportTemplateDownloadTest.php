@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
 
@@ -75,6 +76,61 @@ final class QuestionImportTemplateDownloadTest extends TestCase
                 return true;
             }
         );
+    }
+
+    public function test_generated_xlsx_opens_with_expected_sheets_headers_and_dropdowns(): void
+    {
+        $bytes = Excel::raw(new QuestionImportTemplateExport(), \Maatwebsite\Excel\Excel::XLSX);
+
+        $this->assertStringStartsWith('PK', $bytes, 'Generated template must be a ZIP-based XLSX workbook.');
+
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'cbt-question-template-');
+        $this->assertNotFalse($temporaryPath);
+
+        try {
+            file_put_contents($temporaryPath, $bytes);
+            $workbook = IOFactory::load($temporaryPath);
+
+            $this->assertSame([
+                'Petunjuk',
+                'Data Soal',
+                'Detail Opsi',
+                'Referensi Jenis Soal',
+                'Contoh Soal',
+                'Referensi Akademik',
+            ], $workbook->getSheetNames());
+
+            $data = $workbook->getSheetByName('Data Soal');
+            $this->assertSame('External Row ID', $data->getCell('A1')->getValue());
+            $this->assertSame('Jenis Soal', $data->getCell('L1')->getValue());
+            $this->assertSame('Pertanyaan', $data->getCell('M1')->getValue());
+            $this->assertSame(
+                '"MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,SHORT_ANSWER,ESSAY"',
+                $data->getCell('L2')->getDataValidation()->getFormula1()
+            );
+            $this->assertSame('"EASY,MEDIUM,HARD"', $data->getCell('P2')->getDataValidation()->getFormula1());
+
+            $details = $workbook->getSheetByName('Detail Opsi');
+            $this->assertSame('Option Key', $details->getCell('D1')->getValue());
+            $this->assertSame('"A,B,C,D"', $details->getCell('D2')->getDataValidation()->getFormula1());
+            $this->assertSame(
+                '"OPTION,MATCH_PAIR,ACCEPTED_ANSWER"',
+                $details->getCell('B2')->getDataValidation()->getFormula1()
+            );
+
+            $types = $workbook->getSheetByName('Referensi Jenis Soal');
+            $this->assertStringContainsString('BLOCKED', (string) $types->getCell('D6')->getValue());
+            $this->assertStringContainsString('Opsi E', (string) $types->getCell('C8')->getValue());
+
+            $this->assertSame(
+                'NEEDS_BACKEND_CONTRACT',
+                $workbook->getSheetByName('Referensi Akademik')->getCell('G2')->getValue()
+            );
+        } finally {
+            if (is_file($temporaryPath)) {
+                unlink($temporaryPath);
+            }
+        }
     }
 
     public function test_multi_role_account_is_denied_from_template_download(): void
