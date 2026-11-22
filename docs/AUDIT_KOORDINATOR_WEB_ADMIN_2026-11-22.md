@@ -406,3 +406,40 @@ Belum ada source aplikasi diubah pada checkpoint audit gap awal ini. Tidak ada m
 - Tidak ada role/portal Operator/Kamad/Proktor permanen.
 - Tidak ada perubahan main, merge, deployment, atau migration produksi.
 - Web Admin belum diterima.
+
+# Implementasi P0 — Identitas Guru opsional — 22 November 2026
+
+## AUDIT
+- Master spec §4.1 menyatakan NIP/NUPTK opsional bila tidak dimiliki dan tidak mewajibkan NIP untuk semua Guru.
+- Source sebelum patch menolak pembuatan akun Guru apabila NIP dan NIK kosong. Ini membuat NIK seolah menjadi syarat pengganti NIP, padahal NIK hanya boleh diproses bila ada dasar dan perlindungan.
+- View juga menyatakan Guru wajib mengisi minimal NIP atau NIK. Perilaku dan teks UI tidak sesuai spesifikasi.
+- Model User mengalokasikan username tenant-unique bila username kosong; regresi mengisi username eksplisit agar identitas login dapat dipastikan.
+
+## DESAIN
+- Hapus syarat NIP/NIK pada create Guru.
+- Pertahankan validasi format dan uniqueness untuk NIP/NIK apabila nilai memang diisi.
+- Pertahankan role tunggal, tenant scope, password, transaksi, pembuatan TeacherProfile, dan audit USER_CREATED.
+- Tandai NIP/NIK opsional pada UI.
+- Tambahkan regresi yang membuat Guru dengan username dan password tetapi tanpa NIP/NIK, lalu memverifikasi role, profile, nilai null dan audit.
+
+## IMPLEMENTASI
+- UserManagement.php: menghapus validasi bisnis yang mewajibkan NIP atau NIK.
+- user-management.blade.php: label bantuan diperbarui menjadi NIP/NIK opsional.
+- AdminUserManagementScopeTest.php: menambah test_admin_can_create_guru_without_nip_or_nik.
+- Backup source dibuat sebelum perubahan:
+  - docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/UserManagement.php.before-guru-identity-optional — source blob SHA 964527ad7b955f4a48f705a303269775c9918530
+  - docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/user-management.blade.php.before-guru-identity-optional — source blob SHA 22571e98a9196c6c780d2c15d2d9e9d075234103
+  - docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/AdminUserManagementScopeTest.php.before-guru-identity-optional — source blob SHA 08d99bd17e7920eed0638f193906137598339502
+- Backup laporan audit: docs/backup/coordinator-web-admin-2026-11-22/AUDIT_KOORDINATOR_WEB_ADMIN_2026-11-22.md.before-guru-identity-optional — source blob SHA bf51d9e5355aa7a2f3a755bbd34d18b4fb2312b7
+- Commit source: 05e51dd2129cf100d87d78a5db900c9ec5c177a0, 174e06f720d52cf05c10f6794172aebdff830e3b, 922657ab81caf36f0964cc7e914bddb7cedc216c, e0d0e24b2071c954fdfae892ad0c69c367061de5.
+
+## PENGUJIAN
+- PHPUnit test baru: NOT RUN.
+- PHP lint: NOT RUN.
+- GitHub Actions run #495–#497 untuk tiga commit pertama berstatus failure; job tidak menampilkan steps dan runner kosong. Run #494 dicoba ulang (attempt 2), tetap failure tanpa steps dan runner kosong.
+- Tidak ada bukti runtime bahwa patch lulus. Status patch: IMPLEMENTED — NOT VERIFIED.
+
+## STATUS DAN BATAS
+- Tidak ada migration, database, VPS, main branch, merge, atau deployment yang diubah.
+- Web Admin tetap belum memenuhi acceptance.
+- Langkah berikutnya: pulihkan bukti CI/runtime, lalu lanjutkan gap P0 sesuai urutan master spec. Jangan menambah fitur di luar Web Admin.
