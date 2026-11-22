@@ -3,6 +3,11 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\UserManagement;
+use App\Livewire\Admin\AcademicManagement;
+use App\Livewire\Admin\AdminDashboard;
+use App\Livewire\Admin\StudentRombelManagement;
+use App\Livewire\Admin\TenantProfileManagement;
+use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Models\AuditLog;
 use App\Models\Permission;
 use App\Models\Role;
@@ -90,6 +95,19 @@ class AdminUserManagementScopeTest extends TestCase
         $this->signInAdmin($tenant, true);
 
         Livewire::test(UserManagement::class)->assertForbidden();
+    }
+
+    public function test_admin_with_stale_guru_role_is_denied_all_admin_management_surfaces(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Admin Role Conflict', 'code' => 'ADMALL']);
+        $this->signInAdmin($tenant, true);
+
+        Livewire::test(AdminDashboard::class)->assertForbidden();
+        Livewire::test(UserManagement::class)->assertForbidden();
+        Livewire::test(AcademicManagement::class)->assertForbidden();
+        Livewire::test(StudentRombelManagement::class)->assertForbidden();
+        Livewire::test(TenantProfileManagement::class)->assertForbidden();
+        Livewire::test(ProctorAssignmentManagement::class)->assertForbidden();
     }
 
     public function test_admin_can_create_guru_and_student_with_profiles_and_audit_log(): void
