@@ -175,11 +175,13 @@ class WebAdminAuthTest extends TestCase
         ]);
         $guruLogin->assertRedirect('/admin/exams');
         $sessionCookieName = config('session.cookie');
-        $guruSessionCookie = $guruLogin->getCookie($sessionCookieName, false);
+        $guruSessionCookie = $guruLogin->getCookie($sessionCookieName);
         $this->assertNotNull($guruSessionCookie);
         $guruSessionCookieValue = $guruSessionCookie->getValue();
-        $rememberCookie = collect($guruLogin->headers->getCookies())
-            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'));
+        $rememberCookieName = collect($guruLogin->headers->getCookies())
+            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'))?->getName();
+        $this->assertNotNull($rememberCookieName);
+        $rememberCookie = $guruLogin->getCookie($rememberCookieName);
         $this->assertNotNull($rememberCookie);
 
         // Client B: a distinct Admin browser session authenticates independently.
@@ -189,7 +191,7 @@ class WebAdminAuthTest extends TestCase
             'password' => $this->password,
         ]);
         $adminLogin->assertRedirect('/admin/dashboard');
-        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName, false);
+        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName);
         $this->assertNotNull($adminSessionCookie);
         $this->assertNotSame($guruSessionCookieValue, $adminSessionCookie->getValue());
         $this->assertAuthenticatedAs($this->admin);
