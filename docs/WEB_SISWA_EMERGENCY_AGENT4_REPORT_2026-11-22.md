@@ -101,3 +101,59 @@ Tidak ada hasil PASS yang diklaim untuk tes yang belum dijalankan. Workflow back
 ## STATUS
 **PATCH CLIENT TERSEDIA UNTUK REVIEW — BELUM SIAP OPERASIONAL.**
 Tidak ada merge, deployment, migration, perubahan database, akses VPS/SSH, atau perubahan ZIP baseline.
+
+
+## ADDENDUM IMPLEMENTASI 23 NOVEMBER 2026 — MOBILE-FIRST & COPY DETERRENCE
+
+### AUDIT
+- Refresh source runner sebelum patch: blob `8222aa80a588abfb476c1ff94b153f6ee6ef1ee1`.
+- Runner sebelumnya memakai grid desktop `lg:grid-cols-[1fr_220px]`; navigasi soal menjadi konten kolom samping yang turun setelah kartu soal pada layar kecil. Belum ada lapisan khusus untuk mencegah seleksi/copy teks soal.
+- Halaman daftar ujian `student/exams/index.blade.php` sudah memakai satu kolom default dan beralih menjadi dua kolom pada breakpoint `md`; halaman hasil `student/results/show.blade.php` sudah memakai grid satu kolom default dan tiga kolom pada `sm`. Keduanya tidak diubah pada tahap ini karena struktur responsif dasarnya sudah ada.
+- Audit tree repo mengidentifikasi halaman siswa utama: daftar ujian, runner ujian, dan hasil ujian. Perubahan runtime tahap ini tetap pada runner saja.
+
+### DESAIN
+- Mobile portrait menjadi baseline runner; desktop menjadi layout adaptif pada breakpoint 1024px.
+- Navigasi nomor soal di HP menjadi panel ringkas yang dapat dibuka dari tombol mengambang; desktop tetap menampilkan panel navigasi di kolom samping.
+- Kontrol jawaban dan navigasi memiliki target sentuh minimal 44–48px.
+- Proteksi copy hanya deterrent di sisi browser. Tidak diklaim sebagai security boundary dan tidak menjamin pencegahan screenshot, OCR, kamera eksternal, ketik ulang, perangkat kedua, atau bantuan AI.
+- Alur IndexedDB, autosave, conflict, submit barrier, dan recovery dipertahankan tanpa perubahan kontrak API.
+
+### IMPLEMENTASI
+File runtime diubah:
+- `backend-laravel/resources/views/student/exams/show.blade.php`
+- Sebelum perubahan dibuat backup byte-exact:
+  `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before-mobile-first-copy-deterrent`
+- Backup blob SHA: `8222aa80a588abfb476c1ff94b153f6ee6ef1ee1` (sama dengan source sebelum patch).
+- Source setelah patch blob SHA: `75412ee693d92f6b7483903f009aefa7202fe3fd`.
+- Commit: `dad5ef350ea2f31a13320a28370e91f069f56039`.
+
+Perubahan:
+1. Layout runner default satu kolom dan mobile-first; dua kolom baru aktif pada layar desktop.
+2. Panel navigasi soal pada HP menggunakan disclosure/floating panel yang hemat ruang; panel otomatis terbuka pada desktop.
+3. Padding, timer, judul, tombol, media, dan area soal disesuaikan untuk viewport kecil; konten panjang dapat membungkus dan media dibatasi lebar layar.
+4. Tombol dan opsi jawaban diberi target sentuh minimal 44–48px.
+5. Seleksi teks, copy, cut, context menu, drag, dan shortcut copy/cut/print dibatasi pada konten soal, dengan pengecualian kontrol input/media/link agar fungsi jawaban tidak terganggu.
+6. CSS print menyembunyikan halaman ujian sebagai deterrent tambahan; ini bukan perlindungan anti-screenshot.
+7. Tidak ada perubahan backend, database, migration, route, portal Guru/Admin, atau kontrak API.
+
+### PENGUJIAN
+Dilakukan:
+- Backup runner diverifikasi byte-exact sebelum source diperbarui.
+- Source sesudah update dibaca ulang dari GitHub dan dibandingkan identik dengan konten hasil patch.
+- JavaScript inline runner aktual berhasil diparse/dikompilasi menggunakan `new Function`: PASS.
+- 11/11 assertion statis: PASS (viewport mobile, layout satu kolom, breakpoint desktop, overflow horizontal, target sentuh, panel navigasi mobile, deterrent copy, shortcut keyboard, IndexedDB v2, submit barrier, conflict/recovery).
+- Audit halaman daftar ujian dan hasil ujian: struktur responsif dasar telah tersedia; tidak ada perubahan pada kedua file.
+
+Belum dilakukan:
+- Browser E2E pada Chrome Android/perangkat fisik.
+- Uji viewport nyata 320px/360px/390px/412px, portrait/landscape, virtual keyboard, zoom, dan accessibility.
+- Uji IndexedDB runtime, reload/crash/quota/offline/reconnect/multi-tab.
+- PHPUnit, PHP lint, API integration, MySQL 8 concurrency, Device Lease/Fencing, atau UAT.
+- CI untuk commit terbaru.
+
+### BLOCKER / STATUS
+- Anti-dual-login dan pengikatan Attempt ke auth-session adalah tanggung jawab backend Agent 2 dan belum terbukti diterapkan pada base branch Agent 2 yang diperiksa.
+- Backend authorization soal/media, exact-one role, Device Lease/Fencing, idempotency, verified receipt, expiry/submit race tetap menjadi blocker.
+- Browser tidak dapat menjamin siswa tidak memotret layar atau memakai AI/perangkat kedua.
+- PR #13 tetap Draft dan belum merge. Tidak ada deployment atau migration.
+- **Status: runner mobile-first dan deterrent copy telah diimplementasikan di source; belum siap operasional sampai browser E2E dan backend P0 lulus.**
