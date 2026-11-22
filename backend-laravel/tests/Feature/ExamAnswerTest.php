@@ -974,7 +974,7 @@ class ExamAnswerTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat");
         $renewed->assertOk()->assertJsonPath('fence_generation', 2);
 
-        $this->assertSame(1, (int) $this->attempt->fresh()->fence_generation);
+        $this->assertSame(2, (int) $this->attempt->fresh()->fence_generation);
         $this->withHeader('X-CBT-Fence-Generation', '1')
             ->withHeader('Authorization', 'Bearer '.$this->apiToken)
             ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers")
@@ -1009,7 +1009,7 @@ class ExamAnswerTest extends TestCase
             ->assertOk();
 
         $this->assertSame('SUBMITTED', $this->attempt->fresh()->status);
-        $this->assertSame(2, (int) $this->attempt->fresh()->fence_generation);
+        $this->assertSame(1, (int) $this->attempt->fresh()->fence_generation);
         $this->assertDatabaseHas('device_leases', [
             'exam_attempt_id' => $this->attempt->id,
             'fence_generation' => 1,
