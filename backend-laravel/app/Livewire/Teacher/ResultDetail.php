@@ -8,10 +8,9 @@ use App\Models\ExamQuestionScore;
 use App\Models\ExamAttemptScore;
 use App\Services\ScoringService;
 use App\Services\Analytics\AnalyticsCacheService;
-use Livewire\Component;
 use Illuminate\Support\Facades\DB;
 
-class ResultDetail extends Component
+class ResultDetail extends TeacherResultComponent
 {
     public Exam $exam;
     public ExamAttempt $attempt;
