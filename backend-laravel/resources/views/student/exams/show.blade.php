@@ -280,6 +280,9 @@
                 local: row.localPayload, server: row.serverAnswer, revision: row.serverRevision
             });
         });
+        if (localConflicts.length) {
+            showError(`${localConflicts.length} soal memiliki konflik jawaban. Draft lokal dan versi server tersimpan terpisah; pengiriman ditahan sampai konflik ditangani oleh Guru/Admin.`);
+        }
         el('instruction-panel').classList.add('hidden');
         el('runner-panel').classList.remove('hidden');
         renderNavigation(); renderQuestion(); updateTimer(data.attempt.expires_at);
@@ -305,7 +308,9 @@
         state.questions.forEach((question, index) => {
             const button = document.createElement('button');
             button.type = 'button'; button.textContent = String(index + 1);
-            button.className = `rounded-lg border px-2 py-2 text-sm font-semibold ${state.answers.has(question.id) && state.answers.get(question.id).state === 'ANSWERED' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300'} ${index === state.current ? 'ring-2 ring-blue-600' : ''}`;
+            const conflicted = state.conflicts.has(question.id);
+            button.className = `rounded-lg border px-2 py-2 text-sm font-semibold ${conflicted ? 'border-red-500 bg-red-50 text-red-800' : (state.answers.has(question.id) && state.answers.get(question.id).state === 'ANSWERED' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-slate-300')} ${index === state.current ? 'ring-2 ring-blue-600' : ''}`;
+            button.setAttribute('aria-label', conflicted ? `Soal ${index + 1}, konflik jawaban` : `Soal ${index + 1}, ${state.answers.has(question.id) ? 'ada draft jawaban' : 'belum dijawab'}`);
             button.addEventListener('click', () => { state.current = index; renderQuestion(); }); nav.appendChild(button);
         });
         el('question-progress').textContent = `${state.questions.length} soal`;
@@ -443,7 +448,8 @@
                     state.conflicts.set(question.id, conflict);
                     await persistConflict(question.id, pendingItem, conflict.server, conflict.revision);
                     setSaveStatus('KONFLIK: draft lokal dipertahankan. Pengiriman ditahan; jangan muat ulang atau tutup halaman.', true);
-                    showError('Terjadi konflik revisi. Draft lokal tetap disimpan pada perangkat dan tidak ditimpa otomatis. Minta Guru/Admin membantu pemulihan sebelum mengirim ujian.');
+                    showError('Terjadi konflik revisi. Draft lokal dan versi server diarsipkan terpisah. Pengiriman ditahan; minta Guru/Admin membantu pemulihan sebelum mengirim ujian.');
+                    renderNavigation();
                 } else setSaveStatus(`Gagal menyimpan: ${error.message}. Periksa koneksi dan coba lagi.`, true);
                 throw error;
             }
