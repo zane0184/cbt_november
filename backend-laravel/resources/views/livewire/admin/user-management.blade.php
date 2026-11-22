@@ -32,6 +32,7 @@
         @endif
         <div><label class="block text-xs font-bold mb-1">Email Kontak / Pemulihan (opsional)</label><input wire:model="email" type="email" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('email')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
         <div><label class="block text-xs font-bold mb-1">Password (minimal 14 karakter)</label><input wire:model="password" type="password" minlength="14" required autocomplete="new-password" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('password')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+        <div><label class="block text-xs font-bold mb-1">Alasan pembuatan akun (wajib)</label><textarea wire:model="createReason" rows="2" minlength="10" maxlength="1000" required class="w-full border rounded-xl px-3.5 py-2 text-sm" placeholder="Dasar pembuatan akun..."></textarea>@error('createReason')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
         <div class="flex justify-end gap-3 pt-3 border-t border-cardBorder"><button type="button" wire:click="$set('showCreateModal', false)" class="px-4 py-2 text-xs font-bold rounded-xl bg-gray-100">Batal</button><button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl">Simpan Pengguna</button></div>
     </form></div></div>@endif
 
@@ -54,6 +55,7 @@
                 @else
                     <div><label class="block text-xs font-bold mb-1">NISN</label><input wire:model="editNisn" type="text" maxlength="10" required class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editNisn')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                 @endif
+                <div><label class="block text-xs font-bold mb-1">Alasan perubahan (wajib)</label><textarea wire:model="editReason" rows="2" minlength="10" maxlength="1000" required class="w-full border rounded-xl px-3.5 py-2 text-sm"></textarea>@error('editReason')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                 <div class="flex justify-end gap-3 pt-3 border-t border-cardBorder"><button type="button" wire:click="$set('showEditModal', false)" class="px-4 py-2 text-xs font-bold rounded-xl bg-gray-100">Batal</button><button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-blue-700 rounded-xl">Simpan Perubahan</button></div>
             </form>
         </div>
@@ -78,6 +80,7 @@
             <p class="text-xs text-textSecondary">Password baru minimal 14 karakter. Password lama tidak ditampilkan dan tidak dicatat ke audit log.</p>
             <form wire:submit.prevent="resetUserPassword" class="space-y-3">
                 <div><label class="block text-xs font-bold mb-1">Password Baru</label><input wire:model="resetPassword" type="password" minlength="14" required autocomplete="new-password" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('resetPassword')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+                <div><label class="block text-xs font-bold mb-1">Alasan reset password (wajib)</label><textarea wire:model="resetReason" rows="2" minlength="10" maxlength="1000" required class="w-full border rounded-xl px-3.5 py-2 text-sm"></textarea>@error('resetReason')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                 <div class="flex justify-end gap-3 pt-3 border-t border-cardBorder"><button type="button" wire:click="$set('showResetPasswordModal', false)" class="px-4 py-2 text-xs font-bold rounded-xl bg-gray-100">Batal</button><button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-amber-700 rounded-xl">Reset Password</button></div>
             </form>
         </div>
