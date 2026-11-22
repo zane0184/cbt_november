@@ -31,7 +31,10 @@ class AdminDashboard extends Component
         $user = auth()->user();
 
         abort_unless(
-            $user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH'),
+            $user
+            && $user->tenant_id
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists(),
             403,
             'Dashboard hanya tersedia bagi Admin Madrasah pada instalasi yang sah.'
         );
