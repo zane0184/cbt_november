@@ -76,9 +76,9 @@ Temuan:
 - Data peserta, jumlah Attempt, dan skor belum dipisahkan sepenuhnya menurut definisi laporan yang diminta.
 
 ### 1.5 Status branch dan CI
-- Branch Agent 3 dibandingkan dengan HEAD checkpoint `702274d5298930f5f1dd13b71b7e402c12868109`: hasil final compare dicatat pada checkpoint setelah rekonsiliasi.
-- Tujuh path yang berubah pada rentang ini adalah dua komponen, satu test, dan empat file backup/manifest. Tidak ada file Agent 2, migration, schema, Composer, atau database yang diubah.
-- Connector tidak menampilkan daftar status/check run untuk commit test `fc91263f4922bb30c4d9933147abdd8f6860f26d`; status CI belum dapat diverifikasi pada saat laporan ini dibuat.
+- Branch Agent 3 dibandingkan dengan HEAD checkpoint `702274d5298930f5f1dd13b71b7e402c12868109`: 29 commit ahead, 0 behind; 19 changed paths (3 source/test dan 16 dokumentasi/backup). HEAD branch tepat sebelum rekonsiliasi dokumen terakhir: `574b0ff603c4101e24bc6e3b0b4a43d4e1fbbaed`.
+- Sembilan belas path berubah pada rentang ini: dua komponen, satu test, dua dokumen laporan/checkpoint, dan empat belas file backup/manifest. Tidak ada file Agent 2, migration, schema, Composer, atau database yang diubah.
+- Connector tidak menampilkan daftar status/check run untuk commit test `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f`; status CI belum dapat diverifikasi pada saat laporan ini dibuat.
 - Branch Agent 2 diperiksa secara read-only melalui ref yang disebut di atas. Compare metadata menunjukkan branch divergen terhadap main (1340 ahead / 15 behind), tetapi connector tidak mengembalikan SHA HEAD branch secara eksplisit. Blob SHA setiap file yang diperiksa dicatat di atas.
 
 ## 2. DESAIN
@@ -151,8 +151,8 @@ Belum mengubah TenantProfileManagement, Tenant, TeacherProfile, AuthWebControlle
 
 | Pengujian | Status | Bukti |
 |---|---|---|
-| Verifikasi backup source | PASS | 3/3 blob SHA MATCH |
-| Audit diff branch Agent 3 | PASS | 7 ahead, 0 behind; daftar 7 path |
+| Verifikasi backup source | PASS | 16/16 blob SHA MATCH |
+| Audit diff branch Agent 3 | PASS | 29 ahead, 0 behind; 19 changed paths |
 | PHP lint lokal | NOT RUN | Tidak ada checkout lokal pada runtime |
 | PHPUnit baru | PENDING CI | Test sudah ditambahkan, belum ada status/check run yang dapat diverifikasi |
 | Browser QA Livewire | NOT RUN | QA browser dan akun uji belum tersedia |
@@ -161,7 +161,7 @@ Belum mengubah TenantProfileManagement, Tenant, TeacherProfile, AuthWebControlle
 | Tenant isolation end-to-end branding | NOT RUN | Menunggu kontrak layanan Agent 2 |
 | Database produksi/migration | NOT RUN | Tidak ada akses/perubahan produksi |
 
-Workflow `.github/workflows/web-guru-foundation-ci.yml` mencakup `TeacherPortalFoundationTest` dan `QuestionImportTemplateDownloadTest` pada disposable MySQL 8. Status workflow untuk commit baru belum terbaca; karena itu tidak ada klaim PASS PHPUnit.
+Workflow `.github/workflows/web-guru-foundation-ci.yml` mencakup `TeacherPortalFoundationTest` dan `QuestionImportTemplateDownloadTest` pada disposable MySQL 8. Status workflow untuk commit `834a59f11f9b548c8d7f0fcea68c15cf4bbe501f` belum dapat diverifikasi; karena itu tidak ada klaim PASS PHPUnit.
 
 ## 5. KESIMPULAN DAN BLOCKER
 
