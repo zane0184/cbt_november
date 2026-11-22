@@ -24,3 +24,13 @@ Seluruh backup dibuat sebagai file baru sebelum perubahan source. Blob SHA backu
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 7e98a904f205acd0c8f3201a2e9aea13fcbb805b | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-foreign-tenant-id-test | 7e98a904f205acd0c8f3201a2e9aea13fcbb805b | c594652f420b222b51027725bdccded4d6549bdb | MATCH |
 
 Jumlah snapshot backup terdaftar: 5. Seluruh blob SHA yang tercantum: MATCH. Backup awal tiga file tetap dipertahankan; backup test tambahan melindungi revisi test berikutnya.
+
+## Backup tambahan — laporan/checkpoint dan manifest sebelum rekonsiliasi
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| docs/LAPORAN_P0_EXACT_ROLE_IDENTITAS_LAPORAN_2026-11-22.md | d12cb964e26e23fafb1cb5dfec1d666b4d8dac2a | docs/backup/web-guru-exact-role-20261122/LAPORAN_P0_EXACT_ROLE.before-foreign-tenant-id-test.md | d12cb964e26e23fafb1cb5dfec1d666b4d8dac2a | eafd1a2ae62d470e646fda1b62215a5bfb033ddd | MATCH |
+| docs/CHECKPOINT_P0_EXACT_ROLE_IDENTITAS_LAPORAN_2026-11-22.md | d637440befbc542427154b5481a90d2012d1633b | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_P0_EXACT_ROLE.before-foreign-tenant-id-test.md | d637440befbc542427154b5481a90d2012d1633b | 147ae89788e07bf50ed453f392edf9b8a619dcc9 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 9755942010bd6c470a969144f8ebf24f574c369e | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-report-checkpoint-reconcile | 9755942010bd6c470a969144f8ebf24f574c369e | 05247536b8c89a64a66e989b884ea3ccdc31e38c | MATCH |
+
+Jumlah snapshot backup terdaftar: 8. Seluruh blob SHA yang tercantum: MATCH. Tidak ada snapshot lama yang ditimpa.
