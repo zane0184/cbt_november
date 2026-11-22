@@ -100,14 +100,6 @@ class ExamAnswerController extends Controller
                 return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
-            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
-            }
-
-            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
-            }
-
             if (!$lockedAttempt->device_fingerprint
                 || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
@@ -235,6 +227,14 @@ class ExamAnswerController extends Controller
                     'message' => 'Jumlah Attempt aktif peserta tidak konsisten; penyimpanan jawaban ditahan.',
                     'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
                 ], 409);
+            }
+
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
             $lockedSnapshot = ExamQuestionSnapshot::query()
