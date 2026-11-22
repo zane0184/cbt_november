@@ -4,8 +4,8 @@ Tanggal: 22 November 2026
 - Branch: `work/agent4-web-siswa-emergency-20261122`
 - Base: `7642f8df7d20effe82dc1ba5b086147894332767`
 - Runtime: `backend-laravel/resources/views/student/exams/show.blade.php`
-- Runtime blob SHA: `1b63a315a1df0e36fc5b07339acd3bc6b88e242d`
-- Laporan terakhir diperbarui pada commit: `ab83123f6cd0239dd179c075242b380ab348898d`
+- Runtime blob SHA: `5b8aa0efc2f180d675f401315e43ce578b722925`
+- Laporan blob SHA: `a47f196abd980e5d4fb126dca7c6f5e71829e089`
 - Laporan: `docs/WEB_SISWA_EMERGENCY_AGENT4_REPORT_2026-11-22.md` (blob `a5e0c4ca8d970fb302a16fc77d96db8b977185ef`)
 - PR draft: https://github.com/zane0184/cbt_november/pull/13
 
@@ -21,17 +21,23 @@ Runner memiliki IndexedDB schema v2 dengan object store:
 - Kegagalan IndexedDB write menandai item undurable dan memblokir submit.
 - Submit hanya lanjut jika queue kosong, tidak ada conflict, dan tidak ada draft yang gagal disimpan secara durable.
 - Submit response loss menyimpan marker SUBMITTING/UNKNOWN secara lokal, tidak memicu POST ulang otomatis, dan memeriksa GET Attempt sebelum mengizinkan start baru untuk student+exam yang sama. Completion hanya ditampilkan untuk status server SUBMITTED/EXPIRED.
+- Jika server masih melaporkan IN_PROGRESS, client meminta execution context dan memverifikasi ID Attempt yang sama, lalu resume Attempt tersebut via GET execution; tidak mengirim POST start baru.
 - Receipt store disiapkan tetapi belum diisi karena kontrak receipt backend belum tersedia. UI tidak menyatakan receipt verified.
 
 ## Backup
 - Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`, byte-exact verified.
 - Sebelum IndexedDB v2: `.../show.blade.php.before-indexeddb-v2`.
+- Sebelum safe resume after submit check: `.../show.blade.php.before-safe-resume-after-submit-check`, blob `1b63a315a1df0e36fc5b07339acd3bc6b88e242d`.
 - Backup tambahan dibuat sebelum conflict race, conflict UI, dan ack/scope refinements. Detail blob/commit tercatat di laporan.
 
 ## Pengujian
 - Source dan backup dibaca ulang melalui GitHub.
 - Pemeriksaan statis struktur IndexedDB dan call sites dilakukan.
-- Belum ada browser E2E, JS runtime syntax check, PHPUnit, PHP lint, CI, MySQL concurrency, API integration, Device Lease/Fencing, atau UAT.
+- JavaScript syntax parse/compile pada inline runner aktual: PASS.
+- 9/9 assertion statis untuk mekanisme utama: PASS.
+- Route GET Attempt cocok dengan apiBase yang sudah memuat ID Exam.
+- Commit status exact SHA belum memiliki status/check run; CI tidak berjalan.
+- Browser E2E/IndexedDB runtime, PHPUnit, PHP lint, MySQL concurrency, API integration, Device Lease/Fencing, atau UAT belum dilakukan.
 - Tidak mengklaim runtime PASS.
 
 ## Blocker
