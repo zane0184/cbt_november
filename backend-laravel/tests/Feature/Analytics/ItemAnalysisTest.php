@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Models\Question;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
+use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamQuestionSnapshot;
 use App\Models\ExamQuestionScore;
 use App\Models\ExamParticipant;
