@@ -14,7 +14,7 @@ class StudentProfile extends Model
     use HasUuids, SoftDeletes, TenantScoped;
 
     protected $fillable = [
-        'user_id', 'nis', 'nisn', 'full_name', 'gender',
+        'user_id', 'nis', 'nisn', 'full_name', 'gender', 'academic_status', 'entry_academic_year_id',
         'birth_place', 'birth_date', 'parent_name', 'phone', 'address'
     ];
 
@@ -23,11 +23,21 @@ class StudentProfile extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function entryAcademicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class, 'entry_academic_year_id');
+    }
+
+    public function academicEvents(): \\Illuminate\\Database\\Eloquent\\Relations\\HasMany
+    {
+        return $this->hasMany(StudentAcademicEvent::class, 'student_id')->orderByDesc('created_at')->orderByDesc('id');
+    }
+
     public function rombels(): BelongsToMany
     {
         $relation = $this->belongsToMany(Rombel::class, 'rombel_student', 'student_id', 'rombel_id')
             ->using(RombelStudent::class)
-            ->withPivot('id', 'tenant_id')
+            ->withPivot('id', 'tenant_id', 'academic_year_id')
             ->withTimestamps();
 
         $parentTenantId = $this->tenant_id;
