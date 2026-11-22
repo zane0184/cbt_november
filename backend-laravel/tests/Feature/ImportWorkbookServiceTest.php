@@ -152,12 +152,22 @@ class ImportWorkbookServiceTest extends TestCase
 
         $student = StudentProfile::query()->where('tenant_id', $this->tenant->id)->where('nisn', '0012345678')->firstOrFail();
         $this->assertSame('000123', $student->nis);
+        $this->assertSame('ACTIVE', $student->academic_status);
+        $this->assertSame($year->id, $student->entry_academic_year_id);
         $this->assertSame('Siswa Uji', app(LoginIdentityResolver::class)->resolve('0012345678')?->name);
         $this->assertSame('0012345678', $student->user->username);
         $this->assertDatabaseHas('rombel_student', [
             'tenant_id' => $this->tenant->id,
             'rombel_id' => $rombel->id,
             'student_id' => $student->id,
+            'academic_year_id' => $year->id,
+        ]);
+        $this->assertDatabaseHas('student_academic_events', [
+            'tenant_id' => $this->tenant->id,
+            'student_id' => $student->id,
+            'academic_year_id' => $year->id,
+            'event_type' => 'ENROLLED',
+            'performed_by' => $this->admin->id,
         ]);
         $this->assertCount(1, $result['activation_links']);
         $this->assertSame($year->id, $rombel->academic_year_id);
