@@ -155,10 +155,12 @@ class TeacherPortalFoundationTest extends TestCase
         $admin->roles()->attach($adminRole->id);
 
         $this->actingAs($admin)->get('/guru/dashboard')->assertForbidden();
+        $this->actingAs($admin)->get('/guru/bank-soal')->assertForbidden();
         Livewire::actingAs($admin)->test(TeacherDashboard::class)->assertForbidden();
 
         $this->teacher->roles()->attach($adminRole->id);
         $this->actingAs($this->teacher)->get('/guru/dashboard')->assertForbidden();
+        $this->actingAs($this->teacher)->get('/guru/bank-soal')->assertForbidden();
     }
 
     public function test_question_and_exam_livewire_screens_allow_only_single_role_guru_with_permission_and_assignment(): void
@@ -229,6 +231,7 @@ class TeacherPortalFoundationTest extends TestCase
         // A matching tenant context with no active subject assignment is also denied.
         Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
         Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
+        $this->actingAs($this->teacher)->get('/guru/bank-soal')->assertForbidden();
     }
 
     public function test_question_and_exam_livewire_recheck_role_during_hydration_and_direct_actions(): void
