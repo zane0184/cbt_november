@@ -123,7 +123,7 @@ final class TeacherQuestionMediaTest extends TestCase
             ->test(QuestionBank::class)
             ->call('openEditModal', $this->question->id)
             ->assertSee('Media Soal')
-            ->assertSee('Unggah & Pasang Media')
+            ->assertSee('Unggah & Pasang Media', false)
             ->assertSee(route('teacher.questions.media.store', [
                 'question' => $this->question->id,
                 'version' => $this->version->id,
@@ -136,7 +136,7 @@ final class TeacherQuestionMediaTest extends TestCase
             ->call('openEditModal', $this->question->id)
             ->assertSee('Media Soal')
             ->assertSee('Versi ini sudah terbit')
-            ->assertDontSee('Unggah & Pasang Media');
+            ->assertDontSee('Unggah & Pasang Media', false);
     }
 
     public function test_published_question_version_rejects_media_and_cleans_unattached_upload(): void
