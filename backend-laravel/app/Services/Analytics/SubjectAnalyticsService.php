@@ -26,11 +26,12 @@ class SubjectAnalyticsService
             })
             ->get();
 
-        $examData = $exams->map(function ($exam) {
+        $examData = $exams->map(function ($exam) use ($subject) {
             $stats = ExamAttemptScore::query()
                 ->where('tenant_id', $subject->tenant_id)
                 ->where('exam_id', $exam->id)
                 ->where('grading_status', 'FINALIZED')
+                ->current()
                 ->select([
                     DB::raw('AVG(percentage) as average_percentage'),
                     DB::raw('COUNT(*) as participant_count')
