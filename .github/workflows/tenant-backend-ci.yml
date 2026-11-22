@@ -75,7 +75,7 @@ jobs:
           from pathlib import Path
           import re
           source = Path("resources/views/student/exams/show.blade.php").read_text(encoding="utf-8")
-          scripts = re.findall(r"<script>\\s*(.*?)\\s*</script>", source, flags=re.DOTALL)
+          scripts = re.findall(r"<script>\s*(.*?)\s*</script>", source, flags=re.DOTALL)
           if len(scripts) != 1:
               raise SystemExit(f"Expected one inline runner script, found {len(scripts)}")
           Path("/tmp/cbt-student-runner.js").write_text(scripts[0], encoding="utf-8")
