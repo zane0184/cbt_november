@@ -1,9 +1,6 @@
 name: Agent 4 — Web Siswa Runner Static and Browser Audit
 
 on:
-  push:
-    branches:
-      - work/agent4-web-siswa-emergency-20261122
   pull_request:
     branches:
       - work/stage4d-account-lifecycle-20261122
