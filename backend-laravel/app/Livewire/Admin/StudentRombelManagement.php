@@ -70,7 +70,9 @@ class StudentRombelManagement extends Component
                 ->firstOrFail();
             $studentUser = $student->user;
 
-            if (!$studentUser || $studentUser->tenant_id !== $tenantId || !$studentUser->hasRole('SISWA')) {
+            if (!$studentUser || $studentUser->tenant_id !== $tenantId
+                || $studentUser->roles()->count() !== 1
+                || !$studentUser->roles()->where('name', 'SISWA')->exists()) {
                 throw ValidationException::withMessages([
                     'selectedStudentProfileId' => 'Profil harus terhubung ke akun Siswa aktif pada tenant ini.',
                 ]);
@@ -132,6 +134,7 @@ class StudentRombelManagement extends Component
         $students = StudentProfile::query()
             ->with(['user', 'rombels.academicYear'])
             ->whereHas('user.roles', fn ($query) => $query->where('name', 'SISWA'))
+            ->whereHas('user', fn ($query) => $query->has('roles', '=', 1))
             ->when($this->search, function ($query): void {
                 $query->where(function ($scope): void {
                     $scope->where('nisn', 'like', '%' . $this->search . '%')
@@ -145,6 +148,7 @@ class StudentRombelManagement extends Component
         $availableStudents = StudentProfile::query()
             ->with('user')
             ->whereHas('user.roles', fn ($query) => $query->where('name', 'SISWA'))
+            ->whereHas('user', fn ($query) => $query->has('roles', '=', 1))
             ->orderBy('full_name')
             ->get();
 
