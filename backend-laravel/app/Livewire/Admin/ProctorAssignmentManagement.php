@@ -43,7 +43,8 @@ class ProctorAssignmentManagement extends Component
         $tenantId = auth()->user()->tenant_id;
         $exam = Exam::query()->where('tenant_id', $tenantId)->findOrFail($data['selectedExamId']);
         $proctor = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereHas('roles', fn ($query) => $query->where('name', 'PROKTOR'))
+            ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
+            ->whereHas('teacherProfile')
             ->findOrFail($data['selectedProctorId']);
 
         $service->assign(auth()->user(), $exam, $proctor->id, Carbon::parse($data['startsAt']), Carbon::parse($data['expiresAt']), $data['reason']);
@@ -77,7 +78,8 @@ class ProctorAssignmentManagement extends Component
             ->whereNotNull('locked_at')->whereNotNull('end_at')->where('end_at', '>', now())
             ->orderBy('start_at')->get(['id', 'title', 'start_at', 'end_at']);
         $proctors = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereHas('roles', fn ($query) => $query->where('name', 'PROKTOR'))
+            ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
+            ->whereHas('teacherProfile')
             ->orderBy('name')->get(['id', 'name', 'email']);
         $assignments = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
             ->with(['exam:id,title,status,start_at,end_at', 'proctor:id,name,email', 'assigner:id,name', 'revoker:id,name'])
