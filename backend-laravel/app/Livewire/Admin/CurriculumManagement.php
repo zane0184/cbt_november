@@ -3,13 +3,11 @@
 namespace App\Livewire\Admin;
 
 use App\Models\AcademicYear;
-use App\Models\Curriculum;
 use App\Models\LearningOutcome;
 use App\Models\MultiCurriculum;
 use App\Models\MultiCurriculumStructure;
 use App\Models\MultiCurriculumVersion;
 use App\Models\MultiLearningOutcome;
-use App\Models\QuestionMultiCurriculumMapping;
 use App\Models\Subject;
 use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
@@ -183,7 +181,7 @@ class CurriculumManagement extends Component
         $version = app(CurriculumRegistrationService::class)->createTenantVersion(
             (string) auth()->user()->tenant_id, (string) auth()->id(),
             $data['selectedCurriculumId'], $data['versionCode'], $data['versionTitle'],
-            $data['versionEffectiveYear'] !== '' ? (int) $data['versionEffectiveYear'] : null,
+            ($data['versionEffectiveYear'] !== null && $data['versionEffectiveYear'] !== '') ? (int) $data['versionEffectiveYear'] : null,
             $data['versionReason']
         );
 
@@ -501,6 +499,8 @@ class CurriculumManagement extends Component
 
         $canEditSelectedVersion = $selectedVersion
             && (string) $selectedVersion->tenant_id === $tenantId
+            && $selectedVersion->status === 'ACTIVE'
+            && $selectedVersion->curriculum?->status === 'ACTIVE'
             && !TenantCurriculumRegistration::withoutGlobalScopes()->where('tenant_id', $tenantId)
                 ->where('multi_curriculum_version_id', $selectedVersion->id)->exists();
 
