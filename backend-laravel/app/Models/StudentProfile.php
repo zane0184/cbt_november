@@ -23,6 +23,11 @@ class StudentProfile extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function userForHistory(): BelongsTo
+    {
+        return $this->belongsTo(User::class)->withTrashed();
+    }
+
     public function rombels(): BelongsToMany
     {
         $relation = $this->belongsToMany(Rombel::class, 'rombel_student', 'student_id', 'rombel_id')
