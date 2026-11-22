@@ -368,7 +368,7 @@ class TeacherAccess
         string $academicYearId,
         string $semesterId
     ): bool {
-        if ($teacher->tenant_id !== $student->tenant_id || !$student->hasRole('SISWA')) {
+        if ($teacher->tenant_id !== $student->tenant_id || !$student->hasExactRole('SISWA')) {
             return false;
         }
 
