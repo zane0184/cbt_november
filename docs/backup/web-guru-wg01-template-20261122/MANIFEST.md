@@ -41,14 +41,3 @@ Semua backup berikut dibuat sebagai file baru sebelum file sumber terkait diubah
 | 15 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 4bbfca0a9f3d893f5d44975904a1820192f44fb8 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-qa-ui-design-20261122 | 4bbfca0a9f3d893f5d44975904a1820192f44fb8 | MATCH |
 
 Jumlah snapshot terdaftar setelah tambahan: 15. Hash backup tambahan: 3/3 MATCH. Backup dibuat sebagai file baru; tidak ada snapshot lama yang ditimpa.
-
-
-## Backup tambahan — QA dan desain UI WG01 (22 November 2026)
-
-| No. | File sumber sebelum update | Blob SHA sumber sebelum update | Path backup | Blob SHA backup | Hasil |
-|---:|---|---|---|---|---|
-| 13 | docs/WG01_TEMPLATE_IMPLEMENTATION_2026-11-22.md | 796386c72e045574c2349a2768aa0a2290b54fc2 | docs/backup/web-guru-wg01-template-20261122/WG01_TEMPLATE_IMPLEMENTATION.before-qa-ui-design-20261122.md | 796386c72e045574c2349a2768aa0a2290b54fc2 | MATCH |
-| 14 | docs/CHECKPOINT_WG01_TEMPLATE_2026-11-22.md | 901f2f88092a60a8dd9213183b27368b2b3445ee | docs/backup/web-guru-wg01-template-20261122/CHECKPOINT_WG01_TEMPLATE.before-qa-ui-design-20261122.md | 901f2f88092a60a8dd9213183b27368b2b3445ee | MATCH |
-| 15 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 4bbfca0a9f3d893f5d44975904a1820192f44fb8 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-qa-ui-design-20261122 | 4bbfca0a9f3d893f5d44975904a1820192f44fb8 | MATCH |
-
-Jumlah snapshot terdaftar setelah tambahan: 15. Hash backup tambahan: 3/3 MATCH. Backup dibuat sebagai file baru; tidak ada snapshot lama yang ditimpa.
