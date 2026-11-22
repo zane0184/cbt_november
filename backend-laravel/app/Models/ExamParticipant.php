@@ -31,7 +31,14 @@ class ExamParticipant extends Model
 
     public function user(): BelongsTo
     {
+        // Operational queries intentionally exclude deactivated accounts.
         return $this->belongsTo(User::class);
+    }
+
+    public function userForHistory(): BelongsTo
+    {
+        // Historical exam participation must retain the original account identity.
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     public function rombel(): BelongsTo
