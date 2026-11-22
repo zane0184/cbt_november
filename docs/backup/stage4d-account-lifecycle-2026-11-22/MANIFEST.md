@@ -122,3 +122,12 @@ Dokumen status diperbarui pada commit report `8a1ea04a676bee3327c73614cce06f7db4
 - Test commits: `2ef93713fedc40187cea1613f712a81abe3e2b94`, `9bbf64b21a67345f1720ec27277c8d3693de39f4`, `ac80026beced315acddb4c8adc8524d5779474c8`, assertion fix `0ac6dc938291e07fa871499f25983931282de5cf`.
 - Run `44989053716` (SHA `ac80026...`) IN_PROGRESS and run `44989260109` (SHA `0ac6dc9...`) PENDING when recorded; do not claim auth epoch tests PASS until exact latest run completes.
 - Reset password tenant-scoped not implemented; Admin CBT Gate not passed.
+
+
+## Snapshot tambahan — sebelum perbaikan fixture Admin CBT boundary P0 (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/AdminCbtBoundaryTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/AdminCbtBoundaryTest.php.before-p0-tenant-context-fixture-2026-11-22 | 027683a33dfbc019ae70a7af5901ca986b539fed | 6967 | 8aa19814ed465e7bf470bb5b00403b1a3dc02446 |
+
+Manifest sebelum penambahan ini disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-p0-admin-boundary-fixture-2026-11-22` (blob SHA `252444b8c71240510d5bf722a4b6b2d387c8322f`, backup commit `b27aa24d4fbceb040708fa1f08177aedf06ac59b`). Backup source diverifikasi identik berdasarkan Git blob SHA sebelum file sumber diubah.
