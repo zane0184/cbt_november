@@ -144,7 +144,7 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, submitting: false, submitOutcomeUnknown: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, submitting: false, submitOutcomeUnknown: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
@@ -398,7 +398,8 @@
         el('instruction-panel').classList.add('hidden');
         el('runner-panel').classList.remove('hidden');
         renderNavigation(); renderQuestion(); updateTimer(data.attempt.expires_at);
-        window.setInterval(() => updateTimer(data.attempt.expires_at), 1000);
+        if (state.timerIntervalId !== null) window.clearInterval(state.timerIntervalId);
+        state.timerIntervalId = window.setInterval(() => updateTimer(data.attempt.expires_at), 1000);
         setSaveStatus(localPending.length ? `${localPending.length} draft lokal menunggu sinkronisasi` : 'Jawaban dipulihkan dari server', localPending.length > 0);
         if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Respons server berhasil untuk draft lokal; receipt terverifikasi belum tersedia')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
     }
