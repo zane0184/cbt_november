@@ -38,7 +38,9 @@ class ProctorAssignmentSecurityTest extends TestCase
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $permission = Permission::create(['name' => 'exam.proctor.assign', 'label' => 'Menugaskan Proktor sementara']);
+        $monitorPermission = Permission::create(['name' => 'exam.monitor', 'label' => 'Monitoring ujian sesuai penugasan']);
         $adminRole->permissions()->attach($permission->id);
+        $guruRole->permissions()->attach($monitorPermission->id);
 
         $this->admin = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Admin Proktor', 'email' => 'admin-proktor@example.test', 'password' => bcrypt('password')]);
         $this->admin->roles()->attach($adminRole->id);
@@ -109,7 +111,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->actingAs($this->proctor)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
     }
 
-    public function test_expired_assignment_does_not_authorize_monitoring_or_dashboard_listing(): void
+    public function test_expired_assignment_does_not_authorize_monitoring(): void
     {
         $this->assignThroughUi();
         DB::table('exam_proctor_assignments')->where('exam_id', $this->exam->id)->update(['expires_at' => now()->subSecond()]);
