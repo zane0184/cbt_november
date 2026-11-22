@@ -6,6 +6,7 @@ use App\Livewire\Teacher\TeacherAssignmentsPage;
 use App\Livewire\Teacher\TeacherLearning;
 use App\Livewire\Teacher\TeacherProfilePage;
 use App\Livewire\Admin\QuestionBank;
+use App\Livewire\Teacher\QuestionImportWizard;
 use App\Livewire\Admin\ExamManagement;
 use App\Http\Controllers\Teacher\QuestionImportTemplateController;
 use App\Http\Controllers\Teacher\TeacherQuestionMediaController;
@@ -22,6 +23,7 @@ Route::middleware(['auth', 'tenant', 'license', EnsureTeacherPortalAccess::class
         Route::get('/kurikulum', TeacherLearning::class)->name('curriculum');
         Route::get('/profil', TeacherProfilePage::class)->name('profile');
         Route::get('/bank-soal', QuestionBank::class)->name('questions.index');
+        Route::get('/bank-soal/import', QuestionImportWizard::class)->name('questions.import');
         Route::get('/asesmen', ExamManagement::class)->name('exams.index');
         Route::get('/bank-soal/template', QuestionImportTemplateController::class)->name('questions.template');
         Route::post('/bank-soal/{question}/versions/{version}/media', [TeacherQuestionMediaController::class, 'storeAndAttach'])->name('questions.media.store');
