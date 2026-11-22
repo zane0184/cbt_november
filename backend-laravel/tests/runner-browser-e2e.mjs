@@ -136,6 +136,13 @@ async function chooseFirstAnswer(page) {
   await page.locator('#question-input input[value="opt-a"]').check();
 }
 
+async function openQuestionNavigation(page) {
+  const panel = page.locator('#question-nav-panel');
+  if (!(await panel.evaluate(element => element.open))) {
+    await panel.locator('summary').click();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   // 1. Normal path: answer is saved to the server before submit; submit is terminal.
@@ -146,6 +153,7 @@ try {
     await start(page);
     await chooseFirstAnswer(page);
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    await openQuestionNavigation(page);
     await page.locator('#submit-button').click();
     await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
     assert.equal(scenario.startCalls, 1);
