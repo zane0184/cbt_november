@@ -120,3 +120,38 @@ Perubahan ini hanya workflow CI dan backup workflow; tidak ada source aplikasi, 
 - Job IDs: 137246503960 (attempt 1), 137246664176 (attempt 2).
 - Ini diklasifikasikan BLOCKED — RUNNER/EXECUTION ENVIRONMENT. Bukan hasil PHPUnit gagal dan bukan PASS. Tidak ada bukti test runtime pada source exact SHA ini.
 - Jangan mengulang rerun tanpa batas. Jalur CI perlu diperiksa/diaktifkan kembali setelah ketersediaan runner GitHub pulih; sementara itu perubahan runtime tidak boleh diklaim lulus.
+
+
+
+## ADDENDUM IMPLEMENTASI P0-A — CANONICAL ROLE GATE (22 NOV 2026)
+
+### AUDIT
+Pemeriksaan ulang source pada branch koordinator menemukan AuthWebController dan LoginIdentityResolver masih menerima KAMAD; AuthWebController mengarahkan Guru ke rute legacy /admin/exams. AdminDashboard dan UserManagement masih memakai hasRole tanpa exact-one role check. CurriculumManagement pada source branch ini ternyata sudah menggunakan exact-one role check (blob 2b613a4a...), sehingga tidak diubah.
+
+### IMPLEMENTASI
+Perubahan dibuat hanya pada branch work/coordinator-web-admin-audit-20261122. Backup source dibuat sebelum patch untuk:
+- AuthWebController.php — backup blob asal 235518c4d1fa9913b3add7a02636bbfcd608d408; backup: docs/backup/coordinator-web-admin-2026-11-22/AuthWebController.php.before-canonical-role-p0
+- LoginIdentityResolver.php — backup blob asal c1f56029da5b8fdb5d7f80380269637b7d1c3ebe; backup: docs/backup/coordinator-web-admin-2026-11-22/LoginIdentityResolver.php.before-canonical-role-p0
+- AdminDashboard.php — backup blob asal b81ce1ea19a50db07ec439b15bec0a034f340afc; backup: docs/backup/coordinator-web-admin-2026-11-22/AdminDashboard.php.before-canonical-role-p0
+- UserManagement.php — backup blob asal 9173f4b6032f43bebe9472234eb80a6176af043e; backup: docs/backup/coordinator-web-admin-2026-11-22/UserManagement.php.before-canonical-role-p0
+- WebAdminAuthTest.php — backup blob asal 93a822f44f7d21d4c25913599bda2bcfe7d32e34; backup: docs/backup/coordinator-web-admin-2026-11-22/WebAdminAuthTest.php.before-canonical-role-p0
+- AdminDashboardAccessTest.php — backup blob asal f63a4ea49fe98e4b1147750427e50af83e74518b; backup dibuat dari ref pra-perubahan 432ac2277b30984eff2fa504bc176b7153e206e4 di docs/backup/coordinator-web-admin-2026-11-22/AdminDashboardAccessTest.php.before-single-role-guard
+
+Source changes:
+1. AuthWebController: daftar login portal dibatasi menjadi ADMIN_MADRASAH, GURU, SISWA; redirect hanya menerima tepat satu role canonical. Akun login lama/role di luar tiga portal ditolak. Session authenticated noncanonical dihentikan saat mengunjungi login.
+2. LoginIdentityResolver: identitas KAMAD tidak lagi di-resolve sebagai portal CBT; role harus tepat satu dan termasuk tiga role canonical.
+3. AdminDashboard: akses mensyaratkan tepat satu role ADMIN_MADRASAH.
+4. UserManagement: mount/mutation/render guard mensyaratkan tepat satu role ADMIN_MADRASAH dan permission user.manage.
+5. WebAdminAuthTest: ekspektasi login ADMIN diperbarui ke /admin/dashboard; OPERATOR, KAMAD, PROKTOR ditolak.
+6. AdminDashboardAccessTest: fixture Admin disederhanakan menjadi satu role; ditambah tes negatif Admin multi-role.
+
+Tidak mengubah routes/web.php, migration, permission tables, database, branch main, VPS, .env, APP_KEY, atau deployment. Redirect Guru lama belum diubah pada tahap ini karena rute portal Guru final belum dibangun; perubahan portal Guru menunggu tahap Guru setelah Admin diterima.
+
+### PENGUJIAN
+- GitHub Actions run #45035838339 terpicu pada exact SHA 720dea52258cc0cfb0f92d5c191a740938bba08a.
+- Job safe-runtime-tests berakhir failure, tetapi daftar steps tidak tersedia dan pengambilan job logs menghasilkan 404 BlobNotFound.
+- Karena tidak ada log/step, status PHPUnit adalah NOT VERIFIED; bukan dinyatakan gagal karena source dan bukan PASS.
+- Test runtime lokal tidak dijalankan pada sesi ini. Syntax/lint belum dapat diklaim lulus.
+
+### STATUS
+P0-A source patch awal sudah dibuat, tetapi BELUM ACCEPTED dan BELUM VERIFIED. Tindak lanjut wajib: pulihkan observabilitas runner, jalankan seluruh test terkait pada PHP 8.3 + disposable MySQL 8, periksa route boundary Guru/Admin dan tes negative multi-role/legacy roles. Jangan lanjut ke P0-B atau fitur User Management tambahan sebelum patch ini mendapat hasil test yang bisa diperiksa.
