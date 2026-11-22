@@ -414,6 +414,9 @@
         const payload = pendingItem.payload;
         const previous = state.saving.get(question.id) || Promise.resolve();
         const task = previous.catch(() => {}).then(async () => {
+            // A newer local edit supersedes this not-yet-sent item. Never let an
+            // obsolete request overwrite the durable queue record for the latest edit.
+            if (state.pending.get(question.id) !== pendingItem) return;
             setSaveStatus('Menyimpan jawaban…');
             if (pendingItem.baseRevision === null || pendingItem.baseRevision === undefined) {
                 pendingItem.baseRevision = state.revisions.get(question.id) || 0;
