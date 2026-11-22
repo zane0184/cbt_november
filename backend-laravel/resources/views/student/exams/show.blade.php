@@ -55,7 +55,7 @@
             #runner-panel > div:first-child { position: sticky; top: 0; z-index: 20; padding: .75rem; border-radius: .9rem; }
             #exam-timer { font-size: 1.5rem; }
             #save-status { max-width: 58vw; overflow-wrap: anywhere; font-size: .75rem; }
-            #question-nav-content { padding: .85rem; }
+            .question-nav-content { padding: .85rem; }
             #completion-panel { padding: 2rem 1rem; }
         }
         @media print { body { display: none !important; } }
