@@ -24,10 +24,13 @@ use App\Services\Reporting\QuestionReportService;
 use App\Services\Reporting\StudentResultReportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Support\CreatesTeacherExamScope;
+use App\Services\Analytics\RombelAnalyticsService;
 
 class CurrentScoreAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesTeacherExamScope;
 
     private Tenant $tenant;
 
@@ -157,6 +160,72 @@ class CurrentScoreAnalyticsTest extends TestCase
         $this->assertSame(1, $analytics['exam_count']);
         $this->assertSame(88.0, $analytics['exams'][0]['average_percentage']);
         $this->assertSame(1, $analytics['exams'][0]['participant_count']);
+    }
+
+    public function test_rombel_analytics_and_report_use_only_the_current_score_version(): void
+    {
+        $teacher = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $student = User::factory()->create(['tenant_id' => $this->tenant->id]);
+        $scope = $this->createTeacherExamScope($this->tenant, $teacher, [$student], 'ROMBELCURRENT');
+
+        $assessment = Assessment::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $scope['subject']->id,
+            'academic_year_id' => $scope['academicYear']->id,
+            'semester_id' => $scope['semester']->id,
+            'created_by' => $teacher->id,
+        ]);
+        $exam = Exam::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $assessment->id,
+            'created_by' => $teacher->id,
+        ]);
+        $participant = ExamParticipant::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'user_id' => $student->id,
+        ]);
+        $attempt = ExamAttempt::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'participant_id' => $participant->id,
+            'status' => 'SUBMITTED',
+        ]);
+
+        ExamAttemptScore::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'attempt_id' => $attempt->id,
+            'student_id' => $student->id,
+            'percentage' => 15.0,
+            'raw_score' => 15.0,
+            'scoring_version' => 1,
+            'grading_status' => 'FINALIZED',
+        ]);
+        $currentScore = ExamAttemptScore::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'attempt_id' => $attempt->id,
+            'student_id' => $student->id,
+            'percentage' => 85.0,
+            'raw_score' => 85.0,
+            'scoring_version' => 2,
+            'grading_status' => 'FINALIZED',
+        ]);
+        ExamAttemptScoreCurrent::create([
+            'tenant_id' => $this->tenant->id,
+            'attempt_id' => $attempt->id,
+            'current_score_id' => $currentScore->id,
+            'scoring_version' => 2,
+        ]);
+
+        $analytics = app(RombelAnalyticsService::class)->getRombelExamAnalytics($scope['rombel'], $exam);
+        $this->assertSame(1, $analytics['participant_count']);
+        $this->assertSame(85.0, $analytics['average_percentage']);
+
+        $report = app(ExamSummaryReportService::class)->getRombelSummary($exam, $scope['rombel']->id);
+        $this->assertSame(1, (int) $report['total_scored']);
+        $this->assertSame(85.0, $report['average_percentage']);
     }
 
     public function test_score_without_a_valid_current_pointer_is_excluded(): void
