@@ -98,6 +98,31 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assertDatabaseHas('exam_proctor_assignments', ['proctor_user_id' => $this->proctor->id, 'exam_id' => $this->exam->id, 'status' => 'ACTIVE']);
     }
 
+    public function test_multi_role_guru_is_not_offered_as_a_proctor_candidate(): void
+    {
+        $adminRole = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+
+        $multiRoleGuru = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Multi Role',
+            'email' => 'guru-multi-role@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $multiRoleGuru->roles()->attach([$adminRole->id, $guruRole->id]);
+        TeacherProfile::create([
+            'user_id' => $multiRoleGuru->id,
+            'tenant_id' => $this->tenant->id,
+            'full_name' => 'Guru Multi Role',
+        ]);
+
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->assertDontSee('Guru Multi Role');
+
+        $this->assertSame(2, $multiRoleGuru->fresh()->roles()->count());
+    }
+
     public function test_revoked_assignment_removes_monitoring_access_and_is_audited(): void
     {
         $this->assignThroughUi();
