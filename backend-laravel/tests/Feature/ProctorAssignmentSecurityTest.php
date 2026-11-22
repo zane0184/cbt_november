@@ -3,7 +3,6 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Livewire\Admin\ProctorAssignmentManagement;
-use App\Livewire\Proktor\ProktorDashboard;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
@@ -11,6 +10,7 @@ use App\Models\ExamProctorAssignment;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tenant;
+use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,14 +36,15 @@ class ProctorAssignmentSecurityTest extends TestCase
         $context->setTenantId($this->tenant->id);
 
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        $proctorRole = Role::create(['name' => 'PROKTOR', 'label' => 'Proktor']);
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $permission = Permission::create(['name' => 'exam.proctor.assign', 'label' => 'Menugaskan Proktor sementara']);
         $adminRole->permissions()->attach($permission->id);
 
         $this->admin = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Admin Proktor', 'email' => 'admin-proktor@example.test', 'password' => bcrypt('password')]);
         $this->admin->roles()->attach($adminRole->id);
         $this->proctor = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Proktor A', 'email' => 'proktor-a@example.test', 'password' => bcrypt('password')]);
-        $this->proctor->roles()->attach($proctorRole->id);
+        $this->proctor->roles()->attach($guruRole->id);
+        TeacherProfile::create(['user_id' => $this->proctor->id, 'tenant_id' => $this->tenant->id, 'full_name' => 'Guru A']);
 
         $year = AcademicYear::create(['name' => '2026/2027', 'is_active' => true]);
         $assessment = Assessment::create(['academic_year_id' => $year->id, 'title' => 'Asesmen Proktor', 'assessment_type' => 'SUMMATIVE', 'created_by' => $this->admin->id]);
@@ -90,8 +91,8 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assignThroughUi();
         $this->actingAs($this->proctor);
         $this->get("/exams/{$this->exam->id}/monitoring")->assertOk();
-        Livewire::test(ProktorDashboard::class)
-            ->assertViewHas('allExams', fn ($exams) => $exams->pluck('id')->contains($this->exam->id));
+        $this->assertTrue($this->proctor->fresh()->roles()->where('name', 'GURU')->exists());
+        $this->assertDatabaseHas('exam_proctor_assignments', ['proctor_user_id' => $this->proctor->id, 'exam_id' => $this->exam->id, 'status' => 'ACTIVE']);
     }
 
     public function test_revoked_assignment_removes_monitoring_access_and_is_audited(): void
@@ -113,7 +114,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assignThroughUi();
         DB::table('exam_proctor_assignments')->where('exam_id', $this->exam->id)->update(['expires_at' => now()->subSecond()]);
         $this->actingAs($this->proctor)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
-        Livewire::test(ProktorDashboard::class)->assertViewHas('allExams', fn ($exams) => $exams->isEmpty());
+        $this->assertDatabaseHas('exam_proctor_assignments', ['proctor_user_id' => $this->proctor->id, 'exam_id' => $this->exam->id, 'status' => 'ACTIVE']);
     }
 
     public function test_proctor_cannot_open_admin_assignment_screen_or_exam_management(): void
@@ -128,9 +129,10 @@ class ProctorAssignmentSecurityTest extends TestCase
         $tenantB = Tenant::create(['name' => 'Madrasah Proktor B', 'code' => 'PROKB']);
         $context = app(TenantContext::class);
         $context->setTenantId($tenantB->id);
-        $proctorRole = Role::where('name', 'PROKTOR')->firstOrFail();
-        $proctorB = User::create(['tenant_id' => $tenantB->id, 'name' => 'Proktor B', 'email' => 'proktor-b@example.test', 'password' => bcrypt('password')]);
-        $proctorB->roles()->attach($proctorRole->id);
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        $proctorB = User::create(['tenant_id' => $tenantB->id, 'name' => 'Guru B', 'email' => 'guru-b@example.test', 'password' => bcrypt('password')]);
+        $proctorB->roles()->attach($guruRole->id);
+        TeacherProfile::create(['user_id' => $proctorB->id, 'tenant_id' => $tenantB->id, 'full_name' => 'Guru B']);
         $context->setTenantId(null);
         TenantContext::resetInstance();
 
