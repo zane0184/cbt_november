@@ -31,7 +31,7 @@ class ImportInstructionSheet implements FromArray, WithTitle, ShouldAutoSize, Wi
             ['REFERENSI', 'Gunakan pilihan dropdown yang tersedia. Referensi berasal dari tenant madrasah yang sedang login.'],
             ['VERSI', 'Jangan mengubah atau menghapus baris TEMPLATE_VERSION. Template versi berbeda akan ditolak.'],
             ['PENGISIAN', $isGuru
-                ? 'Guru PNS wajib mengisi NIP dan mengosongkan NIK. Guru HONORER wajib mengisi NIK dan mengosongkan NIP. NUPTK opsional.'
+                ? 'Guru ASN wajib mengisi NIP dan mengosongkan NIK. Guru HONORER wajib mengisi NIK dan mengosongkan NIP. NUPTK opsional.'
                 : 'NISN wajib. NIS opsional. Rombel dan Tahun Pelajaran harus dipilih dari daftar.'],
             ['PENUGASAN', $isGuru ? 'Isi sheet Penugasan Guru terpisah. Identitas Guru harus sama dengan NIP/NIK pada Data Guru.' : 'Tidak berlaku.'],
             ['CONTOH', 'Data contoh menggunakan nama CONTOH dan wajib dihapus. Data ini tidak boleh diimpor.'],
