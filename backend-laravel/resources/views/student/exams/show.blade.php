@@ -144,28 +144,87 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, submitting: false, submitOutcomeUnknown: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, heartbeatIntervalId: null, heartbeatBusy: false, fenceGeneration: null, leaseExpiresAt: null, mediaObjectUrls: new Set(), mediaRenderVersion: 0, submitting: false, submitOutcomeUnknown: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
+        const attemptScoped = path === '/execution' || path.startsWith('/attempts/');
+        if (attemptScoped && state.attemptId && (!Number.isSafeInteger(state.fenceGeneration) || state.fenceGeneration < 1)) {
+            throw new Error('Fencing generation belum dipulihkan secara durable. Permintaan ujian dihentikan untuk mencegah akses tanpa fence.');
+        }
+        const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': csrf,
+            'X-Device-Binding-ID': deviceBinding,
+            ...(options.headers || {})
+        };
+        if (attemptScoped && state.attemptId) headers['X-CBT-Fence-Generation'] = String(state.fenceGeneration);
         const response = await fetch(`${apiBase}${path}`, {
             credentials: 'same-origin',
             ...options,
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': csrf,
-                'X-Device-Binding-ID': deviceBinding,
-                ...(options.headers || {})
-            }
+            headers
         });
         const body = await response.json().catch(() => ({}));
         if (!response.ok || body.success === false) {
             const error = new Error(body.message || body.error || `Permintaan gagal (${response.status})`);
             error.status = response.status; error.body = body; throw error;
         }
+        await applyFenceFromResponse(body);
         return body;
+    }
+
+    async function applyFenceFromResponse(body, required = false) {
+        const data = body?.data || {};
+        const attempt = data.attempt || {};
+        const rawGeneration = data.fence_generation ?? attempt.fence_generation ?? body?.fence_generation;
+        if (rawGeneration === undefined || rawGeneration === null) {
+            if (required) throw new Error('Server belum mengembalikan fencing generation. Attempt tidak dapat dilanjutkan dengan aman.');
+            return false;
+        }
+        const generation = Number(rawGeneration);
+        if (!Number.isSafeInteger(generation) || generation < 1) throw new Error('Fencing generation dari server tidak valid.');
+        if (state.fenceGeneration !== null && generation < state.fenceGeneration) {
+            throw new Error('Respons server membawa fencing generation yang lebih lama. Respons diabaikan dan runner dihentikan.');
+        }
+        state.fenceGeneration = generation;
+        const lease = data.lease_expires_at ?? attempt.lease_expires_at ?? body?.lease_expires_at;
+        if (typeof lease === 'string' && Number.isFinite(Date.parse(lease))) state.leaseExpiresAt = lease;
+        if (state.attemptId && state.localDb) await persistAttemptContext();
+        return true;
+    }
+
+    function stopHeartbeat() {
+        if (state.heartbeatIntervalId !== null) window.clearInterval(state.heartbeatIntervalId);
+        state.heartbeatIntervalId = null;
+    }
+
+    function startHeartbeat() {
+        stopHeartbeat();
+        if (!state.attemptId || !Number.isSafeInteger(state.fenceGeneration)) return;
+        state.heartbeatIntervalId = window.setInterval(() => sendHeartbeat(), 60000);
+    }
+
+    async function sendHeartbeat() {
+        if (!state.attemptId || state.heartbeatBusy || state.submitting || state.submitOutcomeUnknown || state.expired) return;
+        state.heartbeatBusy = true;
+        try {
+            await api(`/attempts/${encodeURIComponent(state.attemptId)}/heartbeat`, { method: 'POST', body: JSON.stringify({}) });
+            setSaveStatus('Koneksi server dan lease ujian aktif');
+        } catch (error) {
+            const code = error.body?.code;
+            if (error.status === 409 && ['ATTEMPT_FENCE_MISMATCH', 'ATTEMPT_SESSION_MISMATCH', 'ATTEMPT_LEASE_INVALID', 'CONCURRENT_DEVICE_DENIED'].includes(code)) {
+                stopHeartbeat();
+                setRunnerLocked(true);
+                setSaveStatus('Sesi atau fencing ujian tidak lagi valid. Draft lokal dipertahankan; pengiriman dihentikan.', true);
+                showError('Sesi ujian tidak lagi memegang lease aktif. Jangan membuka ujian pada perangkat atau sesi lain. Hubungi Guru/Admin untuk pemulihan yang tercatat.');
+            } else {
+                setSaveStatus(`Heartbeat belum tersambung: ${error.message}. Draft tetap disimpan di perangkat.`, true);
+            }
+        } finally {
+            state.heartbeatBusy = false;
+        }
     }
 
     function showError(message) {
@@ -249,8 +308,17 @@
         const key = String(state.attemptId);
         await localTransaction(['attempt_context'], 'readwrite', tx => tx.objectStore('attempt_context').put({
             key, attemptId: key, examId: String(app.dataset.examId), studentId: String(app.dataset.studentId), deviceBinding,
+            fenceGeneration: state.fenceGeneration, leaseExpiresAt: state.leaseExpiresAt,
             updatedAt: Date.now()
         }));
+    }
+    async function readAttemptContext(attemptId) {
+        return new Promise((resolve, reject) => {
+            const tx = state.localDb.transaction(['attempt_context'], 'readonly');
+            const request = tx.objectStore('attempt_context').get(String(attemptId));
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error || new Error('Konteks Attempt lokal gagal dibaca.'));
+        });
     }
     async function persistSubmitState(status, terminalStatus = null) {
         const key = 'submit:' + String(state.attemptId);
@@ -338,6 +406,12 @@
             const uncertainSubmit = await findUncertainSubmitForExam();
             if (uncertainSubmit) {
                 state.attemptId = String(uncertainSubmit.context.attemptId);
+                const savedContext = await readAttemptContext(state.attemptId);
+                if (!savedContext || !Number.isSafeInteger(Number(savedContext.fenceGeneration)) || Number(savedContext.fenceGeneration) < 1) {
+                    throw new Error('Konteks fencing untuk Attempt sebelumnya tidak ditemukan. Data lokal dipertahankan; jangan membuat Attempt baru. Hubungi Guru/Admin.');
+                }
+                state.fenceGeneration = Number(savedContext.fenceGeneration);
+                state.leaseExpiresAt = savedContext.leaseExpiresAt || null;
                 state.submitOutcomeUnknown = true;
                 setRunnerLocked(true);
                 await persistSubmitState('UNKNOWN').catch(() => {});
@@ -351,7 +425,8 @@
             const payload = {};
             if (requireToken) payload.token = (el('exam-token')?.value || '').trim().toUpperCase();
             const started = await api('/attempts', { method: 'POST', body: JSON.stringify(payload) });
-            state.attemptId = started.data.id;
+            state.attemptId = String(started.data.id);
+            await applyFenceFromResponse(started, true);
             await loadExecution();
         } catch (error) {
             el('start-button').disabled = false;
@@ -362,6 +437,7 @@
 
     async function loadExecution(executionResponse = null, expectedAttemptId = null) {
         const execution = executionResponse || await api('/execution', { method: 'GET' });
+        await applyFenceFromResponse(execution, true);
         const data = execution.data;
         if (expectedAttemptId && String(data?.attempt?.id) !== String(expectedAttemptId)) {
             throw new Error('Server mengembalikan Attempt berbeda dari pengiriman yang sedang dipulihkan. Runner dihentikan untuk mencegah jawaban masuk ke Attempt lain.');
@@ -407,6 +483,7 @@
         renderNavigation(); renderQuestion();
         if (state.timerIntervalId !== null) window.clearInterval(state.timerIntervalId);
         state.timerIntervalId = window.setInterval(() => updateTimer(data.attempt.expires_at), 1000);
+        startHeartbeat();
         // Install the interval before the first tick: an already-expired Attempt
         // may auto-submit immediately, and its terminal path must be able to clear it.
         updateTimer(data.attempt.expires_at);
@@ -460,6 +537,53 @@
         const text = document.createElement('span'); text.dir = 'auto'; text.textContent = optionLabel(option); label.append(input, text); return label;
     }
 
+    function revokeMediaObjectUrls() {
+        for (const url of state.mediaObjectUrls) URL.revokeObjectURL(url);
+        state.mediaObjectUrls.clear();
+    }
+
+    async function renderSnapshotMedia(mediaArea, mediaItems) {
+        const version = ++state.mediaRenderVersion;
+        const allowed = new Set(['image/jpeg', 'image/png', 'audio/mpeg', 'video/mp4', 'application/pdf']);
+        for (const media of mediaItems || []) {
+            if (!media || !media.id) continue;
+            const declaredMime = String(media.mime_type || '').toLowerCase().split(';')[0].trim();
+            if (!allowed.has(declaredMime)) {
+                const warning = document.createElement('p'); warning.className = 'text-amber-700'; warning.textContent = 'Format media soal tidak didukung atau tidak diizinkan.'; mediaArea.appendChild(warning); continue;
+            }
+            try {
+                const headers = { 'Accept': declaredMime, 'X-Device-Binding-ID': deviceBinding, 'X-CBT-Fence-Generation': String(state.fenceGeneration) };
+                const response = await fetch(`/api/v1/media/${encodeURIComponent(media.id)}`, { method: 'GET', credentials: 'same-origin', headers, cache: 'no-store' });
+                if (!response.ok) {
+                    const error = new Error(`Media gagal dimuat (${response.status}).`); error.status = response.status; throw error;
+                }
+                const responseMime = String(response.headers.get('Content-Type') || '').toLowerCase().split(';')[0].trim();
+                if (responseMime !== declaredMime) throw new Error('Jenis file media dari server tidak sesuai snapshot soal.');
+                const declaredLength = Number(response.headers.get('Content-Length') || 0);
+                if (declaredLength > 10 * 1024 * 1024) throw new Error('Ukuran media melebihi batas 10 MB.');
+                const blob = await response.blob();
+                if (blob.size > 10 * 1024 * 1024 || blob.type.toLowerCase().split(';')[0].trim() !== declaredMime) throw new Error('Ukuran atau MIME media tidak valid.');
+                if (version !== state.mediaRenderVersion || !mediaArea.isConnected) continue;
+                const objectUrl = URL.createObjectURL(blob); state.mediaObjectUrls.add(objectUrl);
+                if (declaredMime.startsWith('image/')) {
+                    const image = document.createElement('img'); image.src = objectUrl; image.alt = 'Media soal'; image.loading = 'lazy'; image.referrerPolicy = 'no-referrer'; image.className = 'max-h-96 max-w-full rounded-xl border border-slate-200 object-contain'; mediaArea.appendChild(image);
+                } else if (declaredMime.startsWith('audio/')) {
+                    const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'metadata'; audio.src = objectUrl; audio.className = 'w-full'; mediaArea.appendChild(audio);
+                } else if (declaredMime.startsWith('video/')) {
+                    const video = document.createElement('video'); video.controls = true; video.preload = 'metadata'; video.src = objectUrl; video.className = 'max-h-96 w-full rounded-xl bg-black'; mediaArea.appendChild(video);
+                } else if (declaredMime === 'application/pdf') {
+                    const link = document.createElement('a'); link.href = objectUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Buka lampiran PDF soal'; link.className = 'inline-flex rounded-lg border border-blue-300 px-3 py-2 text-blue-700'; mediaArea.appendChild(link);
+                }
+            } catch (error) {
+                const warning = document.createElement('p'); warning.className = 'text-amber-700'; warning.textContent = `Media tidak dapat dimuat: ${error.message}`; mediaArea.appendChild(warning);
+                if (error.status === 409 || error.status === 401 || error.status === 403) {
+                    setRunnerLocked(true);
+                    showError('Otorisasi media atau fencing tidak valid. Draft jawaban tetap dipertahankan dan pengiriman ditahan. Hubungi Guru/Admin.');
+                }
+            }
+        }
+    }
+
     function renderQuestion() {
         const question = state.questions[state.current]; if (!question) return;
         const metadata = question.metadata || {}; const type = metadata.question_type || 'MC';
@@ -467,21 +591,11 @@
         el('question-number').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
         el('question-points').textContent = `${question.points ?? 0} poin`;
         el('question-stem').textContent = question.snapshot_stem || '';
-        const mediaArea = el('question-media'); mediaArea.replaceChildren();
-        (question.snapshot_media || []).forEach(media => {
-            if (!media || !media.id) return;
-            const url = `/api/v1/media/${encodeURIComponent(media.id)}`;
-            const mime = String(media.mime_type || '').toLowerCase();
-            if (mime.startsWith('image/')) {
-                const image = document.createElement('img'); image.src = url; image.alt = 'Media soal'; image.loading = 'lazy'; image.referrerPolicy = 'no-referrer'; image.className = 'max-h-96 max-w-full rounded-xl border border-slate-200 object-contain'; mediaArea.appendChild(image);
-            } else if (mime.startsWith('audio/')) {
-                const audio = document.createElement('audio'); audio.controls = true; audio.preload = 'none'; audio.src = url; audio.className = 'w-full'; mediaArea.appendChild(audio);
-            } else if (mime.startsWith('video/')) {
-                const video = document.createElement('video'); video.controls = true; video.preload = 'metadata'; video.src = url; video.className = 'max-h-96 w-full rounded-xl bg-black'; mediaArea.appendChild(video);
-            } else if (mime === 'application/pdf') {
-                const link = document.createElement('a'); link.href = url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'Buka lampiran PDF soal'; link.className = 'inline-flex rounded-lg border border-blue-300 px-3 py-2 text-blue-700'; mediaArea.appendChild(link);
-            }
-        });
+        const mediaArea = el('question-media');
+        state.mediaRenderVersion++;
+        revokeMediaObjectUrls();
+        mediaArea.replaceChildren();
+        renderSnapshotMedia(mediaArea, question.snapshot_media || []);
         const inputArea = el('question-input'); inputArea.replaceChildren();
         const options = question.snapshot_options || [];
         if (['MC', 'MULTIPLE_CHOICE', 'TRUE_FALSE'].includes(type)) {
@@ -609,6 +723,8 @@
     }
 
     function showCompletion(status) {
+        stopHeartbeat();
+        revokeMediaObjectUrls();
         if (state.timerIntervalId !== null) {
             window.clearInterval(state.timerIntervalId);
             state.timerIntervalId = null;
@@ -686,6 +802,7 @@
             for (const timer of state.timers.values()) clearTimeout(timer);
             state.timers.clear();
             await flushPendingSaves();
+            stopHeartbeat();
             // The save barrier is now clear. Lock the runner before the next
             // asynchronous IndexedDB write so no new edit can slip between
             // the final queue check and the submit request.
@@ -723,7 +840,10 @@
         }
     }
 
+    window.addEventListener('online', () => { if (state.attemptId && state.fenceGeneration) sendHeartbeat(); });
     window.addEventListener('beforeunload', event => {
+        stopHeartbeat();
+        revokeMediaObjectUrls();
         if (state.pending.size || state.conflicts.size || state.undurable.size || state.saving.size || state.submitOutcomeUnknown) {
             event.preventDefault();
             event.returnValue = '';
