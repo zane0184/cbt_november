@@ -53,9 +53,9 @@ class ExamParticipantController extends Controller
             ->where('tenant_id', $exam->tenant_id)
             ->findOrFail($validated['user_id']);
 
-        abort_unless($student->hasRole('SISWA'), 422, 'Peserta ujian harus merupakan akun Siswa.');
+        abort_unless($student->hasExactRole('SISWA'), 422, 'Peserta ujian harus merupakan akun Siswa.');
 
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             abort_unless(
                 $exam->assessment && TeacherAccess::canViewStudentInAssessmentScope(
                     $request->user(),
@@ -82,7 +82,7 @@ class ExamParticipantController extends Controller
                 abort(422, 'Peserta atau asesmen tidak berada pada tenant ujian.');
             }
 
-            if ($request->user()->hasRole('GURU')) {
+            if ($request->user()->hasExactRole('GURU')) {
                 abort_unless(TeacherAccess::canViewStudentInAssessmentScope(
                     $request->user(),
                     $student,
@@ -143,7 +143,7 @@ class ExamParticipantController extends Controller
                 abort(409, 'Peserta tidak dapat dihapus setelah memiliki riwayat attempt ujian.');
             }
 
-            if (request()->user()->hasRole('GURU')) {
+            if (request()->user()->hasExactRole('GURU')) {
                 $assessment = $lockedExam->assessment;
                 abort_unless($assessment && $lockedParticipant->user
                     && TeacherAccess::canViewStudentInAssessmentScope(
