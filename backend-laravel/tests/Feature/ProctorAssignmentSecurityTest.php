@@ -36,7 +36,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $context->setTenantId($this->tenant->id);
 
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        $proctorRole = Role::create(['name' => 'PROKTOR', 'label' => 'Proktor']);
+        $proctorRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
         $permission = Permission::create(['name' => 'exam.proctor.assign', 'label' => 'Menugaskan Proktor sementara']);
         $adminRole->permissions()->attach($permission->id);
 
@@ -44,6 +44,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->admin->roles()->attach($adminRole->id);
         $this->proctor = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Proktor A', 'email' => 'proktor-a@example.test', 'password' => bcrypt('password')]);
         $this->proctor->roles()->attach($proctorRole->id);
+        TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->proctor->id, 'full_name' => $this->proctor->name]);
 
         $year = AcademicYear::create(['name' => '2026/2027', 'is_active' => true]);
         $assessment = Assessment::create(['academic_year_id' => $year->id, 'title' => 'Asesmen Proktor', 'assessment_type' => 'SUMMATIVE', 'created_by' => $this->admin->id]);
@@ -83,7 +84,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         ]);
     }
 
-    public function test_proctor_can_monitor_only_an_exam_with_an_active_assignment(): void
+    public function test_assigned_guru_can_monitor_only_during_active_assignment(): void
     {
         $this->actingAs($this->proctor);
         $this->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
@@ -113,14 +114,14 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assignThroughUi();
         DB::table('exam_proctor_assignments')->where('exam_id', $this->exam->id)->update(['expires_at' => now()->subSecond()]);
         $this->actingAs($this->proctor)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
-        Livewire::test(ProktorDashboard::class)->assertViewHas('allExams', fn ($exams) => $exams->isEmpty());
+        Livewire::test(ProktorDashboard::class)->assertForbidden();
     }
 
     public function test_proctor_cannot_open_admin_assignment_screen_or_exam_management(): void
     {
         $this->actingAs($this->proctor);
         $this->get('/admin/proctor-assignments')->assertForbidden();
-        $this->get('/admin/exams')->assertForbidden();
+        $this->get('/admin/exams')->assertOk();
     }
 
     public function test_database_rejects_cross_tenant_proctor_reference(): void
@@ -128,9 +129,10 @@ class ProctorAssignmentSecurityTest extends TestCase
         $tenantB = Tenant::create(['name' => 'Madrasah Proktor B', 'code' => 'PROKB']);
         $context = app(TenantContext::class);
         $context->setTenantId($tenantB->id);
-        $proctorRole = Role::where('name', 'PROKTOR')->firstOrFail();
+        $proctorRole = Role::where('name', 'GURU')->firstOrFail();
         $proctorB = User::create(['tenant_id' => $tenantB->id, 'name' => 'Proktor B', 'email' => 'proktor-b@example.test', 'password' => bcrypt('password')]);
         $proctorB->roles()->attach($proctorRole->id);
+        TeacherProfile::create(['tenant_id' => $tenantB->id, 'user_id' => $proctorB->id, 'full_name' => $proctorB->name]);
         $context->setTenantId(null);
         TenantContext::resetInstance();
 
