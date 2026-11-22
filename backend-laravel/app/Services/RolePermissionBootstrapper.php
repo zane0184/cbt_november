@@ -8,21 +8,26 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Additive, idempotent role bootstrap.
- * Legacy OPERATOR accounts retain a compatibility role but share the Admin Madrasah permission set.
+ * Bootstrap only operational roles that may be created in a new standalone installation.
+ * OPERATOR, KAMAD and PROKTOR are retired identities. They receive no grants and
+ * must be handled only by an explicit, audited legacy-upgrade process.
  */
 class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
-        'ADMIN_MADRASAH' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'],
-        'KAMAD' => ['curriculum.view', 'exam.monitor', 'report.view'],
-        'GURU' => ['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'],
+        'ADMIN_MADRASAH' => [
+            'curriculum.view', 'curriculum.manage', 'academic.manage',
+            'user.manage', 'tenant.manage', 'exam.proctor.assign',
+        ],
+        'GURU' => [
+            'curriculum.view', 'question.view', 'question.manage',
+            'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token',
+            'exam.grade', 'exam.reopen', 'report.view',
+        ],
+        'SISWA' => [],
     ];
 
-    /** Legacy role alias: same portal and same administrative permissions as Admin Madrasah. */
-    private const OPTIONAL_ROLE_GRANTS = [
-        'OPERATOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'],
-    ];
+    private const LEGACY_ROLES = ['OPERATOR', 'KAMAD', 'PROKTOR', 'SUPER_ADMIN'];
 
     public function bootstrap(): void
     {
@@ -31,26 +36,27 @@ class RolePermissionBootstrapper
         $missing = array_values(array_diff($requiredRoleNames, $roles->keys()->all()));
 
         if ($missing !== []) {
-            throw new RuntimeException('Required curriculum roles are missing: ' . implode(', ', $missing));
+            throw new RuntimeException('Required operational roles are missing: ' . implode(', ', $missing));
         }
 
         DB::transaction(function () use ($roles): void {
             $permissions = [
-                'curriculum.view' => 'Lihat Struktur Kurikulum',
-                'curriculum.manage' => 'Kelola Struktur Kurikulum',
-                'academic.manage' => 'Kelola Data Akademik dan Rombel',
+                'curriculum.view' => 'Lihat struktur kurikulum',
+                'curriculum.manage' => 'Kelola struktur kurikulum',
+                'academic.manage' => 'Kelola data akademik dan Rombel',
                 'question.view' => 'Lihat Bank Soal sesuai penugasan Guru',
                 'question.manage' => 'Kelola Bank Soal sesuai penugasan Guru',
-                'user.manage' => 'Kelola akun Guru dan Siswa pada tenant aktif',
+                'user.manage' => 'Kelola akun Guru dan Siswa madrasah',
+                'tenant.manage' => 'Kelola identitas madrasah lokal',
                 'exam.manage' => 'Guru mengelola asesmen dan ujian sesuai penugasan',
                 'exam.assign' => 'Guru mengelola peserta ujian sesuai penugasan',
-                'exam.monitor' => 'Monitoring ujian sesuai kewenangan Guru atau penugasan Proktor',
+                'exam.monitor' => 'Monitoring Guru sesuai penugasan aktif',
                 'exam.close' => 'Guru menutup ujian sesuai kewenangan dan audit',
                 'exam.proctor.assign' => 'Admin menugaskan dan mencabut Guru pengawas sementara',
                 'exam.token' => 'Guru mengelola token ujian setelah publikasi',
                 'exam.grade' => 'Guru mengoreksi dan memfinalisasi nilai',
-                'exam.reopen' => 'Guru membuka kembali hasil final sesuai kewenangan',
-                'report.view' => 'Lihat laporan sesuai kewenangan Guru/Kamad',
+                'exam.reopen' => 'Guru mengoreksi hasil final sesuai kewenangan dan audit',
+                'report.view' => 'Lihat laporan akademik sesuai penugasan Guru',
             ];
 
             $permissionIds = [];
@@ -60,38 +66,14 @@ class RolePermissionBootstrapper
 
             foreach (self::ROLE_GRANTS as $roleName => $permissionNames) {
                 $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
-                $roles->get($roleName)->permissions()->syncWithoutDetaching($ids);
+                $roles->get($roleName)->permissions()->sync($ids);
             }
 
-            foreach (self::OPTIONAL_ROLE_GRANTS as $roleName => $permissionNames) {
-                $role = Role::query()->where('name', $roleName)->first();
-                if ($role) {
-                    $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
-                    $role->permissions()->syncWithoutDetaching($ids);
-                }
-            }
-
-            // Remove stale grants that would expose Guru's CBT operations to Admin/Operator.
-            $revokedGrants = [
-                'ADMIN_MADRASAH' => ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
-                'OPERATOR' => ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
-                'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
-                'GURU' => ['curriculum.manage'],
-                'PROKTOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
-            ];
-
-            foreach ($revokedGrants as $roleName => $permissionNames) {
-                $role = $roles->get($roleName) ?? Role::query()->where('name', $roleName)->first();
-                if (!$role) {
-                    continue;
-                }
-
-                $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
-                $role->permissions()->detach($ids);
-            }
-
-            // PROKTOR is a legacy historical role only; no permanent Proktor capability remains.
-            Role::query()->where('name', 'PROKTOR')->first()?->permissions()->detach();
+            // Retire permission grants first. Do not delete legacy role rows or reassign users
+            // here; a separate versioned upgrade migration must handle account mapping with audit.
+            Role::query()->whereIn('name', self::LEGACY_ROLES)->get()->each(
+                fn (Role $legacyRole) => $legacyRole->permissions()->detach()
+            );
         });
     }
 }
