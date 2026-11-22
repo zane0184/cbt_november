@@ -99,7 +99,7 @@ class StudentLifecycleService
             }
             $fromYearMatch = preg_match('/^(\\d{4})\\/(\\d{4})$/', (string) $from->academicYear->name, $fromYearParts);
             $toYearMatch = preg_match('/^(\\d{4})\\/(\\d{4})$/', (string) $to->academicYear->name, $toYearParts);
-            if ($fromYearMatch !== 1 || $toYearMatch !== 1 || (int) $toYearParts[1] !== (int) $fromYearParts[1] + 1) {
+            if ($fromYearMatch !== 1 || $toYearMatch !== 1 || (int) $fromYearParts[2] !== (int) $toYearParts[1] || (int) $toYearParts[1] !== (int) $fromYearParts[1] + 1) {
                 throw ValidationException::withMessages(['actionToRombelId' => 'Naik kelas/tinggal kelas hanya dapat dilakukan ke tahun pelajaran tepat berikutnya.']);
             }
             if ((int) $to->gradeLevel->level !== (int) $from->gradeLevel->level + $gradeDelta) {
