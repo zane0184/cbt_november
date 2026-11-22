@@ -171,7 +171,7 @@ class TeacherPortalFoundationTest extends TestCase
         $this->actingAs($this->teacher)
             ->get('/guru/bank-soal')
             ->assertOk()
-            ->assertSee('Bank Soal & Modul Asesmen');
+            ->assertSee('Bank Soal & Modul Asesmen', false);
     }
 
     public function test_guru_can_open_exam_builder_through_teacher_route(): void
@@ -179,7 +179,7 @@ class TeacherPortalFoundationTest extends TestCase
         $this->actingAs($this->teacher)
             ->get('/guru/asesmen')
             ->assertOk()
-            ->assertSee('Asesmen & Ujian Guru')
+            ->assertSee('Asesmen & Ujian Guru', false)
             ->assertSee('Portal Guru');
     }
 
