@@ -13,7 +13,33 @@ class EnsureActiveAccount
     {
         $user = $request->user();
 
-        if (!$user || (bool) $user->is_active) {
+        if (!$user) {
+            return $next($request);
+        }
+
+        $eligible = (bool) $user->is_active;
+        if ($eligible) {
+            $roles = $user->roles()->get(['name']);
+            $eligible = $roles->count() === 1
+                && in_array($roles->first()?->name, ['ADMIN_MADRASAH', 'GURU', 'SISWA'], true);
+
+            if ($eligible && $roles->first()->name === 'GURU') {
+                $profile = $user->teacherProfile;
+                $eligible = $profile && (
+                    ($profile->employment_type === 'ASN' && preg_match('/^\\d{18}$/', (string) $profile->nip) === 1)
+                    || ($profile->employment_type === 'HONORER' && preg_match('/^\\d{16}$/', (string) $profile->nik) === 1)
+                );
+            }
+
+            if ($eligible && $roles->first()->name === 'SISWA') {
+                $profile = $user->studentProfile;
+                $eligible = $profile
+                    && $profile->academic_status === 'ACTIVE'
+                    && preg_match('/^\\d{10}$/', (string) $profile->nisn) === 1;
+            }
+        }
+
+        if ($eligible) {
             return $next($request);
         }
 
@@ -32,12 +58,12 @@ class EnsureActiveAccount
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Akun tidak aktif. Hubungi Admin Madrasah.',
+                'message' => 'Akun atau status akademik tidak memenuhi syarat akses. Hubungi Admin Madrasah.',
             ], 403);
         }
 
         return redirect()->route('login')->withErrors([
-            'identifier' => 'Akun tidak aktif. Hubungi Admin Madrasah.',
+            'identifier' => 'Akun atau status akademik tidak memenuhi syarat akses. Hubungi Admin Madrasah.',
         ]);
     }
 }
