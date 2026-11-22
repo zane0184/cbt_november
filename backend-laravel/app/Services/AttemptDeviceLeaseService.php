@@ -14,7 +14,8 @@ class AttemptDeviceLeaseService
     {
         $identity = app(AttemptAuthSessionBinding::class)->identity($request);
         if (!$identity || !$attempt->auth_session_hash
-            || !hash_equals($attempt->auth_session_hash, $identity['hash'])) {
+            || !hash_equals($attempt->auth_session_hash, $identity['hash'])
+            || $attempt->auth_session_type !== $identity['type']) {
             return false;
         }
 
@@ -74,7 +75,8 @@ class AttemptDeviceLeaseService
             ->first();
 
         $now = now();
-        if (!$lease) {
+        if (!$lease || !$lease->auth_session_hash
+            || !hash_equals($lease->auth_session_hash, $identity['hash'])) {
             return false;
         }
 
