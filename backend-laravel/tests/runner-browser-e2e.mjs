@@ -428,7 +428,7 @@ try {
     assert.equal(await page.locator('#question-stem').getAttribute('dir'), 'auto');
     assert.equal(await page.locator('#question-input textarea').getAttribute('dir'), 'auto');
     await page.locator('#question-input textarea').fill('أَرْبَعَة');
-    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     assert.equal(scenario.serverAnswers[0].answer_payload.text, 'أَرْبَعَة');
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
@@ -455,7 +455,7 @@ try {
     });
     assert.equal(scenario.heartbeatCalls, 1);
     await chooseFirstAnswer(page);
-    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     assert.ok(scenario.attemptHeaders.some(item => item.path.endsWith('/answers/snapshot-1') && item.fence === '2'));
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
@@ -559,7 +559,7 @@ try {
     await page.reload();
     scenario.online = true;
     await start(page);
-    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     assert.equal(await page.locator('#question-input input[value="opt-a"]').isChecked(), true);
     assert.equal(scenario.startCalls, 1, 'Normal reload must resume the saved Attempt without posting a second start');
     assert.equal(scenario.heartbeatCalls, 1, 'Normal reload must recover/renew the bound lease through heartbeat');
@@ -577,7 +577,7 @@ try {
     scenario.legacyPending = true;
     const { context, page } = await newPage(browser, scenario);
     await start(page);
-    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     assert.equal(await page.locator('#question-input input[value="opt-b"]').isChecked(), true);
     assert.equal(scenario.answerWrites, 1);
     assert.equal(scenario.serverAnswers[0].answer_payload.selected_option_id, 'opt-b');
