@@ -149,7 +149,7 @@ async function attachApiMock(page, scenario) {
       const existing = scenario.answerRequestLedger.get(payload.client_request_id);
       if (existing) {
         if (existing.payloadHash !== payloadHash) return json(route, 409, { success: false, code: 'IDEMPOTENCY_KEY_REUSED' });
-        return json(route, 200, { ...existing.response, idempotent: true, message: 'Request yang sama telah diterima sebelumnya.' });
+        return json(route, 200, { ...existing.response, data: { ...existing.response.data, fence_generation: scenario.generation }, fence_generation: scenario.generation, lease_expires_at: scenario.leaseExpiresAt, idempotent: true, message: 'Request yang sama telah diterima sebelumnya.' });
       }
       scenario.answerCommits++;
       scenario.serverAnswers = [{
