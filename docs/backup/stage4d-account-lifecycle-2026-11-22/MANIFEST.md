@@ -170,3 +170,13 @@ Manifest sebelumnya disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22
 | backend-laravel/tests/Feature/StudentWebLoginTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/StudentWebLoginTest.php.before-admin-login-response-diagnostic-2026-11-22 | 44ee3349ae51c91293d1dcd1fd0473fa19912e35 | 15589 | c13cf3c3f2419e4ee7ba56b2e923cc0bf4a6c0d4 |
 
 Manifest sebelumnya disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-admin-login-response-diagnostic-2026-11-22` (blob SHA `527ebf0905ac3f31af89bd58439da554736c909d`, backup commit `4fed94bb171aac0ace533406c3978de6ad2d3662`). Backup source diverifikasi identik berdasarkan Git blob SHA.
+
+
+## Snapshot tambahan — sebelum explicit web guard hardening (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/app/Http/Controllers/AuthWebController.php | docs/backup/stage4d-account-lifecycle-2026-11-22/AuthWebController.php.before-explicit-web-guard-2026-11-22 | 8166b4e201ca34d71f1ac6a7d396c0e6da078e9e | 3646 | fa236e6295cffb33d8256945731f0c7237e06425 |
+| backend-laravel/routes/web.php | docs/backup/stage4d-account-lifecycle-2026-11-22/web.php.before-explicit-auth-web-guard-2026-11-22 | d1a6aef0dc20b4d525f76812776bdc2d6521a931 | 7300 | 8c3fd18ab154d34731f07a827beb697d1d13dae3 |
+
+Manifest sebelumnya disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-explicit-web-guard-2026-11-22` (blob SHA `08c7a4607875d7b16a56a5c2bf1eefd42e436b00`, backup commit `6fe04b0bded917c4a4855ef658911848e6c37b15`). Kedua backup source diverifikasi identik berdasarkan Git blob SHA.
