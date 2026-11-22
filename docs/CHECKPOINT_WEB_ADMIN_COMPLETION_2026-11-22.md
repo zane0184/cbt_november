@@ -271,3 +271,57 @@ Backup:
 1. Verifikasi P0/P1/P2 pada runtime PHP 8.3 + disposable MySQL 8/InnoDB yang dapat diamati.
 2. Lanjut P3 lifecycle akademik Siswa (mutasi/naik kelas/tinggal kelas/kelulusan/alumni) tanpa menghapus histori.
 3. Lanjut P4 kurikulum dan integrasi kurikulum; lalu P5 ruang/placement/pengawas tanpa session model.
+
+
+## ADDENDUM P3 — SIKLUS HIDUP SISWA, PENEMPATAN, MUTASI, DAN HISTORI (22 NOV 2026)
+
+### AUDIT
+- Implementasi awal `StudentRombelManagement` hanya menambahkan siswa ke rombel; belum ada mutasi, keluarkan dari rombel, naik kelas, tinggal kelas, kelulusan, alumni, arsip, atau histori akademik terstruktur.
+- Pivot `rombel_student` sebelumnya tidak menyimpan `academic_year_id` secara langsung dan tidak membatasi satu siswa ke satu rombel per tahun pelajaran. Penempatan ganda dalam tahun yang sama dapat terjadi.
+- Data profil Siswa belum menyimpan status akademik dan tahun masuk. Login Siswa sebelumnya hanya bergantung pada akun/role dan NISN, sehingga status akademik nonaktif belum menjadi pembatas login dan peserta ujian.
+
+### DESAIN
+- `rombel_student` menjadi penempatan per tahun pelajaran; maksimal satu baris per tenant+siswa+tahun. Riwayat perubahan disimpan terpisah, bukan dengan menghapus histori akademik.
+- `student_academic_events` adalah ledger append-only: REGISTERED, ENROLLED, TRANSFERRED, REMOVED, PROMOTED, RETAINED, GRADUATED, STATUS_CHANGED, REACTIVATED, ARCHIVED, ALUMNI.
+- Status akademik: ACTIVE, INACTIVE, ARCHIVED, GRADUATED, ALUMNI; terpisah dari status aktif akun.
+- Mutasi hanya dalam tahun dan tingkat kelas yang sama. Naik kelas harus ke tahun pelajaran tepat berikutnya dan tingkat +1. Tinggal kelas ke tahun pelajaran tepat berikutnya dan tingkat sama. Kelulusan hanya kelas 6. Alumni hanya setelah lulus.
+- Tahun masuk siswa disimpan pada `entry_academic_year_id`; tahun masuk tidak berubah ketika mutasi/naik kelas.
+- Setiap tindakan penempatan/status wajib memiliki tanggal efektif dan alasan 10–1000 karakter. Service memvalidasi ulang, transaksi mengunci tenant+siswa+rombel, dan audit log merekam actor/aksi/alasan.
+- Siswa non-ACTIVE tidak dapat login atau menjadi peserta ujian. Middleware memblokir sesi yang sudah ada; login resolver dan ExamManagement memfilter status akademik, akun aktif, role tunggal, dan tahun aktif.
+
+### IMPLEMENTASI
+- Migration `2026_11_22_000008_add_student_academic_lifecycle_fields_and_year_membership.php`:
+  - tambah `student_profiles.academic_status` default ACTIVE dan `entry_academic_year_id`;
+  - tambah/backfill `rombel_student.academic_year_id`;
+  - preflight menolak data lama yang memiliki lebih dari satu penempatan pada siswa+tahun; tidak menghapus data otomatis;
+  - unique tenant+student+academic_year dan composite FK tenant-aware;
+  - composite unique academic_years(id,tenant_id) untuk referensi lintas tenant.
+- Migration `2026_11_22_000009_create_student_academic_events_table.php` membuat ledger histori dengan composite FK tenant-aware.
+- `StudentAcademicEvent.php` append-only; update/delete ditolak. Relasi histori memakai withTrashed agar nama siswa/rombel/tahun/petugas tetap terlihat pada data arsip.
+- `StudentLifecycleService.php` menangani enroll, transfer, remove, promote, retain, graduate, perubahan status, reaktivasi, arsip, alumni; actor harus sesi Admin Madrasah yang sama, satu role, permission academic.manage.
+- `StudentRombelManagement.php` dan view diperluas menjadi halaman Siswa & Riwayat Akademik: daftar siswa/status, penempatan semua tahun, mutasi, keluarkan, naik kelas, tinggal kelas, lulus, arsip, nonaktif, aktif kembali, alumni, histori.
+- `StudentProfile.php`, `Rombel.php`, `RombelStudent.php` diperbarui untuk entry year, event history, pivot academic year, dan relasi historis.
+- `UserManagement.php` mewajibkan tahun masuk saat membuat Siswa, membuat event REGISTERED, serta alasan audit wajib untuk create/edit/reset password. View menampilkan status akademik dan tahun masuk.
+- `ImportWorkbookService.php` menyimpan academic_year_id pada penempatan, entry year, status ACTIVE, dan event ENROLLED dengan batch ID.
+- `LoginIdentityResolver.php` hanya menyelesaikan identitas Siswa berstatus ACTIVE.
+- `EnsureActiveAccount.php` menolak role ganda/noncanonical, identitas Guru yang tidak sesuai kategori, dan Siswa non-ACTIVE termasuk sesi/token lama.
+- `ExamManagement.php` hanya memasukkan Siswa aktif, akun aktif, role tunggal SISWA, dan penempatan rombel tahun aktif.
+- Layout mengganti label menu menjadi Siswa & Riwayat Akademik.
+- Test baru `StudentLifecycleServiceTest.php` mencakup enrollment, duplicate prevention, transfer, promotion, retention, graduation, alumni, status/reactivation, DB unique index, Livewire enrollment, role conflict, dan append-only.
+- Test `AuthTest`, `AdminUserManagementScopeTest`, `ImportWorkbookServiceTest` diperbarui untuk identitas/status/entry year/history/audit reason.
+- Workflow WA-01 menambahkan test lifecycle.
+
+Backup P3:
+- Model/component/service/import/auth/user-management: `docs/backup/web-admin-completion-2026-11-22/student-lifecycle/`.
+- File sebelum P3 juga tersedia pada checkpoint backup sebelumnya.
+- Migration 000008 memiliki backup sebelum penambahan composite key academic year.
+
+### PENGUJIAN
+- GitHub Actions latest HEAD `a58de8f7a101a170f822d96da7bc21c977ca83cb`: check `safe-runtime-tests` FAILURE pada 22 Nov 2026 17:52:47Z; job tidak memiliki steps (step list kosong) dan log download tidak tersedia. Ini bukan bukti test code gagal; runtime tests tidak sempat berjalan.
+- PHP lint, PHPUnit P3, MySQL 8 migration, concurrency, browser Livewire: NOT RUN / NOT VERIFIED pada exact HEAD.
+- Tidak ada migration yang dijalankan ke database produksi.
+
+### NEXT
+1. Pulihkan/diagnosis runner WA-01 atau sediakan runtime PHP 8.3 + MySQL 8 disposable agar migration dan seluruh test benar-benar dieksekusi.
+2. P4 audit dan selesaikan master kurikulum/registrasi kurikulum/CP-TP-ATP/versioning di portal Admin.
+3. P5 audit ruang ujian, penempatan peserta, dan penugasan pengawas langsung ke Exam+Room; jangan menambah ExamSession/SessionRoom.
