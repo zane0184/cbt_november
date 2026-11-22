@@ -184,6 +184,31 @@
             updatedAt: Date.now()
         }));
     }
+    async function persistSubmitState(status, terminalStatus = null) {
+        const key = 'submit:' + String(state.attemptId);
+        await localTransaction(['local_meta'], 'readwrite', tx => tx.objectStore('local_meta').put({
+            key, attemptId: String(state.attemptId), examId: String(app.dataset.examId),
+            deviceBinding, status, terminalStatus, updatedAt: Date.now()
+        }));
+    }
+    async function findUncertainSubmitForExam() {
+        const rows = await new Promise((resolve, reject) => {
+            const tx = state.localDb.transaction(['attempt_context', 'local_meta'], 'readonly');
+            const contextsRequest = tx.objectStore('attempt_context').getAll();
+            const statesRequest = tx.objectStore('local_meta').getAll();
+            tx.oncomplete = () => resolve({
+                contexts: contextsRequest.result || [],
+                states: statesRequest.result || []
+            });
+            tx.onerror = () => reject(tx.error || new Error('Status submit lokal gagal dibaca.'));
+        });
+        const statesByAttempt = new Map(rows.states.filter(row => row.attemptId).map(row => [String(row.attemptId), row]));
+        return rows.contexts
+            .filter(row => row.examId === String(app.dataset.examId) && row.deviceBinding === deviceBinding)
+            .map(row => ({ context: row, submit: statesByAttempt.get(String(row.attemptId)) }))
+            .filter(row => row.submit && ['SUBMITTING', 'UNKNOWN'].includes(row.submit.status))
+            .sort((a, b) => Number(b.submit.updatedAt || 0) - Number(a.submit.updatedAt || 0))[0] || null;
+    }
     async function persistPending(snapshotId, item) {
         const key = localKey(state.attemptId, snapshotId);
         await localTransaction(['answers', 'sync_queue'], 'readwrite', tx => {
@@ -242,6 +267,17 @@
         el('start-status').textContent = 'Memeriksa penyimpanan perangkat…';
         try {
             state.localDb = await openLocalDatabase();
+            const uncertainSubmit = await findUncertainSubmitForExam();
+            if (uncertainSubmit) {
+                state.attemptId = String(uncertainSubmit.context.attemptId);
+                state.submitOutcomeUnknown = true;
+                await persistSubmitState('UNKNOWN').catch(() => {});
+                el('submit-button').disabled = true;
+                el('check-submit-status').classList.remove('hidden');
+                showError('Ditemukan pengiriman sebelumnya yang belum memiliki hasil definitif. Sistem tidak akan membuat Attempt baru atau mengirim ulang; periksa status Attempt di server.');
+                await recoverSubmitStatus();
+                return;
+            }
             el('start-status').textContent = 'Menghubungkan ke server…';
             const payload = {};
             if (requireToken) payload.token = (el('exam-token')?.value || '').trim().toUpperCase();
@@ -504,9 +540,11 @@
             const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}`, { method: 'GET' });
             const status = result.data?.status;
             if (status === 'SUBMITTED' || status === 'EXPIRED') {
+                await persistSubmitState('CONFIRMED', status).catch(() => {});
                 showCompletion(status);
                 return;
             }
+            await persistSubmitState('UNKNOWN').catch(() => {});
             showError('Server masih melaporkan Attempt belum terminal. Status pengiriman belum dapat dipastikan; jangan kirim ulang. Hubungi Guru/Admin untuk pemeriksaan.');
         } catch (error) {
             showError(`Status pengiriman belum dapat dipastikan: ${error.message}. Jangan kirim ulang dan jangan hapus data browser; coba periksa status lagi atau hubungi Guru/Admin.`);
@@ -528,12 +566,14 @@
             for (const timer of state.timers.values()) clearTimeout(timer);
             state.timers.clear();
             await flushPendingSaves();
+            await persistSubmitState('SUBMITTING');
             submitRequestStarted = true;
             const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/submit`, { method: 'POST', body: JSON.stringify({}) });
             const status = result.data?.status;
             if (status !== 'SUBMITTED' && status !== 'EXPIRED') {
                 throw new Error('Respons submit tidak memuat status terminal yang dapat diverifikasi.');
             }
+            await persistSubmitState('CONFIRMED', status).catch(() => {});
             showCompletion(status);
         } catch (error) {
             state.submitting = false;
