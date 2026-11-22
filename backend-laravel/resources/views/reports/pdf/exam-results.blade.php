@@ -67,7 +67,7 @@
         </tbody>
     </table>
 
-    @if(!empty($teacherName) || !empty($principalName))
+    @if(!empty($teacherName))
         <table class="signature">
             <tr>
                 <td>Mengetahui,<br>Kepala Madrasah</td>
