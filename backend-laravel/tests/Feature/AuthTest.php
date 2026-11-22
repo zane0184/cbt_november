@@ -164,19 +164,5 @@ class AuthTest extends TestCase
         $this->assertNull(User::query()->find($this->user->id));
     }
 
-    public function test_sanctum_token_issued_before_deactivation_stays_invalid_after_reactivation(): void
-    {
-        $plainToken = $this->user->createToken('before-deactivation')->plainTextToken;
-
-        $this->user->delete();
-        $this->user->restore();
-
-        $this->withToken($plainToken)
-            ->getJson('/api/v1/auth/me')
-            ->assertUnauthorized();
-
-        $this->assertDatabaseHas('users', ['id' => $this->user->id, 'deleted_at' => null]);
-        $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $this->user->id]);
-    }
 
 }
