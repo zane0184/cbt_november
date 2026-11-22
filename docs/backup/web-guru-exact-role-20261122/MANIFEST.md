@@ -34,3 +34,12 @@ Jumlah snapshot backup terdaftar: 5. Seluruh blob SHA yang tercantum: MATCH. Bac
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 9755942010bd6c470a969144f8ebf24f574c369e | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-report-checkpoint-reconcile | 9755942010bd6c470a969144f8ebf24f574c369e | 05247536b8c89a64a66e989b884ea3ccdc31e38c | MATCH |
 
 Jumlah snapshot backup terdaftar: 8. Seluruh blob SHA yang tercantum: MATCH. Tidak ada snapshot lama yang ditimpa.
+
+## Backup tambahan — isolasi tenant-context dan assignment test
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| backend-laravel/tests/Feature/TeacherPortalFoundationTest.php | 9e5211a92294e96ed48a984171085a274ffec201 | docs/backup/web-guru-exact-role-20261122/TeacherPortalFoundationTest.php.before-tenant-context-test-order-fix | 9e5211a92294e96ed48a984171085a274ffec201 | 20d3814ef71949db3348693166552e756d1b792e | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | c990e3de769b632843f186a833a94fe2385eb6e0 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-tenant-context-test-order-fix | c990e3de769b632843f186a833a94fe2385eb6e0 | b6d163a722a1033a5312798d9550f79ac44a01e3 | MATCH |
+
+Jumlah snapshot backup terdaftar: 10. Seluruh blob SHA yang tercantum: MATCH.
