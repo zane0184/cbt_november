@@ -9,6 +9,7 @@ use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
 use App\Models\Subject;
 use App\Support\Security\TeacherAccess;
+use App\Support\Security\TeacherPortalAccess;
 use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -36,12 +37,20 @@ class QuestionBank extends Component
     private function assertCanAccess(): void
     {
         $user = auth()->user();
+        abort_unless($user && $user->tenant_id, 403, 'Bank soal hanya dapat diakses Guru sesuai penugasan.');
+
+        // Do not trust a previously loaded role relation after role changes.
+        $user->unsetRelation('roles');
+        abort_unless($user->hasPermission('question.view'), 403, 'Bank soal hanya dapat diakses Guru sesuai penugasan.');
+
+        // Reuse the canonical Portal Guru boundary: exactly one GURU role,
+        // persisted tenant identity, and exactly one tenant-local TeacherProfile.
+        app(TeacherPortalAccess::class)->profile($user);
+
+        // A valid profile without an active academic assignment is not enough
+        // to enter the subject-scoped Guru management screens.
         abort_unless(
-            $user
-                && $user->tenant_id
-                && $user->hasRole('GURU')
-                && !$user->hasRole('ADMIN_MADRASAH')
-                && $user->hasPermission('question.view'),
+            TeacherAccess::assignedSubjectIds($user) !== [],
             403,
             'Bank soal hanya dapat diakses Guru sesuai penugasan.'
         );
