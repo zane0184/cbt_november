@@ -42,6 +42,7 @@ class QuestionMultiCurriculumMapping extends Model
             $outcome = MultiLearningOutcome::withoutGlobalScopes()
                 ->where('tenant_id', $model->curriculum_owner_id)
                 ->where('multi_curriculum_version_id', $model->multi_curriculum_version_id)
+                ->where('status', 'ACTIVE')->whereNull('deleted_at')
                 ->whereKey($model->multi_learning_outcome_id)->first();
 
             if (!$outcome) {
