@@ -9,6 +9,7 @@ use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class StudentLifecycleService
@@ -284,6 +285,11 @@ class StudentLifecycleService
 
     private function record(string $tenantId, string $actorId, StudentProfile $student, ?string $academicYearId, ?string $fromRombelId, ?string $toRombelId, string $eventType, string $effectiveDate, string $reason, array $metadata = []): StudentAcademicEvent
     {
+        Validator::make(
+            ['effective_date' => $effectiveDate, 'reason' => $reason],
+            ['effective_date' => ['required', 'date'], 'reason' => ['required', 'string', 'min:10', 'max:1000']]
+        )->validate();
+
         $context = app(TenantContext::class);
         $previousTenantId = $context->getTenantId();
         $context->setTenantId($tenantId);
