@@ -57,6 +57,26 @@ class ExamAttemptController extends Controller
                 ], 403);
             }
 
+            // An expired/malformed IN_PROGRESS row must be closed by the server
+            // expiry lifecycle before a new attempt can be created. Never create a
+            // second IN_PROGRESS attempt while stale lifecycle state remains.
+            $expiryPending = $participant->attempts()
+                ->where('status', 'IN_PROGRESS')
+                ->where(function ($query) {
+                    $query->whereNull('expires_at')
+                        ->orWhere('expires_at', '<=', now());
+                })
+                ->lockForUpdate()
+                ->exists();
+
+            if ($expiryPending) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attempt sebelumnya telah melewati batas waktu dan sedang menunggu penutupan server. Silakan coba kembali setelah proses penutupan.',
+                    'code' => 'ATTEMPT_EXPIRY_PENDING'
+                ], 409);
+            }
+
             // Lock the active child attempt only after its parent rows.
             $existingAttempt = $participant->attempts()
                 ->where('status', 'IN_PROGRESS')
