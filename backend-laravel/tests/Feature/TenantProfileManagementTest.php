@@ -48,6 +48,7 @@ class TenantProfileManagementTest extends TestCase
 
         Livewire::test(TenantProfileManagement::class)
             ->set('name', 'MIN 15 Jakarta Selatan')
+            ->set('principalName', 'H. Asim, M.A.')
             ->set('nsm', '121231740015')
             ->set('npsn', '20104876')
             ->set('address', 'Jl. Contoh Madrasah No. 15, Jakarta Selatan')
@@ -61,6 +62,7 @@ class TenantProfileManagementTest extends TestCase
         $tenantA->refresh();
         $tenantB->refresh();
         $this->assertSame('MIN 15 Jakarta Selatan', $tenantA->name);
+        $this->assertSame('H. Asim, M.A.', $tenantA->principal_name);
         $this->assertSame('121231740015', $tenantA->nsm);
         $this->assertSame('20104876', $tenantA->npsn);
         $this->assertSame('Madrasah Tetap B', $tenantB->name);
