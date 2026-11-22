@@ -21,11 +21,11 @@ class LoginIdentityResolver
 
         $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
             ->whereRaw('LOWER(username) = ?', [$normalized])->get();
-        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
+        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->where(function ($query) use ($normalized): void {
                 $query->whereRaw('LOWER(nip) = ?', [$normalized])->orWhereRaw('LOWER(nik) = ?', [$normalized]);
             })->pluck('user_id');
-        $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
+        $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->where('nisn', $identifier)->pluck('user_id');
 
         $candidateIds = collect($usernameUsers->pluck('id'))
