@@ -396,7 +396,9 @@ try {
     await start(page);
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt terverifikasi belum tersedia'));
     assert.equal(await page.locator('#question-input input[value="opt-a"]').isChecked(), true);
-    assert.equal(scenario.startCalls, 2, 'Resume request must resolve to the same active Attempt in this mock');
+    assert.equal(scenario.startCalls, 1, 'Normal reload must resume the saved Attempt without posting a second start');
+    assert.equal(scenario.heartbeatCalls, 1, 'Normal reload must recover/renew the bound lease through heartbeat');
+    assert.ok(scenario.attemptHeaders.some(item => item.path === '/attempts/attempt-1' && item.fence === '2'), 'Status lookup must use the generation returned by heartbeat');
     assert.ok(scenario.answerWrites >= 2, 'The persisted local answer must be retried after reload');
     assert.equal(scenario.serverAnswers[0].answer_payload.selected_option_id, 'opt-a');
     assert.deepEqual(scenario.pageErrors, []);
