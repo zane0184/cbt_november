@@ -84,3 +84,51 @@ Handover: refresh remote refs, Issue #10, source blobs dan CI sebelum melanjutka
 
 ### STATUS
 `BLOCKED — CROSS-AGENT DECISION PENDING`. Keputusan produk portal/KAMAD/Proktor telah final, tetapi owner approvals, exhaustive KAMAD inventory, exact branch HEAD, lifecycle/recovery contract, lock order dan CI exact-SHA masih terbuka. Tidak ada izin implementasi runtime.
+
+
+# CHECKPOINT KOREKSI FINAL — WEB CBT ONLY (22 NOVEMBER 2026)
+
+## IDENTITAS PEKERJAAN
+- Agent: 1
+- Repository: `zane0184/cbt_november`
+- Branch kerja: `work/stage4b-room-session-20261122`
+- Commit terakhir yang dibuat dan diverifikasi pada sesi audit ini: `69f16da92452fd28a85aec2a8239c5d5ba9a10dd` (manifest dokumen). Konektor tidak memberikan endpoint pembacaan ref HEAD langsung; jangan menyebut SHA ini sebagai HEAD remote independen tanpa refresh tambahan.
+- Checkpoint: dokumen ini + addendum koreksi final Web CBT.
+
+## AUDIT
+- Instruksi koordinator terbaru #7078921888 menetapkan scope sampai Juni 2027 hanya Web CBT; Android native dan Web Super Admin ditunda dan bukan blocker.
+- Portal aktif hanya Admin Madrasah, Guru, Siswa. Operator ditangani Admin Madrasah. Proktor adalah assignment sementara akun Guru dengan menu di Web Guru; tidak ada akun/role/portal tersendiri. Siswa hanya peserta. KAMAD bukan bagian ruang lingkup identitas/kewenangan CBT.
+- Distribusi final: satu ZIP; instalasi, database akademik, credential, config, domain, session, cache, queue, storage, log, export, temp files dan backup terpisah per madrasah; tenant_id defense-in-depth; tidak ada shared academic DB.
+- Source Stage 4B Agent1 yang diperiksa: migration `9551b1dd...`; lifecycle scheduler `8e34152a...`; room service `e514fa9f...`; proctor assignment `c968ce68...`; attempt controller `13e8981c...`; monitoring scope `11b45595...`; ExamSession model `d1d41ad8...`; SessionRoom model `d55c16e8...`.
+- Temuan P0/P1: belum ada DB guard satu operational session; scheduler menyelesaikan session tanpa recovery barrier Attempt; monitoring scope masih punya author-level path yang melampaui Room; lock order antara lifecycle, assignment, room/placement dan Attempt belum satu kontrak global; cancel/reschedule dan kapasitas/placement perlu audit per-method.
+- Issue #10 memiliki 16 komentar saat refresh. Komentar #7078921888 adalah instruksi koordinator; tidak ada respons owner Agent2/3/4 yang terverifikasi secara terpisah. Agent2 status terdokumentasi audit/design complete, implementation gated; Agent3 Web Guru parsial; Agent4 branch implementasi belum dikonfirmasi owner.
+
+## DESAIN
+- Satu Exam = satu ExamSession operasional = satu pelaksanaan serentak; banyak Room di dalamnya.
+- Attempt IN_PROGRESS yang masih sah/eligible harus resume pada Attempt yang sama setelah Exam close; close menolak Attempt baru.
+- Assignment Proktor adalah capability sementara akun Guru, dibatasi Room dan masa berlaku; tidak otomatis membuka bank soal/jawaban/nilai/Force Submit/reset/perpanjangan.
+- Bentuk DB guard, global lock order, recovery window, scheduler barrier, cancellation/reschedule dan idempotency masih perlu desain bersama Agent2. Tidak ada proposal lama dianggap approved.
+
+## IMPLEMENTASI
+- Tidak ada runtime source, migration/schema, test, workflow, database, branch agent lain, merge/rebase/cherry-pick, deployment, Android atau Web Super Admin yang diubah.
+- Dokumen sebelumnya telah diperbarui sebelumnya; koreksi ini diperlukan karena terminologi lama bertentangan dengan prompt resmi terbaru.
+
+## PENGUJIAN
+- Fetch source dan blob SHA: PASS untuk file yang disebut.
+- Branch existence/compare dan Issue #10 refresh: dijalankan dengan batasan konektor; exact remote HEAD SHA tidak tersedia secara langsung.
+- PHPUnit, migration, restore disposable DB, concurrency/deadlock, browser/Livewire E2E, scheduler runtime, Attempt recovery, UAT: NOT RUN.
+- CI exact current SHA: NOT VERIFIED.
+
+## STATUS
+- DONE: scope final dicatat; source Stage4B inti di-refresh; issue dan checkpoint lintas-agent diperiksa.
+- IN PROGRESS: audit method-level Room/placement/assignment/cancel/reschedule; desain lock order/recovery; kontrak Agent2/3/4; audit otorisasi Web CBT tiga akun.
+- BLOCKED: keputusan teknis lintas-owner yang beririsan, khususnya Attempt recovery/lock order.
+- NOT VERIFIED: runtime, MySQL concurrency, browser E2E, scheduler, UAT dan CI exact-SHA.
+
+## LANGKAH BERIKUTNYA
+1. Selesaikan pembacaan method-level Room/placement/cancel/reschedule/assignment dan scheduler registration pada branch Agent1.
+2. Kirim pertanyaan teknis terarah ke Agent2 tentang lock order global dan recovery barrier; jangan menebak approval.
+3. Minta Agent3 memastikan menu Proktor di Web Guru mengonsumsi assignment room-scoped backend.
+4. Minta Agent4 menyelaraskan resume/recovery peserta dengan scheduler dan assignment expiry.
+5. Setelah kontrak lock/recovery disepakati, siapkan patch Agent1 dengan backup dan tes disposable; tidak menyentuh DB produksi.
+6. Jalankan test Web CBT yang benar-benar tersedia; catat hasil PASS/FAIL/BLOCKED/NOT RUN.
