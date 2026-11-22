@@ -57,3 +57,32 @@ WEB ADMIN: NOT ACCEPTED / P0 OPEN.
 DEVICE LEASE/FENCING: belum boleh dianggap siap produksi; perlu audit integrasi dan tes multi-device/race.
 STAGING: BLOCKED sampai ada bukti preflight kedua VPS.
 DISTRIBUSI: ZIP final belum dibuat dan belum siap dinyatakan.
+
+
+## Pembaruan koordinator setelah checkpoint awal
+### Source / role boundaries
+- Guard Admin yang kini mewajibkan tepat satu role ADMIN_MADRASAH: AdminDashboard, UserManagement, AcademicManagement, StudentRombelManagement, TenantProfileManagement, ProctorAssignmentManagement, CurriculumManagement.
+- Guard authoring CBT yang kini mewajibkan tepat satu role GURU: QuestionBank dan ExamManagement.
+- Policy hasil/asesmen/ujian sudah tidak memberi jalur KAMAD atau OPERATOR. Proktor assignment hanya membuka monitoring melalui assignment aktif dan tidak memberi detail jawaban/nilai.
+- Template Kamad dashboard yatim dihapus setelah backup; blok tanda tangan PDF tetap menggunakan principal_name.
+- Test Admin stale-role diperbaiki dan diperluas untuk menolak akses multi-role pada seluruh komponen Admin/Guru yang diperiksa. Test profil Kamad diselaraskan dengan nilai principal yang benar.
+- Workflow isolasi ditambah regresi untuk role canonical, retirement Kamad + rollback, penugasan Proktor Guru, dan full WebAdminAuthTest (penolakan login legacy).
+
+### Backup tambahan
+Backup file sebelum patch tersimpan di docs/backup/coordinator-web-admin-2026-11-22/, termasuk AcademicManagement, StudentRombelManagement, QuestionBank, ExamManagement, AdminUserManagementScopeTest, TenantProfileManagementTest, ProctorAssignmentManagement, ExamProctorAssignmentService, ProctorAssignmentSecurityTest, empat Policy, view Proktor, dan workflow CI.
+
+### Pengujian terbaru
+- Actions run terakhir untuk perubahan workflow: #45038056004, commit workflow efe79d51585704de24fb0e9d9a53e2e5c5d671c9.
+- Job safe-runtime-tests failure tanpa steps dan tanpa logs_url; tidak ada artifact. Unduhan log menghasilkan BlobNotFound.
+- PHPUnit/PHP lint tetap NOT VERIFIED. PHP CLI lokal yang tersedia hanya PHP 8.4.24; PHP 8.3, Composer, MySQL dan PDO driver tidak tersedia. Tidak ada test runtime lokal yang diklaim.
+- GitHub source branch dapat dibaca; workspace /mnt/data/CBT_MADRASAH_RECONSTRUCTION/ tidak terpasang pada sesi ini dan ZIP baseline CBT REVISI 6 NOPEMBER 2026.zip tidak ditemukan pada /mnt/data maupun hasil pencarian Project files. Tidak ada permintaan upload ulang; pekerjaan branch yang sedang berjalan tetap berdasarkan source GitHub Paket 1 yang tercatat di atas.
+
+### Pekerjaan tersisa sebelum Web Admin acceptance
+1. Pulihkan/temukan runner CI yang benar-benar mengeksekusi job; jangan ulang job secara membabi buta.
+2. Jalankan lint/PHPUnit pada PHP 8.3 + MySQL 8/InnoDB disposable, termasuk test tambahan yang baru dimasukkan ke workflow.
+3. Selesaikan audit action/tenant isolation untuk setiap komponen Admin; khususnya stale TenantContext, rombel concurrency/unique constraint, profile upload lifecycle, dan edit/deactivate/reset/import akun.
+4. Audit detail bahwa Proktor tidak dapat membaca answer key, detail jawaban/nilai, grading, atau mengubah ujian.
+5. Lengkapi UAT browser/responsive dan acceptance Admin sebelum mulai Guru/Siswa.
+6. Migration legacy role tetap tidak boleh dijalankan pada database aktif tanpa inventory, backup terverifikasi, clone-upgrade, rollback rehearsal, preflight dan persetujuan.
+
+**Status terkini tetap: WEB ADMIN NOT ACCEPTED / P0 OPEN.** Tidak ada merge, production migration, deployment, atau ZIP final.
