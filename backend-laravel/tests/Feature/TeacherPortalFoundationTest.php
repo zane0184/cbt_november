@@ -8,6 +8,8 @@ use App\Livewire\Admin\ExamManagement;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\Question;
+use App\Models\QuestionOption;
+use App\Models\QuestionVersion;
 use App\Livewire\Admin\QuestionBank;
 use App\Models\Permission;
 use App\Livewire\Teacher\TeacherLearning;
@@ -238,12 +240,32 @@ class TeacherPortalFoundationTest extends TestCase
             'created_by' => $teacherB->id,
             'updated_by' => $teacherB->id,
         ]);
+        $foreignVersion = QuestionVersion::create([
+            'question_id' => $foreignQuestion->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MULTIPLE_CHOICE',
+            'stem' => 'SECRET_STEM_TENANT_B',
+            'explanation' => 'SECRET_EXPLANATION_TENANT_B',
+            'default_points' => 10,
+            'status' => 'DRAFT',
+            'is_current' => true,
+            'created_by' => $teacherB->id,
+        ]);
+        $foreignOption = QuestionOption::create([
+            'question_version_id' => $foreignVersion->id,
+            'option_key' => 'A',
+            'content' => 'SECRET_CORRECT_OPTION_TENANT_B',
+            'sequence' => 1,
+            'is_correct' => true,
+            'score_weight' => 1,
+        ]);
 
         $foreignAssessment = Assessment::create([
             'academic_year_id' => $foreignScope['academicYear']->id,
             'semester_id' => $foreignScope['semester']->id,
             'subject_id' => $foreignScope['subject']->id,
-            'title' => 'Asesmen Tenant Foreign',
+            'title' => 'SECRET_ASSESSMENT_TENANT_B',
             'assessment_type' => 'SUMMATIVE',
             'status' => 'ACTIVE',
             'weight' => 1.0,
@@ -251,8 +273,8 @@ class TeacherPortalFoundationTest extends TestCase
         ]);
         $foreignExam = Exam::create([
             'assessment_id' => $foreignAssessment->id,
-            'title' => 'Ujian Tenant Foreign',
-            'instructions' => 'Uji isolasi tenant',
+            'title' => 'SECRET_EXAM_TENANT_B',
+            'instructions' => 'SECRET_EXAM_INSTRUCTIONS_TENANT_B',
             'status' => 'DRAFT',
             'duration_seconds' => 3600,
             'start_at' => now()->addDay(),
@@ -264,29 +286,92 @@ class TeacherPortalFoundationTest extends TestCase
             'created_by' => $teacherB->id,
         ]);
 
+        // Prove all foreign-tenant fixtures were persisted before testing denial.
+        $this->assertDatabaseHas('questions', [
+            'id' => $foreignQuestion->id,
+            'tenant_id' => $tenantB->id,
+            'question_code' => 'FOREIGN-QUESTION',
+        ]);
+        $this->assertDatabaseHas('question_versions', [
+            'id' => $foreignVersion->id,
+            'tenant_id' => $tenantB->id,
+            'question_id' => $foreignQuestion->id,
+            'stem' => 'SECRET_STEM_TENANT_B',
+            'explanation' => 'SECRET_EXPLANATION_TENANT_B',
+            'is_current' => true,
+        ]);
+        $this->assertDatabaseHas('question_options', [
+            'id' => $foreignOption->id,
+            'tenant_id' => $tenantB->id,
+            'question_version_id' => $foreignVersion->id,
+            'content' => 'SECRET_CORRECT_OPTION_TENANT_B',
+            'is_correct' => true,
+        ]);
+        $this->assertDatabaseHas('assessments', [
+            'id' => $foreignAssessment->id,
+            'tenant_id' => $tenantB->id,
+            'title' => 'SECRET_ASSESSMENT_TENANT_B',
+        ]);
+        $this->assertDatabaseHas('exams', [
+            'id' => $foreignExam->id,
+            'tenant_id' => $tenantB->id,
+            'assessment_id' => $foreignAssessment->id,
+            'title' => 'SECRET_EXAM_TENANT_B',
+            'instructions' => 'SECRET_EXAM_INSTRUCTIONS_TENANT_B',
+        ]);
+
         app(TenantContext::class)->setTenantId($this->tenant->id);
+        $questionComponent = Livewire::actingAs($this->teacher)
+            ->test(QuestionBank::class)
+            ->assertOk()
+            ->assertDontSee('SECRET_STEM_TENANT_B')
+            ->assertDontSee('SECRET_CORRECT_OPTION_TENANT_B');
+        $examComponent = Livewire::actingAs($this->teacher)
+            ->test(ExamManagement::class)
+            ->assertOk()
+            ->assertDontSee('SECRET_EXAM_TENANT_B')
+            ->assertDontSee('SECRET_EXAM_INSTRUCTIONS_TENANT_B');
 
         try {
-            Livewire::actingAs($this->teacher)
-                ->test(QuestionBank::class)
-                ->call('openEditModal', $foreignQuestion->id);
+            $questionComponent->call('openEditModal', $foreignQuestion->id);
 
             $this->fail('Question tenant lain tidak boleh ditemukan oleh Guru tenant ini.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
-            // Livewire's unit-test harness rethrows the not-found exception
-            // instead of converting it to an HTTP 404 response.
             $this->assertSame(Question::class, $exception->getModel());
         }
 
         try {
-            Livewire::actingAs($this->teacher)
-                ->test(ExamManagement::class)
-                ->call('openEditModal', $foreignExam->id);
+            $examComponent->call('openEditModal', $foreignExam->id);
 
             $this->fail('Exam tenant lain tidak boleh ditemukan oleh Guru tenant ini.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
             $this->assertSame(Exam::class, $exception->getModel());
         }
+
+        // Denied requests must not mutate any foreign-tenant record.
+        $this->assertDatabaseHas('questions', [
+            'id' => $foreignQuestion->id,
+            'tenant_id' => $tenantB->id,
+            'question_code' => 'FOREIGN-QUESTION',
+        ]);
+        $this->assertDatabaseHas('question_versions', [
+            'id' => $foreignVersion->id,
+            'tenant_id' => $tenantB->id,
+            'stem' => 'SECRET_STEM_TENANT_B',
+            'explanation' => 'SECRET_EXPLANATION_TENANT_B',
+        ]);
+        $this->assertDatabaseHas('question_options', [
+            'id' => $foreignOption->id,
+            'tenant_id' => $tenantB->id,
+            'content' => 'SECRET_CORRECT_OPTION_TENANT_B',
+            'is_correct' => true,
+        ]);
+        $this->assertDatabaseHas('exams', [
+            'id' => $foreignExam->id,
+            'tenant_id' => $tenantB->id,
+            'title' => 'SECRET_EXAM_TENANT_B',
+            'instructions' => 'SECRET_EXAM_INSTRUCTIONS_TENANT_B',
+        ]);
     }
 
     public function test_question_and_exam_reject_revoked_permissions_after_mount(): void
@@ -375,6 +460,64 @@ class TeacherPortalFoundationTest extends TestCase
                 $this->assertSame(403, $exception->getStatusCode());
             }
         }
+    }
+
+    public function test_http_livewire_update_rebuilds_tenant_context_and_rejects_stale_tenant_identity(): void
+    {
+        $this->actingAs($this->teacher);
+
+        // Exercise the real page routes so the initial component mount runs
+        // through auth, tenant and license middleware.
+        $this->get('/admin/questions')->assertOk();
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
+        $this->get('/admin/exams')->assertOk();
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
+
+        // Livewire::test performs subsequent component updates through its
+        // HTTP test lifecycle. A stale/foreign context before the request must
+        // be discarded and rebuilt from the authenticated tenant identity.
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertOk();
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertOk();
+        $tenantB = Tenant::create([
+            'name' => 'Tenant Reassignment Target',
+            'code' => 'MUG05',
+            'status' => 'ACTIVE',
+        ]);
+
+        app(TenantContext::class)->setTenantId($tenantB->id);
+        $question->set('search', 'http-lifecycle-question')->assertOk();
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
+
+        app(TenantContext::class)->setTenantId($tenantB->id);
+        $exam->set('search', 'http-lifecycle-exam')->assertOk();
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
+
+        // A persisted tenant reassignment after mount invalidates the old
+        // authenticated identity. The next HTTP update must fail closed.
+        DB::table('users')
+            ->where('id', $this->teacher->id)
+            ->where('tenant_id', $this->tenant->id)
+            ->update(['tenant_id' => $tenantB->id]);
+
+        $question->set('search', 'must-be-denied-after-tenant-reassignment')->assertForbidden();
+        $exam->set('search', 'must-be-denied-after-tenant-reassignment')->assertForbidden();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->teacher->id,
+            'tenant_id' => $tenantB->id,
+        ]);
     }
 
     public function test_question_and_exam_reject_revoked_guru_role_after_mount(): void
