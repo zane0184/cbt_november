@@ -20,7 +20,7 @@ class AttemptDeviceLeaseService
         }
 
         $now = now();
-        DeviceLease::create([
+        $lease = DeviceLease::create([
             'tenant_id' => $attempt->tenant_id,
             'exam_attempt_id' => $attempt->id,
             'registered_device_id' => null,
@@ -30,6 +30,10 @@ class AttemptDeviceLeaseService
             'leased_at' => $now,
             'expires_at' => $this->leaseExpiry($attempt, $now),
         ]);
+        $attempt->forceFill([
+            'device_lease_expires_at' => $lease->expires_at,
+            'last_lease_heartbeat_at' => $now,
+        ])->save();
 
         return true;
     }
@@ -65,7 +69,7 @@ class AttemptDeviceLeaseService
             $lease->update(['status' => 'EXPIRED', 'released_at' => $now]);
             $attempt->forceFill(['fence_generation' => ((int) $attempt->fence_generation) + 1])->save();
 
-            DeviceLease::create([
+            $newLease = DeviceLease::create([
                 'tenant_id' => $attempt->tenant_id,
                 'exam_attempt_id' => $attempt->id,
                 'registered_device_id' => null,
@@ -75,11 +79,20 @@ class AttemptDeviceLeaseService
                 'leased_at' => $now,
                 'expires_at' => $this->leaseExpiry($attempt, $now),
             ]);
+            $attempt->forceFill([
+                'device_lease_expires_at' => $newLease->expires_at,
+                'last_lease_heartbeat_at' => $now,
+            ])->save();
 
             return true;
         }
 
-        $lease->update(['expires_at' => $this->leaseExpiry($attempt, $now)]);
+        $expiresAt = $this->leaseExpiry($attempt, $now);
+        $lease->update(['expires_at' => $expiresAt]);
+        $attempt->forceFill([
+            'device_lease_expires_at' => $expiresAt,
+            'last_lease_heartbeat_at' => $now,
+        ])->save();
 
         return true;
     }
@@ -105,10 +118,11 @@ class AttemptDeviceLeaseService
 
     public function release(ExamAttempt $attempt, string $reason): void
     {
+        $generation = (int) $attempt->fence_generation;
         DeviceLease::query()
             ->where('tenant_id', $attempt->tenant_id)
             ->where('exam_attempt_id', $attempt->id)
-            ->where('fence_generation', $attempt->fence_generation)
+            ->where('fence_generation', $generation)
             ->where('status', 'ACTIVE')
             ->lockForUpdate()
             ->get()
@@ -117,6 +131,11 @@ class AttemptDeviceLeaseService
                 'released_at' => now(),
                 'release_reason' => $reason,
             ]));
+
+        $attempt->forceFill([
+            'fence_generation' => $generation + 1,
+            'device_lease_expires_at' => null,
+        ])->save();
     }
 
     private function leaseExpiry(ExamAttempt $attempt, $now)
