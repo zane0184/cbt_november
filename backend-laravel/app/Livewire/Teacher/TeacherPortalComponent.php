@@ -7,7 +7,7 @@ use Livewire\Component;
 
 abstract class TeacherPortalComponent extends Component
 {
-    // Livewire invokes boot on each request, so authorization also covers hydration and actions.
+    // Re-check the authenticated role, tenant, and profile on initial render and every Livewire request.
     public function boot(): void
     {
         app(TeacherPortalAccess::class)->profile(auth()->user());
