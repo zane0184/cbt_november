@@ -19,6 +19,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -284,4 +285,34 @@ class StudentLifecycleServiceTest extends TestCase
             '2026-07-01', 'Penempatan harus ditolak.'
         );
     }
+
+    public function test_student_academic_history_cannot_be_updated_or_deleted(): void
+    {
+        $student = $this->createStudent('1234567898', 'Siswa Append Only');
+        $event = app(StudentLifecycleService::class)->changeStatus(
+            $this->tenant->id, $this->admin->id, $student->id, 'INACTIVE',
+            '2026-09-01', 'Histori status harus tetap permanen.'
+        );
+
+        try {
+            $event->update(['reason' => 'Diubah']);
+            $this->fail('Academic event update must be rejected.');
+        } catch (LogicException $exception) {
+            $this->assertStringContainsString('append-only', $exception->getMessage());
+        }
+
+        try {
+            $event->delete();
+            $this->fail('Academic event delete must be rejected.');
+        } catch (LogicException $exception) {
+            $this->assertStringContainsString('append-only', $exception->getMessage());
+        }
+
+        $this->assertDatabaseHas('student_academic_events', [
+            'id' => $event->id,
+            'reason' => 'Histori status harus tetap permanen.',
+        ]);
+    }
+
+
 }
