@@ -103,6 +103,35 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Kurikulum Merdeka Terintegrasi KBC');
     }
 
+    public function test_guru_can_open_question_bank_through_teacher_route(): void
+    {
+        $this->actingAs($this->teacher)
+            ->get('/guru/bank-soal')
+            ->assertOk()
+            ->assertSee('Bank Soal & Modul Asesmen');
+    }
+
+    public function test_question_bank_rejects_short_answer_until_scoring_snapshot_is_supported(): void
+    {
+        $subjectId = TeacherSubjectAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->value('subject_id');
+
+        Livewire::actingAs($this->teacher)
+            ->test(QuestionBank::class)
+            ->set('questionCode', 'SHORT-ANSWER-BLOCKED')
+            ->set('questionType', 'SHORT_ANSWER')
+            ->set('selectedSubjectId', (string) $subjectId)
+            ->set('stem', 'Jawaban singkat uji')
+            ->call('saveQuestion')
+            ->assertHasErrors(['questionType']);
+
+        $this->assertDatabaseMissing('questions', [
+            'tenant_id' => $this->tenant->id,
+            'question_code' => 'SHORT-ANSWER-BLOCKED',
+        ]);
+    }
+
     public function test_semester_is_not_guessed_when_admin_has_not_activated_it(): void
     {
         $this->scope['semester']->update(['is_active' => false]);
