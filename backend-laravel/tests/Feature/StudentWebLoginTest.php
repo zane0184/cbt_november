@@ -158,7 +158,7 @@ class StudentWebLoginTest extends TestCase
 
     public function test_valid_remember_me_cookie_can_establish_a_new_epoch_bound_session(): void
     {
-        $this->withoutMiddleware(\\App\\Http\\Middleware\\EnsureLicenseActive::class);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLicenseActive::class);
         $login = $this->post('/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
