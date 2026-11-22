@@ -18,11 +18,14 @@ class AuthWebController extends Controller
     {
         if (Auth::check()) {
             if (Auth::user()->hasRole('SUPER_ADMIN')) {
-                Auth::logout(); request()->session()->invalidate(); request()->session()->regenerateToken();
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
             } else {
                 return $this->redirectForUser(Auth::user());
             }
         }
+
         return view('auth.login');
     }
 
@@ -31,19 +34,21 @@ class AuthWebController extends Controller
         $request->validate(['identifier' => 'required|string|max:100', 'password' => 'required|string']);
         $identifier = trim((string) $request->input('identifier'));
         $throttleKey = 'login:web:'.Str::lower($identifier).'|'.$request->ip();
+
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             return back()->withErrors(['identifier' => "Terlalu banyak percobaan login. Silakan coba lagi dalam {$seconds} detik."])->withInput($request->only('identifier'));
         }
 
         $user = $resolver->resolve($identifier);
-        if (! $user || ! Hash::check((string) $request->input('password'), (string) $user->password)) {
+        if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.'])->withInput($request->only('identifier'));
         }
+
         $roles = $user->roles->pluck('name')->all();
         $allowedRoles = ['ADMIN_MADRASAH', 'OPERATOR', 'KAMAD', 'GURU', 'PROKTOR', 'SISWA'];
-        if (in_array('SUPER_ADMIN', $roles, true) || ! count(array_intersect($roles, $allowedRoles))) {
+        if (in_array('SUPER_ADMIN', $roles, true) || !count(array_intersect($roles, $allowedRoles))) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
         }
@@ -51,28 +56,45 @@ class AuthWebController extends Controller
         RateLimiter::clear($throttleKey);
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+
         $identity = LocalInstallationIdentity::query()->first();
         if ($identity && $user->tenant_id) {
             TenantContext::getInstance()?->setTenantId($identity->tenant_id);
             app(TenantContext::class)->setTenantId($identity->tenant_id);
         }
+
         return $this->redirectForUser($user);
     }
 
     public function logout(Request $request)
     {
-        Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();
-        TenantContext::getInstance()?->setTenantId(null); app(TenantContext::class)->setTenantId(null);
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        TenantContext::getInstance()?->setTenantId(null);
+        app(TenantContext::class)->setTenantId(null);
+
         return redirect('/login')->with('status', 'Anda telah berhasil keluar dari CBT Madrasah.');
     }
 
     protected function redirectForUser(User $user)
     {
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) return redirect('/operator/dashboard');
-        if ($user->hasRole('KAMAD')) return redirect('/');
-        if ($user->hasRole('PROKTOR')) return redirect('/proktor/assignments');
-        if ($user->hasRole('GURU')) return redirect('/admin/exams');
-        if ($user->hasRole('SISWA')) return redirect('/student/exams');
+        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) {
+            return redirect('/admin/dashboard');
+        }
+        if ($user->hasRole('KAMAD')) {
+            return redirect('/');
+        }
+        if ($user->hasRole('PROKTOR')) {
+            return redirect('/proktor/assignments');
+        }
+        if ($user->hasRole('GURU')) {
+            return redirect('/admin/exams');
+        }
+        if ($user->hasRole('SISWA')) {
+            return redirect('/student/exams');
+        }
+
         return redirect('/login')->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.']);
     }
 }
