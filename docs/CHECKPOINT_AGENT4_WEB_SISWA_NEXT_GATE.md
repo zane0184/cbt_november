@@ -483,3 +483,81 @@ Tabel pada Bagian 14 mencatat HEAD Agent 4 dokumentasi `f7166ab...` saat source/
 HEAD sebelum koreksi akhir ini: `0fbdaeee11ef29fa1d146efbd84b33234ced62d9`; branch dokumentasi 21 ahead / 0 behind terhadap `main`. Commit `0fbdaee` hanya mengubah `docs/CHECKPOINT_AGENT4_WEB_SISWA_NEXT_GATE.md`. Tidak ada source runtime/test/migration/schema/database yang berubah. Commit koreksi akhir ini juga dokumentasi saja.
 
 Backup checkpoint sebelum koreksi ini diverifikasi byte-exact: original blob `ea06e3abb87a082ca70cf78c3a3fa42885d29038`; backup `docs/backup/agent4-contract-closure-2026-11-22/CHECKPOINT_AGENT4_WEB_SISWA_NEXT_GATE.md.before-final-head-correction.md` blob `ea06e3abb87a082ca70cf78c3a3fa42885d29038`. Manifest: `docs/backup/agent4-contract-closure-2026-11-22/MANIFEST_FINAL_HEAD_CORRECTION.md` (blob `26c1df1694fdde7a9ab1a776d166b6fb8dd759c5`).
+
+## 16. REFRESH KEPUTUSAN KOORDINATOR — KAMAD FROZEN / PROKTOR AKUN GURU (22 NOVEMBER 2026)
+
+### AUDIT — remote dan checkpoint terkini
+
+HEAD remote yang di-refresh pada tahap ini:
+
+| Komponen | Branch | HEAD aktual | Catatan tip commit |
+|---|---|---|---|
+| Agent 1 | `work/stage4b-room-session-20261122` | `69f16da92452fd28a85aec2a8239c5d5ba9a10dd` | Manifest backup keputusan koordinator; checkpoint menyebut source runtime baseline `87b1d6210d3d175f23b2f5aa215afa293c348563`. |
+| Agent 2 | `work/stage4d-account-lifecycle-20261122` | `09b0ee42555b58c520b6ce3b46243b684e5a9d69` | Checkpoint exact-role/installation/Proktor; runtime baseline tetap `74bf7178f46673e9be90523671490c0749034acd`. |
+| Agent 3 | `work/web-guru-foundation-20261122` | `f13e2adaf284e2a1d727ea23b7c9788f793e3ec1` | Checkpoint P0 HTTP/Livewire; test source `6334dc9abd07a1441c8c02f3f7a6cc5c452ead36`. |
+| Agent 4 dokumentasi | `work/agent4-web-siswa-audit-20261122` | `edec6c2bddfda5563c907827db7d1ae77775c086` | Dokumentasi saja; bukan basis implementasi. |
+| Kandidat Agent 4 | `work/import-guru-siswa-implementation-20261122` | `f38ceec7b0653fcf3363eec40f3d4577c323cca8` | Belum dikonfirmasi owner; tidak disentuh. |
+| Main | `main` | `feab77228f7108f7f7a45325d7f1fb878c07310b` | Titik pembanding, bukan basis integrasi. |
+
+Branch Agent 1/2/3 tip terbaru adalah dokumentasi; source runtime baseline yang dirujuk checkpoint owner belum berubah. Compare terhadap main saat refresh: Agent 1 1223 ahead/15 behind; Agent 2 1354/15; Agent 3 1185/15; Agent 4 docs 24/0; kandidat 930/15. Seluruh branch owner/kandidat tetap divergen. Commit tip diperiksa tercatat atas akun `zane0184`; tidak membuktikan owner teknis terpisah.
+
+Checkpoint/source owner yang dibaca: Agent 1 checkpoint blob `9d0a928b8e3b9f3655cf5e91eacf663129777c87`; Agent 2 checkpoint blob `a53fd564ddf7bc48648b7c6c68d330248bad177c`; Agent 2 audit report blob `a503e790f08e9cd684e36e9006d4e3d55bb3c3f3`; Agent 3 checkpoint blob `c75fa3a80a42e6782fe1920578c41466be84bb8d`; Agent 4 checkpoint sebelum addendum blob `ec369bc77e7040729cfac5c3314ab14b0b02dd42`.
+
+### AUDIT — keputusan produk koordinator dan owner response
+
+Issue #10 OPEN dengan 15 komentar. Komentar terbaru yang relevan adalah `7078539953`, author login `zane0184`, berjudul “Keputusan Koordinator — portal aktif, KAMAD frozen, Proktor memakai akun Guru”. Ini keputusan produk final koordinator, bukan approval owner Agent 2/3. Komentar itu meminta konfirmasi teknis langsung dari Agent 2, Agent 3 dan Agent 4. Seluruh komentar Issue #10 yang diperiksa tetap berasal dari `zane0184`; belum ada respons owner terpisah yang dapat diverifikasi.
+
+Keputusan yang wajib dipakai Agent 4:
+- Portal aktif hanya ADMIN_MADRASAH, GURU, SISWA.
+- KAMAD frozen: tidak ada login, portal, dashboard, route, permission, policy, menu, monitoring, bypass atau approval CBT. Histori jabatan/appointment tetap dipertahankan sebagai data tanpa hak akses.
+- Proktor adalah assignment operasional sementara untuk akun tepat satu role GURU. Guru login dengan akun Guru sendiri; menu Proktor berada di Web Guru. Tidak ada akun/login/credential/portal Proktor terpisah dan tidak ada role permanen PROKTOR.
+- SISWA hanya peserta ujian dan tidak boleh menjadi identitas Proktor.
+- Assignment Proktor harus aktif, time-bounded, revocable, tenant/installation/Exam/Session/Room scoped dan seluruh tindakan mencatat identitas Guru.
+- Proktor tidak otomatis mendapat jawaban, nilai, bank soal, konfigurasi Exam, Force Submit atau assignment Guru lain.
+- Web Siswa tidak boleh menyediakan fungsi, route, menu, API client surface, monitoring, assignment management, takeover atau Force Submit untuk Proktor. Proktor Guru tidak boleh melewati exact-role SISWA melalui endpoint peserta.
+
+### AUDIT — bukti backend relevan dan blocker
+
+Agent 2 audit report menyebut source runtime baseline `74bf7178...` masih memiliki jalur KAMAD: AuthWebController blob `b8e04102858652c2fe9042f8f680c511fcbccf63`; API AuthController `ed0d7c9f51de4190c7f150b92c27a89e93703b40`; LoginIdentityResolver `c1f56029da5b8fdb5d7f80380269637b7d1c3ebe`; RolePermissionBootstrapper `3eea44756b0fec6e207382a45952579a23731b95`; ExamPolicy `c05d96ef932fdc81b67336240af4e1726864c3d6`; ExamAttemptPolicy `00a3a4119f3983de6d940fd8f352a541336c9e12`; ExamMonitoringScope `11b455954f974d1c60ed5c49700368f8d37c09c1`. Report menyatakan KAMAD masih dapat login Web/API, mendapat bootstrap permission dan dikenali policy/monitoring. Status **P0 NON-COMPLIANT** sampai Agent 2 menutup seluruh jalur dengan bukti.
+
+`StudentExamController.php` blob `981fd29d24906c158d4dda5889950fdc43f6ec3d` memeriksa `hasRole('SISWA')` dan menolak `ADMIN_MADRASAH`, bukan exact-one role SISWA. Mixed role lain (misalnya SISWA+GURU atau SISWA+KAMAD) berpotensi melewati predicate controller bila token/sesi sudah ada. Login resolver exact-one tidak menggantikan validasi exact-role pada setiap API/controller/policy. Ini blocker security Web Siswa yang dimiliki Agent 2.
+
+`ExamMonitoringScope` blob `11b455...` mengembalikan seluruh participant query untuk exam author atau KAMAD; cabang Proktor memakai assignment CONFIRMED room. Agent 2 audit menyebut menu khusus Proktor Guru belum ditemukan pada source UI yang diperiksa; assignment UI yang ditemukan adalah pengelolaan Admin. Agent 3 harus mengonfirmasi menu Web Guru dan semua surface monitoring room-scoped. Agent 4 tidak membuat fitur Proktor.
+
+Proctor assignment service Agent 1 blob `c968ce68c0decace1c35a0ccb3b2b4449c057656` memvalidasi target Guru dengan tepat satu role GURU dan TeacherProfile aktif pada tenant; ini bukti helper assignment tertentu, bukan bukti seluruh route/policy/menu sudah sesuai.
+
+### DESAIN — kontrak dan status
+
+| Area | Status | Owner |
+|---|---|---|
+| Portal aktif / KAMAD frozen / Proktor akun Guru | Keputusan produk koordinator FINAL; implementasi backend masih PENDING | Koordinator; Agent 2 backend; Agent 3 Web Guru |
+| Exact-one SISWA untuk semua endpoint Web Siswa | PENDING — P0 | Agent 2 |
+| KAMAD deny login/API/policy/monitoring/Livewire/exports | PENDING — P0 NON-COMPLIANT pada source audit | Agent 2 |
+| Proktor exact-one GURU + assignment aktif + room scope | PENDING konfirmasi owner dan test seluruh surface | Agent 2 backend; Agent 1 assignment/session; Agent 3 Web Guru |
+| Tidak ada Proktor capability pada Web Siswa | DESAIN DIKUNCI oleh keputusan produk; runtime belum diuji menyeluruh | Agent 4 client; Agent 2 API boundary |
+| F-01 admission dan F-02 media | PENDING — P0 OPEN | Agent 2 |
+| Answer receipt/conflict, submit/expiry/Force Submit | PENDING | Agent 2 |
+| IndexedDB/offline recovery/submit barrier | DESIGN ONLY, NOT IMPLEMENTED | Agent 4 setelah kontrak backend |
+| QuestionVersion/snapshot/media | NEEDS DESIGN; komentar review bukan owner approval | Agent 3 authoring; Agent 2 persistence/security |
+| Room/session/recovery | PENDING; belum ada owner closure | Agent 1 + Agent 2 |
+| Agent 4 ownership/official branch/base/coding permission | PENDING | Koordinator + owner Agent 4 |
+
+### PENGUJIAN — CI dan acceptance
+
+Combined status dan PR-workflow lookup kosong pada exact source baseline Agent 1 `87b1d621...`, Agent 2 `74bf717...`, Agent 3 test source `6334dc9...`, dan Agent 4 docs `edec6c2...`. Ini **NOT VERIFIED**, bukan PASS/FAIL; connector workflow yang tersedia hanya menampilkan PR-triggered runs. Agent 2 checkpoint juga menyatakan tidak menjalankan PHPUnit/PHP lint/MySQL/browser/concurrency pada audit read-only; Agent 3 checkpoint menyatakan P0 tenant/security test incomplete. Agent 4 tidak menjalankan test runtime.
+
+Test baru yang wajib ditambahkan ke matriks: exact-one SISWA; SISWA+GURU, SISWA+KAMAD, GURU-only, KAMAD-only ditolak pada semua Student API; KAMAD tidak bisa login/session/token/route/API/policy/monitoring/Livewire/export; Guru Proktor tidak dapat memakai endpoint peserta; assignment Proktor tidak membuat role atau portal; siswa tidak dapat memanggil route/API Proktor; assignment Proktor tidak memberi hak lihat jawaban/nilai/Force Submit; assignment expired/revoked/wrong room ditolak. Semua tetap NOT RUN/BLOCKED.
+
+### IMPLEMENTASI — dokumentasi saja
+
+Dokumen Agent 4 ditambahkan addendum keputusan koordinator setelah lima dokumen existing dibackup byte-exact. Tidak ada source runtime, route, API, controller, policy, model, service, middleware, migration, schema, database, konfigurasi, test code, branch owner/kandidat, merge/rebase/cherry-pick, PR atau deployment yang diubah. Manifest backup: `docs/backup/agent4-contract-closure-2026-11-22/MANIFEST_COORDINATOR_PORTAL_PROCTOR_ADDENDUM.md`.
+
+### NEXT GATE
+
+1. Agent 2 memberi jawaban langsung per subkontrak exact-role SISWA, KAMAD freeze, Proktor assignment, F-01/F-02, lease/fencing, receipt/conflict, submit dan lock order dengan exact source/test/CI SHA.
+2. Agent 3 memberi jawaban langsung atas menu Proktor di Web Guru, tanpa role/portal baru, serta room-scope seluruh monitoring surface; QuestionVersion/snapshot/media tetap NEEDS DESIGN sampai disetujui.
+3. Agent 1/2 menyepakati assignment lifecycle, scheduler dan recovery Attempt aktif.
+4. Owner Agent 4 dan koordinator mengonfirmasi official branch, base commit dan izin implementasi.
+5. Sampai semua gate disetujui, hanya audit/dokumentasi; tidak ada runtime patch.
+
+Status: `BLOCKED — CROSS-AGENT CONTRACT PENDING`; Web Siswa `NOT READY FOR OPERATIONAL EXAM`.
