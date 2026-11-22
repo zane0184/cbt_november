@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Exam;
 use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
 use App\Models\ExamAttemptAnswer;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
@@ -58,6 +60,36 @@ class ScoringService
     public function scoreAttempt(ExamAttempt $attempt, bool $force = false, bool $createNewVersion = false): ExamAttemptScore
     {
         return DB::transaction(function () use ($attempt, $force, $createNewVersion) {
+            // Canonical lock order: Exam -> Participant -> Attempt -> ScoreCurrent -> AttemptScore -> QuestionScore.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $attempt->tenant_id)
+                ->whereKey($attempt->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedParticipant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->whereKey($attempt->participant_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedAttempt = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $lockedParticipant->id)
+                ->whereKey($attempt->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (!in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
+                throw new \DomainException('Scoring blocked: attempt must be terminal before scoring.');
+            }
+
+            $lockedAttempt->setRelation('exam', $lockedExam);
+            $lockedAttempt->setRelation('participant', $lockedParticipant);
+            $attempt = $lockedAttempt;
+
             $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $attempt->id)
                 ->where('tenant_id', $attempt->tenant_id)
                 ->lockForUpdate()
@@ -255,12 +287,27 @@ class ScoringService
         $questionType = strtoupper(trim($rawQuestionType));
         $maxScore = (float) $snapshot->points;
 
+        if ($questionType === 'SHORT_ANSWER') {
+            throw new \DomainException('Scoring blocked: SHORT_ANSWER is disabled until accepted answers, immutable snapshots, and scoring are implemented consistently.');
+        }
+
         if (!$answer || $answer->answer_state !== 'ANSWERED') {
-            // A manual grade belongs to the snapshot/current scoring version, not
-            // to the mutable answer-state flag. During reopen, preserve a GRADED
-            // score selected by the validated current pointer even if the answer
-            // is now missing or no longer ANSWERED. Never carry a non-current
-            // historical grade because $existingQScore is pointer-version scoped.
+            // Essay responses, including blank responses, require a Guru decision.
+            if ($questionType === 'ESSAY') {
+                if ($existingQScore && $existingQScore->scoring_status === 'GRADED') {
+                    return $this->persistQuestionScore(
+                        $snapshot,
+                        $attempt,
+                        (float) $existingQScore->awarded_score,
+                        'GRADED',
+                        $answer,
+                        $version
+                    );
+                }
+
+                return $this->persistQuestionScore($snapshot, $attempt, 0, 'MANUAL_REVIEW', $answer, $version);
+            }
+
             if ($existingQScore && $existingQScore->scoring_status === 'GRADED') {
                 return $this->persistQuestionScore(
                     $snapshot,
@@ -294,8 +341,7 @@ class ScoringService
                 break;
 
             case 'SHORT_ANSWER':
-                $awardedScore = $this->evaluateShortAnswer($snapshot, $payload) ? $maxScore : 0;
-                break;
+                throw new \DomainException('Scoring blocked: SHORT_ANSWER is disabled until accepted answers, immutable snapshots, and scoring are implemented consistently.');
 
             case 'ESSAY':
                 $awardedScore = $existingQScore ? (float) $existingQScore->awarded_score : 0;
@@ -303,8 +349,7 @@ class ScoringService
                 break;
 
             default:
-                $awardedScore = 0;
-                $scoringStatus = 'MANUAL_REVIEW';
+                throw new \DomainException('Scoring blocked: unsupported question type in immutable exam snapshot.');
         }
 
         return $this->persistQuestionScore($snapshot, $attempt, $awardedScore, $scoringStatus, $answer, $version);
@@ -458,11 +503,30 @@ class ScoringService
         }
 
         return DB::transaction(function () use ($attempt, $reason, $actor) {
-            // Serialize administrative score reopening with submit and answer writes.
+            // Reopen follows the same parent-first lifecycle lock order as submit.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $attempt->tenant_id)
+                ->whereKey($attempt->exam_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $lockedParticipant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->whereKey($attempt->participant_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $lockedAttempt = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $lockedParticipant->id)
                 ->whereKey($attempt->id)
                 ->lockForUpdate()
                 ->firstOrFail();
+
+            $lockedAttempt->setRelation('exam', $lockedExam);
+            $lockedAttempt->setRelation('participant', $lockedParticipant);
 
             $currentPointer = ExamAttemptScoreCurrent::where('attempt_id', $lockedAttempt->id)
                 ->where('tenant_id', $lockedAttempt->tenant_id)
