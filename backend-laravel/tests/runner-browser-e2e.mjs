@@ -127,9 +127,7 @@ async function newPage(browser, scenario) {
 async function start(page) {
   await page.locator('#start-button').click();
   await page.locator('#runner-panel:not(.hidden)').waitFor({ state: 'visible' });
-  await page.locator('#question-stem').getByText('Berapakah hasil 2 + 2?').waitFor().catch(async () => {
-    await page.waitForFunction(() => document.querySelector('#question-stem').textContent.includes('Berapakah hasil 2 + 2?'));
-  });
+  await page.waitForFunction(() => document.querySelector('#question-stem').textContent.includes('Berapakah hasil 2 + 2?'));
 }
 
 async function chooseFirstAnswer(page) {
