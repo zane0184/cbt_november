@@ -171,6 +171,21 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->siswa);
     }
 
+
+    public function test_soft_deleted_student_cannot_login_with_existing_nisn(): void
+    {
+        $this->siswa->delete();
+
+        $response = $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => $this->password,
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+        $this->assertSoftDeleted('users', ['id' => $this->siswa->id]);
+    }
+
     public function test_student_dashboard_is_available_only_to_student_role(): void
     {
         $this->withoutMiddleware(EnsureLicenseActive::class);
