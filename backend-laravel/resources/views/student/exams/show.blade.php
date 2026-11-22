@@ -119,50 +119,119 @@
     function optionLabel(option) { return option.content ?? option.text ?? option.label ?? option.title ?? ''; }
 
     const LOCAL_DB_NAME = 'cbt-madrasah-student-v1';
-    const LOCAL_STORE = 'pending-answers';
+    const LOCAL_STORES = ['attempt_context', 'answers', 'sync_queue', 'server_receipts', 'conflicts', 'local_meta'];
 
     function openLocalDatabase() {
         return new Promise((resolve, reject) => {
             if (!('indexedDB' in window)) return reject(new Error('Browser tidak mendukung IndexedDB. Gunakan browser terbaru; ujian belum dimulai.'));
-            const request = indexedDB.open(LOCAL_DB_NAME, 1);
-            request.onupgradeneeded = () => {
-                if (!request.result.objectStoreNames.contains(LOCAL_STORE)) request.result.createObjectStore(LOCAL_STORE, { keyPath: 'key' });
+            const request = indexedDB.open(LOCAL_DB_NAME, 2);
+            request.onupgradeneeded = event => {
+                const db = request.result;
+                const tx = request.transaction;
+                LOCAL_STORES.forEach(name => {
+                    if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath: 'key' });
+                });
+                if (!db.objectStoreNames.contains('pending-answers')) {
+                    // Fresh install; no legacy queue to migrate.
+                } else {
+                    const legacy = tx.objectStore('pending-answers');
+                    const cursorRequest = legacy.openCursor();
+                    cursorRequest.onsuccess = () => {
+                        const cursor = cursorRequest.result;
+                        if (!cursor) return;
+                        const row = cursor.value;
+                        tx.objectStore('answers').put({
+                            key: row.key, attemptId: row.attemptId, snapshotId: row.snapshotId,
+                            payload: row.payload, localStatus: 'PENDING', updatedAt: row.updatedAt || Date.now()
+                        });
+                        tx.objectStore('sync_queue').put({
+                            key: row.key, attemptId: row.attemptId, snapshotId: row.snapshotId,
+                            payload: row.payload, clientRequestId: row.clientRequestId,
+                            baseRevision: null, updatedAt: row.updatedAt || Date.now(), status: 'PENDING'
+                        });
+                        cursor.continue();
+                    };
+                }
+                tx.objectStore('local_meta').put({ key: 'schema_version', value: 2, updatedAt: Date.now() });
             };
-            request.onsuccess = () => resolve(request.result);
+            request.onsuccess = () => {
+                request.result.onversionchange = () => request.result.close();
+                resolve(request.result);
+            };
             request.onerror = () => reject(request.error || new Error('Penyimpanan lokal tidak dapat dibuka.'));
             request.onblocked = () => reject(new Error('Penyimpanan lokal sedang dipakai tab lain. Tutup tab CBT lain lalu muat ulang.'));
         });
     }
 
-    function localTransaction(mode, operation) {
+    function localTransaction(storeNames, mode, operation) {
         return new Promise((resolve, reject) => {
             if (!state.localDb) return reject(new Error('Penyimpanan lokal belum siap.'));
-            const tx = state.localDb.transaction(LOCAL_STORE, mode);
-            let request;
-            try { request = operation(tx.objectStore(LOCAL_STORE)); } catch (error) { reject(error); return; }
-            tx.oncomplete = () => resolve(request && request.result);
+            const tx = state.localDb.transaction(storeNames, mode);
+            let result;
+            try { result = operation(tx); } catch (error) { reject(error); return; }
+            tx.oncomplete = () => resolve(result);
             tx.onerror = () => reject(tx.error || new Error('Transaksi penyimpanan lokal gagal.'));
             tx.onabort = () => reject(tx.error || new Error('Penyimpanan lokal dibatalkan.'));
         });
     }
 
     function localKey(attemptId, snapshotId) { return String(attemptId) + ':' + String(snapshotId); }
-    async function persistPending(snapshotId, item) {
-        await localTransaction('readwrite', store => store.put({
-            key: localKey(state.attemptId, snapshotId), attemptId: String(state.attemptId),
-            snapshotId: String(snapshotId), payload: item.payload, clientRequestId: item.clientRequestId,
-            updatedAt: Date.now(), status: 'PENDING'
+    async function persistAttemptContext() {
+        const key = String(state.attemptId);
+        await localTransaction(['attempt_context'], 'readwrite', tx => tx.objectStore('attempt_context').put({
+            key, attemptId: key, examId: String(app.dataset.examId), deviceBinding,
+            updatedAt: Date.now()
         }));
     }
-    async function removePersistedPending(snapshotId) {
-        await localTransaction('readwrite', store => store.delete(localKey(state.attemptId, snapshotId)));
+    async function persistPending(snapshotId, item) {
+        const key = localKey(state.attemptId, snapshotId);
+        await localTransaction(['answers', 'sync_queue'], 'readwrite', tx => {
+            tx.objectStore('answers').put({
+                key, attemptId: String(state.attemptId), snapshotId: String(snapshotId),
+                payload: item.payload, localStatus: 'PENDING', updatedAt: Date.now()
+            });
+            tx.objectStore('sync_queue').put({
+                key, attemptId: String(state.attemptId), snapshotId: String(snapshotId),
+                payload: item.payload, clientRequestId: item.clientRequestId,
+                baseRevision: item.baseRevision ?? null, updatedAt: Date.now(), status: 'PENDING'
+            });
+        });
+    }
+    async function acknowledgePersistedPending(snapshotId, item, serverRevision) {
+        const key = localKey(state.attemptId, snapshotId);
+        await localTransaction(['answers', 'sync_queue'], 'readwrite', tx => {
+            tx.objectStore('answers').put({
+                key, attemptId: String(state.attemptId), snapshotId: String(snapshotId),
+                payload: item.payload, serverRevision: Number(serverRevision),
+                localStatus: 'SERVER_ACKNOWLEDGED_NO_VERIFIED_RECEIPT', updatedAt: Date.now()
+            });
+            tx.objectStore('sync_queue').delete(key);
+        });
+    }
+    async function persistConflict(snapshotId, item, serverAnswer, serverRevision) {
+        const key = localKey(state.attemptId, snapshotId);
+        await localTransaction(['conflicts'], 'readwrite', tx => tx.objectStore('conflicts').put({
+            key, attemptId: String(state.attemptId), snapshotId: String(snapshotId),
+            localPayload: item.payload, clientRequestId: item.clientRequestId,
+            baseRevision: item.baseRevision ?? null, serverAnswer,
+            serverRevision: Number(serverRevision), updatedAt: Date.now(), status: 'OPEN'
+        }));
     }
     async function readPersistedPending() {
         const rows = await new Promise((resolve, reject) => {
-            const tx = state.localDb.transaction(LOCAL_STORE, 'readonly');
-            const request = tx.objectStore(LOCAL_STORE).getAll();
+            const tx = state.localDb.transaction(['sync_queue'], 'readonly');
+            const request = tx.objectStore('sync_queue').getAll();
             request.onsuccess = () => resolve(request.result || []);
             request.onerror = () => reject(request.error || new Error('Draft lokal gagal dibaca.'));
+        });
+        return rows.filter(row => row.attemptId === String(state.attemptId));
+    }
+    async function readPersistedConflicts() {
+        const rows = await new Promise((resolve, reject) => {
+            const tx = state.localDb.transaction(['conflicts'], 'readonly');
+            const request = tx.objectStore('conflicts').getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error || new Error('Arsip konflik lokal gagal dibaca.'));
         });
         return rows.filter(row => row.attemptId === String(state.attemptId));
     }
@@ -197,12 +266,19 @@
             state.answers.set(answer.exam_question_snapshot_id, { payload: answer.answer_payload, state: answer.answer_state });
             state.revisions.set(answer.exam_question_snapshot_id, Number(answer.revision_number || 0));
         });
+        await persistAttemptContext();
         const localPending = await readPersistedPending();
         localPending.forEach(row => {
             if (!state.questions.some(question => String(question.id) === row.snapshotId)) return;
-            const item = { payload: row.payload, clientRequestId: row.clientRequestId };
+            const item = { payload: row.payload, clientRequestId: row.clientRequestId, baseRevision: row.baseRevision ?? null };
             state.pending.set(row.snapshotId, item);
             state.answers.set(row.snapshotId, { payload: row.payload, state: 'ANSWERED' });
+        });
+        const localConflicts = await readPersistedConflicts();
+        localConflicts.forEach(row => {
+            state.conflicts.set(row.snapshotId, {
+                local: row.localPayload, server: row.serverAnswer, revision: row.serverRevision
+            });
         });
         el('instruction-panel').classList.add('hidden');
         el('runner-panel').classList.remove('hidden');
@@ -318,7 +394,7 @@
 
     async function queueSave(question, payload) {
         state.answers.set(question.id, { payload, state: 'ANSWERED' });
-        const pendingItem = { payload, clientRequestId: requestId() };
+        const pendingItem = { payload, clientRequestId: requestId(), baseRevision: null };
         state.pending.set(question.id, pendingItem);
         setSaveStatus('Menyimpan draft pada perangkat…');
         try {
@@ -339,21 +415,26 @@
         const previous = state.saving.get(question.id) || Promise.resolve();
         const task = previous.catch(() => {}).then(async () => {
             setSaveStatus('Menyimpan jawaban…');
-            const revision = state.revisions.get(question.id) || 0;
+            if (pendingItem.baseRevision === null || pendingItem.baseRevision === undefined) {
+                pendingItem.baseRevision = state.revisions.get(question.id) || 0;
+                await persistPending(question.id, pendingItem);
+            }
             try {
                 const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/answers/${encodeURIComponent(question.id)}`, {
-                    method: 'PUT', body: JSON.stringify({ client_request_id: pendingItem.clientRequestId, base_revision: revision, answer_payload: payload, answer_state: 'ANSWERED' })
+                    method: 'PUT', body: JSON.stringify({ client_request_id: pendingItem.clientRequestId, base_revision: pendingItem.baseRevision, answer_payload: payload, answer_state: 'ANSWERED' })
                 });
                 state.revisions.set(question.id, Number(result.data.revision_number));
                 if (state.pending.get(question.id) === pendingItem) {
                     state.pending.delete(question.id);
-                    await removePersistedPending(question.id);
+                    await acknowledgePersistedPending(question.id, pendingItem, result.data.revision_number);
                 }
-                setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Semua perubahan diterima server');
+                setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Respons server berhasil; receipt terverifikasi belum tersedia');
             } catch (error) {
                 if (error.status === 409 && error.body?.current_revision !== undefined) {
                     state.revisions.set(question.id, Number(error.body.current_revision));
-                    state.conflicts.set(question.id, { local: pendingItem.payload, server: error.body.current_answer || null, revision: Number(error.body.current_revision) });
+                    const conflict = { local: pendingItem.payload, server: error.body.current_answer || null, revision: Number(error.body.current_revision) };
+                    state.conflicts.set(question.id, conflict);
+                    await persistConflict(question.id, pendingItem, conflict.server, conflict.revision);
                     setSaveStatus('KONFLIK: draft lokal dipertahankan. Pengiriman ditahan; jangan muat ulang atau tutup halaman.', true);
                     showError('Terjadi konflik revisi. Draft lokal tetap disimpan pada perangkat dan tidak ditimpa otomatis. Minta Guru/Admin membantu pemulihan sebelum mengirim ujian.');
                 } else setSaveStatus(`Gagal menyimpan: ${error.message}. Periksa koneksi dan coba lagi.`, true);
@@ -372,7 +453,7 @@
 
     async function flushPendingSaves() {
         await Promise.all([...state.saving.values()].map(promise => promise.catch(() => {})));
-        const pendingSaves = [...state.pending.entries()].map(([snapshotId, pendingItem]) => {
+        const pendingSaves = [...state.pending.entries()].filter(([snapshotId]) => !state.conflicts.has(snapshotId)).map(([snapshotId, pendingItem]) => {
             const question = state.questions.find(item => item.id === snapshotId);
             return question ? saveAnswer(question, pendingItem) : Promise.resolve();
         });
