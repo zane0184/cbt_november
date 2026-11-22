@@ -43,7 +43,7 @@ class StudentLifecycleService
             $this->lockTenant($tenantId);
             $student = $this->lockStudent($tenantId, $studentId);
             $this->assertStudentEligible($tenantId, $student);
-            $from = $this->lockRombel($tenantId, $fromRombelId, false, false);
+            $from = $this->lockRombel($tenantId, $fromRombelId, false, true);
             $to = $this->lockRombel($tenantId, $toRombelId, true, true);
 
             if ((string) $from->academic_year_id !== (string) $to->academic_year_id) {
@@ -91,7 +91,7 @@ class StudentLifecycleService
             $this->lockTenant($tenantId);
             $student = $this->lockStudent($tenantId, $studentId);
             $this->assertStudentEligible($tenantId, $student);
-            $from = $this->lockRombel($tenantId, $fromRombelId, false);
+            $from = $this->lockRombel($tenantId, $fromRombelId, false, false);
             $to = $this->lockRombel($tenantId, $toRombelId, true);
 
             if ((string) $from->academic_year_id === (string) $to->academic_year_id) {
