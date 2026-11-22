@@ -131,7 +131,7 @@ class WebAdminAuthTest extends TestCase
     public function test_legacy_operator_login_redirects_to_same_admin_dashboard(): void
     {
         $response = $this->post('/login', ['identifier' => 'operator.uji', 'password' => $this->password]);
-        $response->assertRedirect('/operator/dashboard');
+        $response->assertRedirect('/admin/dashboard');
         $this->assertAuthenticatedAs($this->operator);
     }
 
