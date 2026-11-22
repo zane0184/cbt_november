@@ -35,7 +35,7 @@ class ExamAnswerController extends Controller
             ], 400);
         }
 
-        return DB::transaction(function () use ($exam, $attempt, $user, $deviceId) {
+        return DB::transaction(function () use ($exam, $attempt, $user, $deviceId, $request) {
             // Canonical read/write lock order: Exam -> Participant -> Attempt -> Answer.
             $lockedExam = Exam::query()
                 ->where('tenant_id', $user->tenant_id)
@@ -90,6 +90,22 @@ class ExamAnswerController extends Controller
                     'message' => 'Jumlah Attempt aktif peserta tidak konsisten; pembacaan jawaban ditahan.',
                     'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
                 ], 409);
+            }
+
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
+            }
+
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
             if (!$lockedAttempt->device_fingerprint
@@ -148,7 +164,7 @@ class ExamAnswerController extends Controller
             'answer_state' => 'required|in:ANSWERED,CLEARED,UNANSWERED',
         ]);
 
-        return DB::transaction(function () use ($exam, $attempt, $snapshot, $user, $validated, $deviceId) {
+        return DB::transaction(function () use ($exam, $attempt, $snapshot, $user, $validated, $deviceId, $request) {
             // Every writer takes the same parent locks before touching an Answer.
             $lockedExam = Exam::query()
                 ->where('tenant_id', $user->tenant_id)
@@ -238,42 +254,46 @@ class ExamAnswerController extends Controller
             // Validate against the immutable snapshot loaded under the same attempt lock.
             $this->validatePayload($lockedSnapshot, $validated['answer_payload'], $validated['answer_state']);
 
-            // Idempotency keys are scoped to the attempt, not merely one question row.
-            // Reusing a key for a different payload/snapshot is a conflict, never a second mutation.
-            $requestReplay = ExamAttemptAnswer::query()
+            $canonicalize = function ($value) use (&$canonicalize) {
+                if (!is_array($value)) {
+                    return $value;
+                }
+                if (array_is_list($value)) {
+                    return array_map($canonicalize, $value);
+                }
+                ksort($value);
+                foreach ($value as $key => $item) {
+                    $value[$key] = $canonicalize($item);
+                }
+                return $value;
+            };
+            $payloadHash = hash('sha256', json_encode($canonicalize([
+                'snapshot_id' => (string) $lockedSnapshot->id,
+                'answer_state' => $validated['answer_state'],
+                'answer_payload' => $validated['answer_payload'],
+            ]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+            // Immutable per-Attempt request ledger preserves old request IDs after later revisions.
+            $requestReplay = DB::table('exam_attempt_answer_requests')
                 ->where('tenant_id', $lockedExam->tenant_id)
-                ->where('exam_id', $lockedExam->id)
                 ->where('exam_attempt_id', $lockedAttempt->id)
                 ->where('client_request_id', $validated['client_request_id'])
                 ->lockForUpdate()
                 ->first();
 
             if ($requestReplay) {
-                $sameRequest = (string) $requestReplay->exam_question_snapshot_id === (string) $lockedSnapshot->id
-                    && $requestReplay->answer_state === $validated['answer_state']
-                    && $requestReplay->answer_payload == $validated['answer_payload'];
-
-                if (!$sameRequest) {
+                if (!hash_equals((string) $requestReplay->payload_hash, $payloadHash)) {
                     return response()->json([
                         'success' => false,
                         'code' => 'IDEMPOTENCY_KEY_REUSED',
-                        'message' => 'client_request_id sudah digunakan untuk mutasi jawaban yang berbeda.'
+                        'message' => 'client_request_id sudah digunakan untuk payload atau snapshot yang berbeda.'
                     ], 409);
                 }
 
-                return response()->json([
-                    'success' => true,
-                    'data' => [
-                        'attempt_id' => $lockedAttempt->id,
-                        'snapshot_id' => $lockedSnapshot->id,
-                        'revision_number' => $requestReplay->revision_number,
-                        'answer_state' => $requestReplay->answer_state,
-                        'server_now' => $serverNow->toIso8601String(),
-                        'saved_at' => $requestReplay->saved_at?->toIso8601String(),
-                    ],
-                    'idempotent' => true,
-                    'message' => 'Request yang sama telah diterima sebelumnya.'
-                ]);
+                $replayResponse = json_decode((string) $requestReplay->response_json, true, 512, JSON_THROW_ON_ERROR);
+                $replayResponse['idempotent'] = true;
+                $replayResponse['message'] = 'Request yang sama telah diterima sebelumnya.';
+                return response()->json($replayResponse);
             }
 
             $answer = ExamAttemptAnswer::query()
@@ -344,7 +364,15 @@ class ExamAnswerController extends Controller
                 'revision_number' => $answer->revision_number,
             ]);
 
-            return response()->json([
+            $receipt = [
+                'id' => (string) Str::uuid(),
+                'attempt_id' => $lockedAttempt->id,
+                'snapshot_id' => $lockedSnapshot->id,
+                'revision_number' => $answer->revision_number,
+                'payload_hash' => $payloadHash,
+                'committed_at' => $serverNow->toIso8601String(),
+            ];
+            $responseBody = [
                 'success' => true,
                 'data' => [
                     'attempt_id' => $lockedAttempt->id,
@@ -353,8 +381,21 @@ class ExamAnswerController extends Controller
                     'answer_state' => $answer->answer_state,
                     'server_now' => $serverNow->toIso8601String(),
                     'saved_at' => $answer->saved_at?->toIso8601String(),
-                ]
+                ],
+                'receipt' => $receipt,
+            ];
+
+            DB::table('exam_attempt_answer_requests')->insert([
+                'id' => $receipt['id'],
+                'tenant_id' => $lockedExam->tenant_id,
+                'exam_attempt_id' => $lockedAttempt->id,
+                'client_request_id' => $validated['client_request_id'],
+                'payload_hash' => $payloadHash,
+                'response_json' => json_encode($responseBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'committed_at' => $serverNow,
             ]);
+
+            return response()->json($responseBody);
         });
     }
 
