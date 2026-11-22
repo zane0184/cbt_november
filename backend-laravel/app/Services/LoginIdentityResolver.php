@@ -23,7 +23,11 @@ class LoginIdentityResolver
             ->whereRaw('LOWER(username) = ?', [$normalized])->get();
         $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->where(function ($query) use ($normalized): void {
-                $query->whereRaw('LOWER(nip) = ?', [$normalized])->orWhereRaw('LOWER(nik) = ?', [$normalized]);
+                $query->where(function ($asn) use ($normalized): void {
+                    $asn->where('employment_type', 'ASN')->whereRaw('LOWER(nip) = ?', [$normalized]);
+                })->orWhere(function ($honorer) use ($normalized): void {
+                    $honorer->where('employment_type', 'HONORER')->whereRaw('LOWER(nik) = ?', [$normalized]);
+                });
             })->pluck('user_id');
         $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->where('nisn', $identifier)->pluck('user_id');
@@ -44,7 +48,7 @@ class LoginIdentityResolver
 
         return match ($roles[0]) {
             'SISWA' => $matchesStudent ? $user : null,
-            'GURU' => ($matchesTeacher || $matchesUsername) ? $user : null,
+            'GURU' => $matchesTeacher ? $user : null,
             'ADMIN_MADRASAH' => $matchesUsername ? $user : null,
             default => null,
         };
