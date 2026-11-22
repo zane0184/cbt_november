@@ -1061,8 +1061,8 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_receipt_is_not_persisted_when_transaction_audit_fails(): void
     {
-        $audit = \\Mockery::mock(AuditService::class);
-        $audit->shouldReceive('log')->once()->andThrow(new \\RuntimeException('audit unavailable'));
+        $audit = \Mockery::mock(AuditService::class);
+        $audit->shouldReceive('log')->once()->andThrow(new \RuntimeException('audit unavailable'));
         $this->app->instance(AuditService::class, $audit);
 
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
