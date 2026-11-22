@@ -18,13 +18,13 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
-        Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+        Route::middleware(['auth:sanctum', 'tenant', 'account.active'])->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/logout', [AuthController::class, 'logout']);
         });
     });
 
-    Route::middleware(['auth:sanctum', 'tenant', 'license'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', 'license', 'account.active'])->group(function () {
         // Curriculum Detail
         Route::apiResource('curricula', \App\Http\Controllers\Api\V1\CurriculumController::class);
         Route::apiResource('phases', \App\Http\Controllers\Api\V1\PhaseController::class);
