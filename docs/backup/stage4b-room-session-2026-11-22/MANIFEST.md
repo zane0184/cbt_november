@@ -225,3 +225,12 @@ The prior rollback fix removed the Stage 4B rombel FK before its lookup index, b
 | backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-child-first-rollback-order | fb41b35f37a04af6116dac318c7188a5e21c5563 | 16916 |
 
 The verified MySQL 8 error 1553 on `exam_participants_id_tenant_exam_unique` was caused by the child table `exam_participant_room_assignments` retaining `epra_participant_scope_fk` while rollback tried to remove the parent candidate key. This snapshot preserves the migration before moving child-table drops ahead of parent participant key removal. The base `exam_participants` tenant/exam foreign keys remain required and must stay intact.
+
+
+## Additional snapshot — concurrency test foreign-key-safe tenant cleanup
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-foreign-key-safe-teardown | 98539a62144da02aab564d00e92ea3508afac411 | 14569 |
+
+The previous test teardown disabled `FOREIGN_KEY_CHECKS` while deleting a disposable tenant's records and restoring nullable room/proctor references. The snapshot is retained before tightening teardown to preserve constraint enforcement and avoid deleting or nulling records until dependent rows are removed in child-first order.
