@@ -38,11 +38,11 @@ class ImportTemplateExport implements WithMultipleSheets
                     ? ['Kategori Kepegawaian*', 'NIP* / kosongkan jika honorer', 'NIK* / kosongkan jika PNS', 'NUPTK (opsional)', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Email (opsional)', 'No. HP (opsional)']
                     : ['NIS (opsional)', 'NISN*', 'Nama Lengkap*', 'Jenis Kelamin (L/P)', 'Tempat Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Nama Orang Tua/Wali', 'No. HP Orang Tua/Wali', 'Alamat', 'Rombel*', 'Tahun Pelajaran*'],
                 $this->type === 'GURU'
-                    ? [['PNS', '198001012005011001', '', '0012345678901234', 'CONTOH - HAPUS BARIS INI', 'L', '', '']]
+                    ? [['ASN', '198001012005011001', '', '0012345678901234', 'CONTOH - HAPUS BARIS INI', 'L', '', '']]
                     : [['000123', '0012345678', 'CONTOH - HAPUS BARIS INI', 'P', 'Jakarta', '2015-01-01', 'Nama Wali Contoh', '081234567890', 'Alamat contoh', '', '']],
                 $this->type === 'GURU' ? ['B','C','D','H'] : ['A','B','F','H'],
                 $this->type === 'SISWA' ? ['J' => $references['rombels'], 'K' => $references['years']] : [],
-                $this->type === 'GURU' ? ['A' => ['PNS','HONORER'], 'F' => ['L','P']] : ['D' => ['L','P']],
+                $this->type === 'GURU' ? ['A' => ['ASN','HONORER'], 'F' => ['L','P']] : ['D' => ['L','P']],
                 ['J' => 2, 'K' => 3],
             ),
         ];
