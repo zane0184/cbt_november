@@ -195,7 +195,7 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->admin);
 
         // The official UserManagement action deactivates the Guru account.
-        \\Livewire\\Livewire::test(\\App\\Livewire\\Admin\\UserManagement::class)
+        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
             ->call('deactivateUser', $this->guru->id)
             ->assertHasNoErrors();
         $this->assertSoftDeleted('users', ['id' => $this->guru->id]);
@@ -211,7 +211,7 @@ class WebAdminAuthTest extends TestCase
         $this->withoutCookie($sessionCookieName)
             ->withCookie($sessionCookieName, $adminSessionCookie->getValue());
         $this->app['auth']->forgetGuards();
-        \\Livewire\\Livewire::test(\\App\\Livewire\\Admin\\UserManagement::class)
+        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
             ->set('statusFilter', 'INACTIVE')
             ->call('restoreUser', $this->guru->id)
             ->assertHasNoErrors();
