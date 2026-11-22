@@ -453,6 +453,78 @@ jobs:
           set -euo pipefail
           php artisan test tests/Feature/ExamRoomSessionConcurrencyTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-room-session-concurrency.log"
 
+      - name: Verify Stage 4B child-first rollback with MySQL foreign keys enabled
+        if: always() && steps.preflight.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan migrate:rollback --step=1 --force 2>&1 | tee "$RUNNER_TEMP/wa01-alt/stage4b-rollback.log"
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-alt/stage4b-rollback-postflight.json"
+          <?php
+          $pdo = new PDO(
+              'mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE'),
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $fkChecks = (int) $pdo->query('SELECT @@FOREIGN_KEY_CHECKS')->fetchColumn();
+          $tables = ['exam_rooms', 'exam_sessions', 'exam_session_rooms', 'exam_session_room_rombels', 'exam_participant_room_assignments'];
+          $present = [];
+          foreach ($tables as $table) {
+              $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? AND table_type = ?');
+              $stmt->execute([$table, 'BASE TABLE']);
+              if ((int) $stmt->fetchColumn() === 1) $present[] = $table;
+          }
+          $baseTenantFk = (int) $pdo->query(
+              "SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE
+               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'exam_participants'
+                 AND COLUMN_NAME = 'tenant_id' AND REFERENCED_TABLE_NAME = 'tenants'"
+          )->fetchColumn();
+          $singleTenantIndexes = (int) $pdo->query(
+              "SELECT COUNT(*) FROM (
+                  SELECT INDEX_NAME FROM information_schema.STATISTICS
+                  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'exam_participants'
+                  GROUP BY INDEX_NAME
+                  HAVING COUNT(*) = 1 AND SUM(COLUMN_NAME = 'tenant_id') = 1
+              ) AS tenant_indexes"
+          )->fetchColumn();
+          $ok = $fkChecks === 1 && $present === [] && $baseTenantFk >= 1 && $singleTenantIndexes >= 1;
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'foreign_key_checks' => $fkChecks,
+              'stage4b_tables_remaining_after_rollback' => $present,
+              'base_exam_participants_tenant_fk_preserved' => $baseTenantFk >= 1,
+              'single_column_exam_participants_tenant_index_preserved' => $singleTenantIndexes >= 1,
+              'rollback_was_child_first_and_fk_checks_remained_enabled' => $ok
+          ], JSON_PRETTY_PRINT) . PHP_EOL;
+          if (!$ok) exit(1);
+          PHP
+          php artisan migrate --force 2>&1 | tee "$RUNNER_TEMP/wa01-alt/stage4b-migrate-restore.log"
+          php <<'PHP' | tee "$RUNNER_TEMP/wa01-alt/stage4b-restore-postflight.json"
+          <?php
+          $pdo = new PDO(
+              'mysql:host=' . getenv('DB_HOST') . ';port=' . getenv('DB_PORT') . ';dbname=' . getenv('DB_DATABASE'),
+              getenv('DB_USERNAME'),
+              getenv('DB_PASSWORD'),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+          );
+          $fkChecks = (int) $pdo->query('SELECT @@FOREIGN_KEY_CHECKS')->fetchColumn();
+          $tables = ['exam_rooms', 'exam_sessions', 'exam_session_rooms', 'exam_session_room_rombels', 'exam_participant_room_assignments'];
+          $missing = [];
+          foreach ($tables as $table) {
+              $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ? AND table_type = ?');
+              $stmt->execute([$table, 'BASE TABLE']);
+              if ((int) $stmt->fetchColumn() !== 1) $missing[] = $table;
+          }
+          $ok = $fkChecks === 1 && $missing === [];
+          echo json_encode([
+              'gate' => $ok ? 'PASS' : 'FAIL',
+              'foreign_key_checks' => $fkChecks,
+              'missing_stage4b_tables_after_restore' => $missing
+          ], JSON_PRETTY_PRINT) . PHP_EOL;
+          if (!$ok) exit(1);
+          PHP
+
       - name: Cleanup disposable database and app user
         if: always()
         working-directory: .
