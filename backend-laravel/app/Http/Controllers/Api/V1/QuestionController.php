@@ -14,7 +14,7 @@ class QuestionController extends Controller
 {
     private const ALLOWED_TYPES = [
         'MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE',
-        'MATCHING', 'SHORT_ANSWER', 'ESSAY'
+        'MATCHING', 'ESSAY'
     ];
 
     public function __construct(protected AuditService $auditService)
