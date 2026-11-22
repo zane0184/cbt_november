@@ -33,7 +33,7 @@ class CurriculumRegistrationService
             )->validate();
 
             $exists = MultiCurriculum::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                ->where('code', $code)->whereNull('deleted_at')->exists();
+                ->where('code', $code)->exists();
             if ($exists) {
                 throw ValidationException::withMessages(['curriculumCode' => 'Kode kurikulum sudah digunakan pada madrasah ini.']);
             }
@@ -78,8 +78,7 @@ class CurriculumRegistrationService
             )->validate();
 
             if (MultiCurriculumVersion::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                ->where('multi_curriculum_id', $curriculum->id)->where('version_code', $versionCode)
-                ->whereNull('deleted_at')->exists()) {
+                ->where('multi_curriculum_id', $curriculum->id)->where('version_code', $versionCode)->exists()) {
                 throw ValidationException::withMessages(['versionCode' => 'Kode versi sudah digunakan pada kurikulum ini.']);
             }
 
@@ -131,6 +130,20 @@ class CurriculumRegistrationService
                 throw ValidationException::withMessages(['selectedVersionId' => 'Tahun efektif versi tidak sesuai dengan tahun pelajaran yang dipilih.']);
             }
 
+            if (preg_match('/^\\d{4}\\/\\d{4}$/', (string) $year->name) !== 1) {
+                throw ValidationException::withMessages(['academicYearId' => 'Format tahun pelajaran harus YYYY/YYYY.']);
+            }
+
+            $sameVersion = TenantCurriculumRegistration::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->where('academic_year_id', $year->id)
+                ->where('multi_curriculum_version_id', $version->id)
+                ->lockForUpdate()->first();
+
+            if ($sameVersion && $sameVersion->status === 'ACTIVE') {
+                throw ValidationException::withMessages(['selectedVersionId' => 'Versi ini sudah aktif terdaftar pada tahun pelajaran tersebut.']);
+            }
+
             $existing = TenantCurriculumRegistration::withoutGlobalScopes()
                 ->where('tenant_id', $tenantId)
                 ->where('academic_year_id', $year->id)
@@ -139,10 +152,6 @@ class CurriculumRegistrationService
                 ->lockForUpdate()->get();
 
             foreach ($existing as $previous) {
-                if ((string) $previous->multi_curriculum_version_id === (string) $version->id) {
-                    throw ValidationException::withMessages(['selectedVersionId' => 'Versi ini sudah aktif terdaftar pada tahun pelajaran tersebut.']);
-                }
-
                 $before = ['status' => $previous->status, 'version_id' => $previous->multi_curriculum_version_id];
                 $previous->status = 'INACTIVE';
                 $previous->save();
@@ -153,6 +162,19 @@ class CurriculumRegistrationService
                     'academic_year_id' => $year->id,
                     'reason' => trim($reason),
                 ]);
+            }
+
+            if ($sameVersion) {
+                $before = ['status' => $sameVersion->status];
+                $sameVersion->status = 'ACTIVE';
+                $sameVersion->save();
+                app(AuditService::class)->log('CURRICULUM_REGISTRATION_REACTIVATED', 'TenantCurriculumRegistration', $sameVersion->id, $before, [
+                    'status' => 'ACTIVE',
+                    'academic_year_id' => $year->id,
+                    'version_id' => $version->id,
+                    'reason' => trim($reason),
+                ]);
+                return $sameVersion;
             }
 
             $context = app(TenantContext::class);
