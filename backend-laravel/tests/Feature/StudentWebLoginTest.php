@@ -120,10 +120,8 @@ class StudentWebLoginTest extends TestCase
         $this->assertGuest();
 
         // Client B restores the same account through the official Admin action.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($sessionCookieName, $adminSessionCookie->getValue());
-        $this->app['auth']->forgetGuards();
-        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
+        \Livewire\Livewire::actingAs($admin)
+            ->test(\App\Livewire\Admin\UserManagement::class)
             ->set('statusFilter', 'INACTIVE')
             ->call('restoreUser', $this->student->id)
             ->assertHasNoErrors();
