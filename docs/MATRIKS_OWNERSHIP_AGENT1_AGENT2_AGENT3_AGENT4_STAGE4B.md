@@ -63,3 +63,11 @@ Status matriks ini tetap usulan ownership sampai pemilik teknis mengonfirmasi sc
 - Agent 4: Web Siswa admission, token, jadwal, Attempt/Answer persistence, submit/resume/expiry/recovery; SISWA hanya peserta.
 
 Ownership tetap tidak mengizinkan satu agent mengubah branch milik agent lain atau menganggap persetujuan tanpa bukti langsung.
+
+
+## PEMBARUAN OWNERSHIP BERDASARKAN REVIEW AGENT 3 — 22 NOVEMBER 2026
+
+- Agent 3: **Web Admin Madrasah dan Web Guru**, termasuk route/menu Guru untuk Bank Soal, Asesmen/Ujian, menu Proktor di Web Guru, Room/Session/placement administration dan monitoring UI yang hanya mengonsumsi backend-authorized room-scoped data.
+- Agent 3 melaporkan route/menu Proktor Guru belum tersedia dan monitoring UI lama belum membawa SessionRoom/Room scope. Status Agent3 P0 OPEN; review tersebut bukan approval atas backend lock/recovery Agent1/2.
+- Agent 1 tetap owner utama backend Room/Session/placement/assignment/scheduler sesuai scope Stage4B. Agent 3 tidak membuat sumber kebenaran lifecycle atau otorisasi di frontend.
+- Agent 2 harus menyetujui kontrak backend exact-role, global lock order dan recovery; Agent 4 harus mengonfirmasi admission/resume/submit/recovery dan branch resmi Web Siswa.
