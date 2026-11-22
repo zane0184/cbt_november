@@ -441,3 +441,53 @@ Perbandingan terbaru terhadap source HEAD tersebut:
 Seluruh branch tetap diverged. Tidak ada PR terbuka dari branch Agent 1–4. Konflik merge aktual tidak diuji karena merge/rebase dilarang.
 
 Dokumen ini diperbarui hanya untuk mencatat hasil audit, koreksi database inventory, backup dan status koordinasi. Source aplikasi, migration, schema, workflow dan database tidak berubah. HEAD final setelah commit dokumentasi terakhir dicatat pada manifest final reconciliation.
+
+
+## 10.16 POST-AGENT2 UPDATE — LATEST BRANCH DAN CI (22 NOVEMBER 2026)
+
+Agent 2 menambahkan audit read-only pada:
+backend-laravel/docs/AGENT2_CONTINUATION_AUTH_TENANT_REPORTING_LIFECYCLE_2026-11-22.md
+Blob: bd8e80ad324fda10faf4cfc9cb34b4d19b8f299c.
+Source runtime baseline Agent 2 tetap 74bf7178f46673e9be90523671490c0749034acd; HEAD dokumentasi 32d383eb1564cdbcf084b8677fe8b750a4b45a11.
+
+### HEAD dan graph terbaru
+
+| Owner | Branch | HEAD | Ahead / behind terhadap Agent 1 |
+|---|---|---|---:|
+| Agent 1 | work/stage4b-room-session-20261122 | 4754ae0418193cd0f25b29a6296d3632065348f9 sebelum update dokumentasi ini | — |
+| Agent 2 | work/stage4d-account-lifecycle-20261122 | 32d383eb1564cdbcf084b8677fe8b750a4b45a11 | 225 / 84 |
+| Agent 3 | work/web-guru-foundation-20261122 | 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23 | 172 / 229 |
+| Kandidat Agent 4 | work/import-guru-siswa-implementation-20261122 | f38ceec7b0653fcf3363eec40f3d4577c323cca8 | 80 / 352 |
+| main | main | feab77228f7108f7f7a45325d7f1fb878c07310b | 15 / 1202 |
+
+Merge-base Agent 2: 0631a3d84d058c8c049dcb71dc54b2e7cbb849a6.
+Merge-base Agent 3: 81b6c74d81d80bc483530802594f624fb4e0f3db.
+Merge-base kandidat Agent 4: 17c20c66284deb7a18e3a6dde2b3d47f9c966bd9.
+Merge-base main: 95736e338e517a087503adfb3e3a899709e0340c.
+
+### CI Agent 2 — latest
+
+- Run 45003796892 pada SHA 74bf7178: BLOCKED — RUNNER; job tidak memiliki steps.
+- Run 45008591113 pada SHA dokumentasi 32d383e: BLOCKED — RUNNER; source runtime tidak berubah, job tidak memiliki steps.
+- Agent 2 melaporkan runner_id=0 dan attempts 1–3 tanpa runner. PHPUnit tidak berjalan.
+- Run lama 44998669927/44998949281 tetap failure HTTP 500 vs expected 302, tetapi bukan bukti terhadap runner-blocked attempts terbaru.
+
+### CI Agent 3 — latest
+
+Run 45003191589 pada SHA 834a59f11f9b548c8d7f0fcea68c15cf4bbe501f: FAILURE, 18 passed / 2 failed / 86 assertions.
+- Tenant-context mismatch: expected 403, received 200.
+- Cross-tenant Livewire Question ID: ModelNotFoundException, bukan Not Found response.
+Run SUCCESS 44995889398 pada SHA a338679... adalah run lama dan telah disupersede.
+
+Agent 3 branch HEAD 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23; commit terakhir hanya manifest backup. Controller show tetap tidak memanggil ExamMonitoringScope::allowsParticipant().
+
+### Dampak lintas-agent
+
+Laporan Agent 2 juga menandai exact-role gaps, KAMAD monitoring path, topologi tenant resolver, current-score aggregation, dan immutable report issuance. Untuk Stage 4B, isu yang wajib dibawa ke koordinasi adalah KAMAD tidak boleh mendapat monitoring, Attempt/Answer lock order, scheduler Proktor, dan penggunaan current score pada operasi submit/report.
+
+Status approval tidak berubah:
+- Agent 2: NEEDS DESIGN / COORDINATION; approval tetap PENDING.
+- Agent 3: PENDING dan CI terbaru FAILURE.
+- Agent 4: PENDING; owner belum terkonfirmasi.
+- Operational guard dan lock order: NEEDS DESIGN.
+- Implementasi source/migration: NOT STARTED.
