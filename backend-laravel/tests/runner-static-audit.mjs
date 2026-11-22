@@ -49,6 +49,12 @@ assert.ok(applicationScript.includes('URL.revokeObjectURL(url)'), 'Media Object 
 assert.ok(applicationScript.includes('10 * 1024 * 1024'), 'Media client must enforce the backend 10 MB upload limit');
 console.log('PASS: auth-session fencing, heartbeat, and authenticated media lifecycle are present');
 
+assert.ok(applicationScript.includes('async function verifyAnswerReceipt'), 'Server answer receipt must be verified before acknowledging a local queue item');
+assert.ok(applicationScript.includes('client_request_id'), 'Receipt must bind the immutable client request ID');
+assert.ok(applicationScript.includes('expectedAnswerPayloadHash'), 'Receipt payload hash must be compared with the locally canonicalized payload');
+assert.ok(applicationScript.includes('state.pending.delete(question.id)'), 'Pending queue item is removed only after the verified response path');
+console.log('PASS: immutable answer receipt binding and payload-hash verification are present');
+
 assert.ok(applicationScript.includes('clearInterval(state.timerIntervalId)'), 'Timer reload must clear the previous interval');
 console.log('PASS: timer interval deduplication guard is present');
 
