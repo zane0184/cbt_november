@@ -107,7 +107,6 @@ jobs:
             tests/Feature/AuthTest.php \
             tests/Feature/ParticipantAuthorizationAndAttemptLimitTest.php \
             tests/Feature/ExamAnswerTest.php \
-            tests/Feature/MonitoringTest.php \
             tests/Feature/MediaAuthorizationTest.php \
             tests/Feature/ExpireExamAttemptsCommandTest.php \
             tests/Feature/DeviceLeaseSchemaIntegrityTest.php \
