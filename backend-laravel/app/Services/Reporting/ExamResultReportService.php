@@ -19,7 +19,7 @@ class ExamResultReportService
             ->where('exam_id', $exam->id)
             ->whereHas('participant', function (Builder $participantQuery) use ($exam) {
                 $participantQuery->where('tenant_id', $exam->tenant_id)
-                    ->whereHas('user', function ($userQuery) use ($exam) {
+                    ->whereHas('userForHistory', function ($userQuery) use ($exam) {
                         $userQuery->where('tenant_id', $exam->tenant_id)
                             ->whereHas('studentProfile', fn ($profileQuery) => $profileQuery->where('tenant_id', $exam->tenant_id));
                     });
@@ -65,7 +65,7 @@ class ExamResultReportService
             ->where('exam_id', $exam->id)
             ->whereHas('participant', function (Builder $participantQuery) use ($exam) {
                 $participantQuery->where('tenant_id', $exam->tenant_id)
-                    ->whereHas('user', function ($userQuery) use ($exam) {
+                    ->whereHas('userForHistory', function ($userQuery) use ($exam) {
                         $userQuery->where('tenant_id', $exam->tenant_id)
                             ->whereHas('studentProfile', fn ($profileQuery) => $profileQuery->where('tenant_id', $exam->tenant_id));
                     });
