@@ -315,7 +315,7 @@ class AdminCbtBoundaryTest extends TestCase
 
         foreach ($requests as [$method, $uri, $payload]) {
             $response = $this->json($method, $uri, $payload);
-            $response->assertForbidden("Expected 403 for {$method} {$uri}; got {$response->status()}");
+            $this->assertSame(403, $response->status(), "Expected 403 for {$method} {$uri}; got {$response->status()}. Response: {$response->getContent()}");
         }
 
         $after = [];
