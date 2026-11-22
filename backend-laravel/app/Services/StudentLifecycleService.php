@@ -293,6 +293,7 @@ class StudentLifecycleService
                 'reason' => trim($reason),
                 'performed_by' => $actorId,
                 'metadata' => $metadata,
+                'created_at' => now(),
             ]);
         } finally {
             $context->setTenantId($previousTenantId);
