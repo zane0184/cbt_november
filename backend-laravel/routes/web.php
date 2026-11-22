@@ -10,6 +10,7 @@ use App\Livewire\Admin\TenantProfileManagement;
 use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
+use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
 use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
@@ -91,6 +92,7 @@ Route::middleware(['auth', 'tenant', 'license', 'account.active'])->group(functi
     Route::get('/admin/import/template/{type}', [ImportTemplateController::class, 'download'])->name('admin.import.template');
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
+    Route::get('/admin/teacher-subject-assignments', TeacherSubjectAssignmentManagement::class)->name('admin.teacher-subject-assignments');
     Route::get('/admin/curriculum', CurriculumManagement::class);
     Route::get('/admin/questions', QuestionBank::class);
     Route::get('/admin/exams', ExamManagement::class);
