@@ -208,7 +208,7 @@ class AdminUserManagementScopeTest extends TestCase
     public function test_deactivation_revokes_tokens_and_preserves_profile_and_audit_history_then_restore_reuses_same_ids(): void
     {
         $tenant = Tenant::create(['name' => 'Madrasah Lifecycle', 'code' => 'LIFECYCLE']);
-        $this->signInAdmin($tenant);
+        $admin = $this->signInAdmin($tenant);
         $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $guru = User::create([
             'name' => 'Guru Lifecycle',
@@ -237,7 +237,7 @@ class AdminUserManagementScopeTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'entity_id' => $guru->id, 'action' => 'USER_DEACTIVATED']);
 
         $log = AuditLog::query()->where('tenant_id', $tenant->id)->where('entity_id', $guru->id)->where('action', 'USER_DEACTIVATED')->firstOrFail();
-        $this->assertSame($guru->id, $log->user?->id);
+        $this->assertSame($admin->id, $log->user?->id);
         $this->assertNotSame('', $token);
 
         Livewire::test(UserManagement::class)
