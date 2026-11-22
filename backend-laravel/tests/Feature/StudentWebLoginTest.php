@@ -59,6 +59,9 @@ class StudentWebLoginTest extends TestCase
 
     public function test_student_browser_cookie_is_invalidated_by_admin_deactivation_and_reactivation(): void
     {
+        // The test browser uses cbt.test; mark that host as a Sanctum stateful domain.
+        config(['sanctum.stateful' => ['cbt.test']]);
+
         $studentApiToken = $this->student->createToken('before-account-deactivation')->plainTextToken;
         $studentBrowser = new \Tests\Support\IndependentBrowserClient();
         $adminBrowser = new \Tests\Support\IndependentBrowserClient();

@@ -16,6 +16,12 @@ class EnsureAccountSessionVersion
 {
     public function handle(Request $request, Closure $next): Response
     {
+        // Bearer-token API requests and guard-only tests may have no session store.
+        // Only stateful browser sessions carry the auth epoch that must be checked.
+        if (!$request->hasSession()) {
+            return $next($request);
+        }
+
         $guard = Auth::guard('web');
         $user = $guard->user();
 
