@@ -166,4 +166,20 @@ class StudentWebLoginTest extends TestCase
         $response->assertSessionHasErrors('identifier');
         $this->assertGuest();
     }
+    public function test_existing_student_web_session_is_rejected_while_account_is_deactivated(): void
+    {
+        $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+        ])->assertRedirect('/student/exams');
+        $this->assertAuthenticatedAs($this->student);
+
+        $this->student->delete();
+        $this->app['auth']->forgetGuards();
+
+        $this->get('/student/exams')->assertRedirect('/login');
+        $this->assertGuest();
+        $this->assertSoftDeleted('users', ['id' => $this->student->id]);
+    }
+
 }
