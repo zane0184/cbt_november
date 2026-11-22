@@ -687,10 +687,18 @@
         }
     });
 
+    let desktopQuestionNavMode = window.innerWidth >= 1024;
     function syncQuestionNavigationForViewport() {
         const panel = el('question-nav-panel');
         if (!panel) return;
-        panel.open = window.innerWidth >= 1024;
+        const nextDesktopMode = window.innerWidth >= 1024;
+        // Only apply the automatic open/close default when crossing the
+        // desktop breakpoint. Preserve the student's manual mobile drawer
+        // choice during ordinary viewport/keyboard/browser-chrome resizes.
+        if (nextDesktopMode !== desktopQuestionNavMode) {
+            panel.open = nextDesktopMode;
+            desktopQuestionNavMode = nextDesktopMode;
+        }
     }
     syncQuestionNavigationForViewport();
     window.addEventListener('resize', syncQuestionNavigationForViewport);
