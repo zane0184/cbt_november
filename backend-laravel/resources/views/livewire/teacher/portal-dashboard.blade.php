@@ -105,7 +105,7 @@
                         @php($assignment = $row['assignment'])
                         <tr>
                             <td><p class="font-bold">{{ $assignment->subject->name }}</p><p class="text-xs portal-muted">{{ $assignment->subject->code }}</p></td>
-                            <td><p class="font-semibold">{{ $assignment->rombel->name }}</p><p class="text-xs portal-muted">{{ $assignment->rombel->gradeLevel?->name ?? 'Kelas belum tersedia' }}</p></td>
+                            <td><p class="font-semibold">{{ $assignment->rombel->name }}</p><p class="text-xs portal-muted">{{ $assignment->rombel->gradeLevel?->phase?->name ?? 'Fase belum tersedia' }} · {{ $assignment->rombel->gradeLevel?->name ?? 'Kelas belum tersedia' }}</p></td>
                             <td>{{ $assignment->academicYear->name }}<p class="text-xs portal-muted">{{ $assignment->semester->term }}</p></td>
                             <td class="font-bold">{{ $row['students_count'] }}</td>
                             <td><span class="portal-badge">{{ $row['status_label'] }}</span></td>
