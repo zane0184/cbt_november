@@ -233,8 +233,10 @@ class ImportWorkbookService
         }
 
         $actor = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($userId)->firstOrFail();
-        if (!$actor->hasRole('ADMIN_MADRASAH') || !$actor->hasPermission('user.manage')) {
-            throw new RuntimeException('Hanya Admin Madrasah dengan izin Kelola Pengguna pada tenant yang sama yang dapat menjalankan import.');
+        if (!$actor->is_active || $actor->roles()->count() !== 1
+            || !$actor->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            || !$actor->hasPermission('user.manage')) {
+            throw new RuntimeException('Hanya Admin Madrasah aktif dengan satu role dan izin Kelola Pengguna pada tenant yang sama yang dapat menjalankan import.');
         }
     }
 
