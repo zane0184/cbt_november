@@ -49,7 +49,7 @@ class ProctorAssignmentManagement extends Component
 
         $service->assign(auth()->user(), $exam, $proctor->id, Carbon::parse($data['startsAt']), Carbon::parse($data['expiresAt']), $data['reason']);
         $this->reset('reason');
-        session()->flash('proctorAssignmentMessage', 'Penugasan Proktor berhasil disimpan dan dicatat.');
+        session()->flash('proctorAssignmentMessage', 'Penugasan Guru Pengawas berhasil disimpan dan dicatat.');
     }
 
     public function revoke(string $assignmentId, ExamProctorAssignmentService $service): void
