@@ -82,12 +82,15 @@
                 <a href="{{ route('teacher.learning') }}" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? 'active' : '' }}"><span>▤</span> Pembelajaran</a>
                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
                 <div class="my-3 border-t border-white/10"></div>
-                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Modul berikutnya</p>
-                @foreach (['Bank Soal', 'Asesmen', 'Ujian', 'Proktor', 'Monitoring Ujian', 'Penilaian', 'Hasil & Laporan'] as $menu)
-                    <div class="portal-disabled" aria-disabled="true" title="Belum diimplementasikan pada fondasi Web Guru">
-                        <span>{{ $menu }}</span><span class="text-[10px] uppercase tracking-wide">Tahap berikutnya</span>
-                    </div>
-                @endforeach
+                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Modul existing — akses sesuai kewenangan</p>
+                <a href="/admin/questions" class="portal-nav-link"><span>▧</span> Bank Soal</a>
+                <a href="/admin/exams" class="portal-nav-link"><span>▣</span> Asesmen & Ujian</a>
+                <div class="my-3 border-t border-white/10"></div>
+                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Akses per ujian / tahap berikutnya</p>
+                <div class="portal-disabled" aria-disabled="true" title="Tautan monitoring tersedia dari ujian yang diizinkan"><span>Monitoring Ujian</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
+                <div class="portal-disabled" aria-disabled="true" title="Penilaian dan hasil dibuka dari ujian setelah pemeriksaan policy"><span>Penilaian & Hasil</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
+                <div class="portal-disabled" aria-disabled="true" title="Analitik dan ekspor dibuka dari ujian setelah pemeriksaan policy"><span>Analytics & Ekspor</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
+                <p class="px-3 py-2 text-[11px] leading-relaxed text-emerald-100/60">Penugasan Proktor bersifat sementara dan dikelola Admin. Guru hanya memperoleh akses monitoring jika policy dan penugasan mengizinkan.</p>
                 <div class="my-3 border-t border-white/10"></div>
                 <a href="{{ route('teacher.profile') }}" class="portal-nav-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}"><span>♙</span> Profil Guru</a>
                 <div class="portal-disabled" aria-disabled="true" title="Belum diimplementasikan pada fondasi Web Guru"><span>Pengaturan</span><span class="text-[10px] uppercase tracking-wide">Tahap berikutnya</span></div>
@@ -119,10 +122,15 @@
                                 <a href="{{ route('teacher.learning') }}" class="block rounded-lg px-3 py-2 text-sm">Pembelajaran</a>
                                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="block rounded-lg px-3 py-2 text-sm">Kurikulum & Akademik</a>
                                 <div class="my-2 border-t portal-border"></div>
-                                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul berikutnya</p>
-                                @foreach (['Bank Soal', 'Asesmen', 'Ujian', 'Proktor', 'Monitoring Ujian', 'Penilaian', 'Hasil & Laporan'] as $menu)
-                                    <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">{{ $menu }} · Tahap berikutnya</span>
-                                @endforeach
+                                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul existing</p>
+                                <a href="/admin/questions" class="block rounded-lg px-3 py-2 text-sm">Bank Soal</a>
+                                <a href="/admin/exams" class="block rounded-lg px-3 py-2 text-sm">Asesmen & Ujian</a>
+                                <div class="my-2 border-t portal-border"></div>
+                                <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Akses per ujian / tahap berikutnya</p>
+                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Monitoring Ujian · Per ujian</span>
+                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Penilaian & Hasil · Per ujian</span>
+                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Analytics & Ekspor · Per ujian</span>
+                                <p class="px-3 py-2 text-[11px] leading-relaxed portal-muted">Penugasan Proktor bersifat sementara dan dikelola Admin.</p>
                                 <a href="{{ route('teacher.profile') }}" class="block rounded-lg px-3 py-2 text-sm">Profil Guru</a>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Pengaturan · Tahap berikutnya</span>
                                 <div class="my-2 border-t portal-border"></div>
