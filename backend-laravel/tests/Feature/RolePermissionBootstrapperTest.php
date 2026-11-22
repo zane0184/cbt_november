@@ -18,6 +18,7 @@ class RolePermissionBootstrapperTest extends TestCase
         $roles = [
             'ADMIN_MADRASAH' => 'Admin Madrasah',
             'GURU' => 'Guru',
+            'SISWA' => 'Siswa',
         ];
 
         foreach ($roles as $name => $label) {
@@ -67,14 +68,12 @@ class RolePermissionBootstrapperTest extends TestCase
         $this->assertTrue($admin->permissions()->where('name', 'exam.proctor.assign')->exists());
         $this->assertFalse($admin->permissions()->where('name', 'exam.manage')->exists());
         $this->assertSame(0, Role::whereIn('name', ['KAMAD', 'OPERATOR'])->count());
-        $this->assertEqualsCanonicalizing(['ADMIN_MADRASAH', 'GURU'], Role::query()->pluck('name')->all());
+        $this->assertEqualsCanonicalizing(['ADMIN_MADRASAH', 'GURU', 'SISWA'], Role::query()->pluck('name')->all());
     }
 
     public function test_missing_required_role_fails_before_creating_permissions(): void
     {
         Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        Role::create(['name' => 'GURU', 'label' => 'Guru']);
-
         try {
             app(RolePermissionBootstrapper::class)->bootstrap();
             $this->fail('Expected missing-role exception was not thrown.');
