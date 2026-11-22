@@ -34,7 +34,7 @@ class CurriculumManagement extends Component
         $user = auth()->user();
         abort_unless(
             $user
-            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN'])->exists()
+            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR'])->exists()
             && $user->hasPermission('curriculum.manage'),
             403,
             'Akses ditolak. Hanya Admin Madrasah dengan permission curriculum.manage yang dapat mengubah struktur kurikulum.'
