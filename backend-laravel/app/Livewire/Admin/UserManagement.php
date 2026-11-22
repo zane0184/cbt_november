@@ -10,7 +10,6 @@ use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -319,10 +318,9 @@ class UserManagement extends Component
             $user->remember_token = Str::random(60);
             $user->save();
 
-            if (Schema::hasTable('sessions')) {
-                DB::table('sessions')->where('user_id', $user->id)->delete();
-            }
-
+            // SoftDeletes makes the session user provider reject this account on its next request.
+            // Do not delete from sessions.user_id: this installation's legacy column is integer,
+            // while User IDs are UUIDs. API tokens are revoked above.
             $user->delete();
 
             app(AuditService::class)->log('USER_DEACTIVATED', 'User', $user->id, $old, [
