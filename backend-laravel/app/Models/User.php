@@ -94,7 +94,9 @@ class User extends Authenticatable
         // Permission decisions must not trust a previously loaded roles/permissions
         // relation. A user with conflicting portal roles is never authorized.
         $roleNames = $this->roles()->pluck('name');
-        if ($roleNames->count() !== 1 || !$this->hasActivePersistedTenantIdentity()) {
+        if ($roleNames->count() !== 1
+            || !$this->hasActivePersistedTenantIdentity()
+            || !$this->hasActiveAcademicProfileForRole((string) $roleNames->first())) {
             return false;
         }
 
@@ -115,7 +117,9 @@ class User extends Authenticatable
 
         $roleNames = $this->roles()->pluck('name');
 
-        return $roleNames->count() === 1 && $roleNames->first() === $role;
+        return $roleNames->count() === 1
+            && $roleNames->first() === $role
+            && $this->hasActiveAcademicProfileForRole($role);
     }
 
     /**
@@ -130,6 +134,28 @@ class User extends Authenticatable
         return $this->roles()
             ->whereHas('permissions', fn ($query) => $query->where('permissions.name', $permission))
             ->exists();
+    }
+
+    private function hasActiveAcademicProfileForRole(string $role): bool
+    {
+        if ($role === 'GURU') {
+            return DB::table('teacher_profiles')
+                ->where('user_id', $this->getKey())
+                ->where('tenant_id', $this->tenant_id)
+                ->whereNull('deleted_at')
+                ->exists();
+        }
+
+        if ($role === 'SISWA') {
+            return DB::table('student_profiles')
+                ->where('user_id', $this->getKey())
+                ->where('tenant_id', $this->tenant_id)
+                ->whereNull('deleted_at')
+                ->exists();
+        }
+
+        // Admin Madrasah has no separate academic profile table.
+        return true;
     }
 
     private function hasActivePersistedTenantIdentity(): bool
