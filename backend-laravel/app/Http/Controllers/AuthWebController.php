@@ -70,7 +70,7 @@ class AuthWebController extends Controller
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return redirect('/admin/dashboard');
         if ($user->hasRole('KAMAD')) return redirect('/');
-        if ($user->hasRole('GURU')) return redirect('/admin/exams');
+        if ($user->hasRole('GURU')) return redirect('/guru/dashboard');
         if ($user->hasRole('SISWA')) return redirect('/student/exams');
 
         return redirect('/login')->withErrors([
