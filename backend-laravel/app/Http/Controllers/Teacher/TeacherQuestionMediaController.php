@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\MediaAsset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
 final class TeacherQuestionMediaController extends Controller
@@ -81,7 +80,7 @@ final class TeacherQuestionMediaController extends Controller
         $mediaController->detachFromQuestionVersion($detachRequest, $question, $version, $media);
 
         return redirect()
-            ->route('teacher.questions.index', ['edit_question' => $questionId])
+            ->route('teacher.questions.index', ['edit_question' => $question])
             ->with('message', 'Media dilepas dari versi draft soal.');
     }
 }
