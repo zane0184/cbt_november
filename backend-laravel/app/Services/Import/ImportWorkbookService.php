@@ -454,7 +454,7 @@ class ImportWorkbookService
         if (!in_array($payload['gender'], ['L','P',''], true)) $errors[] = 'Jenis kelamin harus L atau P.';
         if ($type === 'GURU') {
             if (!in_array($payload['category'], ['ASN','HONORER'], true)) $errors[] = 'Kategori kepegawaian harus ASN atau HONORER.';
-            if ($payload['category'] === 'PNS' && (!preg_match('/^\d{18}$/', $payload['nip']) || $payload['nik'] !== '')) $errors[] = 'Guru PNS wajib mengisi NIP 18 digit dan mengosongkan NIK.';
+            if ($payload['category'] === 'PNS' && (!preg_match('/^\d{18}$/', $payload['nip']) || $payload['nik'] !== '')) $errors[] = 'Guru ASN wajib mengisi NIP 18 digit dan mengosongkan NIK.';
             if ($payload['category'] === 'HONORER' && (!preg_match('/^\d{16}$/', $payload['nik']) || $payload['nip'] !== '')) $errors[] = 'Guru honorer wajib mengisi NIK 16 digit dan mengosongkan NIP.';
             if ($payload['nuptk'] !== '' && !preg_match('/^\d{16}$/', $payload['nuptk'])) $errors[] = 'NUPTK harus 16 digit teks.';
             if ($payload['nip'] === '__NUMERIC_IDENTIFIER__' || $payload['nik'] === '__NUMERIC_IDENTIFIER__' || $payload['nuptk'] === '__NUMERIC_IDENTIFIER__') $errors[] = 'Identitas harus disimpan sebagai teks agar nol di depan tidak hilang.';
@@ -466,7 +466,7 @@ class ImportWorkbookService
                 foreach ($identityValues as $value) $q->orWhere('nip',$value)->orWhere('nik',$value)->orWhere('nuptk',$value)->orWhere('employee_identifier',$value);
             })->exists();
             if ($existing) return $this->result('Data Guru',$number,'SKIPPED','Identitas Guru sudah terdaftar; data existing tidak diubah.',$payload);
-            $loginIdentifier = $payload['nip'] ?: $payload['nik'];
+            $loginIdentifier = $payload['category'] === 'ASN' ? $payload['nip'] : $payload['nik'];
             if ($loginIdentifier !== '' && $this->loginUsernameExists($tenantId, $loginIdentifier)) $errors[] = 'Identitas login sudah digunakan sebagai username akun lain pada tenant ini.';
             if ($payload['email'] !== '' && User::withoutGlobalScopes()->where('tenant_id',$tenantId)->where('email',$payload['email'])->exists()) $errors[] = 'Email sudah digunakan pada tenant ini.';
         } else {
