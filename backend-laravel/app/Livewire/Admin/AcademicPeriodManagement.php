@@ -54,6 +54,9 @@ class AcademicPeriodManagement extends Component
 
         $year = DB::transaction(function () use ($tenantId, $data, $auditService) {
             Tenant::query()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
+            if (AcademicYear::query()->where('tenant_id', $tenantId)->where('name', $data['yearName'])->exists()) {
+                throw ValidationException::withMessages(['yearName' => 'Tahun ajaran tersebut sudah terdaftar.']);
+            }
             $year = AcademicYear::create(['name' => $data['yearName'], 'is_active' => false]);
             $auditService->log('ACADEMIC_YEAR_CREATED', 'AcademicYear', $year->id, null, [
                 'tenant_id' => $tenantId,
@@ -117,6 +120,9 @@ class AcademicPeriodManagement extends Component
             Tenant::query()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
             $year = AcademicYear::query()->where('tenant_id', $tenantId)
                 ->whereKey($data['selectedYearId'])->lockForUpdate()->firstOrFail();
+            if (Semester::query()->where('tenant_id', $tenantId)->where('academic_year_id', $year->id)->where('term', $data['semesterTerm'])->exists()) {
+                throw ValidationException::withMessages(['semesterTerm' => 'Semester tersebut sudah terdaftar pada tahun ajaran ini.']);
+            }
             $semester = Semester::create([
                 'academic_year_id' => $year->id,
                 'term' => $data['semesterTerm'],
