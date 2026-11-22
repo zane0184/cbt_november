@@ -58,6 +58,7 @@ class StudentWebLoginTest extends TestCase
 
     private function createActiveAttempt(): ExamAttempt
     {
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $year = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2026/2027']);
         $assessment = Assessment::create([
             'tenant_id' => $this->tenant->id,
@@ -84,7 +85,7 @@ class StudentWebLoginTest extends TestCase
             'status' => 'STARTED',
         ]);
 
-        return ExamAttempt::create([
+        $attempt = ExamAttempt::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $exam->id,
             'participant_id' => $participant->id,
@@ -94,6 +95,9 @@ class StudentWebLoginTest extends TestCase
             'expires_at' => now()->addHour(),
             'fence_generation' => 1,
         ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        return $attempt;
     }
 
     public function test_student_can_login_on_web_using_nisn_and_password_without_email(): void
