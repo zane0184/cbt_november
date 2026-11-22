@@ -2,8 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\GradeLevel;
+use App\Models\LearningObjective;
+use App\Models\LearningOutcome;
+use App\Models\Phase;
 use App\Models\Question;
 use App\Models\QuestionVersion;
+use App\Models\Subject;
+use App\Services\AuditService;
 use App\Support\Security\TeacherAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,6 +33,10 @@ class ExcelQuestionImporter implements QuestionImportService
         $rows = $options['rows'] ?? [];
         $results['total_rows'] = count($rows);
 
+        if ($rows === []) {
+            return ['success' => false, 'total_rows' => 0, 'imported' => 0, 'errors' => [['row' => 0, 'error' => 'Tidak ada baris soal yang dapat diimpor.']]];
+        }
+
         try {
             DB::transaction(function () use ($rows, &$results) {
                 foreach ($rows as $index => $row) {
@@ -37,8 +47,9 @@ class ExcelQuestionImporter implements QuestionImportService
                     throw new \Exception('Validation errors occurred.');
                 }
             });
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $results['success'] = false;
+            $results['imported'] = 0; // The enclosing transaction rolled back all rows.
             if ($e->getMessage() !== 'Validation errors occurred.') {
                 $results['errors'][] = ['row' => 0, 'error' => $e->getMessage()];
             }
@@ -123,6 +134,13 @@ class ExcelQuestionImporter implements QuestionImportService
         $questionId = $row['question_id'] ?? null;
         $question = null;
 
+        if (!$questionId && !empty($row['question_code'])) {
+            $questionId = Question::query()
+                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('question_code', strtoupper(trim((string) $row['question_code'])))
+                ->value('id');
+        }
+
         if ($questionId) {
             $question = Question::query()
                 ->where('tenant_id', auth()->user()->tenant_id)
@@ -150,7 +168,30 @@ class ExcelQuestionImporter implements QuestionImportService
             }
         }
 
+        $references = $this->validateRowReferences($row, $rowNumber, $question, $results);
+        if ($references === null) {
+            return;
+        }
+        $row = array_merge($row, $references);
+
+        $oldValues = $question ? [
+            'question_code' => $question->question_code,
+            'subject_id' => $question->subject_id,
+            'grade_level_id' => $question->grade_level_id,
+            'phase_id' => $question->phase_id,
+            'curriculum_id' => $question->curriculum_id,
+            'current_version_id' => $question->currentVersion?->id,
+        ] : null;
+
         if ($question) {
+            $question->update([
+                'question_code' => $row['question_code'] ?? $question->question_code,
+                'subject_id' => $row['subject_id'] ?? $question->subject_id,
+                'grade_level_id' => $row['grade_level_id'] ?? $question->grade_level_id,
+                'phase_id' => $row['phase_id'] ?? $question->phase_id,
+                'curriculum_id' => $row['curriculum_id'] ?? $question->curriculum_id,
+                'updated_by' => auth()->id(),
+            ]);
             $current = $question->currentVersion;
 
             if ($current && $current->status === 'PUBLISHED') {
@@ -161,6 +202,10 @@ class ExcelQuestionImporter implements QuestionImportService
                     'minor_version' => $current->minor_version + 1,
                     'question_type' => $row['type'],
                     'stem' => $row['stem'],
+                    'explanation' => $row['explanation'] ?? $current->explanation,
+                    'learning_outcome_id' => $row['learning_outcome_id'] ?? $current->learning_outcome_id,
+                    'learning_objective_id' => $row['learning_objective_id'] ?? $current->learning_objective_id,
+                    'element_id' => $row['element_id'] ?? $current->element_id,
                     'difficulty' => $row['difficulty'] ?? $current->difficulty,
                     'default_points' => $row['points'] ?? $current->default_points,
                     'status' => 'DRAFT',
@@ -175,6 +220,10 @@ class ExcelQuestionImporter implements QuestionImportService
                 $current->update([
                     'stem' => $row['stem'],
                     'question_type' => $row['type'],
+                    'explanation' => $row['explanation'] ?? $current->explanation,
+                    'learning_outcome_id' => $row['learning_outcome_id'] ?? $current->learning_outcome_id,
+                    'learning_objective_id' => $row['learning_objective_id'] ?? $current->learning_objective_id,
+                    'element_id' => $row['element_id'] ?? $current->element_id,
                     'difficulty' => $row['difficulty'] ?? $current->difficulty,
                     'default_points' => $row['points'] ?? $current->default_points,
                 ]);
@@ -207,7 +256,12 @@ class ExcelQuestionImporter implements QuestionImportService
                 'owner_user_id' => null,
                 'status' => 'DRAFT',
                 'subject_id' => $subjectId,
+                'question_code' => $row['question_code'] ?? null,
+                'grade_level_id' => $row['grade_level_id'] ?? null,
+                'phase_id' => $row['phase_id'] ?? null,
+                'curriculum_id' => $row['curriculum_id'] ?? null,
                 'created_by' => auth()->id(),
+                'updated_by' => auth()->id(),
             ]);
 
             $version = $question->versions()->create([
@@ -215,6 +269,10 @@ class ExcelQuestionImporter implements QuestionImportService
                 'minor_version' => 0,
                 'question_type' => $row['type'],
                 'stem' => $row['stem'],
+                'explanation' => $row['explanation'] ?? null,
+                'learning_outcome_id' => $row['learning_outcome_id'] ?? null,
+                'learning_objective_id' => $row['learning_objective_id'] ?? null,
+                'element_id' => $row['element_id'] ?? null,
                 'difficulty' => $row['difficulty'] ?? 'MEDIUM',
                 'default_points' => $row['points'] ?? 1,
                 'status' => 'DRAFT',
@@ -226,7 +284,159 @@ class ExcelQuestionImporter implements QuestionImportService
         // 4. Options/Metadata Processing
         $this->processOptions($version, $row);
 
+        app(AuditService::class)->log(
+            $oldValues ? 'IMPORT_UPDATE_QUESTION' : 'IMPORT_CREATE_QUESTION',
+            Question::class,
+            (string) $question->id,
+            $oldValues,
+            [
+                'question_code' => $question->question_code,
+                'subject_id' => $question->subject_id,
+                'version_id' => $version->id,
+                'question_type' => $version->question_type,
+                'learning_outcome_id' => $version->learning_outcome_id,
+                'learning_objective_id' => $version->learning_objective_id,
+                'option_count' => count($row['options'] ?? []),
+            ]
+        );
+
         $results['imported']++;
+    }
+
+    /**
+     * Validate and normalize all tenant-scoped references before writing any row.
+     */
+    protected function validateRowReferences(array $row, int $rowNumber, ?Question $question, array &$results): ?array
+    {
+        $user = auth()->user();
+        $tenantId = $user?->tenant_id;
+        if (!$user || !$tenantId) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Sesi Guru tidak tersedia.'];
+            return null;
+        }
+
+        $subjectId = $row['subject_id'] ?? $question?->subject_id;
+        if (!$question && !$subjectId) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Mata pelajaran wajib diisi untuk soal baru.'];
+            return null;
+        }
+        if ($subjectId) {
+            $subject = Subject::query()->whereKey($subjectId)->where('tenant_id', $tenantId)->first();
+            if (!$subject || !TeacherAccess::canManageSubject($user, $subjectId)) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Mata pelajaran tidak ditemukan pada tenant aktif atau bukan penugasan Guru.'];
+                return null;
+            }
+            if ($question && $question->owner_type === 'SUBJECT' && $question->subject_id !== $subjectId) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Soal tidak boleh dipindahkan ke mata pelajaran lain melalui import.'];
+                return null;
+            }
+        }
+
+        $questionCode = isset($row['question_code']) && trim((string) $row['question_code']) !== ''
+            ? strtoupper(trim((string) $row['question_code']))
+            : $question?->question_code;
+        if ($questionCode !== null && (strlen($questionCode) > 50 || !preg_match('/^[A-Z0-9._-]+$/', $questionCode))) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kode Soal hanya boleh berisi A-Z, 0-9, titik, garis bawah, atau tanda hubung (maksimal 50 karakter).'];
+            return null;
+        }
+        if ($questionCode !== null) {
+            $duplicate = Question::query()
+                ->where('tenant_id', $tenantId)
+                ->where('question_code', $questionCode)
+                ->when($question, fn ($query) => $query->whereKeyNot($question->id))
+                ->exists();
+            if ($duplicate) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kode Soal sudah digunakan oleh soal lain pada tenant ini.'];
+                return null;
+            }
+        }
+
+        $gradeLevelId = $row['grade_level_id'] ?? $question?->grade_level_id;
+        $gradeLevel = null;
+        if ($gradeLevelId) {
+            $gradeLevel = GradeLevel::query()
+                ->with('phase')
+                ->whereKey($gradeLevelId)
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'ACTIVE')
+                ->first();
+            if (!$gradeLevel || !$gradeLevel->phase || $gradeLevel->phase->status !== 'ACTIVE') {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kelas/fase tidak ditemukan atau tidak aktif pada tenant ini.'];
+                return null;
+            }
+        }
+
+        $outcomeId = $row['learning_outcome_id'] ?? $question?->currentVersion?->learning_outcome_id;
+        $outcome = null;
+        if ($outcomeId) {
+            $outcome = LearningOutcome::query()
+                ->with('currentVersion')
+                ->whereKey($outcomeId)
+                ->where('tenant_id', $tenantId)
+                ->when($subjectId, fn ($query) => $query->where('subject_id', $subjectId))
+                ->first();
+            if (!$outcome || !$outcome->currentVersion || $outcome->currentVersion->status !== 'ACTIVE') {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'CP tidak aktif, tidak ditemukan, atau bukan milik mata pelajaran/tenant ini.'];
+                return null;
+            }
+        }
+
+        $objectiveId = $row['learning_objective_id'] ?? $question?->currentVersion?->learning_objective_id;
+        $objective = null;
+        if ($objectiveId) {
+            if (!$outcomeId) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'TP harus berada di bawah CP yang dipilih.'];
+                return null;
+            }
+            $objective = LearningObjective::query()
+                ->whereKey($objectiveId)
+                ->where('tenant_id', $tenantId)
+                ->where('learning_outcome_id', $outcomeId)
+                ->where('status', 'ACTIVE')
+                ->first();
+            if (!$objective) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'TP tidak aktif atau tidak berada di bawah CP yang dipilih.'];
+                return null;
+            }
+        }
+
+        $phaseId = $row['phase_id'] ?? $gradeLevel?->phase_id ?? $outcome?->phase_id ?? $question?->phase_id;
+        if ($gradeLevel && $phaseId !== $gradeLevel->phase_id) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Fase kelas tidak cocok dengan fase soal.'];
+            return null;
+        }
+        if ($outcome && $outcome->phase_id && $phaseId !== $outcome->phase_id) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Fase soal tidak cocok dengan fase CP.'];
+            return null;
+        }
+        if ($phaseId) {
+            $phase = Phase::query()->whereKey($phaseId)->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->first();
+            if (!$phase) {
+                $results['errors'][] = ['row' => $rowNumber, 'error' => 'Fase tidak ditemukan atau tidak aktif pada tenant ini.'];
+                return null;
+            }
+        }
+
+        $curriculumId = $row['curriculum_id'] ?? $gradeLevel?->phase?->curriculum_id ?? $outcome?->curriculum_id ?? $question?->curriculum_id;
+        if ($gradeLevel?->phase?->curriculum_id && $curriculumId !== $gradeLevel->phase->curriculum_id) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kurikulum tidak cocok dengan kelas/fase yang dipilih.'];
+            return null;
+        }
+        if ($outcome?->curriculum_id && $curriculumId !== $outcome->curriculum_id) {
+            $results['errors'][] = ['row' => $rowNumber, 'error' => 'Kurikulum tidak cocok dengan CP yang dipilih.'];
+            return null;
+        }
+
+        return [
+            'question_code' => $questionCode,
+            'subject_id' => $subjectId,
+            'grade_level_id' => $gradeLevelId,
+            'phase_id' => $phaseId,
+            'curriculum_id' => $curriculumId,
+            'learning_outcome_id' => $outcome?->id,
+            'learning_objective_id' => $objective?->id,
+            'element_id' => $outcome?->element_id,
+        ];
     }
 
     protected function processOptions(QuestionVersion $version, array $row): void
