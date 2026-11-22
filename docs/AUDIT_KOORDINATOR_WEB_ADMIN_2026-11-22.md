@@ -443,3 +443,34 @@ Belum ada source aplikasi diubah pada checkpoint audit gap awal ini. Tidak ada m
 - Tidak ada migration, database, VPS, main branch, merge, atau deployment yang diubah.
 - Web Admin tetap belum memenuhi acceptance.
 - Langkah berikutnya: pulihkan bukti CI/runtime, lalu lanjutkan gap P0 sesuai urutan master spec. Jangan menambah fitur di luar Web Admin.
+# Implementasi P1 — Edit akun dan reset password Guru/Siswa — 22 November 2026
+
+## AUDIT
+- Spesifikasi master §4.1–4.3 mewajibkan CRUD/detail, pengelolaan akun/username, reset password, dan riwayat perubahan Guru/Siswa.
+- UserManagement sebelumnya hanya menyediakan daftar dan create. Tidak ada alur edit atau reset password.
+- users.email sudah nullable melalui migration 2026_11_11_000003_add_login_identity_fields.php; username tenant-unique tersedia. TeacherProfile dan StudentProfile memiliki soft delete; users juga memiliki deleted_at tetapi model User tidak menggunakan SoftDeletes.
+- Tidak ditemukan kolom status aktif/nonaktif pada schema users. Soft-delete tidak boleh dipakai untuk mewakili status nonaktif karena semantiknya berbeda dan berisiko merusak histori/relasi. Status akun ditahan sebagai desain/schema gap tersendiri.
+
+## DESAIN
+- Tambahkan edit identitas akun Guru/Siswa dengan query target tenant-scoped dan exact single-role; edit profil identitas yang sesuai role.
+- Tambahkan reset password dengan validasi minimal 14 karakter, tidak pernah menampilkan atau mencatat password, dan rotasi remember_token untuk memutus mekanisme remember-me lama.
+- Setiap mutasi memakai transaksi, row lock, re-validasi target, dan audit event tanpa credential.
+- Belum mengimplementasikan aktif/nonaktif sampai desain kolom, login enforcement, session revocation, query akun, dan histori disepakati melalui pemeriksaan source serta test lintas alur.
+
+## IMPLEMENTASI
+- backend-laravel/app/Livewire/Admin/UserManagement.php: menambah manageableUserQuery tenant/role scoped, openEditModal/updateUser, openResetPasswordModal/resetUserPassword, transaksi + lockForUpdate, audit USER_UPDATED dan USER_PASSWORD_RESET.
+- backend-laravel/resources/views/livewire/admin/user-management.blade.php: menambah tombol Edit/Reset Password dan modal form terkait.
+- backend-laravel/tests/Feature/AdminUserManagementScopeTest.php: menambah regresi edit+reset password dan penolakan target tenant lain.
+- Backup pra-patch tersedia di docs/backup/coordinator-web-admin-2026-11-22/user-management-edit-reset-p1/ untuk ketiga file. Blob source sebelum patch: UserManagement.php 964527ad7b955f4a48f705a303269775c9918530; view 22571e98a9196c6c780d2c15d2d9e9d075234103; test 08d99bd17e7920eed0638f193906137598339502.
+- Commit implementasi: b16d61a8bfa353377b9acabb499de3333ccee798; UI: ab93091c040bda245bd901f6a16bf5339c3ac201; test: 95735b4f1c637e9ef8434776082bb5c050080d57; hardening template/role context: ee2d811bf493d897be411773a91bc5f8724ccb08 dan 7a0fa60e7cda06b22c86eb608a6a74189f13edf2.
+- Backup laporan/checkpoint pra-update tersedia pada docs/backup/coordinator-web-admin-2026-11-22/ dengan akhiran .before-user-edit-reset-p1.
+
+## PENGUJIAN
+- Source dan test baru dibaca ulang dari GitHub. Backup source pra-patch telah diverifikasi tersedia.
+- PHPUnit: NOT RUN. PHP lint: NOT RUN. MySQL 8/InnoDB integration: NOT RUN.
+- GitHub Actions WA-01 runs #499–#502 pada commit implementasi terkait semuanya failure. Run #502 job 137270555915 berstatus completed/failure dengan steps kosong; runner_name kosong pada payload job sebelumnya. Ini bukan bukti bahwa test code gagal; runner belum menjalankan langkah yang dapat diamati.
+- Status: IMPLEMENTED — NOT VERIFIED.
+
+## BATAS
+- Tidak ada migration, database produksi, VPS, main branch, merge, atau deployment yang diubah.
+- Web Admin tetap NOT ACCEPTED. Belum ada bukti E2E, keamanan penuh, UAT, atau acceptance.
