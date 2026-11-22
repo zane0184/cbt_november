@@ -131,3 +131,14 @@ Dokumen status diperbarui pada commit report `8a1ea04a676bee3327c73614cce06f7db4
 | backend-laravel/tests/Feature/AdminCbtBoundaryTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/AdminCbtBoundaryTest.php.before-p0-tenant-context-fixture-2026-11-22 | 027683a33dfbc019ae70a7af5901ca986b539fed | 6967 | 8aa19814ed465e7bf470bb5b00403b1a3dc02446 |
 
 Manifest sebelum penambahan ini disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-p0-admin-boundary-fixture-2026-11-22` (blob SHA `252444b8c71240510d5bf722a4b6b2d387c8322f`, backup commit `b27aa24d4fbceb040708fa1f08177aedf06ac59b`). Backup source diverifikasi identik berdasarkan Git blob SHA sebelum file sumber diubah.
+
+
+## Snapshot tambahan — sebelum penegakan auth epoch pada Sanctum stateful API (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/app/Http/Middleware/EnsureAccountSessionVersion.php | docs/backup/stage4d-account-lifecycle-2026-11-22/EnsureAccountSessionVersion.php.before-stateful-api-session-epoch-2026-11-22 | 76301079c626d943cabd2098938cb5674280b817 | 1594 | 44f05919e91c329ef22eb53fd3ababdbe6c644e3 |
+| backend-laravel/routes/api.php | docs/backup/stage4d-account-lifecycle-2026-11-22/api.php.before-stateful-api-session-epoch-2026-11-22 | 4a9faa1e2bb0485570f30c199ccfbea7aa3a26ff | 10143 | 789c66f9af847615c304a27c38a374e9f4b1a1c3 |
+| backend-laravel/tests/Feature/StudentWebLoginTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/StudentWebLoginTest.php.before-stateful-api-session-epoch-2026-11-22 | f2d5022755ce3fcd84d0c3a35f3386471e382f03 | 13778 | 5e807f53df2b23757f0b73ef2e3a3c3b98616822 |
+
+Manifest sebelum penambahan ini disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-stateful-api-session-epoch-2026-11-22` (blob SHA `82c7d108874cb45dba6fc5b72ded98305ffd45f8`, backup commit `4f95ea18fcfd27a0c17641bfbc3a644d78a20c93`). Seluruh backup source diverifikasi identik dengan source aktif berdasarkan Git blob SHA sebelum modifikasi.
