@@ -419,8 +419,8 @@ class MediaController extends Controller
             ->get();
 
         foreach ($attempts as $attempt) {
-            if (!app(\\App\\Services\\AttemptAuthSessionBinding::class)->matches($attempt, $request)
-                || !app(\\App\\Services\\AttemptDeviceLeaseService::class)->isCurrent($attempt, $request)) {
+            if (!app(\App\Services\AttemptAuthSessionBinding::class)->matches($attempt, $request)
+                || !app(\App\Services\AttemptDeviceLeaseService::class)->isCurrent($attempt, $request)) {
                 continue;
             }
 
