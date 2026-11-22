@@ -86,3 +86,12 @@ Backup file sebelum patch tersimpan di docs/backup/coordinator-web-admin-2026-11
 6. Migration legacy role tetap tidak boleh dijalankan pada database aktif tanpa inventory, backup terverifikasi, clone-upgrade, rollback rehearsal, preflight dan persetujuan.
 
 **Status terkini tetap: WEB ADMIN NOT ACCEPTED / P0 OPEN.** Tidak ada merge, production migration, deployment, atau ZIP final.
+
+
+### ADMIN DATA SCOPE — IDENTITAS TUNGGAL DAN AKUN NONAKTIF
+- AdminDashboard kini menghitung Guru/Siswa hanya bila akun memiliki tepat satu role yang sesuai.
+- StudentRombelManagement hanya menampilkan akun Siswa aktif dengan tepat satu role SISWA; aksi penempatan memeriksa tenant, status akun, dan role tunggal kembali di server.
+- UserManagement mengecualikan akun dengan deleted_at terisi dari daftar aktif.
+- Regresi AdminUserManagementScopeTest ditambah untuk memastikan akun multi-role Guru+Siswa tidak dihitung sebagai Guru/Siswa dan akun Siswa soft-deleted tidak muncul pada dashboard, daftar pengguna, maupun pemilih rombel.
+- Audit skema menemukan unique constraint lama pada pasangan (rombel_id, student_id) masih ada setelah hardening tenant 230003 menambahkan index tenant lookup dan composite foreign keys. Karena itu pencegahan duplikasi membership sudah memiliki lapisan DB selain pemeriksaan transaksi pada Livewire; tidak dibuat migration unik baru.
+- Test/runtime belum dieksekusi karena GitHub Actions gagal sebelum steps; semua hasil tetap NOT VERIFIED sampai runner tersedia.
