@@ -11,8 +11,8 @@ Baseline: `81b6c74d81d80bc483530802594f624fb4e0f3db`
 
 Kedua backup dibuat sebelum perubahan source. File baseline dan branch agent lain tidak diubah.
 
-| `backend-laravel/app/Services/TeacherPortal/TeacherPortalDataService.php` | `c930b5f869e9547245005f0ac9982b47e836b861` | 11025 | `docs/backup/web-guru-foundation-20261122/TeacherPortalDataService.php.before-audit-cleanup` | preserved exact source content |
-| `.github/workflows/web-guru-foundation-ci.yml` | `9b15f99b8e7532807dadab471ae95cd97c9b5a35` | 7795 | `docs/backup/web-guru-foundation-20261122/web-guru-foundation-ci.yml.before-env-warning-fix` | preserved exact source content |
-| `backend-laravel/resources/views/layouts/teacher.blade.php` | `c2ea389f7c1199402b251d5e7ac0d0c72e1d1abe` | 10432 | `docs/backup/web-guru-foundation-20261122/teacher.blade.php.before-feature-reuse-menu` | preserved exact source content |
-| `backend-laravel/resources/views/layouts/teacher.blade.php` | `85bcaf5b0998caee1a3b270c69ef523c622c8fb5` | 12088 | `docs/backup/web-guru-foundation-20261122/teacher.blade.php.before-menu-gate-review` | preserved exact pre-gate-review content |
-| `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php` | `e37a2a6bd527e1351ad99319969d2a54b8bce5fa` | 10535 | `docs/backup/web-guru-foundation-20261122/TeacherPortalFoundationTest.php.before-security-lifecycle-cases` | preserved exact pre-test source content |
+| `backend-laravel/app/Services/TeacherPortal/TeacherPortalDataService.php` | `c930b5f869e9547245005f0ac9982b47e836b861` | 11025 | `docs/backup/web-guru-foundation-20261122/TeacherPortalDataService.php.before-audit-cleanup` | `c930b5f869e9547245005f0ac9982b47e836b861` |
+| `.github/workflows/web-guru-foundation-ci.yml` | `9b15f99b8e7532807dadab471ae95cd97c9b5a35` | 7799 | `docs/backup/web-guru-foundation-20261122/web-guru-foundation-ci.yml.before-env-warning-fix` | `9b15f99b8e7532807dadab471ae95cd97c9b5a35` |
+| `backend-laravel/resources/views/layouts/teacher.blade.php` | `c2ea389f7c1199402b251d5e7ac0d0c72e1d1abe` | 10447 | `docs/backup/web-guru-foundation-20261122/teacher.blade.php.before-feature-reuse-menu` | `c2ea389f7c1199402b251d5e7ac0d0c72e1d1abe` |
+| `backend-laravel/resources/views/layouts/teacher.blade.php` | `85bcaf5b0998caee1a3b270c69ef523c622c8fb5` | 12111 | `docs/backup/web-guru-foundation-20261122/teacher.blade.php.before-menu-gate-review` | `85bcaf5b0998caee1a3b270c69ef523c622c8fb5` |
+| `backend-laravel/tests/Feature/TeacherPortalFoundationTest.php` | `e37a2a6bd527e1351ad99319969d2a54b8bce5fa` | 10535 | `docs/backup/web-guru-foundation-20261122/TeacherPortalFoundationTest.php.before-security-lifecycle-cases` | `e37a2a6bd527e1351ad99319969d2a54b8bce5fa` |
