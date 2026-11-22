@@ -483,24 +483,22 @@ class TeacherPortalFoundationTest extends TestCase
     {
         $this->actingAs($this->teacher);
 
-        // Exercise the real page routes so the initial component mount runs
-        // through auth, tenant and license middleware.
-        $this->get('/admin/questions')->assertOk();
-        $this->assertSame(
-            (string) $this->tenant->id,
-            (string) app(TenantContext::class)->getTenantId()
-        );
-        $this->get('/admin/exams')->assertOk();
+        // These real page requests exercise the auth, tenant and license middleware
+        // used for the initial full-page Livewire component mount.
+        $questionPage = $this->get('/admin/questions')->assertOk();
+        $questionSnapshot = $this->extractLivewireSnapshot($questionPage);
         $this->assertSame(
             (string) $this->tenant->id,
             (string) app(TenantContext::class)->getTenantId()
         );
 
-        // Livewire::test performs subsequent component updates through its
-        // HTTP test lifecycle. A stale/foreign context before the request must
-        // be discarded and rebuilt from the authenticated tenant identity.
-        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertOk();
-        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertOk();
+        $examPage = $this->get('/admin/exams')->assertOk();
+        $examSnapshot = $this->extractLivewireSnapshot($examPage);
+        $this->assertSame(
+            (string) $this->tenant->id,
+            (string) app(TenantContext::class)->getTenantId()
+        );
+
         $before = $this->tenantQuestionExamSnapshot();
         $tenantB = Tenant::create([
             'name' => 'Tenant Reassignment Target',
@@ -508,29 +506,50 @@ class TeacherPortalFoundationTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
-        app(TenantContext::class)->setTenantId($tenantB->id);
-        $question->set('search', 'http-lifecycle-question')->assertOk();
+        // A new HTTP request starts with no request-local tenant context.
+        // The component boundary must derive it from the authenticated user.
+        app(TenantContext::class)->setTenantId(null);
+        $questionUpdate = $this->postLivewireUpdate(
+            $questionSnapshot,
+            ['search' => 'http-lifecycle-question']
+        )->assertOk();
+        $questionSnapshot = $questionUpdate->json('components.0.snapshot');
+        $this->assertIsString($questionSnapshot);
         $this->assertSame(
             (string) $this->tenant->id,
             (string) app(TenantContext::class)->getTenantId()
         );
 
-        app(TenantContext::class)->setTenantId($tenantB->id);
-        $exam->set('search', 'http-lifecycle-exam')->assertOk();
+        app(TenantContext::class)->setTenantId(null);
+        $examUpdate = $this->postLivewireUpdate(
+            $examSnapshot,
+            ['search' => 'http-lifecycle-exam']
+        )->assertOk();
+        $examSnapshot = $examUpdate->json('components.0.snapshot');
+        $this->assertIsString($examSnapshot);
         $this->assertSame(
             (string) $this->tenant->id,
             (string) app(TenantContext::class)->getTenantId()
         );
 
-        // A persisted tenant reassignment after mount invalidates the old
-        // authenticated identity. The next HTTP update must fail closed.
+        // Persisted tenant reassignment invalidates the original authenticated
+        // identity. Subsequent real Livewire HTTP updates must fail closed.
         DB::table('users')
             ->where('id', $this->teacher->id)
             ->where('tenant_id', $this->tenant->id)
             ->update(['tenant_id' => $tenantB->id]);
 
-        $question->set('search', 'must-be-denied-after-tenant-reassignment')->assertForbidden();
-        $exam->set('search', 'must-be-denied-after-tenant-reassignment')->assertForbidden();
+        app(TenantContext::class)->setTenantId(null);
+        $this->postLivewireUpdate(
+            $questionSnapshot,
+            ['search' => 'must-be-denied-after-tenant-reassignment']
+        )->assertForbidden();
+
+        app(TenantContext::class)->setTenantId(null);
+        $this->postLivewireUpdate(
+            $examSnapshot,
+            ['search' => 'must-be-denied-after-tenant-reassignment']
+        )->assertForbidden();
 
         $this->assertDatabaseHas('users', [
             'id' => $this->teacher->id,
@@ -756,6 +775,36 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Delapan Dimensi Profil Lulusan')
             ->assertSee('belum terverifikasi sumber resminya');
     }
+    private function extractLivewireSnapshot($response): string
+    {
+        $this->assertSame(
+            1,
+            preg_match('/wire:snapshot="([^"]+)"/', $response->getContent(), $matches),
+            'Full-page Livewire response must contain a component snapshot.'
+        );
+
+        $snapshot = html_entity_decode($matches[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $this->assertIsArray(json_decode($snapshot, true));
+
+        return $snapshot;
+    }
+
+    private function postLivewireUpdate(string $snapshot, array $updates = [])
+    {
+        return $this->withHeaders(['X-Livewire' => 'true'])->postJson(
+            app('livewire')->getUpdateUri(),
+            [
+                'components' => [
+                    [
+                        'snapshot' => $snapshot,
+                        'calls' => [],
+                        'updates' => $updates,
+                    ],
+                ],
+            ]
+        );
+    }
+
     private function tenantQuestionExamSnapshot(): array
     {
         $tables = ['questions', 'question_versions', 'question_options', 'assessments', 'exams'];
