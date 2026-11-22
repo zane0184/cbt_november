@@ -75,7 +75,10 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
     Route::get('/admin/dashboard', OperatorDashboard::class)->name('admin.dashboard');
     // Legacy URL retained as a redirect only; both legacy role identifiers use one Admin Madrasah portal.
-    Route::get('/operator/dashboard', fn () => redirect('/admin/dashboard'));
+    Route::get('/operator/dashboard', function () {
+        abort_unless(auth()->user()->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists(), 403);
+        return redirect('/admin/dashboard');
+    });
     Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
     // Admin Operational Routes
