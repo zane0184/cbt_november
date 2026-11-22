@@ -854,4 +854,97 @@ class ExamAnswerTest extends TestCase
         ]);
     }
 
+
+    public function test_second_authentication_token_cannot_use_same_attempt_even_with_same_device_id(): void
+    {
+        $secondToken = $this->student->createToken('second-auth-session')->plainTextToken;
+        $base = "/api/v1/exams/{$this->exam->id}";
+        $attempt = "/attempts/{$this->attempt->id}";
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->getJson($base.'/execution')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->getJson($base.$attempt.'/answers')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->putJson($base.$attempt.'/answers/'.$this->snapshot->id, [
+                'client_request_id' => 'second-session-write',
+                'base_revision' => 0,
+                'answer_payload' => ['selected_option_id' => 'foreign-option'],
+                'answer_state' => 'ANSWERED',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->postJson($base.$attempt.'/heartbeat')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->postJson($base.$attempt.'/submit')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->getJson($base.$attempt)
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('exam_attempt_answers', 0);
+        $this->assertSame('IN_PROGRESS', $this->attempt->fresh()->status);
+
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->getJson($base.$attempt.'/answers')
+            ->assertOk();
+    }
+
+    public function test_old_idempotency_request_replay_returns_original_receipt_without_overwriting_newer_revision(): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+        $firstPayload = ['selected_option_id' => 'option-first'];
+        $secondPayload = ['selected_option_id' => 'option-second'];
+
+        $first = $this->putJson($url, [
+            'client_request_id' => 'immutable-request-1',
+            'base_revision' => 0,
+            'answer_payload' => $firstPayload,
+            'answer_state' => 'ANSWERED',
+        ]);
+        $first->assertOk()->assertJsonPath('data.revision_number', 1);
+        $firstReceipt = $first->json('receipt.id');
+
+        $second = $this->putJson($url, [
+            'client_request_id' => 'immutable-request-2',
+            'base_revision' => 1,
+            'answer_payload' => $secondPayload,
+            'answer_state' => 'ANSWERED',
+        ]);
+        $second->assertOk()->assertJsonPath('data.revision_number', 2);
+
+        $replay = $this->putJson($url, [
+            'client_request_id' => 'immutable-request-1',
+            'base_revision' => 0,
+            'answer_payload' => $firstPayload,
+            'answer_state' => 'ANSWERED',
+        ]);
+        $replay->assertOk()
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('data.revision_number', 1)
+            ->assertJsonPath('receipt.id', $firstReceipt);
+
+        $this->assertDatabaseHas('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'revision_number' => 2,
+        ]);
+        $this->assertSame($secondPayload, $this->attempt->fresh()->load('answers')->answers->first()?->answer_payload);
+        $this->assertDatabaseCount('exam_attempt_answer_requests', 2);
+    }
+
+
 }
