@@ -13,7 +13,7 @@ class ExamAttemptPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
-        // This policy protects the Guru/Kamad result-detail surface, which
+        // This policy protects the Guru result-detail surface, which
         // exposes answer payloads and per-question grading data. Student self-service
         // uses the dedicated result endpoint and its restricted DTO instead.
         if ($user->hasRole('GURU')) {
@@ -21,12 +21,7 @@ class ExamAttemptPolicy
                 && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('report.view');
-        }
-
-        // OPERATOR is limited to operational monitoring and must not receive
-        // answer-level or score-detail access. Students use their own result route.
+        // Students use their own result route; other roles receive no answer-level access.
         return false;
     }
 
@@ -37,10 +32,6 @@ class ExamAttemptPolicy
 
         if ($user->hasRole('GURU')) {
             return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $attempt->exam);
-        }
-
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('report.view');
         }
 
         // Student results are visible only through the authoritative current-score pointer.
