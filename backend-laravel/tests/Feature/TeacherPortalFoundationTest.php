@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Livewire\Teacher\TeacherDashboard;
+use App\Livewire\Teacher\TeacherAssignmentsPage;
 use App\Livewire\Admin\ExamManagement;
 use App\Models\Assessment;
 use App\Models\Exam;
@@ -879,6 +880,21 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Delapan Dimensi Profil Lulusan')
             ->assertSee('belum terverifikasi sumber resminya');
     }
+
+    public function test_teacher_can_open_dedicated_assignments_page_with_tenant_scoped_history(): void
+    {
+        $this->actingAs($this->teacher);
+
+        $response = $this->get('/guru/penugasan');
+
+        $response->assertOk()
+            ->assertSee('Penugasan Saya')
+            ->assertSee('Daftar Penugasan dan Riwayat')
+            ->assertSee('Mata Pelajaran PORTAL')
+            ->assertSee('Rombel PORTAL')
+            ->assertSee('1 Aktif');
+    }
+
     private function extractLivewireSnapshot($response): string
     {
         $this->assertSame(
