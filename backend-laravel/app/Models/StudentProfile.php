@@ -26,7 +26,7 @@ class StudentProfile extends Model
 
     public function entryAcademicYear(): BelongsTo
     {
-        return $this->belongsTo(AcademicYear::class, 'entry_academic_year_id');
+        return $this->belongsTo(AcademicYear::class, 'entry_academic_year_id')->withTrashed();
     }
 
     public function academicEvents(): HasMany
