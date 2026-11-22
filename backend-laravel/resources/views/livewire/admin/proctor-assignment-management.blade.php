@@ -78,7 +78,7 @@
                                 @endif
                             </p>
                         </td>
-                        <td class="py-3 pr-3">{{ $assignment->proctor?->name ?? 'Akun tidak tersedia' }}</td>
+                        <td class="py-3 pr-3">{{ $assignment->proctorForHistory?->name ?? 'Akun tidak tersedia' }}</td>
                         <td class="whitespace-nowrap py-3 pr-3">{{ $assignment->starts_at?->format('d/m/Y H:i') }} – {{ $assignment->expires_at?->format('d/m/Y H:i') }}</td>
                         <td class="py-3 pr-3 text-center">{{ $assignment->schedule_revision ?? '—' }}</td>
                         <td class="py-3 pr-3">
