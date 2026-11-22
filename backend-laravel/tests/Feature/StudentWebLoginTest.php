@@ -67,12 +67,14 @@ class StudentWebLoginTest extends TestCase
         ]);
         $studentLogin->assertRedirect('/student/exams');
         $sessionCookieName = config('session.cookie');
-        $studentSessionCookie = $studentLogin->getCookie($sessionCookieName, false);
+        $studentSessionCookie = $studentLogin->getCookie($sessionCookieName);
         $this->assertNotNull($studentSessionCookie);
         $studentSessionCookieValue = $studentSessionCookie->getValue();
 
-        $studentRememberCookie = collect($studentLogin->headers->getCookies())
-            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'));
+        $studentRememberCookieName = collect($studentLogin->headers->getCookies())
+            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'))?->getName();
+        $this->assertNotNull($studentRememberCookieName);
+        $studentRememberCookie = $studentLogin->getCookie($studentRememberCookieName);
         $this->assertNotNull($studentRememberCookie);
         $studentRememberCookieValue = $studentRememberCookie->getValue();
 
@@ -99,7 +101,7 @@ class StudentWebLoginTest extends TestCase
             'password' => 'SandiAdmin#2026',
         ]);
         $adminLogin->assertRedirect('/admin/dashboard');
-        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName, false);
+        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName);
         $this->assertNotNull($adminSessionCookie);
         $this->assertNotSame($studentSessionCookieValue, $adminSessionCookie->getValue());
         $this->assertAuthenticatedAs($admin);
@@ -167,8 +169,10 @@ class StudentWebLoginTest extends TestCase
         $login->assertRedirect('/student/exams');
 
         $sessionCookieName = config('session.cookie');
-        $rememberCookie = collect($login->headers->getCookies())
-            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'));
+        $rememberCookieName = collect($login->headers->getCookies())
+            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'))?->getName();
+        $this->assertNotNull($rememberCookieName);
+        $rememberCookie = $login->getCookie($rememberCookieName);
         $this->assertNotNull($rememberCookie);
 
         // Simulate a new browser session after the session cookie expired while
@@ -180,7 +184,7 @@ class StudentWebLoginTest extends TestCase
         $response = $this->get('/student/exams');
         $response->assertOk();
         $this->assertAuthenticatedAs($this->student);
-        $this->assertNotNull($response->getCookie($sessionCookieName, false));
+        $this->assertNotNull($response->getCookie($sessionCookieName));
     }
 
     public function test_student_can_login_on_web_using_nisn_and_password_without_email(): void
