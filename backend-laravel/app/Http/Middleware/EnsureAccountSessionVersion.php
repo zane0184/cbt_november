@@ -27,6 +27,15 @@ class EnsureAccountSessionVersion
         $sessionVersion = $request->session()->get($sessionKey);
         $accountVersion = (int) ($user->auth_version ?? 1);
 
+        // A valid remember-me recaller may establish a fresh session after the
+        // previous session expired. Its remember_token is rotated on deactivate,
+        // reactivate and password reset, so this path cannot revive an old cookie.
+        if (!is_numeric($sessionVersion) && $guard->viaRemember()) {
+            $request->session()->put($sessionKey, $accountVersion);
+
+            return $next($request);
+        }
+
         if (!is_numeric($sessionVersion) || (int) $sessionVersion !== $accountVersion) {
             $guard->logout();
             $request->session()->invalidate();
