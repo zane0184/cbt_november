@@ -130,3 +130,36 @@ Perbandingan branch terbaru terhadap source HEAD tersebut:
 - Main: 15 ahead / 1196 behind; merge-base 95736e338e517a087503adfb3e3a899709e0340c.
 
 Seluruh branch diverged; tidak ada PR terbuka dari branch Agent 1–4. Tidak ada merge/rebase yang dijalankan. HEAD final setelah commit checkpoint ini dicatat dalam manifest backup final.
+
+
+## POST-AGENT2 CHECKPOINT REFRESH — 22 NOVEMBER 2026
+
+Agent 2 menambahkan laporan audit read-only. Source runtime baseline tetap 74bf7178f46673e9be90523671490c0749034acd; HEAD dokumentasi Agent 2 32d383eb1564cdbcf084b8677fe8b750a4b45a11. Status approval Agent 2/3/4 tetap PENDING.
+
+HEAD remote terbaru saat refresh:
+- Agent 1: 4754ae0418193cd0f25b29a6296d3632065348f9 sebelum update dokumentasi ini.
+- Agent 2: 32d383eb1564cdbcf084b8677fe8b750a4b45a11.
+- Agent 3: 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23.
+- Kandidat Agent 4: f38ceec7b0653fcf3363eec40f3d4577c323cca8; owner belum dikonfirmasi.
+
+Graph relatif terhadap Agent 1 pre-refresh:
+- Agent 2 225 ahead / 84 behind.
+- Agent 3 172 ahead / 229 behind.
+- Agent 4 candidate 80 ahead / 352 behind.
+- main 15 ahead / 1202 behind.
+Semua branch diverged; tidak ada PR terbuka.
+
+CI terbaru:
+- Agent 2 runs 45003796892 dan 45008591113 BLOCKED — RUNNER, tanpa steps; PHPUnit tidak berjalan.
+- Agent 3 run 45003191589 FAILURE, 18 passed / 2 failed / 86 assertions. Tenant-context mismatch expected 403 received 200; cross-tenant Livewire Question ID menghasilkan ModelNotFoundException.
+- Agent 1 run 44984303003 tetap SUCCESS hanya untuk cakupan source f1d01ea dan belum membuktikan operational guard satu session.
+- Candidate Agent 4 run 44949239676 bukan bukti integrasi Stage 4B.
+
+Temuan lintas-agent tambahan:
+- Agent 2 mengonfirmasi exact-role masih belum konsisten pada sebagian Exam/Attempt/Report policy dan service entrypoint.
+- ExamPolicy::monitor masih memiliki jalur KAMAD; harus ditutup sesuai keputusan tanpa portal KAMAD.
+- Reporting harus memakai current score pointer dan FINALIZED; ExamSummaryReportService masih mengagregasi seluruh histori score.
+- Tenant pre-auth topology dan immutable report issuance belum diputuskan.
+- Device Lease/Fencing tetap belum terbukti end-to-end.
+
+Tidak ada approval baru. Implementasi source, migration, schema, database, merge, deployment tetap dilarang sampai persetujuan lintas owner dan izin eksplisit koordinator.
