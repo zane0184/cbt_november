@@ -210,10 +210,8 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
 
         // Client B restores the same Guru identity using the official Admin action.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($sessionCookieName, $adminSessionCookie->getValue());
-        $this->app['auth']->forgetGuards();
-        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
+        \Livewire\Livewire::actingAs($this->admin)
+            ->test(\App\Livewire\Admin\UserManagement::class)
             ->set('statusFilter', 'INACTIVE')
             ->call('restoreUser', $this->guru->id)
             ->assertHasNoErrors();
