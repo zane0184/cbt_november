@@ -19,6 +19,7 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -208,8 +209,8 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame('2027-05-31', $assignment->fresh()->ends_at->toDateString());
         $audit = AuditLog::query()->where('action', 'TEACHER_ASSIGNMENT_UPDATE')->firstOrFail();
         $this->assertSame($assignment->id, $audit->entity_id);
-        $this->assertSame('2027-06-30', \\Illuminate\\Support\\Carbon::parse($audit->old_values['ends_at'])->toDateString());
-        $this->assertSame('2027-05-31', \\Illuminate\\Support\\Carbon::parse($audit->new_values['ends_at'])->toDateString());
+        $this->assertSame('2027-06-30', Carbon::parse($audit->old_values['ends_at'])->toDateString());
+        $this->assertSame('2027-05-31', Carbon::parse($audit->new_values['ends_at'])->toDateString());
     }
 
     public function test_assignment_rejects_rombel_and_semester_from_different_academic_year(): void
