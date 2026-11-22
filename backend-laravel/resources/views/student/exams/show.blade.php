@@ -81,7 +81,7 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), submitting: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), localDb: null, submitting: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
@@ -118,6 +118,55 @@
     }
     function optionLabel(option) { return option.content ?? option.text ?? option.label ?? option.title ?? ''; }
 
+    const LOCAL_DB_NAME = 'cbt-madrasah-student-v1';
+    const LOCAL_STORE = 'pending-answers';
+
+    function openLocalDatabase() {
+        return new Promise((resolve, reject) => {
+            if (!('indexedDB' in window)) return reject(new Error('Browser tidak mendukung IndexedDB. Gunakan browser terbaru; ujian belum dimulai.'));
+            const request = indexedDB.open(LOCAL_DB_NAME, 1);
+            request.onupgradeneeded = () => {
+                if (!request.result.objectStoreNames.contains(LOCAL_STORE)) request.result.createObjectStore(LOCAL_STORE, { keyPath: 'key' });
+            };
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error || new Error('Penyimpanan lokal tidak dapat dibuka.'));
+            request.onblocked = () => reject(new Error('Penyimpanan lokal sedang dipakai tab lain. Tutup tab CBT lain lalu muat ulang.'));
+        });
+    }
+
+    function localTransaction(mode, operation) {
+        return new Promise((resolve, reject) => {
+            if (!state.localDb) return reject(new Error('Penyimpanan lokal belum siap.'));
+            const tx = state.localDb.transaction(LOCAL_STORE, mode);
+            let request;
+            try { request = operation(tx.objectStore(LOCAL_STORE)); } catch (error) { reject(error); return; }
+            tx.oncomplete = () => resolve(request && request.result);
+            tx.onerror = () => reject(tx.error || new Error('Transaksi penyimpanan lokal gagal.'));
+            tx.onabort = () => reject(tx.error || new Error('Penyimpanan lokal dibatalkan.'));
+        });
+    }
+
+    function localKey(attemptId, snapshotId) { return String(attemptId) + ':' + String(snapshotId); }
+    async function persistPending(snapshotId, item) {
+        await localTransaction('readwrite', store => store.put({
+            key: localKey(state.attemptId, snapshotId), attemptId: String(state.attemptId),
+            snapshotId: String(snapshotId), payload: item.payload, clientRequestId: item.clientRequestId,
+            updatedAt: Date.now(), status: 'PENDING'
+        }));
+    }
+    async function removePersistedPending(snapshotId) {
+        await localTransaction('readwrite', store => store.delete(localKey(state.attemptId, snapshotId)));
+    }
+    async function readPersistedPending() {
+        const rows = await new Promise((resolve, reject) => {
+            const tx = state.localDb.transaction(LOCAL_STORE, 'readonly');
+            const request = tx.objectStore(LOCAL_STORE).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error || new Error('Draft lokal gagal dibaca.'));
+        });
+        return rows.filter(row => row.attemptId === String(state.attemptId));
+    }
+
     async function startOrResume() {
         el('start-button').disabled = true;
         el('start-status').textContent = 'Menghubungkan ke server…';
@@ -135,6 +184,7 @@
     }
 
     async function loadExecution() {
+        state.localDb = await openLocalDatabase();
         const execution = await api('/execution');
         const data = execution.data;
         state.attemptId = data.attempt.id;
@@ -146,11 +196,19 @@
             state.answers.set(answer.exam_question_snapshot_id, { payload: answer.answer_payload, state: answer.answer_state });
             state.revisions.set(answer.exam_question_snapshot_id, Number(answer.revision_number || 0));
         });
+        const localPending = await readPersistedPending();
+        localPending.forEach(row => {
+            if (!state.questions.some(question => String(question.id) === row.snapshotId)) return;
+            const item = { payload: row.payload, clientRequestId: row.clientRequestId };
+            state.pending.set(row.snapshotId, item);
+            state.answers.set(row.snapshotId, { payload: row.payload, state: 'ANSWERED' });
+        });
         el('instruction-panel').classList.add('hidden');
         el('runner-panel').classList.remove('hidden');
         renderNavigation(); renderQuestion(); updateTimer(data.attempt.expires_at);
         window.setInterval(() => updateTimer(data.attempt.expires_at), 1000);
-        setSaveStatus('Jawaban dipulihkan dari server');
+        setSaveStatus(localPending.length ? `${localPending.length} draft lokal menunggu sinkronisasi` : 'Jawaban dipulihkan dari server', localPending.length > 0);
+        if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Draft lokal telah diterima server')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
     }
 
     function updateTimer(expiresAt) {
@@ -257,13 +315,22 @@
         renderNavigation();
     }
 
-    function queueSave(question, payload) {
+    async function queueSave(question, payload) {
         state.answers.set(question.id, { payload, state: 'ANSWERED' });
         const pendingItem = { payload, clientRequestId: requestId() };
         state.pending.set(question.id, pendingItem);
-        setSaveStatus('Menunggu penyimpanan…');
-        if (state.timers.has(question.id)) clearTimeout(state.timers.get(question.id));
-        state.timers.set(question.id, setTimeout(() => saveAnswer(question, pendingItem).catch(() => {}), 500));
+        state.conflicts.delete(question.id);
+        setSaveStatus('Menyimpan draft pada perangkat…');
+        try {
+            await persistPending(question.id, pendingItem);
+            if (state.pending.get(question.id) !== pendingItem) return;
+            setSaveStatus('Draft tersimpan di perangkat; menunggu server');
+            if (state.timers.has(question.id)) clearTimeout(state.timers.get(question.id));
+            state.timers.set(question.id, setTimeout(() => saveAnswer(question, pendingItem).catch(() => {}), 500));
+        } catch (error) {
+            setSaveStatus(`Draft tidak dapat disimpan: ${error.message}`, true);
+            showError('Penyimpanan lokal gagal. Jangan tutup atau muat ulang halaman; hubungi Guru/Admin sebelum melanjutkan.');
+        }
         renderNavigation();
     }
 
@@ -278,15 +345,17 @@
                     method: 'PUT', body: JSON.stringify({ client_request_id: pendingItem.clientRequestId, base_revision: revision, answer_payload: payload, answer_state: 'ANSWERED' })
                 });
                 state.revisions.set(question.id, Number(result.data.revision_number));
-                if (state.pending.get(question.id) === pendingItem) state.pending.delete(question.id);
-                setSaveStatus('Semua perubahan tersimpan');
+                if (state.pending.get(question.id) === pendingItem) {
+                    state.pending.delete(question.id);
+                    await removePersistedPending(question.id);
+                }
+                setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Semua perubahan diterima server');
             } catch (error) {
                 if (error.status === 409 && error.body?.current_revision !== undefined) {
                     state.revisions.set(question.id, Number(error.body.current_revision));
-                    if (state.pending.get(question.id) === pendingItem) state.pending.delete(question.id);
-                    if (error.body.current_answer) state.answers.set(question.id, { payload: error.body.current_answer.answer_payload, state: error.body.current_answer.answer_state });
-                    setSaveStatus('Konflik revisi. Jawaban server dipulihkan; periksa kembali soal ini.', true);
-                    renderQuestion();
+                    state.conflicts.set(question.id, { local: pendingItem.payload, server: error.body.current_answer || null, revision: Number(error.body.current_revision) });
+                    setSaveStatus('KONFLIK: draft lokal dipertahankan. Pengiriman ditahan; jangan muat ulang atau tutup halaman.', true);
+                    showError('Terjadi konflik revisi. Draft lokal tetap disimpan pada perangkat dan tidak ditimpa otomatis. Minta Guru/Admin membantu pemulihan sebelum mengirim ujian.');
                 } else setSaveStatus(`Gagal menyimpan: ${error.message}. Periksa koneksi dan coba lagi.`, true);
                 throw error;
             }
@@ -308,6 +377,8 @@
             return question ? saveAnswer(question, pendingItem) : Promise.resolve();
         });
         await Promise.all(pendingSaves);
+        if (state.conflicts.size) throw new Error('Ada konflik jawaban yang belum diselesaikan.');
+        if (state.pending.size) throw new Error('Masih ada jawaban yang belum mendapat konfirmasi server.');
     }
 
     async function submitExam(auto = false) {
@@ -317,23 +388,13 @@
         try {
             for (const timer of state.timers.values()) clearTimeout(timer);
             state.timers.clear();
-            let pendingSaveWarning = false;
-            try {
-                await flushPendingSaves();
-            } catch (error) {
-                if (!auto) throw error;
-                // At server expiry, answer writes are correctly rejected. Still close the
-                // attempt so an expired session cannot remain stranded IN_PROGRESS.
-                pendingSaveWarning = true;
-            }
+            await flushPendingSaves();
             await api(`/attempts/${encodeURIComponent(state.attemptId)}/submit`, { method: 'POST', body: JSON.stringify({}) });
-            if (pendingSaveWarning) {
-                el('completion-message').textContent = 'Waktu ujian habis dan ujian telah ditutup server. Sebagian jawaban terakhir yang belum sempat tersimpan mungkin tidak tercatat.';
-            }
             el('runner-panel').classList.add('hidden'); el('completion-panel').classList.remove('hidden');
         } catch (error) {
             state.submitting = false; el('submit-button').disabled = false;
-            showError(`Ujian belum dapat dikirim: ${error.message}. Jangan tutup halaman; periksa koneksi lalu coba kirim kembali.`);
+            if (auto) setSaveStatus('Waktu habis, tetapi ada jawaban yang belum terkonfirmasi. Attempt mengikuti expiry server; jangan tutup halaman.', true);
+            showError(`Ujian belum dapat dikirim: ${error.message}. Draft lokal dipertahankan. Jangan tutup halaman; periksa koneksi lalu coba lagi.`);
         }
     }
 
