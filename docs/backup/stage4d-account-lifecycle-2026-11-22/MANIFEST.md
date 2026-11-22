@@ -76,3 +76,30 @@ Tidak ada source runtime Stage4D, migration, DB produksi, VPS, Android, atau ZIP
 - Perubahan pada checkpoint ini dokumentasi saja; tidak ada source runtime/migration/database yang berubah.
 
 Dokumen status diperbarui pada commit report `8a1ea04a676bee3327c73614cce06f7db401a07a` dan checkpoint `8c1225a1437344dc5f52726e5087c3d131bfb996`.
+
+
+## Snapshot tambahan — sebelum re-audit branch dan account lifecycle (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | Backup commit |
+|---|---|---|---|
+| docs/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/LAPORAN_STAGE4D_AUDIT_DESAIN_2026-11-22.md.before-branch-reaudit-2026-11-22 | 7873c0fb77f5bf53ccac3ede4c6c2fc9b623b11a | dd32026bffcbb0ea8371ea42946d1fe78504975e |
+| docs/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md | docs/backup/stage4d-account-lifecycle-2026-11-22/CHECKPOINT_STAGE4D_ACCOUNT_LIFECYCLE_2026-11-22.md.before-branch-reaudit-2026-11-22 | 286101c750749a697860d8d769a1e706e6940da9 | 2e97426c415f839dcbd3a5bf7a23c599985bc7dd |
+| docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md | docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-branch-reaudit-2026-11-22 | 69c1f8eadf07abfeb5cc4f086eff31390bb8e414 | 1fdd7aa0281989e6e62166904773392443313bcc |
+
+## Backup test tambahan account lifecycle
+
+| Source path | Backup path | Original blob SHA | Backup commit |
+|---|---|---|---|
+| backend-laravel/tests/Feature/WebAdminAuthTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/WebAdminAuthTest.php.before-existing-session-http-test | bae52cbfbb9676f6fecba8514afef26cc6bfa90b | f1e1e5afc7a34311d39db83d656a75ff7d3b4364 |
+| backend-laravel/tests/Feature/WebAdminAuthTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/WebAdminAuthTest.php.before-session-test-ci-selection-fix | ac50526aa310f170803e08f6beb7881e7474f87d | 2a6976d4f14ff1474284d5a25850bdd0e0789820 |
+| backend-laravel/tests/Feature/AuthTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/AuthTest.php.before-soft-deleted-sanctum-http-test | 803f409f48b544d947039d0879d7e56c4c118336 | 4b21e7c303479af62e7af07685220702b5645699 |
+
+## Hasil re-audit branch dan CI
+- Stage4D run `44984685015`: SUCCESS pada SHA `8bc75302636f78fe2155fee49299d2a375566e7b`; PHP 8.3.37/MySQL 8.0.46; lifecycle 8/54; Admin boundary 1/27; monitoring 15/151; proctor 8/34; Stage4C lifecycle 7/26; concurrency 1/8; InnoDB 80/0. Stage4B test steps skipped.
+- Stage4D run `44988322932`: SUCCESS pada SHA `465f7c7b10b87d76ff3b03c85cc437608457a4e0`; tidak membuktikan test HTTP session tambahan karena method terpisah belum dipilih oleh filter CI.
+- Commit `6113ea50322a56378df3839311677f8124ffad0c`: session HTTP test dipindahkan ke method yang dipilih CI; run `44988674922` berjalan saat manifest ini diperbarui.
+- Commit `3e052d97ce692b9c2301761aad978dfee727423e`: test HTTP old Sanctum token added to AuthTest; run `44988721095` pending saat manifest ini diperbarui.
+- Agent1 run `44984303003` SUCCESS pada SHA `f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5`; 12/49 room session; 2/22 concurrency; 80/0 InnoDB; child-first rollback with FK checks enabled PASS for empty schema.
+- Agent1 branch HEAD `4e663cd84038b7c3337d776f702c499f20d8f537` hanya dua dokumen setelah tested SHA. Agent3 branch HEAD `25fe5e74a0754bcd110ceffac20141880c549ca8` hanya docs setelah tested SHA; tidak disentuh.
+- Gate Admin belum lulus; reset token belum diimplementasikan; auth_version/session fencing setelah reaktivasi belum diimplementasikan; histori akademik tidak dimigrasi.
+- Dokumen re-audit diperbarui pada report commit `26c24fed12819b8ff1bcc9bec208daacac55aedf` dan checkpoint commit `2ca0e3a67a1d393f8a8cfabbbcb3f2a1cccf091c`.
