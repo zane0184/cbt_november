@@ -326,7 +326,7 @@ class RoleDashboardVerificationTest extends TestCase
         $yearA = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
         $rombelA = Rombel::create(['name' => 'X-1', 'academic_year_id' => $yearA->id, 'grade_level_id' => $gradeLevelA->id, 'status' => 'ACTIVE']);
         StudentProfile::create(['tenant_id' => $this->tenantA->id, 'user_id' => $this->siswaA->id, 'nis' => 'SISWA-A-001', 'nisn' => '1000000001', 'full_name' => 'Siswa A']);
-        \\App\\Models\\Semester::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $yearA->id, 'term' => 'GANJIL', 'is_active' => true]);
+        \App\Models\Semester::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $yearA->id, 'term' => 'GANJIL', 'is_active' => true]);
 
         $assessmentA = Assessment::create([
             'academic_year_id' => $yearA->id,
