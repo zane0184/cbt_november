@@ -216,3 +216,12 @@ The rollback now drops `exam_participants_rombel_tenant_fk` before `exam_partici
 | backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-preserve-tenant-fk-index | b1726ad072f24393d5a3668572a50ecc8b839d19 | 16410 |
 
 The prior rollback fix removed the Stage 4B rombel FK before its lookup index, but MySQL 8 still rejected the index drop because the composite index was also supporting the original `exam_participants.tenant_id` foreign key from the base schema. The next correction first ensures a standalone `tenant_id` index exists, preserving the base tenant constraint while the Stage 4B-specific FK and composite index are removed.
+
+
+## Additional snapshot — child-first Stage 4B rollback dependency correction
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-child-first-rollback-order | fb41b35f37a04af6116dac318c7188a5e21c5563 | 16916 |
+
+The verified MySQL 8 error 1553 on `exam_participants_id_tenant_exam_unique` was caused by the child table `exam_participant_room_assignments` retaining `epra_participant_scope_fk` while rollback tried to remove the parent candidate key. This snapshot preserves the migration before moving child-table drops ahead of parent participant key removal. The base `exam_participants` tenant/exam foreign keys remain required and must stay intact.
