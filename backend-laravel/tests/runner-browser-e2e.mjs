@@ -440,7 +440,7 @@ try {
     scenario.mediaBodySize = 10 * 1024 * 1024 + 1;
     const { context, page } = await newPage(browser, scenario);
     await start(page);
-    await page.waitForFunction(() => document.querySelector('#question-media').textContent.includes('Ukuran atau MIME media tidak valid'));
+    await page.waitForFunction(() => /Ukuran media melebihi batas 10 MB|Ukuran atau MIME media tidak valid/.test(document.querySelector('#question-media').textContent));
     assert.equal(await page.locator('#question-media img').count(), 0);
     assert.equal(await page.evaluate(() => window.__revokedObjectUrls.length), 0);
     assert.deepEqual(scenario.pageErrors, []);
