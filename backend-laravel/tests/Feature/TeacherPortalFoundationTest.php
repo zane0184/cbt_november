@@ -262,6 +262,6 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Cinta Allah dan Rasul-Nya')
             ->assertSee('Pembelajaran Mendalam')
             ->assertSee('Delapan Dimensi Profil Lulusan')
-            ->assertSee('belum terverifikasi');
+            ->assertSee('belum terverifikasi sumber resminya');
     }
 }
