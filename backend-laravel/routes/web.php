@@ -80,6 +80,8 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/proktor/assignments', ProktorDashboard::class)->name('proktor.assignments');
 
     // Admin Operational Routes
+    Route::get('/admin/madrasah-profile', MadrasahProfileManagement::class)->name('admin.madrasah-profile');
+    Route::get('/admin/academic-periods', AcademicPeriodManagement::class)->name('admin.academic-periods');
     Route::get('/admin/users', UserManagement::class);
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
