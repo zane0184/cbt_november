@@ -68,3 +68,61 @@ Koordinasi:
 2. Verifikasi CI dan workbook template pada runtime.
 3. Lanjutkan UI preview/correction setelah endpoint contract tersedia.
 4. Jangan mengubah Agent 1/2 source atau production database.
+
+
+---
+
+# CHECKPOINT LANJUTAN — VERIFIKASI XLSX & DESAIN DOCX (22 NOVEMBER 2026)
+
+## HEAD dan bukti
+- HEAD Agent 3 sebelum append checkpoint: 1dd626bbd8547a1387935438aa6327733294f1bf.
+- Source PHP/test yang diuji: a33867928711b456d2414a675bef1a929861dee8.
+- CI run #34: 44995889398 — SUCCESS, SHA diuji sama dengan source PHP/test di atas.
+- Hasil CI: 16 tests passed, 69 assertions; PHP lint dan route registration PASS; disposable MySQL 8; 80 tabel InnoDB; cleanup PASS.
+- CI URL: https://github.com/zane0184/cbt_november/actions/runs/44995889398
+- Tidak ada checkout Git lokal; working tree lokal NOT VERIFIED.
+- Workspace lokal /mnt/data/CBT_MADRASAH_RECONSTRUCTION dan ZIP baseline tidak ditemukan pada listing runtime sesi ini.
+
+## AUDIT
+- Template, controller, route, layout, test dan workflow diperiksa ulang pada remote branch.
+- Route unduh berada di middleware auth/tenant/license/EnsureTeacherPortalAccess; source TeacherPortalAccess memeriksa tepat satu role GURU dan profil tenant.
+- Test menolak unauthenticated, ADMIN_MADRASAH, SISWA dan multi-role.
+- XLSX aktual berhasil dihasilkan dan dibuka kembali dengan PhpSpreadsheet; enam sheet, header dan dropdown diverifikasi.
+- Browser E2E dan visual/responsive/accessibility belum diuji.
+- Issue #8 dan #9 masih OPEN, tanpa komentar Agent 2.
+- Composer saat ini memiliki Laravel Excel/PhpSpreadsheet; PHPWord tidak ditemukan. Tidak ada dependency baru.
+- Branch Agent 1/2 tetap tidak diubah dan tidak ada path source overlap pada perubahan WG01 yang diperiksa.
+- Insiden dokumentasi: file desain DOCX sempat ditambahkan ke main akibat parameter branch terlewat; file disalin identik ke branch Agent 3 dan kemudian dihapus dari main. Commit add/delete dicatat di laporan; tidak ada source aplikasi yang berubah pada main.
+
+## DESAIN
+- DOCX dan XLSX menggunakan parser/adapter terpisah tetapi wajib menghasilkan satu normalized draft contract dan satu batch/storage/lifecycle backend.
+- DOCX perlu document profile, source mapping, preview, correction, revalidation, dan explicit-key-only. Ambiguity menjadi NEEDS_REVIEW; tidak ada tebakan AI.
+- Tabel, gambar, OMML, Arabic/harakat, mixed RTL dan external relationships ditangani sesuai status ekstraksi; konten gagal ekstrak harus tampil sebagai warning.
+- DOC lama ditunda; PDF/OCR tetap deferred.
+
+## IMPLEMENTASI
+- Test template diperluas untuk response HTTP nyata, workbook parse, header/dropdown, unauthenticated, ADMIN/SISWA dan multi-role.
+- Backup manifest berisi 12 snapshot; 12/12 blob SHA cocok.
+- Desain DOCX tersimpan di docs/DESAIN_IMPORT_SOAL_DOCX_WG01_2026-11-22.md.
+- Laporan diperbarui di docs/WG01_TEMPLATE_IMPLEMENTATION_2026-11-22.md.
+- Tidak ada perubahan pada QuestionController, QuestionPolicy, schema, migration, importer bersama, batch model/service, Composer, MediaAsset, ExamSnapshot, Scoring, CBT Engine atau production DB.
+
+## PENGUJIAN
+- PASS: CI run 44995889398, 16 tests/69 assertions.
+- PASS: PHP lint, route registration, disposable MySQL 8, 80 tabel InnoDB, cleanup.
+- PASS: workbook generator + parser readback + dropdown.
+- PASS: route headers dan filename, exact-role Guru, unauthenticated/Admin/Siswa/multi-role denial.
+- NOT RUN: browser E2E, visual responsive, accessibility.
+- BLOCKED: XLSX upload/preview/confirm, DOCX parser/UI, PDF/OCR.
+
+## STATUS
+- WG01-TEMPLATE: CI VERIFIED; browser E2E pending.
+- WG01-CONTRACT XLSX: PENDING Agent 2.
+- WG01-DOCX DESIGN: DONE, initial design only.
+- WG01-XLSX UI/integration: BLOCKED by backend contract.
+- WG01-DOCX parser/UI: BLOCKED by backend contract and dependency decision.
+- PDF/OCR: DEFERRED.
+- PROCTOR UI: NOT STARTED.
+
+## Keamanan operasional
+Portal Guru hanya layak untuk uji terbatas pada dashboard/profil dan unduh template yang diuji CI. Bank Soal dan seluruh alur import belum siap digunakan operasional atau produksi. Tidak ada merge, PR, deployment, migration produksi atau perubahan branch Agent 1/2.
