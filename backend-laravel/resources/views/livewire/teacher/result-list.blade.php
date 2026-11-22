@@ -24,13 +24,13 @@
                     {{ $exam->show_result ? 'Tarik Publikasi Nilai' : 'Publikasikan Nilai ke Siswa' }}
                 </button>
                 @endcan
-                <a href="/exams/{{ $exam->id }}/analytics" class="bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
+                <a href="{{ route('teacher.exams.analytics', ['exam' => $exam->id]) }}" class="bg-navy-900 hover:bg-navy-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
                     Dashboard Analisis
                 </a>
-                <a href="/exams/{{ $exam->id }}/export/excel" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
+                <a href="{{ route('teacher.exams.export.excel', ['exam' => $exam->id]) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
                     Export Excel
                 </a>
-                <a href="/exams/{{ $exam->id }}/export/pdf" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
+                <a href="{{ route('teacher.exams.export.pdf', ['exam' => $exam->id]) }}" class="bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition shadow-sm">
                     Export PDF
                 </a>
                 @if(auth()->user()?->hasPermission('exam.grade') && (auth()->user()->hasRole('ADMIN_MADRASAH') || auth()->user()->hasRole('GURU')))
@@ -114,7 +114,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-bold">
-                            <a href="/exams/{{ $exam->id }}/results/{{ $attempt->id }}" class="text-emerald-600 hover:text-emerald-700">Lihat Detail</a>
+                            <a href="{{ route('teacher.exams.results.detail', ['exam' => $exam->id, 'attempt' => $attempt->id]) }}" class="text-emerald-600 hover:text-emerald-700">Lihat Detail</a>
                         </td>
                     </tr>
                 @endforeach
