@@ -20,7 +20,7 @@ Runner memiliki IndexedDB schema v2 dengan object store:
 - Orphaned local state yang tidak sesuai snapshot Attempt menghentikan runner.
 - Kegagalan IndexedDB write menandai item undurable dan memblokir submit.
 - Submit hanya lanjut jika queue kosong, tidak ada conflict, dan tidak ada draft yang gagal disimpan secara durable.
-- Submit response loss tidak memicu POST ulang otomatis; client memeriksa GET Attempt dan hanya menampilkan completion untuk status server SUBMITTED/EXPIRED.
+- Submit response loss menyimpan marker SUBMITTING/UNKNOWN secara lokal, tidak memicu POST ulang otomatis, dan memeriksa GET Attempt sebelum mengizinkan start baru untuk student+exam yang sama. Completion hanya ditampilkan untuk status server SUBMITTED/EXPIRED.
 - Receipt store disiapkan tetapi belum diisi karena kontrak receipt backend belum tersedia. UI tidak menyatakan receipt verified.
 
 ## Backup
