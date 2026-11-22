@@ -215,4 +215,27 @@ class WebAdminAuthTest extends TestCase
         $this->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
     }
+
+    public function test_inactive_guru_cannot_login_to_web_portal(): void
+    {
+        $this->guru->forceFill(['is_active' => false])->save();
+
+        $this->post('/login', [
+            'identifier' => '198001012006041001',
+            'password' => $this->password,
+        ])->assertSessionHasErrors('identifier');
+
+        $this->assertGuest();
+    }
+
+    public function test_existing_web_session_for_inactive_account_is_terminated_on_next_request(): void
+    {
+        $this->withoutMiddleware(EnsureLicenseActive::class);
+        $this->actingAs($this->guru);
+        $this->guru->forceFill(['is_active' => false])->save();
+
+        $this->get('/admin/exams')->assertRedirect('/login');
+        $this->assertGuest();
+    }
+
 }
