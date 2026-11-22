@@ -334,7 +334,6 @@ class TeacherSubjectAssignmentManagement extends Component
         }
 
         $this->showForm = false;
-        $this->changeReason = '';
         $this->resetPage();
         session()->flash(
             'teacherAssignmentMessage',
