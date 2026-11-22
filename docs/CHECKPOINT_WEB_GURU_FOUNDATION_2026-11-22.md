@@ -122,3 +122,13 @@ STATUS: PARSIAL — menunggu CI 44983955276.
 - QuestionBank dan ExamManagement mengulang assertCanAccess di boot/mount, tetapi exact-role guard masih perlu diperkuat.
 - ResultList, ResultDetail, AnalyticsDashboard, dan ItemAnalysis belum tampak memiliki otorisasi umum di boot untuk setiap Livewire request; beberapa aksi mutasi memang memanggil policy lagi.
 - Ini menjadi blocker untuk menu Guru: stale permission pada render/hydration harus diuji dan diperbaiki di source bersama setelah koordinasi. Tidak ada file komponen/policy legacy yang diubah.
+
+
+## STATUS RUN 44983955276 DAN 44984094200
+
+- Run 44983955276: PHP lint/route PASS; PHPUnit 10 passed, 1 failed (42 assertions). Penyebab: facade DB belum di-import pada test soft-delete. Tidak ada warning `.env`; deprecation doc-comment legacy tetap ada.
+- Import `Illuminate\\Support\\Facades\\DB` ditambahkan setelah backup pada source SHA e9c6867d40b134538e791bbbba02f5743afec7ea.
+- Run 44984094200 sedang berjalan pada SHA e9c6867d40b134538e791bbbba02f5743afec7ea; tunggu hasil.
+- HEAD branch saat checkpoint ini: 10277d766a0050e83cc7ab451b8462be245dfb70.
+
+STATUS: PARSIAL — CI terbaru belum selesai. Tidak siap produksi.
