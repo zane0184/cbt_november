@@ -22,8 +22,11 @@ class ExamProctorAssignmentService
 
             $proctor = User::query()->where('tenant_id', $tenantId)->whereKey($proctorUserId)
                 ->whereNull('deleted_at')->lockForUpdate()->first();
-            if (!$proctor || !$proctor->hasRole('PROKTOR')) {
-                throw ValidationException::withMessages(['selectedProctorId' => 'Akun Proktor tidak ditemukan atau bukan anggota tenant aktif.']);
+            if (!$proctor
+                || $proctor->roles()->count() !== 1
+                || !$proctor->roles()->where('name', 'GURU')->exists()
+                || !$proctor->teacherProfile()->where('tenant_id', $tenantId)->whereNull('deleted_at')->exists()) {
+                throw ValidationException::withMessages(['selectedProctorId' => 'Penugasan Proktor hanya dapat diberikan kepada akun Guru aktif pada tenant yang sama.']);
             }
 
             $reason = trim($reason);
