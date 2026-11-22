@@ -217,3 +217,13 @@ PARSIAL — reuse fitur telah diinventaris dan query duplikat dibersihkan; gate 
 
 ### Verifikasi backup
 Blob backup telah diverifikasi identik dengan blob sumber pra-perubahan untuk TeacherPortalDataService, workflow CI, layout Guru (dua checkpoint), dan test foundation (dua checkpoint). Manifest mencatat ukuran byte UTF-8 dan blob SHA sumber/backup yang sama.
+
+
+## 10. HASIL RUN ULANG SETELAH KOREKSI FIXTURE
+
+- Run `44983824109` pada SHA `d78992ba19cb8df3b4ba1e21d5bcf1d64b50b409` gagal di tahap PHP lint/route registration; PHPUnit dilewati. Penyebab teridentifikasi: escape namespace ganda pada dua referensi di test tenant-context, baris 255 dan 257.
+- Semua file PHP lain yang diperiksa pada langkah lint berhasil; parser berhenti pada `TeacherPortalFoundationTest.php`.
+- File test dibackup sebelum koreksi. Backup blob SHA `993bb3c5ceecafc20393744ce33a1cdde4540816`, ukuran 11.912 byte UTF-8.
+- Koreksi namespace masuk pada source SHA `67ccd99f7ae14a8c0e9ddb71ce773d627d182231`.
+- Run `44983955276` menguji SHA `67ccd99f7ae14a8c0e9ddb71ce773d627d182231`; status masih in progress pada tahap inisialisasi container ketika catatan ini diperbarui.
+- HEAD branch aktual saat checkpoint dokumentasi: `a9456a2eab3a2a8e1bb367e92bc02ca5f8af6b83`. Commit sesudah source test SHA hanya backup manifest/dokumentasi.
