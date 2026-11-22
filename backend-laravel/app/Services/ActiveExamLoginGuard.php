@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ExamAttempt;
-use App\Models\ExamParticipant;
 use App\Models\User;
 
 class ActiveExamLoginGuard
