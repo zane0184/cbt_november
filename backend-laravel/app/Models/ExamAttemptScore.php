@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Traits\TenantScoped;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +28,22 @@ class ExamAttemptScore extends Model
         'max_score' => 'decimal:4',
         'percentage' => 'decimal:2',
     ];
+
+    /**
+     * Restrict score history to the row explicitly selected by the authoritative
+     * current-score pointer. Invalid/missing/mismatched pointers fail closed.
+     */
+    public function scopeCurrent(Builder $query): Builder
+    {
+        return $query->whereExists(function (QueryBuilder $pointerQuery): void {
+            $pointerQuery->selectRaw('1')
+                ->from('exam_attempt_score_current as current_score_pointer')
+                ->whereColumn('current_score_pointer.current_score_id', 'exam_attempt_scores.id')
+                ->whereColumn('current_score_pointer.attempt_id', 'exam_attempt_scores.attempt_id')
+                ->whereColumn('current_score_pointer.tenant_id', 'exam_attempt_scores.tenant_id')
+                ->whereColumn('current_score_pointer.scoring_version', 'exam_attempt_scores.scoring_version');
+        });
+    }
 
     public function exam(): BelongsTo
     {
