@@ -254,3 +254,60 @@ Pada saat audit dokumen ini:
 - Tidak ada file source existing yang diubah pada checkpoint ini; karena itu tidak ada backup source yang diperlukan untuk penambahan dokumen baru.
 - Tidak ada perubahan pada branch Agent 2.
 - Langkah berikut: kirim keputusan/kontrak ini ke Agent 2 melalui Issue #8; setelah jawaban owner tersedia, implementasikan UI Web Guru pada branch kerja ini dengan backup byte-exact untuk setiap file existing yang akan diubah.
+
+
+---
+
+## 9. KEPUTUSAN OWNER — hapus XLSX sebagai jalur import soal, prioritaskan Microsoft Word (DOCX)
+
+**Tanggal keputusan: 23 November 2026**  
+**Status: KEPUTUSAN PRODUK — menggantikan rancangan import XLSX pada bagian 4 dan butir XLSX pada bagian 6–7.**
+
+Owner menetapkan bahwa jalur import soal berbasis XLSX tidak lagi menjadi fitur yang akan dikembangkan. Pertimbangan produk: mayoritas Guru menyusun soal menggunakan Microsoft Word, sehingga alur import harus berpusat pada dokumen Word.
+
+### 9.1 Arah baru
+
+1. **DOCX menjadi format utama import soal Guru.**
+2. XLSX question import/template/parser/preview UI tidak dilanjutkan sebagai fitur produk.
+3. Alur DOCX menjadi adapter input yang menghasilkan kontrak data soal yang sama dengan authoring Web Guru (satu DTO/draft contract), bukan subsistem import terpisah.
+4. DOCX harus memakai lifecycle `ImportBatch` / `ImportBatchRow` yang sudah tersedia. Jangan membuat tabel batch kedua atau dependency Composer baru tanpa persetujuan kontrak.
+5. DOCX import harus mendukung preview, koreksi/validasi, konfirmasi eksplisit, audit, idempotensi, dan revalidasi sebelum persist.
+6. SHORT_ANSWER tetap BLOCKED sampai accepted answer tersimpan pada versi soal, disalin secara privat ke snapshot immutable, dan terbukti digunakan oleh scoring. Format DOCX tidak boleh menjadi jalan pintas untuk melewati gate tersebut.
+
+### 9.2 Kontrak DOCX yang harus diprioritaskan
+
+- Parser DOCX mengekstrak paragraf, heading, tabel, daftar opsi, gambar, dan relasi media dengan locator sumber (paragraph/table/cell/image relationship).
+- Ekstraksi harus mempertahankan urutan soal, struktur opsi, teks Arab/harakat, campuran RTL/LTR, simbol, persamaan, dan penanda gambar sejauh format sumber memungkinkan.
+- Setiap hasil ekstraksi menjadi draft terstruktur dengan source locator dan warning/error yang dapat ditinjau Guru. Jangan diam-diam menebak struktur yang ambigu.
+- Gambar embedded diekstrak dari paket DOCX, divalidasi berdasarkan magic bytes/MIME, ukuran, jumlah, checksum, dan keamanan ZIP/XML; staging tetap private per instalasi/tenant/batch.
+- Media yang diekstrak baru dipasang ke QuestionVersion DRAFT saat Guru mengonfirmasi import; kegagalan transaksi harus membersihkan staging/orphan.
+- File DOCX yang rusak, encrypted, memiliki external relationship, embedded object/macro berisiko, ZIP bomb, path traversal, atau XML entity expansion harus ditolak secara aman.
+- DOCX dan XLSX (jika suatu saat diminta kembali) harus menghasilkan QuestionDraftDTO yang sama. Namun saat ini hanya adapter DOCX yang menjadi target produk.
+
+### 9.3 Perlakuan terhadap pekerjaan/source XLSX yang sudah ada
+
+Keputusan produk ini **menghentikan pengembangan XLSX**, tetapi tidak mengizinkan penghapusan source secara serampangan. Sebelum menghapus parser, export template, wizard, route, tests, atau dependency yang khusus XLSX, Web Guru wajib:
+1. audit seluruh pemanggil, route, workflow CI, dokumentasi, dan dependensi;
+2. membuat backup byte-exact untuk setiap file existing yang diubah/dihapus;
+3. memastikan tidak ada shared contract/ImportBatch atau alur import lain yang ikut terhapus;
+4. menghapus hanya komponen khusus question-import XLSX yang tidak lagi digunakan;
+5. mengganti tes XLSX dengan tes DOCX pada kontrak draft/batch/media yang disetujui;
+6. menjalankan GitHub Actions dengan MySQL disposable dan melaporkan bukti hasilnya.
+
+Tidak ada penghapusan source yang dilakukan hanya dengan penambahan catatan keputusan ini.
+
+### 9.4 Pembaruan urutan kerja Web Guru
+
+A. Registry resmi kurikulum, Pembelajaran Mendalam, 8 DPL, dan Panca Cinta.  
+B. Kontrak tahun ajaran, materi/topik, QuestionVersion, dan mapping kurikulum.  
+C. Snapshot immutable untuk seluruh konteks akademik dan kurikulum.  
+D. **DOCX import adapter, extraction, preview/correction, private media staging, dan attach.**  
+E. Accepted answer authoring → snapshot privat → scoring SHORT_ANSWER.  
+F. UI Web Guru dan GitHub Actions integration tests dengan MySQL disposable.  
+G. UAT Guru/Admin/Siswa.
+
+### 9.5 Perubahan status pengujian
+
+Semua checklist uji media yang sebelumnya menyebut XLSX harus dibaca sebagai kebutuhan keamanan/ekstraksi paket arsip yang relevan dan dipindahkan ke DOCX. Tidak ada lagi target implementasi atau kelulusan untuk question import XLSX. Pengujian DOCX harus mencakup dokumen tanpa gambar, satu/banyak gambar, gambar dalam tabel, RTL/Arab/harakat, persamaan/simbol, struktur soal ambigu, file rusak, external relationship, embedded object, ZIP/XML attack, idempotensi, rollback, isolasi tenant, serta akses media snapshot.
+
+**Checkpoint keputusan:** perubahan ini adalah keputusan produk dari owner; belum merupakan bukti implementasi DOCX dan belum berarti komponen XLSX di source telah dihapus.
