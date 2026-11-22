@@ -11,7 +11,7 @@ class AssessmentPolicy
     public function viewAny(User $user): bool
     {
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
-        return $user->hasRole('KAMAD') || $user->hasRole('GURU') || $user->hasRole('SISWA');
+        return $user->hasRole('GURU') || $user->hasRole('SISWA');
     }
 
     public function view(User $user, Assessment $assessment): bool
@@ -19,7 +19,7 @@ class AssessmentPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $assessment->tenant_id
             || $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('OPERATOR')) return false;
+            ) return false;
         if ($user->hasRole('GURU')) {
             return TeacherAccess::canManageAssessment($user, $assessment);
         }
@@ -30,7 +30,7 @@ class AssessmentPolicy
                 ->exists();
         }
 
-        return $user->hasRole('KAMAD');
+        return false;
     }
 
     public function create(User $user): bool
