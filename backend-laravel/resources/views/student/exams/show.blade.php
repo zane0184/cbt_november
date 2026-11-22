@@ -250,7 +250,7 @@
             // On reconnect, never race answer writes against a lease-recovery
             // response that may advance fence_generation.
             if (heartbeatSucceeded && state.pending.size && !state.submitting && !state.submitOutcomeUnknown) {
-                flushPendingSaves().then(() => setSaveStatus('Koneksi pulih; jawaban tertunda tersimpan dan receipt terverifikasi'))
+                flushPendingSaves().then(() => setSaveStatus('Koneksi pulih; jawaban tertunda tersimpan dan receipt server terverifikasi'))
                     .catch(error => setSaveStatus(`Sinkronisasi ulang gagal: ${error.message}`, true));
             }
         }
