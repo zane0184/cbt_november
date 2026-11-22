@@ -121,25 +121,23 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_admin_madrasah_login_redirects_to_operator_dashboard(): void
+    public function test_admin_madrasah_login_redirects_to_admin_dashboard(): void
     {
         $response = $this->post('/login', ['identifier' => 'admin.uji', 'password' => $this->password]);
-        $response->assertRedirect('/operator/dashboard');
+        $response->assertRedirect('/admin/dashboard');
         $this->assertAuthenticatedAs($this->admin);
     }
 
-    public function test_operator_login_redirects_to_operator_dashboard(): void
+    public function test_operator_login_is_rejected_from_the_three_portal_system(): void
     {
-        $response = $this->post('/login', ['identifier' => 'operator.uji', 'password' => $this->password]);
-        $response->assertRedirect('/operator/dashboard');
-        $this->assertAuthenticatedAs($this->operator);
+        $this->post('/login', ['identifier' => 'operator.uji', 'password' => $this->password])->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
-    public function test_kamad_login_redirects_to_welcome_landing(): void
+    public function test_kamad_login_is_rejected_from_the_three_portal_system(): void
     {
-        $response = $this->post('/login', ['identifier' => 'kamad.uji', 'password' => $this->password]);
-        $response->assertRedirect('/');
-        $this->assertAuthenticatedAs($this->kamad);
+        $this->post('/login', ['identifier' => 'kamad.uji', 'password' => $this->password])->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
     public function test_kamad_cannot_open_the_operator_dashboard(): void
@@ -150,11 +148,10 @@ class WebAdminAuthTest extends TestCase
         $this->get('/operator/dashboard')->assertForbidden();
     }
 
-    public function test_proktor_assignment_user_login_redirects_to_assignments(): void
+    public function test_proktor_role_without_guru_identity_is_rejected(): void
     {
-        $response = $this->post('/login', ['identifier' => 'proktor.uji', 'password' => $this->password]);
-        $response->assertRedirect('/proktor/assignments');
-        $this->assertAuthenticatedAs($this->proktor);
+        $this->post('/login', ['identifier' => 'proktor.uji', 'password' => $this->password])->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
     public function test_teacher_can_login_using_nip(): void
@@ -205,10 +202,11 @@ class WebAdminAuthTest extends TestCase
         $this->assertStringContainsString('Terlalu banyak percobaan login', session('errors')->first('identifier'));
     }
 
-    public function test_authenticated_kamad_visiting_login_is_redirected_to_welcome_landing(): void
+    public function test_authenticated_kamad_visiting_login_is_rejected_and_session_ends(): void
     {
         $this->actingAs($this->kamad);
-        $this->get('/login')->assertRedirect('/');
+        $this->get('/login')->assertOk();
+        $this->assertGuest();
     }
 
     public function test_logout_terminates_session_and_redirects_to_login(): void
