@@ -69,7 +69,7 @@
         </section>
 
         <section id="completion-panel" class="hidden rounded-2xl bg-white p-10 text-center shadow-sm">
-            <div class="text-4xl">✓</div><h2 class="mt-3 text-2xl font-bold">Ujian berhasil dikirim</h2><p id="completion-message" class="mt-2 text-slate-600">Jawaban Anda telah diterima server. Silakan kembali ke daftar ujian.</p><a href="{{ route('student.exams.index') }}" class="mt-6 inline-flex rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white">Kembali ke Daftar Ujian</a>
+            <div class="text-4xl">✓</div><h2 id="completion-title" class="mt-3 text-2xl font-bold">Ujian berhasil dikirim</h2><p id="completion-message" class="mt-2 text-slate-600">Jawaban Anda telah diterima server. Silakan kembali ke daftar ujian.</p><a href="{{ route('student.exams.index') }}" class="mt-6 inline-flex rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white">Kembali ke Daftar Ujian</a>
         </section>
         <div id="fatal-error" class="mt-4 hidden rounded-xl bg-red-50 p-4 text-red-800" role="alert"></div>
         <button id="check-submit-status" type="button" class="mt-3 hidden rounded-xl border border-amber-500 px-4 py-2 text-sm font-semibold text-amber-900" aria-live="polite">Periksa status pengiriman</button>
@@ -528,6 +528,9 @@
     function showCompletion(status) {
         state.submitOutcomeUnknown = false;
         el('check-submit-status').classList.add('hidden');
+        el('completion-title').textContent = status === 'EXPIRED'
+            ? 'Ujian ditutup oleh server'
+            : 'Ujian berhasil dikirim';
         el('completion-message').textContent = status === 'EXPIRED'
             ? 'Waktu ujian berakhir dan server telah menutup Attempt.'
             : 'Server telah mengonfirmasi Attempt berstatus terkirim.';
