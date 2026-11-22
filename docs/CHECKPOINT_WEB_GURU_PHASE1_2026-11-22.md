@@ -40,14 +40,23 @@ Tanggal: 22 November 2026
 - Dokumen: `docs/WEB_GURU_PHASE3_PENUGASAN_SAYA_2026-11-22.md`.
 - Source/test belum runtime verified karena GitHub Actions gagal sebelum runner/steps.
 
-## Tahap berikutnya
-**Phase 4 — Hardening Bank Soal dan Asesmen Guru**
-1. Pulihkan CI runner/log dan jalankan test exact SHA.
-2. Audit QuestionBank seluruh action/IDOR, owner, versioning, key privacy, type validation, filters.
-3. Audit ExamManagement transaction/publish/snapshot/token/roster/update schedule and status.
-4. Tambah regression tests hanya setelah source dan schema dipastikan.
-5. Backup sebelum setiap patch.
-6. Lanjutkan monitoring/penilaian/hasiI/analytics setelah kontrak backend.
-7. Update report/checkpoint setelah phase 2.
+## Phase 4 — Audit Bank Soal dan Asesmen Guru (22 November 2026)
+- Laporan: `docs/WEB_GURU_PHASE4_AUDIT_BANK_SOAL_ASESMEN_2026-11-22.md`.
+- Audit statis menemukan Bank Soal belum memiliki filter/field kurikulum lengkap, difficulty/cognitive/estimated time, media, RTL/formula, serta import yang kontraknya belum disetujui.
+- Exam Builder saat ini tidak membatasi pilihan Question/QuestionVersion berdasarkan status eligible; `ExamSnapshotService` juga belum memvalidasi status tersebut. Perlu keputusan/patch otoritatif Agent 2 sebelum UI Guru diselaraskan.
+- Snapshot menyimpan explanation dan `is_correct`; public payload Siswa harus disanitasi oleh backend owner.
+- Validasi assignment/roster terjadi sebelum transaksi; perlu review race/lock order lintas Agent 2 sebelum perubahan.
+- Policy lintas branch masih drift: branch Agent 2 lama memiliki KAMAD dan hasRole checks; branch koordinator telah menghapus KAMAD tetapi exact-one semua aksi belum terbukti. Tidak ada policy lintas agent yang diubah.
+- Tidak ada source runtime yang diubah dalam Phase 4 audit.
+- Backup checkpoint sebelum update: `docs/backup/agent3-phase4-20261122/CHECKPOINT_WEB_GURU_PHASE1_2026-11-22.md.before-phase4-audit`.
+- Pengujian hanya inspeksi statis/fetch/compare. PHP lint, PHPUnit, route:list, MySQL 8/InnoDB, browser E2E, concurrency, dan UAT **NOT RUN**.
+
+## Tahap berikutnya — Phase 4B, setelah kontrak backend
+1. Minta Agent 2/koordinator menetapkan eligibility QuestionVersion untuk Exam dan menutup sanitasi snapshot private/public.
+2. Pastikan ExamPolicy/ReportPolicy sesuai master role dan exact-one pada setiap action; jangan menganggap branch lain telah terintegrasi.
+3. Sepakati revalidation/lock order assignment dan roster dalam transaksi.
+4. Setelah kontrak disetujui, backup dan patch UI Guru kecil-kecil beserta regression test.
+5. Pulihkan CI runner dan jalankan lint/PHPUnit exact SHA pada disposable MySQL 8/InnoDB.
+6. Monitoring, Penilaian, Hasil, Analytics dan Proktor tetap tidak diaktifkan sebelum policy/API/capability masing-masing terbukti.
 
 Status keseluruhan Web Guru: **PARTIAL — NOT READY FOR OPERATIONAL EXAM**.
