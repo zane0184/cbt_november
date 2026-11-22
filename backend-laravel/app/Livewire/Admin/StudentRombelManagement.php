@@ -30,7 +30,7 @@ class StudentRombelManagement extends Component
         $user = auth()->user();
         abort_unless(
             $user && $user->tenant_id
-            && $user->hasRole('ADMIN_MADRASAH')
+            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists()
             && $user->hasPermission('academic.manage'),
             403,
             'Akses ditolak. Diperlukan Admin Madrasah dan permission academic.manage.'
