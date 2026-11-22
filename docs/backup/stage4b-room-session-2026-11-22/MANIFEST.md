@@ -172,3 +172,12 @@ Added fail-closed tests for a completed session and a soft-deleted TeacherProfil
 | backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-http-denial-status-matrix-adjustment | 7f144dbc3df60a91b90b2df03b50d7c1c4ac4f37 | 34857 |
 
 The API matrix now accepts 403/404/405 for prohibited non-student POST operations. All three are denial responses; any successful response or validation-only 422 remains a test failure.
+
+## Additional snapshots — exam-window ownership regression and endpoint denial expectations
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/app/Services/ExamRoomSessionService.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionService.php.before-remove-exam-window-recalculation | 3743d178a1f1508dd120c75d7cbf56877b581953 | 38955 |
+| backend-laravel/tests/Feature/MonitoringDuplicationTest.php | docs/backup/stage4b-room-session-2026-11-22/MonitoringDuplicationTest.php.before-unsupported-method-denial-expectation | 36062f3d7fde042fe014dd61a64ebb8ac86669d7 | 35631 |
+
+CI exposed that Admin rescheduling still recalculated `Exam.start_at/end_at` from session bounds. The recalculation was removed; session rescheduling now updates session metadata/revision and affected assignment states only. Unsupported HTTP methods (405) are accepted as fail-closed alongside 403/404 in the route denial matrix; no successful response is accepted.
