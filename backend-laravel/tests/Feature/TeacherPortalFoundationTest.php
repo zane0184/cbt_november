@@ -223,6 +223,40 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Belum ada penugasan aktif');
     }
 
+    public function test_role_revocation_is_rechecked_for_an_existing_authenticated_session(): void
+    {
+        $this->actingAs($this->teacher);
+
+        // Keep the already-authenticated User instance while revoking its DB role.
+        $this->teacher->roles()->detach($this->guruRole->id);
+
+        $this->get('/guru/dashboard')->assertForbidden();
+        Livewire::actingAs($this->teacher)->test(TeacherDashboard::class)->assertForbidden();
+    }
+
+    public function test_soft_deleted_teacher_account_is_denied_even_if_session_user_object_remains(): void
+    {
+        $this->actingAs($this->teacher);
+        $this->teacher->delete();
+
+        $this->get('/guru/dashboard')->assertForbidden();
+        Livewire::actingAs($this->teacher)->test(TeacherDashboard::class)->assertForbidden();
+    }
+
+    public function test_livewire_request_is_denied_when_tenant_context_does_not_match_authenticated_user(): void
+    {
+        $tenantB = Tenant::create([
+            'name' => 'Madrasah Context B',
+            'code' => 'MCB01',
+            'status' => 'ACTIVE',
+        ]);
+
+        app(TenantContext::class)->setTenantId($tenantB->id);
+        auth()->setUser($this->teacher);
+
+        Livewire::test(TeacherDashboard::class)->assertForbidden();
+    }
+
     public function test_curriculum_context_uses_only_registered_tenant_owned_versions_and_shows_unverified_source_state(): void
     {
         $curriculum = MultiCurriculum::create([
