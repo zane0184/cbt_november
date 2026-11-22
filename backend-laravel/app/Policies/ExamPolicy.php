@@ -11,11 +11,11 @@ class ExamPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('ADMIN_MADRASAH') ||
-               $user->hasRole('OPERATOR') ||
-               $user->hasRole('KAMAD') ||
-               $user->hasRole('GURU') ||
-               $user->hasRole('SISWA');
+        return $user->hasRole('ADMIN_MADRASAH')
+            || $user->hasRole('OPERATOR')
+            || $user->hasRole('KAMAD')
+            || $user->hasRole('GURU')
+            || $user->hasRole('SISWA');
     }
 
     public function view(User $user, Exam $exam): bool
@@ -28,9 +28,9 @@ class ExamPolicy
             return TeacherAccess::canManageExam($user, $exam);
         }
 
-        if ($user->hasRole('ADMIN_MADRASAH') ||
-            $user->hasRole('OPERATOR') ||
-            $user->hasRole('KAMAD')) {
+        // Admin may view only the tenant's exam register; operational actions
+        // remain separately authorized and are never implied by this read access.
+        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR') || $user->hasRole('KAMAD')) {
             return true;
         }
 
@@ -41,10 +41,6 @@ class ExamPolicy
         return false;
     }
 
-    /**
-     * Answer-key preview is an authoring capability, not a general exam-view
-     * capability. Only the assigned Guru who owns the assessment may use it.
-     */
     public function preview(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('GURU')) {
@@ -70,8 +66,9 @@ class ExamPolicy
 
     public function update(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($exam->isLocked()) return false;
+        if ($user->tenant_id !== $exam->tenant_id || $exam->isLocked()) {
+            return false;
+        }
 
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.manage')
@@ -82,8 +79,9 @@ class ExamPolicy
 
     public function delete(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($exam->isLocked()) return false;
+        if ($user->tenant_id !== $exam->tenant_id || $exam->isLocked()) {
+            return false;
+        }
 
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.manage')
@@ -106,8 +104,9 @@ class ExamPolicy
 
     public function generateToken(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($exam->status !== 'PUBLISHED' || !$exam->locked_at) return false;
+        if ($user->tenant_id !== $exam->tenant_id || $exam->status !== 'PUBLISHED' || !$exam->locked_at) {
+            return false;
+        }
 
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.token')
@@ -122,23 +121,12 @@ class ExamPolicy
         return $this->update($user, $exam);
     }
 
-    /**
-     * Closing is a distinct lifecycle action from locking/publishing.
-     * It is only valid for an already-published, locked exam and is
-     * idempotently allowed for an exam that is already CLOSED.
-     */
+    /** Closing an exam is exclusively a Guru lifecycle operation. */
     public function close(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || !$exam->locked_at) {
+        if ($user->tenant_id !== $exam->tenant_id || !$exam->locked_at
+            || !in_array($exam->status, ['PUBLISHED', 'CLOSED'], true)) {
             return false;
-        }
-
-        if (!in_array($exam->status, ['PUBLISHED', 'CLOSED'], true)) {
-            return false;
-        }
-
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return $user->hasPermission('exam.close');
         }
 
         return $user->hasRole('GURU')
@@ -150,8 +138,9 @@ class ExamPolicy
 
     public function startAttempt(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if (!$user->hasRole('SISWA')) return false;
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('SISWA')) {
+            return false;
+        }
 
         $now = now();
         $participant = $exam->participants()
@@ -169,8 +158,6 @@ class ExamPolicy
             return false;
         }
 
-        // Resume attempt yang sah tetap diizinkan setelah jadwal mulai berakhir,
-        // selama attempt masih IN_PROGRESS, belum kedaluwarsa, dan eligibility masih aktif.
         return $exam->canStartAttempt() || $participant->attempts()
             ->where('status', 'IN_PROGRESS')
             ->where('expires_at', '>', $now)
@@ -179,9 +166,14 @@ class ExamPolicy
 
     public function assignProctor(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if (!$user->hasRole('ADMIN_MADRASAH') || !$user->hasPermission('exam.proctor.assign')) return false;
-        if ($exam->status !== 'PUBLISHED' || !$exam->locked_at || !$exam->end_at) return false;
+        if ($user->tenant_id !== $exam->tenant_id
+            || !$user->hasRole('ADMIN_MADRASAH')
+            || !$user->hasPermission('exam.proctor.assign')
+            || $exam->status !== 'PUBLISHED'
+            || !$exam->locked_at
+            || !$exam->end_at) {
+            return false;
+        }
 
         return $exam->end_at->isFuture();
     }
@@ -195,7 +187,9 @@ class ExamPolicy
 
     public function monitor(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
+        if ($user->tenant_id !== $exam->tenant_id) {
+            return false;
+        }
 
         if ($user->hasRole('PROKTOR')) {
             return ExamProctorAssignment::query()
@@ -206,9 +200,9 @@ class ExamPolicy
                 ->exists();
         }
 
-        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR') || $user->hasRole('KAMAD'))
-            ? $user->hasPermission('exam.monitor')
-            : ($user->hasRole('GURU') && $user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam));
+        return $user->hasRole('GURU')
+            && $user->hasPermission('exam.monitor')
+            && TeacherAccess::canViewExam($user, $exam);
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
@@ -218,16 +212,20 @@ class ExamPolicy
 
     public function publishResults(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) return false;
-        if ($user->hasRole('PROKTOR') || $user->hasRole('KAMAD') || $user->hasRole('SISWA') || $user->hasRole('ADMIN_MADRASAH')) return false;
+        if ($user->tenant_id !== $exam->tenant_id
+            || $user->hasRole('PROKTOR')
+            || $user->hasRole('KAMAD')
+            || $user->hasRole('SISWA')
+            || $user->hasRole('ADMIN_MADRASAH')
+            || $user->hasRole('OPERATOR')) {
+            return false;
+        }
 
         return $user->hasRole('GURU')
             && $user->hasPermission('exam.grade')
-            && ($exam->assessment
-                && $user->hasPermission('exam.grade')
-                && $exam->assessment
-                && (string) $exam->assessment->created_by === (string) $user->id
-                && TeacherAccess::canManageAssessment($user, $exam->assessment)
-                && TeacherAccess::canViewExam($user, $exam));
+            && $exam->assessment
+            && (string) $exam->assessment->created_by === (string) $user->id
+            && TeacherAccess::canManageAssessment($user, $exam->assessment)
+            && TeacherAccess::canViewExam($user, $exam);
     }
 }
