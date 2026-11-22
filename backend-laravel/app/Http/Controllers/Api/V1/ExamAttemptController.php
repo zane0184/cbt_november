@@ -21,6 +21,7 @@ class ExamAttemptController extends Controller
 
     public function store(Request $request, Exam $exam)
     {
+        $user = $this->requireSingleStudent($request);
         $this->authorize('startAttempt', $exam);
 
         $deviceId = $request->header('X-Device-Binding-ID');
@@ -31,8 +32,6 @@ class ExamAttemptController extends Controller
                 'code' => 'MISSING_DEVICE_BINDING'
             ], 400);
         }
-
-        $user = $request->user();
 
         return DB::transaction(function () use ($exam, $user, $request, $deviceId) {
             // Global lifecycle lock order: Exam -> Participant -> Attempt.
@@ -55,16 +54,6 @@ class ExamAttemptController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not assigned to this exam.'
-                ], 403);
-            }
-
-            $eligibilityNow = now();
-            if (($participant->eligible_from && $eligibilityNow->lt($participant->eligible_from))
-                || ($participant->eligible_until && $eligibilityNow->gte($participant->eligible_until))) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Peserta belum atau sudah tidak berada dalam rentang waktu yang diizinkan.',
-                    'code' => 'PARTICIPANT_NOT_ELIGIBLE'
                 ], 403);
             }
 
@@ -93,6 +82,16 @@ class ExamAttemptController extends Controller
                     'data' => $this->attemptResponseData($existingAttempt),
                     'message' => 'Resuming existing attempt.'
                 ], 200);
+            }
+
+            $eligibilityNow = now();
+            if (($participant->eligible_from && $eligibilityNow->lt($participant->eligible_from))
+                || ($participant->eligible_until && $eligibilityNow->gte($participant->eligible_until))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Peserta belum atau sudah tidak berada dalam rentang waktu yang diizinkan.',
+                    'code' => 'PARTICIPANT_NOT_ELIGIBLE'
+                ], 403);
             }
 
             if (!$lockedExam->require_token || !$lockedExam->token) {
@@ -226,16 +225,6 @@ class ExamAttemptController extends Controller
 
             $this->authorize('view', $lockedExam);
 
-            $eligibilityNow = now();
-            if (($participant->eligible_from && $eligibilityNow->lt($participant->eligible_from))
-                || ($participant->eligible_until && $eligibilityNow->gte($participant->eligible_until))) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Rentang waktu akses peserta telah berakhir atau belum dimulai.',
-                    'code' => 'PARTICIPANT_NOT_ELIGIBLE'
-                ], 403);
-            }
-
             $lockedAttempt = $participant->attempts()
                 ->where('status', 'IN_PROGRESS')
                 ->where('expires_at', '>', now())
@@ -293,7 +282,7 @@ class ExamAttemptController extends Controller
             $metadata = $q->metadata ?? [];
 
             // Security: Sanitize options & metadata for students
-            if ($user->hasRole('SISWA')) {
+            if ($user->hasExactRole('SISWA')) {
                 unset($metadata['accepted_answers']);
                 unset($metadata['rubric']);
                 unset($metadata['answer_key']);
@@ -499,7 +488,7 @@ class ExamAttemptController extends Controller
             abort(404);
         }
 
-        if ($request->user()->hasRole('SISWA')) {
+        if ($request->user()->hasExactRole('SISWA')) {
             abort_unless($participant->user_id === $request->user()->id, 404);
             $this->authorize('view', $exam);
         } else {
@@ -520,12 +509,10 @@ class ExamAttemptController extends Controller
     private function requireSingleStudent(Request $request): User
     {
         $user = $request->user();
-        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
-
         abort_unless(
-            $user && $user->tenant_id && count($roleNames) === 1 && $roleNames[0] === 'SISWA',
+            $user && $user->hasExactRole('SISWA'),
             403,
-            'Endpoint eksekusi ujian hanya tersedia untuk akun Siswa.'
+            'Endpoint eksekusi ujian hanya tersedia untuk akun Siswa aktif dengan satu role.'
         );
 
         return $user;
