@@ -183,10 +183,20 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'term' => 'GANJIL',
             'is_active' => true,
         ]);
+        $otherRombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $otherYear->id,
+            'grade_level_id' => $this->rombel->grade_level_id,
+            'name' => '1B',
+            'status' => 'ACTIVE',
+        ]);
 
         Livewire::actingAs($this->admin)
             ->test(TeacherSubjectAssignmentManagement::class)
-            ->set(array_merge($this->validPayload(), ['semesterId' => $otherSemester->id]))
+            ->set(array_merge($this->validPayload(), [
+                'rombelId' => $otherRombel->id,
+                'semesterId' => $otherSemester->id,
+            ]))
             ->call('save')
             ->assertHasErrors(['academicYearId']);
 
