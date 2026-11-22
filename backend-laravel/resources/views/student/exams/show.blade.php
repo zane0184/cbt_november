@@ -550,7 +550,12 @@
                 state.revisions.set(question.id, Number(result.data.revision_number));
                 if (state.pending.get(question.id) === pendingItem) {
                     await acknowledgePersistedPending(question.id, pendingItem, result.data.revision_number);
-                    state.pending.delete(question.id);
+                    // A newer edit may arrive while the IndexedDB acknowledgement
+                    // transaction is in flight. Delete only the item that was
+                    // acknowledged; never clear the newer in-memory queue entry.
+                    if (state.pending.get(question.id) === pendingItem) {
+                        state.pending.delete(question.id);
+                    }
                 }
                 setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Respons server berhasil; receipt terverifikasi belum tersedia');
             } catch (error) {
