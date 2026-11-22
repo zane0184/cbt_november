@@ -35,7 +35,7 @@ class ScoringController extends Controller
             [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
             $this->authorize('score', $lockedAttempt);
 
-            if (in_array($lockedAttempt->status, ['IN_PROGRESS'], true)) {
+            if (!in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Attempt must be closed before scoring.'
@@ -147,8 +147,8 @@ class ScoringController extends Controller
             [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
             $this->authorize('grade', $lockedAttempt);
 
-            if ($lockedAttempt->status === 'IN_PROGRESS') {
-                return response()->json(['success' => false, 'message' => 'Cannot grade an active attempt.'], 422);
+            if (!in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
+                return response()->json(['success' => false, 'message' => 'Only submitted or expired attempts can be graded.'], 422);
             }
 
             $currentPointer = ExamAttemptScoreCurrent::query()
@@ -340,8 +340,8 @@ class ScoringController extends Controller
             [$lockedExam, $participant, $lockedAttempt] = $this->lockAttemptContext($exam, $attempt);
             $this->authorize('score', $lockedAttempt);
 
-            if ($lockedAttempt->status === 'IN_PROGRESS') {
-                return response()->json(['success' => false, 'message' => 'Attempt must be closed before recalculation.'], 422);
+            if (!in_array($lockedAttempt->status, ['SUBMITTED', 'EXPIRED'], true)) {
+                return response()->json(['success' => false, 'message' => 'Attempt must be submitted or expired before recalculation.'], 422);
             }
 
             $currentPointer = ExamAttemptScoreCurrent::query()
