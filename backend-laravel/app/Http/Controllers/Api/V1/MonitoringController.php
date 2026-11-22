@@ -300,7 +300,7 @@ class MonitoringController extends Controller
             ->latest()
             ->paginate(50);
 
-        if ($scope->isExamAuthor($request->user(), $exam) || $request->user()->hasRole('KAMAD')) {
+        if ($scope->isExamAuthor($request->user(), $exam)) {
             $events = AuditLog::query()
                 ->where('tenant_id', $exam->tenant_id)
                 ->where(function ($query) use ($exam) {
