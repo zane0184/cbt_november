@@ -110,3 +110,15 @@ Jumlah snapshot backup terdaftar: 25. Seluruh blob SHA yang tercantum harus dive
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 7d5c2c3eab161d830e75a3274af4e3732a6814fa | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-CI-failure-root-cause-reconcile | 7d5c2c3eab161d830e75a3274af4e3732a6814fa | 7f7cb2e60b822ec41af5347ac01af776e486bb02 | MATCH |
 
 Jumlah snapshot backup terdaftar: 28. Seluruh blob SHA yang tercantum harus diverifikasi sebelum P0 ditutup.
+
+
+## Backup tambahan — HTTP Livewire lifecycle dan hardening P0 (22 November 2026)
+
+| File sumber sebelum perubahan | Blob SHA source | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| backend-laravel/tests/Feature/TeacherPortalFoundationTest.php | 747989ed491dc1ead67b8a990434837df47c8af1 | docs/backup/web-guru-exact-role-20261122/TeacherPortalFoundationTest.php.before-http-lifecycle-tenant-hardening | 747989ed491dc1ead67b8a990434837df47c8af1 | Tidak surfaced oleh respons create_file; blob diverifikasi | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 3fb900cb175df29cfb0d3f0d7b908763b1295b26 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-http-lifecycle-tenant-hardening | 3fb900cb175df29cfb0d3f0d7b908763b1295b26 | Tidak surfaced oleh respons create_file; blob diverifikasi | MATCH |
+| backend-laravel/tests/Feature/TeacherPortalFoundationTest.php | 3ef6e3504afb4cfc71164df231192f2e8440f9e3 | docs/backup/web-guru-exact-role-20261122/TeacherPortalFoundationTest.php.before-post-http-lifecycle-exact-role | 3ef6e3504afb4cfc71164df231192f2e8440f9e3 | 83847248eec61f3e576de4405a229190a09d1764 | MATCH |
+| docs/CHECKPOINT_AGENT3_WEB_ONLY_NEXT_GATE.md | ec17179508fbfe82ddad97c2549a86af78f110a6 | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_AGENT3_WEB_ONLY_NEXT_GATE.md.before-p0-test-hardening | ec17179508fbfe82ddad97c2549a86af78f110a6 | aa17b814e6ca2327a4e386d38105760d9515f25b | MATCH |
+
+Jumlah snapshot backup terdaftar: 32. Empat snapshot tambahan diverifikasi dengan blob SHA identik. Dua commit backup pertama tidak surfaced oleh respons GitHub Contents API, sehingga hanya blob equality yang diklaim; tidak mengarang commit SHA.
