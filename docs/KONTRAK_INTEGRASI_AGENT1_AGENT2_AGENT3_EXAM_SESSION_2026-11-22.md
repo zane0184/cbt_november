@@ -1,4 +1,4 @@
-# KONTRAK INTEGRASI AGENT 1 — AGENT 2 — AGENT 3
+# KONTRAK INTEGRASI AGENT 1 — AGENT 2 — AGENT 3 — AGENT 4
 Tanggal: 22 November 2026
 Repository: zane0184/cbt_november
 Branch dokumen: work/stage4b-room-session-20261122
@@ -96,3 +96,231 @@ Sebelum perubahan source lintas agent:
 - Agent 3 branch yang ditemukan sebelumnya: work/web-guru-foundation-20261122; source/model terkait dibaca read-only pada audit sebelumnya. Branch tidak diubah.
 - Branch HEAD masing-masing Agent 2/3 tidak menjadi bagian dari pekerjaan ini dan tidak diubah.
 - Kontrak ini adalah dokumen koordinasi; penerimaan formal Agent 2/3 belum diperoleh: NOT VERIFIED.
+
+
+---
+
+## 10. ADDENDUM REKONSILIASI AGENT 1–4 — AUDIT READ-ONLY 22 NOVEMBER 2026
+
+Status addendum: AUDIT + DESAIN KOORDINASI. Tidak memberi izin coding, migration, schema change, database mutation, merge, rebase, cherry-pick, deployment, atau perubahan branch agent lain.
+
+### 10.1 HEAD dan graph branch saat audit
+
+| Pemilik | Branch yang ditemukan | HEAD remote | Merge-base terhadap Agent 1 | Ahead / behind terhadap Agent 1 |
+|---|---|---|---|---:|
+| Agent 1 | work/stage4b-room-session-20261122 | 338fd45d02a019bbe44cc70aa846b5e76f611323 | — | — |
+| Agent 2 | work/stage4d-account-lifecycle-20261122 | a1eb70f193e875ecffa64cc7dcc7114a8e60c631 | 0631a3d84d058c8c049dcb71dc54b2e7cbb849a6 | 204 / 65 |
+| Agent 3 | work/web-guru-foundation-20261122 | 650a7b45e1e310c8840e6fc0366d0c96577cf314 | 81b6c74d81d80bc483530802594f624fb4e0f3db | 113 / 210 |
+| Kandidat Agent 4 — belum terkonfirmasi | work/import-guru-siswa-implementation-20261122 | f38ceec7b0653fcf3363eec40f3d4577c323cca8 | 17c20c66284deb7a18e3a6dde2b3d47f9c966bd9 | 80 / 333 |
+| Main | main | feab77228f7108f7f7a45325d7f1fb878c07310b | 95736e338e517a087503adfb3e3a899709e0340c | Agent 1 15 ahead / 1.183 behind |
+
+Branch kerja diverged. Main tidak memuat path source CBT yang sedang diaudit pada struktur backend-laravel yang digunakan branch Agent 1. Jangan memakai main sebagai pengganti integrasi empat branch ini.
+
+Belum ditemukan branch yang secara eksplisit bernama atau ditandai sebagai Agent 4. Branch import-guru-siswa adalah kandidat karena commit terakhir mengubah ExamAttemptController, tetapi pemiliknya belum dapat dipastikan. Status ownership Agent 4: PENDING CONFIRMATION.
+
+### 10.2 Status PR dan koordinasi
+
+Pemeriksaan daftar seluruh PR repository tidak menemukan PR integrasi Agent 1, Agent 2, Agent 3, atau branch kandidat Agent 4. PR terbuka yang terlihat berkaitan dengan Web Admin, installer, dan audit P0.95D, bukan integrasi satu Exam–satu ExamSession. Tidak ada merge antar-branch yang dibuktikan oleh pemeriksaan ini.
+
+Persetujuan teknis:
+- Agent 2 — PENDING. Belum ada persetujuan tertulis untuk kontrak Exam close/resume, session lifecycle, scheduler, dan lock ordering.
+- Agent 3 — PENDING. Belum ada persetujuan tertulis untuk canonical session, room/placement, Proktor, serta monitoring scope.
+- Agent 4 — PENDING / OWNER UNCONFIRMED. Belum ada branch resmi atau persetujuan tertulis yang dapat diatribusikan secara pasti.
+- Agent 1 — bertindak sebagai pemilik rancangan koordinasi, bukan pemberi persetujuan bagi agent lain.
+
+### 10.3 Matriks blob SHA file inti
+
+Nilai MISSING berarti path tidak tersedia pada branch tersebut; bukan bukti bahwa fungsinya tidak ada pada path lain.
+
+| File | Agent 1 | Agent 2 | Agent 3 | Kandidat Agent 4 |
+|---|---|---|---|---|
+| ExamController.php | c7c62e96 | c7c62e96 | c7c62e96 | bf373858 |
+| ExamAttemptController.php | 13e8981c | 13e8981c | e915bf43 | 80870209 |
+| ExamSessionLifecycleService.php | 8e34152a | 8e34152a | MISSING | MISSING |
+| ExamRoomSessionService.php | e514fa9f | e514fa9f | 9da24429 | MISSING |
+| ExamProctorAssignmentService.php | c968ce68 | c968ce68 | c968ce68 | 34443cb8 |
+| ExamMonitoringScope.php | 11b45595 | 11b45595 | 11b45595 | MISSING |
+| ExamSession.php | d1d41ad8 | d1d41ad8 | d1d41ad8 | MISSING |
+| ExamSessionRoom.php | d55c16e8 | d55c16e8 | d55c16e8 | MISSING |
+| ExamSessionRoomRombel.php | 78d6673e | 78d6673e | 78d6673e | MISSING |
+| ExamParticipant.php | ac252d6b | feaab347 | ac252d6b | ff9cbfba |
+| ExamParticipantRoomAssignment.php | 743f8ede | 9a482684 | 743f8ede | MISSING |
+| ExamProctorAssignment.php | 88a1c231 | 0c05092c | 88a1c231 | dde7511e |
+| ExamAttempt.php | 341c8d00 | 341c8d00 | 341c8d00 | 341c8d00 |
+| ExamAttemptAnswer.php | 9765f275 | 9765f275 | 9765f275 | 9765f275 |
+| ExamAttemptScore.php | 2fdceaa2 | b374cb57 | 2fdceaa2 | 2fdceaa2 |
+| ExamAttemptScoreCurrent.php | d9d0841d | d9d0841d | d9d0841d | d9d0841d |
+| ExamQuestionScore.php | 34f9802f | 6257ed2c | 34f9802f | 34f9802f |
+| ExamPolicy.php | c05d96ef | c05d96ef | 839df41c | 121fa887 |
+| ExamAttemptPolicy.php | 00a3a411 | 00a3a411 | 00a3a411 | 00a3a411 |
+| SyncExamSessionLifecycle.php | 9663b571 | 9663b571 | MISSING | MISSING |
+
+Blob SHA dipendekkan untuk keterbacaan; full SHA telah dibaca dari GitHub pada audit ini.
+
+### 10.4 Konsekuensi konflik lintas agent
+
+1. Agent 2 mengubah relasi historis pada ExamParticipant, ExamParticipantRoomAssignment, ExamProctorAssignment, ExamAttemptScore, dan ExamQuestionScore dengan relasi `withTrashed()`. Perubahan ini menjaga identitas actor/siswa yang akunnya dinonaktifkan agar histori tetap dapat dibaca. Perubahan tersebut harus dipertahankan ketika source digabungkan; jangan menyalin model Agent 1 secara membabi buta.
+2. Agent 3 memakai ExamRoomSessionService dan ExamAttemptController yang berbeda dari Agent 1. Pada ExamAttemptController Agent 3, endpoint show mengotorisasi monitor pada level Exam tetapi tidak memanggil ExamMonitoringScope::allowsParticipant(). Policy monitor Agent 3 juga memeriksa assignment pada level Exam. Ini belum memenuhi kontrak Proktor hanya boleh melihat peserta di room yang ditugaskan. Integrasi wajib mempertahankan pemeriksaan peserta/room yang ada pada Agent 1 atau memberikan desain pengganti yang ekuivalen dan teruji.
+3. ExamRoomSessionService Agent 3 tidak identik dengan Agent 1 dan tidak memuat seluruh method yang ada pada Agent 1; versi yang diperiksa tidak menyediakan updateRoom/cancelSession dan tidak memiliki ExamSessionLifecycleService pada tree branch tersebut. Perlu rekonsiliasi API service dan UI, bukan penggantian file langsung.
+4. Kandidat Agent 4 mengubah urutan pemeriksaan peserta dan otorisasi pada ExamAttemptController, tetapi branch itu belum memuat migration/model/service Stage 4B room-session. Perubahan auth-order harus direview dan diuji bersama scope monitoring room; jangan cherry-pick tanpa regression test.
+5. ExamController sama pada Agent 1/2/3, tetapi berbeda pada kandidat Agent 4. ExamPolicy sama pada Agent 1/2, berbeda pada Agent 3 dan kandidat Agent 4. ExamAttemptPolicy dan model inti Attempt/Answer/ScoreCurrent sama pada empat branch yang dibandingkan, sedangkan relasi historis Score/QuestionScore berbeda pada Agent 2.
+
+### 10.5 Verifikasi temuan lifecycle Agent 1
+
+Temuan yang masih ada pada HEAD Agent 1:
+- createSession masih menerima nama, nomor, starts_at, dan ends_at dari Admin; constraint saat ini hanya unik per nomor session, sehingga nomor berbeda masih memungkinkan session kedua.
+- rescheduleSession masih mengubah jadwal session secara independen.
+- cancelSession masih membolehkan Admin membatalkan session SCHEDULED dan mencabut placement/assignment tanpa menutup Exam.
+- ExamController::update masih melakukan authorize lalu update langsung tanpa transaksi, lockForUpdate, dan authorize ulang pada row terkunci.
+- ExamController::close mengunci Exam dan mencatat audit, tetapi belum menyelaraskan ExamSession dan assignment Proktor.
+- ExamSessionLifecycleService memilih kandidat berdasarkan starts_at/ends_at session, mengunci session tanpa mengunci Exam terlebih dahulu, dan tidak memfilter is_operational karena kolom tersebut belum ada.
+- Scheduler dapat menyelesaikan session/assignment berdasarkan status/waktu session tanpa memeriksa Attempt IN_PROGRESS yang masih memerlukan dukungan monitoring.
+- ExamAttemptController::store mengunci Exam lalu Participant lalu Attempt. Policy mengizinkan resume Attempt IN_PROGRESS yang belum kedaluwarsa dan masih eligible setelah Exam ditutup; Attempt baru tetap bergantung pada Exam.canStartAttempt().
+- cancelSession memeriksa Attempt aktif pada placement session sebelum pembatalan, tetapi pembatalan session tetap tidak mengubah status Exam. Karena session bukan admission gate, pembatalan ini berpotensi meninggalkan Exam PUBLISHED yang masih dapat menerima Attempt baru sementara scope ruang/monitoring telah dicabut.
+
+### 10.6 Lock ordering — kondisi aktual dan rancangan koordinasi
+
+Kondisi aktual:
+- createSession: Exam.
+- attachRoom: Exam -> Physical Room -> ExamSession.
+- mapRombel/releaseRombelMapping: membaca SessionRoom, lalu lock Exam -> Room -> SessionRoom -> ExamSession -> Rombel/Participant/Placement.
+- ExamProctorAssignmentService::lockScope: Exam -> Room -> SessionRoom -> ExamSession; kemudian User/Assignment.
+- ExamSessionLifecycleService scheduler: Session saja; belum lock Exam.
+- ExamAttemptController::store dan ExpireExamAttemptsCommand: Exam -> Participant -> Attempt.
+- ExamController::lock/close: Exam row lock; update belum menggunakan pola yang sama.
+
+Urutan canonical yang harus disepakati:
+1. Exam.
+2. Physical ExamRoom, sorted by primary key.
+3. ExamSession.
+4. ExamSessionRoom, sorted by primary key.
+5. Rombel, sorted by primary key.
+6. ExamParticipant, sorted by primary key.
+7. Participant placement/mapping, sorted by primary key.
+8. Proctor assignment, sorted by primary key.
+9. User/Guru, sorted by primary key.
+10. Attempt, Answer, Score, Device Lease/Fencing sesuai kebutuhan operasi.
+
+Operasi Attempt-only tetap menggunakan Exam -> Participant -> Attempt -> Answer/Score/Lease. Jika transaksi menyentuh room/placement sekaligus Attempt, transaksi harus mengikuti urutan global yang disepakati dan tidak boleh mengambil lock child lebih dahulu. Scheduler wajib mengunci Exam sebelum session dan assignment. Urutan aktual mapRombel/lockScope (SessionRoom sebelum Session) harus direkonsiliasi agar sesuai urutan canonical.
+
+### 10.7 Kontrak Agent 4 — Attempt dan recovery
+
+Agent 4 diminta meninjau dan menyatakan APPROVED / REJECTED / NEEDS DESIGN / PENDING atas:
+- Attempt baru hanya dapat dibuat pada Exam window berdasarkan waktu server dan token Exam.
+- Resume Attempt IN_PROGRESS yang sah setelah close hanya jika Attempt belum terminal/expired dan eligibility masih berlaku.
+- Close Exam menolak Attempt baru, tetapi tidak menghapus/memindahkan Attempt aktif.
+- Monitoring/assignment Proktor tidak dicabut selama masih dibutuhkan untuk pemulihan Attempt aktif.
+- Submit normal, expiry, dan Force Submit harus konsisten, berotorisasi, tercatat, dan aman terhadap pengulangan.
+- Answer persistence/sync harus mempertahankan idempotensi, urutan/fencing, dan histori.
+- Device lease/takeover tidak membuat session baru dan tidak memindahkan placement secara otomatis.
+- Force Submit, takeover, reset, atau perpanjangan waktu harus memiliki audit actor/reason/before-after.
+- Device Lease/fencing tidak boleh disebut siap produksi sebelum integration test dan multi-device test lulus.
+
+File/class yang harus dinyatakan owner-nya oleh Agent 4: ExamAttemptController, ExamAttempt, ExamAttemptAnswer, scoring/current score services, lease/fencing services, Force Submit workflow, StudentExamController/Web Siswa, dan tests terkait. Daftar final menunggu audit branch resmi Agent 4.
+
+### 10.8 Database dan compatibility gate
+
+Migration Stage 4B saat ini:
+- exam_sessions memiliki unique (tenant_id, exam_id, session_number), bukan unique satu session operasional per Exam.
+- Belum ada is_operational atau operational_guard.
+- MySQL memakai unique expression index untuk active rombel mapping dan active participant placement; SQLite memakai partial unique index.
+- Migration down memiliki guard histori dan rollback child-first; bukti CI lama bukan bukti bahwa migration constraint baru sudah kompatibel.
+
+Bukti runtime yang tersedia:
+- Artifact CI Stage 4B mencatat MySQL 8.0.46 dan InnoDB.
+- Artifact berisi 37 file log/JSON, bukan SQL dump/database snapshot.
+- Tidak ada versi SQLite aktual yang tercatat dalam artifact tersebut.
+- Generated virtual column/unique guard untuk satu session operasional belum diimplementasikan atau diuji pada MySQL.
+- SQLite partial unique index untuk invariant baru juga belum dijalankan dengan versi SQLite yang dicatat.
+
+Gate database tetap BLOCKED sampai disposable dump dan compatibility test tersedia. Jangan jalankan migration.
+
+### 10.9 Database/backup inventory terbaru
+
+Pemeriksaan dilakukan terhadap /mnt/data, workspace rekonstruksi, Project/Conversation files, Library, artifact CI, dan Git trees branch terkait:
+- /mnt/data/CBT_MADRASAH_RECONSTRUCTION tidak ditemukan.
+- ZIP baseline CBT REVISI 6 NOPEMBER 2026.zip tidak ditemukan.
+- Tidak ditemukan .sql, .sql.gz, .dump, .sqlite, atau .db.
+- stage4b-ci-artifact.zip adalah log CI 20.145 byte, bukan database.
+- Project/Conversation inventory berisi laporan/checkpoint dan prompt teks; tidak ada dump DB atau ZIP baseline.
+- Library inventory tidak menampilkan file database/ZIP yang relevan.
+- Git tree branch schema-dump-export dan branch agent terkait tidak menampilkan dump database.
+- Tidak ada koneksi ke database produksi.
+
+Preflight data lama: NOT RUN. Tidak ada data sintetis yang menggantikan data lama.
+
+### 10.10 Status CI saat audit
+
+| Branch | Run | SHA yang diuji | Status | Batas bukti |
+|---|---:|---|---|---|
+| Agent 1 | 44984303003 | f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5 | SUCCESS | 24 test / 120 assertions; MySQL 8.0.46. HEAD sekarang hanya menambah dokumen; desain satu session belum diuji. |
+| Agent 2 | 44997980279 | c18acf591255b5a9199a0b9388d0adcee9ab7ea6 | FAILURE | Gagal pada PHPUnit Guru/Siswa regression; langkah setelahnya dilewati. |
+| Agent 2 | 44998131077 | a1eb70f193e875ecffa64cc7dcc7114a8e60c631 | IN PROGRESS saat pemeriksaan | Menunggu hasil exact HEAD; belum PASS. |
+| Agent 3 | 44995889398 | a33867928711b456d2414a675bef1a929861dee8 | SUCCESS | HEAD sekarang hanya menambah dokumen; tidak menguji kontrak satu session atau integrasi Agent 1/2/4. |
+| Kandidat Agent 4 | 44949239676 | f38ceec7b0653fcf3363eec40f3d4577c323cca8 | SUCCESS | Run exact HEAD kandidat, tetapi branch belum memuat Stage 4B room-session; bukan bukti integrasi Attempt/room. |
+
+CI Stage 4B lama tidak boleh diklaim sebagai pengujian desain satu Exam–satu ExamSession karena source desain tersebut belum diimplementasikan.
+
+### 10.11 Test matrix dan acceptance criteria sebelum implementasi
+
+A. Invariant/database/concurrency:
+- Dua transaksi membuat session pada Exam sama: tepat satu berhasil; request lain mendapat conflict; tidak ada duplicate.
+- Dua Exam berbeda dalam tenant sama dan tenant berbeda tidak saling memblokir secara keliru.
+- Histori session non-operasional dapat tetap dibaca tanpa memperoleh capability operasional.
+- Unique constraint dan rollback diuji pada MySQL 8.0.46 dan versi SQLite aktual yang dicatat.
+- Migration rollback kosong berhasil; rollback dengan histori yang dilindungi ditolak tanpa kehilangan data.
+
+B. Jadwal dan Exam lifecycle:
+- DRAFT update valid.
+- Publish versus update race: setelah publish, jadwal tidak dapat berubah.
+- Update versus close race: hasil serializable dan audit before/after tepat.
+- Jadwal session selalu identik dengan Exam; tidak ada jalur reschedule independen.
+- Close Exam tidak membuat scheduler mengaktifkan session yang seharusnya sudah ditutup.
+- Token tetap melekat pada Exam dan bukan session.
+
+C. Attempt/recovery:
+- Close versus start Attempt bersamaan.
+- Attempt baru ditolak setelah close.
+- Attempt IN_PROGRESS yang sah tetap dapat resume.
+- Attempt expired/terminal tidak dapat resume.
+- Submit berulang aman/idempotent.
+- Expiry tidak membuat score palsu jika snapshot/order rusak.
+- Force Submit hanya oleh role/permission sah, alasan dan actor tercatat.
+- Lease/fencing, takeover, offline answer sync, dan multi-device diuji integrasi; unit test/schema saja tidak cukup.
+
+D. Room/placement/Proktor:
+- Banyak room dalam satu ExamSession.
+- Peserta hanya memiliki satu placement aktif untuk Exam.
+- Reassignment menyimpan row RELEASED lama dan row ACTIVE baru.
+- Mapping rombel tidak menggandakan peserta.
+- Assignment Proktor per room dan masa tugas berbeda.
+- Proktor tidak dapat membaca peserta/Attempt di luar room yang dikonfirmasi.
+- Admin tidak memperoleh monitoring atau data jawaban karena melakukan assignment.
+- Perubahan scope menaikkan schedule_revision dan assignment terdampak NEEDS_REVIEW.
+
+E. Scheduler:
+- Exam dikunci sebelum session.
+- Hanya session operasional yang diproses.
+- Tidak membuat session.
+- Tidak menyelesaikan assignment saat Attempt aktif masih membutuhkan monitoring.
+- Idempotent pada eksekusi berulang.
+- Tenant scope dan audit event tervalidasi.
+- Race scheduler dengan update/publish/close/Attempt submit tidak menyebabkan deadlock atau kehilangan histori.
+
+Acceptance criteria keseluruhan: seluruh test di atas dijalankan pada disposable environment dengan bukti exact SHA, tanpa data produksi; counts/hash Attempt, Answer, Score dan current-score pointer sebelum/sesudah rekonsiliasi harus identik.
+
+### 10.12 Status persetujuan dan gate
+
+| Keputusan | Status |
+|---|---|
+| Invariant satu Exam–satu ExamSession | DESIGN PROPOSED; menunggu persetujuan pengguna |
+| is_operational dan unique guard | NEEDS DESIGN / compatibility test |
+| Close Exam dan resume Attempt | PENDING Agent 2 + Agent 4 |
+| Scheduler dan lock order | NEEDS DESIGN lintas Agent 1/2/3/4 |
+| Room/placement/Proktor dan scope monitoring | PENDING Agent 3 |
+| Branch resmi Agent 4 | PENDING IDENTIFICATION |
+| Preflight database lama | BLOCKED — dump disposable tidak tersedia |
+| Implementasi source/migration | NOT STARTED |
+| Production database/deployment | NOT TOUCHED |
+
+Sampai semua owner memberikan respons tertulis dan pengguna memberikan persetujuan eksplisit, tidak ada coding, migration, schema change, database mutation, merge/rebase/cherry-pick, deployment, atau klaim siap produksi.
