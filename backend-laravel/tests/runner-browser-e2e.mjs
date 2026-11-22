@@ -571,6 +571,27 @@ try {
     console.log('PASS: unauthorized media response locks runner');
   }
 
+  // In-place network reconnect waits for heartbeat generation before retrying the durable answer queue.
+  {
+    const scenario = makeScenario();
+    scenario.online = false;
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await chooseFirstAnswer(page);
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('Gagal menyimpan'));
+    scenario.online = true;
+    await page.evaluate(() => window.dispatchEvent(new Event('online')));
+    await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
+    assert.equal(scenario.heartbeatCalls, 1);
+    assert.equal(scenario.answerWrites, 2);
+    assert.equal(scenario.answerCommits, 1);
+    assert.equal(scenario.answerRequestIds[0], scenario.answerRequestIds[1]);
+    assert.ok(scenario.attemptHeaders.some(item => item.path.endsWith('/answers/snapshot-1') && item.fence === '2'));
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: reconnect heartbeat advances fence before exact answer queue retry');
+  }
+
   // 5. Offline write: local draft survives reload and is synchronized on resume.
   {
     const scenario = makeScenario('offline-recovery');
