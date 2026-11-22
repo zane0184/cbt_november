@@ -89,6 +89,9 @@ class RolePermissionBootstrapper
                 $ids = array_map(fn (string $name) => $permissionIds[$name], $permissionNames);
                 $role->permissions()->detach($ids);
             }
+
+            // PROKTOR is a legacy historical role only; no permanent Proktor capability remains.
+            Role::query()->where('name', 'PROKTOR')->first()?->permissions()->detach();
         });
     }
 }
