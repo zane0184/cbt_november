@@ -16,8 +16,6 @@ class DatabaseSeeder extends Seeder
         DB::transaction(function (): void {
             $roles = [
                 'ADMIN_MADRASAH' => 'Admin Madrasah',
-                'OPERATOR' => 'Operator Madrasah',
-                'KAMAD' => 'Kepala Madrasah',
                 'GURU' => 'Guru / Pengajar',
                 'SISWA' => 'Siswa / Peserta Ujian',
             ];
