@@ -157,7 +157,8 @@ class ItemAnalysisTest extends TestCase
                 'question_type' => 'MULTIPLE_CHOICE',
                 'awarded_score' => $awarded,
                 'max_score' => 10,
-                'tenant_id' => $tenant->id
+                'tenant_id' => $tenant->id,
+                'scoring_version' => 1,
             ]);
         }
 
