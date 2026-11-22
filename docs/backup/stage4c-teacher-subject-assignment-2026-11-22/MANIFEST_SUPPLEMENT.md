@@ -7,6 +7,7 @@ Implementation base HEAD: 3bf04829a07930ecc0e4e97de45501795248ad69
 The original Stage 4C backup manifest remains unchanged. This supplement records subsequent pre-change snapshots.
 
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-mysql-role-and-year-relation-fixes | bfd4b0950fa7293cde7e59cf7a36e5c6e9fe6bd9 | 9412 | 813c01fc9939d66876100b489bec762aee4e51ee |
 |---|---|---|---:|---|
 | backend-laravel/routes/web.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/routes/web.php.before | 0a794fcaddaa5941226d1674d6fbcf1d38bfb647 | 7101 | 8fbb0a8bcd2d5751309c8e24552c8db9fbe295ca |
 | backend-laravel/resources/views/layouts/app.blade.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/resources/views/layouts/app.blade.php.before | 8cffb53d3592e6af33f80a5f30c3846eda300949 | 13884 | d1a731b84155029b82af58fded5b1cfbf3be3147 |
@@ -18,4 +19,6 @@ New files `TeacherSubjectAssignmentManagement.php`, its Blade view, and `Teacher
 
 All backups are separate Git files. No original file or ZIP baseline was overwritten.
 
-| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-mysql-role-and-year-relation-fixes | bfd4b0950fa7293cde7e59cf7a36e5c6e9fe6bd9 | 9412 | 813c01fc9939d66876100b489bec762aee4e51ee |
+
+
+Note: This preserved test snapshot predates both the valid cross-year relationship fixture and canonical role reuse correction. Later changes remained test-only; production authorization and consistency guards were not relaxed.
