@@ -146,19 +146,21 @@ class RoleDashboardVerificationTest extends TestCase
     }
 
     /** @test */
-    public function operator_dashboard_access_control()
+    public function admin_and_legacy_operator_share_the_admin_dashboard()
     {
         // Unauthenticated
         $this->get('/operator/dashboard')->assertRedirect('/login');
 
         // Authorized roles
-        $this->actingAs($this->operatorA)->get('/operator/dashboard')->assertStatus(200);
-        $this->actingAs($this->adminA)->get('/operator/dashboard')->assertStatus(200);
+        $this->actingAs($this->operatorA)->get('/operator/dashboard')->assertRedirect('/admin/dashboard');
+        $this->actingAs($this->operatorA)->get('/admin/dashboard')->assertOk();
+        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertOk();
         $this->actingAs($this->superAdmin)->get('/operator/dashboard')->assertStatus(403);
+        $this->actingAs($this->superAdmin)->get('/admin/dashboard')->assertStatus(403);
 
         // Unauthorized roles
-        $this->actingAs($this->kamadA)->get('/operator/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/operator/dashboard')->assertStatus(403);
+        $this->actingAs($this->kamadA)->get('/admin/dashboard')->assertStatus(403);
+        $this->actingAs($this->siswaA)->get('/admin/dashboard')->assertStatus(403);
     }
 
     /** @test */
@@ -203,9 +205,9 @@ class RoleDashboardVerificationTest extends TestCase
         $response->assertSee('Bank Soal');
 
         // Sidebar rendering verification for OPERATOR (Proktor Dashboard menu MUST NOT be present)
-        $opResponse = $this->actingAs($this->operatorA)->get('/operator/dashboard');
+        $opResponse = $this->actingAs($this->operatorA)->get('/admin/dashboard');
         $opResponse->assertDontSee('Dashboard Proktor');
-        $opResponse->assertSee('Dashboard Operator');
+        $opResponse->assertSee('Dashboard Admin Madrasah');
 
         // Sidebar rendering verification for PROCTOR (Proktor Dashboard menu MUST be present)
         $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/assignments');
@@ -219,7 +221,7 @@ class RoleDashboardVerificationTest extends TestCase
     {
         $this->actingAs($this->operatorA);
         $this->get('/admin/curriculum')->assertStatus(200);
-        $this->get('/admin/exams')->assertStatus(403);
+        $this->get('/admin/exams')->assertStatus(200);
     }
 
     /** @test */
@@ -287,11 +289,11 @@ class RoleDashboardVerificationTest extends TestCase
         // Tenant A authorized users can access monitoring
         $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
         $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
-        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
-        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
+        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertForbidden();
+        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertForbidden();
 
         // The monitoring detail response must be an allowlist, not a raw attempt model.
-        $attemptResponse = $this->actingAs($this->adminA, 'sanctum')
+        $attemptResponse = $this->actingAs($this->kamadA, 'sanctum')
             ->getJson("/api/v1/exams/{$exam->id}/monitoring/attempts/{$attempt->id}");
         $attemptResponse->assertStatus(200)
             ->assertJsonPath('data.attempt.participant.user.name', 'Siswa A')
