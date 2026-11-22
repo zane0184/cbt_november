@@ -234,4 +234,87 @@ class AdminUserManagementScopeTest extends TestCase
         $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_CREATED')->where('entity_id', $guru->id)->exists());
     }
 
+
+    public function test_admin_can_edit_guru_identity_and_reset_password_with_audit(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Edit Guru', 'code' => 'EDITGU']);
+        $this->setTenantContext($tenant->id);
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $this->signInAdmin($tenant);
+
+        $guru = User::create([
+            'name' => 'Guru Sebelum Edit',
+            'username' => 'guru.sebelum',
+            'email' => 'guru.sebelum@madrasah.test',
+            'password' => bcrypt('InitialPassword123!'),
+        ]);
+        $guru->roles()->sync([$guruRole->id]);
+        $profile = TeacherProfile::create([
+            'user_id' => $guru->id,
+            'full_name' => 'Guru Sebelum Edit',
+            'nip' => null,
+            'nik' => null,
+            'employee_identifier' => null,
+        ]);
+
+        Livewire::test(UserManagement::class)
+            ->call('openEditModal', $guru->id)
+            ->assertSet('showEditModal', true)
+            ->set('editName', 'Guru Sesudah Edit')
+            ->set('editUsername', 'guru.sesudah')
+            ->set('editEmail', 'guru.sesudah@madrasah.test')
+            ->set('editNip', '198701012021011001')
+            ->set('editNik', '')
+            ->call('updateUser')
+            ->assertHasNoErrors()
+            ->assertSet('showEditModal', false);
+
+        $guru->refresh();
+        $profile->refresh();
+        $this->assertSame('Guru Sesudah Edit', $guru->name);
+        $this->assertSame('guru.sesudah', $guru->username);
+        $this->assertSame('198701012021011001', $profile->nip);
+        $this->assertSame('198701012021011001', $profile->employee_identifier);
+        $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_UPDATED')->where('entity_id', $guru->id)->exists());
+
+        Livewire::test(UserManagement::class)
+            ->call('openResetPasswordModal', $guru->id)
+            ->assertSet('showResetPasswordModal', true)
+            ->set('resetPassword', 'NewStrongPassword123!')
+            ->call('resetUserPassword')
+            ->assertHasNoErrors()
+            ->assertSet('showResetPasswordModal', false);
+
+        $guru->refresh();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('NewStrongPassword123!', $guru->password));
+        $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_PASSWORD_RESET')->where('entity_id', $guru->id)->exists());
+        $resetLog = AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_PASSWORD_RESET')->where('entity_id', $guru->id)->firstOrFail();
+        $this->assertStringNotContainsString('NewStrongPassword123!', json_encode($resetLog->new_values));
+    }
+
+    public function test_admin_cannot_edit_or_reset_password_for_other_tenant_user(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Madrasah A Edit', 'code' => 'EDTA']);
+        $tenantB = Tenant::create(['name' => 'Madrasah B Edit', 'code' => 'EDTB']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+
+        $this->setTenantContext($tenantB->id);
+        $foreignGuru = User::create([
+            'name' => 'Guru Tenant B',
+            'username' => 'guru.tenantb',
+            'email' => 'guru.tenantb@madrasah.test',
+            'password' => bcrypt('InitialPassword123!'),
+        ]);
+        $foreignGuru->roles()->sync([$guruRole->id]);
+        TeacherProfile::create(['user_id' => $foreignGuru->id, 'full_name' => 'Guru Tenant B']);
+
+        $this->setTenantContext($tenantA->id);
+        $this->signInAdmin($tenantA);
+
+        Livewire::test(UserManagement::class)->call('openEditModal', $foreignGuru->id)->assertNotFound();
+        Livewire::test(UserManagement::class)->call('openResetPasswordModal', $foreignGuru->id)->assertNotFound();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('InitialPassword123!', $foreignGuru->fresh()->password));
+    }
+
 }
