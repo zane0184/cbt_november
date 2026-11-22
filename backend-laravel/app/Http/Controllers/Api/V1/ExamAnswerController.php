@@ -109,7 +109,13 @@ class ExamAnswerController extends Controller
             }
 
             if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
+                $fenceMatches = app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
+                return response()->json([
+                    'success' => false,
+                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                ], 409);
             }
 
             $assignedSnapshotIds = is_array($lockedAttempt->question_order)
@@ -132,7 +138,12 @@ class ExamAnswerController extends Controller
                     'saved_at',
                 ]);
 
-            return response()->json(['success' => true, 'data' => $answers]);
+            return response()->json([
+                'success' => true,
+                'data' => $answers,
+                'fence_generation' => (int) $lockedAttempt->fence_generation,
+                'lease_expires_at' => $lockedAttempt->device_lease_expires_at?->toIso8601String(),
+            ]);
         });
     }
 
@@ -237,7 +248,13 @@ class ExamAnswerController extends Controller
             }
 
             if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
+                $fenceMatches = app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
+                return response()->json([
+                    'success' => false,
+                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                ], 409);
             }
 
             $lockedSnapshot = ExamQuestionSnapshot::query()
@@ -294,6 +311,7 @@ class ExamAnswerController extends Controller
                 }
 
                 $replayResponse = json_decode((string) $requestReplay->response_json, true, 512, JSON_THROW_ON_ERROR);
+                $replayResponse['fence_generation'] = (int) $lockedAttempt->fence_generation;
                 $replayResponse['idempotent'] = true;
                 $replayResponse['message'] = 'Request yang sama telah diterima sebelumnya.';
                 return response()->json($replayResponse);
@@ -384,8 +402,10 @@ class ExamAnswerController extends Controller
                     'answer_state' => $answer->answer_state,
                     'server_now' => $serverNow->toIso8601String(),
                     'saved_at' => $answer->saved_at?->toIso8601String(),
+                    'fence_generation' => (int) $lockedAttempt->fence_generation,
                 ],
                 'receipt' => $receipt,
+                'fence_generation' => (int) $lockedAttempt->fence_generation,
             ];
 
             DB::table('exam_attempt_answer_requests')->insert([
