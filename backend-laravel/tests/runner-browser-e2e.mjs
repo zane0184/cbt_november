@@ -284,6 +284,7 @@ try {
     const { context, page } = await newPage(browser, scenario);
     page.on('dialog', dialog => dialog.accept());
     await start(page);
+    await openQuestionNavigation(page);
     await page.locator('#submit-button').click();
     await page.locator('#runner-panel:not(.hidden)').waitFor({ state: 'visible' });
     for (let attempt = 0; attempt < 100 && scenario.statusChecks === 0; attempt++) {
