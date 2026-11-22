@@ -12,6 +12,8 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Livewire\Admin\MadrasahProfileManagement;
+use App\Livewire\Admin\AcademicPeriodManagement;
 use App\Livewire\Operator\OperatorDashboard;
 use App\Livewire\Proktor\ProktorDashboard;
 
