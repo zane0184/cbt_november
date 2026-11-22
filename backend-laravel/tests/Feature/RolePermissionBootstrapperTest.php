@@ -67,13 +67,15 @@ class RolePermissionBootstrapperTest extends TestCase
         $this->assertEqualsCanonicalizing(['curriculum.view', 'exam.monitor', 'report.view'], $kamad->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'], $guru->permissions()->pluck('name')->all());
         $this->assertFalse($kamad->permissions()->where('name', 'curriculum.manage')->exists());
+        $this->assertFalse($kamad->permissions()->where('name', 'tenant.manage')->exists());
         $this->assertFalse($guru->permissions()->where('name', 'curriculum.manage')->exists());
+        $this->assertFalse($guru->permissions()->where('name', 'tenant.manage')->exists());
         $this->assertEqualsCanonicalizing($adminPermissions, $operator->permissions()->pluck('name')->all());
         foreach (['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'] as $forbiddenPermission) {
             $this->assertFalse($admin->permissions()->where('name', $forbiddenPermission)->exists(), $forbiddenPermission.' must not be granted to Admin.');
             $this->assertFalse($operator->permissions()->where('name', $forbiddenPermission)->exists(), $forbiddenPermission.' must not be granted to legacy Operator.');
         }
-        $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'];
+        $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view', 'tenant.manage'];
         $this->assertSame(count($expectedPermissions), Permission::whereIn('name', $expectedPermissions)->count());
     }
 
