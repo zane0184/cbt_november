@@ -8,6 +8,7 @@ use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
+use App\Models\StudentProfile;
 use App\Models\AcademicYear;
 use App\Models\Question;
 use App\Models\QuestionVersion;
@@ -37,6 +38,12 @@ class ExamAnswerTest extends TestCase
         $this->student->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+
+        StudentProfile::create([
+            'user_id' => $this->student->id,
+            'nis' => 'ANS-' . Str::random(8),
+            'full_name' => $this->student->name,
+        ]);
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->student->id]);
