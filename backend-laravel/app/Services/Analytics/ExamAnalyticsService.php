@@ -4,38 +4,33 @@ namespace App\Services\Analytics;
 
 use App\Models\Exam;
 use App\Models\ExamAttemptScore;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class ExamAnalyticsService
 {
     /**
-     * Get summary statistics for an exam based on finalized results of submitted/expired attempts.
+     * Aggregate only the authoritative current score for each terminal attempt.
+     * Historical scoring versions are audit history, not additional participants.
      */
     public function getSummary(Exam $exam): array
     {
-        $query = ExamAttemptScore::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->where('grading_status', 'FINALIZED')
-            ->whereHas('attempt', function ($q) {
-                $q->whereIn('status', ['SUBMITTED', 'EXPIRED']);
-            });
+        $query = $this->finalizedCurrentScores($exam);
 
-        $stats = $query->select([
-                DB::raw('COUNT(*) as participant_count'),
-                DB::raw('AVG(percentage) as average_percentage'),
-                DB::raw('MAX(percentage) as highest_percentage'),
-                DB::raw('MIN(percentage) as lowest_percentage'),
-                DB::raw('STDDEV_POP(percentage) as std_dev_percentage'),
-                DB::raw('AVG(raw_score) as average_raw_score'),
-                DB::raw('MAX(raw_score) as highest_raw_score'),
-                DB::raw('MIN(raw_score) as lowest_raw_score'),
-            ])
-            ->first();
+        $stats = (clone $query)->select([
+            DB::raw('COUNT(*) as participant_count'),
+            DB::raw('AVG(exam_attempt_scores.percentage) as average_percentage'),
+            DB::raw('MAX(exam_attempt_scores.percentage) as highest_percentage'),
+            DB::raw('MIN(exam_attempt_scores.percentage) as lowest_percentage'),
+            DB::raw('STDDEV_POP(exam_attempt_scores.percentage) as std_dev_percentage'),
+            DB::raw('AVG(exam_attempt_scores.raw_score) as average_raw_score'),
+            DB::raw('MAX(exam_attempt_scores.raw_score) as highest_raw_score'),
+            DB::raw('MIN(exam_attempt_scores.raw_score) as lowest_raw_score'),
+        ])->first();
 
-        $percentages = $query->clone()
-            ->orderBy('percentage')
-            ->pluck('percentage')
+        $percentages = (clone $query)
+            ->orderBy('exam_attempt_scores.percentage')
+            ->pluck('exam_attempt_scores.percentage')
             ->toArray();
 
         $median = $this->calculateMedian($percentages);
@@ -54,18 +49,12 @@ class ExamAnalyticsService
     }
 
     /**
-     * Get score distribution in 10 deterministic buckets.
+     * Get score distribution using one current finalized score per attempt.
      */
     public function getDistribution(Exam $exam): array
     {
-        $results = ExamAttemptScore::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->where('grading_status', 'FINALIZED')
-            ->whereHas('attempt', function ($q) {
-                $q->whereIn('status', ['SUBMITTED', 'EXPIRED']);
-            })
-            ->pluck('percentage')
+        $results = $this->finalizedCurrentScores($exam)
+            ->pluck('exam_attempt_scores.percentage')
             ->toArray();
 
         $participantCount = count($results);
@@ -82,47 +71,63 @@ class ExamAnalyticsService
             ['label' => '90-100', 'lower' => 90, 'upper' => 100, 'count' => 0],
         ];
 
-        foreach ($results as $p) {
-            $p = (float) $p;
+        foreach ($results as $percentage) {
+            $percentage = (float) $percentage;
             foreach ($buckets as $key => $bucket) {
                 if ($key === 9) {
-                    if ($p >= 90 && $p <= 100) {
+                    if ($percentage >= 90 && $percentage <= 100) {
                         $buckets[$key]['count']++;
                         break;
                     }
-                } else {
-                    if ($p >= $bucket['lower'] && $p < $bucket['upper']) {
-                        $buckets[$key]['count']++;
-                        break;
-                    }
+                } elseif ($percentage >= $bucket['lower'] && $percentage < $bucket['upper']) {
+                    $buckets[$key]['count']++;
+                    break;
                 }
             }
         }
 
-        return array_map(function ($b) use ($participantCount) {
-            $b['percentage_of_participants'] = $participantCount > 0
-                ? round(($b['count'] / $participantCount) * 100, 2)
+        return array_map(function ($bucket) use ($participantCount) {
+            $bucket['percentage_of_participants'] = $participantCount > 0
+                ? round(($bucket['count'] / $participantCount) * 100, 2)
                 : 0;
-            return $b;
+            return $bucket;
         }, $buckets);
+    }
+
+    private function finalizedCurrentScores(Exam $exam): Builder
+    {
+        return ExamAttemptScore::query()
+            ->join('exam_attempt_score_current as current_pointer', function ($join) {
+                $join->on('current_pointer.attempt_id', '=', 'exam_attempt_scores.attempt_id')
+                    ->on('current_pointer.current_score_id', '=', 'exam_attempt_scores.id')
+                    ->on('current_pointer.tenant_id', '=', 'exam_attempt_scores.tenant_id')
+                    ->on('current_pointer.scoring_version', '=', 'exam_attempt_scores.scoring_version');
+            })
+            ->join('exam_attempts as score_attempts', function ($join) {
+                $join->on('score_attempts.id', '=', 'exam_attempt_scores.attempt_id')
+                    ->on('score_attempts.tenant_id', '=', 'exam_attempt_scores.tenant_id');
+            })
+            ->where('exam_attempt_scores.tenant_id', $exam->tenant_id)
+            ->where('exam_attempt_scores.exam_id', $exam->id)
+            ->where('exam_attempt_scores.grading_status', 'FINALIZED')
+            ->whereIn('score_attempts.status', ['SUBMITTED', 'EXPIRED'])
+            ->select('exam_attempt_scores.*');
     }
 
     protected function calculateMedian(array $values): ?float
     {
-        $n = count($values);
-        if ($n === 0) return null;
-
-        // No need to sort if already sorted by SQL in getSummary,
-        // but it's safer to ensure it's sorted here too.
-        sort($values);
-        $middle = floor(($n - 1) / 2);
-
-        if ($n % 2) {
-            return (float) $values[$middle];
-        } else {
-            $low = $values[$middle];
-            $high = $values[$middle + 1];
-            return ($low + $high) / 2;
+        $count = count($values);
+        if ($count === 0) {
+            return null;
         }
+
+        sort($values);
+        $middle = floor(($count - 1) / 2);
+
+        if ($count % 2) {
+            return (float) $values[$middle];
+        }
+
+        return ((float) $values[$middle] + (float) $values[$middle + 1]) / 2;
     }
 }
