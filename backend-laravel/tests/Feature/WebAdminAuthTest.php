@@ -176,7 +176,7 @@ class WebAdminAuthTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->get('/admin/exams')->assertRedirect('/login');
         $this->assertGuest();
-        $this->assertSoftDeleted('users', ['id' => $this->guru->id]);
+        $this->assertDatabaseHas('users', ['id' => $this->guru->id, 'deleted_at' => null]);
     }
 
     public function test_student_can_login_using_nisn_without_email(): void
