@@ -13,7 +13,7 @@ class ExamProctorAssignment extends Model
     use HasUuids, TenantScoped;
 
     protected $fillable = [
-        'tenant_id', 'exam_id', 'exam_session_room_id', 'schedule_revision',
+        'tenant_id', 'exam_id', 'exam_room_id', 'exam_session_room_id', 'schedule_revision',
         'proctor_user_id', 'assigned_by', 'starts_at', 'expires_at',
         'status', 'assignment_reason', 'revoked_at', 'revoked_by', 'revoke_reason',
     ];
@@ -30,6 +30,12 @@ class ExamProctorAssignment extends Model
         return $this->belongsTo(Exam::class);
     }
 
+    public function room(): BelongsTo
+    {
+        return $this->belongsTo(ExamRoom::class, 'exam_room_id');
+    }
+
+    /** Legacy history relation; direct operational assignments use room(). */
     public function sessionRoom(): BelongsTo
     {
         return $this->belongsTo(ExamSessionRoom::class, 'exam_session_room_id');
@@ -56,21 +62,20 @@ class ExamProctorAssignment extends Model
 
         return $query->where('status', 'CONFIRMED')
             ->whereNull('revoked_at')
-            ->whereNotNull('exam_session_room_id')
+            ->whereNotNull('exam_room_id')
             ->where('starts_at', '<=', $at)
             ->where('expires_at', '>', $at)
-            ->whereHas('sessionRoom', function (Builder $roomQuery): void {
-                $roomQuery->where('exam_session_rooms.status', 'ACTIVE')
-                    ->whereColumn('exam_session_rooms.tenant_id', 'exam_proctor_assignments.tenant_id')
-                    ->whereColumn('exam_session_rooms.exam_id', 'exam_proctor_assignments.exam_id');
+            ->whereExists(function ($allocation) {
+                $allocation->selectRaw('1')
+                    ->from('exam_room_exam as direct_exam_rooms')
+                    ->whereColumn('direct_exam_rooms.tenant_id', 'exam_proctor_assignments.tenant_id')
+                    ->whereColumn('direct_exam_rooms.exam_id', 'exam_proctor_assignments.exam_id')
+                    ->whereColumn('direct_exam_rooms.exam_room_id', 'exam_proctor_assignments.exam_room_id')
+                    ->where('direct_exam_rooms.status', 'ACTIVE');
             })
-            ->whereHas('sessionRoom.session', function (Builder $sessionQuery): void {
-                $sessionQuery->whereIn('exam_sessions.status', ['SCHEDULED', 'ACTIVE'])
-                    ->whereColumn('exam_sessions.schedule_revision', 'exam_proctor_assignments.schedule_revision')
-                    ->whereColumn('exam_proctor_assignments.starts_at', '>=', 'exam_sessions.starts_at')
-                    ->whereColumn('exam_proctor_assignments.expires_at', '<=', 'exam_sessions.ends_at')
-                    ->whereColumn('exam_sessions.tenant_id', 'exam_proctor_assignments.tenant_id')
-                    ->whereColumn('exam_sessions.exam_id', 'exam_proctor_assignments.exam_id');
+            ->whereHas('exam', function (Builder $examQuery): void {
+                $examQuery->where('exams.status', 'PUBLISHED')
+                    ->whereNotNull('exams.locked_at')
+                    ->whereColumn('exams.tenant_id', 'exam_proctor_assignments.tenant_id');
             });
     }
-}
