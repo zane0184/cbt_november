@@ -93,7 +93,7 @@ class StudentWebLoginTest extends TestCase
         $this->setTenantContext(null);
 
         // Client B: remove Client A's cookie and perform a distinct Admin login.
-        $this->withoutCookie($sessionCookieName);
+        $this->withCookie($sessionCookieName, '');
         $adminLogin = $this->post('/login', [
             'identifier' => 'admin.session.test',
             'password' => 'SandiAdmin#2026',
@@ -111,14 +111,14 @@ class StudentWebLoginTest extends TestCase
         $this->assertSoftDeleted('users', ['id' => $this->student->id]);
 
         // Client A replays its original cookie while the account is inactive.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $studentSessionCookieValue);
         $this->app['auth']->forgetGuards();
         $this->get('/student/exams')->assertRedirect('/login');
         $this->assertGuest();
 
         // Client B restores the same account through the official Admin action.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $adminSessionCookie->getValue());
         $this->app['auth']->forgetGuards();
         \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
@@ -133,21 +133,21 @@ class StudentWebLoginTest extends TestCase
             ->assertUnauthorized();
 
         // Client A replays the same pre-deactivation browser cookie after reactivation.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($sessionCookieName, $studentSessionCookieValue);
         $this->app['auth']->forgetGuards();
         $this->get('/student/exams')->assertRedirect('/login');
         $this->assertGuest();
 
         // The pre-deactivation remember-me cookie must also be rejected.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($studentRememberCookie->getName(), $studentRememberCookieValue);
         $this->app['auth']->forgetGuards();
         $this->get('/student/exams')->assertRedirect('/login');
         $this->assertGuest();
 
         // A fresh login obtains a new session and can access the student portal.
-        $this->withoutCookie($studentRememberCookie->getName());
+        $this->withCookie($studentRememberCookie->getName(, ''));
         $freshLogin = $this->post('/login', [
             'identifier' => $this->nisn,
             'password' => 'SandiUji#2026',
@@ -172,7 +172,7 @@ class StudentWebLoginTest extends TestCase
 
         // Simulate a new browser session after the session cookie expired while
         // retaining the valid remember-me recaller issued by the same account.
-        $this->withoutCookie($sessionCookieName)
+        $this->withCookie($sessionCookieName, '')
             ->withCookie($rememberCookie->getName(), $rememberCookie->getValue());
         $this->app['auth']->forgetGuards();
 
