@@ -428,4 +428,42 @@ class TeacherPracticeWorkflowTest extends TestCase
             'user_id' => $validStudent->id,
         ]);
     }
+
+    /** @test */
+    public function exam_builder_rejects_a_draft_question_version_even_when_tenant_and_subject_match(): void
+    {
+        $this->actingAs($this->teacher);
+
+        Livewire::test(QuestionBank::class)
+            ->set('questionCode', 'FIQ-DRAFT-EXAM-01')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('stem', 'Soal draf tidak boleh masuk ke snapshot ujian.')
+            ->set('optionA', 'Pilihan benar')
+            ->set('optionB', 'Pilihan salah')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $draftQuestion = Question::where('question_code', 'FIQ-DRAFT-EXAM-01')->firstOrFail();
+        $draftVersion = $draftQuestion->currentVersion;
+
+        $this->assertSame('DRAFT', $draftQuestion->status);
+        $this->assertSame('DRAFT', $draftVersion->status);
+
+        Livewire::test(ExamManagement::class)
+            ->set('title', 'Ujian Tidak Boleh Memakai Soal Draf')
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('selectedSemesterId', $this->semester->id)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('selectedQuestionVersionIds', [$draftVersion->id])
+            ->set('durationMinutes', 60)
+            ->set('startAt', now()->addHour()->format('Y-m-d\\TH:i'))
+            ->set('endAt', now()->addDays(2)->format('Y-m-d\\TH:i'))
+            ->call('saveExam')
+            ->assertHasErrors(['selectedQuestionVersionIds']);
+
+        $this->assertDatabaseCount('exams', 0);
+        $this->assertDatabaseCount('assessments', 0);
+    }
 }
