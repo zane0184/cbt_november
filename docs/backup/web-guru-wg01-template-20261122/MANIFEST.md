@@ -18,10 +18,13 @@ Semua backup berikut dibuat sebagai file baru sebelum file sumber terkait diubah
 | 9 | backend-laravel/tests/Feature/QuestionImportTemplateDownloadTest.php | 0f7ac2e67fe619bf31eb979ab2c5f23363d03c7b | docs/backup/web-guru-wg01-template-20261122/QuestionImportTemplateDownloadTest.php.before-negative-role-tests | 0f7ac2e67fe619bf31eb979ab2c5f23363d03c7b | 01ca9b918bbdc22bdf2617b30bc62734278ba652 | MATCH |
 | 10 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 02545af265dcaa102565c59b266e25c515c7be63 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-test-backup-additions | 02545af265dcaa102565c59b266e25c515c7be63 | 28d133ad361dd36919e2d84a61bacfcc7ccf4ed2 | MATCH |
 
+| 11 | backend-laravel/tests/Feature/QuestionImportTemplateDownloadTest.php | 7d2e4f55ad278937bbefce0252823073ac3db9cc | docs/backup/web-guru-wg01-template-20261122/QuestionImportTemplateDownloadTest.php.before-cache-control-assertion-fix | 7d2e4f55ad278937bbefce0252823073ac3db9cc | 5565e67bcaccea41ea88f4a32ac5c3d44f383030 | MATCH |
+| 12 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 1291946efb7a7dec4d09e52362814d6827bfa715 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-cache-control-test-backup | 1291946efb7a7dec4d09e52362814d6827bfa715 | b2ee13e5b31c8b487beee7f53ce752ee11da9cb4 | MATCH |
+
 ## Ringkasan
 
-- Jumlah snapshot backup terdaftar: 10.
-- Jumlah hash yang cocok: 10.
+- Jumlah snapshot backup terdaftar: 12.
+- Jumlah hash yang cocok: 12.
 - Jumlah hash tidak cocok: 0.
 - Tiga backup pertama melindungi route, layout, dan workflow sebelum implementasi route/menu/CI.
 - Backup berikutnya melindungi test dan dokumen sebelum verifikasi/revisi.
