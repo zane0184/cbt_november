@@ -53,6 +53,10 @@ class ExamAnswerTest extends TestCase
             'full_name' => $this->student->name,
         ]);
 
+        // Two independent API sessions exist before the Attempt starts.
+        $this->apiToken = $this->student->createToken('answer-test-session')->plainTextToken;
+        $this->secondApiToken = $this->student->createToken('second-preexisting-session')->plainTextToken;
+
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->student->id]);
 
@@ -117,8 +121,6 @@ class ExamAnswerTest extends TestCase
         $this->snapshot->tenant_id = $this->tenant->id;
         $this->snapshot->exam_id = $this->exam->id;
         $this->snapshot->save();
-        $this->apiToken = $this->student->createToken('answer-test-session')->plainTextToken;
-        $this->secondApiToken = $this->student->createToken('second-preexisting-session')->plainTextToken;
         $tokenId = explode('|', $this->apiToken, 2)[0];
         $sessionHash = hash_hmac('sha256', 'sanctum-token:'.$tokenId, (string) config('app.key'));
         $this->attempt->update([
