@@ -4,7 +4,7 @@ Branch: work/agent2-p0-attempt-answer-scoring-20261122
 Baseline: 4e663cd84038b7c3337d776f702c499f20d8f537
 Backup folder: backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/
 Method: GitHub contents API; each backup was re-fetched and its Git blob SHA matched the source blob SHA exactly.
-Source files: 25
+Source files: 26
 Restore rule: copy the corresponding .before file back to the original path using a new commit; do not reset the branch.
 
 | Source path | Original Git blob SHA | Backup path | Verified |
@@ -36,3 +36,5 @@ Restore rule: copy the corresponding .before file back to the original path usin
 | backend-laravel/app/Http/Controllers/Api/V1/TeacherSubjectAssignmentController.php | 78ae77982a4f0035a6744beaf5aab1e0946d9a67 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/TeacherSubjectAssignmentController.php.before | YES |
 
 | backend-laravel/app/Console/Commands/ExpireExamAttemptsCommand.php | b40eefd828c9baa79f5c3a41b95d9ae1b694e975 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/ExpireExamAttemptsCommand.php.before | YES |
+
+| .github/workflows/tenant-backend-ci.yml | f00d80b88349c1ca83dcbe387dd57f6944d51c65 | backend-laravel/docs/backup/agent2-p0-attempt-answer-scoring-2026-11-22/tenant-backend-ci.yml.before | YES |
