@@ -138,7 +138,7 @@ class User extends Authenticatable
             return false;
         }
 
-        $tenantContextId = app(\\App\\Contexts\\TenantContext::class)->getTenantId();
+        $tenantContextId = app(\App\Contexts\TenantContext::class)->getTenantId();
         if (!$tenantContextId || (string) $tenantContextId !== (string) $this->tenant_id) {
             return false;
         }
