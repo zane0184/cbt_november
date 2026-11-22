@@ -91,3 +91,15 @@ Checkpoint ini adalah checkpoint Agent 3 aktif dan mengoreksi rumusan scope yang
 Tidak ada Android atau Web Super Admin. Tidak ada migration/deployment produksi.
 
 **P0 tetap OPEN.**
+
+
+## ADDENDUM AUDIT — Monitoring Room Scope & Admin/Guru Exact-Role (22 Nov 2026)
+
+Audit tambahan dan temuan rinci: `docs/AGENT3_WEB_CBT_MONITORING_ROOM_SCOPE_ADDENDUM_2026-11-22.md`.
+
+- Monitoring view saat ini menggunakan endpoint Exam-level tanpa Room/SessionRoom parameter pada client; belum terbukti backend data bocor, tetapi tidak cukup sebagai consumer Proktor room-scoped.
+- Agent 1 assignment service memvalidasi tepat satu role GURU; UI Admin calon Proktor belum menyaring exact-one.
+- Beberapa Admin Livewire components belum exact-one; CurriculumManagement masih menerima role literal legacy ADMIN. Ini perlu rekonsiliasi exact-role Agent 2 sebelum patch.
+- Tidak ada runtime source/test berubah; seluruh temuan statis dan tes runtime NOT RUN.
+
+Checkpoint ini dibackup byte-exact sebelum diperbarui. Backup: `docs/backup/agent3-web-cbt-p0-2026-11-22/CHECKPOINT_AGENT3_WEB_CBT_P0_SCOPE_2026-11-22.md.before-monitoring-refresh`.
