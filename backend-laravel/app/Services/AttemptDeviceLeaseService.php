@@ -43,8 +43,22 @@ class AttemptDeviceLeaseService
      * An expired lease can only be renewed by the exact bound auth session.
      * Renewal increments the monotonic fence generation and expires the old lease.
      */
+    public function requestFenceMatches(ExamAttempt $attempt, Request $request): bool
+    {
+        $provided = $request->header('X-CBT-Fence-Generation');
+        if (!is_string($provided) || preg_match('/\\A[1-9][0-9]*\\z/D', $provided) !== 1) {
+            return false;
+        }
+
+        return (int) $provided === (int) $attempt->fence_generation;
+    }
+
     public function assertAndRenew(ExamAttempt $attempt, Request $request): bool
     {
+        if (!$this->requestFenceMatches($attempt, $request)) {
+            return false;
+        }
+
         $identity = app(AttemptAuthSessionBinding::class)->identity($request);
         if (!$identity || !$attempt->auth_session_hash
             || !hash_equals($attempt->auth_session_hash, $identity['hash'])
@@ -99,6 +113,10 @@ class AttemptDeviceLeaseService
 
     public function isCurrent(ExamAttempt $attempt, Request $request): bool
     {
+        if (!$this->requestFenceMatches($attempt, $request)) {
+            return false;
+        }
+
         $identity = app(AttemptAuthSessionBinding::class)->identity($request);
         if (!$identity || !$attempt->auth_session_hash
             || !hash_equals($attempt->auth_session_hash, $identity['hash'])
@@ -133,7 +151,6 @@ class AttemptDeviceLeaseService
             ]));
 
         $attempt->forceFill([
-            'fence_generation' => $generation + 1,
             'device_lease_expires_at' => null,
         ])->save();
     }
