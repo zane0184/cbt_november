@@ -150,11 +150,11 @@ class WebAdminAuthTest extends TestCase
         $this->get('/admin/dashboard')->assertForbidden();
     }
 
-    public function test_proktor_assignment_user_login_redirects_to_assignments(): void
+    public function test_legacy_permanent_proktor_role_cannot_login_as_a_portal(): void
     {
         $response = $this->post('/login', ['identifier' => 'proktor.uji', 'password' => $this->password]);
-        $response->assertRedirect('/proktor/assignments');
-        $this->assertAuthenticatedAs($this->proktor);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
     public function test_teacher_can_login_using_nip(): void
