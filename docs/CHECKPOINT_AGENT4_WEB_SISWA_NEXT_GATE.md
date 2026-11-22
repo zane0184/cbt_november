@@ -360,3 +360,55 @@ Tidak ada hasil PASS yang diklaim. CI yang dicatat di Issue #10 berasal dari com
 **Web Siswa: NOT READY FOR OPERATIONAL EXAM.**
 
 Tidak ada izin implementasi pada tahap ini.
+
+
+## 13. FINAL REFRESH — branch, source, owner response (22 November 2026, 18:20 WIB)
+
+This section supersedes earlier branch HEAD tables in this checkpoint where the refs have moved. Remote HEADs at this refresh:
+
+| Branch | Current HEAD | Latest commit | Ahead/behind main |
+|---|---|---|---:|
+| main | `feab77228f7108f7f7a45325d7f1fb878c07310b` | revert WG-01 DOCX design | — |
+| Agent 1 | `51571ca54ec922466e6230b4e8137a85336bc024` | docs(stage4b): record decision closure manifest | 1216 / 15 |
+| Agent 2 | `462cadc96a95d091bd89819dbc106b4fbd67e1cd` | docs(agent2): checkpoint web-only next gate | 1352 / 15 |
+| Agent 3 | `a1f34b010dd5ad64c59a359f7e8d0f49d491eb82` | backup(web-guru): preserve checkpoint before cross-agent contract addendum | 1176 / 15 |
+| Agent 4 docs | `3225119ccf3b62f36d6593f7e537cf58adfe22cd` before this update | docs(agent4): refresh Web Siswa contract closure checkpoint | 14 / 0 |
+| Candidate Agent 4 | `f38ceec7b0653fcf3363eec40f3d4577c323cca8` | fix: preserve nonparticipant 404 while enforcing student role before device checks | 930 / 15 |
+
+Exact changed blob paths vs main from Git tree comparison:
+- Agent 1: 923 added, 0 modified, 9 removed; source 246, tests 79, migrations 64, workflows 5, docs 65, backups 469, other 4.
+- Agent 2: 1004 added, 0 modified, 9 removed; source 247, tests 80, migrations 66, workflows 5, docs 69, backups 542, other 4.
+- Agent 3: 922 added, 0 modified, 9 removed; source 257, tests 78, migrations 64, workflows 6, docs 60, backups 462, other 4.
+- Agent 4 docs: 13 added, 0 modified, 0 removed; docs 11, backups 2. No runtime source/test/migration/workflow changes.
+- Candidate Agent 4: 803 added, 0 modified, 9 removed; source 233, tests 75, migrations 62, workflows 5, docs 40, backups 393, other 4.
+
+The compare endpoint caps returned file lists for diverged branches; counts above were calculated from complete recursive Git trees, not the truncated compare file list. Latest tip commits for Agent 1/2/3 are docs/backup-only; candidate HEAD remains the older source commit. No PR/merge/rebase/cherry-pick occurred.
+
+### Issue #10 response status
+- Coordinator topology decision comment **7078261415** confirms one separate installation/database/storage/credential/config/file/backup per madrasah; tenant_id remains defense-in-depth inside the installation; no cross-madrasah academic DB/sync. This is a coordinator decision, not Agent 2 technical approval.
+- Agent 4 request comment **7078253282** and refresh request **7078273774** ask owners for branch ownership and explicit contract decisions.
+- Comment **7078306561** records a technical review marked **NEEDS DESIGN** for QuestionVersion/snapshot/media. Because it is posted from coordinator account `zane0184`, not a separately verifiable owner identity, it is not treated as final Agent 3 approval.
+- No independently verifiable Agent 1 or Agent 2 owner response/approval is present in the latest Issue #10 comments. Agent 2 checkpoint status is BLOCKED — EXACT-ROLE/SECURITY DESIGN PENDING; its source runtime baseline is still `74bf7178...`.
+- Agent 4 official branch ownership remains PENDING; candidate remains unconfirmed.
+
+### Backup and documentation update
+- Checkpoint before refresh was backed up byte-exact at `docs/backup/agent4-contract-closure-2026-11-22/CHECKPOINT_AGENT4_WEB_SISWA_NEXT_GATE.md.before`, blob `c6bdd306bbb7cd41e5075ff1095b24d3e1e891e7`, manifest `MANIFEST.md`.
+- Six contract/design docs were backed up byte-exact at the same directory with suffix `.before`; supplemental manifest `MANIFEST_SUPPLEMENT.md` lists original/backup blob SHA and UTF-8 byte length. All six backup blob SHAs were verified identical before update.
+- This update is documentation-only. Source runtime remains untouched.
+
+### Updated approval matrix
+| Contract | Owner status |
+|---|---|
+| Agent 4 official branch | PENDING CONFIRMATION |
+| F-01 admission / F-02 media | Agent 2 PENDING |
+| Device Lease/Fencing | Agent 2 PENDING / runtime NOT VERIFIED |
+| Answer revision/receipt/conflict | Agent 2 PENDING |
+| Submit/Force Submit/expiry | Agent 2 PENDING |
+| QuestionVersion/snapshot/media | NEEDS DESIGN (technical review comment; final owner approval pending) |
+| Room/Proktor/recovery | Agent 1 PENDING; Agent 2 coordination pending |
+| Integration base and implementation permission | Koordinator PENDING |
+
+### Test status
+No tests were executed by Agent 4 in this refresh. F-01/F-02 adversarial, lease/fencing runtime, Answer receipt/conflict, IndexedDB, multi-tab, offline/reload/crash, browser E2E, submit race, room recovery and disposable MySQL integration remain NOT RUN/BLOCKED. No PASS claim.
+
+Final state: **AUDIT/DESIGN — CROSS-AGENT CONTRACT PENDING**; Web Siswa **NOT READY FOR OPERATIONAL EXAM**. No implementation permission.

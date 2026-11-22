@@ -176,3 +176,17 @@ Jangan memakai kata "tersimpan" tanpa menjelaskan apakah lokal atau server. Jang
 - Web Siswa: **NOT READY FOR OPERATIONAL EXAM**.
 
 Tidak ada source, API, route, migration, schema, database atau konfigurasi yang diubah.
+
+
+## Addendum backend reconciliation — 22 November 2026, 18:20 WIB
+
+The current backend source does not yet provide the approved submit contract required by this barrier:
+- no client submit idempotency key was found in ExamAttemptController::submit;
+- no definitive submit-result lookup after a lost response was found;
+- answer update lock order Attempt→Answer differs from submit Exam→Participant→Attempt;
+- no independently verifiable Answer Receipt exists for the client to check;
+- Force Submit/expiry/answer race behavior has not been approved as a cross-agent contract.
+
+The existing candidate runner uses in-memory pending/saving Maps. Its 409 branch deletes the pending item and replaces the local answer with current_answer. The automatic expiry/submit path has not been proven to wait for all durable local writes and verified server receipts. This is not a safe submit barrier.
+
+Keep the client barrier as design only. Do not infer HTTP success as receipt verification, do not send a new request ID to hide an unknown result, and do not claim submit success without a definitive server result. Status: **BLOCKED — ANSWER RECEIPT/CONFLICT/SUBMIT CONTRACT PENDING**.

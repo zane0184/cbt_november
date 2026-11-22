@@ -204,3 +204,43 @@ Jangan mencatat token, password, bearer credential atau lease secret mentah.
 - No source, migration, schema or database changed.
 
 Mohon Agent 2 menjawab per subbagian dengan `APPROVED`, `REJECTED`, `NEEDS DESIGN`, atau `PENDING`, menyebut file/class owner, transaksi/lock order, audit event, acceptance criteria dan exact-SHA regression evidence. Persetujuan parsial hanya berlaku pada butir yang disebut eksplisit.
+
+
+## Addendum source refresh — Agent 2 backend findings (22 November 2026, 18:20 WIB)
+
+Current Agent 2 branch HEAD: `462cadc96a95d091bd89819dbc106b4fbd67e1cd`. Its latest commit adds a Web-only checkpoint; checkpoint states source runtime baseline remains `74bf7178f46673e9be90523671490c0749034acd`. The source blob inventory is:
+
+| Area | Branch/HEAD | Path | Blob SHA |
+|---|---|---|---|
+| Exam admission | Agent 2 `462cadc96a95d091bd89819dbc106b4fbd67e1cd` | `ExamController.php` | `c7c62e961f2ff47abee8f3b2468b4e7bc43d1cc9` |
+| Media | Agent 2 | `MediaController.php` | `f852c1b3a7247efdbb0c309fb0413bbe5e3eaa62` |
+| Attempt | Agent 2 | `ExamAttemptController.php` | `13e8981cca4653ff4e9b9448a50e4d0ec8a74bae` |
+| Answer | Agent 2 | `ExamAnswerController.php` | `b4ddec14f6208b3ecde9bfc3e45168a2159e2a9c` |
+| Exam policy | Agent 2 | `ExamPolicy.php` | `c05d96ef932fdc81b67336240af4e1726864c3d6` |
+| API routes | Agent 2 | `routes/api.php` | `2e43c37dd669a26446a44b818c1d2c8420b15aca` |
+| Snapshot service | Agent 2 | `ExamSnapshotService.php` | `d0bfcd70b2777a3884c7f92b7c256f05492645ec` |
+| QuestionVersion | Agent 2/3 | `QuestionVersion.php` | `5f937abf691f96ee62696f7ef01b5adb2d6f0d9a` |
+| Snapshot model | Agent 2/3 | `ExamQuestionSnapshot.php` | `20a9ef80ed69c5e6281d0fbe592c900178ede2d2` |
+| Scoring | Agent 2/3 | `ScoringService.php` | `1fc74eae97538ada140b9b4c75ccd4388d1a40ad` |
+| Question authoring API | Agent 3 `a1f34b010dd5ad64c59a359f7e8d0f49d491eb82` | `QuestionController.php` | `7ded53423dd4d96788123819e8039fd543ce4fba` |
+| QuestionBank | Agent 3 | `app/Livewire/Admin/QuestionBank.php` | `219efc2db8f492452ad95da35ae22eb4849d1e66` |
+| Student attempt monitoring | Agent 3 | `ExamAttemptController.php` | `e915bf43118026ef8eace96338fa6cad44ee29e1` |
+| Monitoring scope | Agent 1/3 | `ExamMonitoringScope.php` | `11b455954f974d1c60ed5c49700368f8d37c09c1` |
+| Room lifecycle | Agent 1 `51571ca54ec922466e6230b4e8137a85336bc024` | `ExamSessionLifecycleService.php` | `8e34152afd817f30cc2f81b5f25fc450571463ac` |
+| Room service | Agent 1 | `ExamRoomSessionService.php` | `e514fa9f751584e54af1125d48b5673e013f2339` |
+| Proctor assignment | Agent 1 | `ExamProctorAssignmentService.php` | `c968ce68c0decace1c35a0ccb3b2b4449c057656` |
+| Session migration Agent 1 | Agent 1 | `2026_11_22_110001_create_exam_room_session_scope.php` | `9551b1dd79397bd0432f03eefc970852b675fd25` |
+| Session migration Agent 2 | Agent 2 | same path | `4250669036b80c54ceb2bea8f4ae9123f97b45b5` |
+| Session migration Agent 3 | Agent 3 | same path | `83f6cacc2341c8e0a836ac06bbe26beb21683700` |
+
+### Concrete current behavior requiring owner decision
+- F-01: `ExamController::show()` releases snapshots on `canStartAttempt()`; this is not full admission. `ExamPolicy::startAttempt()` permits eligible, unexpired IN_PROGRESS resume after close. `ExamAttemptController::store()` returns same-device active Attempt before checking a new token. The policy's startAttempt path checks SISWA role membership but not exact-one role; execution has a separate exact-one guard. Agent 2 must define the canonical server admission contract and whether resume requires token.
+- F-02: media helper does not compare snapshot against Attempt question_order and does not check lease/fencing; cache is already private/no-store. Agent 2 must define takeover concurrency behavior and media authorization result.
+- Answer: request contains `client_request_id`, `base_revision`, `answer_payload`, `answer_state`. Answer table uniqueness is Attempt+snapshot; client_request_id is a mutable column on the one answer row, not a separate receipt table. Same ID returns idempotent success without comparing the incoming payload to the stored payload. Stale base_revision returns HTTP 409 with current_revision/current_answer. No receipt identifier/reference or independent receipt-verification contract was found. Answer update locks Attempt → Answer, while create/resume/submit lock Exam → Participant → Attempt; global lock order remains unresolved.
+- Submit: current submit endpoint does not accept a client submit idempotency key and no result-lookup contract was found. Submit locks Exam → Participant → Attempt. Race against Answer update and Force Submit needs explicit backend decision.
+- Device Lease: migrations and schema-integrity test exist, but recursive Agent 2 tree contains no DeviceLease/RegisteredDevice model, DeviceLeaseService, lease controller or EnsureDeviceLease middleware. Existing request binding is `X-Device-Binding-ID`/fingerprint. Runtime lease/fencing is NOT VERIFIED.
+
+### Decisions requested
+For each section A–F in this document, Agent 2 must respond APPROVED / REJECTED / NEEDS DESIGN and provide canonical payload, status/error behavior, transaction/lock order, audit event, test and exact-SHA CI evidence. No endpoint/header/DTO is invented by Agent 4.
+
+Status: **NEEDS DESIGN / COORDINATION — CONTRACT APPROVAL PENDING**.

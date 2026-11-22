@@ -168,3 +168,38 @@ Untuk semua MED: respons tidak boleh mengungkap storage path, metadata pemilik l
 - Persetujuan koordinator: **PENDING**.
 
 Dokumen ini hanya threat model dan acceptance request; bukan spesifikasi API final dan bukan izin coding.
+
+
+## Addendum audit refresh — 22 November 2026, 18:20 WIB
+
+### Exact current evidence
+| Area | Branch/HEAD | Path | Blob SHA |
+|---|---|---|---|
+| Exam admission | Agent 2 `462cadc96a95d091bd89819dbc106b4fbd67e1cd` | `ExamController.php` | `c7c62e961f2ff47abee8f3b2468b4e7bc43d1cc9` |
+| Media | Agent 2 | `MediaController.php` | `f852c1b3a7247efdbb0c309fb0413bbe5e3eaa62` |
+| Attempt | Agent 2 | `ExamAttemptController.php` | `13e8981cca4653ff4e9b9448a50e4d0ec8a74bae` |
+| Answer | Agent 2 | `ExamAnswerController.php` | `b4ddec14f6208b3ecde9bfc3e45168a2159e2a9c` |
+| Exam policy | Agent 2 | `ExamPolicy.php` | `c05d96ef932fdc81b67336240af4e1726864c3d6` |
+| API routes | Agent 2 | `routes/api.php` | `2e43c37dd669a26446a44b818c1d2c8420b15aca` |
+| Snapshot service | Agent 2 | `ExamSnapshotService.php` | `d0bfcd70b2777a3884c7f92b7c256f05492645ec` |
+| QuestionVersion | Agent 2/3 | `QuestionVersion.php` | `5f937abf691f96ee62696f7ef01b5adb2d6f0d9a` |
+| Snapshot model | Agent 2/3 | `ExamQuestionSnapshot.php` | `20a9ef80ed69c5e6281d0fbe592c900178ede2d2` |
+| Scoring | Agent 2/3 | `ScoringService.php` | `1fc74eae97538ada140b9b4c75ccd4388d1a40ad` |
+| Question authoring API | Agent 3 `a1f34b010dd5ad64c59a359f7e8d0f49d491eb82` | `QuestionController.php` | `7ded53423dd4d96788123819e8039fd543ce4fba` |
+| QuestionBank | Agent 3 | `app/Livewire/Admin/QuestionBank.php` | `219efc2db8f492452ad95da35ae22eb4849d1e66` |
+| Student attempt monitoring | Agent 3 | `ExamAttemptController.php` | `e915bf43118026ef8eace96338fa6cad44ee29e1` |
+| Monitoring scope | Agent 1/3 | `ExamMonitoringScope.php` | `11b455954f974d1c60ed5c49700368f8d37c09c1` |
+| Room lifecycle | Agent 1 `51571ca54ec922466e6230b4e8137a85336bc024` | `ExamSessionLifecycleService.php` | `8e34152afd817f30cc2f81b5f25fc450571463ac` |
+| Room service | Agent 1 | `ExamRoomSessionService.php` | `e514fa9f751584e54af1125d48b5673e013f2339` |
+| Proctor assignment | Agent 1 | `ExamProctorAssignmentService.php` | `c968ce68c0decace1c35a0ccb3b2b4449c057656` |
+| Session migration Agent 1 | Agent 1 | `2026_11_22_110001_create_exam_room_session_scope.php` | `9551b1dd79397bd0432f03eefc970852b675fd25` |
+| Session migration Agent 2 | Agent 2 | same path | `4250669036b80c54ceb2bea8f4ae9123f97b45b5` |
+| Session migration Agent 3 | Agent 3 | same path | `83f6cacc2341c8e0a836ac06bbe26beb21683700` |
+
+**F-01 remains P0 OPEN.** On Agent 2 source, `ExamController::show()` loads snapshots when `$exam->canStartAttempt()` is true. Its view authorization checks tenant/participant scope, but this path does not establish accepted token, owned active Attempt, registered device, lease validity/revocation/expiry, or current fencing generation before releasing the snapshot. Private answer fields are sanitized, but the snapshot content is still released on schedule-only gating. `ExamAttemptController::store()` returns an existing valid Attempt before the new-token validation branch; this is current resume behavior, not an approved cross-agent token contract. Preserve the supported rule: valid IN_PROGRESS, unexpired, eligible Attempt may resume after close; new Attempt after close is denied.
+
+**F-02 remains P0 OPEN.** `MediaController::show()` checks tenant, ownership, safe private storage path and sends `Cache-Control: private, no-store`. Its active-Attempt helper finds media in snapshot_media joined to an IN_PROGRESS Attempt belonging to the user, but does not prove that the snapshot ID is in that Attempt's `question_order`; it also does not validate registered device, lease expiry/revocation or fencing generation. The helper currently requires the Exam schedule/status to remain open, which conflicts with supported post-close resume for a still-valid Attempt. A request processed after takeover has no demonstrated stale-generation rejection.
+
+No F-01/F-02 runtime adversarial test was run in this refresh. Owner contract and exact integration tests remain pending.
+
+Status: **BLOCKED — ADMISSION/MEDIA BACKEND CONTRACT PENDING**.

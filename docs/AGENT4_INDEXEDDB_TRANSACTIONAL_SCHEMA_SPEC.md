@@ -230,3 +230,18 @@ Tidak boleh memilih versi secara otomatis.
 - Offline/reload/crash recovery: **NOT RUN**.
 - F-01/F-02: **P0 OPEN**.
 - No source code changed.
+
+
+## Addendum backend reconciliation — 22 November 2026, 18:20 WIB
+
+The six IndexedDB stores remain conceptual only. Backend contracts are not approved. Current source shows:
+- Answer row uniqueness is Attempt+snapshot; client_request_id is stored on the answer row, with no separate durable receipt entity found.
+- Same client_request_id retry returns current stored answer metadata without comparing request payload equality; stale base_revision returns 409/current_answer.
+- No formal receipt ID, signature/digest or lookup-after-lost-response contract has been approved.
+- Existing runner in candidate branch uses in-memory Maps; it has no IndexedDB durability.
+- HTTP 409 handling in runner deletes pending local item and can replace local answer with server current_answer; this violates the proposed conflict archive rule.
+- Device lease runtime model/service/middleware is absent from Agent 2 branch tree; lease schema alone cannot validate queue replay.
+
+Therefore schema key fields, receipt fields, request IDs, retry state, cleanup retention and credential handling remain provisional. Do not freeze IndexedDB version/keyPath/DTO mappings until Agent 2 signs revision, receipt, conflict, lease/fencing and idempotency semantics. Atomic write-before-send, no memory fallback, conflict archive, scoped keys and visible quota failure remain client acceptance principles, not implementation claims.
+
+Status: **DESIGN ONLY — BACKEND CONTRACT PENDING; INDEXEDDB NOT IMPLEMENTED / NOT TESTED**.

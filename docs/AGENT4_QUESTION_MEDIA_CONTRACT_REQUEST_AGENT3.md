@@ -138,3 +138,37 @@ Mohon Agent 3 dan Agent 2 menetapkan batas data:
 - Agent 4 tidak mengubah source Agent 3/2.
 - Tidak ada endpoint, field, enum atau DTO backend baru yang ditetapkan oleh dokumen ini.
 - Tidak ada implementasi atau pengujian runtime yang diklaim.
+
+
+## Addendum source refresh and Agent 3 response — 22 November 2026, 18:20 WIB
+
+Current Agent 3 branch HEAD: `a1f34b010dd5ad64c59a359f7e8d0f49d491eb82`. Latest commit is a checkpoint backup only; source blobs reviewed remain those listed below:
+
+| Area | Branch/HEAD | Path | Blob SHA |
+|---|---|---|---|
+| Exam admission | Agent 2 `462cadc96a95d091bd89819dbc106b4fbd67e1cd` | `ExamController.php` | `c7c62e961f2ff47abee8f3b2468b4e7bc43d1cc9` |
+| Media | Agent 2 | `MediaController.php` | `f852c1b3a7247efdbb0c309fb0413bbe5e3eaa62` |
+| Attempt | Agent 2 | `ExamAttemptController.php` | `13e8981cca4653ff4e9b9448a50e4d0ec8a74bae` |
+| Answer | Agent 2 | `ExamAnswerController.php` | `b4ddec14f6208b3ecde9bfc3e45168a2159e2a9c` |
+| Exam policy | Agent 2 | `ExamPolicy.php` | `c05d96ef932fdc81b67336240af4e1726864c3d6` |
+| API routes | Agent 2 | `routes/api.php` | `2e43c37dd669a26446a44b818c1d2c8420b15aca` |
+| Snapshot service | Agent 2 | `ExamSnapshotService.php` | `d0bfcd70b2777a3884c7f92b7c256f05492645ec` |
+| QuestionVersion | Agent 2/3 | `QuestionVersion.php` | `5f937abf691f96ee62696f7ef01b5adb2d6f0d9a` |
+| Snapshot model | Agent 2/3 | `ExamQuestionSnapshot.php` | `20a9ef80ed69c5e6281d0fbe592c900178ede2d2` |
+| Scoring | Agent 2/3 | `ScoringService.php` | `1fc74eae97538ada140b9b4c75ccd4388d1a40ad` |
+| Question authoring API | Agent 3 `a1f34b010dd5ad64c59a359f7e8d0f49d491eb82` | `QuestionController.php` | `7ded53423dd4d96788123819e8039fd543ce4fba` |
+| QuestionBank | Agent 3 | `app/Livewire/Admin/QuestionBank.php` | `219efc2db8f492452ad95da35ae22eb4849d1e66` |
+| Student attempt monitoring | Agent 3 | `ExamAttemptController.php` | `e915bf43118026ef8eace96338fa6cad44ee29e1` |
+| Monitoring scope | Agent 1/3 | `ExamMonitoringScope.php` | `11b455954f974d1c60ed5c49700368f8d37c09c1` |
+| Room lifecycle | Agent 1 `51571ca54ec922466e6230b4e8137a85336bc024` | `ExamSessionLifecycleService.php` | `8e34152afd817f30cc2f81b5f25fc450571463ac` |
+| Room service | Agent 1 | `ExamRoomSessionService.php` | `e514fa9f751584e54af1125d48b5673e013f2339` |
+| Proctor assignment | Agent 1 | `ExamProctorAssignmentService.php` | `c968ce68c0decace1c35a0ccb3b2b4449c057656` |
+| Session migration Agent 1 | Agent 1 | `2026_11_22_110001_create_exam_room_session_scope.php` | `9551b1dd79397bd0432f03eefc970852b675fd25` |
+| Session migration Agent 2 | Agent 2 | same path | `4250669036b80c54ceb2bea8f4ae9123f97b45b5` |
+| Session migration Agent 3 | Agent 3 | same path | `83f6cacc2341c8e0a836ac06bbe26beb21683700` |
+
+Issue #10 comment **7078306561** records a technical review with status **NEEDS DESIGN** for QuestionVersion, ExamSnapshot and media. It states: QuestionVersion has UUID + major/minor and version fields, but immutable rules after publish/Attempt need cross-agent agreement; snapshot schema version and public/private student payload remain unsettled; media delivery/cache/Attempt/room/lease/fencing/expiry require Agent 2 agreement; Arabic/RTL/harakat/formula lack browser acceptance evidence. Because the comment is authored by the coordinator account `zane0184`, it is recorded as a technical review/status update, not independent owner approval.
+
+The source supports six question types only. QuestionController validation does not accept accepted_answers; QuestionVersion fillable/migration do not define accepted_answers; ExamSnapshotService writes metadata difficulty/cognitive_level/question_type only; ScoringService reads snapshot.metadata.accepted_answers and falls back to correct options. Therefore SHORT_ANSWER remains BLOCKED until the authoring→immutable snapshot→scoring chain is proven. ESSAY remains manual review.
+
+Status: **NEEDS DESIGN — QUESTIONVERSION/SNAPSHOT/MEDIA CONTRACT NOT APPROVED**.

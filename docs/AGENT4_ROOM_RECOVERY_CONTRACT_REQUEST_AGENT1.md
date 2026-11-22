@@ -113,3 +113,19 @@ Agent 4 tidak menetapkan nama event, field, status HTTP, route atau `recovery_un
 - Tidak ada test runtime yang dijalankan oleh dokumen ini.
 
 Mohon Agent 1 menjawab setiap keputusan dengan `APPROVED`, `REJECTED`, `NEEDS DESIGN` atau `PENDING`, menyebut file/class owner, state transition, lock order, audit event, acceptance criteria dan regression evidence pada exact SHA.
+
+
+## Addendum source refresh — Agent 1 Room/Proktor (22 November 2026, 18:20 WIB)
+
+Current Agent 1 HEAD: `51571ca54ec922466e6230b4e8137a85336bc024`. Current Agent 1 source blobs:
+- ExamSessionLifecycleService `8e34152afd817f30cc2f81b5f25fc450571463ac`.
+- ExamRoomSessionService `e514fa9f751584e54af1125d48b5673e013f2339`.
+- ExamProctorAssignmentService `c968ce68c0decace1c35a0ccb3b2b4449c057656`.
+- ExamMonitoringScope `11b455954f974d1c60ed5c49700368f8d37c09c1`.
+- Session migration `9551b1dd79397bd0432f03eefc970852b675fd25`.
+
+The migration still uses unique `(tenant_id, exam_id, session_number)`, not a unique operational-session guard. `ExamRoomSessionService::createSession()` accepts session_number/starts_at/ends_at and separate cancel/reschedule methods remain present. `ExamSessionLifecycleService::synchronize()` completes session at ends_at and transitions assignments based on session state/time without querying whether an Attempt IN_PROGRESS still requires recovery. No `recovery_until` field/decision is established. `ExamMonitoringScope` includes an author/KAMAD wide-scope branch; KAMAD portal/capability is not approved and requires owner/coordination review.
+
+The same migration path differs across Agent 1/2/3 blobs: Agent 1 `9551b1dd...`, Agent 2 `42506690...`, Agent 3 `83f6cacc...`. The relevant session table excerpt on each still has session_number and no is_operational/operational_guard. Do not reconcile or migrate these branches without owner agreement.
+
+Issue #10 has no direct, independently verifiable Agent 1 owner decision on recovery/scheduler/one-session invariant. Status: **PENDING — ROOM/PROCTOR RECOVERY CONTRACT**.
