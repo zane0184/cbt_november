@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Laravel\Sanctum\HasApiTokens;
 
@@ -90,7 +91,71 @@ class User extends Authenticatable
 
     public function hasPermission(string $permission): bool
     {
-        return $this->roles->flatMap->permissions->contains('name', $permission);
+        // Permission decisions must not trust a previously loaded roles/permissions
+        // relation. A user with conflicting portal roles is never authorized.
+        $roleNames = $this->roles()->pluck('name');
+        if ($roleNames->count() !== 1 || !$this->hasActivePersistedTenantIdentity()) {
+            return false;
+        }
+
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->where('permissions.name', $permission))
+            ->exists();
+    }
+
+    /**
+     * Require one persisted, active portal role in the resolved tenant.
+     * This intentionally ignores stale in-memory Eloquent role relations.
+     */
+    public function hasExactRole(string $role): bool
+    {
+        if (!$this->hasActivePersistedTenantIdentity()) {
+            return false;
+        }
+
+        $roleNames = $this->roles()->pluck('name');
+
+        return $roleNames->count() === 1 && $roleNames->first() === $role;
+    }
+
+    /**
+     * Check a permission through the single persisted portal role only.
+     */
+    public function hasExactPermission(string $role, string $permission): bool
+    {
+        if (!$this->hasExactRole($role)) {
+            return false;
+        }
+
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->where('permissions.name', $permission))
+            ->exists();
+    }
+
+    private function hasActivePersistedTenantIdentity(): bool
+    {
+        if (!$this->exists || !$this->getKey() || !$this->tenant_id) {
+            return false;
+        }
+
+        $tenantContextId = app(\\App\\Contexts\\TenantContext::class)->getTenantId();
+        if (!$tenantContextId || (string) $tenantContextId !== (string) $this->tenant_id) {
+            return false;
+        }
+
+        $activeUser = DB::table('users')
+            ->where('id', $this->getKey())
+            ->where('tenant_id', $this->tenant_id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        $activeTenant = DB::table('tenants')
+            ->where('id', $this->tenant_id)
+            ->whereNull('deleted_at')
+            ->where('status', 'ACTIVE')
+            ->exists();
+
+        return $activeUser && $activeTenant;
     }
 
     public function teacherProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
