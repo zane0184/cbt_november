@@ -103,6 +103,67 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Kurikulum Merdeka Terintegrasi KBC');
     }
 
+    public function test_dashboard_student_count_excludes_deleted_and_non_siswa_accounts(): void
+    {
+        $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $validStudent = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Aktif Valid',
+            'email' => 'siswa.valid@mug.test',
+            'password' => bcrypt('password123'),
+        ]);
+        $validStudent->roles()->sync([$studentRole->id]);
+        $validProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $validStudent->id,
+            'full_name' => 'Siswa Aktif Valid',
+        ]);
+
+        $deletedStudent = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Akun Terhapus',
+            'email' => 'siswa.deleted@mug.test',
+            'password' => bcrypt('password123'),
+        ]);
+        $deletedStudent->roles()->sync([$studentRole->id]);
+        $deletedProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $deletedStudent->id,
+            'full_name' => 'Siswa Akun Terhapus',
+        ]);
+        DB::table('users')->where('id', $deletedStudent->id)->update(['deleted_at' => now()]);
+
+        $mixedRoleStudent = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Akun Multi Role',
+            'email' => 'siswa.multirole@mug.test',
+            'password' => bcrypt('password123'),
+        ]);
+        $mixedRoleStudent->roles()->sync([$studentRole->id, $this->guruRole->id]);
+        $mixedRoleProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $mixedRoleStudent->id,
+            'full_name' => 'Akun Multi Role',
+        ]);
+
+        foreach ([$validProfile, $deletedProfile, $mixedRoleProfile] as $profile) {
+            DB::table('rombel_student')->insert([
+                'id' => (string) \Illuminate\Support\Str::uuid(),
+                'tenant_id' => $this->tenant->id,
+                'rombel_id' => $this->scope['rombel']->id,
+                'student_id' => $profile->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $dashboard = app(\App\Services\TeacherPortal\TeacherPortalDataService::class)
+            ->dashboard($this->teacher);
+
+        $this->assertSame(1, $dashboard['stats']['students']);
+        $this->assertSame(1, $dashboard['activeAssignments'][0]['students_count']);
+    }
+
     public function test_guru_can_open_question_bank_through_teacher_route(): void
     {
         $this->actingAs($this->teacher)
