@@ -696,6 +696,11 @@
                     setSaveStatus('KONFLIK: draft lokal dipertahankan. Pengiriman ditahan; jangan muat ulang atau tutup halaman.', true);
                     showError('Terjadi konflik revisi. Draft lokal dan versi server diarsipkan terpisah. Pengiriman ditahan; minta Guru/Admin membantu pemulihan sebelum mengirim ujian.');
                     renderNavigation();
+                } else if (error.status === 409 && ['ATTEMPT_FENCE_MISMATCH', 'ATTEMPT_SESSION_MISMATCH', 'ATTEMPT_LEASE_INVALID', 'CONCURRENT_DEVICE_DENIED'].includes(error.body?.code)) {
+                    stopHeartbeat();
+                    setRunnerLocked(true);
+                    setSaveStatus('Sesi atau fencing ujian tidak lagi valid. Draft lokal dipertahankan; sinkronisasi dan submit dihentikan.', true);
+                    showError('Server menolak penyimpanan karena sesi atau fencing tidak lagi valid. Draft lokal tetap tersimpan. Jangan membuka ujian pada sesi/perangkat lain; hubungi Guru/Admin untuk pemulihan.');
                 } else setSaveStatus(`Gagal menyimpan: ${error.message}. Periksa koneksi dan coba lagi.`, true);
                 throw error;
             }
