@@ -111,6 +111,15 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('Bank Soal & Modul Asesmen');
     }
 
+    public function test_guru_can_open_exam_builder_through_teacher_route(): void
+    {
+        $this->actingAs($this->teacher)
+            ->get('/guru/asesmen')
+            ->assertOk()
+            ->assertSee('Asesmen & Ujian Guru')
+            ->assertSee('Portal Guru');
+    }
+
     public function test_question_bank_rejects_short_answer_until_scoring_snapshot_is_supported(): void
     {
         $subjectId = TeacherSubjectAssignment::query()
@@ -156,11 +165,13 @@ class TeacherPortalFoundationTest extends TestCase
 
         $this->actingAs($admin)->get('/guru/dashboard')->assertForbidden();
         $this->actingAs($admin)->get('/guru/bank-soal')->assertForbidden();
+        $this->get('/guru/asesmen')->assertForbidden();
         Livewire::actingAs($admin)->test(TeacherDashboard::class)->assertForbidden();
 
         $this->teacher->roles()->attach($adminRole->id);
         $this->actingAs($this->teacher)->get('/guru/dashboard')->assertForbidden();
         $this->actingAs($this->teacher)->get('/guru/bank-soal')->assertForbidden();
+        $this->get('/guru/asesmen')->assertForbidden();
     }
 
     public function test_question_and_exam_livewire_screens_allow_only_single_role_guru_with_permission_and_assignment(): void
@@ -517,14 +528,14 @@ class TeacherPortalFoundationTest extends TestCase
 
         // These real page requests exercise the auth, tenant and license middleware
         // used for the initial full-page Livewire component mount.
-        $questionPage = $this->get('/admin/questions')->assertOk();
+        $questionPage = $this->get('/guru/bank-soal')->assertOk();
         $questionSnapshot = $this->extractLivewireSnapshot($questionPage);
         $this->assertSame(
             (string) $this->tenant->id,
             (string) app(TenantContext::class)->getTenantId()
         );
 
-        $examPage = $this->get('/admin/exams')->assertOk();
+        $examPage = $this->get('/guru/asesmen')->assertOk();
         $examSnapshot = $this->extractLivewireSnapshot($examPage);
         $this->assertSame(
             (string) $this->tenant->id,
