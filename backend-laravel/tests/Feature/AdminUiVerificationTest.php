@@ -93,8 +93,9 @@ class AdminUiVerificationTest extends TestCase
     public function unauthenticated_users_are_redirected_from_admin_routes()
     {
         $routes = [
+            '/admin/madrasah-profile',
+            '/admin/academic-periods',
             '/admin/users',
-            '/admin/academic',
             '/admin/curriculum',
             '/admin/questions',
             '/admin/exams',
@@ -130,7 +131,7 @@ class AdminUiVerificationTest extends TestCase
     {
         $this->actingAs($this->admin);
 
-        foreach (['/admin/dashboard', '/admin/users', '/admin/academic', '/admin/curriculum', '/admin/exams'] as $route) {
+        foreach (['/admin/dashboard', '/admin/madrasah-profile', '/admin/academic-periods', '/admin/users', '/admin/academic', '/admin/curriculum', '/admin/exams'] as $route) {
             $this->get($route)->assertOk();
         }
 
