@@ -60,6 +60,7 @@ class AcademicManagement extends Component
         abort_unless(
             $user
             && $user->tenant_id
+            && $user->roles()->count() === 1
             && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('academic.manage'),
             403,
