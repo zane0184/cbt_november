@@ -70,7 +70,7 @@ class StudentRombelManagement extends Component
                 ->firstOrFail();
             $studentUser = $student->user;
 
-            if (!$studentUser || $studentUser->tenant_id !== $tenantId
+            if (!$studentUser || $studentUser->tenant_id !== $tenantId || $studentUser->deleted_at !== null
                 || $studentUser->roles()->count() !== 1
                 || !$studentUser->roles()->where('name', 'SISWA')->exists()) {
                 throw ValidationException::withMessages([
