@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Models\MediaAsset;
+use App\Livewire\Admin\QuestionBank;
 use App\Models\Permission;
 use App\Models\Question;
 use App\Models\QuestionVersion;
@@ -13,6 +14,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
 
@@ -113,6 +115,28 @@ final class TeacherQuestionMediaTest extends TestCase
             ->assertRedirect(route('teacher.questions.index', ['edit_question' => $this->question->id]));
 
         $this->assertFalse($this->version->fresh()->media()->whereKey($media->id)->exists());
+    }
+
+    public function test_question_bank_shows_media_controls_only_for_draft_versions(): void
+    {
+        Livewire::actingAs($this->teacher)
+            ->test(QuestionBank::class)
+            ->call('openEditModal', $this->question->id)
+            ->assertSee('Media Soal')
+            ->assertSee('Unggah & Pasang Media')
+            ->assertSee(route('teacher.questions.media.store', [
+                'question' => $this->question->id,
+                'version' => $this->version->id,
+            ]));
+
+        $this->version->update(['status' => 'PUBLISHED']);
+
+        Livewire::actingAs($this->teacher)
+            ->test(QuestionBank::class)
+            ->call('openEditModal', $this->question->id)
+            ->assertSee('Media Soal')
+            ->assertSee('Versi ini sudah terbit')
+            ->assertDontSee('Unggah & Pasang Media');
     }
 
     public function test_published_question_version_rejects_media_and_cleans_unattached_upload(): void
