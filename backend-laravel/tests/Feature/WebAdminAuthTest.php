@@ -121,14 +121,14 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_admin_madrasah_login_redirects_to_operator_dashboard(): void
+    public function test_admin_madrasah_login_redirects_to_admin_madrasah_dashboard(): void
     {
         $response = $this->post('/login', ['identifier' => 'admin.uji', 'password' => $this->password]);
-        $response->assertRedirect('/operator/dashboard');
+        $response->assertRedirect('/admin/dashboard');
         $this->assertAuthenticatedAs($this->admin);
     }
 
-    public function test_operator_login_redirects_to_operator_dashboard(): void
+    public function test_legacy_operator_login_redirects_to_same_admin_dashboard(): void
     {
         $response = $this->post('/login', ['identifier' => 'operator.uji', 'password' => $this->password]);
         $response->assertRedirect('/operator/dashboard');
@@ -142,12 +142,12 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->kamad);
     }
 
-    public function test_kamad_cannot_open_the_operator_dashboard(): void
+    public function test_kamad_cannot_open_the_admin_dashboard(): void
     {
         $this->withoutMiddleware(EnsureLicenseActive::class);
         $this->actingAs($this->kamad);
 
-        $this->get('/operator/dashboard')->assertForbidden();
+        $this->get('/admin/dashboard')->assertForbidden();
     }
 
     public function test_proktor_assignment_user_login_redirects_to_assignments(): void
