@@ -17,9 +17,21 @@ class RombelAnalyticsService
         abort_unless($rombel->tenant_id === $exam->tenant_id, 404);
 
         $query = ExamAttemptScore::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->where('grading_status', 'FINALIZED')
+            ->join('exam_attempt_score_current as current_pointer', function ($join) {
+                $join->on('current_pointer.attempt_id', '=', 'exam_attempt_scores.attempt_id')
+                    ->on('current_pointer.current_score_id', '=', 'exam_attempt_scores.id')
+                    ->on('current_pointer.tenant_id', '=', 'exam_attempt_scores.tenant_id')
+                    ->on('current_pointer.scoring_version', '=', 'exam_attempt_scores.scoring_version');
+            })
+            ->join('exam_attempts as score_attempts', function ($join) {
+                $join->on('score_attempts.id', '=', 'exam_attempt_scores.attempt_id')
+                    ->on('score_attempts.tenant_id', '=', 'exam_attempt_scores.tenant_id');
+            })
+            ->where('exam_attempt_scores.tenant_id', $exam->tenant_id)
+            ->where('exam_attempt_scores.exam_id', $exam->id)
+            ->where('exam_attempt_scores.grading_status', 'FINALIZED')
+            ->whereIn('score_attempts.status', ['SUBMITTED', 'EXPIRED'])
+            ->select('exam_attempt_scores.*')
             ->whereHas('student', function ($studentQuery) use ($rombel, $exam) {
                 $studentQuery->where('tenant_id', $exam->tenant_id)
                     ->whereHas('studentProfile', function ($profileQuery) use ($rombel, $exam) {
@@ -34,13 +46,13 @@ class RombelAnalyticsService
 
         $stats = $query->select([
             DB::raw('COUNT(*) as participant_count'),
-            DB::raw('AVG(percentage) as average_percentage'),
-            DB::raw('MAX(percentage) as highest_percentage'),
-            DB::raw('MIN(percentage) as lowest_percentage'),
-            DB::raw('STDDEV_POP(percentage) as std_dev_percentage'),
+            DB::raw('AVG(exam_attempt_scores.percentage) as average_percentage'),
+            DB::raw('MAX(exam_attempt_scores.percentage) as highest_percentage'),
+            DB::raw('MIN(exam_attempt_scores.percentage) as lowest_percentage'),
+            DB::raw('STDDEV_POP(exam_attempt_scores.percentage) as std_dev_percentage'),
         ])->first();
 
-        $percentages = $query->orderBy('percentage')->pluck('percentage')->toArray();
+        $percentages = $query->orderBy('exam_attempt_scores.percentage')->pluck('exam_attempt_scores.percentage')->toArray();
         $median = $this->calculateMedian($percentages);
 
         return [
