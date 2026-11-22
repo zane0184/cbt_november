@@ -150,4 +150,32 @@ class AuthTest extends TestCase
         $response->assertStatus(200);
         $this->assertNull(PersonalAccessToken::find($tokenId));
     }
+
+    public function test_inactive_user_cannot_obtain_api_token(): void
+    {
+        $this->user->forceFill(['is_active' => false])->save();
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'test-user',
+            'password' => 'password',
+            'device_name' => 'android',
+        ])->assertStatus(422)->assertJsonValidationErrors(['identifier']);
+
+        $this->assertSame(0, $this->user->tokens()->count());
+    }
+
+    public function test_existing_api_token_is_revoked_when_account_becomes_inactive(): void
+    {
+        $plainTextToken = $this->user->createToken('before-deactivation')->plainTextToken;
+        $tokenId = explode('|', $plainTextToken)[0];
+        $this->user->forceFill(['is_active' => false])->save();
+
+        $this->withHeaders(['Authorization' => 'Bearer '.$plainTextToken])
+            ->getJson('/api/v1/auth/me')
+            ->assertForbidden()
+            ->assertJsonPath('success', false);
+
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $tokenId]);
+    }
+
 }
