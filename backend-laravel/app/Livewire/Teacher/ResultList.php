@@ -8,12 +8,11 @@ use App\Models\ExamParticipant;
 use App\Models\Rombel;
 use App\Services\Analytics\AnalyticsCacheService;
 use App\Services\AuditService;
-use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
-class ResultList extends Component
+class ResultList extends TeacherResultComponent
 {
     use WithPagination;
 
