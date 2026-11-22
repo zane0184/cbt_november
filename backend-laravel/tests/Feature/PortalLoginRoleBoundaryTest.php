@@ -42,13 +42,13 @@ class PortalLoginRoleBoundaryTest extends TestCase
             'password' => Hash::make('password123'),
         ]);
 
-        $roleIds = collect($roleNames)->map(function (string $name): int {
+        $roleIds = collect($roleNames)->map(function (string $name): string {
             $role = Role::firstOrCreate(
                 ['name' => $name],
                 ['label' => $name]
             );
 
-            return (int) $role->id;
+            return (string) $role->getKey();
         })->all();
 
         $user->roles()->sync($roleIds);
