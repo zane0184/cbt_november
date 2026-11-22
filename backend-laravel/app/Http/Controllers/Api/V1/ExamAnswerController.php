@@ -99,10 +99,6 @@ class ExamAnswerController extends Controller
                 return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
             }
 
-            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
-            }
-
             if (!$lockedAttempt->device_fingerprint
                 || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
@@ -110,6 +106,10 @@ class ExamAnswerController extends Controller
                     'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
                     'code' => 'CONCURRENT_DEVICE_DENIED'
                 ], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
             $assignedSnapshotIds = is_array($lockedAttempt->question_order)
