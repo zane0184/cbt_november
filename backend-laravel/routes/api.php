@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\AuthController;
 use Illuminate\Http\Request;
+use App\Http\Middleware\EnsureAccountSessionVersion;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -18,13 +19,13 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
-        Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+        Route::middleware(['auth:sanctum', 'tenant', EnsureAccountSessionVersion::class])->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/logout', [AuthController::class, 'logout']);
         });
     });
 
-    Route::middleware(['auth:sanctum', 'tenant', 'license'])->group(function () {
+    Route::middleware(['auth:sanctum', 'tenant', EnsureAccountSessionVersion::class, 'license'])->group(function () {
         // Curriculum Detail
         Route::apiResource('curricula', \App\Http\Controllers\Api\V1\CurriculumController::class);
         Route::apiResource('phases', \App\Http\Controllers\Api\V1\PhaseController::class);

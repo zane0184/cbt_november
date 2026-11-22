@@ -80,6 +80,24 @@ class StudentWebLoginTest extends TestCase
         $studentRememberCookie = $studentBrowser->cookie($studentRememberCookieName);
         $this->assertNotNull($studentRememberCookie);
 
+        // A separate stateful Sanctum API session must also be bound to the auth epoch.
+        $apiSessionBrowser = new \Tests\Support\IndependentBrowserClient();
+        $apiSessionLogin = $apiSessionBrowser->request('POST', '/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+        ]);
+        $this->assertSame(302, $apiSessionLogin->getStatusCode());
+        $apiSessionCookie = $apiSessionBrowser->cookie($sessionCookieName);
+        $this->assertNotNull($apiSessionCookie);
+
+        $statefulApiBeforeDeactivation = $apiSessionBrowser->request(
+            'GET',
+            '/api/v1/auth/me',
+            [],
+            ['Accept' => 'application/json', 'Origin' => 'http://cbt.test'],
+        );
+        $this->assertSame(200, $statefulApiBeforeDeactivation->getStatusCode());
+
         // Create an Admin with only the account-management permission.
         app(TenantContext::class)->setTenantId($this->tenant->id);
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
@@ -130,6 +148,17 @@ class StudentWebLoginTest extends TestCase
             ->assertHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $this->student->id, 'deleted_at' => null]);
 
+        // Browser C retained a distinct stateful API session without making requests
+        // while the account was inactive. It must not revive after reactivation.
+        $apiSessionBrowser->setCookie($sessionCookieName, $apiSessionCookie);
+        $staleStatefulApiResponse = $apiSessionBrowser->request(
+            'GET',
+            '/api/v1/auth/me',
+            [],
+            ['Accept' => 'application/json', 'Origin' => 'http://cbt.test'],
+        );
+        $this->assertSame(401, $staleStatefulApiResponse->getStatusCode());
+
         // Replaying Browser A's exact pre-deactivation session after restore must fail.
         $studentBrowser->setCookie($sessionCookieName, $studentSessionCookie);
         $reactivatedResponse = $studentBrowser->request('GET', '/student/exams');
@@ -163,6 +192,14 @@ class StudentWebLoginTest extends TestCase
         $this->assertSame(302, $freshLogin->getStatusCode());
         $this->assertStringEndsWith('/student/exams', (string) $freshLogin->headers->get('Location'));
         $this->assertSame(200, $freshBrowser->request('GET', '/student/exams')->getStatusCode());
+
+        $freshStatefulApiResponse = $freshBrowser->request(
+            'GET',
+            '/api/v1/auth/me',
+            [],
+            ['Accept' => 'application/json', 'Origin' => 'http://cbt.test'],
+        );
+        $this->assertSame(200, $freshStatefulApiResponse->getStatusCode());
     }
 
     public function test_valid_remember_me_cookie_can_establish_a_new_epoch_bound_session(): void
