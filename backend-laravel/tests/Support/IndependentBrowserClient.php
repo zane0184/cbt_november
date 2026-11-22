@@ -22,7 +22,7 @@ final class IndependentBrowserClient
 
     public function request(string $method, string $uri, array $input = [], array $headers = []): Response
     {
-        Auth::forgetGuards();
+        $this->resetAuthContext();
 
         $url = 'http://cbt.test' . '/' . ltrim($uri, '/');
         $request = Request::create($url, strtoupper($method), $input, $this->cookies);
@@ -45,9 +45,15 @@ final class IndependentBrowserClient
         }
 
         $kernel->terminate($request, $response);
-        Auth::forgetGuards();
+        $this->resetAuthContext();
 
         return $response;
+    }
+
+    private function resetAuthContext(): void
+    {
+        Auth::forgetGuards();
+        Auth::shouldUse((string) config('auth.defaults.guard', 'web'));
     }
 
     public function cookie(string $name): ?string
