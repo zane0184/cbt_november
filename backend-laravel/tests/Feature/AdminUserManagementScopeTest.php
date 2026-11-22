@@ -209,4 +209,28 @@ class AdminUserManagementScopeTest extends TestCase
 
         $this->assertSame(0, User::query()->where('name', 'Akun Terlarang')->count());
     }
+
+    public function test_admin_can_create_guru_without_nip_or_nik(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Guru Tanpa Identitas Opsional', 'code' => 'GURUNO']);
+        $this->signInAdmin($tenant);
+        Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Guru Tanpa NIP')
+            ->set('selectedRole', 'GURU')
+            ->set('password', 'StrongPassword123!')
+            ->call('createUser')
+            ->assertHasNoErrors();
+
+        $guru = User::query()->where('name', 'Guru Tanpa NIP')->firstOrFail();
+        $this->assertTrue($guru->roles()->where('name', 'GURU')->exists());
+        $this->assertNotNull($guru->teacherProfile);
+        $this->assertNull($guru->teacherProfile->nip);
+        $this->assertNull($guru->teacherProfile->nik);
+        $this->assertNull($guru->teacherProfile->employee_identifier);
+        $this->assertTrue(AuditLog::query()->where('tenant_id', $tenant->id)->where('action', 'USER_CREATED')->where('entity_id', $guru->id)->exists());
+    }
+
 }
