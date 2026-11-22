@@ -16,16 +16,17 @@ assert.equal(scripts.length, 1, 'Expected exactly one inline runner script');
 const runnerScript = scripts[0][2];
 assert.match(blade, /id="question-stem" dir="auto"/, 'Question stem must declare automatic bidirectional text direction');
 assert.ok(runnerScript.includes("label.dir = 'auto'") && runnerScript.includes("text.dir = 'auto'"), 'Answer options must use automatic text direction');
+const runnerStyles = [...blade.matchAll(/<style\\b[^>]*>([\\s\\S]*?)<\\/style>/gi)].map(match => match[1]).join('\\n');
 
 const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
-  '<meta name="csrf-token" content="test-csrf"><style>.hidden{display:none!important}button{min-height:44px}</style></head><body>',
+  '<meta name="csrf-token" content="test-csrf"><style>.hidden{display:none!important}button{min-height:44px}' + runnerStyles + '</style></head><body>',
   '<main id="exam-app" data-exam-id="exam-1" data-student-id="student-1" data-device-binding="11111111-1111-4111-8111-111111111111" data-require-token="0">',
   '<section id="instruction-panel"><input id="exam-token"><button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
-  '<section id="runner-panel" class="hidden"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
+  '<section id="runner-panel" class="hidden"><div class="runner-layout"><div class="runner-main"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
   '<div id="question-number"></div><div id="question-points"></div><div id="question-media"></div><div id="question-stem" dir="auto"></div><div id="question-input"></div>',
-  '<button id="previous-button" type="button">Sebelumnya</button><button id="next-button" type="button">Berikutnya</button>',
-  '<details id="question-nav-panel"><summary>Nomor soal</summary><div id="question-nav"></div><button id="submit-button" type="button">Kirim Ujian</button></details></section>',
+  '<button id="previous-button" type="button">Sebelumnya</button><button id="next-button" type="button">Berikutnya</button></div>',
+  '<details id="question-nav-panel" class="question-nav-panel"><summary>Nomor soal</summary><div id="question-nav"></div><button id="submit-button" type="button">Kirim Ujian</button></details></div></section>',
   '<section id="completion-panel" class="hidden"><h2 id="completion-title"></h2><p id="completion-message"></p></section>',
   '<div id="fatal-error" class="hidden"></div><button id="check-submit-status" class="hidden" type="button">Periksa status</button>',
   '</main><script>window.__intervalIds = new Set(); window.__revokedObjectUrls = []; const nativeSetInterval = window.setInterval.bind(window); const nativeClearInterval = window.clearInterval.bind(window); const nativeRevokeObjectURL = URL.revokeObjectURL.bind(URL); URL.revokeObjectURL = url => { window.__revokedObjectUrls.push(url); return nativeRevokeObjectURL(url); }; window.setInterval = (...args) => { const id = nativeSetInterval(...args); window.__intervalIds.add(id); return id; }; window.clearInterval = id => { window.__intervalIds.delete(id); return nativeClearInterval(id); };</script>',
