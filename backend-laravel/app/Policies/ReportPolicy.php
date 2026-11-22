@@ -20,7 +20,7 @@ class ReportPolicy
             return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $exam);
         }
 
-        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
+        return false;
     }
 
     /**
@@ -39,7 +39,7 @@ class ReportPolicy
             return $user->hasPermission('report.view') && TeacherAccess::profileIds($user) !== [];
         }
 
-        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
+        return false;
     }
 
     /**
@@ -53,6 +53,6 @@ class ReportPolicy
         // Subject aggregates currently span all rombels. A teacher assignment is
         // rombel-specific, so do not expose tenant-wide subject aggregates until
         // the report query is constrained to the teacher's assigned rombels.
-        return ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('KAMAD')) && $user->hasPermission('report.view');
+        return false;
     }
 }
