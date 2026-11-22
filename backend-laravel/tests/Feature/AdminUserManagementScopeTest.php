@@ -230,6 +230,7 @@ class AdminUserManagementScopeTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSoftDeleted('users', ['id' => $guru->id]);
+        $this->assertSame(2, (int) User::withTrashed()->findOrFail($guru->id)->auth_version);
         $this->assertNull(User::query()->find($guru->id));
         $this->assertNotNull(User::withTrashed()->find($guru->id));
         $this->assertDatabaseMissing('personal_access_tokens', ['tokenable_id' => $guru->id]);
@@ -246,6 +247,7 @@ class AdminUserManagementScopeTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertNotNull(User::query()->find($guru->id));
+        $this->assertSame(3, (int) User::query()->findOrFail($guru->id)->auth_version);
         $this->assertDatabaseHas('teacher_profiles', ['id' => $profile->id, 'user_id' => $guru->id, 'deleted_at' => null]);
         $this->assertDatabaseHas('audit_logs', ['tenant_id' => $tenant->id, 'entity_id' => $guru->id, 'action' => 'USER_REACTIVATED']);
         $this->assertSame($profile->id, $guru->teacherProfile()->firstOrFail()->id);
