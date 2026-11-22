@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\ExamSnapshotService;
 use App\Services\AuditService;
 use App\Support\Security\TeacherAccess;
+use App\Support\Security\TeacherPortalAccess;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -42,12 +43,20 @@ class ExamManagement extends Component
     private function assertCanAccess(): void
     {
         $user = auth()->user();
+        abort_unless($user && $user->tenant_id, 403, 'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.');
+
+        // Do not trust a previously loaded role relation after role changes.
+        $user->unsetRelation('roles');
+        abort_unless($user->hasPermission('exam.manage'), 403, 'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.');
+
+        // Reuse the canonical Portal Guru boundary: exactly one GURU role,
+        // persisted tenant identity, and exactly one tenant-local TeacherProfile.
+        app(TeacherPortalAccess::class)->profile($user);
+
+        // A valid profile without an active academic assignment is not enough
+        // to enter the subject-scoped Guru management screens.
         abort_unless(
-            $user
-                && $user->tenant_id
-                && $user->hasRole('GURU')
-                && !$user->hasRole('ADMIN_MADRASAH')
-                && $user->hasPermission('exam.manage'),
+            TeacherAccess::assignedSubjectIds($user) !== [],
             403,
             'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.'
         );
