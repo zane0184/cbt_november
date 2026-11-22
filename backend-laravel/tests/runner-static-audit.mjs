@@ -39,6 +39,16 @@ assert.ok(applicationScript.includes('state.submitOutcomeUnknown'), 'Unknown sub
 assert.ok(applicationScript.includes('recoverSubmitStatus'), 'Unknown submit recovery path must exist');
 console.log('PASS: answer durability, conflict, and submit barriers are present');
 
+assert.ok(applicationScript.includes('X-CBT-Fence-Generation'), 'Attempt-scoped requests must carry the server fencing generation');
+assert.ok(applicationScript.includes('fenceGeneration: state.fenceGeneration'), 'Fencing generation must be persisted in IndexedDB Attempt context');
+assert.ok(applicationScript.includes('function startHeartbeat()') && applicationScript.includes('60000'), 'Web Attempt must heartbeat at the agreed 60-second cadence');
+assert.ok(applicationScript.includes('function stopHeartbeat()'), 'Heartbeat must stop on terminal state and submit');
+assert.ok(applicationScript.includes('async function renderSnapshotMedia'), 'Snapshot media must use authenticated Fetch/Blob loading');
+assert.ok(applicationScript.includes('URL.createObjectURL(blob)'), 'Media must be rendered from authenticated Blob Object URLs');
+assert.ok(applicationScript.includes('URL.revokeObjectURL(url)'), 'Media Object URLs must be revoked when no longer used');
+assert.ok(applicationScript.includes('10 * 1024 * 1024'), 'Media client must enforce the backend 10 MB upload limit');
+console.log('PASS: auth-session fencing, heartbeat, and authenticated media lifecycle are present');
+
 assert.ok(applicationScript.includes('clearInterval(state.timerIntervalId)'), 'Timer reload must clear the previous interval');
 console.log('PASS: timer interval deduplication guard is present');
 
