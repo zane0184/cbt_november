@@ -179,7 +179,7 @@ class ExamPolicy
     public function revokeProctor(User $user, Exam $exam): bool
     {
         return $user->tenant_id === $exam->tenant_id
-            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists()
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('exam.proctor.assign');
     }
 
