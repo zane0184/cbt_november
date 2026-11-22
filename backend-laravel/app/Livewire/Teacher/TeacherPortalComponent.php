@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Teacher;
 
-use App\Livewire\Teacher\TeacherPortalAccess as LegacyTeacherPortalAccess;
 use App\Support\Security\TeacherPortalAccess;
 use Livewire\Component;
 
