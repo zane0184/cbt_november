@@ -381,8 +381,8 @@ class TeacherPracticeWorkflowTest extends TestCase
             'full_name' => 'Siswa Valid',
         ]);
 
-        \\Illuminate\\Support\\Facades\\DB::table('rombel_student')->insert([
-            'id' => (string) \\Illuminate\\Support\\Str::uuid(),
+        \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
             'tenant_id' => $this->tenant->id,
             'rombel_id' => $this->rombel->id,
             'student_id' => $validProfile->id,
