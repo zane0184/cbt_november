@@ -6,16 +6,18 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Traits\TenantScoped;
 
 class TenantCurriculumRegistration extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasUuids, TenantScoped;
 
     protected $table = 'tenant_curriculum_registrations';
 
     protected $fillable = [
         'id',
         'tenant_id',
+        'academic_year_id',
         'multi_curriculum_version_id',
         'curriculum_owner_id',
         'status',
@@ -48,6 +50,11 @@ class TenantCurriculumRegistration extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenant_id');
+    }
+
+    public function academicYear(): BelongsTo
+    {
+        return $this->belongsTo(AcademicYear::class, 'academic_year_id')->withTrashed();
     }
 
     public function version(): BelongsTo
