@@ -3,7 +3,7 @@ Tanggal: 23 November 2026
 Repo: `zane0184/cbt_november`
 Branch: `work/agent4-web-siswa-emergency-20261122`
 PR: #13 (OPEN, DRAFT, UNMERGED)
-Checkpoint commit basis: `2447fac6c03129fc5f8ec9b0de45f1d6fe852b7b`
+Checkpoint commit basis: `238901093809b120f89a9a85b3c102e25e137631`
 
 ## 1. AUDIT
 
@@ -12,7 +12,7 @@ Checkpoint commit basis: `2447fac6c03129fc5f8ec9b0de45f1d6fe852b7b`
 - `resources/views/student/exams/show.blade.php`: instruksi, token bila diwajibkan, mulai/lanjutkan Attempt, timer, navigasi, enam tipe soal, media, penyimpanan lokal, sinkronisasi, konflik, submit, dan pemulihan.
 - `resources/views/student/results/show.blade.php`: hanya ringkasan hasil final yang telah dipublikasikan; tidak menampilkan rincian jawaban soal.
 - `app/Http/Controllers/StudentExamController.php`: validasi role SISWA, tenant, penugasan peserta, rentang akses, batas percobaan, Attempt aktif, dan current score pointer.
-- `tests/Feature/StudentResultVisibilityTest.php`: tujuh test method yang mencakup hasil milik siswa sendiri, publikasi hasil, akses siswa lain, current score pointer, DTO minimal, dan score final.
+- `tests/Feature/StudentResultVisibilityTest.php`: tujuh test method yang mencakup hasil milik siswa sendiri, publikasi hasil, akses siswa lain, current score pointer, DTO minimal, dan score final.\n- `tests/Feature/StudentExamPortalTest.php`: enam test method untuk daftar ujian yang ditugaskan, halaman instruksi/token, Attempt aktif, unassigned/cross-tenant, eligibility window, dan penolakan role Admin Madrasah.
 
 ### Tipe soal
 Bank Soal saat ini membatasi tipe ke:
@@ -47,30 +47,46 @@ API execution menyamarkan key pasangan MATCHING untuk siswa menjadi `LEFT` dan `
 - Menambahkan `backend-laravel/tests/runner-browser-e2e.mjs`.
 - Memperluas `.github/workflows/agent4-web-siswa-runner-static.yml` untuk Node 22, Playwright 1.56.1, Chromium, static audit, dan browser E2E. Runner CI dipatok ke Ubuntu 24.04 karena Playwright 1.56.1 tidak mendukung image Ubuntu 26.04.
 - Menambahkan `.github/workflows/agent4-student-results-mysql.yml` untuk menjalankan `StudentResultVisibilityTest.php` menggunakan MySQL 8 disposable di GitHub Actions.
-- Source runner produksi tidak diubah pada tahap ini; perubahan berfokus pada pengujian dan dokumentasi. Tidak ada backend/migration/DB produksi yang disentuh.
+- `show.blade.php`: timer interval dibersihkan saat submit/terminal completion; interval dipasang sebelum tick awal agar auto-submit pada Attempt yang sudah kedaluwarsa tidak meninggalkan timer aktif. IndexedDB capability guard kini memeriksa `window.indexedDB` secara langsung agar browser tanpa API gagal tertutup.\n- Dukungan arah teks `dir=auto` ditambahkan untuk judul/instruksi/pertanyaan, pilihan, matching, jawaban teks, nama siswa, judul ujian, dan mata pelajaran agar konten Arab berharakat dan campuran Arab-Indonesia tetap terbaca.\n- Menambahkan `tests/Feature/StudentExamPortalTest.php` (6 test) dan menggabungkan job MySQL ke workflow Agent 4. Workflow MySQL terpisah dihapus setelah backup agar tidak ada CI ganda.\n- Tidak ada perubahan backend API, migration, Web Admin/Guru, atau DB produksi. Perubahan backend yang belum tersedia dicatat sebagai gate, bukan diakali di client.
 
 ## 4. PENGUJIAN
 
-### GitHub Actions — static + browser
-Run `45062115396`, job `137330179044`, commit `2447fac6c03129fc5f8ec9b0de45f1d6fe852b7b`:
+### GitHub Actions — static + Chromium browser E2E
+Run `45063309059`, job `137333869682`, commit `238901093809b120f89a9a85b3c102e25e137631`:
 - Static audit: PASS.
 - Chromium install: PASS.
 - Browser E2E: PASS.
 - Log skenario:
   - normal answer save + terminal submit: PASS
+  - IndexedDB tidak tersedia: fail closed sebelum POST start: PASS
+  - token wajib dinormalisasi trim + uppercase: PASS
+  - MULTIPLE_CHOICE: PASS
   - MULTIPLE_RESPONSE: PASS
   - TRUE_FALSE: PASS
-  - MATCHING: PASS
+  - MATCHING (format snapshot sanitasi LEFT/RIGHT): PASS
   - SHORT_ANSWER: PASS
   - ESSAY: PASS
+  - Arab berharakat + auto RTL pada stem dan editor jawaban: PASS
+  - image media same-origin: PASS
   - IndexedDB draft survives reload + reconnect sync: PASS
+  - migrasi IndexedDB v1 pending answer ke v2: PASS
   - conflict restore + submit blocked: PASS
-  - unknown submit recovers same Attempt without duplicate POST: PASS
+  - server expiry auto-submit sekali + timer dibersihkan: PASS
+  - unknown submit recovery tanpa duplicate Attempt/submit POST: PASS
 - Output akhir: `Agent 4 Web Siswa browser E2E: ALL SCENARIOS PASSED`.
 
+### GitHub Actions — MySQL 8 feature tests
+Run yang sama `45063309059`, job `137333869384`:
+- MySQL service: `8.0.46`, disposable di GitHub Actions.
+- Composer validate/install: PASS.
+- `StudentResultVisibilityTest.php`: **7 passed, 22 assertions**.
+- `StudentExamPortalTest.php`: **6 passed, 23 assertions**.
+- Tidak ada PHPUnit warning pada run final.
+- Kedua job workflow (browser dan MySQL) berstatus SUCCESS.
+
 ### Belum dijalankan / belum terverifikasi
-- MySQL workflow untuk `StudentResultVisibilityTest.php`: workflow sudah ditambahkan; hasil run belum terverifikasi pada checkpoint ini.
-- PHPUnit seluruh backend, PHP lint, API integration real server, multi-tenant negative tests, multi-device/lease/fencing, receipt lookup, media authorization runtime, dan UAT madrasah.
+- PHPUnit seluruh backend di luar dua file test siswa tersebut, PHP lint seluruh repository, API integration real server untuk seluruh jalur, multi-device/lease/fencing, receipt lookup, media authorization runtime terhadap Laravel, dan UAT madrasah.
+- Browser E2E menggunakan API mock; MySQL tests menjalankan route Laravel terpilih. Kombinasi keduanya belum membuktikan keseluruhan backend-to-browser integration.
 - Tidak ada klaim siap produksi.
 
 ## 5. GATE DAN LANGKAH BERIKUTNYA
