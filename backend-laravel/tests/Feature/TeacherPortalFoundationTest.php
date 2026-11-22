@@ -648,7 +648,7 @@ class TeacherPortalFoundationTest extends TestCase
                 ->update(['tenant_id' => $tenantB->id]);
 
             $this->fail('Tenant reassignment must be rejected while the tenant-local TeacherProfile exists.');
-        } catch (\\Illuminate\\Database\\QueryException $exception) {
+        } catch (\Illuminate\Database\QueryException $exception) {
             $this->assertStringContainsString('teacher_profiles_user_tenant_fk', $exception->getMessage());
         }
 
