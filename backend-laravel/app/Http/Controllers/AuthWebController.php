@@ -17,8 +17,12 @@ class AuthWebController extends Controller
     public function showLoginForm()
     {
         if (Auth::check()) {
-            if (Auth::user()->hasRole('SUPER_ADMIN')) {
-                Auth::logout(); request()->session()->invalidate(); request()->session()->regenerateToken();
+            $roles = Auth::user()->roles()->pluck('name')->all();
+            $allowedRoles = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
+            if (count($roles) !== 1 || ! in_array($roles[0], $allowedRoles, true)) {
+                Auth::logout();
+                request()->session()->invalidate();
+                request()->session()->regenerateToken();
             } else {
                 return $this->redirectForUser(Auth::user());
             }
