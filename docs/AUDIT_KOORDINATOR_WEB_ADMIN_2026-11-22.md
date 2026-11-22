@@ -292,3 +292,12 @@ Perubahan:
 
 ### STATUS
 Patch UI exact-role dibuat pada branch koordinator dan menunggu verifikasi runtime. P0 Admin tetap NOT ACCEPTED sampai rangkaian tes PHP 8.3 + MySQL 8 disposable dan regression security dapat dijalankan serta diperiksa.
+
+
+### ADMIN DATA SCOPE — IDENTITAS TUNGGAL DAN AKUN NONAKTIF
+- AdminDashboard kini menghitung Guru/Siswa hanya bila akun memiliki tepat satu role yang sesuai.
+- StudentRombelManagement hanya menampilkan akun Siswa aktif dengan tepat satu role SISWA; aksi penempatan memeriksa tenant, status akun, dan role tunggal kembali di server.
+- UserManagement mengecualikan akun dengan deleted_at terisi dari daftar aktif.
+- Regresi AdminUserManagementScopeTest ditambah untuk memastikan akun multi-role Guru+Siswa tidak dihitung sebagai Guru/Siswa dan akun Siswa soft-deleted tidak muncul pada dashboard, daftar pengguna, maupun pemilih rombel.
+- Audit skema menemukan unique constraint lama pada pasangan (rombel_id, student_id) masih ada setelah hardening tenant 230003 menambahkan index tenant lookup dan composite foreign keys. Karena itu pencegahan duplikasi membership sudah memiliki lapisan DB selain pemeriksaan transaksi pada Livewire; tidak dibuat migration unik baru.
+- Test/runtime belum dieksekusi karena GitHub Actions gagal sebelum steps; semua hasil tetap NOT VERIFIED sampai runner tersedia.
