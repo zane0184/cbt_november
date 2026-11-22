@@ -911,6 +911,9 @@ class ExamAnswerTest extends TestCase
         $this->assertDatabaseCount('exam_attempt_answers', 0);
         $this->assertSame('IN_PROGRESS', $this->attempt->fresh()->status);
 
+        // The Laravel test application reuses guard instances across requests;
+        // forget the cached Sanctum guard when deliberately switching bearer tokens.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
             ->getJson($base.$attempt.'/answers')
             ->assertOk();
@@ -1003,6 +1006,7 @@ class ExamAnswerTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
+        \Illuminate\Support\Facades\Auth::forgetGuards();
         $this->withHeader('Authorization', 'Bearer '.$this->secondApiToken)
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat")
             ->assertStatus(409)
@@ -1057,11 +1061,15 @@ class ExamAnswerTest extends TestCase
         ]);
 
         $url = "/api/v1/media/{$media->id}";
+        \Illuminate\Support\Facades\Auth::forgetGuards();
         $this->withHeader('Authorization', 'Bearer '.$this->secondApiToken)
             ->get($url)
             ->assertForbidden();
 
+        \Illuminate\Support\Facades\Auth::forgetGuards();
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->withHeader('X-Device-Binding-ID', 'device-test')
+            ->withHeader('X-CBT-Fence-Generation', '1')
             ->get($url)
             ->assertOk();
     }
