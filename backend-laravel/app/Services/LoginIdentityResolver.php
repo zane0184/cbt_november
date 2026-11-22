@@ -19,20 +19,20 @@ class LoginIdentityResolver
         $tenantId = (string) $installations->first()->tenant_id;
         $normalized = strtolower($identifier);
 
-        $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+        $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
             ->whereRaw('LOWER(username) = ?', [$normalized])->get();
-        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
             ->where(function ($query) use ($normalized): void {
                 $query->whereRaw('LOWER(nip) = ?', [$normalized])->orWhereRaw('LOWER(nik) = ?', [$normalized]);
             })->pluck('user_id');
-        $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+        $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
             ->where('nisn', $identifier)->pluck('user_id');
 
         $candidateIds = collect($usernameUsers->pluck('id'))
             ->merge($teacherUserIds)->merge($studentUserIds)->map(fn ($id) => (string) $id)->unique()->values();
         if ($candidateIds->count() !== 1) return null;
 
-        $user = User::withoutGlobalScopes()->with('roles')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($candidateIds->first())->first();
+        $user = User::withoutGlobalScopes()->with('roles')->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)->whereKey($candidateIds->first())->first();
         if (! $user) return null;
         $roles = $user->roles->pluck('name')->all();
         $allowedRoles = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
