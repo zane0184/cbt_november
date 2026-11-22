@@ -65,16 +65,13 @@ class ExamAttemptController extends Controller
                 ->first();
 
             if ($existingAttempt) {
-                if ($existingAttempt->device_fingerprint && $existingAttempt->device_fingerprint !== $deviceId) {
+                if (!$existingAttempt->device_fingerprint
+                    || !hash_equals((string) $existingAttempt->device_fingerprint, (string) $deviceId)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
+                        'message' => 'Perangkat belum terikat atau berbeda. Pergantian perangkat memerlukan prosedur pelepasan yang berotorisasi.',
                         'code' => 'CONCURRENT_DEVICE_DENIED'
                     ], 409);
-                }
-
-                if (!$existingAttempt->device_fingerprint) {
-                    $existingAttempt->update(['device_fingerprint' => $deviceId]);
                 }
 
                 return response()->json([
@@ -238,17 +235,15 @@ class ExamAttemptController extends Controller
                 ], 404);
             }
 
-            if ($lockedAttempt->device_fingerprint && $lockedAttempt->device_fingerprint !== $deviceId) {
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
+                    'message' => 'Perangkat belum terikat atau berbeda. Pergantian perangkat memerlukan prosedur pelepasan yang berotorisasi.',
                     'code' => 'CONCURRENT_DEVICE_DENIED'
                 ], 409);
             }
 
-            if (!$lockedAttempt->device_fingerprint) {
-                $lockedAttempt->device_fingerprint = $deviceId;
-            }
             $lockedAttempt->last_activity_at = now();
             $lockedAttempt->save();
 
@@ -307,7 +302,7 @@ class ExamAttemptController extends Controller
             }
 
             $snapshotMedia = $q->snapshot_media ?? [];
-            if ($user->hasRole('SISWA')) {
+            if ($user->hasExactRole('SISWA')) {
                 // Jangan kirim storage_path internal ke browser; file diakses lewat
                 // endpoint media yang memverifikasi tenant dan active attempt peserta.
                 $snapshotMedia = collect($snapshotMedia)->map(function ($media) {
@@ -407,10 +402,11 @@ class ExamAttemptController extends Controller
                 ], 404);
             }
 
-            if ($lockedAttempt->device_fingerprint && $lockedAttempt->device_fingerprint !== $deviceId) {
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
+                    'message' => 'Perangkat belum terikat atau berbeda. Pergantian perangkat memerlukan prosedur pelepasan yang berotorisasi.',
                     'code' => 'CONCURRENT_DEVICE_DENIED'
                 ], 409);
             }
