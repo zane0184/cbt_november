@@ -69,6 +69,27 @@ class ExamAnswerController extends Controller
                 return response()->json(['success' => false, 'message' => 'Attempt not found for this participant.'], 404);
             }
 
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
+                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                ], 409);
+            }
+
             if ($lockedAttempt->status !== 'IN_PROGRESS'
                 || !$lockedAttempt->expires_at
                 || $lockedAttempt->expires_at->lte(now())) {
@@ -95,26 +116,12 @@ class ExamAnswerController extends Controller
                 ], 409);
             }
 
-            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
-            }
-
-            if (!$lockedAttempt->device_fingerprint
-                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
-                    'code' => 'CONCURRENT_DEVICE_DENIED'
-                ], 409);
-            }
-
             if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                $fenceMatches = app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
                 return response()->json([
                     'success' => false,
-                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'code' => 'ATTEMPT_LEASE_INVALID',
                     'current_fence_generation' => (int) $lockedAttempt->fence_generation,
-                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                    'message' => 'Lease Attempt tidak aktif atau tidak konsisten.',
                 ], 409);
             }
 
@@ -201,6 +208,27 @@ class ExamAnswerController extends Controller
                 return response()->json(['success' => false, 'message' => 'Unauthorized attempt.'], 404);
             }
 
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
+                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                ], 409);
+            }
+
             if ($lockedAttempt->status !== 'IN_PROGRESS') {
                 return response()->json([
                     'success' => false,
@@ -216,15 +244,6 @@ class ExamAnswerController extends Controller
                     'message' => 'Attempt has expired.',
                     'code' => 'ATTEMPT_EXPIRED'
                 ], 422);
-            }
-
-            if (!$lockedAttempt->device_fingerprint
-                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
-                    'code' => 'CONCURRENT_DEVICE_DENIED'
-                ], 409);
             }
 
             $activeAttemptCount = ExamAttempt::query()
@@ -243,17 +262,12 @@ class ExamAnswerController extends Controller
                 ], 409);
             }
 
-            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
-                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
-            }
-
             if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
-                $fenceMatches = app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request);
                 return response()->json([
                     'success' => false,
-                    'code' => $fenceMatches ? 'ATTEMPT_LEASE_INVALID' : 'ATTEMPT_FENCE_MISMATCH',
+                    'code' => 'ATTEMPT_LEASE_INVALID',
                     'current_fence_generation' => (int) $lockedAttempt->fence_generation,
-                    'message' => $fenceMatches ? 'Lease Attempt tidak aktif atau tidak konsisten.' : 'Fencing generation tidak cocok atau belum dikirim.',
+                    'message' => 'Lease Attempt tidak aktif atau tidak konsisten.',
                 ], 409);
             }
 
