@@ -34,6 +34,10 @@ class TeacherSubjectAssignmentManagement extends Component
     public string $startsAt = '';
     public string $endsAt = '';
     public string $assignmentStatus = 'ACTIVE';
+    public string $changeReason = '';
+    public bool $showDeactivateModal = false;
+    public string $deactivatingAssignmentId = '';
+    public string $deactivationReason = '';
 
     public function boot(): void
     {
@@ -101,6 +105,7 @@ class TeacherSubjectAssignmentManagement extends Component
             'semesterId',
             'startsAt',
             'endsAt',
+            'changeReason',
         ]);
         $this->assignmentStatus = 'ACTIVE';
         $this->showForm = true;
@@ -124,6 +129,7 @@ class TeacherSubjectAssignmentManagement extends Component
         $this->startsAt = $assignment->starts_at?->format('Y-m-d') ?? '';
         $this->endsAt = $assignment->ends_at?->format('Y-m-d') ?? '';
         $this->assignmentStatus = $assignment->status;
+        $this->changeReason = '';
         $this->showForm = true;
     }
 
@@ -157,6 +163,7 @@ class TeacherSubjectAssignmentManagement extends Component
             'startsAt' => ['nullable', 'date_format:Y-m-d'],
             'endsAt' => ['nullable', 'date_format:Y-m-d'],
             'assignmentStatus' => ['required', Rule::in(['ACTIVE', 'INACTIVE'])],
+            'changeReason' => ['required', 'string', 'min:10', 'max:1000'],
         ]);
 
         if ($data['startsAt'] && $data['endsAt'] && $data['endsAt'] < $data['startsAt']) {
@@ -165,6 +172,7 @@ class TeacherSubjectAssignmentManagement extends Component
             ]);
         }
 
+        $reason = trim($data['changeReason']);
         $attributes = [
             'teacher_profile_id' => $data['teacherProfileId'],
             'subject_id' => $data['subjectId'],
@@ -177,7 +185,7 @@ class TeacherSubjectAssignmentManagement extends Component
         ];
 
         try {
-            $result = DB::transaction(function () use ($tenantId, $actor, $attributes) {
+            $result = DB::transaction(function () use ($tenantId, $actor, $attributes, $reason) {
                 Tenant::query()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
 
                 $assignment = null;
@@ -279,15 +287,17 @@ class TeacherSubjectAssignmentManagement extends Component
                     $assignment->fill($attributes);
                     $assignment->save();
 
+                    $after = $assignment->fresh()->only([
+                        'teacher_profile_id', 'subject_id', 'rombel_id',
+                        'academic_year_id', 'semester_id', 'starts_at', 'ends_at', 'status',
+                    ]);
+                    $after['reason'] = $reason;
                     app(AuditService::class)->log(
                         'TEACHER_ASSIGNMENT_UPDATE',
                         'TeacherSubjectAssignment',
                         $assignment->id,
                         $before,
-                        $assignment->fresh()->only([
-                            'teacher_profile_id', 'subject_id', 'rombel_id',
-                            'academic_year_id', 'semester_id', 'starts_at', 'ends_at', 'status',
-                        ])
+                        $after
                     );
 
                     return ['assignment' => $assignment->fresh(), 'unchanged' => false];
@@ -298,15 +308,17 @@ class TeacherSubjectAssignmentManagement extends Component
                     'created_by' => $actor->id,
                 ]);
 
+                $createdValues = $created->only([
+                    'tenant_id', 'teacher_profile_id', 'subject_id', 'rombel_id',
+                    'academic_year_id', 'semester_id', 'starts_at', 'ends_at', 'status',
+                ]);
+                $createdValues['reason'] = $reason;
                 app(AuditService::class)->log(
                     'TEACHER_ASSIGNMENT_CREATE',
                     'TeacherSubjectAssignment',
                     $created->id,
                     null,
-                    $created->only([
-                        'tenant_id', 'teacher_profile_id', 'subject_id', 'rombel_id',
-                        'academic_year_id', 'semester_id', 'starts_at', 'ends_at', 'status',
-                    ])
+                    $createdValues
                 );
 
                 return ['assignment' => $created, 'unchanged' => false];
@@ -322,6 +334,7 @@ class TeacherSubjectAssignmentManagement extends Component
         }
 
         $this->showForm = false;
+        $this->changeReason = '';
         $this->resetPage();
         session()->flash(
             'teacherAssignmentMessage',
@@ -334,12 +347,32 @@ class TeacherSubjectAssignmentManagement extends Component
         $this->editingAssignmentId = '';
     }
 
-    public function deactivate(string $assignmentId): void
+    public function openDeactivateModal(string $assignmentId): void
     {
         $this->assertCanManage();
-        $tenantId = (string) auth()->user()->tenant_id;
+        TeacherSubjectAssignment::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->whereKey($assignmentId)
+            ->firstOrFail();
 
-        DB::transaction(function () use ($tenantId, $assignmentId) {
+        $this->deactivatingAssignmentId = $assignmentId;
+        $this->deactivationReason = '';
+        $this->resetValidation();
+        $this->showDeactivateModal = true;
+    }
+
+    public function deactivate(): void
+    {
+        $this->assertCanManage();
+        $data = $this->validate([
+            'deactivatingAssignmentId' => ['required', 'uuid'],
+            'deactivationReason' => ['required', 'string', 'min:10', 'max:1000'],
+        ]);
+        $tenantId = (string) auth()->user()->tenant_id;
+        $reason = trim($data['deactivationReason']);
+        $assignmentId = (string) $data['deactivatingAssignmentId'];
+
+        DB::transaction(function () use ($tenantId, $assignmentId, $reason) {
             Tenant::query()->whereKey($tenantId)->lockForUpdate()->firstOrFail();
 
             $assignment = TeacherSubjectAssignment::query()
@@ -358,19 +391,24 @@ class TeacherSubjectAssignmentManagement extends Component
             ]);
 
             $assignment->update(['status' => 'INACTIVE']);
+            $after = $assignment->fresh()->only([
+                'teacher_profile_id', 'subject_id', 'rombel_id',
+                'academic_year_id', 'semester_id', 'starts_at', 'ends_at', 'status',
+            ]);
+            $after['reason'] = $reason;
 
             app(AuditService::class)->log(
                 'TEACHER_ASSIGNMENT_DEACTIVATE',
                 'TeacherSubjectAssignment',
                 $assignment->id,
                 $before,
-                $assignment->fresh()->only([
-                    'teacher_profile_id', 'subject_id', 'rombel_id',
-                    'academic_year_id', 'semester_id', 'starts_at', 'ends_at', 'status',
-                ])
+                $after
             );
         }, 3);
 
+        $this->showDeactivateModal = false;
+        $this->deactivatingAssignmentId = '';
+        $this->deactivationReason = '';
         session()->flash('teacherAssignmentMessage', 'Penugasan dinonaktifkan. Record dan histori akademik tetap dipertahankan.');
     }
 
