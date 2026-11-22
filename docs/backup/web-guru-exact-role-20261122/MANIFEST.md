@@ -43,3 +43,13 @@ Jumlah snapshot backup terdaftar: 8. Seluruh blob SHA yang tercantum: MATCH. Tid
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | c990e3de769b632843f186a833a94fe2385eb6e0 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-tenant-context-test-order-fix | c990e3de769b632843f186a833a94fe2385eb6e0 | b6d163a722a1033a5312798d9550f79ac44a01e3 | MATCH |
 
 Jumlah snapshot backup terdaftar: 10. Seluruh blob SHA yang tercantum: MATCH.
+
+## Backup tambahan — final test/checkpoint reconciliation
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| docs/LAPORAN_P0_EXACT_ROLE_IDENTITAS_LAPORAN_2026-11-22.md | 4be3201247639a9ff29db3b5ccb894470293fc77 | docs/backup/web-guru-exact-role-20261122/LAPORAN_P0_EXACT_ROLE.before-tenant-context-test-reorder.md | 4be3201247639a9ff29db3b5ccb894470293fc77 | f3123ecddc0790dfa63d3164c5ee7723eca08bdf | MATCH |
+| docs/CHECKPOINT_P0_EXACT_ROLE_IDENTITAS_LAPORAN_2026-11-22.md | 804a046d1225d406db9360917f6197384608b165 | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_P0_EXACT_ROLE.before-tenant-context-test-reorder.md | 804a046d1225d406db9360917f6197384608b165 | 549f738428dda01dd4d94471bdf0e4b8d70c5be5 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 2340c8f5a2dc7770b6be7b1068359e7c86d44719 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-final-test-reorder-reconcile | 2340c8f5a2dc7770b6be7b1068359e7c86d44719 | 8352a0be107aeca46ac9393b28379b06fc4ea269 | MATCH |
+
+Jumlah snapshot backup terdaftar: 13. Seluruh blob SHA yang tercantum: MATCH.
