@@ -57,7 +57,7 @@ class OperatorDashboard extends Component
         $recentUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->with('roles')->latest()->take(5)->get();
         $recentRombels = Rombel::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')
-            ->latest()->take(5)->get();
+            ->with('academicYear:id,name')->latest()->take(5)->get();
         $recentActivity = AuditLog::query()->where('tenant_id', $tenantId)
             ->with('user:id,name')->orderByDesc('created_at')->limit(8)->get();
 
