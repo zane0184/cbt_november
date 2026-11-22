@@ -207,3 +207,12 @@ The second concurrency CI run passed the InnoDB metadata assertion and both race
 | backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-drop-fk-before-index-fix | bc3ac9b6aa6593787c24ad20d690369885a1c6c5 | 16248 |
 
 The rollback now drops `exam_participants_rombel_tenant_fk` before `exam_participants_rombel_scope_idx`. MySQL 8 requires the dependent foreign key to be removed before its supporting index; the previous order caused error 1553 during disposable test teardown. The original migration source is preserved in the snapshot above.
+
+
+## Additional snapshot — preserve the base tenant foreign-key index during rollback
+
+| Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
+|---|---|---|---:|
+| backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-preserve-tenant-fk-index | b1726ad072f24393d5a3668572a50ecc8b839d19 | 16410 |
+
+The prior rollback fix removed the Stage 4B rombel FK before its lookup index, but MySQL 8 still rejected the index drop because the composite index was also supporting the original `exam_participants.tenant_id` foreign key from the base schema. The next correction first ensures a standalone `tenant_id` index exists, preserving the base tenant constraint while the Stage 4B-specific FK and composite index are removed.
