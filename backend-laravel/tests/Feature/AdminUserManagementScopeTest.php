@@ -70,7 +70,7 @@ class AdminUserManagementScopeTest extends TestCase
         TeacherProfile::create(['user_id' => $guruB->id, 'full_name' => 'Guru B', 'nip' => '198601012020011002', 'employee_identifier' => '198601012020011002']);
 
         $this->setTenantContext($tenantA->id);
-        $this->signInAdmin($tenantA, true);
+        $this->signInAdmin($tenantA);
 
         Livewire::test(UserManagement::class)
             ->assertSee('Guru A')
@@ -82,6 +82,14 @@ class AdminUserManagementScopeTest extends TestCase
 
         $this->assertSame($permissionRowsBefore, Permission::query()->count());
         $this->assertSame($permissionPivotsBefore, DB::table('permission_role')->count());
+    }
+
+    public function test_admin_with_stale_guru_role_is_denied_user_management(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Admin Role Conflict', 'code' => 'ADMCON']);
+        $this->signInAdmin($tenant, true);
+
+        Livewire::test(UserManagement::class)->assertForbidden();
     }
 
     public function test_admin_can_create_guru_and_student_with_profiles_and_audit_log(): void
