@@ -152,3 +152,12 @@ Manifest sebelum penambahan ini disalin ke `docs/backup/stage4d-account-lifecycl
 | backend-laravel/tests/Feature/StudentWebLoginTest.php | docs/backup/stage4d-account-lifecycle-2026-11-22/StudentWebLoginTest.php.before-stateful-domain-fixture-2026-11-22 | 7d6d31d42fed9df1c54e1de8732aca6055fb5dd9 | 15446 | d8097ad40190c214b586cfbdfbef9a07f5e29e07 |
 
 Manifest sebelum penambahan disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-stateful-api-session-no-store-guard-2026-11-22` (blob SHA `2a85da4d1c3bd78a1b08215604aa87b4b3205ae6`, backup commit `64aec86c7d41a4b2b922eda99d17c775b22a748c`). Backup source diverifikasi identik dengan source aktif berdasarkan Git blob SHA.
+
+
+## Snapshot tambahan — sebelum reset default auth guard pada browser test client (22 November 2026)
+
+| Source path | Backup path | Original blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Support/IndependentBrowserClient.php | docs/backup/stage4d-account-lifecycle-2026-11-22/IndependentBrowserClient.php.before-reset-default-guard-2026-11-22 | af140b8e4b71fcc12d1f25cc364062b9caf795db | 2086 | ee94deb364ecbf5f9923621a3fc51c31f246e454 |
+
+Manifest sebelumnya disalin ke `docs/backup/stage4d-account-lifecycle-2026-11-22/MANIFEST.md.before-browser-client-guard-reset-2026-11-22` (blob SHA `407614023cf9cb955ee63b889bee4f4241d1d261`, backup commit `ffd83140772ea88bf723de3ec998128cba243803`). Backup source diverifikasi identik berdasarkan Git blob SHA.
