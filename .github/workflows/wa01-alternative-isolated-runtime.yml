@@ -388,6 +388,12 @@ jobs:
           set -euo pipefail
           php artisan test tests/Feature/ProctorAssignmentSecurityTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-proctor-assignment.log"
 
+      - name: PHPUnit — Stage 4C teacher subject assignment lifecycle and tenant boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/TeacherSubjectAssignmentManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-subject-assignment.log"
+
       - name: PHPUnit — Stage 4B room, session and participant placement integrity
         shell: bash
         run: |
