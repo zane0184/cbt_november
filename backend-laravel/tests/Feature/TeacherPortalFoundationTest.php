@@ -290,6 +290,96 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_question_and_exam_reject_revoked_permissions_after_mount(): void
+    {
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        $questionView = Permission::query()->where('name', 'question.view')->firstOrFail();
+        $examManage = Permission::query()->where('name', 'exam.manage')->firstOrFail();
+        $this->guruRole->permissions()->detach($questionView->id);
+        $this->guruRole->permissions()->detach($examManage->id);
+        $this->teacher->unsetRelation('roles');
+
+        $question->call('openCreateModal')->assertForbidden();
+        $exam->call('createExam')->assertForbidden();
+    }
+
+    public function test_question_and_exam_reject_revoked_assignment_after_mount(): void
+    {
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        $profile = TeacherProfile::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('user_id', $this->teacher->id)
+            ->firstOrFail();
+        TeacherSubjectAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('teacher_profile_id', $profile->id)
+            ->update(['status' => 'INACTIVE']);
+
+        $question->set('search', 'must-be-denied')->assertForbidden();
+        $exam->call('createExam')->assertForbidden();
+    }
+
+    public function test_question_and_exam_reject_deleted_teacher_profile_after_mount(): void
+    {
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        TeacherProfile::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('user_id', $this->teacher->id)
+            ->firstOrFail()
+            ->delete();
+
+        $question->call('openCreateModal')->assertForbidden();
+        $exam->call('createExam')->assertForbidden();
+    }
+
+    public function test_question_and_exam_reject_soft_deleted_user_after_mount(): void
+    {
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        DB::table('users')
+            ->where('id', $this->teacher->id)
+            ->where('tenant_id', $this->tenant->id)
+            ->update(['deleted_at' => now()]);
+
+        $question->call('openCreateModal')->assertForbidden();
+        $exam->call('createExam')->assertForbidden();
+    }
+
+    public function test_question_and_exam_reject_tenant_context_change_after_mount(): void
+    {
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        $tenantB = Tenant::create([
+            'name' => 'Tenant Context Changed',
+            'code' => 'MUG04',
+            'status' => 'ACTIVE',
+        ]);
+        app(TenantContext::class)->setTenantId($tenantB->id);
+
+        $question->set('search', 'must-be-denied')->assertForbidden();
+        $exam->call('createExam')->assertForbidden();
+    }
+
+    public function test_question_and_exam_reject_revoked_guru_role_after_mount(): void
+    {
+        $question = Livewire::actingAs($this->teacher)->test(QuestionBank::class);
+        $exam = Livewire::actingAs($this->teacher)->test(ExamManagement::class);
+
+        $this->teacher->roles()->detach($this->guruRole->id);
+        $this->teacher->unsetRelation('roles');
+
+        $question->call('openCreateModal')->assertForbidden();
+        $exam->call('createExam')->assertForbidden();
+    }
+
     public function test_guru_without_exactly_one_tenant_local_teacher_profile_is_denied(): void
     {
         $unassigned = User::create([
