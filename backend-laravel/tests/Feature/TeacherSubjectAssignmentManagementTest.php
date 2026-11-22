@@ -181,7 +181,8 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $otherYear->id,
             'term' => 'GANJIL',
-            'is_active' => true,
+            // Preserve the tenant's one-active-semester invariant in this relationship-mismatch fixture.
+            'is_active' => false,
         ]);
         $otherRombel = Rombel::create([
             'tenant_id' => $this->tenant->id,
