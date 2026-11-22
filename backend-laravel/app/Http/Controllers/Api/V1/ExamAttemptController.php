@@ -192,7 +192,7 @@ class ExamAttemptController extends Controller
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->first();
-            if (!$lockedUser || !$lockedUser->is_active || !$lockedUser->hasExactRole('SISWA')) {
+            if (!$lockedUser || !$lockedUser->hasExactRole('SISWA')) {
                 return response()->json(['success' => false, 'message' => 'Identitas Siswa tidak lagi aktif atau valid.'], 403);
             }
 
