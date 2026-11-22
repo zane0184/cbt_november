@@ -46,6 +46,7 @@ class AdminUserManagementScopeTest extends TestCase
 
         $adminRole->setRelation('permissions', collect([
             new Permission(['name' => 'user.manage', 'label' => 'Kelola Pengguna']),
+            new Permission(['name' => 'academic.manage', 'label' => 'Kelola Akademik']),
         ]));
         $admin->setRelation('roles', $roles);
         $this->actingAs($admin);
@@ -112,6 +113,39 @@ class AdminUserManagementScopeTest extends TestCase
         Livewire::test(ProctorAssignmentManagement::class)->assertForbidden();
         Livewire::test(QuestionBank::class)->assertForbidden();
         Livewire::test(ExamManagement::class)->assertForbidden();
+    }
+
+    public function test_dashboard_and_rombel_picker_exclude_multi_role_student_and_teacher_accounts(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Single Role Counts', 'code' => 'SINGLE']);
+        $this->setTenantContext($tenant->id);
+        $siswaRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+
+        $multi = User::create(['name' => 'Akun Multi Role', 'email' => 'multi.role@madrasah.test', 'password' => bcrypt('password123')]);
+        $multi->roles()->attach([$siswaRole->id, $guruRole->id]);
+        $multiStudent = StudentProfile::create(['user_id' => $multi->id, 'full_name' => 'Profil Siswa Multi', 'nisn' => '0099001100']);
+        TeacherProfile::create(['user_id' => $multi->id, 'full_name' => 'Profil Guru Multi', 'nip' => '198801012020011001', 'employee_identifier' => '198801012020011001']);
+
+        $student = User::create(['name' => 'Siswa Tunggal', 'email' => 'siswa.tunggal@madrasah.test', 'password' => bcrypt('password123')]);
+        $student->roles()->attach($siswaRole->id);
+        $studentProfile = StudentProfile::create(['user_id' => $student->id, 'full_name' => 'Siswa Tunggal', 'nisn' => '0099001101']);
+
+        $teacher = User::create(['name' => 'Guru Tunggal', 'email' => 'guru.tunggal@madrasah.test', 'password' => bcrypt('password123')]);
+        $teacher->roles()->attach($guruRole->id);
+        TeacherProfile::create(['user_id' => $teacher->id, 'full_name' => 'Guru Tunggal', 'nip' => '198801012020011002', 'employee_identifier' => '198801012020011002']);
+
+        $this->signInAdmin($tenant);
+        Livewire::test(AdminDashboard::class)
+            ->assertViewHas('totalStudents', 1)
+            ->assertViewHas('totalTeachers', 1);
+
+        Livewire::test(StudentRombelManagement::class)
+            ->assertViewHas('availableStudents', fn ($students) => $students->pluck('id')->all() === [$studentProfile->id])
+            ->assertDontSee('Profil Siswa Multi');
+
+        $this->assertSame(2, $multi->fresh()->roles()->count());
+        $this->assertSame(1, StudentProfile::query()->whereKey($multiStudent->id)->count());
     }
 
     public function test_admin_can_create_guru_and_student_with_profiles_and_audit_log(): void
