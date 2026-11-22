@@ -13,17 +13,12 @@ class RolePermissionBootstrapperTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function createRequiredRoles(bool $includeOperator = true): void
+    private function createRequiredRoles(): void
     {
         $roles = [
             'ADMIN_MADRASAH' => 'Admin Madrasah',
-            'KAMAD' => 'Kepala Madrasah',
             'GURU' => 'Guru',
         ];
-
-        if ($includeOperator) {
-            $roles['OPERATOR'] = 'Operator';
-        }
 
         foreach ($roles as $name => $label) {
             Role::create(['name' => $name, 'label' => $label]);
@@ -34,7 +29,7 @@ class RolePermissionBootstrapperTest extends TestCase
     {
         $this->createRequiredRoles();
         $manage = Permission::create(['name' => 'curriculum.manage', 'label' => 'Kelola Struktur Kurikulum']);
-        Role::whereIn('name', ['KAMAD', 'GURU', 'OPERATOR'])->get()->each(fn (Role $role) => $role->permissions()->attach($manage->id));
+        Role::where('name', 'GURU')->get()->each(fn (Role $role) => $role->permissions()->attach($manage->id));
 
         Permission::insertOrIgnore([
             ['name' => 'exam.manage', 'label' => 'Kelola ujian'],
@@ -53,31 +48,26 @@ class RolePermissionBootstrapperTest extends TestCase
         $bootstrapper->bootstrap();
 
         $admin = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
-        $kamad = Role::where('name', 'KAMAD')->firstOrFail();
         $guru = Role::where('name', 'GURU')->firstOrFail();
-        $operator = Role::where('name', 'OPERATOR')->firstOrFail();
 
         $this->assertEqualsCanonicalizing(['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'], $admin->permissions()->pluck('name')->all());
-        $this->assertEqualsCanonicalizing(['curriculum.view', 'exam.monitor', 'report.view'], $kamad->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'], $guru->permissions()->pluck('name')->all());
-        $this->assertFalse($kamad->permissions()->where('name', 'curriculum.manage')->exists());
         $this->assertFalse($guru->permissions()->where('name', 'curriculum.manage')->exists());
-        $this->assertEqualsCanonicalizing([], $operator->permissions()->pluck('name')->all());
         $this->assertFalse($admin->permissions()->whereIn('name', ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'])->exists());
         $expectedPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'];
         $this->assertSame(count($expectedPermissions), Permission::whereIn('name', $expectedPermissions)->count());
     }
 
-    public function test_optional_operator_role_is_not_required_for_bootstrap(): void
+    public function test_bootstrap_requires_only_the_three_portal_roles_and_does_not_create_legacy_roles(): void
     {
-        $this->createRequiredRoles(false);
-
+        $this->createRequiredRoles();
         app(RolePermissionBootstrapper::class)->bootstrap();
 
         $admin = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
         $this->assertTrue($admin->permissions()->where('name', 'exam.proctor.assign')->exists());
         $this->assertFalse($admin->permissions()->where('name', 'exam.manage')->exists());
-        $this->assertFalse(Role::where('name', 'OPERATOR')->exists());
+        $this->assertSame(0, Role::whereIn('name', ['KAMAD', 'OPERATOR'])->count());
+        $this->assertEqualsCanonicalizing(['ADMIN_MADRASAH', 'GURU'], Role::query()->pluck('name')->all());
     }
 
     public function test_missing_required_role_fails_before_creating_permissions(): void
@@ -89,7 +79,7 @@ class RolePermissionBootstrapperTest extends TestCase
             app(RolePermissionBootstrapper::class)->bootstrap();
             $this->fail('Expected missing-role exception was not thrown.');
         } catch (RuntimeException $exception) {
-            $this->assertStringContainsString('KAMAD', $exception->getMessage());
+            $this->assertStringContainsString('GURU', $exception->getMessage());
         }
 
         $this->assertSame(0, Permission::whereIn('name', ['curriculum.view', 'curriculum.manage', 'academic.manage', 'question.view', 'question.manage', 'user.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'])->count());
