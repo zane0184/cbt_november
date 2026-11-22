@@ -60,3 +60,27 @@ Tidak merge/rebase/PR/deploy/VPS/production migration/production DB changes. Jan
 - Admin CBT gate masih parsial: 27 assertion test boundary dan test monitoring/Proktor terpisah. Matriks route+method, API lengkap, Livewire lifecycle, service/repository/query/cache/export/media, stale session dan request tampering belum lengkap.
 - Stage4D berikutnya: selesaikan matriks denial Admin, lanjutkan audit autentikasi/session/Sanctum dan lifecycle; backup semua file sebelum patch. Jangan mulai WG-01 sampai Gate minimum Admin terbukti PASS; segera kabari koordinator saat itu.
 - Histori akademik tetap desain; tidak ada migration/backfill. Tidak ada merge/rebase/PR/deploy/VPS/production DB. Tidak ada perubahan Agent1/Agent3.
+
+
+## CHECKPOINT RE-AUDIT — 22 NOVEMBER 2026
+
+- HEAD Agent2 saat update: `3e052d97ce692b9c2301761aad978dfee727423e` pada branch `work/stage4d-account-lifecycle-20261122`.
+- 49 commit sejak checkpoint `879a9b...` sampai source SHA `8bc7530...`; 44 file berubah/ditambahkan. Implementasi account lifecycle dasar telah ada; jangan mengulang patch.
+- Tidak ada checkout lokal pada workspace yang ditentukan; working tree lokal tidak dapat diverifikasi. Branch remote diperiksa melalui GitHub.
+- Stage4D CI baseline run `44984685015` SUCCESS pada SHA `8bc7530...`; Stage4C, lifecycle, concurrency, InnoDB lulus; Stage4B steps SKIPPED.
+- Agent1 Stage4B run `44984303003` SUCCESS pada SHA `f1d01ea...`; branch Agent1 HEAD `4e663cd...` hanya dua dokumen setelah SHA run. Room session 12/49; concurrency 2/22; InnoDB 80/0; rollback child-first dengan FK checks aktif PASS untuk schema kosong; belum ada bukti rollback berisi histori.
+- Agent3 branch `work/web-guru-foundation-20261122` tidak disentuh; perubahan setelah CI Agent3 hanya dokumen.
+- Account lifecycle: SoftDeletes, edit, deactivate/reactivate, token revoke, audit, profile/history relation dan unique identity migration sudah ada.
+- Gap lifecycle: no tenant-scoped reset token; no auth_version/session fencing, sehingga old session bisa berpotensi hidup kembali setelah restore. Test HTTP lama dan Sanctum token lama baru dimasukkan ke test yang dipilih workflow.
+- Test selection commits: `6113ea5...` (session test dipindah ke method filter CI) dan `3e052d9...` (Sanctum old-token HTTP test ditambahkan ke AuthTest). Backups terdaftar di manifest.
+- Run `44988674922` pada SHA `6113ea5...` IN_PROGRESS; run `44988721095` pada SHA `3e052d9...` PENDING saat checkpoint.
+- Admin CBT Gate tetap parsial: AdminCbtBoundary 1/27, MonitoringDuplication 15/151 (direct GET/POST), ProctorAssignmentSecurity 8/34. PUT/PATCH/DELETE, all resource methods, Livewire hydration/action/render, service/query/cache/media/export dan stale session/multi-role masih perlu ditutup.
+- Histori akademik tidak di-migrate/backfill. Tidak ada production DB/VPS/deployment, merge/rebase/PR. Tidak ada perubahan Agent1/Agent3.
+
+## LANGKAH BERIKUTNYA
+1. Verifikasi run 44988674922 dan 44988721095 pada SHA exact; ambil bukti dua test HTTP baru.
+2. Implementasikan session auth_version monotonic agar session lama tidak hidup kembali setelah reaktivasi; backup file dan uji HTTP/middleware.
+3. Implementasikan reset token tenant-scoped; jangan gunakan broker standar; uji expiry, one-time, revoke, rate limit, nonaktif ditolak, token/session invalidation dan audit redaction.
+4. Lengkapi matriks Admin CBT seluruh route/method; fokus PUT/PATCH/DELETE dan Livewire hydration/action/render.
+5. Setelah Admin Gate PASS exact SHA, segera kabari koordinator agar Agent3 melanjutkan WG-01.
+6. Histori akademik tetap desain/reconciliation only sampai persetujuan.
