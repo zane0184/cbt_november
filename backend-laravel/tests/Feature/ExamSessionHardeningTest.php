@@ -10,6 +10,7 @@ use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
+use App\Models\StudentProfile;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
@@ -53,6 +54,12 @@ class ExamSessionHardeningTest extends TestCase
         ]);
         $this->userA->roles()->attach($siswaRole);
 
+        StudentProfile::create([
+            'user_id' => $this->userA->id,
+            'nis' => 'A-' . Str::random(8),
+            'full_name' => $this->userA->name,
+        ]);
+
         $year = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
 
         $assessment = Assessment::create([
@@ -93,6 +100,12 @@ class ExamSessionHardeningTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userB->roles()->attach($siswaRole);
+
+        StudentProfile::create([
+            'user_id' => $this->userB->id,
+            'nis' => 'B-' . Str::random(8),
+            'full_name' => $this->userB->name,
+        ]);
 
         // Clear context for the actual test runs to ensure middleware handles it
         $context->setTenantId(null);
