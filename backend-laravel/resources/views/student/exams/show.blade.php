@@ -264,6 +264,56 @@
     function requestId() {
         return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
+    function canonicalizeJson(value) {
+        if (Array.isArray(value)) return value.map(canonicalizeJson);
+        if (value && typeof value === 'object') {
+            const normalized = {};
+            Object.keys(value).sort().forEach(key => { normalized[key] = canonicalizeJson(value[key]); });
+            return normalized;
+        }
+        return value;
+    }
+    async function sha256Hex(value) {
+        if (!window.crypto?.subtle || typeof TextEncoder === 'undefined') {
+            throw new Error('Browser tidak mendukung verifikasi SHA-256 receipt. Jawaban tetap disimpan lokal dan belum dikonfirmasi.');
+        }
+        const digest = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+        return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    }
+    async function expectedAnswerPayloadHash(snapshotId, payload) {
+        // Must match Agent 2's canonical SHA-256 contract exactly:
+        // sorted object keys, list order preserved, UTF-8 JSON, no escaped slash/Unicode.
+        const canonical = canonicalizeJson({
+            snapshot_id: String(snapshotId),
+            answer_state: 'ANSWERED',
+            answer_payload: payload
+        });
+        return sha256Hex(JSON.stringify(canonical));
+    }
+    async function verifyAnswerReceipt(result, question, pendingItem) {
+        const receipt = result?.receipt;
+        const revision = Number(result?.data?.revision_number);
+        if (!receipt || typeof receipt !== 'object') throw new Error('Respons server tidak menyertakan receipt jawaban. Draft lokal dipertahankan.');
+        if (String(receipt.client_request_id || '') !== String(pendingItem.clientRequestId)) {
+            throw new Error('Receipt server tidak mengikat client_request_id yang sama. Draft lokal dipertahankan dan submit ditahan.');
+        }
+        if (String(receipt.attempt_id || '') !== String(state.attemptId)
+            || String(receipt.snapshot_id || '') !== String(question.id)
+            || !Number.isSafeInteger(revision) || revision < 1
+            || Number(receipt.revision_number) !== revision) {
+            throw new Error('Receipt server tidak cocok dengan Attempt, snapshot, atau revision jawaban lokal. Draft dipertahankan.');
+        }
+        if (typeof receipt.id !== 'string' || !receipt.id
+            || typeof receipt.payload_hash !== 'string' || !/^[a-f0-9]{64}$/.test(receipt.payload_hash)
+            || !Number.isFinite(Date.parse(receipt.committed_at || ''))) {
+            throw new Error('Receipt server tidak lengkap atau tidak valid. Draft lokal dipertahankan.');
+        }
+        const expectedHash = await expectedAnswerPayloadHash(question.id, pendingItem.payload);
+        if (receipt.payload_hash !== expectedHash) {
+            throw new Error('Hash payload pada receipt berbeda dari jawaban lokal. Draft dipertahankan dan submit ditahan.');
+        }
+        return receipt;
+    }
     function optionLabel(option) { return option.content ?? option.text ?? option.label ?? option.title ?? ''; }
 
     const LOCAL_DB_NAME = 'cbt-madrasah-student-v1';
@@ -568,7 +618,7 @@
         // may auto-submit immediately, and its terminal path must be able to clear it.
         updateTimer(data.attempt.expires_at);
         setSaveStatus(localPending.length ? `${localPending.length} draft lokal menunggu sinkronisasi` : 'Jawaban dipulihkan dari server', localPending.length > 0);
-        if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Respons server berhasil untuk draft lokal; receipt terverifikasi belum tersedia')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
+        if (localPending.length) flushPendingSaves().then(() => setSaveStatus('Draft lokal tersinkron dan receipt server terverifikasi')).catch(error => setSaveStatus(`Draft lokal belum tersinkron: ${error.message}`, true));
     }
 
     function updateTimer(expiresAt) {
@@ -753,6 +803,7 @@
                 const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}/answers/${encodeURIComponent(question.id)}`, {
                     method: 'PUT', body: JSON.stringify({ client_request_id: pendingItem.clientRequestId, base_revision: pendingItem.baseRevision, answer_payload: payload, answer_state: 'ANSWERED' })
                 });
+                await verifyAnswerReceipt(result, question, pendingItem);
                 state.revisions.set(question.id, Number(result.data.revision_number));
                 if (state.pending.get(question.id) === pendingItem) {
                     await acknowledgePersistedPending(question.id, pendingItem, result.data.revision_number);
@@ -763,7 +814,7 @@
                         state.pending.delete(question.id);
                     }
                 }
-                setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Respons server berhasil; receipt terverifikasi belum tersedia');
+                setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Jawaban tersimpan dan receipt server terverifikasi');
             } catch (error) {
                 if (error.status === 409 && error.body?.current_revision !== undefined) {
                     state.revisions.set(question.id, Number(error.body.current_revision));
