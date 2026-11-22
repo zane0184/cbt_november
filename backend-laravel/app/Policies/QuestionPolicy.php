@@ -12,13 +12,14 @@ class QuestionPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->tenant_id !== null && $user->hasPermission('question.view');
+        return $user->tenant_id !== null && $user->hasRole('GURU') && $user->hasPermission('question.view');
     }
 
     public function view(User $user, $model): bool
     {
         if (!$model instanceof Question
             || !$user->tenant_id
+            || !$user->hasRole('GURU')
             || $user->tenant_id !== $model->tenant_id
             || !$user->hasPermission('question.view')) {
             return false;
@@ -28,8 +29,7 @@ class QuestionPolicy extends BasePolicy
             'PERSONAL' => $model->owner_user_id === $user->id
                 && (!$model->subject_id || TeacherAccess::canManageSubject($user, $model->subject_id)),
             'SUBJECT' => $this->canAccessSubject($user, $model),
-            'MADRASAH' => $user->hasRole('ADMIN_MADRASAH')
-                || $this->canAccessSubject($user, $model),
+            'MADRASAH' => $this->canAccessSubject($user, $model),
             'SHARED' => $model->publications()
                 ->where('tenant_id', $user->tenant_id)
                 ->where('status', 'APPROVED')
