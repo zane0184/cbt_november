@@ -122,3 +122,13 @@ Jumlah snapshot backup terdaftar: 28. Seluruh blob SHA yang tercantum harus dive
 | docs/CHECKPOINT_AGENT3_WEB_ONLY_NEXT_GATE.md | ec17179508fbfe82ddad97c2549a86af78f110a6 | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_AGENT3_WEB_ONLY_NEXT_GATE.md.before-p0-test-hardening | ec17179508fbfe82ddad97c2549a86af78f110a6 | aa17b814e6ca2327a4e386d38105760d9515f25b | MATCH |
 
 Jumlah snapshot backup terdaftar: 32. Empat snapshot tambahan diverifikasi dengan blob SHA identik. Dua commit backup pertama tidak surfaced oleh respons GitHub Contents API, sehingga hanya blob equality yang diklaim; tidak mengarang commit SHA.
+
+
+## Backup tambahan — addendum kontrak QuestionVersion/Snapshot/Media (22 November 2026)
+
+| File sumber sebelum perubahan | Blob SHA source | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| docs/CHECKPOINT_AGENT3_WEB_ONLY_NEXT_GATE.md | 3a5af0930e7617c97d660cbeaea91d0aed27aa82 | docs/backup/web-guru-exact-role-20261122/CHECKPOINT_AGENT3_WEB_ONLY_NEXT_GATE.md.before-contract-review-addendum | 3a5af0930e7617c97d660cbeaea91d0aed27aa82 | a1f34b010dd5ad64c59a359f7e8d0f49d491eb82 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 93a9f2b3edd5053eb53444354f01236c4314b722 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-contract-review-addendum | 93a9f2b3edd5053eb53444354f01236c4314b722 | b38457efc04dca082bde3cd00f1067d969a5aaeb | MATCH |
+
+Jumlah snapshot backup terdaftar: 34. Dua snapshot tambahan diverifikasi dengan blob SHA identik; seluruh 34 path pada manifest telah diverifikasi pada rangkaian pemeriksaan ini.
