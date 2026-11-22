@@ -292,9 +292,12 @@
         }
     }
 
-    async function loadExecution() {
-        const execution = await api('/execution');
+    async function loadExecution(executionResponse = null, expectedAttemptId = null) {
+        const execution = executionResponse || await api('/execution', { method: 'GET' });
         const data = execution.data;
+        if (expectedAttemptId && String(data?.attempt?.id) !== String(expectedAttemptId)) {
+            throw new Error('Server mengembalikan Attempt berbeda dari pengiriman yang sedang dipulihkan. Runner dihentikan untuk mencegah jawaban masuk ke Attempt lain.');
+        }
         state.attemptId = data.attempt.id;
         state.questions = data.questions || [];
         state.serverEpoch = Date.parse(data.exam.server_now);
@@ -545,8 +548,22 @@
                 showCompletion(status);
                 return;
             }
+            if (status === 'IN_PROGRESS') {
+                // Resume only through the server's existing active-Attempt execution
+                // endpoint. Never POST start here: an unknown submit must not create
+                // a second Attempt or silently pass the original admission gate.
+                const execution = await api('/execution', { method: 'GET' });
+                if (String(execution.data?.attempt?.id) !== String(state.attemptId)) {
+                    throw new Error('Attempt aktif di server tidak cocok dengan Attempt yang pengiriman statusnya sedang dipulihkan.');
+                }
+                await loadExecution(execution, state.attemptId);
+                await persistSubmitState('RESUMED');
+                state.submitOutcomeUnknown = false;
+                button.classList.add('hidden');
+                return;
+            }
             await persistSubmitState('UNKNOWN').catch(() => {});
-            showError('Server masih melaporkan Attempt belum terminal. Status pengiriman belum dapat dipastikan; jangan kirim ulang. Hubungi Guru/Admin untuk pemeriksaan.');
+            showError('Server belum mengembalikan status terminal atau Attempt aktif yang dapat dilanjutkan. Tidak ada Attempt baru yang dibuat; hubungi Guru/Admin untuk pemeriksaan.');
         } catch (error) {
             showError(`Status pengiriman belum dapat dipastikan: ${error.message}. Jangan kirim ulang dan jangan hapus data browser; coba periksa status lagi atau hubungi Guru/Admin.`);
         } finally {
