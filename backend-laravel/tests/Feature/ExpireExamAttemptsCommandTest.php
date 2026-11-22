@@ -8,6 +8,7 @@ use App\Models\Assessment;
 use App\Models\AuditLog;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
+use App\Models\DeviceLease;
 use App\Models\ExamAttemptScore;
 use App\Models\ExamAttemptScoreCurrent;
 use App\Models\ExamParticipant;
@@ -95,10 +96,27 @@ class ExpireExamAttemptsCommandTest extends TestCase
             'question_order' => [$snapshot->id],
             'device_fingerprint' => 'web-session-expiry',
         ]);
+        DeviceLease::create([
+            'tenant_id' => $tenant->id,
+            'exam_attempt_id' => $attempt->id,
+            'registered_device_id' => null,
+            'auth_session_hash' => hash('sha256', 'expiry-session-digest'),
+            'fence_generation' => 1,
+            'status' => 'ACTIVE',
+            'leased_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+        ]);
 
         $this->artisan('cbt:expire-attempts')->assertExitCode(0);
 
         $this->assertSame('EXPIRED', $attempt->fresh()->status);
+        $this->assertNull($attempt->fresh()->device_lease_expires_at);
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $attempt->id,
+            'fence_generation' => 1,
+            'status' => 'RELEASED',
+            'release_reason' => 'SERVER_EXPIRY',
+        ]);
         $this->assertSame('COMPLETED', $participant->fresh()->status);
         $score = ExamAttemptScore::where('attempt_id', $attempt->id)->firstOrFail();
         $this->assertSame('AUTO_SCORED', $score->grading_status);
