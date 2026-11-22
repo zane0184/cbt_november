@@ -248,7 +248,10 @@ class ExamRoomSessionConcurrencyTest extends TestCase
     }
     public function test_concurrent_proctor_confirmation_is_serialized_by_guru_row_and_rejects_overlap(): void
     {
-        $guruRole = Role::query()->where('name', 'GURU')->firstOrFail();
+        $guruRole = Role::query()->firstOrCreate(
+            ['name' => 'GURU'],
+            ['label' => 'Guru']
+        );
         $proctor = User::create([
             'tenant_id' => $this->tenantId,
             'name' => 'Guru Proktor Concurrent',
