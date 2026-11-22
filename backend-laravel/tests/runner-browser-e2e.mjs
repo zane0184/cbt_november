@@ -241,14 +241,14 @@ try {
     const scenario = makeScenario();
     const { context, page } = await newPage(browser, scenario);
     await start(page);
-    const mobileColumns = await page.locator('.runner-layout').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length);
+    const mobileColumns = await page.locator('.runner-layout').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length);
     const submitHeight = await page.locator('#submit-button').evaluate(element => element.getBoundingClientRect().height);
     assert.equal(mobileColumns, 1, 'Mobile layout must use a single content column');
     assert.ok(submitHeight >= 48, 'Submit touch target must be at least 48 CSS pixels');
     await openQuestionNavigation(page);
     assert.equal(await page.locator('#question-nav-panel').evaluate(element => element.open), true);
     await page.setViewportSize({ width: 1440, height: 900 });
-    const desktopColumns = await page.locator('.runner-layout').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length);
+    const desktopColumns = await page.locator('.runner-layout').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length);
     assert.equal(desktopColumns, 2, 'Desktop layout must show the question navigation column');
     await page.setViewportSize({ width: 390, height: 844 });
     assert.equal(await page.locator('#question-nav-panel').evaluate(element => element.open), true, 'Manual mobile drawer state must survive resize');
