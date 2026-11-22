@@ -81,3 +81,12 @@ Jumlah snapshot backup terdaftar: 18. Seluruh blob SHA yang tercantum harus dive
 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md | c8c30ae7311d55adaed2f2058c3f85c421c61ca8 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-issue8-comment-count-correction | c8c30ae7311d55adaed2f2058c3f85c421c61ca8 | 07ad9ed99cbe24492264fb0f5d74c2bc15ed7a23 | MATCH |
 
 Jumlah snapshot backup terdaftar: 20. Seluruh blob SHA yang tercantum: MATCH.
+
+## Backup tambahan — perbaikan dua kegagalan CI Agent 2 review
+
+| File sumber | Blob SHA source sebelum edit | Path backup | Blob SHA backup | Commit backup | Hasil |
+|---|---|---|---|---|---|
+| backend-laravel/tests/Feature/TeacherPortalFoundationTest.php | 0a48cede38639093e5bd53e5b99ae0526babd8c9 | docs/backup/web-guru-exact-role-20261122/TeacherPortalFoundationTest.php.before-ci-failure-fixes | 0a48cede38639093e5bd53e5b99ae0526babd8c9 | 63ff09920d509bbf60376f9cde998f4a917e06f2 | MATCH |
+| docs/backup/web-guru-exact-role-20261122/MANIFEST.md | 5981cc5116cb5846877be0132c536a29b44c4996 | docs/backup/web-guru-exact-role-20261122/MANIFEST.md.before-ci-failure-fixes | 5981cc5116cb5846877be0132c536a29b44c4996 | fec9741a38d8c743c89b22c9c01b1611ba963c41 | MATCH |
+
+Jumlah snapshot backup terdaftar: 22. Seluruh blob SHA yang tercantum harus diverifikasi sebelum P0 ditutup.
