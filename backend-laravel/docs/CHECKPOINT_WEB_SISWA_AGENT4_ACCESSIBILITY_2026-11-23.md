@@ -59,3 +59,13 @@ Backup dibuat sebelum perubahan dan diverifikasi dengan membandingkan konten has
 - Check-run pada HEAD saat checkpoint belum muncul (0 check runs; status pending).
 - Tidak ada perubahan atau intervensi pada pekerjaan Agent 2.
 - Perbaikan ini bukan bukti aksesibilitas penuh/WCAG conformance; pengujian dengan screen reader nyata masih diperlukan.
+
+## Follow-up fixture synchronization
+- Audit lanjutan menemukan fixture HTML Playwright dirakit manual dan tidak otomatis mengambil markup live region dari Blade.
+- Fixture diperbarui agar memuat `#question-announcement`, sehingga assertion browser menguji markup yang memang tersedia pada runner.
+- Backup byte/text-exact diverifikasi:
+  `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/runner-browser-e2e.mjs.before-a11y-fixture-sync-2026-11-23.md`
+  - Source blob sebelum patch: `133f50f7516cbde0d056aaf8674a38d5f70c6f23`
+  - Backup commit: `efe0d28bf211decf49477e91572fbf811726bdfe`
+- Fixture sync commit: `4a82189387298d5cf41b922a67d4faa044ffd662`
+- Pengujian Actions masih menunggu; belum ada klaim E2E pass untuk patch aksesibilitas.
