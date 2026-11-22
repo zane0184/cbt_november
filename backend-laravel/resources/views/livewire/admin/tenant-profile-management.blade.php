@@ -15,6 +15,12 @@
                     <input wire:model="name" type="text" maxlength="255" required class="w-full rounded-xl border border-cardBorder px-4 py-3 text-sm">
                     @error('name') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
+                <div>
+                    <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-navy-900">Nama Kepala Madrasah (untuk tanda tangan laporan)</label>
+                    <input wire:model="principalName" type="text" maxlength="255" class="w-full rounded-xl border border-cardBorder px-4 py-3 text-sm" placeholder="Nama lengkap Kepala Madrasah">
+                    <p class="mt-1 text-xs text-textSecondary">Hanya data identitas untuk dicantumkan pada laporan penilaian; bukan akun atau role pengguna.</p>
+                    @error('principalName') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
                         <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-navy-900">NSM (12 digit)</label>
