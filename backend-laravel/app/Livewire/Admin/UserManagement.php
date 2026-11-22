@@ -243,7 +243,7 @@ class UserManagement extends Component
 
         $rules = [
             'editName' => ['required','string','max:255'],
-            'editUsername' => ['required','string','min:3','max:80','regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users','username')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->id)],
+            'editUsername' => ['nullable','string','min:3','max:80','regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users','username')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->id)],
             'editEmail' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))->ignore($user->id)],
         ];
         if ($isGuru) {
@@ -265,23 +265,25 @@ class UserManagement extends Component
                 ->where('status', 'ACTIVE')->lockForUpdate()->firstOrFail();
             $this->validate($rules);
             $locked = $this->manageableUserQuery()->whereKey($userId)->lockForUpdate()->firstOrFail();
-            $usernameIdentityConflict = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
-                ->where('user_id', '<>', $locked->id)
-                ->where(function ($query) use ($validated): void {
-                    $username = strtolower(trim($validated['editUsername']));
-                    $query->whereRaw('LOWER(nip) = ?', [$username])
-                        ->orWhereRaw('LOWER(nik) = ?', [$username])
-                        ->orWhereRaw('LOWER(employee_identifier) = ?', [$username]);
-                })->exists()
+            $editUsername = strtolower(trim($validated['editUsername'] ?? ''));
+            $usernameIdentityConflict = $editUsername !== '' && (
+                TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
+                    ->where('user_id', '<>', $locked->id)
+                    ->where(function ($query) use ($editUsername): void {
+                        $query->whereRaw('LOWER(nip) = ?', [$editUsername])
+                            ->orWhereRaw('LOWER(nik) = ?', [$editUsername])
+                            ->orWhereRaw('LOWER(employee_identifier) = ?', [$editUsername]);
+                    })->exists()
                 || StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)
                     ->where('user_id', '<>', $locked->id)
-                    ->whereRaw('LOWER(nisn) = ?', [strtolower(trim($validated['editUsername']))])->exists();
+                    ->whereRaw('LOWER(nisn) = ?', [$editUsername])->exists()
+            );
             if ($usernameIdentityConflict) {
                 throw ValidationException::withMessages(['editUsername' => 'Username bentrok dengan identitas login Guru/Siswa lain.']);
             }
             $oldValues = ['name' => $locked->name, 'username' => $locked->username, 'email' => $locked->email];
             $locked->name = trim($validated['editName']);
-            $locked->username = strtolower(trim($validated['editUsername']));
+            $locked->username = trim($validated['editUsername'] ?? '') !== '' ? strtolower(trim($validated['editUsername'])) : null;
             $locked->email = ($validated['editEmail'] ?? '') !== '' ? strtolower(trim($validated['editEmail'])) : null;
             $locked->save();
 
