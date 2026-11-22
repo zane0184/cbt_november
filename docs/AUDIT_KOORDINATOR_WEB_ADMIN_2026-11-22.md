@@ -155,3 +155,49 @@ Tidak mengubah routes/web.php, migration, permission tables, database, branch ma
 
 ### STATUS
 P0-A source patch awal sudah dibuat, tetapi BELUM ACCEPTED dan BELUM VERIFIED. Tindak lanjut wajib: pulihkan observabilitas runner, jalankan seluruh test terkait pada PHP 8.3 + disposable MySQL 8, periksa route boundary Guru/Admin dan tes negative multi-role/legacy roles. Jangan lanjut ke P0-B atau fitur User Management tambahan sebelum patch ini mendapat hasil test yang bisa diperiksa.
+
+
+
+## ADDENDUM KEPUTUSAN ROLE — RETIRE KAMAD/OPERATOR (22 NOV 2026)
+
+### DESAIN DIKUNCI
+Portal akun hanya ADMIN_MADRASAH, GURU, SISWA.
+- KAMAD bukan role, bukan akun portal, dan tidak memiliki dashboard/permission. Nama Kepala Madrasah adalah data identitas madrasah di pengaturan Admin, dipakai sebagai nama penanda tangan pada laporan penilaian yang diekspor Guru.
+- OPERATOR bukan role/portal terpisah. Fungsi administrasi dan master data menjadi tanggung jawab ADMIN_MADRASAH.
+- PROKTOR bukan role permanen; penugasan tetap melekat pada Guru per Exam + Room.
+
+### AUDIT
+- DatabaseSeeder sebelumnya masih membuat role KAMAD.
+- RolePermissionBootstrapper sebelumnya mensyaratkan dan memberi permission kepada KAMAD.
+- LegacyRoleMigrationService yang telah ada memetakan ADMIN dan OPERATOR menjadi ADMIN_MADRASAH, PROKTOR menjadi GURU, serta mengarsipkan role alias.
+- Ada route kompatibilitas /operator/dashboard dan komponen/dashboard Kamad yang tidak lagi sesuai model tiga portal.
+- Tenant belum memiliki kolom nama Kepala Madrasah; laporan PDF belum memiliki blok tanda tangan Guru/Kepala Madrasah.
+
+### IMPLEMENTASI DI BRANCH KOORDINATOR
+1. RolePermissionBootstrapper kini hanya mengelola permission role ADMIN_MADRASAH dan GURU; SISWA tetap menjadi role portal tanpa grants administrasi. DatabaseSeeder tidak lagi membuat KAMAD.
+2. Test RolePermissionBootstrapper disesuaikan untuk tiga role portal dan tanpa KAMAD/OPERATOR.
+3. Route /operator/dashboard dihapus; test dashboard lama diganti verifikasi tiga role portal serta 404 untuk /operator/dashboard dan /kamad/dashboard.
+4. Komponen KamadDashboard.php dihapus. Salinan source dan view disimpan di docs/backup/... sebelum penghapusan; view lama tetap tersimpan sebagai backup karena operasi penghapusan view menemui konflik GitHub API.
+5. Migration 2026_11_22_000004_retire_kamad_role.php + RetireKamadRoleService mengarsipkan role KAMAD dan mencabut assignments/permission pivots dengan catatan reversible:
+   - Akun yang hanya memiliki KAMAD dipertahankan, role_user KAMAD dilepas, users.role menjadi UNASSIGNED sehingga tidak memperoleh akses portal.
+   - Akun KAMAD yang juga memiliki tepat satu role portal canonical mempertahankan role portal tersebut.
+   - Akun dengan role tambahan ambigu atau data users.role tidak konsisten membuat migration berhenti (fail closed), tidak dipaksa dikonversi.
+   - Record migrasi menyimpan data untuk rollback; role lama diarsipkan sebagai ARCHIVED_KAMAD_<UUID>, bukan hard-delete, agar histori/FK tetap aman.
+6. Migration 2026_11_22_000005_add_principal_name_to_tenants menambahkan principal_name.
+7. Pengaturan Profil & Identitas Madrasah memiliki input Nama Kepala Madrasah. Tenant model dan Livewire menyimpan/mengaudit nilainya.
+8. Export PDF hasil ujian dan laporan hasil siswa oleh Guru menampilkan blok tanda tangan “Mengetahui, Kepala Madrasah” dan “Guru Mata Pelajaran” memakai principal_name tenant dan nama Guru yang sedang mengekspor. Ekspor mandiri oleh Siswa tidak menampilkan blok tanda tangan.
+9. Test baru RetireKamadRoleServiceTest mencakup arsip role, akun KAMAD-only, akun Admin+KAMAD, role ambigu fail-closed, dan rollback. TenantProfileManagementTest memverifikasi penyimpanan principal_name.
+
+### BACKUP
+Sebelum patch, backup file yang diubah dibuat di docs/backup/coordinator-web-admin-2026-11-22/ dengan suffix:
+- .before-remove-kamad-operator
+- .before-retire-kamad-operator
+- .before-principal-signature
+Source yang dihapus KamadDashboard.php memiliki backup. Route dan test juga memiliki backup.
+
+### PENGUJIAN / BATASAN
+Belum ada PHPUnit, lint, atau migrasi yang dijalankan. Runner GitHub Actions sebelumnya tidak menyediakan steps/logs dan menghasilkan BlobNotFound. Seluruh perubahan masih branch koordinator; migration hanya source code dan BELUM dijalankan pada database mana pun. Tidak ada perubahan VPS/produksi, main, APP_KEY, atau data live.
+Migration 000004 harus diuji pada disposable MySQL 8 dengan fixture kasus akun KAMAD-only, KAMAD+Admin/Guru/Siswa, konflik multi-role, orphan role column, permission pivots, dan rollback sebelum disetujui untuk deployment.
+
+### STATUS
+Keputusan desain diterapkan pada source branch, tetapi belum lulus pengujian dan belum diterima. Role OPERATOR lama dipetakan menjadi ADMIN_MADRASAH oleh migration 000003 yang sudah ada. KAMAD lama diarsipkan oleh migration 000004. Tidak boleh menjalankan migration pada VPS sebelum preflight inventaris, backup terverifikasi, uji clone, rehearsal rollback, dan persetujuan eksplisit pengguna.
