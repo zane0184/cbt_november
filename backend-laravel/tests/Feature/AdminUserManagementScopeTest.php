@@ -317,4 +317,80 @@ class AdminUserManagementScopeTest extends TestCase
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('InitialPassword123!', $foreignGuru->fresh()->password));
     }
 
+
+    public function test_admin_can_deactivate_and_reactivate_guru_with_reason_audit_and_token_revocation(): void
+    {
+        $tenant = Tenant::create(['name' => 'Madrasah Lifecycle Akun', 'code' => 'LIFECY']);
+        $this->setTenantContext($tenant->id);
+        $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
+        Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $this->signInAdmin($tenant);
+
+        $guru = User::create([
+            'name' => 'Guru Lifecycle',
+            'username' => 'guru.lifecycle',
+            'password' => bcrypt('InitialPassword123!'),
+        ]);
+        $guru->roles()->sync([$guruRole->id]);
+        TeacherProfile::create(['user_id' => $guru->id, 'full_name' => 'Guru Lifecycle']);
+        $plainTextToken = $guru->createToken('lifecycle-test')->plainTextToken;
+        $tokenId = explode('|', $plainTextToken)[0];
+
+        Livewire::test(UserManagement::class)
+            ->call('openAccountStatusModal', $guru->id, false)
+            ->assertSet('showAccountStatusModal', true)
+            ->set('statusReason', 'Akun dinonaktifkan sementara untuk pengujian.')
+            ->call('updateAccountStatus')
+            ->assertHasNoErrors()
+            ->assertSet('showAccountStatusModal', false);
+
+        $guru->refresh();
+        $this->assertFalse($guru->is_active);
+        $this->assertDatabaseMissing('personal_access_tokens', ['id' => $tokenId]);
+        $this->assertTrue(AuditLog::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('action', 'USER_DEACTIVATED')
+            ->where('entity_id', $guru->id)
+            ->exists());
+
+        Livewire::test(UserManagement::class)
+            ->call('openAccountStatusModal', $guru->id, true)
+            ->set('statusReason', 'Akun diaktifkan kembali setelah verifikasi.')
+            ->call('updateAccountStatus')
+            ->assertHasNoErrors();
+
+        $this->assertTrue($guru->fresh()->is_active);
+        $this->assertTrue(AuditLog::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('action', 'USER_REACTIVATED')
+            ->where('entity_id', $guru->id)
+            ->exists());
+        $this->assertSame(0, $guru->fresh()->tokens()->count());
+    }
+
+    public function test_admin_cannot_change_account_status_for_another_tenant_user(): void
+    {
+        $tenantA = Tenant::create(['name' => 'Madrasah Lifecycle A', 'code' => 'LIFA']);
+        $tenantB = Tenant::create(['name' => 'Madrasah Lifecycle B', 'code' => 'LIFB']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+
+        $this->setTenantContext($tenantB->id);
+        $foreignGuru = User::create([
+            'name' => 'Guru Foreign Lifecycle',
+            'username' => 'guru.foreign.lifecycle',
+            'password' => bcrypt('InitialPassword123!'),
+        ]);
+        $foreignGuru->roles()->sync([$guruRole->id]);
+        TeacherProfile::create(['user_id' => $foreignGuru->id, 'full_name' => 'Guru Foreign Lifecycle']);
+
+        $this->setTenantContext($tenantA->id);
+        $this->signInAdmin($tenantA);
+
+        Livewire::test(UserManagement::class)
+            ->call('openAccountStatusModal', $foreignGuru->id, false)
+            ->assertNotFound();
+
+        $this->assertTrue($foreignGuru->fresh()->is_active);
+    }
+
 }
