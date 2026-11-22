@@ -26,8 +26,7 @@ class QuestionBank extends Component
     public function mount()
     {
         $user = auth()->user();
-        if (!$user || !$user->hasPermission('question.view')
-            || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'GURU'])->exists()) {
+        if (!$user || !$user->hasRole('GURU') || !$user->hasPermission('question.view')) {
             abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk melihat bank soal.');
         }
     }
