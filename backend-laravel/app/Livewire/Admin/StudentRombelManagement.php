@@ -134,7 +134,7 @@ class StudentRombelManagement extends Component
         $students = StudentProfile::query()
             ->with(['user', 'rombels.academicYear'])
             ->whereHas('user.roles', fn ($query) => $query->where('name', 'SISWA'))
-            ->whereHas('user', fn ($query) => $query->has('roles', '=', 1))
+            ->whereHas('user', fn ($query) => $query->whereNull('deleted_at')->has('roles', '=', 1))
             ->when($this->search, function ($query): void {
                 $query->where(function ($scope): void {
                     $scope->where('nisn', 'like', '%' . $this->search . '%')
@@ -148,7 +148,7 @@ class StudentRombelManagement extends Component
         $availableStudents = StudentProfile::query()
             ->with('user')
             ->whereHas('user.roles', fn ($query) => $query->where('name', 'SISWA'))
-            ->whereHas('user', fn ($query) => $query->has('roles', '=', 1))
+            ->whereHas('user', fn ($query) => $query->whereNull('deleted_at')->has('roles', '=', 1))
             ->orderBy('full_name')
             ->get();
 
