@@ -28,13 +28,13 @@ class ExamController extends Controller
         $this->authorize('viewAny', Exam::class);
         $query = Exam::with(['assessment']);
 
-        if ($request->user()->hasRole('SISWA')) {
+        if ($request->user()->hasExactRole('SISWA')) {
             $query->whereHas('participants', function($q) use ($request) {
                 $q->where('user_id', $request->user()->id);
             });
         }
 
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             $query = TeacherAccess::constrainExamQuery($query, $request->user());
         }
 
@@ -75,7 +75,7 @@ class ExamController extends Controller
             'shuffle_options' => 'boolean',
         ]);
 
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             $assessment = \App\Models\Assessment::query()->findOrFail($validated['assessment_id']);
             if (!TeacherAccess::canManageAssessment($request->user(), $assessment)
                 || $assessment->created_by !== $request->user()->id) {
@@ -101,13 +101,9 @@ class ExamController extends Controller
 
         $data = $exam->load(['assessment']);
 
-        if (auth()->user()->hasRole('SISWA')) {
-            // Students may see exam metadata before the schedule, but question
-            // snapshots are released only while the server says the exam is ongoing.
-            if ($exam->canStartAttempt()) {
-                $data->load('snapshots');
-            }
-
+        if (auth()->user()->hasExactRole('SISWA')) {
+            // Question snapshots are never released by the metadata endpoint.
+            // They are available only through execution after token/eligibility admission.
             $latestAttempt = \App\Models\ExamAttempt::where('exam_id', $exam->id)
                 ->whereHas('participant', function($q) {
                     $q->where('user_id', auth()->id());
@@ -116,8 +112,10 @@ class ExamController extends Controller
                 ->first();
 
             $data = $data->toArray();
+            unset($data['snapshots']);
 
-            // Security: Sanitize snapshots in relationships
+            // Defense in depth: if an upstream relation was preloaded, snapshots
+            // are still removed from the student metadata response.
             if (isset($data['snapshots'])) {
                 foreach ($data['snapshots'] as &$snapshot) {
                     unset($snapshot['snapshot_explanation']);
@@ -248,7 +246,7 @@ class ExamController extends Controller
                 abort(422, 'Rombel harus berasal dari tahun ajaran yang sama dengan asesmen ujian.');
             }
 
-            if ($request->user()->hasRole('GURU')
+            if ($request->user()->hasExactRole('GURU')
                 && !TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $assessment)) {
                 abort(403, 'Rombel tidak tercakup dalam penugasan aktif Guru untuk mapel, tahun ajaran, dan semester asesmen ini.');
             }
