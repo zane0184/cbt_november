@@ -52,3 +52,10 @@ Note: This preserved test snapshot predates both the valid cross-year relationsh
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-carbon-import-syntax-fix | 864c31547a900d24cb5b55792b63adc8b9c21a75 | 13240 | a6bb82a01bd642bb7613fa77946aa4be27ae9380 |
+
+
+## Supplemental snapshot — SISWA access-denial fixture
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-canonical-siswa-fixture | 8b7a84dd3fcce18c6a803acc44ebd081cbd7aa45 | 13225 | a76b215b5cf60946e37e9a47d12016381b7ea6a8 |
