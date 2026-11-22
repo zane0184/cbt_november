@@ -265,3 +265,10 @@ The previous test teardown disabled `FOREIGN_KEY_CHECKS` while deleting a dispos
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/database/migrations/2026_11_22_110001_create_exam_room_session_scope.php | docs/backup/stage4b-room-session-2026-11-22/2026_11_22_110001_create_exam_room_session_scope.php.before-explicit-fk-check-rollback-guard | 4250669036b80c54ceb2bea8f4ae9123f97b45b5 | 17062 | b5e3d5ebe8e4a566a0dd6f59e43ba6fb9215588f |
+
+
+## Supplemental snapshot — canonical Guru role fixture correction
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/ExamRoomSessionConcurrencyTest.php | docs/backup/stage4b-room-session-2026-11-22/ExamRoomSessionConcurrencyTest.php.before-ensure-canonical-guru-fixture | 68f02360ae6408e98c8346c148733136ba38b186 | 15035 | cce7f5e0d41adaa6c0b464bf04b369fb486332d1 |
