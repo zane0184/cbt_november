@@ -33,7 +33,7 @@ class ExamParticipantRoomAssignment extends Model
 
     public function assigner(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_by');
+        return $this->belongsTo(User::class, 'assigned_by')->withTrashed();
     }
 
     public function releaser(): BelongsTo
