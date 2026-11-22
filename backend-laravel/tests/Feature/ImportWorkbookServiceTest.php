@@ -88,7 +88,16 @@ class ImportWorkbookServiceTest extends TestCase
         $this->assertSame('COMPLETED', $result['batch']->status);
         $this->assertCount(2, $result['activation_links']);
         $this->assertDatabaseHas('teacher_profiles', ['tenant_id' => $this->tenant->id, 'nip' => '001234567890123456']);
-        $this->assertDatabaseHas('teacher_profiles', ['tenant_id' => $this->tenant->id, 'nik' => '0012345678901234']);
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'nip' => '001234567890123456',
+            'employment_type' => 'ASN',
+        ]);
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'nik' => '0012345678901234',
+            'employment_type' => 'HONORER',
+        ]);
         $resolver = app(LoginIdentityResolver::class);
         $this->assertSame('Guru PNS Contoh', $resolver->resolve('001234567890123456')?->name);
         $this->assertSame('Guru Honorer Contoh', $resolver->resolve('0012345678901234')?->name);
