@@ -49,29 +49,35 @@ class AuthWebController extends Controller
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
         }
 
-        $loginAllowed = DB::transaction(function () use ($user, $request): bool {
+        $loginStatus = DB::transaction(function () use ($user, $request): string {
             // Serialize login against Attempt creation on the same persisted User row.
             $lockedUser = User::query()->where('tenant_id', $user->tenant_id)->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser || !$lockedUser->is_active) {
-                return false;
+            if (!$lockedUser) {
+                return 'INVALID';
+            }
+            if (!$lockedUser->is_active) {
+                return 'INACTIVE';
             }
             $lockedUser->load('roles');
 
             if ($lockedUser->hasExactRole('SISWA')
                 && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
-                return false;
+                return 'ACTIVE_EXAM';
             }
 
             Auth::login($lockedUser, $request->boolean('remember'));
             $request->session()->regenerate();
 
-            return true;
+            return 'OK';
         });
 
-        if (!$loginAllowed) {
-            return back()->withErrors([
-                'identifier' => 'Ujian Anda sedang aktif pada sesi/perangkat lain. Selesaikan atau pulihkan Attempt yang sama sebelum login kembali.',
-            ])->withInput($request->only('identifier'));
+        if ($loginStatus !== 'OK') {
+            $message = match ($loginStatus) {
+                'ACTIVE_EXAM' => 'Ujian Anda sedang aktif pada sesi/perangkat lain. Selesaikan atau pulihkan Attempt yang sama sebelum login kembali.',
+                'INACTIVE' => 'Akun tidak aktif. Hubungi Admin Madrasah.',
+                default => 'Identitas atau password tidak valid.',
+            };
+            return back()->withErrors(['identifier' => $message])->withInput($request->only('identifier'));
         }
 
         RateLimiter::clear($throttleKey);
