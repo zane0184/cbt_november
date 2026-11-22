@@ -150,4 +150,18 @@ class AuthTest extends TestCase
         $response->assertStatus(200);
         $this->assertNull(PersonalAccessToken::find($tokenId));
     }
+    public function test_soft_deleted_user_cannot_authenticate_with_existing_sanctum_token(): void
+    {
+        $plainToken = $this->user->createToken('before-deactivation')->plainTextToken;
+        $this->user->delete();
+
+        $this->withToken($plainToken)
+            ->getJson('/api/v1/auth/me')
+            ->assertUnauthorized();
+
+        $this->assertSoftDeleted('users', ['id' => $this->user->id]);
+        $this->assertNotNull(User::withTrashed()->find($this->user->id));
+        $this->assertNull(User::query()->find($this->user->id));
+    }
+
 }
