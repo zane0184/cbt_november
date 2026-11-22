@@ -16,7 +16,7 @@ class ExamRoom extends Model
     protected $casts = ['capacity' => 'integer'];
 
     /** Exams using this reusable physical room (direct simultaneous model). */
-    public function exams(): \\Illuminate\\Database\\Eloquent\\Relations\\BelongsToMany
+    public function exams(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(Exam::class, 'exam_room_exam', 'exam_room_id', 'exam_id')
             ->withPivot(['id', 'tenant_id', 'capacity_override', 'status', 'assigned_by'])
