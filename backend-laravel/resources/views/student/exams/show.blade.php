@@ -114,7 +114,7 @@
                 <div class="question-card rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                     <div class="mb-4 flex items-center justify-between gap-2"><span id="question-number" class="text-sm font-semibold text-blue-700"></span><span id="question-points" class="shrink-0 text-xs text-slate-500"></span></div>
                     <div id="question-media" class="question-copy-protected mb-5 space-y-3"></div>
-                    <div id="question-stem" class="question-copy-protected mb-6 whitespace-pre-wrap text-lg leading-relaxed"></div>
+                    <div id="question-stem" dir="auto" class="question-copy-protected mb-6 whitespace-pre-wrap text-lg leading-relaxed"></div>
                     <div id="question-input" class="question-copy-protected space-y-3"></div>
                     <div class="mt-8 flex justify-between gap-3"><button id="previous-button" class="flex-1 rounded-xl border border-slate-300 px-3 py-3 font-semibold sm:flex-none sm:px-4">Sebelumnya</button><button id="next-button" class="flex-1 rounded-xl bg-blue-700 px-3 py-3 font-semibold text-white sm:flex-none sm:px-5">Berikutnya</button></div>
                 </div>
@@ -445,6 +445,7 @@
     }
     function createOptionControl(question, option, type, selected) {
         const label = document.createElement('label');
+        label.dir = 'auto';
         label.className = 'flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-3 hover:bg-slate-50';
         const input = document.createElement('input'); input.type = type; input.name = `question-${question.id}`; input.value = option.id; input.className = 'mt-1';
         input.checked = Array.isArray(selected) ? selected.includes(option.id) : selected === option.id;
@@ -456,7 +457,7 @@
             } else payload = { selected_option_id: option.id };
             queueSave(question, payload);
         });
-        const text = document.createElement('span'); text.textContent = optionLabel(option); label.append(input, text); return label;
+        const text = document.createElement('span'); text.dir = 'auto'; text.textContent = optionLabel(option); label.append(input, text); return label;
     }
 
     function renderQuestion() {
@@ -488,7 +489,7 @@
         } else if (type === 'MULTIPLE_RESPONSE') {
             options.forEach(option => inputArea.appendChild(createOptionControl(question, option, 'checkbox', payload.selected_option_ids || [])));
         } else if (type === 'SHORT_ANSWER' || type === 'ESSAY') {
-            const textarea = document.createElement('textarea'); textarea.rows = type === 'ESSAY' ? 8 : 3; textarea.maxLength = 20000;
+            const textarea = document.createElement('textarea'); textarea.dir = 'auto'; textarea.rows = type === 'ESSAY' ? 8 : 3; textarea.maxLength = 20000;
             textarea.className = 'w-full rounded-xl border border-slate-300 p-4'; textarea.placeholder = 'Ketik jawaban Anda…'; textarea.value = payload.text || '';
             textarea.addEventListener('input', () => queueSave(question, { text: textarea.value })); inputArea.appendChild(textarea);
         } else if (type === 'MATCHING') {
@@ -499,9 +500,9 @@
             } else {
                 const existing = Array.isArray(payload.matches) ? payload.matches : [];
                 left.forEach(leftOption => {
-                    const wrap = document.createElement('label'); wrap.className = 'block rounded-xl border border-slate-200 p-3';
-                    const title = document.createElement('span'); title.className = 'mb-2 block font-semibold'; title.textContent = optionLabel(leftOption);
-                    const select = document.createElement('select'); select.className = 'w-full rounded-lg border border-slate-300 p-3';
+                    const wrap = document.createElement('label'); wrap.dir = 'auto'; wrap.className = 'block rounded-xl border border-slate-200 p-3';
+                    const title = document.createElement('span'); title.dir = 'auto'; title.className = 'mb-2 block font-semibold'; title.textContent = optionLabel(leftOption);
+                    const select = document.createElement('select'); select.dir = 'auto'; select.className = 'w-full rounded-lg border border-slate-300 p-3';
                     const empty = document.createElement('option'); empty.value = ''; empty.textContent = 'Pilih pasangan…'; select.appendChild(empty);
                     right.forEach(rightOption => { const option = document.createElement('option'); option.value = rightOption.id; option.textContent = optionLabel(rightOption); select.appendChild(option); });
                     const prior = existing.find(item => item.left_id === leftOption.id); if (prior) select.value = prior.right_id;
