@@ -12,6 +12,7 @@ use App\Models\Rombel;
 use App\Models\Role;
 use App\Models\Semester;
 use App\Models\StudentProfile;
+use App\Models\StudentAcademicEvent;
 use App\Models\Subject;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
@@ -115,7 +116,7 @@ class ImportWorkbookService
                     if ($row->status !== 'VALID') return null;
                     $payload = json_decode(Crypt::decryptString($row->encrypted_payload), true, 512, JSON_THROW_ON_ERROR);
                     if ($row->sheet_name === 'Data Guru') $result = $this->importTeacher($payload, $tenantId, $userId);
-                    elseif ($row->sheet_name === 'Data Siswa') $result = $this->importStudent($payload, $tenantId, $userId);
+                    elseif ($row->sheet_name === 'Data Siswa') $result = $this->importStudent($payload, $tenantId, $userId, $batchId);
                     else $result = $this->importAssignment($payload, $tenantId, $userId);
                     $summary = $row->row_summary ?? [];
                     if (!empty($result['user_id'])) $summary['created_user_id'] = $result['user_id'];
@@ -596,7 +597,7 @@ class ImportWorkbookService
         return $this->createActivation($user,$p['name'],$p['nip'] ?: $p['nik'],$tenantId);
     }
 
-    private function importStudent(array $p, string $tenantId, string $userId): array
+    private function importStudent(array $p, string $tenantId, string $userId, string $batchId): array
     {
         $exists = StudentProfile::withoutGlobalScopes()->where('tenant_id',$tenantId)
             ->where(fn($q) => $q->where('nisn',$p['nisn'])->orWhere('nis',$p['nis']))->exists();
@@ -616,16 +617,41 @@ class ImportWorkbookService
         $user = User::create(['name'=>$p['name'],'username'=>$p['nisn'],'email'=>null,'password'=>Hash::make(Str::random(64))]);
         $user->roles()->sync([$role->id]);
         $profile = StudentProfile::create([
-            'user_id'=>$user->id,'nis'=>$p['nis'] ?: null,'nisn'=>$p['nisn'],'full_name'=>$p['name'],
+            'user_id'=>$user->id,
+            'nis'=>$p['nis'] ?: null,
+            'nisn'=>$p['nisn'],
+            'full_name'=>$p['name'],
+            'academic_status'=>'ACTIVE',
+            'entry_academic_year_id'=>$rombel->academic_year_id,
             'gender'=>$p['gender'] === 'L' ? 'M' : ($p['gender'] === 'P' ? 'F' : null),
-            'birth_place'=>$p['birth_place'] ?: null,'birth_date'=>$p['birth_date'] ?: null,
-            'parent_name'=>$p['parent_name'] ?: null,'phone'=>$p['phone'] ?: null,'address'=>$p['address'] ?: null,
+            'birth_place'=>$p['birth_place'] ?: null,
+            'birth_date'=>$p['birth_date'] ?: null,
+            'parent_name'=>$p['parent_name'] ?: null,
+            'phone'=>$p['phone'] ?: null,
+            'address'=>$p['address'] ?: null,
         ]);
         DB::table('rombel_student')->insert([
-            'id'=>(string) Str::uuid(),'tenant_id'=>$tenantId,'rombel_id'=>$rombel->id,'student_id'=>$profile->id,
-            'created_at'=>now(),'updated_at'=>now(),
+            'id'=>(string) Str::uuid(),
+            'tenant_id'=>$tenantId,
+            'rombel_id'=>$rombel->id,
+            'student_id'=>$profile->id,
+            'academic_year_id'=>$rombel->academic_year_id,
+            'created_at'=>now(),
+            'updated_at'=>now(),
         ]);
-        app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'SISWA','profile_id'=>$profile->id,'login_identifier_suffix'=>substr($p['nisn'], -4),'rombel_id'=>$rombel->id]);
+        StudentAcademicEvent::create([
+            'student_id'=>$profile->id,
+            'academic_year_id'=>$rombel->academic_year_id,
+            'from_rombel_id'=>null,
+            'to_rombel_id'=>$rombel->id,
+            'event_type'=>'ENROLLED',
+            'effective_date'=>now()->toDateString(),
+            'reason'=>'Penempatan awal melalui import batch '.$batchId.'.',
+            'performed_by'=>$userId,
+            'metadata'=>['source'=>'IMPORT','batch_id'=>$batchId],
+        ]);
+        app(AuditService::class)->log('USER_CREATED','User',$user->id,null,['role'=>'SISWA','profile_id'=>$profile->id,'login_identifier_suffix'=>substr($p['nisn'], -4),'rombel_id'=>$rombel->id,'academic_year_id'=>$rombel->academic_year_id]);
+        app(AuditService::class)->log('STUDENT_ENROLLED','StudentProfile',$profile->id,null,['rombel_id'=>$rombel->id,'academic_year_id'=>$rombel->academic_year_id,'reason'=>'Penempatan awal melalui import batch '.$batchId.'.']);
         return $this->createActivation($user,$p['name'],$p['nisn'],$tenantId);
     }
 
