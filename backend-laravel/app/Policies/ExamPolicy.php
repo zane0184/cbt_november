@@ -181,7 +181,7 @@ class ExamPolicy
     public function assignProctor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id) return false;
-        if (!$user->hasRole('ADMIN_MADRASAH') || !$user->hasPermission('exam.proctor.assign')) return false;
+        if ($user->roles()->count() !== 1 || !$user->roles()->where('name', 'ADMIN_MADRASAH')->exists() || !$user->hasPermission('exam.proctor.assign')) return false;
         if ($exam->status !== 'PUBLISHED' || !$exam->locked_at || !$exam->end_at) return false;
 
         return $exam->end_at->isFuture();
