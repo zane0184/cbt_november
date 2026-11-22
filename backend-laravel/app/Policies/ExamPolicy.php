@@ -191,19 +191,23 @@ class ExamPolicy
             return false;
         }
 
-        if ($user->hasRole('PROKTOR')) {
-            return ExamProctorAssignment::query()
-                ->activeNow()
-                ->where('tenant_id', $user->tenant_id)
-                ->where('exam_id', $exam->id)
-                ->where('proctor_user_id', $user->id)
-                ->exists();
+        if ($user->hasRole('KAMAD') && $user->hasPermission('exam.monitor')) {
+            return true;
         }
 
-        return ($user->hasRole('KAMAD') && $user->hasPermission('exam.monitor'))
-            || ($user->hasRole('GURU')
-            && $user->hasPermission('exam.monitor')
-            && TeacherAccess::canViewExam($user, $exam));
+        if (!$user->hasRole('GURU')) {
+            return false;
+        }
+
+        $hasTemporaryProctorAssignment = ExamProctorAssignment::query()
+            ->activeNow()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->where('proctor_user_id', $user->id)
+            ->exists();
+
+        return $hasTemporaryProctorAssignment
+            || ($user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam));
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
