@@ -38,3 +38,10 @@ Note: This preserved test snapshot predates both the valid cross-year relationsh
 | Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
 |---|---|---|---:|---|
 | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-preserve-server-cross-year-mismatch | 6bdc272dc3131d0742fa979860b8473fc7c44510 | 10088 | 13872d00f31a5600ff094f3bf312045ba06abdce |
+
+
+## Supplemental snapshot — lifecycle audit, edit, and access-control test coverage
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-audit-edit-and-access-coverage | 47262b3c26df154d83b2602d25dc24144e7af0b6 | 10357 | 0952bca9e9a04874c0fafcd104e9434d6a0b889b |
