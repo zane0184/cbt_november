@@ -356,6 +356,26 @@ class Phase7DReportingTest extends TestCase
         $this->assertStringContainsString('RINGKASAN HASIL UJIAN', $view);
     }
 
+    public function test_admin_madrasah_cannot_export_exam_or_student_results(): void
+    {
+        $adminRole = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $admin = User::create([
+            'tenant_id' => $this->tenantA->id,
+            'name' => 'Admin Read Only',
+            'email' => 'admin.readonly@alhidayah.sch.id',
+            'password' => bcrypt('password'),
+        ]);
+        $admin->roles()->attach($adminRole);
+
+        $this->authAs($admin)
+            ->get("/api/v1/reports/exams/{$this->examA->id}/export/pdf")
+            ->assertForbidden();
+
+        $this->authAs($admin)
+            ->get("/api/v1/reports/students/{$this->studentA->id}/export/pdf")
+            ->assertForbidden();
+    }
+
     public function test_multi_tenant_isolation_prevents_exporting_other_tenant_pdf()
     {
         $response = $this->authAs($this->adminA)
