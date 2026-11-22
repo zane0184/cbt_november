@@ -238,7 +238,7 @@ class UserManagement extends Component
     public function openEditModal(string $userId): void
     {
         $this->authorizeUserManagement();
-        $user = $this->manageableUserQuery()->with(['roles','teacherProfile','studentProfile'])->whereKey($userId)->firstOrFail();
+        $user = $this->manageableUserQuery()->with(['roles','teacherProfile','studentProfile.entryAcademicYear'])->whereKey($userId)->firstOrFail();
 
         $this->editingUserId = (string) $user->id;
         $this->editingRole = $user->roles->first()->name;
