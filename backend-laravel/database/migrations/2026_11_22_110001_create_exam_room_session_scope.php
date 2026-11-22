@@ -209,6 +209,8 @@ return new class extends Migration
         });
 
         Schema::table('exam_participants', function (Blueprint $table): void {
+            // MySQL refuses to drop an index while an FK still depends on it.
+            // Remove the tenant-aware FK first, then its supporting lookup index.
             $table->dropForeign('exam_participants_rombel_tenant_fk');
             $table->dropIndex('exam_participants_rombel_scope_idx');
             $table->dropUnique('exam_participants_id_tenant_exam_unique');
