@@ -90,7 +90,8 @@ class AdminDashboard extends Component
             ->whereHas('user', function ($query) use ($tenantId): void {
                 $query->where('tenant_id', $tenantId)
                     ->whereNull('deleted_at')
-                    ->whereHas('roles', fn ($roles) => $roles->where('name', 'SISWA'));
+                    ->whereHas('roles', fn ($roles) => $roles->where('name', 'SISWA'))
+                    ->has('roles', '=', 1);
             })
             ->count();
 
@@ -99,7 +100,8 @@ class AdminDashboard extends Component
             ->whereHas('user', function ($query) use ($tenantId): void {
                 $query->where('tenant_id', $tenantId)
                     ->whereNull('deleted_at')
-                    ->whereHas('roles', fn ($roles) => $roles->where('name', 'GURU'));
+                    ->whereHas('roles', fn ($roles) => $roles->where('name', 'GURU'))
+                    ->has('roles', '=', 1);
             })
             ->count();
 
