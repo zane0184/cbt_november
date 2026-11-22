@@ -38,7 +38,8 @@ Perubahan:
 11. Submit manual/otomatis ditahan selama antrean/conflict belum terselesaikan.
 12. IndexedDB diperiksa sebelum start/resume; beforeunload memperingatkan saat ada pekerjaan pending.
 13. Jika draft gagal ditulis ke IndexedDB (mis. quota/error), item ditandai undurable dan submit diblokir; tidak fallback diam-diam ke memory.
-14. Setelah submit request dimulai tetapi respons tidak dapat dipastikan, client tidak mengirim ulang otomatis; client melakukan GET Attempt status dan hanya menampilkan completion setelah server menyatakan SUBMITTED/EXPIRED.
+14. Sebelum submit POST, client menyimpan marker SUBMITTING di local_meta; jika respons tidak dapat dipastikan, marker menjadi UNKNOWN dan client tidak mengirim ulang otomatis.
+15. Saat halaman dibuka ulang, marker UNKNOWN untuk student+exam yang sama diperiksa melalui GET Attempt sebelum client mengizinkan POST start baru; completion hanya ditampilkan setelah server menyatakan SUBMITTED/EXPIRED.
 
 Backup:
 - Baseline: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/show.blade.php.before`, blob `7283ca553d787f4505299a306e2bd487884622d3`; byte-exact dengan baseline.
@@ -48,6 +49,8 @@ Backup:
 - Sebelum ack/scope refinement: `.../show.blade.php.before-ack-and-scope-fix`.
 - Sebelum undurable submit gate: `.../show.blade.php.before-undurable-submit-gate`, blob `5dcf49ca53bed57a5ec4b840d4a2c87355bbfe28`.
 - Sebelum submit response recovery: `.../show.blade.php.before-submit-response-recovery`, blob `e11d60f8d5dac203b9fda3d130528ad463be3991`.
+- Sebelum persistent submit state: `.../show.blade.php.before-persistent-submit-state`.
+- Sebelum student-scope recovery: `.../show.blade.php.before-student-scope-recovery`.
 
 Commit implementasi utama:
 - `61abd0dc6c6a3fab4a139ae0ffdcc488ccddfd9f` — IndexedDB draft + submit barrier.
@@ -58,6 +61,8 @@ Commit implementasi utama:
 - `5672e3581069f4d56c4a87a06d07d50067b334fd` — durable ack ordering and fail-closed orphaned state.
 - `df29e5d2f66262d744460821f56dcf85fb64fa81` — undurable draft submit gate.
 - `57b0e407e72c0583172fab8342781cd76cbd0f9f` — submit response recovery through authoritative Attempt status.
+- `5cfda8a434eaed696404662bf50151a521060128` — persist SUBMITTING/UNKNOWN marker across reload and prevent duplicate Attempt creation.
+- `c36e63c4a8fc0e227eb4d97679b70a3537b5d82e` — scope local recovery marker to the authenticated student.
 
 ## PENGUJIAN
 Dilakukan:
