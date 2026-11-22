@@ -106,8 +106,8 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/exams/{exam}/results/{attempt}', ResultDetail::class)->name('teacher.exams.results.detail');
 
     // Exports for Teacher Dashboard
-    Route::get('/exams/{exam}/export/excel', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportExcel']);
-    Route::get('/exams/{exam}/export/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportPdf']);
+    Route::get('/exams/{exam}/export/excel', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportExcel'])->name('teacher.exams.export.excel');
+    Route::get('/exams/{exam}/export/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportPdf'])->name('teacher.exams.export.pdf');
     Route::get('/students/{student}/export/pdf', [\App\Http\Controllers\Api\V1\ReportController::class, 'exportStudentPdf']);
 
     // Analytics Dashboard
