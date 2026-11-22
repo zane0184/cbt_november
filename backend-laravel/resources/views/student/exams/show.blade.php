@@ -64,7 +64,7 @@
 <body class="min-h-screen bg-slate-100 text-slate-800">
     <header class="bg-slate-900 text-white shadow">
         <div class="mx-auto flex w-full max-w-5xl items-center justify-between gap-3 px-3 py-3 sm:px-4 sm:py-4">
-            <div><div class="text-xs uppercase tracking-widest text-slate-300">CBT Madrasah</div><h1 class="text-lg font-bold">{{ $exam->title }}</h1></div>
+            <div><div class="text-xs uppercase tracking-widest text-slate-300">CBT Madrasah</div><h1 dir="auto" class="text-lg font-bold">{{ $exam->title }}</h1></div>
             <a href="{{ route('student.exams.index') }}" class="rounded-lg border border-slate-500 px-3 py-2 text-sm">Daftar Ujian</a>
         </div>
     </header>
@@ -79,11 +79,11 @@
             <div class="flex flex-wrap items-start justify-between gap-4">
                 <div>
                     <p class="text-sm text-slate-500">Peserta: {{ $student->name }}</p>
-                    <h2 class="mt-1 text-2xl font-bold">{{ $exam->title }}</h2>
+                    <h2 dir="auto" class="mt-1 text-2xl font-bold">{{ $exam->title }}</h2>
                 </div>
                 <div class="rounded-xl bg-blue-50 px-4 py-3 text-blue-900"><div class="text-xs">Durasi</div><div class="text-xl font-bold">{{ ceil($exam->duration_seconds / 60) }} menit</div></div>
             </div>
-            <div class="prose mt-6 max-w-none whitespace-pre-line text-slate-700">{{ $exam->instructions ?: 'Bacalah setiap soal dengan teliti dan periksa kembali jawaban sebelum mengirim ujian.' }}</div>
+            <div dir="auto" class="prose mt-6 max-w-none whitespace-pre-line text-slate-700">{{ $exam->instructions ?: 'Bacalah setiap soal dengan teliti dan periksa kembali jawaban sebelum mengirim ujian.' }}</div>
             <dl class="mt-6 grid gap-3 rounded-xl bg-slate-50 p-4 text-sm sm:grid-cols-2">
                 <div><dt class="text-slate-500">Jadwal mulai</dt><dd class="font-semibold">{{ optional($exam->start_at)->format('d/m/Y H:i') }}</dd></div>
                 <div><dt class="text-slate-500">Jadwal selesai</dt><dd class="font-semibold">{{ optional($exam->end_at)->format('d/m/Y H:i') }}</dd></div>
