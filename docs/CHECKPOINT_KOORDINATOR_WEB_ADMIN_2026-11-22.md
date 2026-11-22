@@ -2,48 +2,43 @@
 Tanggal: 22 November 2026
 Repository: zane0184/cbt_november
 Branch kerja: work/coordinator-web-admin-audit-20261122
-HEAD: 2f89a1da9d28302ed7e8f12d461298750fa05ee2
-Acuan wajib: docs/MASTER_SPESIFIKASI_FITUR_WEB_ADMIN_MADRASAH_2026-11-22.md pada main (blob 68150acf7b9abf130776bee27444c99889ce53a5).
+HEAD sebelum pembaruan dokumen: 7a0fa60e7cda06b22c86eb608a6a74189f13edf2
+Acuan: docs/MASTER_SPESIFIKASI_FITUR_WEB_ADMIN_MADRASAH_2026-11-22.md pada main, blob 68150acf7b9abf130776bee27444c99889ce53a5.
 
 ## AUDIT
-- Web Admin tetap NOT ACCEPTED. Audit statis gap awal tercatat dalam docs/AUDIT_KOORDINATOR_WEB_ADMIN_2026-11-22.md.
-- Ditemukan ketidaksesuaian §4.1: UserManagement mewajibkan NIP atau NIK bagi Guru, sedangkan spesifikasi menyatakan NIP/NUPTK opsional bila tidak dimiliki dan NIK tidak boleh diwajibkan tanpa dasar.
-- Dashboard, akademik, kurikulum, profil, rombel dan Proktor memiliki komponen; fitur import/export Guru/Siswa, pengaturan branding/kop lengkap, room management dan laporan Admin belum terbukti lengkap.
-- Route /admin/questions dan /admin/exams memakai komponen Guru yang memiliki exact-role guard; route berada dalam grup auth/tenant/license umum, sehingga pengujian negatif tetap wajib.
+- Web Admin belum accepted. Gunakan status EXISTS & VERIFIED / EXISTS BUT BROKEN / MISSING / BLOCKED / DEFERRED; komponen/route saja bukan bukti verified.
+- UserManagement awal hanya daftar/create. P1 menambahkan edit dan reset password; status aktif/nonaktif belum ada di schema users.
+- users.deleted_at tersedia tetapi model User tidak menggunakan SoftDeletes; jangan memakai soft-delete sebagai status akun aktif/nonaktif.
+- Import/export Guru/Siswa, room management, pengaturan branding/kop lengkap, audit UI dan laporan Admin masih memerlukan audit seluruh routes/services/jobs/views/tests sebelum ditandai missing.
+- CI WA-01 masih failure sebelum steps muncul; tidak ada test runtime yang bisa diklaim.
 
 ## DESAIN
-- Perbaikan dilakukan satu gap yang didukung spesifikasi, tanpa mengubah keputusan portal, model ujian serentak, atau batas akses Admin.
-- NIP/NIK opsional; jika diisi, validasi format dan uniqueness tetap berlaku.
-- Tahap selanjutnya: lengkapi User Management (edit, active/inactive, reset password, detail/history) dengan tenant scope dan audit; setelah itu import/export Guru/Siswa sesuai alur preview/konfirmasi/idempotensi spesifikasi.
+- Data Pengguna dikerjakan dahulu: create, edit, reset password; kemudian desain status akun dan detail/history. Setelah itu import/export sesuai alur preview/confirm/idempotensi §5.
+- Status akun membutuhkan schema flag, enforcement LoginIdentityResolver, penolakan login, session/remember-token revocation, filtering admin, audit, migration tests dan backfill. Jangan gunakan deleted_at.
+- Tidak mengubah model produk: role aktif tetap ADMIN_MADRASAH/GURU/SISWA; tidak ada role Operator/Kamad/Proktor permanen; ujian serentak tanpa ExamSession operasional.
 
 ## IMPLEMENTASI
-- Menghapus syarat NIP/NIK wajib dari UserManagement::createUser.
-- Memperbarui teks bantuan UI menjadi opsional.
-- Menambah test_admin_can_create_guru_without_nip_or_nik, menggunakan username eksplisit dan memeriksa role, profile, nilai null, serta audit.
-- Backup source pra-patch diverifikasi tersedia:
-  - docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/UserManagement.php.before-guru-identity-optional (blob 78b5bc00ac7c2c57acc8eda6783164cfc9371aea)
-  - docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/user-management.blade.php.before-guru-identity-optional (blob 100b5009b2663191e327443c0ca70a491b1a4528)
-  - docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/AdminUserManagementScopeTest.php.before-guru-identity-optional (blob 9ddeb4c8cad41b5fd636714c91785ecc31a2239b)
-- Backup laporan: docs/backup/coordinator-web-admin-2026-11-22/AUDIT_KOORDINATOR_WEB_ADMIN_2026-11-22.md.before-guru-identity-optional.
-- Source commits: 05e51dd2129cf100d87d78a5db900c9ec5c177a0, 174e06f720d52cf05c10f6794172aebdff830e3b, 922657ab81caf36f0964cc7e914bddb7cedc216c, e0d0e24b2071c954fdfae892ad0c69c367061de5.
-- Audit commit: 2f89a1da9d28302ed7e8f12d461298750fa05ee2.
+- NIP/NIK Guru dibuat opsional; test regresi ditambahkan.
+- Edit Guru/Siswa: nama, username, email, NIP/NIK atau NISN. Tenant scoped, single-role only, validasi uniqueness, transaksi dan row lock, audit USER_UPDATED.
+- Reset password: minimal 14 karakter, transaksi/row lock, rotasi remember_token, audit USER_PASSWORD_RESET tanpa menyimpan password.
+- Backup pra-edit/reset ada di docs/backup/coordinator-web-admin-2026-11-22/user-management-edit-reset-p1/; backup pra-NIP/NIK opsional ada di docs/backup/coordinator-web-admin-2026-11-22/guru-identitas-opsional-p0/.
+- Source commits: b16d61a8bfa353377b9acabb499de3333ccee798, ab93091c040bda245bd901f6a16bf5339c3ac201, 95735b4f1c637e9ef8434776082bb5c050080d57, ee2d811bf493d897be411773a91bc5f8724ccb08, 7a0fa60e7cda06b22c86eb608a6a74189f13edf2.
+- Audit commit setelah pembaruan: 0f5c92dcd55db3321326d9b59b927c7f410692ec.
 
 ## PENGUJIAN
-- Source patch telah dibaca ulang dari GitHub dan backup diverifikasi cocok dengan blob source pra-patch.
-- PHPUnit, PHP lint, MySQL 8 integration/concurrency: NOT RUN.
-- GitHub Actions WA-01 runs #495–#497 gagal tanpa steps dan tanpa runner_name; retry run #494 attempt 2 juga gagal tanpa steps. Job logs endpoint mengembalikan BlobNotFound.
-- Patch status: IMPLEMENTED — NOT VERIFIED. Tidak ada klaim PASS.
+- Source dan test dibaca ulang dari GitHub. PHPUnit NOT RUN; PHP lint NOT RUN; MySQL 8/InnoDB NOT RUN; browser/E2E NOT RUN.
+- Actions run #499–#502 failure tanpa steps yang tercatat; run #502 job 137270555915 completed/failure, steps kosong. Jangan menyimpulkan test suite gagal atau lulus karena runner tidak menjalankan langkah yang dapat diamati.
+- Implementasi berstatus NOT VERIFIED.
 
 ## LARANGAN / BATAS
-- Tidak ada perubahan main, merge, rebase, migration, database, VPS, atau deployment.
-- Tidak mengaktifkan portal Operator/Kamad/Proktor permanen; tidak membuat ExamSession/session/wave operasional.
-- Android dan Web Super Admin tetap deferred sampai Juni 2027.
+- Tidak ada migration, database produksi, VPS, main branch, merge, atau deployment yang diubah.
+- Android native dan Web Super Admin tetap deferred sampai Juni 2027.
 
 ## LANGKAH BERIKUTNYA
-1. Lanjutkan audit dan implementasi User Management P0: edit, active/inactive, reset password, detail/history, audit event dan negative authorization tests.
-2. Audit seluruh repository untuk import/export Guru/Siswa, template, service/job, routes dan tests sebelum menyatakan missing.
-3. Selesaikan academic/subject/teacher assignment, curriculum, room/placement/proctor, monitoring, reports, audit UI, settings/branding.
-4. Pulihkan CI runner dan jalankan seluruh tes pada exact HEAD; gunakan MySQL 8 disposable/InnoDB untuk integration/concurrency.
-5. Lakukan browser/E2E, responsive/accessibility dan UAT sebelum acceptance.
+1. Audit & implementasikan status aktif/nonaktif akun secara end-to-end (schema + login enforcement + session revocation + audit + tests), tanpa menggunakan soft-delete.
+2. Tambahkan detail akun dan riwayat perubahan/penugasan Guru dan Proktor sesuai batas akses.
+3. Audit seluruh repository untuk import/export Guru/Siswa, template, service/job, routes dan tests; baru implementasikan gap.
+4. Selesaikan master akademik, kurikulum, ruang/placement, monitoring, laporan, audit UI, branding/kop, dan pengaturan.
+5. Pulihkan GitHub Actions runner dan jalankan seluruh tes pada exact HEAD, MySQL 8/InnoDB, E2E serta UAT.
 
-Status akhir saat checkpoint: WEB ADMIN BELUM ACCEPTED.
+Status akhir: WEB ADMIN BELUM ACCEPTED.
