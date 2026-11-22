@@ -40,9 +40,31 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['identifier' => ['Identitas atau password tidak valid.']]);
         }
 
-        RateLimiter::clear($throttleKey);
-        $token = $user->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken;
+        $token = DB::transaction(function () use ($user, $validated) {
+            // Same user-row mutex as Web login and Attempt creation.
+            $lockedUser = \\App\\Models\\User::query()->whereKey($user->id)->lockForUpdate()->first();
+            if (!$lockedUser || !$lockedUser->is_active) {
+                return null;
+            }
+            $lockedUser->load('roles');
 
+            if ($lockedUser->hasExactRole('SISWA')
+                && app(\\App\\Services\\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                return null;
+            }
+
+            return $lockedUser->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken;
+        });
+
+        if ($token === null) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ujian Siswa sedang aktif pada sesi/perangkat lain. Gunakan sesi Attempt yang sama.',
+                'code' => 'ACTIVE_EXAM_SESSION',
+            ], 409);
+        }
+
+        RateLimiter::clear($throttleKey);
         return response()->json(['success' => true, 'message' => 'Login berhasil', 'data' => [
             'token' => $token,
             'user' => ['id' => $user->id, 'tenant_id' => $user->tenant_id, 'name' => $user->name, 'username' => $user->username, 'roles' => $user->roles->pluck('name')],
