@@ -172,10 +172,7 @@
         el('fatal-error').textContent = message;
         el('fatal-error').classList.remove('hidden');
     }
-    function setSaveStatus(message, bad = false) {
-        el('save-status').textContent = message;
-        el('save-status').className = `text-sm font-semibold ${bad ? 'text-red-700' : 'text-slate-700'}`;
-    }
+undefined
     function requestId() {
         return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     }
@@ -332,8 +329,7 @@
             const uncertainSubmit = await findUncertainSubmitForExam();
             if (uncertainSubmit) {
                 state.attemptId = String(uncertainSubmit.context.attemptId);
-                state.submitOutcomeUnknown = true;
-                await persistSubmitState('UNKNOWN').catch(() => {});
+undefined
                 el('submit-button').disabled = true;
                 el('check-submit-status').classList.remove('hidden');
                 showError('Ditemukan pengiriman sebelumnya yang belum memiliki hasil definitif. Sistem tidak akan membuat Attempt baru atau mengirim ulang; periksa status Attempt di server.');
@@ -612,8 +608,7 @@
 
     async function recoverSubmitStatus() {
         if (!state.attemptId || !state.submitOutcomeUnknown) return;
-        const button = el('check-submit-status');
-        button.disabled = true;
+undefined
         button.textContent = 'Memeriksa status…';
         try {
             const result = await api(`/attempts/${encodeURIComponent(state.attemptId)}`, { method: 'GET' });
@@ -636,9 +631,7 @@
                 el('fatal-error').textContent = '';
                 el('fatal-error').classList.add('hidden');
                 await loadExecution(execution, state.attemptId);
-                await persistSubmitState('RESUMED');
-                state.submitOutcomeUnknown = false;
-                // The unknown-submit path locks this control before checking
+undefined
                 // the server. Once the server confirms the same Attempt is
                 // still IN_PROGRESS and execution data is restored, allow the
                 // student to submit again (the normal save/conflict barrier
@@ -681,8 +674,7 @@
         } catch (error) {
             state.submitting = false;
             if (submitRequestStarted) {
-                state.submitOutcomeUnknown = true;
-                el('submit-button').disabled = true;
+undefined
                 el('check-submit-status').classList.remove('hidden');
                 showError('Respons pengiriman tidak dapat dipastikan. Sistem tidak akan mengirim ulang secara otomatis. Periksa status Attempt di server.');
                 await recoverSubmitStatus();
