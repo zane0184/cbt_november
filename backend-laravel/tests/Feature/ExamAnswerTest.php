@@ -787,4 +787,43 @@ class ExamAnswerTest extends TestCase
         return $snapshot;
     }
 
+    public function test_late_retry_of_superseded_request_cannot_overwrite_newer_answer()
+    {
+        $this->actingAs($this->student, 'sanctum');
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+        $firstRequestId = (string) Str::uuid();
+        $secondRequestId = (string) Str::uuid();
+        $optionId = $this->snapshot->snapshot_options[0]['id'];
+
+        $this->putJson($url, [
+            'client_request_id' => $firstRequestId,
+            'base_revision' => 0,
+            'answer_payload' => ['selected_option_id' => $optionId],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(200);
+
+        $this->putJson($url, [
+            'client_request_id' => $secondRequestId,
+            'base_revision' => 1,
+            'answer_payload' => ['selected_option_id' => $optionId, 'note' => 'newer edit'],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(200);
+
+        $lateRetry = $this->putJson($url, [
+            'client_request_id' => $firstRequestId,
+            'base_revision' => 0,
+            'answer_payload' => ['selected_option_id' => $optionId],
+            'answer_state' => 'ANSWERED',
+        ]);
+
+        $lateRetry->assertStatus(409)->assertJsonPath('error', 'ANSWER_REVISION_CONFLICT');
+        $this->assertDatabaseCount('exam_attempt_answers', 1);
+        $this->assertDatabaseHas('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $this->snapshot->id,
+            'revision_number' => 2,
+            'client_request_id' => $secondRequestId,
+        ]);
+    }
+
 }
