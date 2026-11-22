@@ -18,7 +18,7 @@ class Rombel extends Model
 
     public function academicYear(): BelongsTo
     {
-        return $this->belongsTo(AcademicYear::class);
+        return $this->belongsTo(AcademicYear::class)->withTrashed();
     }
 
     public function gradeLevel(): BelongsTo
