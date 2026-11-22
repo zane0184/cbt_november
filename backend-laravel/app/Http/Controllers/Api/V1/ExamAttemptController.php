@@ -245,7 +245,7 @@ class ExamAttemptController extends Controller
             ]);
 
             if (!app(AttemptDeviceLeaseService::class)->createForAttempt($attempt, $request)) {
-                throw new \\RuntimeException('Attempt auth-session lease could not be created.');
+                throw new \RuntimeException('Attempt auth-session lease could not be created.');
             }
 
             $participant->update(['status' => 'STARTED']);
