@@ -143,11 +143,10 @@ class ExamRoomSessionConcurrencyTest extends TestCase
         if ($this->tenantId !== null && DB::getDriverName() === 'mysql') {
             DB::setDefaultConnection('mysql');
             $connection = DB::connection('mysql');
-            $connection->statement('SET FOREIGN_KEY_CHECKS = 0');
 
-            // The Stage 4B down migration intentionally refuses to discard
-            // placement/schedule history. Clean only this disposable test tenant
-            // so DatabaseMigrations can safely roll back its isolated schema.
+            // Preserve the test's production-like foreign-key enforcement.
+            // Only this disposable tenant's child records are removed, in
+            // dependency order, before parent room/session and test fixtures.
             if (\Illuminate\Support\Facades\Schema::hasTable('exam_participant_room_assignments')) {
                 $connection->table('exam_participant_room_assignments')->where('tenant_id', $this->tenantId)->delete();
             }
@@ -173,8 +172,6 @@ class ExamRoomSessionConcurrencyTest extends TestCase
                 $connection->table('exam_proctor_assignments')->where('tenant_id', $this->tenantId)
                     ->update(['exam_session_room_id' => null, 'schedule_revision' => null]);
             }
-
-            $connection->statement('SET FOREIGN_KEY_CHECKS = 1');
         }
 
         DB::setDefaultConnection('mysql');
