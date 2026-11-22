@@ -27,7 +27,7 @@ const fixture = [
   '<details id="question-nav-panel"><summary>Nomor soal</summary><div id="question-nav"></div><button id="submit-button" type="button">Kirim Ujian</button></details></section>',
   '<section id="completion-panel" class="hidden"><h2 id="completion-title"></h2><p id="completion-message"></p></section>',
   '<div id="fatal-error" class="hidden"></div><button id="check-submit-status" class="hidden" type="button">Periksa status</button>',
-  '</main><script>window.__intervalIds = new Set(); const nativeSetInterval = window.setInterval.bind(window); const nativeClearInterval = window.clearInterval.bind(window); window.setInterval = (...args) => { const id = nativeSetInterval(...args); window.__intervalIds.add(id); return id; }; window.clearInterval = id => { window.__intervalIds.delete(id); return nativeClearInterval(id); };</script>',
+  '</main><script>window.__intervalIds = new Set(); window.__revokedObjectUrls = []; const nativeSetInterval = window.setInterval.bind(window); const nativeClearInterval = window.clearInterval.bind(window); const nativeRevokeObjectURL = URL.revokeObjectURL.bind(URL); URL.revokeObjectURL = url => { window.__revokedObjectUrls.push(url); return nativeRevokeObjectURL(url); }; window.setInterval = (...args) => { const id = nativeSetInterval(...args); window.__intervalIds.add(id); return id; }; window.clearInterval = id => { window.__intervalIds.delete(id); return nativeClearInterval(id); };</script>',
   '<script>', runnerScript, '</script></body></html>'
 ].join('');
 
@@ -52,7 +52,7 @@ function makeScenario(mode = 'normal') {
     mode, online: true, startCalls: 0, submitCalls: 0, answerWrites: 0,
     requireToken: false, startTokens: [], media: [], legacyPending: false, disableIndexedDb: false,
     status: 'IN_PROGRESS', serverAnswers: [], pageErrors: [], statusChecks: 0,
-    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], executionCalls: 0, omitStartFence: false, leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    generation: 1, heartbeatCalls: 0, attemptHeaders: [], mediaHeaders: [], executionCalls: 0, omitStartFence: false, mediaStatus: 200, mediaResponseMime: null, mediaBodySize: 0, leaseExpiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     expiresInMs: 30 * 60 * 1000, submitStatus: 'SUBMITTED',
     questionType: 'MULTIPLE_CHOICE',
     questionStem: 'Berapakah hasil 2 + 2?',
@@ -77,8 +77,18 @@ async function attachApiMock(page, scenario) {
     if (method === 'GET' && url.pathname.startsWith('/api/v1/media/')) {
       scenario.mediaHeaders.push(request.headers());
       if (request.headers()['x-cbt-fence-generation'] !== String(scenario.generation) || !request.headers()['x-device-binding-id']) return json(route, 409, { success: false, code: 'ATTEMPT_FENCE_MISMATCH' });
-      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5ZkAAAAASUVORK5CYII=', 'base64');
-      return route.fulfill({ status: 200, contentType: 'image/png', body: png });
+      if (scenario.mediaStatus !== 200) return route.fulfill({ status: scenario.mediaStatus, contentType: 'application/json', body: JSON.stringify({ message: 'Media access denied' }) });
+      const mediaId = url.pathname.split('/').pop();
+      const mediaItem = scenario.media.find(item => String(item.id) === mediaId);
+      const mime = scenario.mediaResponseMime || mediaItem?.mime_type || 'image/png';
+      let body;
+      if (mime === 'image/png') body = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5ZkAAAAASUVORK5CYII=', 'base64');
+      else if (mime === 'audio/mpeg') body = Buffer.from('ID3\\u0004\\u0000\\u0000\\u0000\\u0000\\u0000\\u0000', 'binary');
+      else if (mime === 'video/mp4') body = Buffer.from([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0, 2, 0, 105, 115, 111, 109, 105, 115, 111, 50]);
+      else if (mime === 'application/pdf') body = Buffer.from('%PDF-1.4\\n%%EOF\\n');
+      else body = Buffer.from('<html>not an allowed media type</html>');
+      if (scenario.mediaBodySize > 0) body = Buffer.alloc(scenario.mediaBodySize, 65);
+      return route.fulfill({ status: 200, contentType: mime, body });
     }
     if ((path === '/execution' || path.startsWith('/attempts/')) && !(method === 'POST' && path === '/attempts')) {
       const headers = request.headers();
@@ -383,22 +393,73 @@ try {
     console.log('PASS: terminal heartbeat is reconciled from server Attempt status');
   }
 
-  // Image media from the immutable snapshot is fetched with bound-session and fencing headers.
+  // Every backend-supported snapshot media type uses authenticated Fetch/Blob and revokes Object URLs on terminal state.
   {
     const scenario = makeScenario();
-    scenario.media = [{ id: 'media-1', role: 'STEM', mime_type: 'image/png' }];
+    scenario.media = [
+      { id: 'media-image', role: 'STEM', mime_type: 'image/png' },
+      { id: 'media-audio', role: 'STEM', mime_type: 'audio/mpeg' },
+      { id: 'media-video', role: 'STEM', mime_type: 'video/mp4' },
+      { id: 'media-pdf', role: 'STEM', mime_type: 'application/pdf' }
+    ];
     const { context, page } = await newPage(browser, scenario);
+    page.on('dialog', dialog => dialog.accept());
     await start(page);
-    const image = page.locator('#question-media img');
-    await image.waitFor({ state: 'visible' });
-    await page.waitForFunction(() => document.querySelector('#question-media img').naturalWidth === 1);
-    assert.ok((await image.getAttribute('src')).startsWith('blob:'));
-    assert.equal(scenario.mediaHeaders.length, 1);
-    assert.equal(scenario.mediaHeaders[0]['x-cbt-fence-generation'], '1');
-    assert.ok(scenario.mediaHeaders[0]['x-device-binding-id']);
+    await page.waitForFunction(() => document.querySelectorAll('#question-media img, #question-media audio, #question-media video, #question-media a').length === 4);
+    await page.waitForFunction(() => document.querySelector('#question-media img')?.naturalWidth === 1);
+    for (const selector of ['img', 'audio', 'video', 'a']) assert.ok((await page.locator('#question-media ' + selector).getAttribute(selector === 'a' ? 'href' : 'src')).startsWith('blob:'));
+    assert.equal(scenario.mediaHeaders.length, 4);
+    assert.ok(scenario.mediaHeaders.every(headers => headers['x-cbt-fence-generation'] === '1' && headers['x-device-binding-id']));
+    await openQuestionNavigation(page);
+    await page.locator('#submit-button').click();
+    await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
+    assert.equal(await page.evaluate(() => window.__revokedObjectUrls.length), 4);
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
-    console.log('PASS: snapshot image media loads from same-origin media endpoint');
+    console.log('PASS: image/audio/video/PDF media uses bound-session Fetch/Blob and Object URLs are revoked');
+  }
+
+  // MIME mismatch is rejected before any untrusted Blob is attached to the question.
+  {
+    const scenario = makeScenario();
+    scenario.media = [{ id: 'media-bad-mime', role: 'STEM', mime_type: 'image/png' }];
+    scenario.mediaResponseMime = 'text/html';
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await page.waitForFunction(() => document.querySelector('#question-media').textContent.includes('Jenis file media dari server tidak sesuai'));
+    assert.equal(await page.locator('#question-media img').count(), 0);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: media MIME mismatch is rejected');
+  }
+
+  // Oversized media is rejected before creating a Blob URL.
+  {
+    const scenario = makeScenario();
+    scenario.media = [{ id: 'media-too-large', role: 'STEM', mime_type: 'image/png' }];
+    scenario.mediaBodySize = 10 * 1024 * 1024 + 1;
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await page.waitForFunction(() => document.querySelector('#question-media').textContent.includes('Ukuran atau MIME media tidak valid'));
+    assert.equal(await page.locator('#question-media img').count(), 0);
+    assert.equal(await page.evaluate(() => window.__revokedObjectUrls.length), 0);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: media above 10 MB is rejected');
+  }
+
+  // Unauthorized media response locks the runner and leaves the question runner fail-closed.
+  {
+    const scenario = makeScenario();
+    scenario.media = [{ id: 'media-denied', role: 'STEM', mime_type: 'image/png' }];
+    scenario.mediaStatus = 403;
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    await page.waitForFunction(() => document.querySelector('#runner-panel').getAttribute('aria-busy') === 'true');
+    assert.equal(await page.locator('#question-media img').count(), 0);
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: unauthorized media response locks runner');
   }
 
   // 5. Offline write: local draft survives reload and is synchronized on resume.
