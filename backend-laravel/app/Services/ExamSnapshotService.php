@@ -77,6 +77,11 @@ class ExamSnapshotService
                     })
                     ->lockForUpdate()
                     ->firstOrFail();
+
+                if (strtoupper((string) $version->question_type) === 'SHORT_ANSWER') {
+                    abort(422, 'SHORT_ANSWER belum dapat dimasukkan ke snapshot ujian karena accepted answers, authoring, dan scoring belum konsisten.');
+                }
+
                 $options = $version->options()->orderBy('sequence')->get();
                 $media = $version->media()
                     ->where('media_assets.tenant_id', $lockedExam->tenant_id)
