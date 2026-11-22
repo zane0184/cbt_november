@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Exam;
+use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Support\Security\TeacherAccess;
 
@@ -200,10 +201,6 @@ class ExamPolicy
         if ($user->hasRole('ADMIN_MADRASAH')) return false;
         if ($user->tenant_id !== $exam->tenant_id) return false;
 
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return false;
-        }
-
         if (!$user->hasRole('GURU') || !$user->hasPermission('exam.monitor')) {
             return false;
         }
@@ -211,7 +208,7 @@ class ExamPolicy
         // A Guru may monitor through their normal teaching scope or a temporary,
         // exam-specific Proktor assignment. The assignment grants monitoring only,
         // never answer-key, grading, or result-detail access.
-        $temporaryProctorAssignment = \\App\\Models\\ExamProctorAssignment::query()
+        $temporaryProctorAssignment = ExamProctorAssignment::query()
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
             ->where('proctor_user_id', $user->id)
