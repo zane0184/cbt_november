@@ -20,6 +20,7 @@ class ExamSummaryReportService
         $stats = ExamAttemptScore::query()
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
+            ->current()
             ->select([
                 DB::raw('COUNT(*) as total_scored'),
                 DB::raw('SUM(CASE WHEN grading_status = "FINALIZED" THEN 1 ELSE 0 END) as finalized_count'),
@@ -74,6 +75,7 @@ class ExamSummaryReportService
         $stats = ExamAttemptScore::query()
             ->where('tenant_id', $exam->tenant_id)
             ->where('exam_id', $exam->id)
+            ->current()
             ->whereHas('student', function ($userQuery) use ($exam, $rombel) {
                 $userQuery->where('tenant_id', $exam->tenant_id)
                     ->whereHas('studentProfile', function ($profileQuery) use ($exam, $rombel) {
