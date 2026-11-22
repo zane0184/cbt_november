@@ -8,6 +8,7 @@ use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\Role;
 use App\Models\Tenant;
+use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +39,11 @@ class MediaAuthorizationTest extends TestCase
             'password' => bcrypt('password'),
         ]);
         $this->teacher->roles()->attach($role);
+        TeacherProfile::create([
+            'user_id' => $this->teacher->id,
+            'employee_identifier' => 'GURU-MEDIA-1',
+            'full_name' => $this->teacher->name,
+        ]);
 
         $this->otherTeacher = User::create([
             'tenant_id' => $this->tenant->id,
@@ -46,6 +52,11 @@ class MediaAuthorizationTest extends TestCase
             'password' => bcrypt('password'),
         ]);
         $this->otherTeacher->roles()->attach($role);
+        TeacherProfile::create([
+            'user_id' => $this->otherTeacher->id,
+            'employee_identifier' => 'GURU-MEDIA-2',
+            'full_name' => $this->otherTeacher->name,
+        ]);
         $this->bootstrapCbtRolePermissions();
     }
 
