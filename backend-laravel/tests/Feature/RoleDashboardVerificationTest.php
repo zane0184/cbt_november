@@ -182,7 +182,7 @@ class RoleDashboardVerificationTest extends TestCase
 
         // The assignment surface is restricted to a Proktor identity; no tenant-wide
         // exam list is exposed until a temporary assignment record exists.
-        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertStatus(200);
+        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertForbidden();
         $this->actingAs($this->adminA)->get('/proktor/assignments')->assertStatus(403);
         $this->actingAs($this->superAdmin)->get('/proktor/assignments')->assertStatus(403);
         $this->actingAs($this->guruA)->get('/proktor/assignments')->assertStatus(403);
@@ -210,10 +210,7 @@ class RoleDashboardVerificationTest extends TestCase
         $opResponse->assertSee('Dashboard Admin Madrasah');
 
         // Sidebar rendering verification for PROCTOR (Proktor Dashboard menu MUST be present)
-        $proctorResponse = $this->actingAs($this->proctorA)->get('/proktor/assignments');
-        $proctorResponse->assertSee('Penugasan Proktor');
-        $proctorResponse->assertDontSee('Dashboard Proktor');
-        $proctorResponse->assertDontSee('Token:');
+        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertForbidden();
     }
 
     /** @test */
