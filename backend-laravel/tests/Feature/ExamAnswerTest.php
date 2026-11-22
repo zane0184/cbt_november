@@ -28,6 +28,7 @@ class ExamAnswerTest extends TestCase
     private $attempt;
     private $snapshot;
     private string $apiToken;
+    private string $secondApiToken;
 
     protected function setUp(): void
     {
@@ -111,6 +112,7 @@ class ExamAnswerTest extends TestCase
         $this->snapshot->exam_id = $this->exam->id;
         $this->snapshot->save();
         $this->apiToken = $this->student->createToken('answer-test-session')->plainTextToken;
+        $this->secondApiToken = $this->student->createToken('second-preexisting-session')->plainTextToken;
         $tokenId = explode('|', $this->apiToken, 2)[0];
         $sessionHash = hash_hmac('sha256', 'sanctum-token:'.$tokenId, (string) config('app.key'));
         $this->attempt->update([
@@ -857,7 +859,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_second_authentication_token_cannot_use_same_attempt_even_with_same_device_id(): void
     {
-        $secondToken = $this->student->createToken('second-auth-session')->plainTextToken;
+        $secondToken = $this->secondApiToken;
         $base = "/api/v1/exams/{$this->exam->id}";
         $attempt = "/attempts/{$this->attempt->id}";
 
