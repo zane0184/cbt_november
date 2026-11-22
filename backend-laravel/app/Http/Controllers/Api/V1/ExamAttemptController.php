@@ -476,12 +476,21 @@ class ExamAttemptController extends Controller
                 ], 422);
             }
 
+            if (!$lockedAttempt->expires_at) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attempt tidak memiliki batas waktu server yang valid.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
+                ], 409);
+            }
+
+            // Count all IN_PROGRESS rows, including one whose deadline has just
+            // elapsed; that row must be terminalized as EXPIRED by this submit.
             $activeAttemptCount = ExamAttempt::query()
                 ->where('tenant_id', $lockedExam->tenant_id)
                 ->where('exam_id', $lockedExam->id)
                 ->where('participant_id', $participant->id)
                 ->where('status', 'IN_PROGRESS')
-                ->where('expires_at', '>', now())
                 ->count();
 
             if ($activeAttemptCount !== 1) {
