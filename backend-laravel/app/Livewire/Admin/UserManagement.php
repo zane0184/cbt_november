@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Models\AcademicYear;
 use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\Tenant;
@@ -42,6 +43,7 @@ class UserManagement extends Component
     public $nip = '';
     public $nik = '';
     public $nisn = '';
+    public $entryAcademicYearId = '';
     public $editName = '';
     public $editUsername = '';
     public $editEmail = '';
@@ -106,14 +108,17 @@ class UserManagement extends Component
                 $rules['nip'] = ['prohibited'];
             }
         }
-        if ($this->selectedRole === 'SISWA') $rules['nisn'] = ['required','digits:10',Rule::unique('student_profiles','nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
+        if ($this->selectedRole === 'SISWA') {
+            $rules['nisn'] = ['required','digits:10',Rule::unique('student_profiles','nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
+            $rules['entryAcademicYearId'] = ['required', 'uuid', Rule::exists('academic_years', 'id')->where(fn ($q) => $q->where('tenant_id', $tenantId)->where('is_active', true))];
+        }
         return $rules;
     }
 
     public function openCreateModal(): void
     {
         $this->authorizeUserManagement();
-        $this->reset(['name','username','email','password','selectedRole','employmentType','nip','nik','nisn']);
+        $this->reset(['name','username','email','password','selectedRole','employmentType','nip','nik','nisn','entryAcademicYearId']);
         $this->resetValidation();
         $this->showCreateModal = true;
     }
@@ -203,7 +208,13 @@ class UserManagement extends Component
                     'employee_identifier' => $loginIdentifier,
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
-                StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
+                StudentProfile::query()->create([
+                    'user_id' => $user->id,
+                    'full_name' => trim($this->name),
+                    'nisn' => trim($this->nisn),
+                    'academic_status' => 'ACTIVE',
+                    'entry_academic_year_id' => $this->entryAcademicYearId,
+                ]);
             }
 
             app(AuditService::class)->log('USER_CREATED', 'User', $user->id, null, [
@@ -219,7 +230,7 @@ class UserManagement extends Component
 
         $createdName = $this->name;
         $this->showCreateModal = false;
-        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn']);
+        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn','entryAcademicYearId']);
         $this->dispatch('notify', ['type' => 'success', 'message' => "Pengguna {$createdName} berhasil ditambahkan."]);
         session()->flash('message', "Pengguna {$createdName} berhasil ditambahkan.");
     }
@@ -497,7 +508,13 @@ class UserManagement extends Component
             ->when($this->statusFilter === 'inactive', fn ($query) => $query->where('is_active', false))
             ->latest()->paginate(15);
         $roles = Role::query()->whereIn('name', ['GURU','SISWA'])->orderBy('label')->get();
+        $activeAcademicYears = AcademicYear::query()->where('tenant_id', auth()->user()->tenant_id)
+            ->where('is_active', true)->orderBy('name')->get();
 
-        return view('livewire.admin.user-management', ['users' => $users, 'roles' => $roles])->layout('layouts.app');
+        return view('livewire.admin.user-management', [
+            'users' => $users,
+            'roles' => $roles,
+            'activeAcademicYears' => $activeAcademicYears,
+        ])->layout('layouts.app');
     }
 }
