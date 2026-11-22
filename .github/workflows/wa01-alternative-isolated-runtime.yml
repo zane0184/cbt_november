@@ -394,6 +394,12 @@ jobs:
           set -euo pipefail
           php artisan test tests/Feature/TeacherSubjectAssignmentManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-subject-assignment.log"
 
+      - name: PHPUnit — Stage 4C MySQL 8 tenant mutex concurrency
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-teacher-subject-assignment-concurrency.log"
+
       - name: PHPUnit — Stage 4B room, session and participant placement integrity
         shell: bash
         run: |
