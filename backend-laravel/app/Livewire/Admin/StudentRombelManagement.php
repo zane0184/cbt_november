@@ -8,7 +8,7 @@ use App\Models\StudentAcademicEvent;
 use App\Models\StudentProfile;
 use App\Services\StudentLifecycleService;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
 use Livewire\Component;
 use Livewire\WithPagination;
 
