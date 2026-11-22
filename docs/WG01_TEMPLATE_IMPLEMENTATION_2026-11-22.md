@@ -278,3 +278,129 @@ Langkah berikutnya:
 
 ## STATUS OPERASIONAL
 Portal Guru hanya layak untuk uji terbatas pada dashboard/profil dan unduh template yang telah diuji CI. Bank Soal/import soal belum siap digunakan operasional karena parser, preview, correction, confirm dan integrasi penyimpanan belum tersedia. Bukan siap produksi.
+
+
+---
+
+# QA LANJUTAN, AUDIT KONTRAK, DAN DESAIN UI XLSX/DOCX — 22 NOVEMBER 2026
+
+## 1. AUDIT
+
+### Branch dan HEAD
+- Branch kerja yang diverifikasi: `work/web-guru-foundation-20261122`.
+- HEAD sebelum pembaruan dokumentasi tahap ini: `de165f59a22ab9f72c94a8e086cf6883f08a784e`.
+- Branch Agent 3 tetap menjadi satu-satunya target write; semua operasi file menggunakan parameter branch eksplisit.
+- Commit dokumentasi tahap ini: desain UI `316975597da9f4585275f32be2a18885c491f5c7`; pembaruan backup/report/checkpoint dilakukan terpisah pada branch yang sama.
+- Tidak ada perubahan source aplikasi, workflow, Composer, migration, schema, API, atau database pada tahap ini.
+
+### Source yang diperiksa ulang
+- `backend-laravel/routes/teacher.php`
+- `backend-laravel/resources/views/layouts/teacher.blade.php`
+- `backend-laravel/app/Http/Controllers/Teacher/QuestionImportTemplateController.php`
+- `backend-laravel/app/Exports/QuestionImport/QuestionImportTemplateExport.php`
+- Laporan WG01, checkpoint, desain DOCX, dan manifest backup.
+- Route unduh template tetap `GET /guru/bank-soal/template`, nama `teacher.questions.template`.
+- Navigasi desktop dan mobile memiliki tautan unduh template; Bank Soal tetap disabled dan tidak diaktifkan.
+- Controller mengandalkan middleware Portal Guru pada route dan memeriksa user/tenant, lalu mengatur header private/no-store. Ini audit source, bukan browser proof.
+
+### Issue dan koordinasi Agent 2
+- Issue #8: OPEN, 0 komentar; belum ada jawaban Agent 2.
+- Issue #9: OPEN, 0 komentar; belum ada jawaban Agent 2.
+- Tidak ditemukan keputusan Agent 2 melalui komentar kedua issue yang diperiksa.
+- Tidak ada bukti persetujuan kontrak atau implementasi parser/API pada source yang diperiksa.
+- Semua kelompok kontrak API lifecycle, shared draft DTO, batch/staging, authorization, academic references, idempotency, duplicate detection, audit/retention, MediaAsset, accepted answers/snapshot/scoring, dan security tetap BLOCKED / NEEDS DESIGN.
+- Issue links: https://github.com/zane0184/cbt_november/issues/8 dan https://github.com/zane0184/cbt_november/issues/9.
+
+### Verifikasi CI setelah SHA pengujian
+- CI Run #34: 44995889398, status completed/success.
+- SHA yang diuji: `a33867928711b456d2414a675bef1a929861dee8`.
+- Perbandingan SHA pengujian terhadap branch terkini menunjukkan 5 commit ahead, 0 behind.
+- Kelima file yang berubah setelah SHA pengujian hanya dokumentasi: checkpoint, desain DOCX, laporan, manifest, dan backup manifest. Tidak ada source aplikasi atau workflow yang berubah setelah SHA pengujian.
+- Job `teacher-portal-tests`: completed/success; langkah PHP 8.3/Composer, disposable MySQL, PHP lint/route registration, PHPUnit, InnoDB verification dan cleanup selesai.
+- Hasil yang tercatat: 16 tests passed, 69 assertions; database disposable MySQL 8; 80 tabel InnoDB; cleanup selesai.
+- Karena tidak ada perubahan source aplikasi setelah SHA CI, hasil CI tetap relevan untuk source template yang sama. Ini tidak mencakup perubahan dokumentasi baru dan tidak membuktikan browser QA.
+
+### Browser QA
+- Status: NOT RUN.
+- Tidak tersedia aplikasi aktif dengan environment QA yang dapat diakses dan browser interaktif untuk login, navigasi, download, atau screenshot.
+- Tidak tersedia akun uji non-produksi yang dapat digunakan untuk role GURU, ADMIN_MADRASAH, SISWA, multi-role, serta tenant lain.
+- Karena prasyarat tersebut tidak tersedia, login, session expiry, cross-tenant, desktop/mobile viewport, keyboard/accessibility, dan download melalui browser tidak dijalankan.
+- PHPUnit CI menguji kontrol akses HTTP dan workbook generation/readback, tetapi tidak menggantikan browser QA.
+- Tidak ada screenshot atau klaim BROWSER VERIFIED.
+
+### Backup dan integritas branch
+- Sebelum perubahan dokumentasi, dibuat backup report, checkpoint, dan manifest sebagai file baru.
+- Backup report blob SHA: `796386c72e045574c2349a2768aa0a2290b54fc2`, cocok dengan source sebelum edit.
+- Backup checkpoint blob SHA: `901f2f88092a60a8dd9213183b27368b2b3445ee`, cocok dengan source sebelum edit.
+- Backup manifest blob SHA: `4bbfca0a9f3d893f5d44975904a1820192f44fb8`, cocok dengan source sebelum edit.
+- Tiga backup tambahan diverifikasi 3/3 MATCH dan didaftarkan pada manifest.
+- Saat koreksi ditemukan section backup tambahan sempat terduplikasi dua kali pada manifest; sebelum koreksi, versi manifest tersebut dibackup, hash diverifikasi, lalu section duplikat dihapus sehingga tinggal satu. Snapshot koreksi dicatat pada manifest.
+- Tidak ada file source Agent 1/2 yang diubah. Perbandingan path sebelumnya menunjukkan tidak ada path source overlap pada WG01 yang diaudit.
+- Insiden penempatan dokumen DOCX ke main sebelumnya tetap tercatat dalam laporan; tidak diulang. Semua write pada tahap ini menyebut branch Agent 3 secara eksplisit.
+
+## 2. DESAIN
+
+Dokumen desain UI baru:
+`docs/DESAIN_UI_IMPORT_SOAL_XLSX_DOCX_WG01_2026-11-22.md`
+
+Desain mencakup:
+- Satu halaman/wizard Guru dengan dua jalur file terpisah: XLSX dan DOCX.
+- DOCX memiliki document profile atau auto-detect terbatas.
+- Konteks akademik tenant-scoped untuk subject, kelas/fase, tahun ajaran, CP/TP dan KBC/Panca Cinta yang terintegrasi.
+- Satu normalized draft DTO, satu batch/staging/idempotency/audit/storage lifecycle.
+- Preview per soal, source mapping, warning, status review, koreksi Guru, revalidation, confirm, dan report.
+- Responsif desktop/mobile serta target keyboard/accessibility.
+- Kunci DOCX hanya candidate jika marker eksplisit dan mapping pasti; tidak ada tebakan AI/heuristik.
+- Semua soal disimpan DRAFT; tidak ada auto-publish.
+- SHORT_ANSWER BLOCKED sampai accepted answers tersimpan, masuk ExamSnapshot dan digunakan Scoring; ESSAY manual.
+- Tabel kontrak yang masih menunggu Agent 2, security, academic integrity, dan matriks uji setelah backend tersedia.
+
+Semua endpoint, DTO field final, enum status, batch reuse, parser profile, retention, report, dan persistence mapping tetap usulan/NEEDS DESIGN sampai disetujui dan dibuktikan pada source Agent 2.
+
+## 3. IMPLEMENTASI
+
+- Tidak ada source aplikasi yang diubah.
+- Tidak ada parser XLSX/DOCX, upload API, preview/correction/confirm endpoint, batch service, schema, migration, Composer dependency, QuestionController, QuestionPolicy, ImportBatch/ImportBatchRow, atau CBT Engine yang disentuh.
+- File dokumentasi baru: `docs/DESAIN_UI_IMPORT_SOAL_XLSX_DOCX_WG01_2026-11-22.md`.
+- File dokumentasi diperbarui: laporan WG01, checkpoint WG01, dan manifest backup.
+- Backup report/checkpoint/manifest dibuat sebelum perubahan dan hash-nya diverifikasi.
+- Semua commit dokumentasi dilakukan pada branch Agent 3 dengan branch eksplisit.
+- Tidak ada merge, PR, rebase, cherry-pick, deployment, atau migration produksi.
+
+## 4. PENGUJIAN
+
+| Pemeriksaan | Status | Bukti |
+|---|---|---|
+| CI template XLSX | CI VERIFIED | Run 44995889398, SHA a338679..., 16 tests / 69 assertions |
+| Source setelah SHA CI | PASS | 5 commit sesudah SHA hanya dokumentasi |
+| PHP lint / route registration | CI VERIFIED | Langkah CI completed/success |
+| Disposable MySQL 8 / InnoDB | CI VERIFIED | 80 tabel InnoDB, cleanup selesai |
+| Workbook generation/readback | CI VERIFIED | PHPUnit pada run #34 |
+| Browser login role matrix | NOT RUN | Tidak ada app QA/browser/account uji |
+| Dashboard/profil Guru | NOT RUN | Tidak ada browser runtime |
+| Browser download XLSX | NOT RUN | Tidak ada browser runtime |
+| Desktop/mobile visual | NOT RUN | Tidak ada browser runtime |
+| Session expiry / cross-tenant browser | NOT RUN | Tidak ada browser runtime/account tenant uji |
+| Keyboard/accessibility | NOT RUN | Tidak ada browser runtime |
+| XLSX/DOCX upload-preview-confirm | BLOCKED | Kontrak/backend Agent 2 belum tersedia |
+| PDF/OCR | DEFERRED | Di luar tahap ini |
+
+## 5. CHECKPOINT
+
+- Template XLSX: CI VERIFIED; jangan ubah tanpa masalah konkret yang dapat direproduksi.
+- Browser QA Portal Guru: NOT RUN; menunggu environment aplikasi QA dan akun uji non-produksi.
+- Kontrak Agent 2 XLSX/PDF: BLOCKED; Issue #8 OPEN, 0 komentar.
+- Kontrak Agent 2 DOCX: BLOCKED; Issue #9 OPEN, 0 komentar.
+- Desain DOCX: DESIGN ONLY.
+- Desain UI bersama XLSX/DOCX: DESIGN ONLY, tersimpan di dokumen baru.
+- Implementasi UI upload/import: NOT STARTED.
+- Parser XLSX/DOCX, shared batch, API, schema, dependency: BLOCKED.
+- PDF/OCR dan DOC lama: DEFERRED.
+- Bank Soal: NOT READY FOR OPERATIONAL USE.
+
+### Langkah berikutnya
+1. Tunggu jawaban Agent 2 pada Issue #8/#9 dan audit setiap keputusan terhadap source aktual.
+2. Jalankan browser QA hanya setelah environment aplikasi dan akun uji non-produksi tersedia.
+3. Setelah kontrak backend disetujui, review desain UI dengan Agent 2 dan susun kontrak final.
+4. Jangan mulai implementasi UI import, parser, API, atau dependency sebelum persetujuan tahap berikutnya.
+5. Pertahankan template XLSX dan seluruh backup.
