@@ -353,6 +353,11 @@ final class QuestionImportWorkbookParser
             }
 
             $detailOrder[$number] = ($detailOrder[$number] ?? 0) + 1;
+            $sequenceValue = trim((string) $values['Urutan']);
+            if ($sequenceValue !== '' && (!ctype_digit($sequenceValue) || (int) $sequenceValue < 1)) {
+                $errors[] = ['row' => $excelRow, 'field' => 'Urutan', 'error' => 'Urutan harus bilangan bulat positif.'];
+                continue;
+            }
             $dataByNumber[$number]['options'][] = [
                 'option_key' => $optionKey !== '' ? $optionKey : null,
                 'content' => $content,
@@ -381,6 +386,7 @@ final class QuestionImportWorkbookParser
                 continue;
             }
 
+            usort($row['options'], fn (array $left, array $right) => $left['_sequence'] <=> $right['_sequence']);
             $row['options'] = array_map(function (array $option): array {
                 unset($option['_detail_type'], $option['_sequence']);
                 return $option;
