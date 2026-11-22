@@ -489,8 +489,8 @@
             textarea.className = 'w-full rounded-xl border border-slate-300 p-4'; textarea.placeholder = 'Ketik jawaban Anda…'; textarea.value = payload.text || '';
             textarea.addEventListener('input', () => queueSave(question, { text: textarea.value })); inputArea.appendChild(textarea);
         } else if (type === 'MATCHING') {
-            const left = options.filter(option => option.option_key === 'LEFT');
-            const right = options.filter(option => option.matching_key === 'RIGHT');
+            const left = options.filter(option => typeof option.option_key === 'string' && option.option_key.length > 0 && !option.matching_key);
+            const right = options.filter(option => typeof option.matching_key === 'string' && option.matching_key.length > 0);
             if (!left.length || !right.length) {
                 const note = document.createElement('p'); note.className = 'rounded-lg bg-amber-50 p-3 text-amber-800'; note.textContent = 'Format pasangan soal belum lengkap. Hubungi Guru sebelum mengirim ujian.'; inputArea.appendChild(note);
             } else {
