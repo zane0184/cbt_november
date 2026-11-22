@@ -103,3 +103,50 @@ Audit tambahan dan temuan rinci: `docs/AGENT3_WEB_CBT_MONITORING_ROOM_SCOPE_ADDE
 - Tidak ada runtime source/test berubah; seluruh temuan statis dan tes runtime NOT RUN.
 
 Checkpoint ini dibackup byte-exact sebelum diperbarui. Backup: `docs/backup/agent3-web-cbt-p0-2026-11-22/CHECKPOINT_AGENT3_WEB_CBT_P0_SCOPE_2026-11-22.md.before-monitoring-refresh`.
+
+
+---
+
+## ADDENDUM WAJIB — Eksekusi P0 Web Guru dan keputusan tanpa ExamSession (22 Nov 2026)
+
+Addendum ini menggantikan seluruh bagian checkpoint lama yang menyebut satu ExamSession kanonis, session number, wave, atau lifecycle sesi. Acuan terbaru adalah Issue #10 comment `7079750527`.
+
+### Identitas terbaru
+- Source HEAD saat refresh: `91d484b34b7e01fa6652138761ccbcab80370349`.
+- Laporan eksekusi lengkap: `docs/AGENT3_WEB_GURU_P0_EXECUTION_2026-11-22.md`.
+- Agent 1 direct Exam–Room partial HEAD: `0f6921ed7301810689f1d342f5e071ce0851a695`.
+- Agent 2 HEAD: `7642f8df7d20effe82dc1ba5b086147894332767`.
+- Agent 4 Web Siswa audit HEAD: `a0425e63c06fe2ac0ddbd942f81dd7db6ca111fd`.
+
+### Keputusan teknis final
+- Satu Exam = satu pelaksanaan serentak memakai `exam.start_at`–`exam.end_at` dan waktu server.
+- Tidak ada ExamSession/session number/wave/lifecycle sesi baru.
+- Room, roster/placement, dan assignment Proktor terhubung langsung ke Exam + Room.
+- Mode A: Guru pembuat asesmen mandiri hanya dalam lingkup penugasan kelas/pesertanya.
+- Mode B: ujian terpusat; Admin Madrasah menugaskan Guru sebagai Proktor untuk Room tertentu. Lintas kelas hanya melalui assignment Admin.
+- Tabel/relasi sesi lama dipertahankan sebagai histori; tidak boleh mass delete/drop/auto-map sesi ambigu. Transition harus forward-only dan provenance-aware.
+
+### Implementasi Agent 3 yang telah ditambahkan
+- AuthWebController membatasi login ke exact-one ADMIN_MADRASAH/GURU/SISWA dan menolak KAMAD/OPERATOR/multi-role; stale invalid session dilogout.
+- Route Guru: `/guru/bank-soal` dan `/guru/asesmen`, dilindungi auth/tenant/license/EnsureTeacherPortalAccess.
+- Layout Guru menampilkan menu Bank Soal dan Asesmen & Ujian; Monitoring/Penilaian/Analytics masih ditahan.
+- QuestionBank memblokir SHORT_ANSWER pada validasi server sampai accepted answers terbukti masuk snapshot/scoring.
+- ExamManagement digunakan sebagai asesmen mandiri Mode A, memakai Exam.start_at/end_at, assignment rombel, snapshot dan token otomatis saat publish. Tidak ada ExamSession UI.
+- Dashboard student count membatasi pada user/profile aktif dan tepat satu role SISWA.
+- Test tambahan untuk exact portal login, route Guru, unsupported SHORT_ANSWER, dashboard count, publish/token. Workflow filter memasukkan TeacherPracticeWorkflowTest dan PortalLoginRoleBoundaryTest.
+
+### Audit dan blocker
+- Branch Agent 3 memiliki test tambahan tetapi belum ada CI exact-SHA dan Browser/E2E evidence pada source HEAD terbaru.
+- CI #44984094200 PASS pada SHA lama `e9c6867d40b134538e791bbbba02f5743afec7ea` (11 tests/44 assertions), bukan HEAD saat ini. CI #45003191589 pernah melaporkan dua test expectation failures; perbaikan test sudah dibuat tetapi belum ada bukti run exact-SHA terbaru.
+- Agent 1 sudah menambahkan migration/model awal direct Exam–Room, namun Proctor create/confirm/revoke service, placement callers/UI, monitoring consumers, concurrency dan MySQL 8 tests belum selesai.
+- Agent 2 belum menetapkan global lock order/serialization contract; exact-role policy/API dan LoginIdentityResolver masih perlu review.
+- Agent 4 belum membuktikan admission, Attempt/Answer, submit/resume, recovery/sync dan UAT.
+- Menu Proktor tetap tidak diaktifkan sebelum direct Exam–Room backend dan room-scoped authorization lulus.
+- Upload media, preview, RTL eksplisit, formula editor dan source/versioning kurikulum resmi belum terbukti lengkap.
+- URL deployment telah diinformasikan pemilik, tetapi Agent 3 tidak mengakses VPS/SSH dan tidak memverifikasi deployed commit/schema. Tidak ada production DB/migration/deployment.
+
+### File backup
+Checkpoint sebelum addendum ini disimpan byte-identical di:
+`docs/backup/agent3-web-guru-urgent-20261122/CHECKPOINT_AGENT3_WEB_CBT_P0_SCOPE_2026-11-22.md.before-urgent-web-guru-execution`.
+
+**Status: PARTIAL — P0 OPEN. Portal Guru belum boleh dinyatakan siap operasional end-to-end atau siap produksi.**
