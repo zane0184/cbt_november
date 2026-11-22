@@ -227,6 +227,9 @@ The prior rollback fix removed the Stage 4B rombel FK before its lookup index, b
 The verified MySQL 8 error 1553 on `exam_participants_id_tenant_exam_unique` was caused by the child table `exam_participant_room_assignments` retaining `epra_participant_scope_fk` while rollback tried to remove the parent candidate key. This snapshot preserves the migration before moving child-table drops ahead of parent participant key removal. The base `exam_participants` tenant/exam foreign keys remain required and must stay intact.
 
 
+The updated teardown restores nullable participant/proctor references while their parent scope rows still exist, then removes participant assignments and session-room/Proktor child records before deleting session/room parents. It no longer disables `FOREIGN_KEY_CHECKS`.
+
+
 ## Additional snapshot — concurrency test foreign-key-safe tenant cleanup
 
 | Original path | Snapshot path | Source Git blob SHA | UTF-8 bytes |
