@@ -51,7 +51,7 @@ class AuthWebController extends Controller
 
         $loginAllowed = DB::transaction(function () use ($user, $request): bool {
             // Serialize login against Attempt creation on the same persisted User row.
-            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
+            $lockedUser = User::query()->where('tenant_id', $user->tenant_id)->whereKey($user->id)->lockForUpdate()->first();
             if (!$lockedUser || !$lockedUser->is_active) {
                 return false;
             }
