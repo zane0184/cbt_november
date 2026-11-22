@@ -39,6 +39,24 @@ class ExamProctorAssignmentService
                 throw ValidationException::withMessages(['expiresAt' => 'Masa penugasan harus berada sebelum batas akhir ujian dan masih berlaku.']);
             }
 
+            // The Guru row is locked above, serializing assignment creation for this person.
+            // Reject overlapping duties across different exams; a renewal for this same exam remains allowed.
+            $hasScheduleConflict = ExamProctorAssignment::query()
+                ->where('tenant_id', $tenantId)
+                ->where('proctor_user_id', $guru->id)
+                ->where('exam_id', '<>', $lockedExam->id)
+                ->where('status', 'ACTIVE')
+                ->whereNull('revoked_at')
+                ->where('starts_at', '<', $expiry)
+                ->where('expires_at', '>', $start)
+                ->exists();
+
+            if ($hasScheduleConflict) {
+                throw ValidationException::withMessages([
+                    'selectedProctorId' => 'Guru tersebut sudah memiliki penugasan pengawasan lain yang waktunya bertumpang tindih.',
+                ]);
+            }
+
             $assignment = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
                 ->where('exam_id', $lockedExam->id)->where('proctor_user_id', $guru->id)
                 ->lockForUpdate()->first();
