@@ -137,6 +137,8 @@ async function attachApiMock(page, scenario) {
     }
     if (method === 'PUT' && path === '/attempts/attempt-1/answers/snapshot-1') {
       scenario.answerWrites++;
+      const payload = request.postDataJSON();
+      scenario.answerRequestIds.push(payload.client_request_id);
       if (!scenario.online) return route.abort('failed');
       if (scenario.mode === 'fence-mismatch') return json(route, 409, { success: false, code: 'ATTEMPT_FENCE_MISMATCH', message: 'Fence mismatch' });
       if (scenario.mode === 'conflict') {
@@ -145,9 +147,7 @@ async function attachApiMock(page, scenario) {
           current_revision: 2, current_answer: { selected_option_id: 'opt-b' }
         });
       }
-      const payload = request.postDataJSON();
       const payloadHash = answerPayloadHash('snapshot-1', payload.answer_payload);
-      scenario.answerRequestIds.push(payload.client_request_id);
       const existing = scenario.answerRequestLedger.get(payload.client_request_id);
       if (existing) {
         if (existing.payloadHash !== payloadHash) return json(route, 409, { success: false, code: 'IDEMPOTENCY_KEY_REUSED' });
