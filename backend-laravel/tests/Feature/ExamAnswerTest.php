@@ -905,7 +905,8 @@ class ExamAnswerTest extends TestCase
 
         $this->withHeader('Authorization', 'Bearer '.$secondToken)
             ->getJson($base.$attempt)
-            ->assertNotFound();
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
 
         $this->assertDatabaseCount('exam_attempt_answers', 0);
         $this->assertSame('IN_PROGRESS', $this->attempt->fresh()->status);
