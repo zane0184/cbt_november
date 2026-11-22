@@ -14,13 +14,16 @@ Semua backup berikut dibuat sebagai file baru sebelum file sumber terkait diubah
 | 5 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 8b8ac1319c47e338b69ad1f25558b7c41234a076 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-reconciliation | 8b8ac1319c47e338b69ad1f25558b7c41234a076 | ec90b1dfb1b53c8b9369d2296e24239cd907c42e | MATCH |
 | 6 | docs/WG01_TEMPLATE_IMPLEMENTATION_2026-11-22.md | c1c544f13c9484dbc4f88c8a3f62965ce6482286 | docs/backup/web-guru-wg01-template-20261122/WG01_TEMPLATE_IMPLEMENTATION.before-verification.md | c1c544f13c9484dbc4f88c8a3f62965ce6482286 | 1803e6588b174db51d77dea5a862f55f82e8be25 | MATCH |
 | 7 | docs/CHECKPOINT_WG01_TEMPLATE_2026-11-22.md | 1ed1ef33529bc8944db9f5bd0549562288e3229d | docs/backup/web-guru-wg01-template-20261122/CHECKPOINT_WG01_TEMPLATE.before-verification.md | 1ed1ef33529bc8944db9f5bd0549562288e3229d | 9f2860b2c2a06d154d94ca2b6ca0657ef68282e2 | MATCH |
+| 8 | backend-laravel/tests/Feature/QuestionImportTemplateDownloadTest.php | 2cec4c4fbbc78be0d209c3b48c32a1d3103b478f | docs/backup/web-guru-wg01-template-20261122/QuestionImportTemplateDownloadTest.php.before-http-download-test | 2cec4c4fbbc78be0d209c3b48c32a1d3103b478f | fc4a68c78903683b42cf0784ff7319cdbf7759de | MATCH |
+| 9 | backend-laravel/tests/Feature/QuestionImportTemplateDownloadTest.php | 0f7ac2e67fe619bf31eb979ab2c5f23363d03c7b | docs/backup/web-guru-wg01-template-20261122/QuestionImportTemplateDownloadTest.php.before-negative-role-tests | 0f7ac2e67fe619bf31eb979ab2c5f23363d03c7b | 01ca9b918bbdc22bdf2617b30bc62734278ba652 | MATCH |
+| 10 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md | 02545af265dcaa102565c59b266e25c515c7be63 | docs/backup/web-guru-wg01-template-20261122/MANIFEST.md.before-test-backup-additions | 02545af265dcaa102565c59b266e25c515c7be63 | 28d133ad361dd36919e2d84a61bacfcc7ccf4ed2 | MATCH |
 
 ## Ringkasan
 
-- Jumlah snapshot backup: 7.
-- Jumlah hash yang cocok: 7.
+- Jumlah snapshot backup terdaftar: 10.
+- Jumlah hash yang cocok: 10.
 - Jumlah hash tidak cocok: 0.
-- Backup pertama dibuat untuk route, layout, dan workflow sebelum implementasi route/menu/CI.
-- Backup berikutnya dibuat sebelum test dan dokumen audit/checkpoint direkonsiliasi.
+- Tiga backup pertama melindungi route, layout, dan workflow sebelum implementasi route/menu/CI.
+- Backup berikutnya melindungi test dan dokumen sebelum verifikasi/revisi.
 - Backup tidak dihapus atau ditimpa.
-- Kalimat penutup sebelumnya menyebut "Kedua backup" padahal terdapat lebih dari dua backup; ketidaksesuaian itu diperbaiki pada manifest ini.
+- Ketidaksesuaian kalimat "Kedua backup" pada manifest lama telah diperbaiki.
