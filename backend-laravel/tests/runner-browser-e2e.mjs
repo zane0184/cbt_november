@@ -16,7 +16,7 @@ assert.equal(scripts.length, 1, 'Expected exactly one inline runner script');
 const runnerScript = scripts[0][2];
 assert.match(blade, /id="question-stem" dir="auto"/, 'Question stem must declare automatic bidirectional text direction');
 assert.ok(runnerScript.includes("label.dir = 'auto'") && runnerScript.includes("text.dir = 'auto'"), 'Answer options must use automatic text direction');
-const runnerStyles = [...blade.matchAll(/<style\\b[^>]*>([\\s\\S]*?)<\\/style>/gi)].map(match => match[1]).join('\\n');
+const runnerStyles = [...blade.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map(match => match[1]).join('\n');
 
 const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
