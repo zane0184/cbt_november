@@ -41,7 +41,12 @@ class RombelAnalyticsService
             DB::raw('STDDEV_POP(percentage) as std_dev_percentage'),
         ])->first();
 
-        $percentages = $query->orderBy('percentage')->pluck('percentage')->toArray();
+        $percentages = $query->clone()
+            ->reorder()
+            ->select('percentage')
+            ->orderBy('percentage')
+            ->pluck('percentage')
+            ->toArray();
         $median = $this->calculateMedian($percentages);
 
         return [
