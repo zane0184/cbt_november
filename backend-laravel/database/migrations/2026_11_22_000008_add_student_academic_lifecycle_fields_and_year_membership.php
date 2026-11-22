@@ -24,6 +24,9 @@ return new class extends Migration
                 throw new RuntimeException("000008 partial state: unexpected FK {$table}.{$name} already exists.");
             }
         }
+        if (Schema::hasIndex('academic_years', 'academic_years_id_tenant_unique')) {
+            throw new RuntimeException('000008 partial state: academic_years composite index already exists.');
+        }
         foreach ([
             ['student_profiles', 'student_profiles_tenant_status_idx'],
             ['student_profiles', 'student_profiles_entry_year_idx'],
@@ -53,6 +56,10 @@ return new class extends Migration
         if ($orphanRombelYear > 0) {
             throw new RuntimeException("000008 preflight failed: {$orphanRombelYear} memberships have no academic year.");
         }
+
+        Schema::table('academic_years', function (Blueprint $table): void {
+            $table->unique(['id', 'tenant_id'], 'academic_years_id_tenant_unique');
+        });
 
         Schema::table('student_profiles', function (Blueprint $table): void {
             $table->string('academic_status', 20)->default('ACTIVE');
@@ -106,7 +113,8 @@ return new class extends Migration
             || !$this->hasForeignKey('rombel_student', 'rombel_student_academic_year_tenant_fk')) {
             throw new RuntimeException('000008 rollback blocked: expected composite foreign keys are missing.');
         }
-        if (!Schema::hasIndex('student_profiles', 'student_profiles_tenant_status_idx')
+        if (!Schema::hasIndex('academic_years', 'academic_years_id_tenant_unique')
+            || !Schema::hasIndex('student_profiles', 'student_profiles_tenant_status_idx')
             || !Schema::hasIndex('student_profiles', 'student_profiles_entry_year_idx')
             || !Schema::hasIndex('rombel_student', 'rombel_student_tenant_student_year_unique')
             || !Schema::hasIndex('rombel_student', 'rombel_student_academic_year_idx')) {
@@ -124,6 +132,9 @@ return new class extends Migration
             $table->dropIndex('student_profiles_tenant_status_idx');
             $table->dropIndex('student_profiles_entry_year_idx');
             $table->dropColumn(['academic_status', 'entry_academic_year_id']);
+        });
+        Schema::table('academic_years', function (Blueprint $table): void {
+            $table->dropUnique('academic_years_id_tenant_unique');
         });
     }
 
