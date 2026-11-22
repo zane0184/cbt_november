@@ -38,8 +38,6 @@ class StudentWebLoginTest extends TestCase
             // Email sengaja tidak diisi: NISN adalah identifier login Siswa.
             'password' => bcrypt('SandiUji#2026'),
         ]);
-        // Login tests must model an explicitly active account; production checks stay strict.
-        $this->student->forceFill(['is_active' => true])->save();
         $this->student->roles()->attach($studentRole);
 
         StudentProfile::create([
