@@ -270,6 +270,7 @@ try {
     await page.reload();
     await start(page);
     assert.equal(await page.locator('#question-input input[value="opt-a"]').isChecked(), true);
+    await openQuestionNavigation(page);
     await page.getByRole('button', { name: 'Soal 1, konflik jawaban' }).waitFor();
     await page.locator('#submit-button').click();
     await page.waitForFunction(() => document.querySelector('#fatal-error').textContent.toLowerCase().includes('konflik'));
