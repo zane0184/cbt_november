@@ -287,6 +287,8 @@ class TeacherPracticeWorkflowTest extends TestCase
         $exam->refresh();
         $this->assertEquals('PUBLISHED', $exam->status);
         $this->assertNotNull($exam->locked_at);
+        $this->assertNotEmpty($exam->token, 'Token must be generated automatically when the teacher publishes the exam.');
+        $this->assertTrue($exam->require_token);
 
         // Verify Snapshots
         $this->assertDatabaseHas('exam_question_snapshots', [
