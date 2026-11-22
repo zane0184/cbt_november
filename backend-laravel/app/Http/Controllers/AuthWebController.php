@@ -47,7 +47,7 @@ class AuthWebController extends Controller
         }
 
         $roles = $user->roles->pluck('name')->all();
-        $allowedRoles = ['ADMIN_MADRASAH', 'OPERATOR', 'KAMAD', 'GURU', 'SISWA'];
+        $allowedRoles = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
         if (in_array('SUPER_ADMIN', $roles, true) || !count(array_intersect($roles, $allowedRoles))) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
@@ -79,11 +79,8 @@ class AuthWebController extends Controller
 
     protected function redirectForUser(User $user)
     {
-        if ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('OPERATOR')) {
+        if ($user->hasRole('ADMIN_MADRASAH')) {
             return redirect('/admin/dashboard');
-        }
-        if ($user->hasRole('KAMAD')) {
-            return redirect('/');
         }
         if ($user->hasRole('GURU')) {
             return redirect('/admin/exams');
