@@ -114,7 +114,7 @@ jobs:
             --display-warnings 2>&1 | tee ../agent2-p0-integration.log
 
       - name: Two-connection InnoDB lock race test
-        run: php artisan test tests/Feature/AttemptTransactionConcurrencyTest.php --display-warnings
+        run: php artisan test tests/Feature/AttemptTransactionConcurrencyTest.php --display-warnings 2>&1 | tee -a ../agent2-p0-integration.log
 
       - name: Upload integration evidence
         if: always()
