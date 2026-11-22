@@ -102,11 +102,11 @@
                     @endif
                 @elseif($isTeacher)
                     <p class="px-4 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">Ruang Kerja Guru</p>
-                    <a href="/admin/exams" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/exams*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
-                        <span class="text-emerald-400">▤</span><span>Manajemen Ujian</span>
-                    </a>
+                    <span class="flex cursor-not-allowed items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500" aria-disabled="true" title="Menunggu integrasi backend langsung Exam–Room dan acceptance test">
+                        <span>▤</span><span>Asesmen & Ujian · belum aktif</span>
+                    </span>
                     @if($currentUser->hasPermission('question.view'))
-                        <a href="/admin/questions" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/questions*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                        <a href="/guru/bank-soal" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('guru/bank-soal*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span class="text-emerald-400">▧</span><span>Bank Soal</span>
                         </a>
                     @endif
@@ -149,8 +149,8 @@
                                 @if($currentUser->hasPermission('exam.proctor.assign'))<a href="/admin/proctor-assignments" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Penugasan Pengawas</a>@endif
                                 @if($currentUser->hasPermission('exam.proctor.assign'))<a href="/admin/exam-rooms-sessions" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Ruang & Sesi Ujian</a>@endif
                             @elseif($isTeacher)
-                                <a href="/admin/exams" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Manajemen Ujian</a>
-                                @if($currentUser->hasPermission('question.view'))<a href="/admin/questions" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Bank Soal</a>@endif
+                                <span class="block cursor-not-allowed rounded-lg px-3 py-2.5 text-gray-400" aria-disabled="true">Asesmen & Ujian · belum aktif</span>
+                                @if($currentUser->hasPermission('question.view'))<a href="/guru/bank-soal" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Bank Soal</a>@endif
                                 @if($currentUser->hasPermission('curriculum.view'))<a href="/admin/curriculum" class="block rounded-lg px-3 py-2.5 hover:bg-navy-800">Referensi Kurikulum</a>@endif
                             @endif
                         </div>
