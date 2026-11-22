@@ -39,7 +39,8 @@ class UserManagement extends Component
     {
         $user = auth()->user();
         if (!$user || !$user->tenant_id
-            || !$user->hasRole('ADMIN_MADRASAH')
+            || $user->roles()->count() !== 1
+            || !$user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             || !$user->hasPermission('user.manage')) {
             abort(403, 'Akses ditolak. Diperlukan role Admin Madrasah dan permission user.manage.');
         }
