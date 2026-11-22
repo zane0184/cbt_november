@@ -458,7 +458,15 @@ class ExamAnswerTest extends TestCase
                 'answer_state' => 'ANSWERED'
             ]);
 
-            $response->assertStatus(200);
+            if ($type === 'SHORT_ANSWER') {
+                $response->assertStatus(422);
+                $this->assertDatabaseMissing('exam_attempt_answers', [
+                    'exam_attempt_id' => $this->attempt->id,
+                    'exam_question_snapshot_id' => $snapshot->id,
+                ]);
+            } else {
+                $response->assertStatus(200);
+            }
         }
     }
 
