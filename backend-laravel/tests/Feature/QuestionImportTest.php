@@ -83,6 +83,23 @@ class QuestionImportTest extends TestCase
         $this->assertEquals('What is 1+1?', QuestionVersion::first()->stem);
     }
 
+    public function test_short_answer_import_is_rejected_until_accepted_answers_are_fully_supported()
+    {
+        $this->actingAs($this->teacher);
+
+        $response = $this->postJson('/api/v1/questions/import', [
+            'rows' => [[
+                'stem' => 'Jawaban singkat belum siap',
+                'type' => 'SHORT_ANSWER',
+                'subject_id' => $this->subject->id,
+                'accepted_answers' => ['jawaban'],
+            ]],
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertSame(0, Question::query()->count());
+    }
+
     public function test_import_validation_required_fields()
     {
         $this->actingAs($this->teacher);
