@@ -1,0 +1,140 @@
+name: Agent 2 — P0 Attempt Auth Session and Fencing
+
+on:
+  push:
+    branches:
+      - work/agent2-p0-auth-session-fencing-20261123
+  pull_request:
+    branches:
+      - work/agent2-p0-auth-session-fencing-20261123
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent2-p0-attempt-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mysql8-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: agent2_ephemeral_root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pagent2_ephemeral_root"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+
+    defaults:
+      run:
+        working-directory: backend-laravel
+
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_USERNAME: root
+      DB_PASSWORD: agent2_ephemeral_root
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Checkout exact Agent 2 source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up PHP 8.3 and Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, tokenizer, xml, curl, dom, gd, zip, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Create and verify isolated disposable MySQL database
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_DB="cbt_agent2_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          if [[ ! "$RUN_DB" =~ ^cbt_agent2_[0-9]+_[0-9]+$ ]]; then
+            echo "Unsafe disposable database name" >&2
+            exit 70
+          fi
+          echo "DB_DATABASE=$RUN_DB" >> "$GITHUB_ENV"
+          export DB_DATABASE="$RUN_DB"
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "CREATE DATABASE $RUN_DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          php -r '$pdo=new PDO("mysql:host=127.0.0.1;port=3306;dbname=".getenv("DB_DATABASE"),getenv("DB_USERNAME"),getenv("DB_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]); $r=$pdo->query("SELECT DATABASE() db, VERSION() version, @@default_storage_engine engine")->fetch(PDO::FETCH_ASSOC); if($r["db"]!==getenv("DB_DATABASE") || !str_starts_with($r["version"],"8.") || strtoupper($r["engine"])!=="INNODB") exit(1); echo json_encode($r,JSON_PRETTY_PRINT),PHP_EOL;'
+
+      - name: Validate Composer lock
+        run: composer validate --no-check-publish
+
+      - name: Install locked dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Prepare Laravel runtime
+        run: |
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+          php artisan package:discover --ansi
+
+      - name: Fresh full migration chain on isolated MySQL 8
+        run: php artisan migrate --force --no-interaction -vvv
+
+      - name: PHP syntax validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app database/migrations tests/Feature -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Auth, Attempt, Answer, Lease, Media and Expiry integration suites
+        shell: bash
+        run: |
+          set -o pipefail
+          php artisan test \
+            tests/Feature/StudentWebLoginTest.php \
+            tests/Feature/AttemptAuthSessionBindingTest.php \
+            tests/Feature/AuthTest.php \
+            tests/Feature/ParticipantAuthorizationAndAttemptLimitTest.php \
+            tests/Feature/ExamAnswerTest.php \
+            tests/Feature/MediaAuthorizationTest.php \
+            tests/Feature/ExpireExamAttemptsCommandTest.php \
+            tests/Feature/DeviceLeaseSchemaIntegrityTest.php \
+            --display-warnings 2>&1 | tee ../agent2-p0-integration.log
+
+      - name: Two-connection InnoDB lock race test
+        run: php artisan test tests/Feature/AttemptTransactionConcurrencyTest.php --display-warnings 2>&1 | tee -a ../agent2-p0-integration.log
+
+      - name: Upload integration evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent2-p0-auth-session-fencing-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            agent2-p0-integration.log
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Drop disposable database and verify cleanup
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_DB="cbt_agent2_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          if [[ ! "$RUN_DB" =~ ^cbt_agent2_[0-9]+_[0-9]+$ ]]; then exit 90; fi
+          mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -e "DROP DATABASE IF EXISTS $RUN_DB;"
+          remaining=$(mysql --protocol=tcp -h 127.0.0.1 -P 3306 -uroot -pagent2_ephemeral_root -Nse "SELECT COUNT(*) FROM information_schema.schemata WHERE schema_name='$RUN_DB'")
+          test "$remaining" = "0"
+          echo "disposable_database_cleanup=PASS"
