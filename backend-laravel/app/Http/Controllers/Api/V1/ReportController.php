@@ -208,6 +208,8 @@ class ReportController extends Controller
             'results' => $results,
             'tenant' => $tenant,
             'logoDataUri' => $logoDataUri,
+            'principalName' => $tenant?->principal_name,
+            'teacherName' => $request->user()->hasRole('GURU') ? $request->user()->name : null,
         ]);
 
         return $pdf->download('exam_results_' . $exam->id . '.pdf');
@@ -263,6 +265,8 @@ class ReportController extends Controller
             'results' => $results,
             'tenant' => $tenant,
             'logoDataUri' => $logoDataUri,
+            'principalName' => $tenant?->principal_name,
+            'teacherName' => $request->user()->hasRole('GURU') ? $request->user()->name : null,
         ]);
 
         return $pdf->download('student_results_' . $student->id . '.pdf');
