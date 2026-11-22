@@ -236,6 +236,27 @@ async function openQuestionNavigation(page) {
 
 const browser = await chromium.launch({ headless: true });
 try {
+  // Mobile and desktop layouts use the intended column structure, touch sizes, and preserve drawer state on resize.
+  {
+    const scenario = makeScenario();
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    const mobileColumns = await page.locator('.runner-layout').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length);
+    const submitHeight = await page.locator('#submit-button').evaluate(element => element.getBoundingClientRect().height);
+    assert.equal(mobileColumns, 1, 'Mobile layout must use a single content column');
+    assert.ok(submitHeight >= 48, 'Submit touch target must be at least 48 CSS pixels');
+    await openQuestionNavigation(page);
+    assert.equal(await page.locator('#question-nav-panel').evaluate(element => element.open), true);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const desktopColumns = await page.locator('.runner-layout').evaluate(element => getComputedStyle(element).gridTemplateColumns.trim().split(/\\s+/).length);
+    assert.equal(desktopColumns, 2, 'Desktop layout must show the question navigation column');
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(await page.locator('#question-nav-panel').evaluate(element => element.open), true, 'Manual mobile drawer state must survive resize');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: mobile/desktop responsive columns, touch target, and drawer resize state');
+  }
+
   // 1. Normal path: answer is saved to the server before submit; submit is terminal.
   {
     const scenario = makeScenario();
