@@ -137,10 +137,10 @@
                                                 @if($student->academic_status === 'ACTIVE' && $rombel->academicYear?->is_active)
                                                     <button type="button" wire:click="openActionModal('TRANSFER', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-blue-200 px-2 py-1 text-xs font-semibold text-blue-800">Mutasi</button>
                                                     <button type="button" wire:click="openActionModal('REMOVE', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-800">Keluarkan</button>
-                                                    @if((int) $rombel->gradeLevel?->level === 6)
+                                                    @if($rombel->gradeLevel && (int) $rombel->gradeLevel->level === 6)
                                                         <button type="button" wire:click="openActionModal('GRADUATE', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-indigo-200 px-2 py-1 text-xs font-semibold text-indigo-800">Luluskan</button>
                                                     @endif
-                                                @elseif($student->academic_status === 'ACTIVE' && $activeYear && !$rombel->academicYear?->is_active)
+                                                @elseif($student->academic_status === 'ACTIVE' && $activeYear && $rombel->academicYear && !$rombel->academicYear->is_active)
                                                     <button type="button" wire:click="openActionModal('PROMOTE', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-800">Naik Kelas</button>
                                                     <button type="button" wire:click="openActionModal('RETAIN', '{{ $student->id }}', '{{ $rombel->id }}')" class="rounded-md border border-orange-200 px-2 py-1 text-xs font-semibold text-orange-800">Tinggal Kelas</button>
                                                 @endif
