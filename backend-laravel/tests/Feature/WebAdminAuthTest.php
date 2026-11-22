@@ -163,10 +163,17 @@ class WebAdminAuthTest extends TestCase
         $response->assertRedirect('/admin/exams');
         $this->assertAuthenticatedAs($this->guru);
 
-        // The existing browser session must not survive account deactivation.
+        // Deactivate and reactivate the same UUID before the browser's next
+        // request. The old session must remain invalid after the account returns.
+        $version = (int) $this->guru->auth_version;
+        $this->guru->auth_version = $version + 1;
+        $this->guru->save();
         $this->guru->delete();
-        $this->app['auth']->forgetGuards();
+        $this->guru->restore();
+        $this->guru->auth_version = $version + 2;
+        $this->guru->save();
 
+        $this->app['auth']->forgetGuards();
         $this->get('/admin/exams')->assertRedirect('/login');
         $this->assertGuest();
         $this->assertSoftDeleted('users', ['id' => $this->guru->id]);
