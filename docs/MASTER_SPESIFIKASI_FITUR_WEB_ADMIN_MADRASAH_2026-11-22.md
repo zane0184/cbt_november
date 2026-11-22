@@ -85,7 +85,7 @@ Dashboard bukan pengganti menu fungsional. Setiap menu harus punya list, detail,
 
 Tampilkan data real dari database dan filter menurut tahun pelajaran aktif:
 - jumlah siswa aktif, Guru aktif, kelas, rombel, mata pelajaran;
-- jumlah ujian terdaftar;
+- jumlah ujian terdaftar (informasi administratif saja);
 - jadwal ujian terdekat sebagai informasi administratif (tanpa status real-time ujian/peserta);
 - aktivitas administrasi terbaru (import, perubahan data, penerbitan ujian, penugasan Proktor);
 - peringatan data master yang belum lengkap dan kendala operasional.
@@ -162,23 +162,37 @@ Admin menugaskan Guru ke mata pelajaran dan kelas/rombel per tahun pelajaran, me
 
 Kurikulum Merdeka terintegrasi, bukan label Bank Soal saja. Kelola daftar dan versi kurikulum, tahun berlaku, status, struktur, fase, kelas, mapel, CP, TP, ATP, registrasi kurikulum madrasah per tahun pelajaran, pemetaan dan histori. Siapkan extensibility untuk Kurikulum Berbasis Cinta/Panca Cinta, Pembelajaran Mendalam, dan kurikulum berikutnya. Guru menggunakan struktur kurikulum saat authoring pembelajaran, bank soal, asesmen, ujian; Admin mengelola penerapan/struktur. Jangan menghapus versi/riwayat yang telah dipakai ujian.
 
-## 8. MANAJEMEN UJIAN, RUANG, DAN PROKTOR
+## 8. PENUGASAN PROKTOR UNTUK UJIAN TERPUSAT
 
-### 8.1 Daftar ujian
-Admin melihat metadata administratif ujian: nama, mapel, Guru pembuat, kelas/rombel, tahun pelajaran, jadwal, durasi, dan jumlah peserta terdaftar. Admin tidak melihat status kehadiran/progres peserta dan tidak otomatis boleh mengedit soal, kunci, atau konfigurasi akademik milik Guru.
+### 8.1 Batas tugas Admin Madrasah dalam ujian
 
-### 8.2 Ruang
-CRUD ruang, kapasitas, status, penempatan peserta, daftar peserta, Proktor yang ditugaskan, dan histori. Room hanya mengatur penempatan administratif; **Room bukan admission gate untuk start/resume Attempt**.
+Tugas Admin Madrasah terkait operasional ujian **hanya menetapkan Guru yang ditugaskan sebagai Proktor untuk ujian terpusat**, yaitu UTS, UAS, dan UM. Admin tidak mengelola pelaksanaan ujian, tidak membuat atau mengubah soal, tidak mengatur konfigurasi akademik ujian, tidak mengelola peserta/roster/ruang, tidak memantau ujian atau peserta, dan tidak melakukan tindakan terhadap Attempt/perangkat.
 
-### 8.3 Penugasan Proktor
-Admin memilih Exam, Room, akun Guru, interval waktu, alasan. Catat assigned_by, revoked_by, waktu, status, reason dan audit. Proktor adalah assignment sementara, bukan role permanen. Penugasan berbatas waktu dan memakai interval [starts_at, ends_at). Adjacent 07:00–09:00 dan 09:00–11:00 tidak overlap. Cegah overlap untuk Guru yang sama pada waktu bersamaan, termasuk request concurrent melalui transaksi/locking yang benar. Proktor hanya melihat minimum identitas peserta, kehadiran, status/progres di Room yang ditugaskan. Tidak boleh melihat jawaban, kunci, bank soal, konfigurasi, nilai, atau Room lain kecuali hak terpisah yang eksplisit.
+Ujian reguler/mandiri tetap menjadi tanggung jawab Guru pembuat sesuai penugasan mengajarnya. Ujian tersebut tidak memerlukan penetapan Proktor oleh Admin.
 
-### 8.4 Mode operasional
-**Mode A — Guru mandiri:** Guru mengelola ujian sendiri sesuai kelas/mapel yang ditugaskan; tidak perlu assignment Proktor Admin.
-**Mode B — Ujian terpusat:** Admin menugaskan Guru sebagai Proktor untuk Exam+Room; roster lintas kelas hanya berdasarkan penempatan resmi Admin; akses Proktor terbatas pada ruangnya.
+### 8.2 Daftar ujian terpusat untuk penugasan
+
+Web Admin hanya menampilkan daftar ujian yang ditandai secara eksplisit sebagai ujian terpusat dengan jenis UTS, UAS, atau UM dan memerlukan penugasan Proktor. Informasi yang ditampilkan dibatasi pada data yang diperlukan untuk memilih penugasan: nama ujian, jenis ujian, jadwal, Guru penanggung jawab, dan daftar ruang yang telah ditetapkan oleh alur yang berwenang. Tampilan ini bukan dashboard pelaksanaan atau pemantauan ujian.
+
+Admin tidak dapat mengubah soal, kunci jawaban, durasi, jadwal akademik, peserta, roster, maupun pengaturan ujian lainnya.
+
+### 8.3 Penetapan Proktor
+
+Admin memilih ujian terpusat (UTS/UAS/UM), ruang yang telah tersedia pada data ujian, akun Guru yang akan ditugaskan, interval penugasan, dan alasan bila diperlukan oleh kebijakan audit. Admin hanya menetapkan atau mencabut penugasan Proktor. Admin tidak membuat/mengelola ruang dan tidak menempatkan peserta.
+
+Catat assigned_by, revoked_by, waktu, status, reason, dan audit. Proktor adalah Guru dengan assignment sementara, bukan role permanen. Penugasan memakai interval [starts_at, ends_at). Adjacent 07:00–09:00 dan 09:00–11:00 tidak overlap. Cegah overlap untuk Guru yang sama pada waktu bersamaan, termasuk request concurrent melalui transaksi/locking yang benar.
+
+Setelah assignment aktif, menu Proktor muncul pada akun Guru yang ditugaskan dan hanya memberi akses sesuai batas ruang/ujian yang ditugaskan. Menu tersebut tidak memberi akses ke jawaban, kunci, bank soal, konfigurasi, atau nilai. Web Admin tidak menyediakan tampilan aktivitas/progres peserta kepada Admin.
+
+### 8.4 Mode ujian
+
+**Ujian reguler/mandiri:** Guru mengelola ujian sendiri sesuai kelas/mapel yang ditugaskan. Tidak memerlukan penugasan Proktor dari Admin.
+
+**Ujian terpusat (UTS/UAS/UM):** Admin hanya menetapkan Guru sebagai Proktor untuk ujian dan ruang yang telah ditentukan. Tanggung jawab akademik dan konfigurasi ujian tetap pada Guru/penanggung jawab ujian yang berwenang.
 
 ### 8.5 Model serentak
-Jadwal Exam `start_at/end_at`, waktu server resmi. Token dibuat saat publish, dapat dilihat sebelum jadwal, Siswa tidak boleh mulai sebelum jadwal. Jangan implementasikan wave/session/session_number/ExamSession/SessionRoom sebagai lifecycle operasional atau syarat admission. Pertahankan kompatibilitas historis seperlunya tanpa mengaktifkan model lama.
+
+Jadwal Exam `start_at/end_at`, waktu server resmi. Token dibuat saat Guru menerbitkan ujian, dapat dilihat sebelum jadwal, Siswa tidak boleh mulai sebelum jadwal. Jangan implementasikan wave/session/session_number/ExamSession/SessionRoom sebagai lifecycle operasional atau syarat admission. Penugasan Proktor tidak mengubah aturan admission. Pertahankan kompatibilitas historis seperlunya tanpa mengaktifkan model lama.
 
 ## 9. FITUR OPERASIONAL PESERTA CBT — TIDAK DISEDIAKAN DI WEB ADMIN
 
@@ -193,7 +207,7 @@ Fitur: filter, preview, cetak PDF, export XLSX, kop madrasah, header/footer, tan
 
 ## 11. AUDIT DAN KEAMANAN
 
-Catat login sukses/gagal, logout, reset password, CRUD Guru/Siswa, import/export, perubahan tahun/rombel/mapel/penugasan, branding, publish/perubahan jadwal ujian, assignment/revoke Proktor, Reset Attempt, Force Submit, perpanjangan waktu, tindakan lease/perangkat, pengaturan, akses ditolak. Log memuat actor, waktu, action, target, hasil, alasan; jangan log password/token/secret.
+Catat login sukses/gagal, logout, reset password, CRUD Guru/Siswa, import/export, perubahan tahun/rombel/mapel/penugasan, branding, assignment/revoke Proktor untuk ujian terpusat UTS/UAS/UM, pengaturan, akses ditolak. Log memuat actor, waktu, action, target, hasil, alasan; jangan log password/token/secret.
 
 Setiap route, controller, Livewire action, query detail, search, import, export, download, dan mutation harus memvalidasi installation/tenant, role, permission, ownership, teaching assignment, class/subject scope, proctor assignment, exam status/schedule. Jangan mengandalkan hide menu/tombol. Cegah IDOR, mass assignment, SQL injection, XSS, CSRF, upload berbahaya, enumeration, privilege escalation, cross-tenant access, duplicate/race, dan kebocoran data melalui export/log.
 
@@ -261,7 +275,7 @@ Untuk setiap menu/submenu:
 - Tidak ada akses lintas instalasi/database.
 - Guru tidak dapat mengubah master data Admin.
 - Guru hanya mengakses assignment miliknya.
-- Proktor hanya Room assignment aktif.
+- Proktor hanya mengakses ujian/ruang sesuai assignment aktif; Admin tidak memperoleh akses monitoring peserta.
 - Siswa tidak dapat membuka portal/fitur Proktor.
 - IDOR pada detail, update, delete, export, dan download ditolak.
 
@@ -271,9 +285,9 @@ Untuk setiap menu/submenu:
 - Setelah end_at ditolak sesuai aturan.
 - Admission tidak bergantung pada Room atau ExamSession.
 - Room hanya memengaruhi penempatan administratif, bukan hak start/resume.
-- Guru mandiri dan ujian terpusat diuji terpisah.
+- Ujian reguler/mandiri tidak memerlukan assignment Proktor Admin; ujian terpusat UTS/UAS/UM menyediakan alur penetapan Proktor oleh Admin.
 - Proctor overlap/adjacent interval diuji pada MySQL concurrent.
-- Reset/Force Submit/extension/release memerlukan permission, reason, transaction, audit.
+- Admin hanya dapat menetapkan/mencabut Proktor untuk ujian terpusat UTS/UAS/UM; perubahan wajib tervalidasi dan tercatat di audit log.
 
 ## 16. ATURAN KERJA AGENT DAN PELAPORAN
 
@@ -313,6 +327,10 @@ DEFERRED sampai Juni 2027:
 - Fitur yang hanya diperlukan oleh dua komponen deferred tersebut.
 
 
+
+### Keputusan pengguna 23 November 2026 — batas kewenangan Admin dalam ujian
+
+Dalam seluruh jenis ujian, tugas Admin hanya menetapkan/mencabut Guru sebagai Proktor untuk ujian terpusat UTS, UAS, dan UM. Admin tidak mengelola ujian reguler/mandiri Guru, soal, jadwal akademik, konfigurasi, ruang, peserta, roster, pelaksanaan, pemantauan, Attempt, atau perangkat.
 
 ### Keputusan pengguna 23 November 2026 — batas fitur operasional CBT pada Web Admin
 
