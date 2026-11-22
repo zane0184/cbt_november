@@ -23,3 +23,11 @@ All backups are separate Git files. No original file or ZIP baseline was overwri
 
 
 Note: This preserved test snapshot predates both the valid cross-year relationship fixture and canonical role reuse correction. Later changes remained test-only; production authorization and consistency guards were not relaxed.
+
+
+## Supplemental snapshots — MySQL test fixture and independent connection assertions
+
+| Original path | Backup path | Original Git blob SHA | UTF-8 bytes | Backup commit |
+|---|---|---|---:|---|
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentManagementTest.php.before-inactive-cross-year-semester-fixture | 33f2164069376e70ef26aaa6fd302df34e6c13e5 | 9981 | ee8450113f82ee2f6e6037f088eff9ea960ecc7d |
+| backend-laravel/tests/Feature/TeacherSubjectAssignmentConcurrencyTest.php | docs/backup/stage4c-teacher-subject-assignment-2026-11-22/TeacherSubjectAssignmentConcurrencyTest.php.before-independent-connection-assertion | 5a786289a187d2f141f6f7b86d96d79f7e414181 | 7266 | 6857f18eaeb6f3c88dc840f92b8f29556b5d5cff |
