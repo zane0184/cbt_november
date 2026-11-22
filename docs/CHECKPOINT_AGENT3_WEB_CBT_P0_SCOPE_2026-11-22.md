@@ -150,3 +150,16 @@ Checkpoint sebelum addendum ini disimpan byte-identical di:
 `docs/backup/agent3-web-guru-urgent-20261122/CHECKPOINT_AGENT3_WEB_CBT_P0_SCOPE_2026-11-22.md.before-urgent-web-guru-execution`.
 
 **Status: PARTIAL — P0 OPEN. Portal Guru belum boleh dinyatakan siap operasional end-to-end atau siap produksi.**
+
+
+---
+
+## ADDENDUM — CI exact-SHA dan status upgrade (22 Nov 2026)
+
+- Source terakhir yang mengubah runtime/test: `91d484b34b7e01fa6652138761ccbcab80370349`; branch HEAD saat addendum: `2b85995403df4fbc47adb5692370bdbbe1d6c180` (dokumentasi/backup setelah source SHA).
+- Run [GitHub Actions #45028604234](https://github.com/zane0184/cbt_november/actions/runs/45028604234) pada exact source SHA berakhir failure pada attempt 1. Job tidak memiliki steps dan runner belum teralokasi. Rerun attempt 2 juga failure, tanpa steps/log (log endpoint `BlobNotFound`).
+- Run #45028590509 pada SHA source sebelumnya juga gagal sebelum step. Ini **bukan** bukti PHPUnit gagal; PHPUnit/PHP lint/route:list belum dieksekusi. Status: BLOCKED / NOT EXECUTED.
+- Workflow CI saat ini sudah memasukkan TeacherPracticeWorkflowTest bersama tiga test suite lain, tetapi belum ada test result.
+- Statistik siswa memakai akun tidak terhapus dan tepat satu role SISWA. Pivot `rombel_student` tidak memiliki status aktif; keberadaan row tenant-local pada rombel aktif dipakai sebagai definisi membership aktif yang tersedia saat ini.
+- Ada perbedaan konteks: prompt terbaru menyebut database aplikasi kosong, sedangkan addendum pemilik Issue #10 menyebut deployment existing yang harus mempertahankan data. Karena Agent 3 tidak punya akses SSH/read-only deployment metadata, schema dan migration ledger **belum diverifikasi**. Tidak ada migration, reset, atau deployment produksi.
+- P0 tetap OPEN. Tidak ada Browser/E2E, visual QA, Mode B Proktor, Essay grading, media/RTL/formula atau UAT yang dinyatakan selesai.
