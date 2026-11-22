@@ -299,6 +299,9 @@ jobs:
             exit 1
           fi
           echo "Static guard PASS: selected Admin tests contain no permission writes; no seeder/bootstrapper is selected."
+          test -f tests/Feature/RoleDashboardVerificationTest.php
+          test -f tests/Feature/RetireKamadRoleServiceTest.php
+          test -f tests/Feature/ProctorAssignmentSecurityTest.php
 
       - name: PHP lint — application, migrations, routes and tests
         shell: bash
@@ -336,6 +339,24 @@ jobs:
         run: |
           set -euo pipefail
           php artisan test tests/Feature/TenantProfileManagementTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-tenant-profile.log"
+
+      - name: PHPUnit — Canonical three-portal role matrix and retired portal URLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/RoleDashboardVerificationTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-role-dashboard.log"
+
+      - name: PHPUnit — Kamad role retirement, conflict protection and rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/RetireKamadRoleServiceTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-retire-kamad.log"
+
+      - name: PHPUnit — Temporary Proktor assignment on Guru identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan test tests/Feature/ProctorAssignmentSecurityTest.php --display-warnings 2>&1 | tee "$RUNNER_TEMP/wa01-alt/phpunit-guru-proctor.log"
 
       - name: PHPUnit — Admin user-management tenant scope and role restrictions
         shell: bash
