@@ -176,7 +176,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     public function test_participant_cannot_start_before_eligibility_window()
     {
         $this->participantA1->update(['eligible_from' => now()->addMinutes(5)]);
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
@@ -220,7 +220,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     {
         $eligibleUntil = now()->addMinutes(20)->startOfSecond();
         $this->participantA1->update(['eligible_until' => $eligibleUntil]);
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
@@ -245,7 +245,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_c_second_attempt_rejected_when_limit_reached()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         // Start first attempt
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -270,7 +270,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_d_replay_start_request_resumes_without_duplicate()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         // Initial start
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -294,13 +294,13 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     public function test_test_e_foreign_user_attempt_access()
     {
         // First create an attempt for userA1
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $attemptId = $startRes->json('data.id');
 
         // Now switch to userA2 (same tenant, but not owner of attempt)
-        $this->actingAs($this->userA2, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA2));
 
         // 1. Execution access
         $execRes = $this->withHeader('X-Device-Binding-ID', 'device-a2')
@@ -341,7 +341,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_g_final_attempt_plus_limit()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         // Start and submit attempt 1
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -364,7 +364,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_h_uuid_parameter_manipulation()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
