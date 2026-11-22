@@ -327,13 +327,9 @@ class MonitoringController extends Controller
     public function heartbeat(Request $request, Exam $exam, ExamAttempt $attempt)
     {
         $user = $request->user();
-        $roleNames = $user ? $user->roles()->pluck('name')->all() : [];
-
-        abort_unless(
-            $user && $user->tenant_id && count($roleNames) === 1 && $roleNames[0] === 'SISWA',
-            403,
-            'Heartbeat ujian hanya tersedia untuk akun Siswa.'
-        );
+        if (!$user || !$user->hasExactRole('SISWA')) {
+            return response()->json(['success' => false, 'message' => 'Only an active Student account can send an exam heartbeat.'], 403);
+        }
 
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
@@ -344,33 +340,66 @@ class MonitoringController extends Controller
             ], 400);
         }
 
-        // Student heartbeat
-        if ($attempt->exam_id !== $exam->id
-            || $attempt->tenant_id !== $exam->tenant_id
-            || $attempt->participant->tenant_id !== $exam->tenant_id
-            || $attempt->participant->user_id !== $user->id) {
-            abort(403);
-        }
+        return DB::transaction(function () use ($user, $exam, $attempt, $deviceId) {
+            // Heartbeat follows the same lock order as execution, answer save and submit.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($attempt->device_fingerprint && $attempt->device_fingerprint !== $deviceId) {
+            $participant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$participant || (string) $participant->id !== (string) $attempt->participant_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized participant.'], 403);
+            }
+
+            $lockedAttempt = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->whereKey($attempt->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedAttempt) {
+                return response()->json(['success' => false, 'message' => 'Attempt not found.'], 404);
+            }
+
+            if ($lockedAttempt->status !== 'IN_PROGRESS'
+                || !$lockedAttempt->expires_at
+                || $lockedAttempt->expires_at->lte(now())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attempt is no longer active.',
+                    'code' => 'ATTEMPT_NOT_ACTIVE'
+                ], 409);
+            }
+
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat belum terikat atau berbeda. Pergantian perangkat memerlukan prosedur pelepasan yang berotorisasi.',
+                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            $serverNow = now();
+            $lockedAttempt->update(['last_activity_at' => $serverNow]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
-                'code' => 'CONCURRENT_DEVICE_DENIED'
-            ], 409);
-        }
-
-        if (!$attempt->device_fingerprint) {
-            $attempt->update(['device_fingerprint' => $deviceId]);
-        }
-
-        $attempt->update(['last_activity_at' => now()]);
-
-        return response()->json([
-            'success' => true,
-            'server_now' => now()->toIso8601String(),
-            'expires_at' => $attempt->expires_at->toIso8601String(),
-            'status' => $attempt->status
-        ]);
+                'success' => true,
+                'server_now' => $serverNow->toIso8601String(),
+                'expires_at' => $lockedAttempt->expires_at->toIso8601String(),
+                'status' => $lockedAttempt->status
+            ]);
+        });
     }
+
 }
