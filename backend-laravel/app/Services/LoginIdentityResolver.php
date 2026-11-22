@@ -21,16 +21,31 @@ class LoginIdentityResolver
 
         $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('is_active', true)
             ->whereRaw('LOWER(username) = ?', [$normalized])->get();
-        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->where(function ($query) use ($normalized): void {
-                $query->where(function ($asn) use ($normalized): void {
-                    $asn->where('employment_type', 'ASN')->whereRaw('LOWER(nip) = ?', [$normalized]);
-                })->orWhere(function ($honorer) use ($normalized): void {
-                    $honorer->where('employment_type', 'HONORER')->whereRaw('LOWER(nik) = ?', [$normalized]);
-                });
-            })->pluck('user_id');
-        $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->where('nisn', $identifier)->pluck('user_id');
+        $teacherUserIds = collect();
+        if (preg_match('/^\\d{18}$/', $normalized)) {
+            $teacherUserIds = TeacherProfile::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('employment_type', 'ASN')
+                ->whereRaw('LOWER(nip) = ?', [$normalized])
+                ->pluck('user_id');
+        } elseif (preg_match('/^\\d{16}$/', $normalized)) {
+            $teacherUserIds = TeacherProfile::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('employment_type', 'HONORER')
+                ->whereRaw('LOWER(nik) = ?', [$normalized])
+                ->pluck('user_id');
+        }
+
+        $studentUserIds = collect();
+        if (preg_match('/^\\d{10}$/', $normalized)) {
+            $studentUserIds = StudentProfile::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->whereRaw('LOWER(nisn) = ?', [$normalized])
+                ->pluck('user_id');
+        }
 
         $candidateIds = collect($usernameUsers->pluck('id'))
             ->merge($teacherUserIds)->merge($studentUserIds)->map(fn ($id) => (string) $id)->unique()->values();
