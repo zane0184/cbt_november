@@ -268,13 +268,18 @@
         });
         await persistAttemptContext();
         const localPending = await readPersistedPending();
+        const localConflicts = await readPersistedConflicts();
+        const assignedSnapshotIds = new Set(state.questions.map(question => String(question.id)));
+        const orphanedLocalState = [...localPending, ...localConflicts]
+            .filter(row => !assignedSnapshotIds.has(String(row.snapshotId)));
+        if (orphanedLocalState.length) {
+            throw new Error('Draft lokal tidak cocok dengan daftar snapshot Attempt ini. Data dipertahankan dan runner dihentikan untuk mencegah jawaban salah kirim.');
+        }
         localPending.forEach(row => {
-            if (!state.questions.some(question => String(question.id) === row.snapshotId)) return;
             const item = { payload: row.payload, clientRequestId: row.clientRequestId, baseRevision: row.baseRevision ?? null };
             state.pending.set(row.snapshotId, item);
             state.answers.set(row.snapshotId, { payload: row.payload, state: 'ANSWERED' });
         });
-        const localConflicts = await readPersistedConflicts();
         localConflicts.forEach(row => {
             state.conflicts.set(row.snapshotId, {
                 local: row.localPayload, server: row.serverAnswer, revision: row.serverRevision
@@ -433,8 +438,8 @@
                 });
                 state.revisions.set(question.id, Number(result.data.revision_number));
                 if (state.pending.get(question.id) === pendingItem) {
-                    state.pending.delete(question.id);
                     await acknowledgePersistedPending(question.id, pendingItem, result.data.revision_number);
+                    state.pending.delete(question.id);
                 }
                 setSaveStatus(state.pending.size ? `${state.pending.size} jawaban menunggu sinkronisasi` : 'Respons server berhasil; receipt terverifikasi belum tersedia');
             } catch (error) {
