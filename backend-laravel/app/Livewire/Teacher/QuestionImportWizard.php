@@ -17,6 +17,8 @@ final class QuestionImportWizard extends TeacherPortalComponent
 
     public array $previewErrors = [];
 
+    public array $previewRows = [];
+
     public int $totalRows = 0;
 
     public int $validRows = 0;
@@ -27,6 +29,7 @@ final class QuestionImportWizard extends TeacherPortalComponent
     {
         $this->resetValidation();
         $this->previewErrors = [];
+        $this->previewRows = [];
         $this->totalRows = 0;
         $this->validRows = 0;
         $this->previewReady = false;
@@ -41,6 +44,12 @@ final class QuestionImportWizard extends TeacherPortalComponent
         try {
             $result = app(QuestionImportWorkbookParser::class)->parse($this->workbook, auth()->user());
             $this->previewErrors = $result['errors'];
+            $this->previewRows = array_map(fn (array $row) => [
+                'number' => $row['_number'],
+                'code' => $row['question_code'] ?? '-',
+                'type' => $row['type'],
+                'stem' => mb_strimwidth($row['stem'], 0, 90, '…'),
+            ], $result['rows']);
             $this->totalRows = $result['total_rows'];
             $this->validRows = $result['valid_rows'];
             $this->previewReady = $result['success'];
@@ -55,6 +64,7 @@ final class QuestionImportWizard extends TeacherPortalComponent
                 'exception' => $exception::class,
             ]);
             $this->previewReady = false;
+            $this->previewRows = [];
             $this->previewErrors = [['row' => 0, 'field' => 'workbook', 'error' => 'Workbook gagal diperiksa. Periksa file dan coba kembali.']];
             $this->addError('workbook', 'Workbook gagal diperiksa.');
         }
@@ -69,6 +79,12 @@ final class QuestionImportWizard extends TeacherPortalComponent
         // Re-parse on confirmation. Client-side preview state is never trusted.
         $parsed = app(QuestionImportWorkbookParser::class)->parse($this->workbook, auth()->user());
         $this->previewErrors = $parsed['errors'];
+        $this->previewRows = array_map(fn (array $row) => [
+            'number' => $row['_number'],
+            'code' => $row['question_code'] ?? '-',
+            'type' => $row['type'],
+            'stem' => mb_strimwidth($row['stem'], 0, 90, '…'),
+        ], $parsed['rows']);
         $this->totalRows = $parsed['total_rows'];
         $this->validRows = $parsed['valid_rows'];
         $this->previewReady = $parsed['success'];
