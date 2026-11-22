@@ -302,14 +302,14 @@ class UserManagement extends Component
             ];
 
             $user->is_active = $targetActive;
-            $user->setRememberToken(\\Illuminate\\Support\\Str::random(60));
+            $user->setRememberToken(\Illuminate\\Support\\Str::random(60));
             $user->save();
 
             if (!$targetActive) {
                 // Revocation is immediate for bearer tokens. Web sessions are denied
                 // by EnsureActiveAccount on their next request.
                 $user->tokens()->delete();
-                if (\\Illuminate\\Support\\Facades\\Schema::hasTable('sessions')) {
+                if (\Illuminate\\Support\\Facades\\Schema::hasTable('sessions')) {
                     DB::table('sessions')->where('user_id', $user->id)->delete();
                 }
             }
