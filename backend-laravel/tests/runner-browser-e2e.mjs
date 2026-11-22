@@ -383,7 +383,7 @@ try {
     scenario.expiresInMs = -1000;
     scenario.submitStatus = 'EXPIRED';
     const { context, page } = await newPage(browser, scenario);
-    await start(page);
+    await page.locator('#start-button').click();
     await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
     assert.equal(scenario.submitCalls, 1, 'Expired Attempt must trigger one automatic submit');
     assert.equal(await page.locator('#completion-title').textContent(), 'Ujian ditutup oleh server');
