@@ -549,4 +549,108 @@ class ExamSessionHardeningTest extends TestCase
         $this->assertDatabaseCount('exam_attempts', 2);
     }
 
+    public function test_blank_essay_requires_manual_review_and_is_not_auto_finalized()
+    {
+        $snapshot = ExamQuestionSnapshot::where('exam_id', $this->examA->id)->firstOrFail();
+        $snapshot->update([
+            'snapshot_options' => [],
+            'metadata' => ['question_type' => 'ESSAY'],
+        ]);
+
+        $this->actingAs($this->userA, 'sanctum');
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        $submit = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
+        $submit->assertStatus(200);
+
+        $this->assertDatabaseHas('exam_question_scores', [
+            'attempt_id' => $attemptId,
+            'snapshot_id' => $snapshot->id,
+            'question_type' => 'ESSAY',
+            'scoring_status' => 'MANUAL_REVIEW',
+        ]);
+        $this->assertDatabaseHas('exam_attempt_scores', [
+            'attempt_id' => $attemptId,
+            'grading_status' => 'MANUAL_REVIEW',
+        ]);
+    }
+
+    public function test_short_answer_attempt_is_closed_but_scoring_is_blocked()
+    {
+        $snapshot = ExamQuestionSnapshot::where('exam_id', $this->examA->id)->firstOrFail();
+        $snapshot->update([
+            'snapshot_options' => [],
+            'metadata' => ['question_type' => 'SHORT_ANSWER'],
+        ]);
+
+        $this->actingAs($this->userA, 'sanctum');
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        $submit = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
+
+        $submit->assertStatus(202)->assertJsonPath('code', 'SCORING_BLOCKED');
+        $this->assertDatabaseHas('exam_attempts', [
+            'id' => $attemptId,
+            'status' => 'SUBMITTED',
+        ]);
+        $this->assertDatabaseMissing('exam_attempt_scores', ['attempt_id' => $attemptId]);
+    }
+
+    public function test_scoring_uses_immutable_snapshot_after_source_question_version_changes()
+    {
+        $snapshot = ExamQuestionSnapshot::where('exam_id', $this->examA->id)->firstOrFail();
+        $snapshot->update([
+            'snapshot_options' => [
+                ['id' => 'opt1', 'text' => '2', 'is_correct' => true],
+                ['id' => 'opt2', 'text' => '3', 'is_correct' => false],
+            ],
+            'metadata' => ['question_type' => 'MC'],
+        ]);
+
+        $this->actingAs($this->userA, 'sanctum');
+        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
+        $start->assertStatus(201);
+        $attemptId = $start->json('data.id');
+
+        $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/answers/{$snapshot->id}", [
+                'client_request_id' => (string) Str::uuid(),
+                'base_revision' => 0,
+                'answer_payload' => ['selected_option_id' => 'opt1'],
+                'answer_state' => 'ANSWERED',
+            ])->assertStatus(200);
+
+        $sourceVersion = QuestionVersion::findOrFail($snapshot->source_question_version_id);
+        $sourceVersion->update([
+            'question_type' => 'ESSAY',
+            'stem' => 'The live bank question has changed after publication.',
+        ]);
+
+        $submit = $this->withHeader('X-Device-Binding-ID', 'device-A')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
+        $submit->assertStatus(200);
+
+        $this->assertDatabaseHas('exam_question_scores', [
+            'attempt_id' => $attemptId,
+            'snapshot_id' => $snapshot->id,
+            'question_type' => 'MC',
+            'awarded_score' => 10,
+            'scoring_status' => 'AUTO_SCORED',
+        ]);
+        $this->assertDatabaseHas('exam_attempt_scores', [
+            'attempt_id' => $attemptId,
+            'raw_score' => 10,
+            'percentage' => 100,
+        ]);
+    }
+
 }
