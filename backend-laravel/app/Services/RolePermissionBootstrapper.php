@@ -77,7 +77,7 @@ class RolePermissionBootstrapper
                 'OPERATOR' => ['question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
                 'KAMAD' => ['curriculum.manage', 'exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'question.manage'],
                 'GURU' => ['curriculum.manage'],
-                'PROKTOR' => ['exam.manage', 'exam.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'exam.monitor', 'question.manage', 'question.view'],
+                'PROKTOR' => ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.close', 'exam.proctor.assign', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view'],
             ];
 
             foreach ($revokedGrants as $roleName => $permissionNames) {
