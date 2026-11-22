@@ -383,6 +383,11 @@
             state.answers.set(row.snapshotId, { payload: row.payload, state: 'ANSWERED' });
         });
         localConflicts.forEach(row => {
+            // Restore the student's local draft into the editor while retaining
+            // the server version separately in state.conflicts. The conflict
+            // marker and submit barrier remain active until the conflict is
+            // resolved through an authorized workflow.
+            state.answers.set(row.snapshotId, { payload: row.localPayload, state: 'ANSWERED' });
             state.conflicts.set(row.snapshotId, {
                 local: row.localPayload, server: row.serverAnswer, revision: row.serverRevision
             });
