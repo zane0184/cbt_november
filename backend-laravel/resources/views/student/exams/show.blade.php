@@ -180,7 +180,13 @@
         const attempt = data.attempt || {};
         const rawGeneration = data.fence_generation ?? attempt.fence_generation ?? body?.fence_generation;
         if (rawGeneration === undefined || rawGeneration === null) {
-            if (required) throw new Error('Server belum mengembalikan fencing generation. Attempt tidak dapat dilanjutkan dengan aman.');
+            if (required) {
+                // Preserve the server-created Attempt ID even when the server
+                // violates the start contract. Never lose the local link or
+                // silently create a second Attempt on a later reload.
+                if (state.attemptId && state.localDb) await persistAttemptContext();
+                throw new Error('Server belum mengembalikan fencing generation. Attempt tidak dapat dilanjutkan dengan aman.');
+            }
             return false;
         }
         const generation = Number(rawGeneration);
