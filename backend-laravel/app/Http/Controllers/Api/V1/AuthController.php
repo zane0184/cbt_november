@@ -41,30 +41,43 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['identifier' => ['Identitas atau password tidak valid.']]);
         }
 
-        $token = DB::transaction(function () use ($user, $validated) {
+        $loginResult = DB::transaction(function () use ($user, $validated): array {
             // Same user-row mutex as Web login and Attempt creation.
             $lockedUser = \App\Models\User::query()->where('tenant_id', $user->tenant_id)->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser || !$lockedUser->is_active) {
-                return null;
+            if (!$lockedUser) {
+                return ['status' => 'INVALID'];
+            }
+            if (!$lockedUser->is_active) {
+                return ['status' => 'INACTIVE'];
             }
             $lockedUser->load('roles');
 
             if ($lockedUser->hasExactRole('SISWA')
                 && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
-                return null;
+                return ['status' => 'ACTIVE_EXAM'];
             }
 
-            return $lockedUser->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken;
+            return ['status' => 'OK', 'token' => $lockedUser->createToken(($validated['device_name'] ?? null) ?: 'android-cbt')->plainTextToken];
         });
 
-        if ($token === null) {
+        if ($loginResult['status'] === 'ACTIVE_EXAM') {
             return response()->json([
                 'success' => false,
                 'message' => 'Ujian Siswa sedang aktif pada sesi/perangkat lain. Gunakan sesi Attempt yang sama.',
                 'code' => 'ACTIVE_EXAM_SESSION',
             ], 409);
         }
+        if ($loginResult['status'] !== 'OK') {
+            return response()->json([
+                'success' => false,
+                'message' => $loginResult['status'] === 'INACTIVE'
+                    ? 'Akun tidak aktif. Hubungi Admin Madrasah.'
+                    : 'Identitas atau password tidak valid.',
+                'code' => $loginResult['status'] === 'INACTIVE' ? 'ACCOUNT_INACTIVE' : 'INVALID_CREDENTIALS',
+            ], $loginResult['status'] === 'INACTIVE' ? 403 : 401);
+        }
 
+        $token = $loginResult['token'];
         RateLimiter::clear($throttleKey);
         return response()->json(['success' => true, 'message' => 'Login berhasil', 'data' => [
             'token' => $token,
