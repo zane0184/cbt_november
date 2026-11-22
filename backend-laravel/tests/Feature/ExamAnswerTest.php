@@ -16,6 +16,7 @@ use App\Models\QuestionOption;
 use App\Models\ExamQuestionSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ExamAnswerTest extends TestCase
@@ -1004,6 +1005,41 @@ class ExamAnswerTest extends TestCase
             'status' => 'RELEASED',
             'release_reason' => 'STUDENT_SUBMITTED',
         ]);
+    }
+
+
+
+    public function test_student_media_requires_the_same_bound_auth_session_and_active_lease(): void
+    {
+        Storage::fake('local');
+        $path = 'private/tenants/'.$this->tenant->id.'/media/exam-figure.pdf';
+        Storage::disk('local')->put($path, 'exam media');
+
+        $media = MediaAsset::create([
+            'tenant_id' => $this->tenant->id,
+            'owner_type' => 'QUESTION',
+            'owner_id' => $this->snapshot->source_question_id,
+            'file_name' => 'exam-figure.pdf',
+            'original_name' => 'exam-figure.pdf',
+            'storage_path' => $path,
+            'mime_type' => 'application/pdf',
+            'extension' => 'pdf',
+            'file_size' => 10,
+            'disk' => 'local',
+            'uploaded_by' => $this->student->id,
+        ]);
+        $this->snapshot->update([
+            'snapshot_media' => [['id' => $media->id, 'role' => 'STEM', 'mime_type' => 'application/pdf']],
+        ]);
+
+        $url = "/api/v1/media/{$media->id}";
+        $this->withHeader('Authorization', 'Bearer '.$this->secondApiToken)
+            ->get($url)
+            ->assertForbidden();
+
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->get($url)
+            ->assertOk();
     }
 
 
