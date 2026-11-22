@@ -4,9 +4,8 @@ namespace App\Livewire\Teacher;
 
 use App\Models\Exam;
 use App\Services\Analytics\ItemAnalysisService;
-use Livewire\Component;
 
-class ItemAnalysis extends Component
+class ItemAnalysis extends TeacherResultComponent
 {
     public Exam $exam;
     public $items = [];
