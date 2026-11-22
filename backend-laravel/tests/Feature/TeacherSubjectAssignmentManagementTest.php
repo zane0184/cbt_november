@@ -272,6 +272,9 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $foreignTeacher = TeacherProfile::create([
             'tenant_id' => $otherTenant->id,
             'user_id' => $foreignUser->id,
+            'employment_type' => 'ASN',
+            'nip' => '198801012026011002',
+            'employee_identifier' => '198801012026011002',
             'full_name' => 'Guru Foreign',
         ]);
 
