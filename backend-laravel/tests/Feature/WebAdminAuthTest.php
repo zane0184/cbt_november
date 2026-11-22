@@ -167,75 +167,82 @@ class WebAdminAuthTest extends TestCase
         );
         $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
 
-        // Client A: Guru login and retains its original browser session cookie.
-        $guruLogin = $this->post('/login', [
+        $guruBrowser = new \Tests\Support\IndependentBrowserClient();
+        $adminBrowser = new \Tests\Support\IndependentBrowserClient();
+        $sessionCookieName = (string) config('session.cookie');
+
+        // Browser A: Guru login and preserves its own session and remember cookies.
+        $guruLogin = $guruBrowser->request('POST', '/login', [
             'identifier' => '198001012006041001',
             'password' => $this->password,
             'remember' => '1',
         ]);
-        $guruLogin->assertRedirect('/admin/exams');
-        $sessionCookieName = config('session.cookie');
-        $guruSessionCookie = $guruLogin->getCookie($sessionCookieName);
+        $this->assertSame(302, $guruLogin->getStatusCode());
+        $this->assertStringEndsWith('/admin/exams', (string) $guruLogin->headers->get('Location'));
+        $guruSessionCookie = $guruBrowser->cookie($sessionCookieName);
         $this->assertNotNull($guruSessionCookie);
-        $guruSessionCookieValue = $guruSessionCookie->getValue();
-        $rememberCookieName = collect($guruLogin->headers->getCookies())
-            ->first(fn ($cookie) => str_starts_with($cookie->getName(), 'remember_web_'))?->getName();
+        $rememberCookieName = collect(array_keys($guruBrowser->cookies()))
+            ->first(fn (string $name): bool => str_starts_with($name, 'remember_web_'));
         $this->assertNotNull($rememberCookieName);
-        $rememberCookie = $guruLogin->getCookie($rememberCookieName);
+        $rememberCookie = $guruBrowser->cookie($rememberCookieName);
         $this->assertNotNull($rememberCookie);
 
-        // Client B: a distinct Admin browser session authenticates independently.
-        $this->withCookie($sessionCookieName, '');
-        $adminLogin = $this->post('/login', [
+        // Browser B: Admin authenticates with a completely separate cookie jar.
+        $adminLogin = $adminBrowser->request('POST', '/login', [
             'identifier' => 'admin.uji',
             'password' => $this->password,
         ]);
-        $adminLogin->assertRedirect('/admin/dashboard');
-        $adminSessionCookie = $adminLogin->getCookie($sessionCookieName);
+        $this->assertSame(302, $adminLogin->getStatusCode());
+        $this->assertStringEndsWith('/admin/dashboard', (string) $adminLogin->headers->get('Location'));
+        $adminSessionCookie = $adminBrowser->cookie($sessionCookieName);
         $this->assertNotNull($adminSessionCookie);
-        $this->assertNotSame($guruSessionCookieValue, $adminSessionCookie->getValue());
-        $this->assertAuthenticatedAs($this->admin);
+        $this->assertNotSame($guruSessionCookie, $adminSessionCookie);
+        $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
 
-        // The official UserManagement action deactivates the Guru account.
-        \Livewire\Livewire::test(\App\Livewire\Admin\UserManagement::class)
+        // Admin uses the official UserManagement lifecycle action.
+        \Livewire\Livewire::actingAs($this->admin)
+            ->test(\App\Livewire\Admin\UserManagement::class)
             ->call('deactivateUser', $this->guru->id)
             ->assertHasNoErrors();
         $this->assertSoftDeleted('users', ['id' => $this->guru->id]);
 
-        // Client A's original cookie is denied while the account is inactive.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($sessionCookieName, $guruSessionCookieValue);
-        $this->app['auth']->forgetGuards();
-        $this->get('/login')->assertOk()->assertSee('Masuk ke CBT Madrasah');
-        $this->assertGuest();
+        // Browser A's original cookie is denied while the Guru account is inactive.
+        $guruBrowser->setCookie($sessionCookieName, $guruSessionCookie);
+        $inactiveResponse = $guruBrowser->request('GET', '/admin/exams');
+        $this->assertSame(302, $inactiveResponse->getStatusCode());
+        $this->assertStringEndsWith('/login', (string) $inactiveResponse->headers->get('Location'));
+        $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
 
-        // Client B restores the same Guru identity using the official Admin action.
-        $this->actingAs($this->admin);
-        app(\App\Livewire\Admin\UserManagement::class)->restoreUser($this->guru->id);
+        // Reactivation preserves the same Guru ID but increments auth_version again.
+        \Livewire\Livewire::actingAs($this->admin)
+            ->test(\App\Livewire\Admin\UserManagement::class)
+            ->set('statusFilter', 'INACTIVE')
+            ->call('restoreUser', $this->guru->id)
+            ->assertHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $this->guru->id, 'deleted_at' => null]);
 
-        // Client A cannot revive its pre-deactivation session after reactivation.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($sessionCookieName, $guruSessionCookieValue);
-        $this->app['auth']->forgetGuards();
-        $this->get('/login')->assertRedirect('/login');
-        $this->assertGuest();
+        // The exact old browser session and old remember cookie remain invalid after restore.
+        $guruBrowser->setCookie($sessionCookieName, $guruSessionCookie);
+        $reactivatedResponse = $guruBrowser->request('GET', '/admin/exams');
+        $this->assertSame(302, $reactivatedResponse->getStatusCode());
+        $this->assertStringEndsWith('/login', (string) $reactivatedResponse->headers->get('Location'));
 
-        // The old remember-me cookie was invalidated by remember_token rotation.
-        $this->withCookie($sessionCookieName, '')
-            ->withCookie($rememberCookie->getName(), $rememberCookie->getValue());
-        $this->app['auth']->forgetGuards();
-        $this->get('/login')->assertOk()->assertSee('Masuk ke CBT Madrasah');
-        $this->assertGuest();
+        $rememberBrowser = new \Tests\Support\IndependentBrowserClient();
+        $rememberBrowser->setCookie($rememberCookieName, $rememberCookie);
+        $rememberResponse = $rememberBrowser->request('GET', '/admin/exams');
+        $this->assertSame(302, $rememberResponse->getStatusCode());
+        $this->assertStringEndsWith('/login', (string) $rememberResponse->headers->get('Location'));
 
-        // Fresh credentials establish a new browser session.
-        $this->withCookie($rememberCookie->getName(), '');
-        $freshLogin = $this->post('/login', [
+        // Fresh credentials create a new session; the login page now redirects authenticated Guru.
+        $freshBrowser = new \Tests\Support\IndependentBrowserClient();
+        $freshLogin = $freshBrowser->request('POST', '/login', [
             'identifier' => '198001012006041001',
             'password' => $this->password,
         ]);
-        $freshLogin->assertRedirect('/admin/exams');
-        $this->assertAuthenticatedAs($this->guru->fresh());
+        $this->assertSame(302, $freshLogin->getStatusCode());
+        $this->assertStringEndsWith('/admin/exams', (string) $freshLogin->headers->get('Location'));
+        $this->assertStringEndsWith('/admin/exams', (string) $freshBrowser->request('GET', '/login')->headers->get('Location'));
+        $this->assertSame(200, $adminBrowser->request('GET', '/admin/dashboard')->getStatusCode());
     }
 
     public function test_student_can_login_using_nisn_without_email(): void
