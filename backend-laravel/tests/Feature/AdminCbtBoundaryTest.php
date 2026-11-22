@@ -26,6 +26,28 @@ class AdminCbtBoundaryTest extends TestCase
     public function test_admin_with_stale_guru_role_and_permissions_is_denied_all_cbt_surfaces(): void
     {
         $tenant = Tenant::create(['name' => 'Madrasah Boundary', 'code' => 'BOUNDARY']);
+        // A Guru+Siswa identity is not an exact Guru actor.
+        $mixedGuru = User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Guru Multi Role',
+            'email' => 'guru.multi@boundary.test',
+            'password' => bcrypt('password'),
+        ]);
+        $mixedGuru->roles()->attach([$guruRole->id, $studentRole->id]);
+        $mixedGate = Gate::forUser($mixedGuru);
+        $this->assertFalse($mixedGate->allows('viewAny', Question::class));
+        $this->assertFalse($mixedGate->allows('create', Question::class));
+
+        \Illuminate\Support\Facades\Auth::guard('web')->setUser($mixedGuru);
+        try {
+            app(\App\Services\ExcelQuestionImporter::class)->import('not-used', ['rows' => []]);
+            $this->fail('Direct importer service must reject a mixed-role actor.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        } finally {
+            \Illuminate\Support\Facades\Auth::forgetGuards();
+        }
+
         app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
         $adminRole = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         $guruRole = Role::create(['name' => 'GURU', 'label' => 'Guru']);
