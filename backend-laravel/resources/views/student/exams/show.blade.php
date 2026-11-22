@@ -148,7 +148,7 @@
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
-        const attemptScoped = path === '/execution' || path.startsWith('/attempts/');
+        const attemptScoped = path === '/execution' || path.startsWith('/attempts/') || (path === '/attempts' && Boolean(state.attemptId));
         if (attemptScoped && state.attemptId && (!Number.isSafeInteger(state.fenceGeneration) || state.fenceGeneration < 1)) {
             throw new Error('Fencing generation belum dipulihkan secara durable. Permintaan ujian dihentikan untuk mencegah akses tanpa fence.');
         }
@@ -326,6 +326,20 @@
             request.onerror = () => reject(request.error || new Error('Konteks Attempt lokal gagal dibaca.'));
         });
     }
+    async function findAttemptContextForExam() {
+        return new Promise((resolve, reject) => {
+            const tx = state.localDb.transaction(['attempt_context'], 'readonly');
+            const request = tx.objectStore('attempt_context').getAll();
+            request.onsuccess = () => {
+                const rows = (request.result || []).filter(row =>
+                    row.examId === String(app.dataset.examId) && row.studentId === String(app.dataset.studentId)
+                );
+                rows.sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+                resolve(rows[0] || null);
+            };
+            request.onerror = () => reject(request.error || new Error('Riwayat konteks Attempt lokal gagal dibaca.'));
+        });
+    }
     async function persistSubmitState(status, terminalStatus = null) {
         const key = 'submit:' + String(state.attemptId);
         await localTransaction(['local_meta'], 'readwrite', tx => tx.objectStore('local_meta').put({
@@ -427,6 +441,52 @@
                 await recoverSubmitStatus();
                 return;
             }
+
+            // A normal page reload must resume the same server Attempt using the
+            // fence generation persisted in IndexedDB. Do not POST start again.
+            const savedContext = await findAttemptContextForExam();
+            if (savedContext) {
+                if (savedContext.deviceBinding !== deviceBinding) {
+                    throw new Error('Konteks ujian lokal terikat pada identitas browser berbeda. Data dipertahankan; jangan membuat Attempt baru. Hubungi Guru/Admin.');
+                }
+                if (!Number.isSafeInteger(Number(savedContext.fenceGeneration)) || Number(savedContext.fenceGeneration) < 1) {
+                    throw new Error('Konteks Attempt tidak memiliki fencing generation yang valid. Data dipertahankan; jangan membuat Attempt baru. Hubungi Guru/Admin.');
+                }
+                state.attemptId = String(savedContext.attemptId);
+                state.fenceGeneration = Number(savedContext.fenceGeneration);
+                state.leaseExpiresAt = savedContext.leaseExpiresAt || null;
+                try {
+                    // Heartbeat is the only authorized same-session lease recovery
+                    // path; a successful response may advance the generation.
+                    await api(`/attempts/${encodeURIComponent(state.attemptId)}/heartbeat`, { method: 'POST', body: JSON.stringify({}) });
+                    const status = await api(`/attempts/${encodeURIComponent(state.attemptId)}`, { method: 'GET' });
+                    if (status.data?.status === 'IN_PROGRESS') {
+                        const execution = await api('/execution', { method: 'GET' });
+                        await loadExecution(execution, state.attemptId);
+                        return;
+                    }
+                    if (status.data?.status !== 'SUBMITTED' && status.data?.status !== 'EXPIRED') {
+                        throw new Error('Status Attempt tersimpan tidak dikenal. Tidak ada Attempt baru yang dibuat.');
+                    }
+                    state.attemptId = null;
+                    state.fenceGeneration = null;
+                    state.leaseExpiresAt = null;
+                } catch (resumeError) {
+                    if (resumeError.body?.code === 'ATTEMPT_NOT_ACTIVE') {
+                        const status = await api(`/attempts/${encodeURIComponent(state.attemptId)}`, { method: 'GET' });
+                        if (status.data?.status === 'SUBMITTED' || status.data?.status === 'EXPIRED') {
+                            state.attemptId = null;
+                            state.fenceGeneration = null;
+                            state.leaseExpiresAt = null;
+                        } else {
+                            throw new Error('Server belum menyatakan Attempt lama terminal. Data tetap dipertahankan dan Attempt baru tidak dibuat.');
+                        }
+                    } else {
+                        throw resumeError;
+                    }
+                }
+            }
+
             el('start-status').textContent = 'Menghubungkan ke server…';
             const payload = {};
             if (requireToken) payload.token = (el('exam-token')?.value || '').trim().toUpperCase();
