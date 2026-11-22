@@ -331,6 +331,10 @@ class MonitoringController extends Controller
             return response()->json(['success' => false, 'message' => 'Only an active Student account can send an exam heartbeat.'], 403);
         }
 
+        if (!app(\\App\\Services\\AttemptAuthSessionBinding::class)->identity($request)) {
+            return response()->json(['success' => false, 'code' => 'AUTH_SESSION_REQUIRED'], 401);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -340,7 +344,7 @@ class MonitoringController extends Controller
             ], 400);
         }
 
-        return DB::transaction(function () use ($user, $exam, $attempt, $deviceId) {
+        return DB::transaction(function () use ($user, $exam, $attempt, $deviceId, $request) {
             // Heartbeat follows the same lock order as execution, answer save and submit.
             $lockedExam = Exam::query()
                 ->where('tenant_id', $user->tenant_id)
@@ -379,6 +383,14 @@ class MonitoringController extends Controller
                     'message' => 'Attempt is no longer active.',
                     'code' => 'ATTEMPT_NOT_ACTIVE'
                 ], 409);
+            }
+
+            if (!app(\\App\\Services\\AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!app(\\App\\Services\\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_LEASE_INVALID', 'message' => 'Lease Attempt tidak aktif atau tidak konsisten.'], 409);
             }
 
             if (!$lockedAttempt->device_fingerprint
