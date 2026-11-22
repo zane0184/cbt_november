@@ -609,7 +609,6 @@ class ExamAttemptController extends Controller
             $oldStatus = $lockedAttempt->status;
             $lockedAttempt->update([
                 'status' => $terminalStatus,
-                    'fence_generation' => (int) $lockedAttempt->fence_generation,
                 'submitted_at' => $serverNow,
                 'last_activity_at' => $serverNow
             ]);
@@ -654,7 +653,11 @@ class ExamAttemptController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $expiredByDeadline ? 'Attempt expired and closed.' : 'Attempt submitted.',
-                'data' => ['status' => $terminalStatus],
+                'data' => [
+                    'status' => $terminalStatus,
+                    'fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'lease_expires_at' => null,
+                ],
             ]);
         });
     }
@@ -716,8 +719,9 @@ class ExamAttemptController extends Controller
 
     /**
      * Public API representation for an attempt. Never serialize the Eloquent model:
-     * it contains internal assignment order, device identity, lease/fencing state,
-     * and other fields that must remain server-side.
+     * it contains internal assignment order, raw device/session identity and
+     * other fields that must remain server-side. Only the opaque fence generation
+     * and lease expiry are exposed to the bound client.
      */
     private function attemptResponseData(ExamAttempt $attempt): array
     {
