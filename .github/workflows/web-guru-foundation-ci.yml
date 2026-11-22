@@ -200,5 +200,5 @@ jobs:
             mysql --protocol=tcp --host=127.0.0.1 --port=3306 --user=root --password="$DB_ROOT_PASSWORD" <<SQL
             DROP USER IF EXISTS '$DB_USER'@'%';
             DROP DATABASE IF EXISTS $DB_NAME;
-SQL
+          SQL
           fi
