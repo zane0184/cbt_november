@@ -30,7 +30,7 @@
                 <div><label class="block text-xs font-bold mb-1">Nama Lengkap</label><input wire:model="editName" type="text" required class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editName')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                 <div><label class="block text-xs font-bold mb-1">Username</label><input wire:model="editUsername" type="text" required autocomplete="off" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editUsername')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                 <div><label class="block text-xs font-bold mb-1">Email Kontak / Pemulihan (opsional)</label><input wire:model="editEmail" type="email" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editEmail')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
-                @if($editingUserId && \App\Models\User::query()->whereKey($editingUserId)->whereHas('roles', fn ($q) => $q->where('name', 'GURU'))->exists())
+                @if($editingRole === 'GURU')
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div><label class="block text-xs font-bold mb-1">NIP (opsional)</label><input wire:model="editNip" type="text" maxlength="18" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editNip')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                         <div><label class="block text-xs font-bold mb-1">NIK (opsional)</label><input wire:model="editNik" type="text" maxlength="16" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editNik')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
