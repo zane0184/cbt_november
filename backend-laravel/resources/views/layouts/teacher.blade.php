@@ -83,7 +83,7 @@
                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
                 <div class="my-3 border-t border-white/10"></div>
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Modul existing — menunggu gate akses</p>
-                <div class="portal-disabled" aria-disabled="true" title="Komponen existing ditemukan; gate multi-role perlu diperketat sebelum ditautkan"><span>Bank Soal</span><span class="text-[10px] uppercase tracking-wide">Audit akses</span></div>
+                <a href="{{ route('teacher.questions.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.questions.index') ? 'active' : '' }}"><span>▧</span> Bank Soal</a>
                 <a href="{{ route('teacher.questions.template') }}" class="portal-nav-link pl-6 text-xs"><span>⇩</span> Unduh Template Import Soal</a>
                 <div class="portal-disabled" aria-disabled="true" title="Komponen existing ditemukan; gate multi-role perlu diperketat sebelum ditautkan"><span>Asesmen & Ujian</span><span class="text-[10px] uppercase tracking-wide">Audit akses</span></div>
                 <div class="my-3 border-t border-white/10"></div>
@@ -124,7 +124,7 @@
                                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="block rounded-lg px-3 py-2 text-sm">Kurikulum & Akademik</a>
                                 <div class="my-2 border-t portal-border"></div>
                                 <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul existing — menunggu gate akses</p>
-                                <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Bank Soal · Audit akses</span>
+                                <a href="{{ route('teacher.questions.index') }}" class="block rounded-lg px-3 py-2 text-sm">Bank Soal</a>
                                 <a href="{{ route('teacher.questions.template') }}" class="block rounded-lg px-3 py-2 text-sm">Unduh Template Import Soal</a>
                                 <span class="block rounded-lg px-3 py-2 text-sm portal-muted" aria-disabled="true">Asesmen & Ujian · Audit akses</span>
                                 <div class="my-2 border-t portal-border"></div>
