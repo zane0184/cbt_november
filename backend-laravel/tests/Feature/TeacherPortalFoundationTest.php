@@ -181,16 +181,6 @@ class TeacherPortalFoundationTest extends TestCase
 
         $this->guruRole->permissions()->sync([$questionView->id, $examManage->id]);
         $this->teacher->unsetRelation('roles');
-        TeacherSubjectAssignment::query()
-            ->where('tenant_id', $this->tenant->id)
-            ->whereIn('teacher_profile_id', TeacherProfile::query()
-                ->where('tenant_id', $this->tenant->id)
-                ->where('user_id', $this->teacher->id)
-                ->select('id'))
-            ->delete();
-
-        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
-        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
 
         $tenantB = Tenant::create([
             'name' => 'Tenant B',
@@ -199,6 +189,21 @@ class TeacherPortalFoundationTest extends TestCase
         ]);
         app(TenantContext::class)->setTenantId($tenantB->id);
 
+        // Assignment remains active here, so the denial specifically proves
+        // that a mismatched tenant context is rejected by the shared boundary.
+        Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
+        Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
+
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        TeacherSubjectAssignment::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->whereIn('teacher_profile_id', TeacherProfile::query()
+                ->where('tenant_id', $this->tenant->id)
+                ->where('user_id', $this->teacher->id)
+                ->select('id'))
+            ->delete();
+
+        // A matching tenant context with no active subject assignment is also denied.
         Livewire::actingAs($this->teacher)->test(QuestionBank::class)->assertForbidden();
         Livewire::actingAs($this->teacher)->test(ExamManagement::class)->assertForbidden();
     }
