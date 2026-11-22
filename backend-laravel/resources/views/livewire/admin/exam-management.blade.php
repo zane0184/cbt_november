@@ -108,11 +108,14 @@
                             🖥️ Live Monitoring
                         </a>
                     @endcan
-                    <a href="/exams/{{ $exam->id }}/results" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
+                    <a href="{{ route('teacher.exams.results', ['exam' => $exam->id]) }}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
                         📊 Hasil & Finalisasi
                     </a>
-                    <a href="/exams/{{ $exam->id }}/analytics" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
+                    <a href="{{ route('teacher.exams.analytics', ['exam' => $exam->id]) }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
                         📈 Analisis
+                    </a>
+                    <a href="{{ route('teacher.exams.analytics.items', ['exam' => $exam->id]) }}" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-xl transition shadow-sm">
+                        📋 Analisis Butir
                     </a>
                     @can('lock', $exam)
                         @if(!$exam->isLocked())
