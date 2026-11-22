@@ -12,5 +12,6 @@ Route::middleware(['auth', 'tenant', 'license', EnsureTeacherPortalAccess::class
     ->group(function (): void {
         Route::get('/dashboard', TeacherDashboard::class)->name('dashboard');
         Route::get('/pembelajaran', TeacherLearning::class)->name('learning');
+        Route::get('/kurikulum', TeacherLearning::class)->name('curriculum');
         Route::get('/profil', TeacherProfilePage::class)->name('profile');
     });
