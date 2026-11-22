@@ -11,9 +11,9 @@ Satu Exam memiliki tepat satu ExamSession operasional. Semua ExamRoom fisik, pen
 ### 1.1 Git, checkpoint, dan CI
 - Branch ditemukan: work/stage4b-room-session-20261122.
 - Checkpoint penutupan yang dibaca: docs/CHECKPOINT_PENUTUPAN_STAGE4B_STAGE4C_DESIGN_AUDIT_2026-11-22.md.
-- HEAD yang dinyatakan checkpoint dan diverifikasi melalui compare: 5d4d9dc7350fbab49a38842ce1f8964bed42cd88.
+- HEAD aktual sebelum audit: 6815148248cb963b4083430fbea5e21056676a45.
 - Source SHA CI: f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5.
-- Compare source CI ke HEAD: 3 commit, seluruhnya hanya menambah dokumen audit/laporan/checkpoint; tidak ada file source, migration, schema, atau workflow berubah.
+- Compare source CI ke HEAD aktual: 4 commit, seluruhnya dokumentasi saja; tidak ada file source, migration, schema, atau workflow berubah.
 - Working tree lokal: NOT VERIFIED. Pemeriksaan GitHub remote tidak dapat melihat perubahan lokal yang belum di-commit.
 - CI run 44984303003, job safe-runtime-tests: SUCCESS. 35/35 step sukses, 0 failure, 0 skipped.
 - Empat suite target: 24 test / 120 assertions. Runtime MySQL 8.0.46 InnoDB pada disposable database.
@@ -128,7 +128,7 @@ Tahapan aman yang disarankan:
 
 ## 6. CHECKPOINT DAN HANDOVER
 - Branch Agent 1: work/stage4b-room-session-20261122.
-- HEAD dasar audit: 5d4d9dc7350fbab49a38842ce1f8964bed42cd88.
+- HEAD dasar audit: 6815148248cb963b4083430fbea5e21056676a45.
 - Source CI tetap: f1d01ea6fa4b9a100d00680a1b70c2a8d92b9af5.
 - Status: menunggu persetujuan desain teknis sebelum coding.
 - Langkah berikutnya setelah disetujui: buat backup snapshot untuk setiap file source yang akan diubah, lakukan migration additive di disposable MySQL, implementasi guard service/database/UI/scheduler, jalankan seluruh pengujian baru, lalu buat laporan dan checkpoint.
