@@ -62,7 +62,7 @@ class RolePermissionBootstrapperTest extends TestCase
         $guru = Role::where('name', 'GURU')->firstOrFail();
         $operator = Role::where('name', 'OPERATOR')->firstOrFail();
 
-        $adminPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'exam.proctor.assign'];
+        $adminPermissions = ['curriculum.view', 'curriculum.manage', 'academic.manage', 'user.manage', 'tenant.manage', 'exam.proctor.assign'];
         $this->assertEqualsCanonicalizing($adminPermissions, $admin->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'exam.monitor', 'report.view'], $kamad->permissions()->pluck('name')->all());
         $this->assertEqualsCanonicalizing(['curriculum.view', 'question.view', 'question.manage', 'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token', 'exam.grade', 'report.view'], $guru->permissions()->pluck('name')->all());
@@ -86,6 +86,7 @@ class RolePermissionBootstrapperTest extends TestCase
         $admin = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
         $this->assertTrue($admin->permissions()->where('name', 'exam.proctor.assign')->exists());
         $this->assertTrue($admin->permissions()->where('name', 'user.manage')->exists());
+        $this->assertTrue($admin->permissions()->where('name', 'tenant.manage')->exists());
         $this->assertFalse($admin->permissions()->where('name', 'exam.monitor')->exists());
         $this->assertFalse(Role::where('name', 'OPERATOR')->exists());
     }
