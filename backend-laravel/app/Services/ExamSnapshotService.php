@@ -253,9 +253,9 @@ class ExamSnapshotService
                 ->firstOrFail();
 
             $taxonomyOptions = [
-                [$assessment->assessmentFunctionOption, 'ASSESSMENT_FUNCTION'],
-                [$assessment->assessmentScopeOption, 'ASSESSMENT_SCOPE'],
-                [$assessment->instrumentTypeOption, 'INSTRUMENT_TYPE'],
+                [$assessment->assessmentFunctionOption, 'FUNCTION'],
+                [$assessment->assessmentScopeOption, 'SCOPE'],
+                [$assessment->instrumentTypeOption, 'INSTRUMENT'],
                 [$assessment->deliveryModeOption, 'DELIVERY_MODE'],
             ];
 
@@ -282,7 +282,7 @@ class ExamSnapshotService
 
             if ($assessment->assessment_type !== $assessment->assessmentFunctionOption->code
                 || $assessment->deliveryModeOption->code !== 'CBT'
-                || $assessment->instrumentTypeOption->code !== 'TEST') {
+                || $assessment->instrumentTypeOption->code !== 'TES_TERTULIS') {
                 abort(422, 'Exam CBT hanya menerima asesmen berinstrumen tes dengan mode CBT dan fungsi sesuai taksonomi.');
             }
 
