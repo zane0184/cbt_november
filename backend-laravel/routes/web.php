@@ -41,8 +41,8 @@ Route::middleware(['auth', 'tenant'])->group(function () {
     Route::get('/account/password/change', [AccountPasswordController::class, 'show'])->name('account.password.change');
     Route::post('/account/password/change', [AccountPasswordController::class, 'update'])->name('account.password.change.update');
 });
-Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
-Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
+Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware(['auth', 'tenant'])->name('license.status');
+Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'tenant', 'throttle:5,1'])->name('license.refresh');
 
 // Web Installer Wizard Routes
 Route::middleware(['prevent_reinstall', 'installer_bootstrap'])->prefix('install')->name('installer.')->group(function () {
