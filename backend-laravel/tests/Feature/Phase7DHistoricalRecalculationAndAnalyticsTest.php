@@ -397,8 +397,8 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/reopen", ['reason' => '   '])
             ->assertStatus(422);
 
-        // Assigned Guru with valid reason reopens score
-        $reopenResp = $this->actingAs($this->adminA, 'sanctum')
+        // The assigned Guru owns scoring and may reopen with an audited reason.
+        $reopenResp = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/reopen", [
                 'reason' => 'Koreksi penilaian guru atas sanggahan siswa'
             ]);
