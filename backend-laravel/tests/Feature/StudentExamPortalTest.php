@@ -12,6 +12,7 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class StudentExamPortalTest extends TestCase
@@ -194,6 +195,69 @@ class StudentExamPortalTest extends TestCase
             ->assertOk()
             ->assertSee('Waktu akses peserta belum dimulai atau sudah berakhir.')
             ->assertSee('Mulai Ujian');
+    }
+
+    public function test_student_exam_schedule_start_and_end_boundaries_are_enforced(): void
+    {
+        $startAt = now()->addMinutes(10)->startOfSecond();
+        $endAt = $startAt->copy()->addHour();
+        $this->exam->update(['start_at' => $startAt, 'end_at' => $endAt]);
+
+        try {
+            Carbon::setTestNow($startAt->copy()->subSecond());
+            $this->actingAs($this->student)
+                ->get(route('student.exams.index'))
+                ->assertOk()
+                ->assertSee('Terjadwal')
+                ->assertSee('Belum dapat dikerjakan');
+
+            Carbon::setTestNow($startAt);
+            $this->actingAs($this->student)
+                ->get(route('student.exams.index'))
+                ->assertOk()
+                ->assertSee('Siap dikerjakan')
+                ->assertSee('Buka Ujian');
+
+            Carbon::setTestNow($endAt->copy()->addSecond());
+            $this->actingAs($this->student)
+                ->get(route('student.exams.index'))
+                ->assertOk()
+                ->assertSee('Ditutup')
+                ->assertSee('Belum dapat dikerjakan');
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_student_cannot_open_exam_after_attempt_limit_is_exhausted(): void
+    {
+        foreach ([1, 2] as $attemptNumber) {
+            ExamAttempt::create([
+                'tenant_id' => $this->tenant->id,
+                'exam_id' => $this->exam->id,
+                'participant_id' => $this->participant->id,
+                'attempt_number' => $attemptNumber,
+                'status' => 'SUBMITTED',
+                'started_at' => now()->subMinutes(20 - $attemptNumber),
+                'expires_at' => now()->subMinutes(10 - $attemptNumber),
+                'submitted_at' => now()->subMinutes(10 - $attemptNumber),
+                'question_order' => [],
+                'options_order' => [],
+            ]);
+        }
+
+        $this->actingAs($this->student)
+            ->get(route('student.exams.index'))
+            ->assertOk()
+            ->assertSee('2 / 2')
+            ->assertSee('Batas percobaan habis')
+            ->assertSee('Belum dapat dikerjakan');
+
+        $this->actingAs($this->student)
+            ->get(route('student.exams.show', $this->exam->id))
+            ->assertOk()
+            ->assertSee('Ujian belum dapat dimulai')
+            ->assertSee('disabled', false);
     }
 
     public function test_user_with_admin_madrasah_role_cannot_enter_student_portal(): void
