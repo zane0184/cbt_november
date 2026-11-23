@@ -4,6 +4,11 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Models\LocalInstallationIdentity;
+use App\Models\AcademicYear;
+use App\Models\Assessment;
+use App\Models\Exam;
+use App\Models\ExamParticipant;
+use App\Models\ExamAttempt;
 use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\Tenant;
@@ -54,6 +59,50 @@ class StudentWebLoginTest extends TestCase
         ]);
 
         app(TenantContext::class)->setTenantId(null);
+    }
+
+    private function createActiveAttempt(): ExamAttempt
+    {
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $year = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2026/2027']);
+        $assessment = Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $year->id,
+            'title' => 'Ujian Aktif',
+            'assessment_type' => 'DAILY',
+            'created_by' => $this->student->id,
+        ]);
+        $exam = Exam::create([
+            'tenant_id' => $this->tenant->id,
+            'assessment_id' => $assessment->id,
+            'title' => 'Ujian Aktif',
+            'duration_seconds' => 3600,
+            'start_at' => now()->subMinute(),
+            'end_at' => now()->addHour(),
+            'status' => 'PUBLISHED',
+            'created_by' => $this->student->id,
+            'locked_at' => now(),
+        ]);
+        $participant = ExamParticipant::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'user_id' => $this->student->id,
+            'status' => 'STARTED',
+        ]);
+
+        $attempt = ExamAttempt::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $exam->id,
+            'participant_id' => $participant->id,
+            'attempt_number' => 1,
+            'status' => 'IN_PROGRESS',
+            'started_at' => now(),
+            'expires_at' => now()->addHour(),
+            'fence_generation' => 1,
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        return $attempt;
     }
 
     public function test_student_can_login_on_web_using_nisn_and_password_without_email(): void
@@ -164,4 +213,48 @@ class StudentWebLoginTest extends TestCase
         $response->assertSessionHasErrors('identifier');
         $this->assertGuest();
     }
+
+    public function test_second_web_login_is_rejected_while_student_attempt_is_active(): void
+    {
+        $this->createActiveAttempt();
+
+        $response = $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_second_api_login_returns_active_exam_session_conflict_without_issuing_token(): void
+    {
+        $this->createActiveAttempt();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+            'device_name' => 'browser-second-session',
+        ]);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'ACTIVE_EXAM_SESSION');
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_terminal_attempt_does_not_block_next_login(): void
+    {
+        $attempt = $this->createActiveAttempt();
+        $attempt->update(['status' => 'SUBMITTED', 'submitted_at' => now()]);
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+        ]);
+
+        $response->assertOk()->assertJsonPath('success', true);
+        $this->assertDatabaseCount('personal_access_tokens', 1);
+    }
+
 }
