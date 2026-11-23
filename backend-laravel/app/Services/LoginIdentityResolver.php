@@ -22,12 +22,19 @@ class LoginIdentityResolver
         // The System Global Tenant is intentionally present in seeded
         // installations for shared, read-only curriculum references. It is
         // not a second school tenant and must not make local login ambiguous.
-        $localTenantExists = Tenant::withoutGlobalScopes()
-            ->whereKey($tenantId)
+        $localTenantIds = Tenant::withoutGlobalScopes()
             ->where('id', '<>', Tenant::SYSTEM_TENANT_ID)
             ->whereNull('deleted_at')
-            ->exists();
-        if (!$localTenantExists) return null;
+            ->limit(2)
+            ->pluck('id')
+            ->map(fn ($id) => (string) $id);
+
+        // A local installation represents exactly one madrasah. SYSTEM_GLOBAL
+        // is shared reference data, but a second school tenant in the same
+        // database is still an invalid/ambiguous installation.
+        if ($localTenantIds->count() !== 1 || $localTenantIds->first() !== $tenantId) {
+            return null;
+        }
         $normalized = strtolower($identifier);
 
         $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
