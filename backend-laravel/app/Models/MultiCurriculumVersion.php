@@ -54,6 +54,8 @@ class MultiCurriculumVersion extends Model
         'metadata' => 'array',
         'is_official' => 'boolean',
         'is_editable' => 'boolean',
+        'is_official' => 'boolean',
+        'is_editable' => 'boolean',
     ];
 
     public function source(): BelongsTo
