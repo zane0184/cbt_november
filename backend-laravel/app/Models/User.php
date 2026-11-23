@@ -88,9 +88,34 @@ class User extends Authenticatable
         return $this->roles->contains('name', $role);
     }
 
+    /**
+     * Security-boundary role check. Always reads the current pivot rows and
+     * requires exactly one assigned role, so stale loaded relations or a
+     * second legacy role cannot expand portal permissions.
+     */
+    public function hasExactRole(string $role): bool
+    {
+        return $this->hasExactlyOneOfRoles([$role]);
+    }
+
+    public function hasExactlyOneOfRoles(array $allowedRoles): bool
+    {
+        $allowedRoles = array_values(array_unique(array_filter($allowedRoles, 'is_string')));
+        if ($allowedRoles === []) {
+            return false;
+        }
+
+        $assignedRoles = $this->roles()->pluck('roles.name');
+
+        return $assignedRoles->count() === 1
+            && in_array($assignedRoles->first(), $allowedRoles, true);
+    }
+
     public function hasPermission(string $permission): bool
     {
-        return $this->roles->flatMap->permissions->contains('name', $permission);
+        return $this->roles()
+            ->whereHas('permissions', fn ($query) => $query->where('permissions.name', $permission))
+            ->exists();
     }
 
     public function teacherProfile(): \Illuminate\Database\Eloquent\Relations\HasOne
