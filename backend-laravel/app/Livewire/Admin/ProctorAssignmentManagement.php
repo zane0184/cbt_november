@@ -99,4 +99,5 @@ class ProctorAssignmentManagement extends Component
             'assignmentCreationBlocked',
             'assignmentBlockReason'
         ))->layout('layouts.app');
+    }
 }
