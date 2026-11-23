@@ -92,3 +92,7 @@ Run #45240443836 menghasilkan **8 failed, 510 passed, 2,148 assertions**. Kelomp
 
 ### Patch lanjutan pasca-run #45241315638
 Run #45241315638 menghasilkan **4 failed, 514 passed, 2,162 assertions**. Fase1C reserved-tenant tests sudah lulus. Sisa kegagalan: satu rate-limit test memakai guard lama dari request A ketika mensimulasikan request B dalam proses PHPUnit yang sama; tiga AnswerKeyLeakage test belum mengirim token pada setiap request GET/POST (binding attempt harus tetap pada Sanctum token yang sama). Test fixtures kini reset guard saat berpindah user dan menyertakan token pada tiap request.
+
+
+### Patch akhir AnswerKeyLeakage setelah run #45242146752
+Run #45242146752 menghasilkan **3 failed, 515 passed, 2,163 assertions**. Ketiganya berasal dari test siswa yang memanggil endpoint execution tanpa `X-CBT-Fence-Generation`; server menolak request dengan 409 sesuai kontrak fencing. Fixture kini mengambil fence generation aktif dari Attempt dan mengirimkannya pada setiap GET execution. Rate-limit test dan fixture Fase1C sudah lulus pada run tersebut.
