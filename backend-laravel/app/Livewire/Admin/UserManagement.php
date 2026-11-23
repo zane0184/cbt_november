@@ -119,6 +119,8 @@ class UserManagement extends Component
 
     public function render()
     {
+        // Re-check role, tenant and permission after hydration before exposing user data.
+        $this->authorizeUserManagement();
         $tenantId = auth()->user()->tenant_id;
         $users = User::query()->where('tenant_id', $tenantId)->with(['roles','teacherProfile','studentProfile'])
             ->when($this->search, function ($query): void {
