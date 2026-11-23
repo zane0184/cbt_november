@@ -225,4 +225,36 @@ class DeviceLeaseSchemaIntegrityTest extends TestCase
             $this->assertDatabaseHas('exam_attempts', ['id' => $this->attemptA->id]);
         }
     }
+
+    public function test_web_session_lease_can_be_stored_without_registered_device_id(): void
+    {
+        $id = (string) Str::uuid();
+        DB::table('device_leases')->insert([
+            'id' => $id,
+            'tenant_id' => $this->tenantA->id,
+            'exam_attempt_id' => $this->attemptA->id,
+            'registered_device_id' => null,
+            'auth_session_hash' => hash('sha256', 'server-session-digest'),
+            'fence_generation' => 1,
+            'status' => 'ACTIVE',
+            'leased_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+            'released_at' => null,
+            'released_by' => null,
+            'release_reason' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertDatabaseHas('device_leases', [
+            'id' => $id,
+            'tenant_id' => $this->tenantA->id,
+            'exam_attempt_id' => $this->attemptA->id,
+            'registered_device_id' => null,
+            'auth_session_hash' => hash('sha256', 'server-session-digest'),
+            'fence_generation' => 1,
+        ]);
+    }
+
+
 }
