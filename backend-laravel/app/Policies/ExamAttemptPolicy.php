@@ -12,26 +12,21 @@ class ExamAttemptPolicy
     {
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
-        if ($user->hasRole('GURU')) {
-            return $user->hasPermission('report.view')
-                && TeacherAccess::canViewExam($user, $attempt->exam);
-        }
-
-        // Kamad oversight is read-only. Admin Madrasah and legacy Operator
-        // cannot access answer-level or score-detail surfaces.
-        return $user->hasRole('KAMAD') && $user->hasPermission('report.view');
+        return $user->hasExactRole('GURU')
+            && $user->hasPermission('report.view')
+            && TeacherAccess::canViewExam($user, $attempt->exam);
     }
 
     public function viewScore(User $user, ExamAttempt $attempt): bool
     {
         if ($user->tenant_id !== $attempt->tenant_id) return false;
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             return $user->hasPermission('report.view') && TeacherAccess::canViewExam($user, $attempt->exam);
         }
 
-        if ($user->hasRole('KAMAD')) {
-            return $user->hasPermission('report.view');
+        if (!$user->hasExactRole('SISWA')) {
+            return false;
         }
 
         // Student results are visible only through the authoritative current-score pointer.
@@ -54,7 +49,7 @@ class ExamAttemptPolicy
 
     public function score(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasExactRole('GURU')) return false;
 
         $exam = $attempt->exam;
         $assessment = $exam?->assessment;
