@@ -42,8 +42,9 @@ class AuthController extends Controller
         // Use the same User-row mutex as Web login and Attempt creation so a
         // second API token cannot be issued while this Siswa has an active exam.
         $loginResult = DB::transaction(function () use ($user, $validated): array {
-            $lockedUser = \App\Models\User::query()
+            $lockedUser = \App\Models\User::withoutGlobalScopes()
                 ->where('tenant_id', $user->tenant_id)
+                ->whereNull('deleted_at')
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->first();
