@@ -451,7 +451,7 @@ class AdminUiVerificationTest extends TestCase
             ->set('optionA', '10')
             ->set('optionB', '20')
             ->set('correctOption', 'A')
-            ->call('createQuestion')
+            ->call('saveQuestion')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('questions', [
