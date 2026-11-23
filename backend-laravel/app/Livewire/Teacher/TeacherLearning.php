@@ -20,6 +20,7 @@ class TeacherLearning extends TeacherPortalComponent
             "tpForms.{$assignmentId}.description" => ['required', 'string', 'min:20', 'max:12000'],
             "tpForms.{$assignmentId}.panca_cinta" => ['required', 'array', 'min:1'],
             "tpForms.{$assignmentId}.pm_principles" => ['required', 'array', 'min:1'],
+            "tpForms.{$assignmentId}.pm_olah" => ['required', 'array', 'min:1'],
             "tpForms.{$assignmentId}.pm_framework" => ['nullable', 'array'],
             "tpForms.{$assignmentId}.graduate_dimensions" => ['required', 'array', 'min:1'],
         ]);
@@ -34,6 +35,7 @@ class TeacherLearning extends TeacherPortalComponent
             $form['description'],
             $form['panca_cinta'],
             $form['pm_principles'],
+            $form['pm_olah'],
             $form['pm_framework'] ?? [],
             $form['graduate_dimensions']
         );
