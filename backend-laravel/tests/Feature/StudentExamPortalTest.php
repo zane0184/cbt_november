@@ -107,6 +107,18 @@ class StudentExamPortalTest extends TestCase
             ->assertSee('Baca petunjuk sebelum memulai.');
     }
 
+    public function test_student_exam_without_required_token_does_not_render_token_input(): void
+    {
+        $this->exam->update(['require_token' => false, 'token' => null]);
+
+        $this->actingAs($this->student)
+            ->get(route('student.exams.show', $this->exam->id))
+            ->assertOk()
+            ->assertSee('Tidak diperlukan')
+            ->assertDontSee('id="exam-token"', false)
+            ->assertSee('Mulai Ujian');
+    }
+
     public function test_student_can_resume_own_active_attempt(): void
     {
         ExamAttempt::create([
