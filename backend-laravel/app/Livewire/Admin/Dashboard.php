@@ -15,7 +15,7 @@ class Dashboard extends Component
     {
         $user = auth()->user();
         abort_unless(
-            $user && $user->tenant_id && $user->hasRole('ADMIN_MADRASAH'),
+            $user && $user->tenant_id && $user->hasExactRole('ADMIN_MADRASAH'),
             403,
             'Dashboard ini hanya tersedia untuk Admin Madrasah pada instalasi lokal.'
         );
