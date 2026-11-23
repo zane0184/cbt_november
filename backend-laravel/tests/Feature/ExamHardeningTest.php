@@ -97,8 +97,26 @@ class ExamHardeningTest extends TestCase
             'is_correct' => false,
             'sequence' => 2,
         ]);
-        app(ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
-        $this->snapshot = $this->exam->snapshots()->firstOrFail();
+        // This class verifies exam update/submit authorization and locking.
+        // Build its immutable execution fixture directly; canonical assignment and
+        // curriculum snapshot creation are tested separately by ExamSnapshotTest.
+        $snapshot = new ExamQuestionSnapshot([
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'sequence' => 1,
+            'points' => 10,
+            'snapshot_stem' => 'Soal uji submit',
+            'snapshot_options' => [
+                ['id' => (string) \Illuminate\Support\Str::uuid(), 'option_key' => 'A', 'option_text' => 'Benar', 'is_correct' => true],
+                ['id' => (string) \Illuminate\Support\Str::uuid(), 'option_key' => 'B', 'option_text' => 'Salah', 'is_correct' => false],
+            ],
+            'snapshot_media' => [],
+            'metadata' => ['question_type' => 'MULTIPLE_CHOICE'],
+        ]);
+        $snapshot->tenant_id = $this->tenant->id;
+        $snapshot->exam_id = $this->exam->id;
+        $snapshot->save();
+        $this->snapshot = $snapshot;
         $this->exam->update([
             'status' => 'PUBLISHED',
             'locked_at' => now(),
