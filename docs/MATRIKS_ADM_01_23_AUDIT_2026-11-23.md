@@ -78,3 +78,54 @@ Matriks ADM-01–ADM-23 tetap menggunakan status **NOT VERIFIED** sampai ada buk
 | BLOCKED | ADM-20 | Tetap fail-closed sampai eligibility ujian pusat ditetapkan kanonis oleh owner; assignment tidak memberi izin operasional CBT. |
 
 Semua status tetap **NOT VERIFIED / PARTIAL** sampai tiap baris mempunyai bukti route/UI → policy → service → persistence → audit → test dan exact CI PASS.
+
+
+---
+
+## ADDENDUM VERIFIKASI OWNER-DIRECTED — 24 NOVEMBER 2026
+
+### Scope dan source
+- Branch eksekusi: `work/solo-web-cbt-completion-20261123-execution`
+- Exact source revision terkini ketika addendum disusun: `cbce0df331784ecfbef50c4da29c3e781a03d7d7`.
+- Full PHP baseline sebelumnya telah ditutup pada SHA `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51`; perubahan reauthorization Admin selanjutnya divalidasi pada CI #45251932629, SHA `b4592f8a93fd4d306cdab5105c244ba9c6a37eb0`, **523 passed / 2,182 assertions / 0 failed**.
+- Perubahan reauthorization Guru + fix Blade berada pada SHA `cbce0df331784ecfbef50c4da29c3e781a03d7d7`; CI #45254396061 masih menjadi bukti yang sedang diperiksa. Hasil focused Guru pada SHA sebelumnya `1c0b72260eb0c19d36fb48fddd092bc58a649e53` gagal karena syntax Blade existing di `result-detail.blade.php`, bukan karena assertion policy; fix telah diterapkan dan harus diuji ulang.
+- Tidak ada VPS, production database, migration, deployment, PR merge, Android, atau Web Super Admin yang disentuh.
+
+### Temuan audit yang diperbarui (bukan status modul selesai)
+1. Lima komponen Admin yang sebelumnya hanya mengotorisasi mount/render tidak konsisten telah diperkeras: Dashboard, UserManagement, AcademicManagement, CurriculumManagement, dan callback pemilihan Exam pada ProctorAssignmentManagement.
+2. Empat halaman hasil/analitik Guru yang sebelumnya mengandalkan otorisasi mount sekarang mengulang policy saat render: ResultList, ResultDetail, AnalyticsDashboard, dan ItemAnalysis.
+3. View ResultDetail memiliki directive Blade penutup `@error('manualScore')` yang salah; sudah diperbaiki menjadi `@enderror`. Backup byte-exact view tersedia.
+4. Source Siswa terkini menunjukkan runner berbasis IndexedDB dengan attempt_context, answers, sync_queue, server_receipts, conflicts, local_meta, verifikasi receipt request-id/payload-hash/revision dan submit barrier. Ini bukti source, belum bukti browser E2E lintas browser atau UAT.
+5. MediaController saat ini memeriksa tenant, Attempt aktif pemilik Siswa, auth-session binding, current lease/fencing, dan snapshot media yang termasuk question_order. Temuan media lama di audit Siswa harus direfresh, bukan disalin sebagai status saat ini.
+6. Komponen Web Guru Proktor capability-based belum tersedia secara utuh. Assignment Proktor terpusat tetap fail-closed karena penanda canonical central exam belum diputuskan/tersedia; jangan menafsirkan `assessment_origin=EXTERNAL` sebagai central.
+7. Kurmer + KBC tetap satu kerangka. Registry CP/TP/ATP, Panca Cinta, Pembelajaran Mendalam dan 8 dimensi harus memakai sumber resmi/provenance/versi yang terbukti; data referensi yang tidak tersedia tetap NEEDS DATA.
+
+### Matriks status
+- ADM-01 sampai ADM-23 tetap **NOT VERIFIED** untuk acceptance end-to-end. Patch otorisasi di atas hanya memperbaiki boundary request Livewire dan tidak menyelesaikan CRUD lifecycle, identitas madrasah, import/export, akademik, kurikulum, branding, audit UI, backup/restore atau UAT.
+- ADM-20 tetap **BLOCKED**: belum ada canonical central exam eligibility. Assignment Proktor tidak boleh memberi akses Room/roster/monitoring/Attempt atau operasi ujian.
+- W1 memiliki bukti focused reauthorization Admin dan suite penuh pada SHA b4592f8; itu tidak mengubah status fitur ADM menjadi VERIFIED.
+- Browser E2E Admin/Guru/Siswa, fresh install + upgrade, recovery/backup-restore, load/concurrency operasional dan UAT madrasah masih **NOT RUN / NOT VERIFIED**.
+
+### File dan backup untuk perubahan terkait
+- Admin:
+  - Backup `backend-laravel/docs/backup/livewire-admin-render-reauth-2026-11-24/Dashboard.php.before` blob `43624f70f78675e899f2b122318ed8e6382ffa74`.
+  - Backup `.../UserManagement.php.before` blob `29f31e68f2272b1ea870415f3635b0ad8bc88b8e`.
+  - Backup `.../AcademicManagement.php.before` blob `63652d47345962c1cd49e08420956453765e9373`.
+  - Backup `.../CurriculumManagement.php.before` blob `992bb7c96981b781bf89240ca68d0440f06b32bc`.
+  - Backup `.../ProctorAssignmentManagement.php.before` blob `107e8bac028a161f8c4f85862b5670b7ec32da22`.
+  - Backup CI `.../tenant-backend-ci.yml.before` blob `4bc80531b4ee4a4bda4c47a053deefa1e8ae1a27`.
+- Guru:
+  - Backup `backend-laravel/docs/backup/teacher-result-render-reauth-2026-11-24/ResultList.php.before` blob `fd60539cb33bd33d0c183b980a84f567681a4d68`.
+  - `.../ResultDetail.php.before` blob `6f959b61eb04ca9d0ee8005009a5e82b3b98a016`.
+  - `.../AnalyticsDashboard.php.before` blob `90cabf8c0b61775ac79ede8a6d2d6e5417dfa336`.
+  - `.../ItemAnalysis.php.before` blob `b82649219c0c32310b1ce4ea84a4a21d1fb071b9`.
+  - Backup view `.../result-detail.blade.php.before` blob `c72c6b95703a105225a084ffab8344a83f9ec6dc`.
+- Seluruh backup di atas diverifikasi identik dengan isi source sebelum patch.
+
+### Next
+1. Selesaikan CI pada exact SHA cbce0df3… termasuk empat focused Teacher reauthorization tests dan full PHPUnit.
+2. Lanjutkan gap review ADM-01..23 berbasis source aktual, tanpa menandai modul complete dari keberadaan menu.
+3. Implementasikan DOCX import hanya setelah kontrak parser/draft/batch API terverifikasi; XLSX question import tetap disabled.
+4. Selesaikan integrasi KM+KBC/provenance dan immutable assessment/question/exam snapshots tanpa data resmi rekaan.
+5. Tutup batas portal Guru/Siswa/Admin dan acceptance API/browser E2E.
+6. Fresh install/upgrade/backup/restore dan UAT tetap gate sebelum ZIP final/staging VPS.
