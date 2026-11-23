@@ -127,10 +127,12 @@ class TeacherResultLivewireReauthorizationTest extends TestCase
             'attempt' => $this->attempt,
         ]);
 
+        $component->assertSuccessful();
+
         $this->revokeGuruRole();
 
-        // Re-render through the next Livewire request after revoking the persisted Guru role.
-        $component->call('$refresh')->assertForbidden();
+        // A normal property update forces the next Livewire request to re-run render().
+        $component->set('showReopenModal', true)->assertForbidden();
     }
 
     public function test_analytics_dashboard_rechecks_policy_after_livewire_mount(): void
