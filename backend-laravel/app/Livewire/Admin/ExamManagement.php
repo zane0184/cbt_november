@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\AcademicYear;
+use App\Models\AssessmentTaxonomyOption;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
@@ -12,6 +13,8 @@ use App\Models\Rombel;
 use App\Models\StudentProfile;
 use App\Models\Semester;
 use App\Models\Subject;
+use App\Models\Tenant;
+use App\Models\TeacherSubjectAssignment;
 use App\Models\User;
 use App\Services\ExamSnapshotService;
 use App\Services\TeacherPortal\AssessmentCurriculumMappingService;
