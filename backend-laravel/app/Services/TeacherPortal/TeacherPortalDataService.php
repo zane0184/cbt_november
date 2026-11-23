@@ -59,6 +59,17 @@ class TeacherPortalDataService
         ];
     }
 
+    public function assignmentOptions(User $user): array
+    {
+        $profile = $this->access->profile($user);
+        $tenantId = (string) $user->tenant_id;
+        $assignments = $this->assignments($profile, $tenantId)
+            ->filter(fn (TeacherSubjectAssignment $assignment): bool => $this->assignmentStatus($assignment) === 'Aktif')
+            ->values();
+
+        return $this->assignmentRows($assignments, $tenantId);
+    }
+
     public function learning(User $user): array
     {
         $profile = $this->access->profile($user);
