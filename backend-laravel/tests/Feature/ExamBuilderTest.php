@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 use App\Models\Tenant;
 use App\Models\User;
@@ -29,11 +30,13 @@ class ExamBuilderTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesCanonicalTeacherAssignment;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenant;
     private $teacher;
     private $exam;
     private $subject;
+    private array $canonicalContext = [];
 
     protected function setUp(): void
     {
@@ -92,6 +95,7 @@ class ExamBuilderTest extends TestCase
         ]);
 
         $this->bindCanonicalTeacherAssignment($assignment, $assessment);
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($assignment, $this->teacher, $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -138,6 +142,9 @@ class ExamBuilderTest extends TestCase
             'created_by' => $this->teacher->id
         ]);
         $v2->save();
+
+        $this->mapQuestionVersionToCanonicalCurriculum($v1, $this->canonicalContext);
+        $this->mapQuestionVersionToCanonicalCurriculum($v2, $this->canonicalContext);
 
         $context->setTenantId(null); // Clear context for actingAs to handle it
         $this->actingAs($this->teacher, 'sanctum');
