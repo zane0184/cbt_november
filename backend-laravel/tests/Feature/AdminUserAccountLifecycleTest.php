@@ -226,7 +226,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Auth::guard('web')->logout();
         $this->actingAs($teacher->fresh())->withSession(['account_auth_version' => 1])
             ->get('/guru/dashboard')->assertRedirect('/login');
-        Auth::logout();
+        Auth::guard('web')->logout();
         $this->withToken($teacherToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
     }
 
@@ -323,7 +323,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
             ->get('/admin/dashboard')->assertRedirect('/account/password/change');
 
-        Auth::logout();
+        Auth::guard('web')->logout();
         $this->withToken($temporaryToken)->getJson('/api/v1/auth/me')->assertStatus(423);
 
         $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
@@ -346,7 +346,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertStringNotContainsString('new-password-strong-2026', $payload);
         $this->assertSame('SUCCESS', $audit->new_values['outcome']);
 
-        Auth::logout();
+        Auth::guard('web')->logout();
         $this->withToken($temporaryToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
     }
 
