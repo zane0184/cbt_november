@@ -42,7 +42,7 @@ class CurriculumReferenceSourceSeeder extends Seeder
                     'verification_status' => 'METADATA_VERIFIED',
                     'metadata' => [
                         'source_kind' => 'official_kemenag_pdf',
-                        'verified_scope' => ['panca_cinta'],
+                        'verified_scope' => ['panca_cinta', 'cp_kbc_crosswalk_madrasah'],
                         'artifact_checksum_verified' => false,
                         'notes' => 'Lima topik: Cinta Allah dan Rasul-Nya; Cinta Ilmu; Cinta Lingkungan; Cinta Diri dan Sesama Manusia; Cinta Tanah Air.',
                     ],
@@ -158,6 +158,7 @@ class CurriculumReferenceSourceSeeder extends Seeder
                         'effective_from' => $source['effective_from'],
                         'source_uri' => $source['source_uri'],
                         'verification_status' => $source['verification_status'],
+                        'verified_at' => $source['verification_status'] === 'PENDING' ? null : now(),
                         'metadata' => $source['metadata'],
                     ]
                 );
