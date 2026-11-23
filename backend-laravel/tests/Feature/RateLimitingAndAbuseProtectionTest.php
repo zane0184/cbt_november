@@ -87,14 +87,14 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'user_id' => $this->userA->id,
-            'status' => 'STARTED'
+            'status' => 'ASSIGNED'
         ]);
 
         $participantB = ExamParticipant::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
             'user_id' => $this->userB->id,
-            'status' => 'STARTED'
+            'status' => 'ASSIGNED'
         ]);
 
         $context->setTenantId(null);
@@ -167,6 +167,7 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
         // Reset participant attempt count so store() gets to token check
         \Illuminate\Support\Facades\DB::table('device_leases')->where('tenant_id', $this->tenant->id)->where('exam_attempt_id', $this->attemptA->id)->delete();
         $this->attemptA->delete();
+        ExamParticipant::query()->whereKey($this->attemptA->participant_id)->update(['status' => 'ASSIGNED']);
         $this->exam->participants()->where('user_id', $this->userA->id)->update(['status' => 'ASSIGNED']);
 
         for ($i = 0; $i < 5; $i++) {
