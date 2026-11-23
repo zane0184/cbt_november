@@ -112,7 +112,6 @@
                 <div class="my-3 border-t border-white/10"></div>
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Perangkat Asesmen</p>
                 <a href="{{ route('teacher.questions.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.questions.index') ? 'active' : '' }}"><span>▧</span> Bank Soal</a>
-                <a href="{{ route('teacher.questions.template') }}" class="portal-nav-link pl-6 text-xs"><span>⇩</span> Unduh Template Import Soal</a>
                 <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.exams.index') ? 'active' : '' }}"><span>▣</span> Asesmen & Ujian</a>
                 <div class="my-3 border-t border-white/10"></div>
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Hasil dan Analitik</p>
@@ -154,7 +153,6 @@
                                 <div class="my-2 border-t portal-border"></div>
                                 <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul existing — menunggu gate akses</p>
                                 <a href="{{ route('teacher.questions.index') }}" class="block rounded-lg px-3 py-2 text-sm">Bank Soal</a>
-                                <a href="{{ route('teacher.questions.template') }}" class="block rounded-lg px-3 py-2 text-sm">Unduh Template Import Soal</a>
                                 <a href="{{ route('teacher.exams.index') }}" class="block rounded-lg px-3 py-2 text-sm">Asesmen & Ujian</a>
                                 <div class="my-2 border-t portal-border"></div>
                                 <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Hasil dan Analitik</p>
