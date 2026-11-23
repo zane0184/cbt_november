@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Assessment;
@@ -22,6 +24,7 @@ use Tests\TestCase;
 class ExamIntegrityTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenantA;
     private $tenantB;
@@ -61,7 +64,7 @@ class ExamIntegrityTest extends TestCase
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
         $rombel = Rombel::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $ayA->id, 'grade_level_id' => $gradeLevel->id, 'name' => '1A', 'status' => 'ACTIVE']);
         $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenantA->id, 'user_id' => $this->userA->id, 'full_name' => 'Guru A']);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $subject->id,
@@ -73,6 +76,7 @@ class ExamIntegrityTest extends TestCase
             'created_by' => $this->userA->id,
         ]);
         $assessmentA = Assessment::create(['tenant_id' => $this->tenantA->id, 'subject_id' => $subject->id, 'semester_id' => $semester->id, 'academic_year_id' => $ayA->id, 'title' => 'A', 'assessment_type' => 'DAILY', 'created_by' => $this->userA->id]);
+        $this->bindCanonicalTeacherAssignment($assignment, $assessmentA);
         $examA = Exam::create(['tenant_id' => $this->tenantA->id, 'assessment_id' => $assessmentA->id, 'title' => 'A', 'duration_seconds' => 60, 'created_by' => $this->userA->id]);
         $this->bootstrapCbtRolePermissions();
 
