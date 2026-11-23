@@ -438,6 +438,7 @@ return new class extends Migration
         }
 
         $this->addAssessmentContextColumns();
+        $this->addAssessmentCurriculumMappingsTable();
         $this->addExamSnapshotColumns();
     }
 
@@ -686,6 +687,81 @@ return new class extends Migration
             $this->addForeignKeyIfMissing('material_topics', ['tenant_curriculum_registration_id', 'tenant_id'], 'mt_reg_id_fk', 'tenant_curriculum_registrations', ['id', 'tenant_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_reg_triplet_fk', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'mt_outcome_scope_fk', 'tenant_learning_outcomes', ['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'RESTRICT');
+        }
+    }
+
+    private function addAssessmentCurriculumMappingsTable(): void
+    {
+        if (!Schema::hasTable('assessments')) {
+            return;
+        }
+
+        $this->addUniqueIndexIfMissing(
+            'assessments',
+            ['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'curriculum_version_id', 'curriculum_owner_id'],
+            'assessment_assignment_context_uq'
+        );
+
+        if (!Schema::hasTable('assessment_curriculum_mappings')) {
+            Schema::create('assessment_curriculum_mappings', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->uuid('tenant_id');
+                $table->uuid('assessment_id');
+                $table->uuid('teacher_subject_assignment_id');
+                $table->uuid('tenant_curriculum_registration_id');
+                $table->uuid('multi_curriculum_version_id');
+                $table->uuid('curriculum_owner_id');
+                $table->uuid('multi_learning_outcome_id');
+                $table->uuid('tenant_learning_outcome_id')->nullable();
+                $table->uuid('material_id')->nullable();
+                $table->uuid('material_topic_id')->nullable();
+                $table->uuid('academic_year_id');
+                $table->uuid('semester_id');
+                $table->string('mapping_role', 40)->default('ASSESSMENT');
+                $table->decimal('weight', 8, 4)->default(1);
+                $table->boolean('is_primary')->default(false);
+                $table->uuid('created_by');
+                $table->json('metadata')->nullable();
+                $table->timestamps();
+
+                $table->unique(
+                    ['tenant_id', 'assessment_id', 'teacher_subject_assignment_id', 'multi_learning_outcome_id', 'tenant_learning_outcome_id', 'academic_year_id', 'semester_id'],
+                    'acm_identity_uq'
+                );
+                $table->unique(
+                    ['id', 'tenant_id', 'assessment_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'],
+                    'acm_scope_uq'
+                );
+                $table->foreign(['assessment_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_assessment_scope_fk')
+                    ->references(['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('assessments')->onDelete('CASCADE');
+                $table->foreign(['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_assignment_scope_fk')
+                    ->references(['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('teacher_subject_assignments')->onDelete('RESTRICT');
+                $table->foreign(['tenant_curriculum_registration_id', 'tenant_id'], 'acm_registration_fk')
+                    ->references(['id', 'tenant_id'])->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
+                $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_registration_triplet_fk')
+                    ->references(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
+                $table->foreign(['multi_learning_outcome_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_cp_scope_fk')
+                    ->references(['id', 'multi_curriculum_version_id', 'tenant'])
+                    ->on('multi_learning_outcomes')->onDelete('RESTRICT');
+                $table->foreign(['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'acm_tenant_outcome_scope_fk')
+                    ->references(['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'])
+                    ->on('tenant_learning_outcomes')->onDelete('RESTRICT');
+                $table->foreign(['material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_material_scope_fk')
+                    ->references(['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('materials')->onDelete('RESTRICT');
+                $table->foreign(['material_topic_id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_topic_scope_fk')
+                    ->references(['id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('material_topics')->onDelete('RESTRICT');
+                $table->foreign(['academic_year_id', 'tenant_id'], 'acm_year_scope_fk')
+                    ->references(['id', 'tenant_id'])->on('academic_years')->onDelete('RESTRICT');
+                $table->foreign(['semester_id', 'tenant_id'], 'acm_semester_scope_fk')
+                    ->references(['id', 'tenant_id'])->on('semesters')->onDelete('RESTRICT');
+                $table->foreign(['created_by', 'tenant_id'], 'acm_creator_scope_fk')
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
+            });
         }
     }
 
