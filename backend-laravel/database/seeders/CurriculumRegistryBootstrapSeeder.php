@@ -97,7 +97,7 @@ class CurriculumRegistryBootstrapSeeder extends Seeder
                     $node->tenant_id !== $tenantId
                     || $node->node_type !== $nodeType
                 )) {
-                    throw new \\RuntimeException(
+                    throw new \RuntimeException(
                         "Curriculum registry identity conflict for version {$version->id} and code {$code}."
                     );
                 }
