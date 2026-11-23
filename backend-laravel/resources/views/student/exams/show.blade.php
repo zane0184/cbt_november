@@ -145,7 +145,7 @@
     const requireToken = app.dataset.requireToken === '1';
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     const apiBase = `/api/v1/exams/${encodeURIComponent(examId)}`;
-    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, heartbeatIntervalId: null, heartbeatBusy: false, fenceGeneration: null, leaseExpiresAt: null, fenceBlocked: false, mediaObjectUrls: new Set(), mediaRenderVersion: 0, submitting: false, submitOutcomeUnknown: false, expired: false };
+    const state = { attemptId: null, questions: [], answers: new Map(), revisions: new Map(), current: 0, serverEpoch: 0, monotonicAtSync: 0, saving: new Map(), timers: new Map(), pending: new Map(), conflicts: new Map(), undurable: new Set(), localDb: null, timerIntervalId: null, heartbeatIntervalId: null, heartbeatBusy: false, fenceGeneration: null, leaseExpiresAt: null, fenceBlocked: false, mediaObjectUrls: new Set(), mediaRenderVersion: 0, unsupportedQuestionIds: new Set(), submitting: false, submitOutcomeUnknown: false, expired: false };
     const el = id => document.getElementById(id);
 
     async function api(path, options = {}) {
@@ -565,7 +565,10 @@
 
             el('start-status').textContent = 'Menghubungkan ke server…';
             const payload = {};
-            if (requireToken) payload.token = (el('exam-token')?.value || '').trim().toUpperCase();
+            if (requireToken) {
+                payload.token = (el('exam-token')?.value || '').trim().toUpperCase();
+                if (!payload.token) throw new Error('Token ujian wajib diisi sebelum memulai.');
+            }
             const started = await api('/attempts', { method: 'POST', body: JSON.stringify(payload) });
             state.attemptId = String(started.data.id);
             await applyFenceFromResponse(started, true);
@@ -586,6 +589,11 @@
         }
         state.attemptId = data.attempt.id;
         state.questions = data.questions || [];
+        state.unsupportedQuestionIds = new Set(state.questions.filter(question => (question.metadata?.question_type || 'MC') === 'SHORT_ANSWER').map(question => String(question.id)));
+        if (state.unsupportedQuestionIds.size) {
+            el('submit-button').disabled = true;
+            showError('Ujian ini memuat tipe soal Jawaban Singkat yang sementara dinonaktifkan. Jangan kirim ujian; hubungi Guru agar ujian diperbaiki. Jawaban yang sudah tersimpan tetap dipertahankan.');
+        }
         state.serverEpoch = Date.parse(data.exam.server_now);
         state.monotonicAtSync = performance.now();
         const answersResponse = await api(`/attempts/${encodeURIComponent(state.attemptId)}/answers`, { method: 'GET' });
@@ -747,11 +755,17 @@
             options.forEach(option => inputArea.appendChild(createOptionControl(question, option, 'radio', payload.selected_option_id)));
         } else if (type === 'MULTIPLE_RESPONSE') {
             options.forEach(option => inputArea.appendChild(createOptionControl(question, option, 'checkbox', payload.selected_option_ids || [])));
-        } else if (type === 'SHORT_ANSWER' || type === 'ESSAY') {
+        } else if (type === 'ESSAY') {
             const textarea = document.createElement('textarea'); textarea.dir = 'auto'; textarea.rows = type === 'ESSAY' ? 8 : 3; textarea.maxLength = 20000;
             textarea.setAttribute('aria-label', `${type === 'ESSAY' ? 'Jawaban uraian' : 'Jawaban singkat'} untuk soal ${state.current + 1}`);
             textarea.className = 'w-full rounded-xl border border-slate-300 p-4'; textarea.placeholder = 'Ketik jawaban Anda…'; textarea.value = payload.text || '';
             textarea.addEventListener('input', () => queueSave(question, { text: textarea.value })); inputArea.appendChild(textarea);
+        } else if (type === 'SHORT_ANSWER') {
+            const note = document.createElement('p');
+            note.className = 'rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900';
+            note.setAttribute('role', 'alert');
+            note.textContent = 'Tipe soal Jawaban Singkat sementara dinonaktifkan. Soal ini tidak menerima jawaban dan ujian tidak dapat dikirim. Hubungi Guru.';
+            inputArea.appendChild(note);
         } else if (type === 'MATCHING') {
             const left = options.filter(option => option.option_key === 'LEFT');
             const right = options.filter(option => option.matching_key === 'RIGHT');
@@ -949,6 +963,10 @@
 
     async function submitExam(auto = false) {
         if (state.submitting || state.submitOutcomeUnknown || !state.attemptId) return;
+        if (state.unsupportedQuestionIds.size) {
+            showError('Pengiriman diblokir karena ujian memuat tipe soal Jawaban Singkat yang dinonaktifkan. Hubungi Guru; jangan menutup halaman sebelum mendapat arahan.');
+            return;
+        }
         if (!auto && !window.confirm('Yakin ingin mengirim ujian? Pastikan semua jawaban sudah tersimpan.')) return;
         state.submitting = true; el('submit-button').disabled = true;
         let submitRequestStarted = false;
