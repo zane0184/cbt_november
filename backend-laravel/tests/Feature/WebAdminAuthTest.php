@@ -10,6 +10,7 @@ use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use Database\Seeders\SystemTenantSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\DB;
@@ -248,7 +249,7 @@ class WebAdminAuthTest extends TestCase
 
     public function test_web_login_fails_closed_when_installation_identity_is_bound_to_system_tenant(): void
     {
-        \\Database\\Seeders\\SystemTenantSeeder::seed();
+        SystemTenantSeeder::seed();
         DB::table('local_installation_identities')
             ->where('tenant_id', $this->tenant->id)
             ->update(['tenant_id' => Tenant::SYSTEM_TENANT_ID]);
