@@ -142,5 +142,19 @@ class AttemptTransactionConcurrencyTest extends TestCase
         $this->assertSame('EXPIRED', $expiryState->status);
 
         DB::purge('agent2_secondary');
+
+        // This test intentionally bypasses RefreshDatabase so its two independent
+        // MySQL connections can observe committed fixtures. Explicitly remove those
+        // committed fixtures or they leak into later tests (including local-install
+        // identity tests, which must reject a database containing a second school).
+        DB::transaction(function () use ($tenant): void {
+            DB::table('exam_attempts')->where('tenant_id', $tenant->id)->delete();
+            DB::table('exam_participants')->where('tenant_id', $tenant->id)->delete();
+            DB::table('exams')->where('tenant_id', $tenant->id)->delete();
+            DB::table('assessments')->where('tenant_id', $tenant->id)->delete();
+            DB::table('academic_years')->where('tenant_id', $tenant->id)->delete();
+            DB::table('users')->where('tenant_id', $tenant->id)->delete();
+            DB::table('tenants')->where('id', $tenant->id)->delete();
+        });
     }
 }
