@@ -23,6 +23,7 @@ class TeacherLearningOutcomeService
         string $description,
         array $pancaCintaIds,
         array $pmPrincipleIds,
+        array $pmOlahIds,
         array $pmFrameworkIds,
         array $graduateDimensionIds
     ): TenantLearningOutcome {
@@ -42,6 +43,7 @@ class TeacherLearningOutcomeService
             $description,
             $pancaCintaIds,
             $pmPrincipleIds,
+            $pmOlahIds,
             $pmFrameworkIds,
             $graduateDimensionIds
         ): TenantLearningOutcome {
@@ -361,15 +363,17 @@ class TeacherLearningOutcomeService
         TenantCurriculumRegistration $registration,
         array $pancaCintaIds,
         array $pmPrincipleIds,
+        array $pmOlahIds,
         array $pmFrameworkIds,
         array $graduateDimensionIds
     ): array {
         $pancaCintaIds = array_values(array_unique($pancaCintaIds));
         $pmPrincipleIds = array_values(array_unique($pmPrincipleIds));
+        $pmOlahIds = array_values(array_unique($pmOlahIds));
         $pmFrameworkIds = array_values(array_unique($pmFrameworkIds));
         $graduateDimensionIds = array_values(array_unique($graduateDimensionIds));
 
-        if ($pancaCintaIds === [] || $pmPrincipleIds === [] || $graduateDimensionIds === []) {
+        if ($pancaCintaIds === [] || $pmPrincipleIds === [] || $pmOlahIds === [] || $graduateDimensionIds === []) {
             throw ValidationException::withMessages([
                 'framework' => 'Pilih sekurang-kurangnya satu nilai Panca Cinta, satu prinsip Pembelajaran Mendalam, dan satu dimensi profil lulusan.',
             ]);
@@ -378,6 +382,7 @@ class TeacherLearningOutcomeService
         $expected = [];
         foreach ($pancaCintaIds as $id) $expected[$id] = 'PANCA_CINTA';
         foreach ($pmPrincipleIds as $id) $expected[$id] = 'PM_PRINCIPLE';
+        foreach ($pmOlahIds as $id) $expected[$id] = 'PM_OLAH';
         foreach ($pmFrameworkIds as $id) $expected[$id] = 'PM_FRAMEWORK';
         foreach ($graduateDimensionIds as $id) $expected[$id] = 'DIMENSI_PROFIL_LULUSAN';
 
