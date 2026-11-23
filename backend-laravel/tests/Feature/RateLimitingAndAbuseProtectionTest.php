@@ -280,11 +280,13 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
     }
     private function startAttempt(string $token, string $deviceId): ExamAttempt
     {
+        \\Illuminate\\Support\\Facades\\Auth::forgetGuards();
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $token,
             'X-Device-Binding-ID' => $deviceId,
         ])->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
+        \\Illuminate\\Support\\Facades\\Auth::forgetGuards();
         if ($response->status() !== 201) {
             $this->fail('Start-attempt fixture failed with HTTP ' . $response->status() . ': ' . $response->getContent());
         }
