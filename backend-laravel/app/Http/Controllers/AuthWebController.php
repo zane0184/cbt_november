@@ -65,7 +65,8 @@ class AuthWebController extends Controller
 
         // Serialize Web login with Attempt creation. A Siswa who already has
         // an active Attempt must resume the bound session, not mint a second one.
-        $loginResult = DB::transaction(function () use ($user): array {
+        $submittedPassword = (string) $request->input('password');
+        $loginResult = DB::transaction(function () use ($user, $submittedPassword): array {
             $lockedUser = User::withoutGlobalScopes()
                 ->where('tenant_id', $user->tenant_id)
                 ->whereNull('deleted_at')
@@ -73,7 +74,11 @@ class AuthWebController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedUser || !(bool) $lockedUser->is_active) {
+            // Re-check the password against the locked row. A password reset
+            // may commit after the resolver's initial read but before this mutex.
+            if (!$lockedUser
+                || !(bool) $lockedUser->is_active
+                || !Hash::check($submittedPassword, (string) $lockedUser->password)) {
                 return ['status' => 'INVALID'];
             }
 
