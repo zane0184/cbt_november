@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -91,8 +92,10 @@ class UserManagement extends Component
             $role = Role::query()->whereIn('name', ['GURU', 'SISWA'])->where('name', $this->selectedRole)->firstOrFail();
             $user->roles()->sync([$role->id]);
 
+            $profile = null;
+
             if ($this->selectedRole === 'GURU') {
-                TeacherProfile::query()->create([
+                $profile = TeacherProfile::query()->create([
                     'user_id' => $user->id, 'full_name' => trim($this->name),
                     'nip' => trim($this->nip) !== '' ? trim($this->nip) : null,
                     'nik' => trim($this->nik) !== '' ? trim($this->nik) : null,
@@ -101,8 +104,26 @@ class UserManagement extends Component
                         : (trim($this->nik) !== '' ? trim($this->nik) : null),
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
-                StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
+                $profile = StudentProfile::query()->create([
+                    'user_id' => $user->id,
+                    'full_name' => trim($this->name),
+                    'nisn' => trim($this->nisn),
+                ]);
             }
+
+            // Never include password or personal identifiers (NIP/NIK/NISN) in audit payloads.
+            app(AuditService::class)->log(
+                'CREATE_LOCAL_USER',
+                'User',
+                (string) $user->id,
+                null,
+                [
+                    'name' => $user->name,
+                    'username' => $user->username,
+                    'role' => $this->selectedRole,
+                    'profile_type' => $profile ? class_basename($profile) : null,
+                ]
+            );
         }, 3);
 
         $createdName = $this->name;
