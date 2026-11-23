@@ -12,7 +12,7 @@ class ExcelQuestionImporter implements QuestionImportService
 {
     private const ALLOWED_TYPES = [
         'MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE',
-        'MATCHING', 'SHORT_ANSWER', 'ESSAY'
+        'MATCHING', 'ESSAY'
     ];
 
     public function import(string $filePath, array $options = []): array
@@ -248,13 +248,5 @@ class ExcelQuestionImporter implements QuestionImportService
             }
         }
 
-        if ($row['type'] === 'SHORT_ANSWER') {
-            // Short answer accepted answers stored in metadata per Phase 4E logic
-            $version->update([
-                'metadata' => array_merge($version->metadata ?? [], [
-                    'accepted_answers' => $row['accepted_answers'] ?? []
-                ])
-            ]);
-        }
     }
 }
