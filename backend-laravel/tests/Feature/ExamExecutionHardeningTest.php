@@ -24,6 +24,7 @@ class ExamExecutionHardeningTest extends TestCase
     private $tenant;
     private $student;
     private $exam;
+    private string $studentToken;
 
     protected function setUp(): void
     {
@@ -37,6 +38,7 @@ class ExamExecutionHardeningTest extends TestCase
         $this->student->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+        $this->studentToken = $this->student->createToken('execution-hardening-student')->plainTextToken;
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
@@ -108,8 +110,8 @@ class ExamExecutionHardeningTest extends TestCase
     /** 1. CONCURRENT / DUPLICATE START **/
     public function test_duplicate_start_resumes_same_attempt_for_same_device()
     {
-        $this->actingAs($this->student, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'device-1');
+        $this->withToken($this->studentToken);
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-1', 'X-CBT-Fence-Generation' => '1']);
 
         // Simulate two sequential requests that pass the initial checks
         // In a real environment, we'd use multiple processes, but here we test the logic
@@ -128,8 +130,8 @@ class ExamExecutionHardeningTest extends TestCase
     /** 2. SERVER-AUTHORITATIVE EXPIRATION **/
     public function test_expired_attempt_cannot_be_resumed()
     {
-        $this->actingAs($this->student, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'device-1');
+        $this->withToken($this->studentToken);
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-1', 'X-CBT-Fence-Generation' => '1']);
 
         // 1. Start attempt
         $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
@@ -164,14 +166,15 @@ class ExamExecutionHardeningTest extends TestCase
         $otherStudent->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+        $otherStudentToken = $otherStudent->createToken('execution-hardening-other-student')->plainTextToken;
 
         $context->setTenantId(null);
-        $this->actingAs($this->student, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'device-1');
+        $this->withToken($this->studentToken);
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-1', 'X-CBT-Fence-Generation' => '1']);
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
-        $this->actingAs($otherStudent, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'device-2');
+        $this->withToken($otherStudentToken);
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-2', 'X-CBT-Fence-Generation' => '1']);
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $response->assertStatus(404); // Participant not found for S2
     }
@@ -188,8 +191,8 @@ class ExamExecutionHardeningTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        $this->actingAs($otherStudent, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'device-2');
+        $this->withToken($otherStudentToken);
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-2', 'X-CBT-Fence-Generation' => '1']);
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $response->assertStatus(404); // Exam not found in Tenant 2 scope
     }
@@ -197,10 +200,10 @@ class ExamExecutionHardeningTest extends TestCase
     /** 5. SNAPSHOT / ORDER IMMUTABILITY **/
     public function test_published_exam_without_token_configuration_fails_closed(): void
     {
-        $this->exam->update(['require_token' => false, 'token' => null]);
-        $this->actingAs($this->student, 'sanctum');
+        $this->exam->update(['require_token' => true, 'token' => null]);
+        $this->withToken($this->studentToken);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-1')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-1', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(409)
@@ -210,8 +213,8 @@ class ExamExecutionHardeningTest extends TestCase
 
     public function test_repeated_execution_returns_identical_order()
     {
-        $this->actingAs($this->student, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'device-1');
+        $this->withToken($this->studentToken);
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-1', 'X-CBT-Fence-Generation' => '1']);
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response1 = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
