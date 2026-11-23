@@ -39,7 +39,7 @@ class Dashboard extends Component
         $activeAcademicYear = AcademicYear::query()->where('tenant_id', $tenantId)->where('is_active', true)->first();
 
         $recentUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->with('roles')->latest()->take(5)->get();
+            ->with('roles')->orderByDesc('created_at')->orderByDesc('id')->take(5)->get();
         $recentRombels = Rombel::query()->where('tenant_id', $tenantId)->latest()->take(5)->get();
 
         return view('livewire.admin.dashboard', [
