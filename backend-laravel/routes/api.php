@@ -33,7 +33,8 @@ Route::prefix('v1')->group(function () {
         // Official CP is read-only through the legacy API; mutations use the verified curriculum registry.
         // Legacy TP write API disabled; Guru authors TP through assignment-scoped TeacherLearning services.
         // Legacy ATP/LearningPath write API disabled; Guru authors ATP through the canonical curriculum workflow.
-        Route::apiResource('materials', \App\Http\Controllers\Api\V1\MaterialController::class);
+        // Legacy material API is read-only; Guru writes use assignment-scoped TeacherMaterialManagement.
+        Route::apiResource('materials', \App\Http\Controllers\Api\V1\MaterialController::class)->only(['index', 'show']);
 
         // Bank Soal
         // Legacy rows/XLSX import is disabled; use the canonical teacher authoring/import workflow.

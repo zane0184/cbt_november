@@ -200,6 +200,37 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
+    public function admin_user_management_filter_does_not_offer_retired_operator_or_kamad_roles()
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(UserManagement::class)
+            ->assertSee('ADMIN_MADRASAH')
+            ->assertSee('GURU')
+            ->assertSee('SISWA')
+            ->assertDontSee('value="OPERATOR"', false)
+            ->assertDontSee('value="KAMAD"', false);
+    }
+
+    /** @test */
+    public function legacy_material_api_is_read_only()
+    {
+        $this->actingAs($this->admin);
+
+        $routes = collect(app('router')->getRoutes()->getRoutes());
+        $this->assertSame(1, $routes->filter(
+            fn ($route) => $route->uri() === 'api/v1/materials' && in_array('GET', $route->methods(), true)
+        )->count());
+        $this->assertSame(0, $routes->filter(
+            fn ($route) => $route->uri() === 'api/v1/materials' && in_array('POST', $route->methods(), true)
+        )->count());
+        $this->assertSame(0, $routes->filter(
+            fn ($route) => $route->uri() === 'api/v1/materials/{material}'
+                && array_intersect(['PUT', 'PATCH', 'DELETE'], $route->methods()) !== []
+        )->count());
+    }
+
+    /** @test */
     public function admin_user_management_can_create_user()
     {
         $this->actingAs($this->admin);
