@@ -39,7 +39,7 @@
 - Manifest menyebut paket sebagai staging/deployment candidate, bukan production approval.
 
 ## Kesimpulan
-<badge>BUILD & ARSIP PASS</badge>
+**BUILD & ARSIP: PASS**
 Artefak ini lulus pemeriksaan integritas ZIP, checksum, struktur, file wajib dan forbidden paths pada exact source SHA di atas.
 
 **Artefak ini belum dinyatakan ZIP distribusi final.** Pemeriksaan ini tidak membuktikan instalasi di aaPanel/VPS, konfigurasi Nginx/PHP-FPM, wizard install pada server staging, migration chain pada server, browser E2E, backup/restore, security/load testing, atau UAT madrasah. ZIP final hanya boleh disiapkan setelah acceptance aplikasi dan staging selesai.
