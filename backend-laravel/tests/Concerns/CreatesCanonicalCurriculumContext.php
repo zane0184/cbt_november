@@ -246,6 +246,10 @@ trait CreatesCanonicalCurriculumContext
                     'mapping_role' => 'PRIMARY',
                 ]);
                 $assessmentMapping->forceFill([
+                    // These columns are mandatory in MySQL/InnoDB. The mapping
+                    // must carry the same immutable academic scope as its assignment.
+                    'academic_year_id' => $assignment->academic_year_id,
+                    'semester_id' => $assignment->semester_id,
                     'weight' => 1,
                     'is_primary' => true,
                     'created_by' => $teacher->id,
