@@ -156,6 +156,27 @@ class CentralExamRoomAssignmentTest extends TestCase
         }
     }
 
+    public function test_room_schedule_is_rejected_when_exam_has_no_start_or_end_boundary(): void
+    {
+        $this->actingAs($this->admin);
+        $exam = $this->examA->fresh();
+        $exam->start_at = null;
+        $exam->save();
+
+        try {
+            app(ExamRoomAssignmentService::class)->create(
+                $this->admin, $exam, $this->roomA,
+                [$this->guruC->id => 'proctor'], 1,
+                now()->addMinutes(10), now()->addHours(2)
+            );
+            $this->fail('Central room assignment must require both exam time boundaries.');
+        } catch (ValidationException $exception) {
+            $this->assertArrayHasKey('exam', $exception->errors());
+        }
+
+        $this->assertSame(0, ExamRoomAssignment::query()->count());
+    }
+
     public function test_regular_exam_cannot_be_assigned_by_admin_as_central_room_exam(): void
     {
         $this->actingAs($this->admin);
