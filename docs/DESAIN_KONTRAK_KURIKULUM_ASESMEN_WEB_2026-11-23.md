@@ -38,7 +38,7 @@ Delapan dimensi adalah profil lulusan; bukan jenis soal atau pengganti CP/TP.
 
 ### 1.3 Pembelajaran Mendalam
 Kepmendikdasmen 126/P/2025 (ditetapkan 4 September 2025) dan panduan pemerintah menjelaskan:
-- Prinsip: memuliakan, berkesadaran, bermakna, menggembirakan.
+- Prinsip: memuliakan, berkesadaran, bermakna, dan menggembirakan.
 - Olah: pikir, hati, rasa, raga.
 - Dokumen menjelaskan bahwa pembelajaran mendalam menuntut murid memahami, menganalisis, menerapkan konsep, dan melakukan refleksi dalam beragam konteks; ini bukan enum fase belajar yang harus dikunci.
 - Kerangka pembelajaran: praktik pedagogis, kemitraan, lingkungan, pemanfaatan digital.
