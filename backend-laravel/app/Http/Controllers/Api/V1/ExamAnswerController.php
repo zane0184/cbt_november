@@ -6,11 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptAnswer;
+use App\Models\ExamParticipant;
 use App\Models\ExamQuestionSnapshot;
 use App\Services\AuditService;
+use App\Services\AttemptAuthSessionBinding;
+use App\Services\AttemptDeviceLeaseService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class ExamAnswerController extends Controller
 {
@@ -20,6 +24,11 @@ class ExamAnswerController extends Controller
 
     public function index(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        $user = $request->user();
+        if (!$user || !$user->hasExactRole('SISWA')) {
+            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif dengan satu role yang dapat mengakses jawaban ujian.'], 403);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -29,55 +38,129 @@ class ExamAnswerController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
+        return DB::transaction(function () use ($exam, $attempt, $user, $deviceId, $request) {
+            // Canonical read/write lock order: Exam -> Participant -> Attempt -> Answer.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        // Security: Attempt must belong to the authenticated student
-        if ($attempt->tenant_id !== $exam->tenant_id
-            || $attempt->participant->tenant_id !== $exam->tenant_id
-            || $attempt->participant->user_id !== $user->id
-            || $attempt->exam_id !== $exam->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized access to attempt answers.'], 403);
-        }
+            $participant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
 
-        if ($attempt->device_fingerprint && $attempt->device_fingerprint !== $deviceId) {
+            if (!$participant) {
+                return response()->json(['success' => false, 'message' => 'Participant not found for this exam.'], 404);
+            }
+
+            $lockedAttempt = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->whereKey($attempt->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedAttempt) {
+                return response()->json(['success' => false, 'message' => 'Attempt not found for this participant.'], 404);
+            }
+
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
+                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                ], 409);
+            }
+
+            if ($lockedAttempt->status !== 'IN_PROGRESS'
+                || !$lockedAttempt->expires_at
+                || $lockedAttempt->expires_at->lte(now())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attempt is no longer resumable.',
+                    'code' => 'ATTEMPT_NOT_RESUMABLE'
+                ], 409);
+            }
+
+            $activeAttemptCount = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->where('status', 'IN_PROGRESS')
+                ->where('expires_at', '>', now())
+                ->count();
+
+            if ($activeAttemptCount !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah Attempt aktif peserta tidak konsisten; pembacaan jawaban ditahan.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
+                ], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_LEASE_INVALID',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => 'Lease Attempt tidak aktif atau tidak konsisten.',
+                ], 409);
+            }
+
+            $assignedSnapshotIds = is_array($lockedAttempt->question_order)
+                ? array_map('strval', $lockedAttempt->question_order)
+                : [];
+
+            $answers = ExamAttemptAnswer::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('exam_attempt_id', $lockedAttempt->id)
+                ->whereIn('exam_question_snapshot_id', $assignedSnapshotIds)
+                ->orderBy('created_at')
+                ->get([
+                    'id',
+                    'exam_question_snapshot_id',
+                    'answer_payload',
+                    'answer_state',
+                    'revision_number',
+                    'answered_at',
+                    'saved_at',
+                ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
-                'code' => 'CONCURRENT_DEVICE_DENIED'
-            ], 409);
-        }
-
-        // Restore only answers belonging to this attempt's immutable question order.
-        // A same-exam snapshot that was not assigned to this attempt must never be
-        // exposed through a manipulated attempt/snapshot identifier.
-        $assignedSnapshotIds = collect($attempt->question_order ?? [])
-            ->map(fn ($id) => (string) $id)
-            ->values();
-
-        $answers = ExamAttemptAnswer::query()
-            ->where('tenant_id', $exam->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->where('exam_attempt_id', $attempt->id)
-            ->whereIn('exam_question_snapshot_id', $assignedSnapshotIds)
-            ->orderBy('created_at')
-            ->get([
-                'id',
-                'exam_question_snapshot_id',
-                'answer_payload',
-                'answer_state',
-                'revision_number',
-                'answered_at',
-                'saved_at',
+                'success' => true,
+                'data' => $answers,
+                'fence_generation' => (int) $lockedAttempt->fence_generation,
+                'lease_expires_at' => $lockedAttempt->device_lease_expires_at?->toIso8601String(),
             ]);
-
-        return response()->json([
-            'success' => true,
-            'data' => $answers
-        ]);
+        });
     }
 
     public function update(Request $request, Exam $exam, ExamAttempt $attempt, ExamQuestionSnapshot $snapshot)
     {
+        $user = $request->user();
+        if (!$user || !$user->hasExactRole('SISWA')) {
+            return response()->json(['success' => false, 'message' => 'Hanya akun Siswa aktif dengan satu role yang dapat menyimpan jawaban ujian.'], 403);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -87,42 +170,6 @@ class ExamAnswerController extends Controller
             ], 400);
         }
 
-        $user = $request->user();
-
-        // 1. Basic Authorization & Integrity Checks
-        if ($attempt->tenant_id !== $exam->tenant_id
-            || $attempt->participant->tenant_id !== $exam->tenant_id
-            || $snapshot->tenant_id !== $exam->tenant_id
-            || $attempt->exam_id !== $exam->id
-            || $snapshot->exam_id !== $exam->id) {
-            return response()->json(['success' => false, 'message' => 'Invalid attempt or snapshot for this exam.'], 404);
-        }
-
-        if ($attempt->participant->user_id !== $user->id) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized to save answers for this attempt.'], 403);
-        }
-
-        if (!in_array((string) $snapshot->id, array_map('strval', $attempt->question_order ?? []), true)) {
-            return response()->json(['success' => false, 'message' => 'Snapshot is not assigned to this attempt.'], 404);
-        }
-
-        if ($attempt->status !== 'IN_PROGRESS') {
-            return response()->json(['success' => false, 'message' => 'Attempt is not in progress.'], 422);
-        }
-
-        if ($attempt->device_fingerprint && $attempt->device_fingerprint !== $deviceId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
-                'code' => 'CONCURRENT_DEVICE_DENIED'
-            ], 409);
-        }
-
-        if ($attempt->expires_at->isPast()) {
-            return response()->json(['success' => false, 'message' => 'Attempt has expired.'], 422);
-        }
-
-        // 2. Validation
         $validated = $request->validate([
             'client_request_id' => 'required|string|max:255',
             'base_revision' => 'nullable|integer|min:0',
@@ -130,29 +177,56 @@ class ExamAnswerController extends Controller
             'answer_state' => 'required|in:ANSWERED,CLEARED,UNANSWERED',
         ]);
 
-        // 3. Payload Validation based on Question Type (Foundation)
-        $this->validatePayload($snapshot, $validated['answer_payload'], $validated['answer_state']);
-
-        // 4. Atomic Save with Conflict Detection (Revision Sequencing)
-        return DB::transaction(function () use ($exam, $attempt, $snapshot, $user, $validated, $deviceId) {
-            // Always lock the parent attempt before touching an answer row.
-            // Submit/reset/administrative closure must use the same lock order.
-            $lockedAttempt = ExamAttempt::query()
-                ->whereKey($attempt->id)
+        return DB::transaction(function () use ($exam, $attempt, $snapshot, $user, $validated, $deviceId, $request) {
+            // Every writer takes the same parent locks before touching an Answer.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->whereKey($exam->id)
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($lockedAttempt->exam_id !== $exam->id
-                || $lockedAttempt->tenant_id !== $exam->tenant_id
-                || $lockedAttempt->participant->tenant_id !== $exam->tenant_id
-                || $lockedAttempt->participant->user_id !== $user->id) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized attempt.'], 403);
+            $participant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$participant) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized participant.'], 403);
             }
 
-            // Re-check under the attempt row lock to avoid relying only on the
-            // pre-transaction model instance for the authoritative assignment.
-            if (!in_array((string) $snapshot->id, array_map('strval', $lockedAttempt->question_order ?? []), true)) {
-                return response()->json(['success' => false, 'message' => 'Snapshot is not assigned to this attempt.'], 404);
+            $lockedAttempt = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->whereKey($attempt->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedAttempt) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized attempt.'], 404);
+            }
+
+            if (!app(AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sesi ujian ini tidak terikat pada perangkat yang mengajukan permintaan.',
+                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            if (!app(AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                ], 409);
             }
 
             if ($lockedAttempt->status !== 'IN_PROGRESS') {
@@ -163,54 +237,121 @@ class ExamAnswerController extends Controller
                 ], 422);
             }
 
-            if ($lockedAttempt->expires_at->isPast()) {
-                return response()->json(['success' => false, 'message' => 'Attempt has expired.'], 422);
-            }
-
-            if ($lockedAttempt->device_fingerprint && $lockedAttempt->device_fingerprint !== $deviceId) {
+            $serverNow = now();
+            if (!$lockedAttempt->expires_at || $lockedAttempt->expires_at->lte($serverNow)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
-                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                    'message' => 'Attempt has expired.',
+                    'code' => 'ATTEMPT_EXPIRED'
+                ], 422);
+            }
+
+            $activeAttemptCount = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->where('status', 'IN_PROGRESS')
+                ->where('expires_at', '>', $serverNow)
+                ->count();
+
+            if ($activeAttemptCount !== 1) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Jumlah Attempt aktif peserta tidak konsisten; penyimpanan jawaban ditahan.',
+                    'code' => 'ATTEMPT_INTEGRITY_CONFLICT'
                 ], 409);
             }
 
-            if (!$lockedAttempt->device_fingerprint) {
-                $lockedAttempt->device_fingerprint = $deviceId;
-                $lockedAttempt->save();
+            if (!app(AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_LEASE_INVALID',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => 'Lease Attempt tidak aktif atau tidak konsisten.',
+                ], 409);
             }
 
-            $answer = ExamAttemptAnswer::where('exam_attempt_id', $lockedAttempt->id)
-                ->where('exam_question_snapshot_id', $snapshot->id)
+            $lockedSnapshot = ExamQuestionSnapshot::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->whereKey($snapshot->id)
+                ->firstOrFail();
+
+            $assignedSnapshotIds = is_array($lockedAttempt->question_order)
+                ? array_map('strval', $lockedAttempt->question_order)
+                : [];
+
+            if (!in_array((string) $lockedSnapshot->id, $assignedSnapshotIds, true)) {
+                return response()->json(['success' => false, 'message' => 'Snapshot is not assigned to this attempt.'], 404);
+            }
+
+            // Validate against the immutable snapshot loaded under the same attempt lock.
+            $this->validatePayload($lockedSnapshot, $validated['answer_payload'], $validated['answer_state']);
+
+            $canonicalize = function ($value) use (&$canonicalize) {
+                if (!is_array($value)) {
+                    return $value;
+                }
+                if (array_is_list($value)) {
+                    return array_map($canonicalize, $value);
+                }
+                ksort($value);
+                foreach ($value as $key => $item) {
+                    $value[$key] = $canonicalize($item);
+                }
+                return $value;
+            };
+            $payloadHash = hash('sha256', json_encode($canonicalize([
+                'snapshot_id' => (string) $lockedSnapshot->id,
+                'answer_state' => $validated['answer_state'],
+                'answer_payload' => $validated['answer_payload'],
+            ]), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+
+            // Immutable per-Attempt request ledger preserves old request IDs after later revisions.
+            $requestReplay = DB::table('exam_attempt_answer_requests')
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_attempt_id', $lockedAttempt->id)
+                ->where('client_request_id', $validated['client_request_id'])
                 ->lockForUpdate()
                 ->first();
 
-            $serverNow = now();
-            $baseRevision = $validated['base_revision'] ?? 0;
-
-            if ($answer) {
-                // ... idempotency check ...
-                if ($answer->client_request_id === $validated['client_request_id']) {
-                    $lockedAttempt->update(['last_activity_at' => now()]);
+            if ($requestReplay) {
+                if (!hash_equals((string) $requestReplay->payload_hash, $payloadHash)) {
                     return response()->json([
-                        'success' => true,
-                        'data' => [
-                            'attempt_id' => $lockedAttempt->id,
-                            'snapshot_id' => $snapshot->id,
-                            'revision_number' => $answer->revision_number,
-                            'answer_state' => $answer->answer_state,
-                            'server_now' => $serverNow->toIso8601String(),
-                            'saved_at' => $answer->saved_at->toIso8601String(),
-                        ],
-                        'message' => 'Idempotent request handled.'
-                    ]);
+                        'success' => false,
+                        'code' => 'IDEMPOTENCY_KEY_REUSED',
+                        'message' => 'client_request_id sudah digunakan untuk payload atau snapshot yang berbeda.'
+                    ], 409);
                 }
 
-                // Optimistic concurrency requires an exact revision match. Reject both
-                // stale and impossible future revisions; the idempotency check above
-                // still returns the original result for a retried request ID.
+                $replayResponse = json_decode((string) $requestReplay->response_json, true, 512, JSON_THROW_ON_ERROR);
+                // Backfill the immutable request identifier for older ledger rows
+                // created before this receipt field was added to the response contract.
+                if (isset($replayResponse['receipt']) && is_array($replayResponse['receipt'])) {
+                    $replayResponse['receipt']['client_request_id'] = (string) $requestReplay->client_request_id;
+                }
+                $replayResponse['fence_generation'] = (int) $lockedAttempt->fence_generation;
+                if (isset($replayResponse['data']) && is_array($replayResponse['data'])) {
+                    $replayResponse['data']['fence_generation'] = (int) $lockedAttempt->fence_generation;
+                }
+                $replayResponse['idempotent'] = true;
+                $replayResponse['message'] = 'Request yang sama telah diterima sebelumnya.';
+                return response()->json($replayResponse);
+            }
+
+            $answer = ExamAttemptAnswer::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('exam_attempt_id', $lockedAttempt->id)
+                ->where('exam_question_snapshot_id', $lockedSnapshot->id)
+                ->lockForUpdate()
+                ->first();
+
+            $baseRevision = (int) ($validated['base_revision'] ?? 0);
+
+            if ($answer) {
                 $currentRevision = (int) $answer->revision_number;
-                if ((int) $baseRevision !== $currentRevision) {
+                if ($baseRevision !== $currentRevision) {
                     return response()->json([
                         'success' => false,
                         'error' => 'ANSWER_REVISION_CONFLICT',
@@ -226,16 +367,13 @@ class ExamAnswerController extends Controller
                 $answer->update([
                     'answer_payload' => $validated['answer_payload'],
                     'answer_state' => $validated['answer_state'],
-                    'revision_number' => $answer->revision_number + 1,
+                    'revision_number' => $currentRevision + 1,
                     'client_request_id' => $validated['client_request_id'],
                     'answered_at' => $validated['answer_state'] === 'ANSWERED' ? $serverNow : $answer->answered_at,
-                    'saved_at' => $serverNow
+                    'saved_at' => $serverNow,
                 ]);
-                $lockedAttempt->update(['last_activity_at' => $serverNow]);
             } else {
-                // A new answer starts at revision zero. A client claiming a future
-                // revision has stale or corrupted local state and must resynchronize.
-                if ((int) $baseRevision !== 0) {
+                if ($baseRevision !== 0) {
                     return response()->json([
                         'success' => false,
                         'error' => 'ANSWER_REVISION_CONFLICT',
@@ -246,38 +384,64 @@ class ExamAnswerController extends Controller
                 }
 
                 $answer = ExamAttemptAnswer::create([
-                    'tenant_id' => $exam->tenant_id,
-                    'exam_id' => $exam->id,
+                    'tenant_id' => $lockedExam->tenant_id,
+                    'exam_id' => $lockedExam->id,
                     'exam_attempt_id' => $lockedAttempt->id,
-                    'exam_question_snapshot_id' => $snapshot->id,
+                    'exam_question_snapshot_id' => $lockedSnapshot->id,
                     'student_id' => $user->id,
                     'answer_payload' => $validated['answer_payload'],
                     'answer_state' => $validated['answer_state'],
                     'revision_number' => 1,
                     'client_request_id' => $validated['client_request_id'],
                     'answered_at' => $validated['answer_state'] === 'ANSWERED' ? $serverNow : null,
-                    'saved_at' => $serverNow
+                    'saved_at' => $serverNow,
                 ]);
-                $lockedAttempt->update(['last_activity_at' => $serverNow]);
             }
+
+            $lockedAttempt->update(['last_activity_at' => $serverNow]);
 
             $this->auditService->log('SAVE_ANSWER', 'ExamAttemptAnswer', $answer->id, null, [
                 'attempt_id' => $lockedAttempt->id,
-                'snapshot_id' => $snapshot->id,
-                'state' => $validated['answer_state']
+                'snapshot_id' => $lockedSnapshot->id,
+                'state' => $validated['answer_state'],
+                'revision_number' => $answer->revision_number,
             ]);
 
-            return response()->json([
+            $receipt = [
+                'id' => (string) Str::uuid(),
+                'client_request_id' => (string) $validated['client_request_id'],
+                'attempt_id' => $lockedAttempt->id,
+                'snapshot_id' => $lockedSnapshot->id,
+                'revision_number' => $answer->revision_number,
+                'payload_hash' => $payloadHash,
+                'committed_at' => $serverNow->toIso8601String(),
+            ];
+            $responseBody = [
                 'success' => true,
                 'data' => [
                     'attempt_id' => $lockedAttempt->id,
-                    'snapshot_id' => $snapshot->id,
+                    'snapshot_id' => $lockedSnapshot->id,
                     'revision_number' => $answer->revision_number,
                     'answer_state' => $answer->answer_state,
                     'server_now' => $serverNow->toIso8601String(),
-                    'saved_at' => $answer->saved_at->toIso8601String(),
-                ]
+                    'saved_at' => $answer->saved_at?->toIso8601String(),
+                    'fence_generation' => (int) $lockedAttempt->fence_generation,
+                ],
+                'receipt' => $receipt,
+                'fence_generation' => (int) $lockedAttempt->fence_generation,
+            ];
+
+            DB::table('exam_attempt_answer_requests')->insert([
+                'id' => $receipt['id'],
+                'tenant_id' => $lockedExam->tenant_id,
+                'exam_attempt_id' => $lockedAttempt->id,
+                'client_request_id' => $validated['client_request_id'],
+                'payload_hash' => $payloadHash,
+                'response_json' => json_encode($responseBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'committed_at' => $serverNow,
             ]);
+
+            return response()->json($responseBody);
         });
     }
 
@@ -344,6 +508,7 @@ class ExamAnswerController extends Controller
                 }
                 break;
             case 'SHORT_ANSWER':
+                abort(422, 'SHORT_ANSWER belum diaktifkan karena accepted answers, snapshot immutable, dan scoring belum konsisten.');
             case 'ESSAY':
                 if (!array_key_exists('text', $payload)) {
                     abort(422, 'Text answer missing.');
