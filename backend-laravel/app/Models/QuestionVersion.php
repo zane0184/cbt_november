@@ -57,4 +57,9 @@ class QuestionVersion extends Model
         return $this->hasMany(QuestionVersionStructureMapping::class, 'question_version_id');
     }
 
+    public function tenantOutcomeMappings(): HasMany
+    {
+        return $this->hasMany(QuestionVersionTenantOutcomeMapping::class, 'question_version_id');
+    }
+
 }
