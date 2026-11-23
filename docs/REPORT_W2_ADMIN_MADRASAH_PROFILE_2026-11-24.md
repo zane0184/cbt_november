@@ -50,7 +50,7 @@ Catatan:
 
 ## Tambahan — temuan CI MySQL identity probe
 
-Run #1703 pada dokumentasi HEAD `d09af63ddb0372d6af73c5079b54ce849cc5a3f5` gagal sebelum checkout/test aplikasi karena workflow memeriksa `@@default_storage_engine` untuk menyimpulkan engine database, padahal nilai itu adalah default global dan bukan engine tabel target. Semua focused tests dan PHPUnit dilewati; hasil ini bukan bukti kegagalan profil.
+Run #1703 dan #1706 gagal sebelum test aplikasi karena probe CI menanyakan engine tabel `tenants` sebelum Composer/migration membuat schema disposable. Run #1702, #1705, #1707, dan #1708 dibatalkan oleh concurrency sebelum checkout. Tidak satu pun run tersebut menjalankan focused Admin profile tests atau PHPUnit untuk patch profil; status test tetap PENDING.
 
 Probe workflow diperbaiki dan dipisah sesuai lifecycle database:
 - sebelum Composer: memverifikasi nama database dan versi MySQL 8 (tanpa mengasumsikan schema tabel sudah dibuat);
