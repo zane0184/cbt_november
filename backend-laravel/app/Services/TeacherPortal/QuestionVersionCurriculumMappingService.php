@@ -28,7 +28,7 @@ class QuestionVersionCurriculumMappingService
         ?string $topicId = null
     ): array {
         $user = auth()->user();
-        app(TeacherPortalAccess::class)->profile($user);
+        $profile = app(TeacherPortalAccess::class)->profile($user);
         abort_unless($user->hasPermission('question.manage') && $user->hasPermission('curriculum.manage'), 403);
 
         $tenantId = (string) $user->tenant_id;
@@ -41,7 +41,7 @@ class QuestionVersionCurriculumMappingService
             ]);
         }
 
-        return DB::transaction(function () use ($version, $assignmentId, $cpIds, $outcomeIds, $materialId, $topicId, $user, $tenantId): array {
+        return DB::transaction(function () use ($version, $assignmentId, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId): array {
             $version = QuestionVersion::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($version->id)
@@ -58,6 +58,7 @@ class QuestionVersionCurriculumMappingService
             $assignment = TeacherSubjectAssignment::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($assignmentId)
+                ->where('teacher_profile_id', $profile->id)
                 ->where('status', 'ACTIVE')
                 ->whereDate('starts_at', '<=', now()->toDateString())
                 ->whereDate('ends_at', '>=', now()->toDateString())
@@ -147,6 +148,17 @@ class QuestionVersionCurriculumMappingService
                     throw ValidationException::withMessages([
                         'selectedOutcomeIds' => 'TP/ATP terpilih belum memiliki pemetaan Panca Cinta, Pembelajaran Mendalam, dan dimensi profil lulusan.',
                     ]);
+                }
+
+                foreach ($outcome->structureMappings as $frameworkMapping) {
+                    $node = $frameworkMapping->structure;
+                    if (!$node || !$node->is_official || $node->is_editable
+                        || !$node->source
+                        || !in_array($node->source->verification_status, ['METADATA_VERIFIED', 'ARTIFACT_CHECKSUM_VERIFIED'], true)) {
+                        throw ValidationException::withMessages([
+                            'selectedOutcomeIds' => 'Pemetaan KBC/PM/profil lulusan pada TP/ATP tidak memiliki provenance resmi yang valid.',
+                        ]);
+                    }
                 }
             }
 
@@ -247,6 +259,15 @@ class QuestionVersionCurriculumMappingService
                 ->flatMap(fn (TenantLearningOutcome $outcome) => $outcome->structureMappings)
                 ->unique('multi_curriculum_structure_id')
                 ->values();
+
+            $frameworkRoles = $frameworkNodes->pluck('mapping_role')->unique()->all();
+            foreach (['PANCA_CINTA', 'PM_PRINCIPLE', 'DIMENSI_PROFIL_LULUSAN'] as $requiredRole) {
+                if (!in_array($requiredRole, $frameworkRoles, true)) {
+                    throw ValidationException::withMessages([
+                        'selectedOutcomeIds' => 'Pemetaan soal wajib membawa nilai Panca Cinta, prinsip Pembelajaran Mendalam, dan dimensi profil lulusan.',
+                    ]);
+                }
+            }
 
             foreach ($frameworkNodes as $mapping) {
                 QuestionVersionStructureMapping::query()->create([
