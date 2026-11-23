@@ -283,7 +283,9 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
             'X-Device-Binding-ID' => $deviceId,
         ])->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
-        $response->assertCreated();
+        if ($response->status() !== 201) {
+            $this->fail('Start-attempt fixture failed with HTTP ' . $response->status() . ': ' . $response->getContent());
+        }
 
         return ExamAttempt::query()->whereKey($response->json('data.id'))->firstOrFail();
     }
