@@ -92,3 +92,23 @@ All corresponding source/test/view backups listed in `docs/REPORT_CI_FULL_PHPUNI
 6. Keep Android and Super Admin deferred until June 2027.
 
 No production migration, deployment, PR merge, or Android work.
+
+
+## Addendum handover lintas-agent — 23 November 2026
+
+**Pintu masuk wajib agent pengganti:** [docs/AGENT_START_HERE.md](AGENT_START_HERE.md)  
+**Handover induk + backlog prioritas:** [docs/AGENT_HANDOVER_MASTER_2026-11-23.md](AGENT_HANDOVER_MASTER_2026-11-23.md)
+
+Dokumen handover baru dibuat dan diverifikasi dapat dibaca dari branch eksekusi. Keduanya memuat keputusan owner, batas keselamatan, status bukti Admin/Guru/Siswa, PR independen yang wajib direkonsiliasi (#13/#18/#19/#21), prioritas P0–P4, protokol backup, acceptance gates, dan instruksi agent baru agar tidak mengulang patch.
+
+Commit dokumen:
+- `f68bf07ebd8602e9ca473be8dc0a7d9ff6a3b856` — tambah `docs/AGENT_START_HERE.md`.
+- `92862ccd34ed8ed31bc5a6d1ee2cb1837a4b3d01` — tambah `docs/AGENT_HANDOVER_MASTER_2026-11-23.md`.
+
+Verifikasi baca ulang:
+- `docs/AGENT_START_HERE.md` tersedia pada branch; blob `2c1d8b95eada4de17af7aa99902e0549ac311b26`.
+- `docs/AGENT_HANDOVER_MASTER_2026-11-23.md` tersedia pada branch; blob `5eca59944b74deffef8a00e701e5b051ddcf3586`.
+
+Catatan penting: dokumen GitHub tidak otomatis mengirimkan konteks ke agent/chat baru. Saat pindah agent, pengguna cukup memberi instruksi: **"Lanjutkan proyek CBT dari GitHub. Baca docs/AGENT_START_HERE.md lalu ikuti seluruh handover dan lanjutkan dari checkpoint aktual. Jangan ulang pekerjaan."** Agent tetap wajib memverifikasi HEAD, PR, source, dan CI terbaru sebelum coding.
+
+Tidak ada source runtime, migration, DB produksi, VPS, PR merge, atau deployment yang diubah pada langkah handover ini. PR #21 tetap tidak boleh di-merge tanpa approval dan seluruh acceptance gate.
