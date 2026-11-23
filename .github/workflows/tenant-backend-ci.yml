@@ -147,7 +147,7 @@ jobs:
         run: php artisan test --display-warnings --filter='TeacherResultLivewireReauthorizationTest'
 
       - name: Run focused account lifecycle and license route security tests
-        run: php artisan test --display-warnings tests/Feature/AdminUserAccountLifecycleTest.php tests/Feature/AccountLifecycleLicenseRouteTest.php tests/Feature/LicenseStatusAccessTest.php
+        run: php artisan test --display-warnings tests/Feature/AdminUserAccountLifecycleTest.php tests/Feature/AccountLifecycleLicenseRouteTest.php tests/Feature/AccountResetAttemptConcurrencyTest.php tests/Feature/LicenseStatusAccessTest.php
 
       - name: Run focused Web/API authentication and tenant security tests
         run: php artisan test --display-warnings tests/Feature/WebAdminAuthTest.php tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php
