@@ -251,7 +251,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         // Create a matching question
         $subject = \App\Models\Subject::first();
-        $qMatching = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
+        $qMatching = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
         $vMatching = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $qMatching->id,
