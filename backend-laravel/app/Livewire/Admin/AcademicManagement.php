@@ -40,6 +40,7 @@ class AcademicManagement extends Component
         $user = auth()->user();
         abort_unless(
             $user
+            && $user->tenant_id
             && $user->roles()->count() === 1
             && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('academic.manage'),
@@ -123,6 +124,9 @@ class AcademicManagement extends Component
 
     public function render()
     {
+        // Re-check persisted role, tenant and permission on every Livewire request.
+        $this->authorizeAcademicManagement();
+
         $rombels = Rombel::with(['academicYear', 'gradeLevel'])
             ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'))
             ->latest()
