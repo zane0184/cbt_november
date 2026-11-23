@@ -171,3 +171,43 @@ Pada branch `work/agent2-p0-auth-session-fencing-20261123`, dibuat backup byte-e
 - Backup manifest: `backend-laravel/docs/backup/agent2-p0-auth-session-fencing-2026-11-23/coordinator-p0-fix-2026-11-23/MANIFEST.md`.
 - Patch commits: `d13e8cfd...`, `e99daf0...`, `c9e06b3...`, `3a7fdb5...`, `8aaeb76...`.
 - CI terbaru exact SHA `8aaeb767293cc06350752f7a680b54c40b4e87c7`: run [#45144928769](https://github.com/zane0184/cbt_november/actions/runs/45144928769) masih berjalan pada saat checkpoint ini ditulis. Jangan klaim PASS sebelum seluruh suite dan two-connection concurrency selesai.
+
+
+Addendum lanjutan terarah + kurikulum satu ekosistem — 23 November 2026
+
+## Addendum lanjutan terarah dan kurikulum satu ekosistem — 23 November 2026
+
+Laporan tahap terbaru: [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md). Kontrak kurikulum diperjelas di [DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md](DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md).
+
+### HEAD/CI terkini
+- PR #21 tetap OPEN/DRAFT/UNMERGED; branch `work/solo-web-cbt-completion-20261123`.
+- Source sebelum patch login: `6fcdc757fa04ca04a1871b1685e0c89d67ccfd13`.
+- Workflow [#45148868236](https://github.com/zane0184/cbt_november/actions/runs/45148868236) FAILURE pada SHA tersebut: focused auth/login smoke 27 passed/90 assertions; full PHPUnit 163 failed/346 passed/1,388 assertions.
+- Failure terbesar: Phase7BManualReview 17, ExamSnapshot 15, Phase7CReopen 14, ExamSessionHardening 13, QuestionBank 8, SubmitLocking 8, AnswerKeyLeakage 7, ExamExecutionHardening 6, ExamManagementHardening 6. Root cause tiap kelompok belum selesai ditriase; jangan mengubah policy untuk membuat test lama lulus.
+- Login failure terdiagnosis: `LoginIdentityResolver` menghitung seluruh Tenant dan menolak jika bukan tepat satu, padahal `SystemTenantSeeder` membuat `SYSTEM_GLOBAL` selain tenant lokal. Resolver diperbaiki untuk menggunakan satu `LocalInstallationIdentity.tenant_id` dan memvalidasi tenant lokal yang dirujuk, tanpa menganggap SYSTEM_GLOBAL sebagai madrasah kedua.
+- Backup byte-exact sebelum patch: resolver blob `3d1a1d8294453f8d53fd15d5d7910e22478790f6`; AuthTest blob `803f409f48b544d947039d0879d7e56c4c118336`.
+- Patch resolver commit `2f1becace2e2d0fdb5891f586426b774f3eaea08`; regression test SystemTenant commit `d70270d55de8b5e0bfd8429ce7b0cae3c4bca1c1`.
+- Workflow #45149995187 dan #45150035648 dibatalkan oleh workflow concurrency karena commit berikutnya datang. Workflow #45150186044 pada HEAD dokumentasi `de0f3b61f0b3dc8b840dd0f17c003315626c0335` tercatat QUEUED saat checkpoint dibuat; cek hasil CI terbaru sebelum klaim.
+- Tidak ada hasil PASS untuk regression SystemTenant sampai CI exact HEAD selesai.
+
+### Kurikulum: satu ekosistem terpadu
+- Owner menegaskan Kurikulum Merdeka + KBC/Panca Cinta + Pembelajaran Mendalam merupakan satu kesatuan, bukan tiga kurikulum/modul/database.
+- Desain relasi dan peran sudah ditambahkan di dokumen kontrak.
+- Source assignment mapping, QuestionVersion mapping, dan ExamSnapshot sudah memakai keluarga model kanonis.
+- Gap nyata: `CurriculumAchievementService` dan `CurriculumAnalyticsController` masih memakai model legacy LearningOutcome/LearningObjective/LearningPath. Laporan historis belum terbukti membaca konteks versi/snapshot kanonis yang sama. Backlog P3: audit read-model, kompatibilitas histori, lalu E2E sampai laporan. Jangan buat sumber kebenaran ganda.
+
+### Implementasi tahap terbaru
+- `LoginIdentityResolver.php`: validasi local tenant berdasarkan installation identity, tidak menolak SYSTEM_GLOBAL.
+- `AuthTest.php`: regression test login saat SYSTEM_GLOBAL ada.
+- Backup source/test berada di `backend-laravel/docs/backup/solo-web-cbt-p0-integration-2026-11-23/`.
+- Laporan tahap: commit `30ffd16f02612c36b54090d641fe162fd2a40c2b`.
+- Kontrak kurikulum: commit `de0f3b61f0b3dc8b840dd0f17c003315626c0335`.
+
+### NEXT yang terarah
+1. Ambil hasil CI exact HEAD; jalankan focused AuthTest + SystemTenant regression. Jika gagal, baca body/log dan perbaiki akar masalah.
+2. Triase P0 session/lease/receipt/expiry tests. Jangan mengubah acceptance keamanan untuk memenuhi fixture lama.
+3. Kelompokkan failure suite Guru/Exam/Scoring berdasarkan kontrak dan fixture, mulai dari dependency canonical TeacherSubjectAssignment, QuestionVersion, immutable snapshot, dan authorization.
+4. Reconcile latest Web Siswa PR #13 ke integrasi; lakukan browser-to-real-Laravel E2E.
+5. Inventaris ADM-01–ADM-23 dan lanjutkan Admin.
+6. Selesaikan read-model kurikulum/laporan agar satu ekosistem terhubung hingga hasil historis.
+7. PR #21 tetap Draft; tidak ada merge, produksi, VPS, Android build, atau ZIP distribusi.
