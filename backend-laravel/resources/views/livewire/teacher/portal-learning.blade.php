@@ -110,29 +110,177 @@
                             @empty
                                 <p class="mt-3 rounded-lg bg-amber-50 p-3 text-xs text-amber-900">CP resmi untuk mapel dan fase ini belum tersedia/terverifikasi. Penyusunan TP dan ATP dinonaktifkan sampai CP induk yang sah tersedia.</p>
                             @endforelse
+
+                            @if($context['official_cp_verified'] ?? false)
+                                <form wire:submit.prevent="createTp('{{ $assignment->id }}')" class="mt-4 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                                    <div>
+                                        <h5 class="font-bold text-navy-900">Susun Tujuan Pembelajaran (TP)</h5>
+                                        <p class="mt-1 text-xs text-textSecondary">TP dibuat Guru sebagai data milik tenant dan selalu terhubung ke CP induk resmi.</p>
+                                    </div>
+                                    <div>
+                                        <label class="mb-1 block text-xs font-semibold text-navy-900">CP induk</label>
+                                        <select wire:model="tpForms.{{ $assignment->id }}.parent_cp_id" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm">
+                                            <option value="">Pilih CP resmi...</option>
+                                            @foreach(($context['cp_options'] ?? []) as $cp)
+                                                @if($cp['selectable'])
+                                                    <option value="{{ $cp['id'] }}">{{ $cp['code'] }} — {{ $cp['title'] }}</option>
+                                                @endif
+                                            @endforeach
+                                        </select>
+                                        @error('tpForms.' . $assignment->id . '.parent_cp_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div class="grid gap-3 sm:grid-cols-2">
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold text-navy-900">Kode TP</label>
+                                            <input wire:model="tpForms.{{ $assignment->id }}.code" maxlength="100" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm" placeholder="TP-A-01">
+                                            @error('tpForms.' . $assignment->id . '.code') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold text-navy-900">Judul TP</label>
+                                            <input wire:model="tpForms.{{ $assignment->id }}.title" maxlength="255" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm" placeholder="Judul tujuan pembelajaran">
+                                            @error('tpForms.' . $assignment->id . '.title') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="mb-1 block text-xs font-semibold text-navy-900">Deskripsi/rumusan TP</label>
+                                        <textarea wire:model="tpForms.{{ $assignment->id }}.description" rows="3" maxlength="12000" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm" placeholder="Rumuskan tujuan pembelajaran yang terukur dan sesuai CP..."></textarea>
+                                        @error('tpForms.' . $assignment->id . '.description') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                    </div>
+
+                                    <div class="grid gap-3 lg:grid-cols-2">
+                                        <div>
+                                            <p class="mb-2 text-xs font-bold text-navy-900">Panca Cinta (pilih minimal satu)</p>
+                                            <div class="space-y-1.5">
+                                                @foreach(($context['panca_cinta'] ?? []) as $node)
+                                                    <label class="flex items-center gap-2 text-xs text-navy-800">
+                                                        <input type="checkbox" value="{{ $node['id'] }}" wire:model="tpForms.{{ $assignment->id }}.panca_cinta" class="rounded border-cardBorder text-emerald-700 focus:ring-emerald-600">
+                                                        {{ $node['title'] }}
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                            @error('tpForms.' . $assignment->id . '.panca_cinta') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <p class="mb-2 text-xs font-bold text-navy-900">Prinsip Pembelajaran Mendalam (pilih minimal satu)</p>
+                                            <div class="space-y-1.5">
+                                                @foreach(($context['deep_learning_principles'] ?? []) as $node)
+                                                    <label class="flex items-center gap-2 text-xs text-navy-800">
+                                                        <input type="checkbox" value="{{ $node['id'] }}" wire:model="tpForms.{{ $assignment->id }}.pm_principles" class="rounded border-cardBorder text-emerald-700 focus:ring-emerald-600">
+                                                        {{ $node['title'] }}
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                            @error('tpForms.' . $assignment->id . '.pm_principles') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
+                                            <p class="mb-2 text-xs font-bold text-navy-900">Kerangka Pembelajaran Mendalam (opsional)</p>
+                                            <div class="space-y-1.5">
+                                                @foreach(($context['deep_learning_framework'] ?? []) as $node)
+                                                    <label class="flex items-center gap-2 text-xs text-navy-800">
+                                                        <input type="checkbox" value="{{ $node['id'] }}" wire:model="tpForms.{{ $assignment->id }}.pm_framework" class="rounded border-cardBorder text-emerald-700 focus:ring-emerald-600">
+                                                        {{ $node['title'] }}
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p class="mb-2 text-xs font-bold text-navy-900">Dimensi Profil Lulusan (pilih minimal satu)</p>
+                                            <div class="grid gap-1.5 sm:grid-cols-2">
+                                                @foreach(($context['graduate_dimensions'] ?? []) as $node)
+                                                    <label class="flex items-center gap-2 text-xs text-navy-800">
+                                                        <input type="checkbox" value="{{ $node['id'] }}" wire:model="tpForms.{{ $assignment->id }}.graduate_dimensions" class="rounded border-cardBorder text-emerald-700 focus:ring-emerald-600">
+                                                        {{ $node['title'] }}
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                            @error('tpForms.' . $assignment->id . '.graduate_dimensions') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                    </div>
+                                    <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50">Simpan TP sebagai Draft</button>
+                                </form>
+                            @else
+                                <p class="mt-4 rounded-xl border border-dashed border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">Form authoring TP/ATP terkunci sampai CP induk resmi untuk mapel dan fase ini diverifikasi.</p>
+                            @endif
                         </div>
                     </div>
 
                     <div class="space-y-3">
+                        @php
+                            $teacherOutcomes = collect($context['teacher_outcomes'] ?? []);
+                            $tpOutcomes = $teacherOutcomes->where('outcome_type', 'TP')->values();
+                            $atpOutcomes = $teacherOutcomes->where('outcome_type', 'ATP')->values();
+                        @endphp
                         <div class="rounded-xl border border-cardBorder p-4">
                             <div class="flex items-center justify-between">
                                 <h4 class="font-semibold text-navy-900">Tujuan Pembelajaran & Alur Tujuan Pembelajaran</h4>
-                                <span class="text-xs text-textSecondary">{{ count($context['teacher_outcomes'] ?? []) }} item</span>
+                                <span class="text-xs text-textSecondary">{{ $teacherOutcomes->count() }} item</span>
                             </div>
-                            @forelse(($context['teacher_outcomes'] ?? []) as $outcome)
+                            @forelse($tpOutcomes as $tp)
                                 <div class="mt-3 rounded-lg bg-contentBg p-3">
-                                    <div class="flex items-center justify-between gap-2">
-                                        <p class="text-sm font-semibold text-navy-900">{{ $outcome['outcome_type'] }} · {{ $outcome['code'] }}</p>
-                                        <span class="text-[11px] text-textSecondary">v{{ $outcome['version_code'] }} · {{ $outcome['status'] }}</span>
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <p class="text-sm font-semibold text-navy-900">TP · {{ $tp['code'] }} — {{ $tp['title'] }}</p>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-[11px] text-textSecondary">v{{ $tp['version_code'] }} · {{ $tp['status'] }}</span>
+                                            @if($tp['status'] === 'DRAFT')
+                                                <button type="button" wire:click="publishOutcome('{{ $tp['id'] }}')" wire:loading.attr="disabled" class="rounded-md bg-emerald-700 px-2.5 py-1 text-[10px] font-bold text-white">Publikasikan</button>
+                                            @endif
+                                        </div>
                                     </div>
-                                    <p class="mt-1 text-sm font-medium text-navy-900">{{ $outcome['title'] }}</p>
-                                    <p class="mt-1 whitespace-pre-line text-xs text-textSecondary">{{ $outcome['description'] }}</p>
-                                    <p class="mt-2 text-[11px] text-textSecondary">Induk CP: {{ $outcome['parent_cp'] ?? '-' }} · TP induk: {{ $outcome['parent_tp'] ?? '-' }}</p>
+                                    <p class="mt-1 whitespace-pre-line text-xs text-textSecondary">{{ $tp['description'] }}</p>
+                                    <p class="mt-2 text-[11px] text-textSecondary">Induk CP: {{ $tp['parent_cp'] ?? '-' }}</p>
+                                    <div class="mt-2 flex flex-wrap gap-1.5">
+                                        @foreach($tp['mappings'] as $mapping)
+                                            <span class="rounded-full border border-cardBorder bg-white px-2 py-0.5 text-[10px] text-navy-800">{{ $mapping['role'] }} · {{ $mapping['title'] }}</span>
+                                        @endforeach
+                                    </div>
+
+                                    <form wire:submit.prevent="createAtp('{{ $assignment->id }}', '{{ $tp['id'] }}')" class="mt-3 space-y-2 rounded-lg border border-cardBorder bg-white p-3">
+                                        <p class="text-xs font-bold text-navy-900">Tambah Alur Tujuan Pembelajaran (ATP)</p>
+                                        <div class="grid gap-2 sm:grid-cols-3">
+                                            <div>
+                                                <label class="mb-1 block text-[11px] font-semibold text-navy-900">Urutan</label>
+                                                <input type="number" min="1" max="999" wire:model="atpForms.{{ $tp['id'] }}.sequence_number" class="w-full rounded-lg border border-cardBorder px-2.5 py-2 text-xs" placeholder="1">
+                                                @error('atpForms.' . $tp['id'] . '.sequence_number') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="mb-1 block text-[11px] font-semibold text-navy-900">Kode ATP</label>
+                                                <input wire:model="atpForms.{{ $tp['id'] }}.code" class="w-full rounded-lg border border-cardBorder px-2.5 py-2 text-xs" placeholder="ATP-01">
+                                                @error('atpForms.' . $tp['id'] . '.code') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
+                                            </div>
+                                            <div>
+                                                <label class="mb-1 block text-[11px] font-semibold text-navy-900">Judul ATP</label>
+                                                <input wire:model="atpForms.{{ $tp['id'] }}.title" class="w-full rounded-lg border border-cardBorder px-2.5 py-2 text-xs" placeholder="Judul alur tujuan">
+                                                @error('atpForms.' . $tp['id'] . '.title') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-[11px] font-semibold text-navy-900">Deskripsi ATP</label>
+                                            <textarea wire:model="atpForms.{{ $tp['id'] }}.description" rows="2" class="w-full rounded-lg border border-cardBorder px-2.5 py-2 text-xs" placeholder="Urutan pengalaman/tujuan pembelajaran..."></textarea>
+                                            @error('atpForms.' . $tp['id'] . '.description') <p class="mt-1 text-[10px] text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-navy-900 px-3 py-2 text-[11px] font-bold text-white">Simpan ATP sebagai Draft</button>
+                                    </form>
+
+                                    @foreach($atpOutcomes->where('parent_tp_id', $tp['id']) as $atp)
+                                        <div class="mt-3 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3">
+                                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                                <p class="text-xs font-bold text-navy-900">ATP {{ $atp['sequence_number'] ?? '' }} · {{ $atp['code'] }} — {{ $atp['title'] }}</p>
+                                                <div class="flex items-center gap-2">
+                                                    <span class="text-[10px] text-textSecondary">v{{ $atp['version_code'] }} · {{ $atp['status'] }}</span>
+                                                    @if($atp['status'] === 'DRAFT')
+                                                        <button type="button" wire:click="publishOutcome('{{ $atp['id'] }}')" wire:loading.attr="disabled" class="rounded-md bg-emerald-700 px-2 py-1 text-[10px] font-bold text-white">Publikasikan</button>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <p class="mt-1 whitespace-pre-line text-xs text-textSecondary">{{ $atp['description'] }}</p>
+                                        </div>
+                                    @endforeach
                                 </div>
                             @empty
-                                <p class="mt-3 rounded-lg bg-contentBg p-3 text-xs text-textSecondary">Belum ada TP/ATP yang dibuat untuk penugasan ini.</p>
+                                <p class="mt-3 rounded-lg bg-contentBg p-3 text-xs text-textSecondary">Belum ada TP yang dibuat untuk penugasan ini. Buat TP setelah CP induk tersedia dan terverifikasi.</p>
                             @endforelse
                         </div>
+
 
                         <div class="rounded-xl border border-cardBorder p-4">
                             <h4 class="font-semibold text-navy-900">Integrasi Panca Cinta</h4>
