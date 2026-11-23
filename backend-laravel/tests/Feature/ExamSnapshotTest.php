@@ -162,6 +162,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q1',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -169,6 +170,7 @@ class ExamSnapshotTest extends TestCase
             'question_id' => $q->id,
             'major_version' => 1, 'minor_version' => 0,
             'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -191,6 +193,7 @@ class ExamSnapshotTest extends TestCase
             'question_id' => $q->id,
             'major_version' => 2, 'minor_version' => 0,
             'question_type' => 'ESSAY', 'stem' => 'New Stem', 'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -216,6 +219,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q-WRONG-SUBJECT',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
         $version = QuestionVersion::create([
@@ -226,6 +230,7 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY',
             'stem' => 'Soal dari mapel yang berbeda',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
@@ -295,12 +300,13 @@ class ExamSnapshotTest extends TestCase
         $q = Question::create([
             'tenant_id' => $this->tenant->id,
             'subject_id' => $this->subject->id,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
         $v = QuestionVersion::create([
             'question_id' => $q->id,
-            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'created_by' => $this->user->id
+            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'status' => 'PUBLISHED', 'created_by' => $this->user->id
         ]);
 
         $this->mapQuestionVersionToCanonicalCurriculum($v, $this->canonicalContext);
@@ -479,6 +485,30 @@ class ExamSnapshotTest extends TestCase
             'short_name' => 'OMT',
             'status' => 'ACTIVE',
         ]);
+        $otherTeacherProfile = TeacherProfile::create([
+            'tenant_id' => $otherTenant->id,
+            'user_id' => $otherUser->id,
+            'full_name' => 'Other Guru',
+        ]);
+        $otherRombel = Rombel::create([
+            'tenant_id' => $otherTenant->id,
+            'academic_year_id' => $otherYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => 'Other 1A',
+            'status' => 'ACTIVE',
+        ]);
+        $otherAssignment = TeacherSubjectAssignment::create([
+            'tenant_id' => $otherTenant->id,
+            'teacher_profile_id' => $otherTeacherProfile->id,
+            'subject_id' => $otherSubject->id,
+            'rombel_id' => $otherRombel->id,
+            'academic_year_id' => $otherYear->id,
+            'semester_id' => $otherSemester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYear()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $otherUser->id,
+        ]);
         $otherAssessment = Assessment::create([
             'tenant_id' => $otherTenant->id,
             'subject_id' => $otherSubject->id,
@@ -488,6 +518,7 @@ class ExamSnapshotTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $otherUser->id,
         ]);
+        $otherCanonicalContext = $this->createCanonicalCurriculumContext($otherAssignment, $otherUser, $otherAssessment);
         $otherExam = Exam::create([
             'tenant_id' => $otherTenant->id,
             'assessment_id' => $otherAssessment->id,
@@ -502,6 +533,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $otherUser->id,
             'question_code' => 'OTHER-TENANT-Q1',
+            'status' => 'PUBLISHED',
             'created_by' => $otherUser->id,
         ]);
         $otherVersion = QuestionVersion::create([
@@ -511,8 +543,10 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY',
             'stem' => 'Other tenant snapshot',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $otherUser->id,
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($otherVersion, $otherCanonicalContext);
         app(\App\Services\ExamSnapshotService::class)->createSnapshots($otherExam, [$otherVersion->id]);
         $foreignSnapshot = $otherExam->snapshots()->firstOrFail();
 
@@ -713,6 +747,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'MUTATION-1',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
@@ -723,6 +758,7 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY',
             'stem' => 'Snapshot mutation guard',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
