@@ -82,7 +82,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/exams/{exam}/execution', [\App\Http\Controllers\Api\V1\ExamAttemptController::class, 'execution']);
         Route::apiResource('exams.attempts', \App\Http\Controllers\Api\V1\ExamAttemptController::class)->only(['store', 'show']);
         Route::post('/exams/{exam}/attempts/{attempt}/heartbeat', [\App\Http\Controllers\Api\V1\MonitoringController::class, 'heartbeat'])
-            ->middleware('throttle:30,1'); // max 30 per minute (every 2s is plenty for 60s heartbeats)
+            ->middleware('throttle:exam-heartbeat'); // 30/minute per authenticated tenant user
         Route::get('/exams/{exam}/attempts/{attempt}/answers', [\App\Http\Controllers\Api\V1\ExamAnswerController::class, 'index']);
         Route::put('/exams/{exam}/attempts/{attempt}/answers/{snapshot}', [\App\Http\Controllers\Api\V1\ExamAnswerController::class, 'update']);
         Route::post('/exams/{exam}/attempts/{attempt}/submit', [\App\Http\Controllers\Api\V1\ExamAttemptController::class, 'submit']);
