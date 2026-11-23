@@ -400,6 +400,7 @@ return new class extends Migration
                 $table->uuid('id')->primary();
                 $table->uuid('tenant_id');
                 $table->uuid('question_version_id');
+                $table->uuid('teacher_subject_assignment_id');
                 $table->uuid('tenant_curriculum_registration_id');
                 $table->uuid('multi_curriculum_version_id');
                 $table->uuid('curriculum_owner_id');
