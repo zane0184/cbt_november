@@ -34,7 +34,7 @@ class AuthController extends Controller
         }
 
         $user = $resolver->resolve($identifier);
-        if (!$user || !Hash::check((string) $validated['password'], (string) $user->password)) {
+        if (!$user || !(bool) $user->is_active || !Hash::check((string) $validated['password'], (string) $user->password)) {
             RateLimiter::hit($throttleKey, 60);
             throw ValidationException::withMessages(['identifier' => ['Identitas atau password tidak valid.']]);
         }
@@ -49,7 +49,7 @@ class AuthController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedUser) {
+            if (!$lockedUser || !(bool) $lockedUser->is_active) {
                 return ['status' => 'INVALID'];
             }
 
@@ -75,7 +75,10 @@ class AuthController extends Controller
                 return [
                     'status' => 'OK',
                     'user' => $lockedUser,
-                    'token' => $lockedUser->createToken(($validated['device_name'] ?? null) ?: 'web-cbt')->plainTextToken,
+                    'token' => $lockedUser->createToken(
+                        ($validated['device_name'] ?? null) ?: 'web-cbt',
+                        ['*', 'account-version:'.(int) ($lockedUser->auth_version ?? 1)]
+                    )->plainTextToken,
                 ];
             } finally {
                 $tenantContext->setTenantId($previousTenantId);
