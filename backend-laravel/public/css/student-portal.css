@@ -44,3 +44,7 @@ body.bg-contentBg{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSyst
 input,select,textarea{max-width:100%}
 button:disabled{opacity:.65;cursor:not-allowed}
 #loginForm input{min-height:44px}
+
+.border-slate-200{border-color:var(--slate-200)}.border-blue-300{border-color:#93c5fd}.border-amber-300{border-color:#fcd34d}
+.bg-black{background:#000}.text-amber-700{color:#b45309}.max-h-96{max-height:24rem}.max-w-full{max-width:100%}.object-contain{object-fit:contain}.mb-2{margin-bottom:.5rem}
+.hover\:bg-slate-50:hover{background:var(--slate-50)}
