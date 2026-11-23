@@ -12,28 +12,13 @@ class CurriculumVersioningTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_legacy_cp_api_keeps_read_routes_but_disables_mutations(): void
+    public function test_legacy_cp_resource_routes_are_not_registered(): void
     {
-        $tenant = Tenant::create(['name' => 'Demo', 'code' => 'DEMO']);
-        app(\App\Contexts\TenantContext::class)->setTenantId($tenant->id);
-        $user = User::create([
-            'tenant_id' => $tenant->id,
-            'name' => 'Admin',
-            'email' => 'admin@example.test',
-            'password' => bcrypt('password'),
-        ]);
-        $this->actingAs($user);
-
         $routes = collect(app('router')->getRoutes()->getRoutes());
-        $this->assertSame(1, $routes->filter(
-            fn ($route) => $route->uri() === 'api/v1/learning-outcomes' && in_array('GET', $route->methods(), true)
-        )->count());
+
         $this->assertSame(0, $routes->filter(
-            fn ($route) => $route->uri() === 'api/v1/learning-outcomes' && in_array('POST', $route->methods(), true)
-        )->count());
-        $this->assertSame(0, $routes->filter(
-            fn ($route) => $route->uri() === 'api/v1/learning-outcomes/{learning_outcome}'
-                && array_intersect(['PUT', 'PATCH', 'DELETE'], $route->methods()) !== []
+            fn ($route) => str_starts_with($route->uri(), 'api/v1/learning-outcomes')
+                && array_intersect(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], $route->methods()) !== []
         )->count());
         $this->assertSame(0, LearningOutcome::query()->count());
     }
