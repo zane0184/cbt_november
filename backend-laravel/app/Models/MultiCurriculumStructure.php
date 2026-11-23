@@ -25,6 +25,8 @@ class MultiCurriculumStructure extends Model
         'title',
         'sort_order',
         'status',
+        'source_id', 'source_locator', 'effective_from', 'effective_until',
+        'verification_status', 'verified_at', 'source_checksum', 'metadata',
     ];
 
     public function version(): BelongsTo
@@ -51,4 +53,17 @@ class MultiCurriculumStructure extends Model
     {
         return $this->hasMany(MultiLearningOutcome::class, 'multi_curriculum_structure_id');
     }
+
+    protected $casts = [
+        'effective_from' => 'date',
+        'effective_until' => 'date',
+        'verified_at' => 'datetime',
+        'metadata' => 'array',
+    ];
+
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumReferenceSource::class, 'source_id');
+    }
+
 }
