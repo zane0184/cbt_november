@@ -9,6 +9,7 @@ use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
 use App\Models\Subject;
 use App\Support\Security\TeacherAccess;
+use App\Support\Security\TeacherPortalAccess;
 use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -23,20 +24,51 @@ class QuestionBank extends Component
     public $subjectFilter = '';
     public $statusFilter = '';
 
-    public function mount()
+    public function boot(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    public function mount(): void
+    {
+        $this->assertCanAccess();
+
+        $questionId = request()->query('edit_question');
+        if (is_string($questionId) && $questionId !== '') {
+            $this->openEditModal($questionId);
+        }
+    }
+
+    private function assertCanAccess(): void
     {
         $user = auth()->user();
-        if (!$user || !$user->hasRole('GURU') || !$user->hasPermission('question.view')) {
-            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk melihat bank soal.');
-        }
+        abort_unless($user && $user->tenant_id, 403, 'Bank soal hanya dapat diakses Guru sesuai penugasan.');
+
+        // Do not trust a previously loaded role relation after role changes.
+        $user->unsetRelation('roles');
+        abort_unless($user->hasPermission('question.view'), 403, 'Bank soal hanya dapat diakses Guru sesuai penugasan.');
+
+        // Reuse the canonical Portal Guru boundary: exactly one GURU role,
+        // persisted tenant identity, and exactly one tenant-local TeacherProfile.
+        app(TeacherPortalAccess::class)->profile($user);
+
+        // A valid profile without an active academic assignment is not enough
+        // to enter the subject-scoped Guru management screens.
+        abort_unless(
+            TeacherAccess::assignedSubjectIds($user) !== [],
+            403,
+            'Bank soal hanya dapat diakses Guru sesuai penugasan.'
+        );
     }
 
     // Modal Form State
     public $showModal = false;
     public $editingQuestionId = null;
+    public $editingQuestionVersionId = null;
+    public $editingQuestionVersionStatus = null;
 
     public $questionCode = '';
-    public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, SHORT_ANSWER, ESSAY
+    public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, ESSAY
     public $selectedSubjectId = '';
     public $selectedOutcomeId = ''; // CP
     public $selectedObjectiveId = ''; // TP
@@ -63,7 +95,7 @@ class QuestionBank extends Component
     public function openCreateModal()
     {
         Gate::authorize('create', Question::class);
-        $this->reset(['editingQuestionId', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
+        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'editingQuestionVersionStatus', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
         $this->questionType = 'MULTIPLE_CHOICE';
         $this->correctOption = 'A';
         $this->correctOptions = [];
@@ -84,6 +116,8 @@ class QuestionBank extends Component
         $version = $question->currentVersion;
 
         $this->editingQuestionId = $question->id;
+        $this->editingQuestionVersionId = $version?->id;
+        $this->editingQuestionVersionStatus = $version?->status;
         $this->questionCode = $question->question_code;
         $this->selectedSubjectId = $question->subject_id;
 
@@ -194,7 +228,7 @@ class QuestionBank extends Component
     {
         $this->validate([
             'questionCode' => 'required|string|max:50',
-            'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,SHORT_ANSWER,ESSAY',
+            'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,ESSAY',
             'selectedSubjectId' => 'required|exists:subjects,id',
             'stem' => 'required|string',
             'defaultPoints' => 'required|numeric|min:0.5',
@@ -653,11 +687,24 @@ class QuestionBank extends Component
             ? LearningObjective::where('learning_outcome_id', $this->selectedOutcomeId)->get()
             : collect();
 
+        $editingVersionMedia = collect();
+        if ($this->editingQuestionId && $this->editingQuestionVersionId && $user) {
+            $editingVersion = QuestionVersion::query()
+                ->whereKey($this->editingQuestionVersionId)
+                ->where('question_id', $this->editingQuestionId)
+                ->where('tenant_id', $user->tenant_id)
+                ->with('media')
+                ->first();
+
+            $editingVersionMedia = $editingVersion?->media ?? collect();
+        }
+
         return view('livewire.admin.question-bank', [
             'questions' => $questions,
             'subjects' => $subjects,
             'outcomes' => $outcomes,
             'objectives' => $objectives,
-        ])->layout('layouts.app');
+            'editingVersionMedia' => $editingVersionMedia,
+        ])->layout('layouts.teacher');
     }
 }
