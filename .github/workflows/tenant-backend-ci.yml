@@ -140,5 +140,8 @@ jobs:
       - name: Run focused Web login and tenant identity smoke tests
         run: php artisan test --display-warnings --filter='WebAdminAuthTest|StudentWebLoginTest'
 
+      - name: Run focused Admin Livewire reauthorization regression tests
+        run: php artisan test --display-warnings --filter='AdminLivewireReauthorizationTest'
+
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
