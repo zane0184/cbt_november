@@ -52,16 +52,18 @@ Catatan:
 
 Run #1703 pada dokumentasi HEAD `d09af63ddb0372d6af73c5079b54ce849cc5a3f5` gagal sebelum checkout/test aplikasi karena workflow memeriksa `@@default_storage_engine` untuk menyimpulkan engine database, padahal nilai itu adalah default global dan bukan engine tabel target. Semua focused tests dan PHPUnit dilewati; hasil ini bukan bukti kegagalan profil.
 
-Probe workflow diperbaiki agar:
-- memverifikasi nama database dan versi MySQL 8;
-- membaca engine aktual tabel `tenants` dari `information_schema.TABLES` pada database disposable;
+Probe workflow diperbaiki dan dipisah sesuai lifecycle database:
+- sebelum Composer: memverifikasi nama database dan versi MySQL 8 (tanpa mengasumsikan schema tabel sudah dibuat);
+- setelah PHPUnit menjalankan migration/schema: membaca engine aktual tabel `tenants` dari `information_schema.TABLES` pada database disposable;
 - tetap fail-closed kecuali tabel target nyata ber-ENGINE InnoDB.
 
 Backup workflow byte-exact:
 - `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/tenant-backend-ci.yml.before-mysql-engine-probe-fix`
 - blob SHA `caf4202cbeb5b7f750222d4f5f0414d456fee180`.
 - source workflow sebelum patch: blob SHA `caf4202cbeb5b7f750222d4f5f0414d456fee180`.
-- fix workflow commit: `37a954e0f9006a90d109c5165436b9ef3e7c22f3`.
+- fix workflow pertama (probe engine tabel terlalu awal): `37a954e0f9006a90d109c5165436b9ef3e7c22f3`.
+- backup workflow sebelum pemisahan lifecycle: `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/tenant-backend-ci.yml.before-probe-after-migrations` — blob SHA `f655b44188ff788fcdea518d73ee024adc287dd2`.
+- koreksi final urutan probe: commit `46c5f0ba56d42e9103c12179a80911d1844f21fc`.
 
 ## STATUS BACKLOG
 - Profil dasar (nama, NSM, NPSN, alamat, telepon, email): IMPLEMENTED / TEST PENDING.
