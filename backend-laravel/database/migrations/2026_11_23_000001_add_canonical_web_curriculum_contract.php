@@ -132,7 +132,7 @@ return new class extends Migration
 
                 $table->unique(['id', 'tenant_id'], 'tcsm_id_tenant_uq');
                 $table->unique(
-                    ['tenant_id', 'subject_id', 'multi_curriculum_version_id'],
+                    ['tenant_id', 'subject_id', 'multi_curriculum_version_id', 'multi_curriculum_structure_id'],
                     'tcsm_identity_uq'
                 );
                 $table->index(['tenant_id', 'multi_curriculum_version_id', 'status'], 'tcsm_scope_idx');
