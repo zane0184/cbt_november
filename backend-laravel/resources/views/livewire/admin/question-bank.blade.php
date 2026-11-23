@@ -3,13 +3,15 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
             <h1 class="text-2xl font-bold text-navy-900">Bank Soal & Modul Asesmen</h1>
-            <p class="text-xs text-textSecondary mt-1">Kelola butir soal pilihan ganda, pilihan ganda kompleks, benar/salah, menjodohkan, jawaban singkat, dan uraian/esai</p>
+            <p class="text-xs text-textSecondary mt-1">Kelola butir soal pilihan ganda, pilihan ganda kompleks, benar/salah, menjodohkan, dan uraian/esai</p>
         </div>
-        @can('create', \App\Models\Question::class)
-            <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
-                <span>+</span> Buat Soal Baru
-            </button>
-        @endcan
+        <div class="flex flex-wrap gap-2">
+            @can('create', \App\Models\Question::class)
+                <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                    <span>+</span> Buat Soal Baru
+                </button>
+            @endcan
+        </div>
     </div>
 
     @if (session()->has('message'))
@@ -205,7 +207,9 @@
                                 <option value="TRUE_FALSE">Benar / Salah</option>
                                 <option value="MATCHING">Menjodohkan (Matching)</option>
                                 <option value="ESSAY">Uraian / Esai</option>
-                                <option value="SHORT_ANSWER">Jawaban Singkat</option>
+                                @if($questionType === 'SHORT_ANSWER')
+                                    <option value="SHORT_ANSWER" disabled>Jawaban Singkat — dinonaktifkan sampai scoring siap</option>
+                                @endif
                             </select>
                         </div>
                         <div>
@@ -383,6 +387,68 @@
                         </button>
                     </div>
                 </form>
+
+                @if($editingQuestionId && $editingQuestionVersionId)
+                    <section class="mt-5 rounded-xl border border-cardBorder bg-slate-50 p-4 space-y-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-navy-900">Media Soal</h4>
+                            <p class="mt-1 text-xs text-textSecondary">File disimpan pada storage privat tenant dan dipasang ke versi draft ini. Versi terbit tidak dapat diubah.</p>
+                        </div>
+
+                        @if($editingQuestionVersionStatus === 'DRAFT')
+                        <form action="{{ route('teacher.questions.media.store', ['question' => $editingQuestionId, 'version' => $editingQuestionVersionId]) }}" method="POST" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                            @csrf
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-bold text-navy-900 mb-1">Pilih File</label>
+                                <input type="file" name="file" required accept=".jpg,.jpeg,.png,.mp3,.mp4,.pdf" class="w-full rounded-lg border border-cardBorder bg-white px-2 py-2 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-navy-900 mb-1">Peran Media</label>
+                                <select name="role" required class="w-full rounded-lg border border-cardBorder bg-white px-2 py-2 text-xs">
+                                    <option value="STEM">Ilustrasi soal</option>
+                                    <option value="OPTION">Opsi jawaban</option>
+                                    <option value="EXPLANATION">Pembahasan</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-navy-900 mb-1">Urutan</label>
+                                <input type="number" name="sequence" min="0" max="10000" value="0" class="w-full rounded-lg border border-cardBorder bg-white px-2 py-2 text-xs">
+                            </div>
+                            <div class="md:col-span-4 flex justify-end">
+                                <button type="submit" class="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700">Unggah & Pasang Media</button>
+                            </div>
+                        </form>
+                        @else
+                            <p class="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">Versi ini sudah terbit dan tidak dapat diubah. Simpan revisi soal terlebih dahulu untuk membuat versi draft sebelum memasang atau melepas media.</p>
+                        @endif
+
+                        @if($editingVersionMedia->isNotEmpty())
+                            <div class="space-y-2">
+                                <p class="text-xs font-bold text-navy-900">Media pada versi ini</p>
+                                @foreach($editingVersionMedia as $media)
+                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-lg border border-cardBorder bg-white px-3 py-2">
+                                        <div class="min-w-0">
+                                            <p class="truncate text-xs font-semibold text-navy-900">{{ $media->original_name }}</p>
+                                            <p class="text-[11px] text-textSecondary">{{ strtoupper($media->pivot->role) }} · {{ number_format($media->file_size / 1024, 1) }} KB · {{ $media->mime_type }}</p>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <a href="{{ route('teacher.questions.media.show', ['media' => $media->id]) }}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-indigo-700 hover:underline">Lihat</a>
+                                            @if($editingQuestionVersionStatus === 'DRAFT')
+                                                <form action="{{ route('teacher.questions.media.detach', ['question' => $editingQuestionId, 'version' => $editingQuestionVersionId, 'media' => $media->id]) }}" method="POST">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="text-xs font-bold text-red-600 hover:underline">Lepas</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @else
+                            <p class="text-xs text-textSecondary">Belum ada media yang dipasang pada versi ini.</p>
+                        @endif
+                    </section>
+                @endif
             </div>
         </div>
     @endif
