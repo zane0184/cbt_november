@@ -170,6 +170,7 @@ class CurriculumRegistryManagement extends Component
                 ->where('tenant_id', $tenantId)
                 ->where('subject_id', $subject->id)
                 ->where('multi_curriculum_version_id', $registration->multi_curriculum_version_id)
+                ->where('multi_curriculum_structure_id', $structure->id)
                 ->first();
 
             $mapping = TenantCurriculumSubjectMapping::query()->updateOrCreate(
@@ -177,6 +178,7 @@ class CurriculumRegistryManagement extends Component
                     'tenant_id' => $tenantId,
                     'subject_id' => $subject->id,
                     'multi_curriculum_version_id' => $registration->multi_curriculum_version_id,
+                    'multi_curriculum_structure_id' => $structure->id,
                 ],
                 [
                     'tenant_curriculum_registration_id' => $registration->id,
