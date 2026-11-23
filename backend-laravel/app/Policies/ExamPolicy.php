@@ -81,6 +81,19 @@ class ExamPolicy
             && TeacherAccess::canManageExam($user, $exam);
     }
 
+    public function viewQuestionBank(User $user, Exam $exam): bool
+    {
+        if ($exam->isCentralized() && \\App\\Models\\ExamRoomAssignment::query()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->whereHas('activeProctors', fn ($query) => $query->where('user_id', $user->id))
+            ->exists()) {
+            return false;
+        }
+
+        return $user->hasRole('GURU') && TeacherAccess::canManageExam($user, $exam);
+    }
+
     public function manageQuestions(User $user, Exam $exam): bool
     {
         return $user->hasRole('GURU')
@@ -155,6 +168,18 @@ class ExamPolicy
             ->exists();
     }
 
+    public function manageCentralRoomAssignments(User $user, Exam $exam): bool
+    {
+        return $user->tenant_id === $exam->tenant_id
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            && $user->hasPermission('exam.proctor.assign')
+            && $exam->isCentralized()
+            && $exam->status === 'PUBLISHED'
+            && $exam->isLocked()
+            && $exam->end_at
+            && $exam->end_at->isFuture();
+    }
+
     public function assignProctor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id
@@ -186,15 +211,17 @@ class ExamPolicy
             return false;
         }
 
-        $hasTemporaryProctorAssignment = ExamProctorAssignment::query()
-            ->activeNow()
-            ->where('tenant_id', $user->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->where('proctor_user_id', $user->id)
-            ->exists();
+        if ($exam->isCentralized()) {
+            return \\App\\Models\\ExamRoomAssignment::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->where('exam_id', $exam->id)
+                ->where('scheduled_start', '<=', now())
+                ->where('scheduled_end', '>', now())
+                ->whereHas('activeProctors', fn ($query) => $query->where('user_id', $user->id))
+                ->exists();
+        }
 
-        return $hasTemporaryProctorAssignment
-            || ($user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam));
+        return $user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam);
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
