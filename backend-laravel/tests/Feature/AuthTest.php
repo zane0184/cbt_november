@@ -10,6 +10,7 @@ use App\Contexts\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\PersonalAccessToken;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AuthTest extends TestCase
@@ -66,7 +67,10 @@ class AuthTest extends TestCase
         );
         $this->assertSame($this->tenant->id, LocalInstallationIdentity::withoutGlobalScopes()->value('tenant_id'));
         $this->assertSame(['ADMIN_MADRASAH'], $this->user->roles()->pluck('name')->all());
-        $this->assertSame($this->user->id, app(\App\Services\LoginIdentityResolver::class)->resolve('test-user')?->id);
+        $resolvedUser = app(\App\Services\LoginIdentityResolver::class)->resolve('test-user');
+        $this->assertSame($this->user->id, $resolvedUser?->id);
+        $this->assertTrue(Hash::check('password', (string) $resolvedUser?->password));
+        $this->assertFalse($resolvedUser->hasRole('SUPER_ADMIN'));
 
         $response = $this->postJson('/api/v1/auth/login', [
             'identifier' => 'test-user',
