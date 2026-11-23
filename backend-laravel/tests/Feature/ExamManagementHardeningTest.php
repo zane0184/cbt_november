@@ -263,6 +263,20 @@ class ExamManagementHardeningTest extends TestCase
             'created_by' => $foreignTeacher->id,
         ]);
         $this->mapQuestionVersionToCanonicalCurriculum($foreignVersion, $foreignContext);
+        \App\Models\QuestionOption::create([
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $foreignVersion->id,
+            'content' => 'Pilihan benar',
+            'is_correct' => true,
+            'score_weight' => 1,
+        ]);
+        \App\Models\QuestionOption::create([
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $foreignVersion->id,
+            'content' => 'Pilihan salah',
+            'is_correct' => false,
+            'score_weight' => 0,
+        ]);
 
         $this->assertNotContains(
             $foreignProfile->id,
