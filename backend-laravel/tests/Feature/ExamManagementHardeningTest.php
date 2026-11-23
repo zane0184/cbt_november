@@ -295,7 +295,7 @@ class ExamManagementHardeningTest extends TestCase
                 ->call('saveExam');
 
             $this->fail('The foreign Guru assignment must not be resolved by this teacher.');
-        } catch (\\Illuminate\\Database\\Eloquent\\ModelNotFoundException $exception) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
             $this->assertSame(TeacherSubjectAssignment::class, $exception->getModel());
         }
 
