@@ -59,19 +59,19 @@ class CurriculumReferenceContractTest extends TestCase
         $this->assertSame('PENDING', $religionCp->verification_status);
 
         $this->assertDatabaseHas('assessment_taxonomy_options', [
-            'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+            'tenant_id' => \App\Models\Tenant::SYSTEM_TENANT_ID,
             'dimension' => 'FUNCTION',
             'code' => 'FORMATIF',
             'is_selectable' => true,
         ]);
         $this->assertDatabaseHas('assessment_taxonomy_options', [
-            'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+            'tenant_id' => \App\Models\Tenant::SYSTEM_TENANT_ID,
             'dimension' => 'FUNCTION',
             'code' => 'SUMATIF',
             'is_selectable' => true,
         ]);
         $this->assertDatabaseHas('assessment_taxonomy_options', [
-            'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+            'tenant_id' => \App\Models\Tenant::SYSTEM_TENANT_ID,
             'dimension' => 'INSTRUMENT',
             'code' => 'OBSERVASI',
             'is_selectable' => true,
