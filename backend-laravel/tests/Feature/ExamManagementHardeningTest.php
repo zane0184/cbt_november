@@ -285,13 +285,19 @@ class ExamManagementHardeningTest extends TestCase
         );
 
         $this->actingAs($this->teacher);
-        $this->examManagementComponent()
-            ->set('title', 'Ujian Penugasan Terlarang')
-            ->set('selectedAssignmentId', $foreignAssignment->id)
-            ->set('selectedCpIds', [$foreignContext['cp']->id])
-            ->set('selectedOutcomeIds', [$foreignContext['tp']->id])
-            ->set('selectedQuestionVersionIds', [$foreignVersion->id])
-            ->call('saveExam');
+        try {
+            $this->examManagementComponent()
+                ->set('title', 'Ujian Penugasan Terlarang')
+                ->set('selectedAssignmentId', $foreignAssignment->id)
+                ->set('selectedCpIds', [$foreignContext['cp']->id])
+                ->set('selectedOutcomeIds', [$foreignContext['tp']->id])
+                ->set('selectedQuestionVersionIds', [$foreignVersion->id])
+                ->call('saveExam');
+
+            $this->fail('The foreign Guru assignment must not be resolved by this teacher.');
+        } catch (\\Illuminate\\Database\\Eloquent\\ModelNotFoundException $exception) {
+            $this->assertSame(TeacherSubjectAssignment::class, $exception->getModel());
+        }
 
         $this->assertDatabaseMissing('exams', ['title' => 'Ujian Penugasan Terlarang']);
     }
