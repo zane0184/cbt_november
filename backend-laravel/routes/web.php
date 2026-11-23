@@ -6,6 +6,7 @@ use App\Http\Controllers\StudentExamController;
 use App\Livewire\Teacher\ResultList;
 use App\Livewire\Teacher\ResultDetail;
 use App\Livewire\Admin\UserManagement;
+use App\Livewire\Admin\MadrasahProfile;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
@@ -76,6 +77,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/admin/dashboard', Dashboard::class)->name('admin.dashboard');
 
     // Admin Operational Routes
+    Route::get('/admin/profile', MadrasahProfile::class)->name('admin.profile');
     Route::get('/admin/users', UserManagement::class);
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
