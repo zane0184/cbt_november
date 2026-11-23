@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\ExamSnapshotService;
 use App\Services\AuditService;
 use App\Support\Security\TeacherAccess;
+use App\Support\Security\TeacherPortalAccess;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,12 +30,36 @@ class ExamManagement extends Component
     public $search = '';
     public $statusFilter = '';
 
-    public function mount()
+    public function boot(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    public function mount(): void
+    {
+        $this->assertCanAccess();
+    }
+
+    private function assertCanAccess(): void
     {
         $user = auth()->user();
-        if (!$user || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR', 'GURU'])->exists()) {
-            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk mengakses manajemen ujian.');
-        }
+        abort_unless($user && $user->tenant_id, 403, 'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.');
+
+        // Do not trust a previously loaded role relation after role changes.
+        $user->unsetRelation('roles');
+        abort_unless($user->hasPermission('exam.manage'), 403, 'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.');
+
+        // Reuse the canonical Portal Guru boundary: exactly one GURU role,
+        // persisted tenant identity, and exactly one tenant-local TeacherProfile.
+        app(TeacherPortalAccess::class)->profile($user);
+
+        // A valid profile without an active academic assignment is not enough
+        // to enter the subject-scoped Guru management screens.
+        abort_unless(
+            TeacherAccess::assignedSubjectIds($user) !== [],
+            403,
+            'Manajemen ujian hanya dapat diakses Guru sesuai penugasan.'
+        );
     }
 
     // Modal State
@@ -218,6 +243,23 @@ class ExamManagement extends Component
             abort(403, 'Soal yang dipilih tidak seluruhnya berasal dari mata pelajaran dan tenant yang diizinkan.');
         }
 
+        // Exam authoring may only consume a published Question and its published
+        // current version. This Livewire guard improves the Guru workflow, while
+        // ExamSnapshotService must enforce the same invariant for every caller.
+        $publishedSelectedVersions = QuestionVersion::query()
+            ->where('tenant_id', $tenantId)
+            ->whereIn('id', $selectedVersionIds)
+            ->where('status', 'PUBLISHED')
+            ->whereHas('question', fn ($query) => $query
+                ->where('tenant_id', $tenantId)
+                ->where('subject_id', $this->selectedSubjectId)
+                ->where('status', 'PUBLISHED'))
+            ->count();
+        if ($publishedSelectedVersions !== count($selectedVersionIds)) {
+            $this->addError('selectedQuestionVersionIds', 'Hanya soal yang sudah dipublikasikan dan memiliki versi aktif terpublikasi yang dapat dimasukkan ke ujian.');
+            return;
+        }
+
         $editingExamId = $this->editingExamId;
         DB::transaction(function () use ($tenantId, $activeYear, $semester, $user, $editingExamId) {
             $oldExamValues = null;
@@ -310,19 +352,40 @@ class ExamManagement extends Component
             $targetUserIds = [];
             if ($this->selectedRombelId === 'ALL') {
                 if ($user->hasRole('GURU')) abort(403, 'Guru tidak dapat menugaskan ujian kepada seluruh siswa madrasah.');
-                $targetUserIds = User::where('tenant_id', $tenantId)
-                    ->whereHas('roles', fn($q) => $q->where('name', 'SISWA'))
-                    ->pluck('id')->toArray();
+                $targetUserIds = DB::table('users')
+                    ->join('role_user', 'role_user.user_id', '=', 'users.id')
+                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                    ->where('users.tenant_id', $tenantId)
+                    ->whereNull('users.deleted_at')
+                    ->groupBy('users.id')
+                    ->havingRaw('COUNT(DISTINCT roles.id) = 1')
+                    ->havingRaw('MAX(roles.name) = ?', ['SISWA'])
+                    ->pluck('users.id')
+                    ->all();
             } elseif ($this->selectedRombelId) {
-                $studentProfileIds = DB::table('rombel_student')
-                    ->where('tenant_id', $tenantId)
-                    ->where('rombel_id', $this->selectedRombelId)
-                    ->pluck('student_id');
-
-                $targetUserIds = StudentProfile::where('tenant_id', $tenantId)
-                    ->whereIn('id', $studentProfileIds)
-                    ->pluck('user_id')
-                    ->toArray();
+                // Roster admission is based on the official tenant-local room membership,
+                // an active persisted student profile/user, and exactly one persisted SISWA role.
+                // A user with SISWA plus any other role must never become an exam participant.
+                $targetUserIds = DB::table('rombel_student')
+                    ->join('student_profiles', function ($join) use ($tenantId): void {
+                        $join->on('student_profiles.id', '=', 'rombel_student.student_id')
+                            ->where('student_profiles.tenant_id', '=', $tenantId)
+                            ->whereNull('student_profiles.deleted_at');
+                    })
+                    ->join('users', function ($join) use ($tenantId): void {
+                        $join->on('users.id', '=', 'student_profiles.user_id')
+                            ->where('users.tenant_id', '=', $tenantId)
+                            ->whereNull('users.deleted_at');
+                    })
+                    ->join('role_user', 'role_user.user_id', '=', 'users.id')
+                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
+                    ->where('rombel_student.tenant_id', $tenantId)
+                    ->where('rombel_student.rombel_id', $this->selectedRombelId)
+                    ->groupBy('users.id')
+                    ->havingRaw('COUNT(DISTINCT roles.id) = 1')
+                    ->havingRaw('MAX(roles.name) = ?', ['SISWA'])
+                    ->pluck('users.id')
+                    ->all();
             }
 
             foreach ($targetUserIds as $uid) {
@@ -491,19 +554,24 @@ class ExamManagement extends Component
         }
         $rombels = $rombelsQuery->get();
 
-        // Available questions for selection based on selectedSubjectId
-        $availableQuestions = [];
-        if ($this->selectedSubjectId) {
-            $availableQuestions = Question::with('currentVersion')
+        // Exam selection must not offer drafts, archived questions, or a draft
+        // current version. Backend snapshot validation remains the authoritative
+        // boundary and must repeat this invariant for non-Livewire callers.
+        $availableQuestionsQuery = Question::with('currentVersion')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'PUBLISHED')
+            ->whereHas('currentVersion', fn ($query) => $query
                 ->where('tenant_id', $tenantId)
+                ->where('status', 'PUBLISHED'))
+            ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)));
+
+        if ($this->selectedSubjectId) {
+            $availableQuestions = $availableQuestionsQuery
                 ->where('subject_id', $this->selectedSubjectId)
-                ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)))
                 ->latest()
                 ->get();
         } else {
-            $availableQuestions = Question::with('currentVersion')
-                ->where('tenant_id', $tenantId)
-                ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)))
+            $availableQuestions = $availableQuestionsQuery
                 ->latest()
                 ->take(30)
                 ->get();
@@ -515,6 +583,6 @@ class ExamManagement extends Component
             'rombels' => $rombels,
             'availableQuestions' => $availableQuestions,
             'activeSemester' => $activeSemester,
-        ])->layout('layouts.app');
+        ])->layout('layouts.teacher');
     }
 }
