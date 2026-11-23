@@ -12,6 +12,8 @@ class AssessmentTaxonomySeeder extends Seeder
 {
     public function run(): void
     {
+        SystemTenantSeeder::seed();
+
         DB::transaction(function (): void {
             $tenantId = Tenant::SYSTEM_TENANT_ID;
             $kma = CurriculumReferenceSource::query()
