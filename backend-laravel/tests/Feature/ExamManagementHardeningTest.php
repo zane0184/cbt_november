@@ -192,7 +192,7 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('selectedRombelId', '')
             ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
+            ->set('startAt', now()->addHour()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasErrors(['selectedRombelId']);
@@ -209,7 +209,7 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('selectedRombelId', $this->rombelA->id)
             ->set('selectedQuestionVersionIds', [])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
+            ->set('startAt', now()->addHour()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasErrors(['selectedQuestionVersionIds']);
@@ -227,7 +227,7 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedRombelId', 'ALL')
             ->set('confirmAllStudents', true)
             ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
+            ->set('startAt', now()->addHour()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertForbidden();
@@ -246,7 +246,7 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('selectedRombelId', $this->rombelA->id)
             ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
+            ->set('startAt', now()->addHour()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasNoErrors();
@@ -271,7 +271,7 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedRombelId', $this->rombelA->id)
             ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
             ->set('requireToken', false) // Client tampering must not disable mandatory tokens.
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
+            ->set('startAt', now()->addHour()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasNoErrors();
