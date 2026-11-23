@@ -182,14 +182,33 @@ class ExamVerificationTest extends TestCase
                          ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'SECRET']);
         $response->assertStatus(201);
 
-        // Reset dependent device leases before deleting attempts; the production FK is RESTRICT.
-        $attemptIds = $this->examA->attempts()->pluck('id');
-        \Illuminate\Support\Facades\DB::table('device_leases')
+        // Resolve attempt IDs directly from the database, bypassing any model/tenant global scopes.
+        // The composite production FK is RESTRICT, so every dependent lease must be removed first.
+        $attemptIds = \Illuminate\Support\Facades\DB::table('exam_attempts')
+            ->where('tenant_id', $this->tenantA->id)
+            ->where('exam_id', $this->examA->id)
+            ->pluck('id');
+
+        $deletedLeaseCount = \Illuminate\Support\Facades\DB::table('device_leases')
             ->where('tenant_id', $this->tenantA->id)
             ->whereIn('exam_attempt_id', $attemptIds)
             ->delete();
 
-        // Reset participant to try again (limit override)
+        $this->assertGreaterThan(
+            0,
+            $deletedLeaseCount,
+            'The started Attempt must have a dependent DeviceLease that is explicitly cleaned before the test resets it.'
+        );
+        $this->assertSame(
+            0,
+            \Illuminate\Support\Facades\DB::table('device_leases')
+                ->where('tenant_id', $this->tenantA->id)
+                ->whereIn('exam_attempt_id', $attemptIds)
+                ->count(),
+            'No DeviceLease may remain before deleting its parent Attempt.'
+        );
+
+        // Reset participant to try again (limit override); never bypass the FK.
         $this->examA->attempts()->delete();
 
         // Invalid Token
