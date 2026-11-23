@@ -11,6 +11,7 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
@@ -191,6 +192,10 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
         // Record last_activity_at before reaching limit
         $initialActivityAt = $this->attemptA->fresh()->last_activity_at;
 
+        // Move the test clock forward so a valid heartbeat has a distinct
+        // persisted timestamp even when the suite runs within one wall-clock second.
+        $this->travel(1)->seconds();
+
         // Exhaust 30 heartbeat requests
         for ($i = 0; $i < 30; $i++) {
             $this->withToken($this->tokenA)->withHeaders(['X-Device-Binding-ID' => 'device-user-a', 'X-CBT-Fence-Generation' => (string) $this->attemptA->fence_generation])
@@ -244,7 +249,10 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attemptA->id}/heartbeat");
         $resA->assertStatus(429);
 
-        // 2. Switch to User B (different authenticated user)
+        // 2. Switch to User B (different authenticated user). The test client
+        // reuses the application container, so clear cached guards before resolving
+        // the second bearer token and measuring the per-user throttle key.
+        Auth::forgetGuards();
 
         // User B's heartbeat should succeed with 200 OK because keying is isolated per user
         $resB = $this->withToken($this->tokenB)->withHeaders(['X-Device-Binding-ID' => 'device-user-b', 'X-CBT-Fence-Generation' => (string) $this->attemptB->fence_generation])

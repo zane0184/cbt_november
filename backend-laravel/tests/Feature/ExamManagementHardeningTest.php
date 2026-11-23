@@ -182,22 +182,16 @@ class ExamManagementHardeningTest extends TestCase
     }
 
     /** @test */
-    public function saving_exam_fails_without_selecting_rombel()
+    public function saving_exam_fails_without_selecting_assignment()
     {
         $this->actingAs($this->teacher);
 
         $this->examManagementComponent()
-            ->set('title', 'Ujian Tanpa Rombel')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
-            ->set('selectedRombelId', '')
-            ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
+            ->set('title', 'Ujian Tanpa Penugasan')
+            ->set('selectedAssignmentId', '')
             ->call('saveExam')
-            ->assertHasErrors(['selectedRombelId']);
+            ->assertHasErrors(['selectedAssignmentId']);
     }
-
     /** @test */
     public function saving_exam_fails_without_selecting_question()
     {
@@ -205,36 +199,108 @@ class ExamManagementHardeningTest extends TestCase
 
         $this->examManagementComponent()
             ->set('title', 'Ujian Tanpa Soal')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
-            ->set('selectedRombelId', $this->rombelA->id)
             ->set('selectedQuestionVersionIds', [])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasErrors(['selectedQuestionVersionIds']);
     }
-
     /** @test */
-    public function teacher_cannot_assign_exam_to_all_students_outside_their_exact_assignment_scope()
+    public function teacher_cannot_use_an_assignment_outside_their_exact_assignment_scope()
     {
+        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
+
+        $foreignTeacher = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Lain',
+            'email' => 'guru-lain@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $foreignProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $foreignTeacher->id,
+            'full_name' => 'Guru Lain',
+        ]);
+        $foreignAssignment = TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $foreignProfile->id,
+            'subject_id' => $this->subject->id,
+            'rombel_id' => $this->rombelB->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYear()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $foreignTeacher->roles()->attach(\App\Models\Role::where('name', 'GURU')->firstOrFail());
+
+        $foreignAssessment = \App\Models\Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'title' => 'Asesmen Guru Lain',
+            'subject_id' => $this->subject->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'assessment_type' => 'SUMMATIVE',
+            'status' => 'ACTIVE',
+            'weight' => 1,
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $foreignContext = $this->createCanonicalCurriculumContext($foreignAssignment, $foreignTeacher, $foreignAssessment);
+        $foreignQuestion = \App\Models\Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'status' => 'PUBLISHED',
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $foreignVersion = \App\Models\QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $foreignQuestion->id,
+            'question_type' => 'MC',
+            'stem' => 'Soal Guru Lain',
+            'default_points' => 1,
+            'version_number' => 1,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($foreignVersion, $foreignContext);
+        \App\Models\QuestionOption::create([
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $foreignVersion->id,
+            'content' => 'Pilihan benar',
+            'is_correct' => true,
+            'score_weight' => 1,
+        ]);
+        \App\Models\QuestionOption::create([
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $foreignVersion->id,
+            'content' => 'Pilihan salah',
+            'is_correct' => false,
+            'score_weight' => 0,
+        ]);
+
+        $this->assertNotContains(
+            $foreignProfile->id,
+            \App\Support\Security\TeacherAccess::profileIds($this->teacher),
+            'A different Guru profile must never enter the authenticated teacher scope.'
+        );
+
         $this->actingAs($this->teacher);
+        try {
+            $this->examManagementComponent()
+                ->set('title', 'Ujian Penugasan Terlarang')
+                ->set('selectedAssignmentId', $foreignAssignment->id)
+                ->set('selectedCpIds', [$foreignContext['cp']->id])
+                ->set('selectedOutcomeIds', [$foreignContext['tp']->id])
+                ->set('selectedQuestionVersionIds', [$foreignVersion->id])
+                ->call('saveExam');
 
-        $this->examManagementComponent()
-            ->set('title', 'Ujian Global Ditolak')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
-            ->set('selectedRombelId', 'ALL')
-            ->set('confirmAllStudents', true)
-            ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
-            ->call('saveExam')
-            ->assertForbidden();
+            $this->fail('The foreign Guru assignment must not be resolved by this teacher.');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            $this->assertSame(TeacherSubjectAssignment::class, $exception->getModel());
+        }
 
-        $this->assertDatabaseMissing('exams', ['title' => 'Ujian Global Ditolak']);
+        $this->assertDatabaseMissing('exams', ['title' => 'Ujian Penugasan Terlarang']);
     }
-
     /** @test */
     public function exam_participants_contain_only_selected_rombel_students()
     {
@@ -242,46 +308,32 @@ class ExamManagementHardeningTest extends TestCase
 
         $this->examManagementComponent()
             ->set('title', 'Ujian Khusus Rombel A')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
-            ->set('selectedRombelId', $this->rombelA->id)
-            ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam')
             ->assertHasNoErrors();
 
-        $exam = Exam::where('title', 'Ujian Khusus Rombel A')->first();
+        $exam = Exam::where('title', 'Ujian Khusus Rombel A')->firstOrFail();
 
-        // Student 1 (Rombel A) ASSIGNED, Student 2 (Rombel B) NOT assigned
+        // Student 1 (Rombel A) is assigned; Student 2 (Rombel B) is excluded.
         $this->assertDatabaseHas('exam_participants', ['exam_id' => $exam->id, 'user_id' => $this->student1->id]);
         $this->assertDatabaseMissing('exam_participants', ['exam_id' => $exam->id, 'user_id' => $this->student2->id]);
     }
-
     /** @test */
     public function exam_snapshots_contain_only_explicitly_selected_questions()
     {
         $this->actingAs($this->teacher);
 
-        // Only select questionVersion1 (BIO-01), NOT questionVersion2 (BIO-02)
+        // The fixture selects only questionVersion1; client token tampering must be ignored.
         $this->examManagementComponent()
             ->set('title', 'Ujian Biologi 1 Soal')
-            ->set('selectedSubjectId', $this->subject->id)
-            ->set('selectedSemesterId', $this->semester->id)
-            ->set('selectedRombelId', $this->rombelA->id)
-            ->set('selectedQuestionVersionIds', [$this->questionVersion1->id])
-            ->set('requireToken', false) // Client tampering must not disable mandatory tokens.
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
-            ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
+            ->set('requireToken', false)
             ->call('saveExam')
             ->assertHasNoErrors();
 
-        $exam = Exam::where('title', 'Ujian Biologi 1 Soal')->first();
+        $exam = Exam::where('title', 'Ujian Biologi 1 Soal')->firstOrFail();
         $this->assertTrue((bool) $exam->fresh()->require_token);
         $this->assertNull($exam->fresh()->token);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'CREATE_EXAM', 'entity_id' => $exam->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'EXAM_CREATED', 'entity_id' => $exam->id]);
 
-        // Even a legacy draft row with require_token=false must be corrected at publish.
         $exam->update(['require_token' => false]);
         $this->examManagementComponent()->call('lockExam', $exam->id);
 
@@ -355,12 +407,18 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('activityName', 'Asesmen IPAS Kelas 6')
             ->set('assessmentPurpose', 'Asesmen pembelajaran IPAS')
+            ->set('assessmentOrigin', 'INTERNAL')
             ->set('selectedAssessmentFunctionOptionId', $this->canonicalContext['taxonomy']['function']->id)
             ->set('selectedAssessmentScopeOptionId', $this->canonicalContext['taxonomy']['scope']->id)
             ->set('selectedInstrumentTypeOptionId', $this->canonicalContext['taxonomy']['instrument']->id)
             ->set('selectedDeliveryModeOptionId', $this->canonicalContext['taxonomy']['delivery']->id)
             ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
-            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id]);
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id])
+            ->set('durationMinutes', 60)
+            ->set('attemptLimit', 1)
+            ->set('startAt', now()->addHour()->format('Y-m-d\\TH:i'))
+            ->set('endAt', now()->addDays(2)->format('Y-m-d\\TH:i'))
+            ->set('selectedQuestionVersionIds', [$this->questionVersion1->id]);
     }
 
 }

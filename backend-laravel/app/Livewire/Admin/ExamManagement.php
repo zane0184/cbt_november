@@ -448,7 +448,7 @@ class ExamManagement extends Component
                         ->from('role_user')
                         ->join('roles', 'role_user.role_id', '=', 'roles.id')
                         ->whereColumn('role_user.user_id', 'users.id')
-                        ->where('role_user.tenant_id', $tenantId)
+                        ->where('users.tenant_id', $tenantId)
                         ->where('roles.name', 'SISWA');
                 })
                 ->whereNotExists(function ($query) use ($tenantId): void {
@@ -456,7 +456,7 @@ class ExamManagement extends Component
                         ->from('role_user')
                         ->join('roles', 'role_user.role_id', '=', 'roles.id')
                         ->whereColumn('role_user.user_id', 'users.id')
-                        ->where('role_user.tenant_id', $tenantId)
+                        ->where('users.tenant_id', $tenantId)
                         ->where('roles.name', '!=', 'SISWA');
                 })
                 ->distinct()

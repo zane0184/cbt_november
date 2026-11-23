@@ -1,3 +1,7 @@
+> **SUPERSEDED — 23 NOVEMBER 2026:** Prompt ini memuat status branch dan angka PHPUnit historis. Jangan ikuti instruksi branch/SHA/hasil test lama di bawah ini sebagai status aktif. Gunakan [HANDOVER_AGENT_BARU_2026-11-23_P0_518_PASS.md](HANDOVER_AGENT_BARU_2026-11-23_P0_518_PASS.md) dan [PROMPT_AGENT_BARU_LANJUTAN_2026-11-23.md](PROMPT_AGENT_BARU_LANJUTAN_2026-11-23.md). P0 telah lulus 518 passed/0 failed/2,189 assertions pada CI #45220055382, exact HEAD 856294037312c186f03422071368bcaa2987516a. Jangan mengulang remediasi 41 failure.
+
+---
+
 # PEMUTAKHIRAN WAJIB AGENT PENGGANTI — 23 NOVEMBER 2026
 
 **BACA TERLEBIH DAHULU:** [HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md](HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md). Dokumen tersebut adalah handover operasional terbaru dan mengesampingkan branch/SHA/angka PHPUnit lama yang masih tercantum di bawah.

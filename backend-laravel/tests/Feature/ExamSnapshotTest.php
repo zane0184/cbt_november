@@ -162,6 +162,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q1',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -169,6 +170,7 @@ class ExamSnapshotTest extends TestCase
             'question_id' => $q->id,
             'major_version' => 1, 'minor_version' => 0,
             'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -191,6 +193,7 @@ class ExamSnapshotTest extends TestCase
             'question_id' => $q->id,
             'major_version' => 2, 'minor_version' => 0,
             'question_type' => 'ESSAY', 'stem' => 'New Stem', 'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -216,6 +219,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q-WRONG-SUBJECT',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
         $version = QuestionVersion::create([
@@ -226,6 +230,7 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY',
             'stem' => 'Soal dari mapel yang berbeda',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
@@ -295,12 +300,13 @@ class ExamSnapshotTest extends TestCase
         $q = Question::create([
             'tenant_id' => $this->tenant->id,
             'subject_id' => $this->subject->id,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
         $v = QuestionVersion::create([
             'question_id' => $q->id,
-            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'created_by' => $this->user->id
+            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'status' => 'PUBLISHED', 'created_by' => $this->user->id
         ]);
 
         $this->mapQuestionVersionToCanonicalCurriculum($v, $this->canonicalContext);
@@ -479,6 +485,46 @@ class ExamSnapshotTest extends TestCase
             'short_name' => 'OMT',
             'status' => 'ACTIVE',
         ]);
+        $otherTeacherProfile = TeacherProfile::create([
+            'tenant_id' => $otherTenant->id,
+            'user_id' => $otherUser->id,
+            'full_name' => 'Other Guru',
+        ]);
+        $otherCurriculum = Curriculum::create([
+            'name' => 'Kurikulum Tenant 2',
+            'code' => 'KM-OTHER-' . $otherTenant->code,
+            'is_active' => true,
+        ]);
+        $otherPhase = Phase::create([
+            'curriculum_id' => $otherCurriculum->id,
+            'name' => 'Fase A',
+            'code' => 'A',
+        ]);
+        $otherGradeLevel = GradeLevel::create([
+            'phase_id' => $otherPhase->id,
+            'name' => 'Kelas 1',
+            'code' => '1',
+            'level' => 1,
+        ]);
+        $otherRombel = Rombel::create([
+            'tenant_id' => $otherTenant->id,
+            'academic_year_id' => $otherYear->id,
+            'grade_level_id' => $otherGradeLevel->id,
+            'name' => 'Other 1A',
+            'status' => 'ACTIVE',
+        ]);
+        $otherAssignment = TeacherSubjectAssignment::create([
+            'tenant_id' => $otherTenant->id,
+            'teacher_profile_id' => $otherTeacherProfile->id,
+            'subject_id' => $otherSubject->id,
+            'rombel_id' => $otherRombel->id,
+            'academic_year_id' => $otherYear->id,
+            'semester_id' => $otherSemester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYear()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $otherUser->id,
+        ]);
         $otherAssessment = Assessment::create([
             'tenant_id' => $otherTenant->id,
             'subject_id' => $otherSubject->id,
@@ -488,6 +534,7 @@ class ExamSnapshotTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $otherUser->id,
         ]);
+        $otherCanonicalContext = $this->createCanonicalCurriculumContext($otherAssignment, $otherUser, $otherAssessment);
         $otherExam = Exam::create([
             'tenant_id' => $otherTenant->id,
             'assessment_id' => $otherAssessment->id,
@@ -502,6 +549,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $otherUser->id,
             'question_code' => 'OTHER-TENANT-Q1',
+            'status' => 'PUBLISHED',
             'created_by' => $otherUser->id,
         ]);
         $otherVersion = QuestionVersion::create([
@@ -511,8 +559,10 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY',
             'stem' => 'Other tenant snapshot',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $otherUser->id,
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($otherVersion, $otherCanonicalContext);
         app(\App\Services\ExamSnapshotService::class)->createSnapshots($otherExam, [$otherVersion->id]);
         $foreignSnapshot = $otherExam->snapshots()->firstOrFail();
 
@@ -685,8 +735,56 @@ class ExamSnapshotTest extends TestCase
 
             if ($fixturesCommitted) {
                 DB::setDefaultConnection('mysql_concurrency');
+                // Remove exam/assessment dependants before their protected assignment
+                // parent, then remove assignment-scoped curriculum mapping children.
+                $connectionB->table('exam_question_snapshots')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('exams')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('assessment_curriculum_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('assessments')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('tenant_learning_outcome_structure_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('question_version_tenant_outcome_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('question_version_curriculum_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('question_version_structure_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('tenant_learning_outcomes')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('teacher_subject_assignments')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('tenant_curriculum_registrations')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
+
+                // This two-connection test commits the canonical system tenant
+                // registry so the second connection can see it. Remove its
+                // disposable FK dependants in child-first order; later tests seed
+                // the registry again through the canonical helper.
+                $systemTenantId = \App\Models\Tenant::SYSTEM_TENANT_ID;
+                $connectionB->table('assessment_taxonomy_options')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('multi_learning_outcomes')->where('tenant_id', $systemTenantId)->delete();
+
+                // multi_curriculum_structures has a composite RESTRICT self-FK.
+                // Delete leaf nodes first until no parent/child rows remain.
+                do {
+                    $leafStructureIds = $connectionB->table('multi_curriculum_structures as parent')
+                        ->where('parent.tenant_id', $systemTenantId)
+                        ->whereNotExists(function ($query) use ($systemTenantId): void {
+                            $query->selectRaw('1')
+                                ->from('multi_curriculum_structures as child')
+                                ->whereColumn('child.parent_id', 'parent.id')
+                                ->where('child.tenant_id', $systemTenantId);
+                        })
+                        ->pluck('parent.id')
+                        ->all();
+
+                    if ($leafStructureIds === []) {
+                        break;
+                    }
+
+                    $connectionB->table('multi_curriculum_structures')
+                        ->whereIn('id', $leafStructureIds)
+                        ->delete();
+                } while (true);
+
+                $connectionB->table('multi_curriculum_versions')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('multi_curriculums')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('curriculum_reference_sources')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('tenants')->where('id', $systemTenantId)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
                 $connectionB->table('curricula')->where('id', $this->curriculum->id)->delete();
@@ -713,6 +811,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'MUTATION-1',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
@@ -723,6 +822,7 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY',
             'stem' => 'Snapshot mutation guard',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 

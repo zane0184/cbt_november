@@ -244,7 +244,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 2.00,
             'created_by' => $this->teacherA->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($this->assignment, $ass);
+        $this->createCanonicalCurriculumContext($this->assignment, $this->teacherA, $ass);
         $ass->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         $exam = Exam::create([
@@ -383,7 +383,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 5.00,
             'created_by' => $this->teacherA->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($this->assignment, $ass2);
+        $this->createCanonicalCurriculumContext($this->assignment, $this->teacherA, $ass2);
         $ass2->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         // Step 3: Reopen attempt enforcement
@@ -397,8 +397,8 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/reopen", ['reason' => '   '])
             ->assertStatus(422);
 
-        // Assigned Guru with valid reason reopens score
-        $reopenResp = $this->actingAs($this->adminA, 'sanctum')
+        // The assigned Guru owns scoring and may reopen with an audited reason.
+        $reopenResp = $this->actingAs($this->teacherA, 'sanctum')
             ->postJson("/api/v1/exams/{$exam->id}/attempts/{$attempt->id}/reopen", [
                 'reason' => 'Koreksi penilaian guru atas sanggahan siswa'
             ]);
