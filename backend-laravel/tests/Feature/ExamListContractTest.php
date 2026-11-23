@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Assessment;
@@ -24,6 +26,7 @@ use Tests\TestCase;
 class ExamListContractTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenant;
     private $teacher;
@@ -74,6 +77,8 @@ class ExamListContractTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,
         ]);
+
+        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
 
         Exam::create([
             'tenant_id' => $this->tenant->id,
