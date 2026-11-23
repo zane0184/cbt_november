@@ -40,7 +40,8 @@ class AcademicManagement extends Component
         $user = auth()->user();
         abort_unless(
             $user
-            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR'])->exists()
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('academic.manage'),
             403,
             'Akses ditolak. Hanya Admin Madrasah dengan permission academic.manage yang dapat mengelola data akademik.'
