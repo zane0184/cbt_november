@@ -46,7 +46,7 @@ Seluruh backup di atas telah di-fetch ulang; blob SHA setiap backup sama dengan 
 ## PENGUJIAN
 - CI #1729 pada SHA `1ea5f43921fabfb39318835000a2db6046d7c424`: workflow FAILED saat PHPUnit memuat test suite karena syntax error di `AdminUiVerificationTest.php:619` (referensi class AuditLog memiliki backslash ganda). PHPUnit belum menjalankan test apa pun. Ini bukan failure assertion.
 - Koreksi sintaks dibackup byte-exact lalu diperbaiki pada commit `f4397b8999ddf31a96d4d04b15bcfac4473b5203`.
-- CI #1734 pada exact SHA `f4397b8999ddf31a96d4d04b15bcfac4473b5203`: status terakhir `queued/in_progress` saat checkpoint disiapkan. Job masih di tahap inisialisasi container MySQL. Belum ada hasil PHPUnit yang bisa diklaim.
+- CI #1734 pada exact SHA `f4397b8999ddf31a96d4d04b15bcfac4473b5203`: run akhirnya `cancelled` sebelum focused test dieksekusi. Setup PHP 8.3/MySQL disposable dan Composer/package discovery selesai; focused Web login/tenant ditandai cancelled, sedangkan Admin/Guru/full PHPUnit dan InnoDB check dilewati. Tidak ada test assertion yang berjalan pada run ini; hasil bukan FAIL test maupun PASS.
 - CI #1725 pada SHA sebelumnya `df3ec4d13f6f38f61584aa0a8e661c4644c95140` SUCCESS; itu tidak menguji patch source sekarang.
 - Dengan demikian implementasi source telah dilakukan dan backup diverifikasi, tetapi acceptance test masih PENDING.
 
