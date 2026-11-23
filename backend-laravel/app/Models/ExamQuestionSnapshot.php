@@ -14,13 +14,14 @@ class ExamQuestionSnapshot extends Model
     protected $fillable = [
         'exam_id', 'source_question_id', 'source_question_version_id',
         'sequence', 'points', 'snapshot_stem', 'snapshot_explanation',
-        'snapshot_options', 'snapshot_media', 'metadata'
+        'snapshot_options', 'snapshot_media', 'metadata', 'curriculum_context_snapshot'
     ];
 
     protected $casts = [
         'snapshot_options' => 'json',
         'snapshot_media' => 'json',
-        'metadata' => 'json',
+        'metadata' => 'array',
+        'curriculum_context_snapshot' => 'array',
     ];
 
     public function exam(): BelongsTo
