@@ -23,7 +23,7 @@ const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
   '<meta name="csrf-token" content="test-csrf"><style>.hidden{display:none!important}button{min-height:44px}' + runnerStyles + '</style></head><body>',
   '<main id="exam-app" data-exam-id="exam-1" data-student-id="student-1" data-device-binding="11111111-1111-4111-8111-111111111111" data-require-token="0">',
-  '<section id="instruction-panel"><input id="exam-token"><button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
+  '<section id="instruction-panel">{{TOKEN_INPUT}}<button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
   '<section id="runner-panel" class="hidden"><div id="question-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div><div class="runner-layout"><div class="runner-main"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
   '<div id="question-number"></div><div id="question-points"></div><div id="question-media"></div><div id="question-stem" dir="auto"></div><div id="question-input"></div>',
   '<button id="previous-button" type="button">Sebelumnya</button><button id="next-button" type="button">Berikutnya</button></div>',
@@ -41,7 +41,8 @@ const server = createServer((request, response) => {
     return;
   }
   const requireToken = new URL(request.url, 'http://127.0.0.1').searchParams.get('require-token') === '1';
-  response.end(requireToken ? fixture.replace('data-require-token="0"', 'data-require-token="1"') : fixture);
+  const tokenInput = requireToken ? '<label for="exam-token">Token Ujian</label><input id="exam-token">' : '';
+  response.end(fixture.replace('{{TOKEN_INPUT}}', tokenInput).replace('data-require-token="0"', `data-require-token="${requireToken ? '1' : '0'}"`));
 });
 await new Promise((resolveListen, reject) => {
   server.once('error', reject);
@@ -271,7 +272,8 @@ try {
     await page.locator('#submit-button').click();
     await page.locator('#completion-panel:not(.hidden)').waitFor({ state: 'visible' });
     assert.equal(scenario.startCalls, 1);
-    assert.equal(scenario.startTokens[0], null, 'Optional-token exams must start without a token field');
+    assert.equal(await page.locator('#exam-token').count(), 0, 'Optional-token exams must not render a token field');
+    assert.equal(scenario.startTokens[0], null, 'Optional-token exams must start without a token value');
     assert.equal(scenario.answerWrites, 1);
     assert.equal(scenario.submitCalls, 1);
     assert.equal(scenario.serverAnswers[0].answer_payload.selected_option_id, 'opt-a');
@@ -358,6 +360,10 @@ try {
     const scenario = makeScenario();
     scenario.requireToken = true;
     const { context, page } = await newPage(browser, scenario);
+    assert.equal(await page.locator('#exam-token').count(), 1, 'Required-token exams must render a token field');
+    await page.locator('#start-button').click();
+    await page.waitForFunction(() => document.querySelector('#start-status').textContent.includes('Token ujian wajib diisi'));
+    assert.equal(scenario.startCalls, 0, 'Empty required token must be rejected before the API request');
     await page.locator('#exam-token').fill('  ab12cd  ');
     await page.locator('#start-button').click();
     await page.locator('#runner-panel:not(.hidden)').waitFor({ state: 'visible' });
@@ -367,7 +373,7 @@ try {
     console.log('PASS: required token is trimmed and normalized before Attempt start');
   }
 
-  // 3. All six question types published by the question bank render and serialize correctly.
+  // Supported student question types render and serialize correctly; SHORT_ANSWER is deliberately excluded.
   {
     const cases = [
       {
@@ -411,12 +417,6 @@ try {
         ]}
       },
       {
-        type: 'SHORT_ANSWER',
-        options: [],
-        answer: async page => page.locator('#question-input textarea').fill('Jawaban singkat'),
-        expected: { text: 'Jawaban singkat' }
-      },
-      {
         type: 'ESSAY',
         options: [],
         answer: async page => page.locator('#question-input textarea').fill('Jawaban uraian panjang'),
@@ -440,17 +440,34 @@ try {
     }
   }
 
-  // Arabic text and harakat use automatic direction in the stem, options, and answer editor.
+  // SHORT_ANSWER remains disabled until the accepted-answer/scoring contract is complete.
+  {
+    const scenario = makeScenario();
+    scenario.questionType = 'SHORT_ANSWER';
+    scenario.questionOptions = [];
+    const { context, page } = await newPage(browser, scenario);
+    await start(page);
+    assert.equal(await page.locator('#question-input textarea').count(), 0, 'SHORT_ANSWER must not render an editable answer field');
+    assert.match(await page.locator('#question-input').textContent(), /Jawaban Singkat sementara dinonaktifkan/);
+    assert.equal(await page.locator('#submit-button').isDisabled(), true, 'An exam containing SHORT_ANSWER must block submission');
+    assert.equal(scenario.answerWrites, 0, 'Disabled SHORT_ANSWER must not persist an answer');
+    assert.equal(scenario.submitCalls, 0, 'Disabled SHORT_ANSWER must not submit the Attempt');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: SHORT_ANSWER is disabled and blocks unsafe submission');
+  }
+
+  // Arabic text and harakat use automatic direction in the stem, options, and essay editor.
   {
     const scenario = makeScenario();
     scenario.questionStem = 'ٱلسَّلَامُ عَلَيْكُمْ — ٢ + ٢؟';
-    scenario.questionType = 'SHORT_ANSWER';
+    scenario.questionType = 'ESSAY';
     scenario.questionOptions = [];
     const { context, page } = await newPage(browser, scenario);
     await start(page);
     assert.equal(await page.locator('#question-stem').getAttribute('dir'), 'auto');
     assert.equal(await page.locator('#question-input textarea').getAttribute('dir'), 'auto');
-    assert.equal(await page.locator('#question-input textarea').getAttribute('aria-label'), 'Jawaban singkat untuk soal 1');
+    assert.equal(await page.locator('#question-input textarea').getAttribute('aria-label'), 'Jawaban uraian untuk soal 1');
     await page.locator('#question-input textarea').fill('أَرْبَعَة');
     await page.waitForFunction(() => document.querySelector('#save-status').textContent.includes('receipt server terverifikasi'));
     assert.equal(scenario.serverAnswers[0].answer_payload.text, 'أَرْبَعَة');
