@@ -24,10 +24,12 @@ use App\Livewire\Admin\ExamManagement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 class ExamManagementHardeningTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenant;
     private $teacher;
@@ -40,6 +42,8 @@ class ExamManagementHardeningTest extends TestCase
     private $rombelB;
     private $questionVersion1;
     private $questionVersion2;
+    private $assignment;
+    private array $canonicalContext = [];
 
     protected function setUp(): void
     {
@@ -82,16 +86,16 @@ class ExamManagementHardeningTest extends TestCase
         $sp2 = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student2->id, 'full_name' => 'Siswa B']);
 
         $curriculum = Curriculum::create(['name' => 'K-Merdeka', 'code' => 'KM', 'is_active' => true]);
-        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase E', 'code' => 'E']);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase C', 'code' => 'C']);
         $this->academicYear = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
         $this->semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $this->academicYear->id, 'term' => 'GANJIL', 'is_active' => true]);
-        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas X', 'code' => 'X', 'level' => 10]);
+        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 6', 'code' => '6', 'level' => 6]);
 
         $this->subject = Subject::create([
             'tenant_id' => $this->tenant->id,
-            'code' => 'BIO-10',
-            'name' => 'Biologi',
-            'short_name' => 'BIO',
+            'code' => 'IPAS',
+            'name' => 'IPAS',
+            'short_name' => 'IPA',
             'status' => 'ACTIVE',
         ]);
 
@@ -99,18 +103,18 @@ class ExamManagementHardeningTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $this->academicYear->id,
             'grade_level_id' => $gradeLevel->id,
-            'name' => 'Kelas X-MIPA 1',
+            'name' => 'Kelas 6-A',
             'status' => 'ACTIVE',
         ]);
         $this->rombelB = Rombel::create([
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $this->academicYear->id,
             'grade_level_id' => $gradeLevel->id,
-            'name' => 'Kelas X-MIPA 2',
+            'name' => 'Kelas 6-B',
             'status' => 'ACTIVE',
         ]);
         $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru Penguji']);
-        TeacherSubjectAssignment::create([
+        $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subject->id,
@@ -118,6 +122,7 @@ class ExamManagementHardeningTest extends TestCase
             'academic_year_id' => $this->academicYear->id,
             'semester_id' => $this->semester->id,
             'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYears(5)->toDateString(),
             'status' => 'ACTIVE',
             'created_by' => $this->teacher->id,
         ]);
@@ -146,6 +151,8 @@ class ExamManagementHardeningTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->teacher->id,
         ]);
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($this->assignment, $this->teacher);
+        $this->mapQuestionVersionToCanonicalCurriculum($this->questionVersion1, $this->canonicalContext);
         $q1->update(['current_version_id' => $this->questionVersion1->id]);
 
         // Question 2
@@ -167,6 +174,7 @@ class ExamManagementHardeningTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->teacher->id,
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($this->questionVersion2, $this->canonicalContext);
         $q2->update(['current_version_id' => $this->questionVersion2->id]);
 
         app(\App\Contexts\TenantContext::class)->setTenantId(null);
@@ -178,7 +186,7 @@ class ExamManagementHardeningTest extends TestCase
     {
         $this->actingAs($this->teacher);
 
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Tanpa Rombel')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -195,7 +203,7 @@ class ExamManagementHardeningTest extends TestCase
     {
         $this->actingAs($this->teacher);
 
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Tanpa Soal')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -212,7 +220,7 @@ class ExamManagementHardeningTest extends TestCase
     {
         $this->actingAs($this->teacher);
 
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Global Ditolak')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -232,7 +240,7 @@ class ExamManagementHardeningTest extends TestCase
     {
         $this->actingAs($this->teacher);
 
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Khusus Rombel A')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -256,7 +264,7 @@ class ExamManagementHardeningTest extends TestCase
         $this->actingAs($this->teacher);
 
         // Only select questionVersion1 (BIO-01), NOT questionVersion2 (BIO-02)
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Biologi 1 Soal')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -275,7 +283,7 @@ class ExamManagementHardeningTest extends TestCase
 
         // Even a legacy draft row with require_token=false must be corrected at publish.
         $exam->update(['require_token' => false]);
-        Livewire::test(ExamManagement::class)->call('lockExam', $exam->id);
+        $this->examManagementComponent()->call('lockExam', $exam->id);
 
         $exam->refresh();
         $this->assertTrue((bool) $exam->require_token);
@@ -336,6 +344,23 @@ class ExamManagementHardeningTest extends TestCase
         $guruRole->permissions()->detach($tokenPermission->id);
         $this->teacher->unsetRelation('roles');
         $this->assertFalse($policy->generateToken($this->teacher, $exam));
+    }
+
+    private function examManagementComponent()
+    {
+        return Livewire::test(ExamManagement::class)
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('selectedSemesterId', $this->semester->id)
+            ->set('activityName', 'Asesmen IPAS Kelas 6')
+            ->set('assessmentPurpose', 'Asesmen pembelajaran IPAS')
+            ->set('assessmentOrigin', 'INTERNAL')
+            ->set('selectedAssessmentFunctionOptionId', $this->canonicalContext['taxonomy']['function']->id)
+            ->set('selectedAssessmentScopeOptionId', $this->canonicalContext['taxonomy']['scope']->id)
+            ->set('selectedInstrumentTypeOptionId', $this->canonicalContext['taxonomy']['instrument']->id)
+            ->set('selectedDeliveryModeOptionId', $this->canonicalContext['taxonomy']['delivery']->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id]);
     }
 
 }
