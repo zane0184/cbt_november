@@ -379,7 +379,6 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('selectedRombelId', $this->rombel->id)
             ->set('activityName', 'Latihan Fiqih')
             ->set('assessmentPurpose', 'Asesmen pembelajaran Fiqih kelas 6')
-            ->set('assessmentOrigin', 'INTERNAL')
             ->set('selectedAssessmentFunctionOptionId', $this->canonicalContext['taxonomy']['function']->id)
             ->set('selectedAssessmentScopeOptionId', $this->canonicalContext['taxonomy']['scope']->id)
             ->set('selectedInstrumentTypeOptionId', $this->canonicalContext['taxonomy']['instrument']->id)
