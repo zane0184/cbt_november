@@ -26,6 +26,8 @@ class RoleDashboardVerificationTest extends TestCase
     private User $legacyOperator;
     private User $legacyKamad;
     private User $legacyProktor;
+    private User $multiRoleAdminA;
+    private User $multiRoleSiswaA;
 
     protected function setUp(): void
     {
@@ -57,6 +59,10 @@ class RoleDashboardVerificationTest extends TestCase
         $this->legacyOperator = $this->makeUser('operator-a', $roles['OPERATOR']);
         $this->legacyKamad = $this->makeUser('kamad-a', $roles['KAMAD']);
         $this->legacyProktor = $this->makeUser('proktor-a', $roles['PROKTOR']);
+        $this->multiRoleAdminA = $this->makeUser('multi-admin-a', $roles['ADMIN_MADRASAH']);
+        $this->multiRoleAdminA->roles()->attach($roles['GURU']);
+        $this->multiRoleSiswaA = $this->makeUser('multi-siswa-a', $roles['SISWA']);
+        $this->multiRoleSiswaA->roles()->attach($roles['GURU']);
 
         TeacherProfile::create([
             'user_id' => $this->guruA->id,
@@ -98,6 +104,7 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->legacyOperator)->get('/admin/dashboard')->assertForbidden();
         $this->actingAs($this->legacyKamad)->get('/admin/dashboard')->assertForbidden();
         $this->actingAs($this->legacyProktor)->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($this->multiRoleAdminA)->get('/admin/dashboard')->assertForbidden();
     }
 
     public function test_guru_portal_requires_exact_guru_role_and_profile(): void
@@ -106,6 +113,7 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->adminA)->get('/guru/dashboard')->assertForbidden();
         $this->actingAs($this->siswaA)->get('/guru/dashboard')->assertForbidden();
         $this->actingAs($this->legacyProktor)->get('/guru/dashboard')->assertForbidden();
+        $this->actingAs($this->multiRoleAdminA)->get('/guru/dashboard')->assertForbidden();
     }
 
     public function test_student_portal_is_limited_to_student_role(): void
@@ -114,6 +122,7 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->adminA)->get('/student/exams')->assertForbidden();
         $this->actingAs($this->guruA)->get('/student/exams')->assertForbidden();
         $this->actingAs($this->legacyOperator)->get('/student/exams')->assertForbidden();
+        $this->actingAs($this->multiRoleSiswaA)->get('/student/exams')->assertForbidden();
     }
 
     public function test_admin_has_read_only_exam_register_access_and_no_teacher_cbt_operations(): void
