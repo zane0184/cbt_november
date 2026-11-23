@@ -46,9 +46,9 @@
             <p class="text-[11px] text-gray-500 mt-1">Mapel Terdaftar</p>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
-            <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total Ujian</p>
-            <p class="text-2xl font-bold text-purple-600 mt-2">{{ $totalExams }}</p>
-            <p class="text-[11px] text-gray-500 mt-1">Jadwal Ujian</p>
+            <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Penugasan Pengawas Aktif</p>
+            <p class="text-2xl font-bold text-purple-600 mt-2">{{ $totalProctorAssignments }}</p>
+            <p class="text-[11px] text-gray-500 mt-1">Penugasan Guru sementara</p>
         </div>
     </div>
 
@@ -75,12 +75,12 @@
             <h3 class="font-bold text-navy-900 text-base">Kurikulum Merdeka</h3>
             <p class="text-xs text-textSecondary mt-1">Master data Capaian Pembelajaran (CP) dan Tujuan Pembelajaran (TP).</p>
         </a>
-        <a href="/admin/exams" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
+        <a href="/admin/proctor-assignments" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
             <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
                 📝
             </div>
-            <h3 class="font-bold text-navy-900 text-base">Daftar Ujian & Pengawas</h3>
-            <p class="text-xs text-textSecondary mt-1">Melihat daftar ujian Guru dan menetapkan Guru pengawas sementara.</p>
+            <h3 class="font-bold text-navy-900 text-base">Penugasan Guru Pengawas</h3>
+            <p class="text-xs text-textSecondary mt-1">Mencatat penugasan Guru pengawas sementara tanpa membuka akses monitoring atau operasi CBT.</p>
         </a>
     </div>
 
