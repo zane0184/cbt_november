@@ -287,8 +287,12 @@ class SubmitLockingTest extends TestCase
 
         // Second submit (Duplicate)
         $res2 = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit");
-        $res2->assertStatus(422);
-        $res2->assertJson(['success' => false, 'message' => 'Attempt is not in progress.']);
+        // Repeated submit is an idempotent success after the server has
+        // already committed the terminal Attempt state.
+        $res2->assertStatus(200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('message', 'Attempt already closed.');
 
         $this->attempt->refresh();
         $this->assertEquals($status1, $this->attempt->status);
