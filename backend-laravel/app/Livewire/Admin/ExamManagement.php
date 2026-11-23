@@ -662,7 +662,7 @@ class ExamManagement extends Component
             ])
             ->where('tenant_id', $tenantId)
             ->latest();
-        TeacherAccess::constrainExamQuery($query);
+        TeacherAccess::constrainExamQuery($query, $user);
         $exams = $query->paginate(10);
 
         $availableQuestions = $selectedAssignment
