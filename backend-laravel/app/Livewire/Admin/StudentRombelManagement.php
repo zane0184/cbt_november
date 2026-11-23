@@ -30,7 +30,8 @@ class StudentRombelManagement extends Component
         $user = auth()->user();
         abort_unless(
             $user && $user->tenant_id
-            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR'])->exists()
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('academic.manage'),
             403,
             'Akses ditolak. Diperlukan Admin Madrasah dan permission academic.manage.'
@@ -69,7 +70,7 @@ class StudentRombelManagement extends Component
                 ->firstOrFail();
             $studentUser = $student->user;
 
-            if (!$studentUser || $studentUser->tenant_id !== $tenantId || !$studentUser->hasRole('SISWA')) {
+            if (!$studentUser || $studentUser->tenant_id !== $tenantId || $studentUser->roles()->count() !== 1 || !$studentUser->hasRole('SISWA')) {
                 throw ValidationException::withMessages([
                     'selectedStudentProfileId' => 'Profil harus terhubung ke akun Siswa aktif pada tenant ini.',
                 ]);
