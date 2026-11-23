@@ -20,6 +20,7 @@ use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
 use App\Models\TenantLearningOutcome;
 use App\Models\User;
+use Illuminate\Support\Str;
 use Database\Seeders\AssessmentTaxonomySeeder;
 use Database\Seeders\CurriculumReferenceSourceSeeder;
 use Database\Seeders\CurriculumRegistryBootstrapSeeder;
@@ -233,7 +234,7 @@ trait CreatesCanonicalCurriculumContext
                     'description' => 'Fixture asesmen dengan konteks kurikulum terverifikasi untuk PHPUnit.',
                 ])->save();
 
-                AssessmentCurriculumMapping::query()->firstOrCreate([
+                $assessmentMapping = AssessmentCurriculumMapping::query()->firstOrNew([
                     'tenant_id' => (string) $assignment->tenant_id,
                     'assessment_id' => $assessment->id,
                     'teacher_subject_assignment_id' => $assignment->id,
@@ -243,11 +244,16 @@ trait CreatesCanonicalCurriculumContext
                     'multi_learning_outcome_id' => $cp->id,
                     'tenant_learning_outcome_id' => $tp->id,
                     'mapping_role' => 'PRIMARY',
-                ], [
+                ]);
+                $assessmentMapping->forceFill([
                     'weight' => 1,
                     'is_primary' => true,
                     'created_by' => $teacher->id,
                 ]);
+                if (! $assessmentMapping->exists) {
+                    $assessmentMapping->setAttribute('id', (string) Str::uuid());
+                }
+                $assessmentMapping->save();
             }
 
             return [
