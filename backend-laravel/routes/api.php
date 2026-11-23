@@ -30,8 +30,9 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('phases', \App\Http\Controllers\Api\V1\PhaseController::class);
         Route::apiResource('grade-levels', \App\Http\Controllers\Api\V1\GradeLevelController::class);
         Route::apiResource('elements', \App\Http\Controllers\Api\V1\ElementController::class);
-        Route::apiResource('learning-outcomes', \App\Http\Controllers\Api\V1\LearningOutcomeController::class);
-        Route::apiResource('learning-objectives', \App\Http\Controllers\Api\V1\LearningObjectiveController::class);
+        // Official CP is read-only through the legacy API; mutations use the verified curriculum registry.
+        // Legacy TP write API disabled; Guru authors TP through assignment-scoped TeacherLearning services.
+        // Legacy ATP/LearningPath write API disabled; Guru authors ATP through the canonical curriculum workflow.
         Route::apiResource('learning-paths', \App\Http\Controllers\Api\V1\LearningPathController::class);
         Route::apiResource('materials', \App\Http\Controllers\Api\V1\MaterialController::class);
 
