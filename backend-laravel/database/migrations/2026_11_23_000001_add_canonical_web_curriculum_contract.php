@@ -207,6 +207,12 @@ return new class extends Migration
                 if (!Schema::hasColumn('assessments', 'activity_name')) {
                     $table->string('activity_name', 190)->nullable();
                 }
+                if (!Schema::hasColumn('assessments', 'assessment_origin')) {
+                    $table->string('assessment_origin', 30)->default('INTERNAL');
+                }
+                if (!Schema::hasColumn('assessments', 'external_program_name')) {
+                    $table->string('external_program_name', 190)->nullable();
+                }
                 if (!Schema::hasColumn('assessments', 'curriculum_version_id')) {
                     $table->foreignUuid('curriculum_version_id')->nullable()
                         ->constrained('multi_curriculum_versions')->nullOnDelete();
@@ -347,7 +353,7 @@ return new class extends Migration
                             $table->dropConstrainedForeignId($column);
                         }
                     }
-                    foreach (['activity_name', 'curriculum_context_snapshot'] as $column) {
+                    foreach (['activity_name', 'assessment_origin', 'external_program_name', 'curriculum_context_snapshot'] as $column) {
                         if (Schema::hasColumn($tableName, $column)) {
                             $table->dropColumn($column);
                         }
