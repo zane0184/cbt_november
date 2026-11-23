@@ -58,3 +58,37 @@ Tidak ada merge PR #21, production migration, deployment, atau perubahan databas
 - Pemeriksaan workflow menunjukkan run dibatalkan saat commit dokumentasi checkpoint baru masuk ke branch eksekusi. Karena itu run tersebut tidak membuktikan patch test pass atau fail.
 - Source tidak berubah setelah run itu; hanya checkpoint dokumentasi yang maju. HEAD saat ini: `614fe37c86cea2a606f71c0bf466621e040ff111`.
 - Validasi ulang akan dipicu dengan perubahan dokumentasi berlabel `[skip ci]` agar source SHA yang sedang ditinjau tidak terus dibatalkan oleh pembaruan checkpoint.
+
+
+## Addendum W3 — current source and test checkpoint (23 November 2026)
+
+- Current HEAD: `a97301d8b5512a7104978197c3b5dcfeef55458d`.
+- PR #21: OPEN / DRAFT / UNMERGED.
+- Exact-source CI: [#45140404370](https://github.com/zane0184/cbt_november/actions/runs/45140404370).
+
+### Changes after W1 report
+- Fixed malformed RuntimeException namespace in curriculum registry seeder.
+- Semester dropdown query uses existing `semesters.term`, not missing `name` column.
+- Teacher dashboard curriculum stats now use actual service fields: registered versions, verified CP artifacts, Panca Cinta count, graduate profile dimension count.
+- Admin Proctor assignment component now shows history only; assignment creation remains blocked until a canonical central-exam eligibility marker is owner-approved.
+- Removed the non-operational assignment form; explanatory text explicitly says appointment does not grant room/session/seat/roster/monitoring/Attempt/CBT access.
+- Assignment service denies direct assignment calls via LogicException and contains no unreachable assignment implementation. Revoke remains for historical records.
+- Proctor tests now verify blocked creation and monitoring denial, while historical record revoke/expiry remains tested; actual overlap test remains blocked pending canonical eligibility.
+
+### Backup
+All corresponding source/test/view backups listed in `docs/REPORT_CI_FULL_PHPUNIT_REMEDIATION_2026-11-23.md` are stored under `backend-laravel/docs/backup/solo-web-cbt-ci-repair-2026-11-23/` on branch `backup/solo-web-cbt-ci-repair-20261123`. The backups were fetched back and compared byte-for-byte after creation.
+
+### CI evidence
+- Run #45140404370 exact SHA `a97301d8b5512a7104978197c3b5dcfeef55458d`: PHP 8.3, disposable MySQL identity, Composer, package discovery, installer DB, and focused login/tenant PASS.
+- Full PHPUnit was still IN_PROGRESS at checkpoint time. No full-suite PASS claim.
+- Older full suite run #45138746855 at SHA `614fe37`: 124 failed / 366 passed / 1,421 assertions. It predates W3 fixes and must not be reported as the current head outcome.
+
+### Next actions
+1. Read final result and logs for #45140404370.
+2. Continue full-suite failure remediation without weakening policy.
+3. Complete file-by-file Admin ADM-01–23 inventory.
+4. Complete Guru/Student integration and browser E2E.
+5. Complete fresh-install, migration upgrade, restore, concurrency, security and UAT gates before producing generic ZIP.
+6. Keep Android and Super Admin deferred until June 2027.
+
+No production migration, deployment, PR merge, or Android work.
