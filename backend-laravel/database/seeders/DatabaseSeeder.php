@@ -51,5 +51,6 @@ class DatabaseSeeder extends Seeder
 
         $this->call(CurriculumReferenceSourceSeeder::class);
         $this->call(CurriculumRegistryBootstrapSeeder::class);
+        $this->call(AssessmentTaxonomySeeder::class);
     }
 }
