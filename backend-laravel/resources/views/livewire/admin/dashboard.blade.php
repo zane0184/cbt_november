@@ -19,7 +19,7 @@
     </div>
 
     <!-- Summary Cards Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total User</p>
             <p class="text-2xl font-bold text-navy-900 mt-2">{{ $totalUsers }}</p>
@@ -48,7 +48,7 @@
     </div>
 
     <!-- Quick Operational Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <a href="/admin/users" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
             <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
                 👥
