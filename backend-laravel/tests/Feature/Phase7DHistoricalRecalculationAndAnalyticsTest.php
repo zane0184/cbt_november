@@ -244,7 +244,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 2.00,
             'created_by' => $this->teacherA->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($this->assignment, $ass);
+        $this->createCanonicalCurriculumContext($this->assignment, $this->teacherA, $ass);
         $ass->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         $exam = Exam::create([
