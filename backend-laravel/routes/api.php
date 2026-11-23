@@ -26,10 +26,15 @@ Route::prefix('v1')->group(function () {
 
     Route::middleware(['auth:sanctum', 'tenant', 'license'])->group(function () {
         // Curriculum Detail
-        Route::apiResource('curricula', \App\Http\Controllers\Api\V1\CurriculumController::class);
-        Route::apiResource('phases', \App\Http\Controllers\Api\V1\PhaseController::class);
-        Route::apiResource('grade-levels', \App\Http\Controllers\Api\V1\GradeLevelController::class);
-        Route::apiResource('elements', \App\Http\Controllers\Api\V1\ElementController::class);
+        // Legacy curriculum master APIs are reference-only. Official curriculum
+        // versions/structure are managed through the audited registry; Guru may
+        // author only assignment-scoped TP/ATP through the canonical services.
+        // Retiring these generic resource mutations also closes GradeLevel/Element
+        // write handlers that had no controller-level authorization.
+        Route::apiResource('curricula', \App\Http\Controllers\Api\V1\CurriculumController::class)->only(['index', 'show']);
+        Route::apiResource('phases', \App\Http\Controllers\Api\V1\PhaseController::class)->only(['index', 'show']);
+        Route::apiResource('grade-levels', \App\Http\Controllers\Api\V1\GradeLevelController::class)->only(['index', 'show']);
+        Route::apiResource('elements', \App\Http\Controllers\Api\V1\ElementController::class)->only(['index', 'show']);
         // Official CP is read-only through the legacy API; mutations use the verified curriculum registry.
         // Legacy TP write API disabled; Guru authors TP through assignment-scoped TeacherLearning services.
         // Legacy ATP/LearningPath write API disabled; Guru authors ATP through the canonical curriculum workflow.
