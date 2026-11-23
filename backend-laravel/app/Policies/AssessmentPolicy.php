@@ -10,34 +10,28 @@ class AssessmentPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('ADMIN_MADRASAH') ||
-               $user->hasRole('OPERATOR') ||
-               $user->hasRole('KAMAD') ||
-               $user->hasRole('GURU') ||
-               $user->hasRole('SISWA');
+        return $user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA']);
     }
 
     public function view(User $user, Assessment $assessment): bool
     {
         if ($user->tenant_id !== $assessment->tenant_id) return false;
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             return TeacherAccess::canManageAssessment($user, $assessment);
         }
 
-        if ($user->hasRole('SISWA')) {
+        if ($user->hasExactRole('SISWA')) {
             return $assessment->exams()
                 ->whereHas('participants', fn ($query) => $query->where('user_id', $user->id))
                 ->exists();
         }
 
-        return $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('OPERATOR')
-            || $user->hasRole('KAMAD');
+        return $user->hasExactRole('ADMIN_MADRASAH');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage');
     }
 
