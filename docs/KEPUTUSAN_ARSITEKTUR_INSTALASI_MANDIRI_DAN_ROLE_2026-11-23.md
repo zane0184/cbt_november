@@ -1,5 +1,8 @@
 # KEPUTUSAN ARSITEKTUR WAJIB — CBT MADRASAH (23 NOVEMBER 2026)
 
+## Status dan prioritas implementasi
+Fokus implementasi saat ini adalah **WEB CBT ONLY** dengan satu alur kerja terpadu yang mencakup Backend Laravel, Web Admin Madrasah, Web Guru, dan Web Siswa. Tidak ada pembagian implementasi kepada agent terpisah. Satu pemilik implementasi mengaudit, merancang, mengubah source, mengintegrasikan, dan menguji seluruh komponen. Pemilik proyek tetap memberikan persetujuan untuk perubahan berisiko tinggi, merge, migration/deployment produksi, dan distribusi.
+
 ## Instalasi mandiri per madrasah
 Setiap madrasah memiliki instalasi aplikasi dan database sendiri. Tidak ada database bersama, tenant lintas madrasah, atau akses data antar-madrasah. Database lokal hanya menyimpan data madrasah pemilik instalasi. Kolom tenant_id yang masih ada di source adalah scope instalasi lokal/legacy hingga refactor aman selesai, bukan mekanisme shared multi-tenant antar-madrasah. Backup, restore, upgrade, dan recovery dilakukan per instalasi.
 
@@ -19,33 +22,45 @@ Admin dilarang membuat/menerbitkan/mengubah/mengatur ujian Guru, mengakses Bank 
 Guru mengelola bank soal, asesmen, ujian, jadwal, publikasi, token, monitoring dalam penugasan, penilaian, dan laporan akademik. Assignment pengawas tidak memberikan hak mengubah soal, token, peserta, jawaban atau nilai.
 Kepala Madrasah adalah metadata/jabatan/penandatangan laporan, bukan role.
 
-## Kategori ujian resmi pada scope saat ini
-Kategori ujian yang disepakati untuk kebutuhan penugasan Guru pengawas sementara adalah:
-1. UTS
-2. UAS
-3. UM
-4. SIMULASI TKA (penambahan terbaru dari owner)
+## Taksonomi asesmen — keputusan pemilik 23 November 2026
+Taksonomi asesmen wajib mengikuti Kurikulum Merdeka yang terintegrasi dengan Kurikulum Berbasis Cinta (KBC). **UTS, UAS, UM, SIMULASI TKA, ASTS, ASAS, ASAT, SIMULASI_AN, dan label kegiatan sejenis bukan daftar kategori baku atau enum tertutup.** Nama-nama tersebut, jika muncul, adalah nama kegiatan/istilah operasional yang tidak boleh mengunci desain sistem.
 
-Sebelum penambahan SIMULASI TKA, daftar hanya terdiri dari UTS, UAS, dan UM. Jangan menganggap ASTS, ASAS, ASAT, SIMULASI_AN, atau kategori lain sebagai kategori resmi/terpusat tanpa keputusan owner yang terpisah. Implementasi taxonomy, UI, policy, API, dan test harus menggunakan empat kategori di atas secara konsisten. Penambahan SIMULASI TKA tidak memperluas kewenangan Admin: Admin hanya boleh menetapkan/mencabut Guru pengawas sementara untuk kategori tersebut sesuai ketentuan, bukan mengelola ujian, peserta, ruang, token, Attempt, monitoring, jawaban, atau nilai.
+Acuan konseptual awal:
+- Asesmen Formatif untuk memantau dan memperbaiki proses pembelajaran serta memberi umpan balik.
+- Asesmen Sumatif untuk menilai pencapaian hasil belajar; cakupan dapat berupa lingkup materi, akhir semester bila dipilih/diperlukan, akhir tahun ajaran, dan/atau akhir jenjang.
+- Teknik asesmen dapat berupa tes, praktik, produk, proyek, portofolio, observasi, dan bentuk lain sesuai tujuan. CBT hanya menjadi mode pelaksanaan bagi asesmen yang sesuai dilakukan secara digital.
 
-## Penundaan Super Admin
-Web Super Admin dan Android Super Admin ditunda sampai Juni 2027. Jangan implementasikan portal/dashboard/aplikasi Android Super Admin sebelum Juni 2027 atau instruksi tertulis baru. Ini tidak menunda aplikasi Android native peserta CBT: siswa Android tetap wajib aplikasi native; Web/PWA sementara untuk iOS.
+Sistem wajib memisahkan dimensi berikut:
+1. Fungsi/jenis asesmen menurut kerangka kurikulum.
+2. Tujuan dan cakupan asesmen (misalnya lingkup materi, semester bila dipilih, tahun ajaran, fase/jenjang).
+3. Nama kegiatan/label yang dapat dikonfigurasi sesuai kebijakan madrasah.
+4. Bentuk instrumen (tes, praktik, proyek, portofolio, observasi, dan lainnya).
+5. Mode pelaksanaan (CBT atau non-CBT).
 
-## Kontrak agent
-Agent 2 adalah pemilik kontrak backend/integritas:
-1. Referensi Kurikulum Merdeka/Panca Cinta, Pembelajaran Mendalam, dan 8 dimensi profil lulusan dari sumber resmi, provenance, versi, tanggal berlaku, histori.
-2. Kontrak tahun ajaran, materi/topik dan relasi akademik.
-3. Versi kurikulum pada bank soal dan snapshot ujian.
-4. Accepted answer, snapshot, dan scoring SHORT_ANSWER.
-5. Tutup blocker Agent 4: token opsional; receipt immutable memuat client_request_id; Attempt Authorization/Attempt Limit; concurrency; enforcement server-side Android-native; media MIME/Range/seek dengan auth/fencing.
-6. SHORT_ANSWER tidak aktif sebelum kontrak dan tes integrasi lulus.
+TKA adalah asesmen terstandar eksternal/khusus, bukan otomatis kategori asesmen internal madrasah atau pengganti asesmen satuan pendidikan. KBC mengintegrasikan nilai Panca Cinta ke pembelajaran dan asesmen; KBC bukan daftar nama ujian baru. Kurikulum, nomenklatur, registry, dan relasi harus berversi serta mempertahankan histori. Jangan membuat enum final, migration, atau validasi tertutup sebelum desain dan pemetaan sumber resmi diverifikasi.
 
-Agent Web Guru (Agent 3): kerjakan UI authoring/parser/template XLSX yang tidak bergantung pada kontrak tertunda. Ikuti kontrak Agent 2, jangan mengarang enum/referensi/kolom/topik. Media dibatasi ukuran/tipe, diperiksa, instalasi-scoped, anti path traversal, transaksional. SHORT_ANSWER menunggu kontrak Agent 2.
+## Integrasi kurikulum dan pembelajaran
+Satu kontrak backend kanonis digunakan oleh Web Admin, Web Guru, dan Web Siswa. Cakupan data:
+1. Registry kurikulum dan versi, provenance/sumber resmi, tanggal berlaku, status, dan histori.
+2. Struktur fase A/B/C, kelas MI 1–6, mata pelajaran, elemen, dan muatan lokal berdasarkan referensi resmi terverifikasi.
+3. CP resmi sebagai referensi induk yang terlindungi; Guru memilih CP sesuai penugasan dan mengembangkan TP serta ATP tanpa menimpa CP induk.
+4. Panca Cinta sebagai nilai lintas pembelajaran/asesmen dengan provenance.
+5. Pembelajaran Mendalam sebagai pendekatan pembelajaran.
+6. Delapan dimensi profil lulusan sebagai registry/kerangka pendukung terpisah.
+7. Materi/topik yang terhubung ke kurikulum, mapel, fase/kelas, periode, dan penugasan Guru.
+8. Jejak kurikulum dari konteks akademik → TP/ATP → QuestionVersion → asesmen → Exam Snapshot immutable → hasil → laporan.
+9. Snapshot ujian mempertahankan versi/provenance kurikulum, CP, TP/ATP, materi/topik, dan metadata asesmen yang berlaku ketika snapshot dibuat; perubahan registry berikutnya tidak mengubah histori.
+10. Web Siswa hanya menerima konteks, instruksi, soal, hasil, dan umpan balik yang diotorisasi. Redaction wajib dilakukan server-side; jangan kirim kunci jawaban, is_correct, penjelasan privat, rubrik internal, atau data siswa lain.
 
-Agent Web Siswa (Agent 4): PR tetap Draft/unmerged sampai kontrak backend dan browser-to-Laravel E2E nyata lulus. Mock bukan bukti integrasi. Receipt tanpa client_request_id tidak boleh menghapus antrean atau mengizinkan submit. Uji token opsional, offline/recovery, fencing, media Range/seek, enforcement Android-native.
+## Kontrak implementasi terpadu
+- Satu pemilik implementasi bertanggung jawab atas kontrak backend, API/DTO, skema, policy, seluruh portal, dokumentasi, dan integrasi. Branch/PR lama adalah bahan audit dan sumber perubahan yang harus diperiksa, bukan pembagian tanggung jawab agent yang masih aktif.
+- Jangan membuat schema/enum/DTO berbeda antarportal. Setiap perubahan kontrak harus diikuti seluruh pemakai dalam satu rangkaian integrasi dan regression test.
+- DOCX adalah format utama import soal Guru sesuai keputusan pemilik. Jangan menghidupkan kembali XLSX sebagai format import soal. XLSX/CSV tetap dapat digunakan untuk import/export administratif Guru/Siswa/Mapel oleh Admin dengan validasi dan preview aman.
+- SHORT_ANSWER tetap fail-closed sampai accepted-answer, immutable snapshot, scoring, dan integration tests backend-to-Web terbukti lulus.
+- Semua route, controller, Livewire action, API, export/download, dan payload wajib memvalidasi role, ownership, penugasan, scope instalasi, dan izin secara server-side.
 
-Web Admin: hanya Admin/Guru/Siswa. Tidak ada akun Operator/Kamad/Proktor. Kepala Madrasah hanya metadata. Admin menugaskan Guru pengawas sementara, tanpa hak operasi CBT Guru.
+## Ujian dan waktu
+Ujian berjalan serentak berdasarkan jadwal Exam dan waktu server. Jangan menambahkan wave, session_number, session_token, atau lifecycle sesi sebagai admission gate. Token dibuat otomatis setelah Guru menerbitkan ujian; dapat dilihat sebelum jadwal, tetapi peserta hanya boleh mulai pada jadwal yang sah berdasarkan waktu server. Attempt, Answer, Score, Device Lease, fencing, dan receipt harus konsisten serta idempotent. Operasi reset Attempt, Force Submit, takeover, dan perpanjangan waktu harus berizin, beralasan, transaksional, dan diaudit.
 
-## Terminologi dan gerbang
-Gunakan "instalasi mandiri per madrasah", "database lokal madrasah", "layanan pusat lisensi dan pembayaran", "Admin Madrasah", "Guru pengawas sementara", "Kepala Madrasah sebagai metadata/jabatan". Hindari "multi-tenant lintas madrasah", "akun Operator", "akun Kamad", "Proktor permanen".
-Tidak boleh migration produksi, hapus role/histori legacy, deployment, merge PR, atau pemindahan data tanpa rencana upgrade, backup byte-exact, rollback, tes disposable dan persetujuan eksplisit.
+## Batas keselamatan perubahan
+Tidak boleh menjalankan migration pada database produksi, menghapus role/histori legacy, melakukan deployment, merge PR, atau memindahkan data tanpa rencana upgrade, backup byte-exact, rollback/recovery plan, tes disposable MySQL 8/InnoDB, preflight, dan persetujuan eksplisit pemilik proyek. ZIP baseline asli tidak boleh diubah. Setiap file existing wajib dibackup sebelum patch dan backup harus dapat diverifikasi byte-exact.

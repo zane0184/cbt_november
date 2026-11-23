@@ -287,7 +287,7 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function guru_can_view_curriculum_but_cannot_open_tp_creation()
+    public function guru_cannot_open_admin_curriculum_reference_page()
     {
         $guruRole = Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         $curriculumView = Permission::firstOrCreate(['name' => 'curriculum.view'], ['label' => 'Lihat Kurikulum']);
@@ -301,9 +301,22 @@ class AdminUiVerificationTest extends TestCase
         $guru->roles()->attach($guruRole);
         $this->actingAs($guru);
 
-        $this->get('/admin/curriculum')->assertStatus(200);
+        $this->get('/admin/curriculum')->assertForbidden();
+    }
+
+    /** @test */
+    public function admin_cannot_create_or_modify_teacher_learning_objectives()
+    {
+        $this->actingAs($this->admin);
+
+        $this->get('/admin/curriculum')->assertOk();
+
         Livewire::test(CurriculumManagement::class)
             ->call('openCreateTpModal')
+            ->assertStatus(403);
+
+        Livewire::test(CurriculumManagement::class)
+            ->call('createTp')
             ->assertStatus(403);
     }
 
