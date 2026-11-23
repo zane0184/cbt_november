@@ -113,6 +113,7 @@
                 <a href="{{ route('teacher.assignments') }}" class="portal-nav-link {{ request()->routeIs('teacher.assignments') ? 'active' : '' }}"><span>▤</span> Penugasan Saya</a>
                 <a href="{{ route('teacher.learning') }}" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? 'active' : '' }}"><span>▤</span> Pembelajaran</a>
                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
+                <a href="{{ route('teacher.materials') }}" class="portal-nav-link {{ request()->routeIs('teacher.materials') ? 'active' : '' }}"><span>▤</span> Materi Pembelajaran</a>
                 <div class="my-3 border-t border-white/10"></div>
                 <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Perangkat Asesmen</p>
                 <a href="{{ route('teacher.questions.index') }}" class="portal-nav-link {{ request()->routeIs('teacher.questions.index') ? 'active' : '' }}"><span>▧</span> Bank Soal</a>
@@ -157,6 +158,7 @@
                                 <a href="{{ route('teacher.assignments') }}" class="block rounded-lg px-3 py-2 text-sm">Penugasan Saya</a>
                                 <a href="{{ route('teacher.learning') }}" class="block rounded-lg px-3 py-2 text-sm">Pembelajaran</a>
                                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="block rounded-lg px-3 py-2 text-sm">Kurikulum & Akademik</a>
+                                <a href="{{ route('teacher.materials') }}" class="block rounded-lg px-3 py-2 text-sm">Materi Pembelajaran</a>
                                 <div class="my-2 border-t portal-border"></div>
                                 <p class="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider portal-muted">Modul existing — menunggu gate akses</p>
                                 <a href="{{ route('teacher.questions.index') }}" class="block rounded-lg px-3 py-2 text-sm">Bank Soal</a>
