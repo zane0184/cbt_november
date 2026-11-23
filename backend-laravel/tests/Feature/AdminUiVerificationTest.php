@@ -96,8 +96,10 @@ class AdminUiVerificationTest extends TestCase
             '/admin/users',
             '/admin/academic',
             '/admin/curriculum',
-            '/admin/questions',
-            '/admin/exams',
+            '/admin/rombel-students',
+            '/admin/teacher-assignments',
+            '/admin/curriculum/registry',
+            '/admin/proctor-assignments',
         ];
 
         foreach ($routes as $route) {
@@ -115,8 +117,10 @@ class AdminUiVerificationTest extends TestCase
             '/admin/users',
             '/admin/academic',
             '/admin/curriculum',
-            '/admin/questions',
-            '/admin/exams',
+            '/admin/rombel-students',
+            '/admin/teacher-assignments',
+            '/admin/curriculum/registry',
+            '/admin/proctor-assignments',
         ];
 
         foreach ($routes as $route) {
@@ -126,15 +130,25 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_access_administrative_routes_and_exam_register_but_not_question_bank()
+    public function admin_can_access_administrative_routes_but_not_exam_or_question_operations()
     {
         $this->actingAs($this->admin);
 
-        foreach (['/admin/dashboard', '/admin/users', '/admin/academic', '/admin/curriculum', '/admin/exams'] as $route) {
+        foreach ([
+            '/admin/dashboard',
+            '/admin/users',
+            '/admin/academic',
+            '/admin/rombel-students',
+            '/admin/teacher-assignments',
+            '/admin/curriculum',
+            '/admin/curriculum/registry',
+            '/admin/proctor-assignments',
+        ] as $route) {
             $this->get($route)->assertOk();
         }
 
-        $this->get('/admin/questions')->assertForbidden();
+        $this->get('/admin/questions')->assertNotFound();
+        $this->get('/admin/exams')->assertNotFound();
     }
 
     /** @test */
