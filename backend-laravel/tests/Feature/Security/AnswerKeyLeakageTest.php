@@ -113,7 +113,7 @@ class AnswerKeyLeakageTest extends TestCase
         ]);
 
         // Create a question with correct option
-        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
+        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
         $version = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $question->id,
