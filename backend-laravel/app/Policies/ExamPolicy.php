@@ -87,7 +87,7 @@ class ExamPolicy
 
     public function manageQuestions(User $user, Exam $exam): bool
     {
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('question.manage')
             && $this->update($user, $exam);
     }
@@ -103,7 +103,7 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.token')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -124,7 +124,7 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
