@@ -11,7 +11,7 @@ use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
-use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Livewire\Admin\CentralExamRoomAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
 
 Route::get('/', function () {
@@ -79,7 +79,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/admin/curriculum', CurriculumManagement::class);
     Route::get('/admin/questions', QuestionBank::class);
     Route::get('/admin/exams', ExamManagement::class);
-    Route::get('/admin/proctor-assignments', ProctorAssignmentManagement::class)->name('admin.proctor-assignments');
+    Route::get('/admin/proctor-assignments', CentralExamRoomAssignmentManagement::class)->name('admin.proctor-assignments');
 
     // Teacher & Results Routes
     Route::get('/exams/{exam}/results', ResultList::class);

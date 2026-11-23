@@ -46,6 +46,7 @@
                                 {{ $exam->assessment->subject->name ?? 'Asesmen' }}
                             </span>
                             <h3 class="text-lg font-bold text-navy-900 mt-2">{{ $exam->title }}</h3>
+                            <span class="inline-flex mt-2 text-[10px] font-bold rounded-md px-2 py-1 border {{ $exam->is_centralized ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-gray-50 text-gray-700 border-gray-200' }}">{{ $exam->category }}</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="px-2.5 py-1 text-xs font-bold rounded-full
@@ -140,6 +141,25 @@
                         <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Judul Ujian</label>
                         <input wire:model="title" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: Asesmen Sumatif Akhir Semester Akidah Akhlak Kelas 5">
                         @error('title') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kategori / Jenis Ujian</label>
+                        <select wire:model="category" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <option value="FORMATIF">FORMATIF — Asesmen Formatif / Kuis Harian</option>
+                            <option value="SUMATIF_LINGKUP">SUMATIF_LINGKUP — Sumatif Lingkup Materi</option>
+                            <option value="SURVEI_KBC">SURVEI_KBC — Survei Karakter & Refleksi Panca Cinta</option>
+                            <option value="REMEDIAL">REMEDIAL — Remedial / Pengayaan</option>
+                            <option value="TRYOUT_MANDIRI">TRYOUT_MANDIRI — Tryout / Simulasi Mandiri</option>
+                            <option value="ASTS">ASTS — Asesmen Sumatif Tengah Semester (UTS)</option>
+                            <option value="ASAS">ASAS — Asesmen Sumatif Akhir Semester (UAS Ganjil)</option>
+                            <option value="ASAT">ASAT — Asesmen Sumatif Akhir Tahun (UAS Genap)</option>
+                            <option value="UM">UM — Ujian Madrasah</option>
+                            <option value="SIMULASI_AN">SIMULASI_AN — Simulasi / Gladi Bersih AN-TKA</option>
+                            <option value="REGULAR">REGULAR — Data lama / belum diklasifikasikan</option>
+                        </select>
+                        @error('category') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                        <p class="text-[11px] text-textSecondary mt-1">Kategori ASTS, ASAS, ASAT, UM, dan SIMULASI_AN akan masuk ke penjadwalan terpusat Admin. Kategori lainnya dikelola Guru.</p>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">

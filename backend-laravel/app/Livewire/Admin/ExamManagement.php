@@ -19,6 +19,7 @@ use App\Support\Security\TeacherAccess;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -32,8 +33,8 @@ class ExamManagement extends Component
     public function mount()
     {
         $user = auth()->user();
-        if (!$user || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR', 'GURU'])->exists()) {
-            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk mengakses manajemen ujian.');
+        if (!$user || !$user->hasRole('GURU')) {
+            abort(403, 'Akses ditolak. Manajemen ujian hanya tersedia bagi Guru.');
         }
     }
 
@@ -42,6 +43,7 @@ class ExamManagement extends Component
     public $editingExamId = null;
 
     public $title = '';
+    public $category = Exam::CATEGORY_FORMATIF;
     public $instructions = 'Kerjakan soal dengan jujur dan teliti.';
     public $selectedSubjectId = '';
     public $selectedSemesterId = '';
@@ -61,7 +63,7 @@ class ExamManagement extends Component
     public function openCreateModal()
     {
         Gate::authorize('create', Exam::class);
-        $this->reset(['editingExamId', 'title', 'selectedSubjectId', 'selectedRombelId', 'confirmAllStudents', 'selectedQuestionVersionIds']);
+        $this->reset(['editingExamId', 'title', 'category', 'selectedSubjectId', 'selectedRombelId', 'confirmAllStudents', 'selectedQuestionVersionIds']);
         $activeYear = AcademicYear::where('tenant_id', auth()->user()->tenant_id)->where('is_active', true)->first();
         $activeSemester = $activeYear ? Semester::where('tenant_id', auth()->user()->tenant_id)->where('academic_year_id', $activeYear->id)->where('is_active', true)->first() : null;
         $this->selectedSemesterId = $activeSemester?->id ?? '';
@@ -85,6 +87,7 @@ class ExamManagement extends Component
         $this->editingExamId = $exam->id;
         $this->selectedRombelId = '';
         $this->title = $exam->title;
+        $this->category = $exam->category ?: Exam::CATEGORY_REGULAR;
         $this->instructions = $exam->instructions ?? 'Kerjakan soal dengan jujur dan teliti.';
         $this->selectedSubjectId = $exam->assessment ? $exam->assessment->subject_id : '';
         $this->selectedSemesterId = $exam->assessment ? (string) $exam->assessment->semester_id : '';
@@ -122,6 +125,7 @@ class ExamManagement extends Component
     {
         $this->validate([
             'title' => 'required|string|max:255',
+            'category' => ['required', 'string', Rule::in(Exam::ALL_CATEGORIES)],
             'selectedSubjectId' => 'required|exists:subjects,id',
             'selectedSemesterId' => 'required|exists:semesters,id',
             'selectedRombelId' => $this->editingExamId ? 'nullable|string' : 'required|string',
@@ -234,11 +238,12 @@ class ExamManagement extends Component
                     abort(403, 'Ujian sudah diterbitkan dan tidak dapat diubah.');
                 }
                 $oldExamValues = $exam->only([
-                    'assessment_id', 'title', 'start_at', 'end_at',
+                    'assessment_id', 'title', 'category', 'start_at', 'end_at',
                     'duration_seconds', 'attempt_limit', 'status', 'require_token',
                 ]);
                 $exam->update([
                     'title' => $this->title,
+                    'category' => $this->category,
                     'instructions' => $this->instructions,
                     'duration_seconds' => $this->durationMinutes * 60,
                     'start_at' => $this->startAt,
@@ -275,6 +280,7 @@ class ExamManagement extends Component
                     'tenant_id' => $tenantId,
                     'assessment_id' => $assessment->id,
                     'title' => $this->title,
+                    'category' => $this->category,
                     'instructions' => $this->instructions,
                     'status' => 'DRAFT',
                     'duration_seconds' => $this->durationMinutes * 60,

@@ -8,6 +8,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptAnswer;
 use App\Models\ExamParticipant;
+use App\Models\ExamRoomAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -18,21 +19,29 @@ class MonitoringController extends Controller
         $this->authorize('monitor', $exam);
 
         $serverNow = now();
-        $totalParticipants = ExamParticipant::where('exam_id', $exam->id)->count();
+        $visibleParticipants = $this->visibleParticipantQuery($exam);
+        $participantIds = (clone $visibleParticipants)->select('id');
+        $totalParticipants = (clone $visibleParticipants)->count();
 
-        $stats = ExamAttempt::where('exam_id', $exam->id)
+        // For centralized exams, every aggregate is restricted to the room/session
+        // assignments of the authenticated Guru Proktor, never the whole exam.
+        $visibleAttempts = ExamAttempt::query()
+            ->where('exam_id', $exam->id)
+            ->whereIn('participant_id', $participantIds);
+
+        $stats = (clone $visibleAttempts)
             ->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
             ->pluck('count', 'status');
 
-        $notStarted = $totalParticipants - ExamAttempt::where('exam_id', $exam->id)->count();
+        $notStarted = $totalParticipants - (clone $visibleAttempts)->count();
 
-        $inProgressReal = ExamAttempt::where('exam_id', $exam->id)
+        $inProgressReal = (clone $visibleAttempts)
             ->where('status', 'IN_PROGRESS')
             ->where('expires_at', '>=', $serverNow)
             ->count();
 
-        $expiredLogical = ExamAttempt::where('exam_id', $exam->id)
+        $expiredLogical = (clone $visibleAttempts)
             ->where(function($q) use ($serverNow) {
                 $q->where('status', 'EXPIRED')
                   ->orWhere(function($sq) use ($serverNow) {
@@ -42,7 +51,7 @@ class MonitoringController extends Controller
             })
             ->count();
 
-        $requiresAttention = ExamAttempt::where('exam_id', $exam->id)
+        $requiresAttention = (clone $visibleAttempts)
             ->where('status', 'IN_PROGRESS')
             ->where('expires_at', '<', $serverNow)
             ->count();
@@ -72,13 +81,18 @@ class MonitoringController extends Controller
 
         $serverNow = now();
 
-        // Subquery to get the latest attempt ID for each student in this exam
+        // Restrict centralized exam monitoring to the authenticated Guru's assigned room(s).
+        $visibleParticipantIds = $this->visibleParticipantQuery($exam)->select('id');
+
+        // Subquery to get the latest attempt ID for each visible student.
         $latestAttemptSubquery = DB::table('exam_attempts')
             ->select('participant_id', DB::raw('MAX(created_at) as last_attempt_at'))
             ->where('exam_id', $exam->id)
+            ->whereIn('participant_id', $visibleParticipantIds)
             ->groupBy('participant_id');
 
         $query = ExamParticipant::where('exam_participants.exam_id', $exam->id)
+            ->whereIn('exam_participants.id', $visibleParticipantIds)
             ->with(['user'])
             // Join with subquery to find the latest attempt timestamp
             ->leftJoinSub($latestAttemptSubquery, 'latest_at', function($join) {
@@ -234,6 +248,7 @@ class MonitoringController extends Controller
         $participantUser = $participant?->user;
 
         if (!$participant
+            || ($exam->isCentralized() && !$this->visibleParticipantQuery($exam)->whereKey($participant->id)->exists())
             || $participant->tenant_id !== $exam->tenant_id
             || $participant->exam_id !== $exam->id
             || !$participantUser
@@ -279,8 +294,21 @@ class MonitoringController extends Controller
     {
         $this->authorize('monitor', $exam);
 
-        $events = AuditLog::where('tenant_id', $exam->tenant_id)
-            ->where(function($q) use ($exam) {
+        $eventsQuery = AuditLog::where('tenant_id', $exam->tenant_id);
+
+        if ($exam->isCentralized()) {
+            $visibleAttemptIds = ExamAttempt::query()
+                ->where('exam_id', $exam->id)
+                ->whereIn('participant_id', $this->visibleParticipantQuery($exam)->select('id'))
+                ->select('id');
+
+            // Room Proctors see only audit events belonging to participants in their room.
+            $eventsQuery->where('entity_type', 'ExamAttempt')
+                ->whereIn('entity_id', $visibleAttemptIds)
+                // Do not expose audit before/after payloads, device metadata, or request fingerprints to Proctors.
+                ->select(['id', 'user_id', 'action', 'entity_type', 'entity_id', 'created_at']);
+        } else {
+            $eventsQuery->where(function($q) use ($exam) {
                 $q->where(function($sq) use ($exam) {
                     $sq->where('entity_type', 'Exam')
                        ->where('entity_id', $exam->id);
@@ -290,14 +318,45 @@ class MonitoringController extends Controller
                            $query->select('id')->from('exam_attempts')->where('exam_id', $exam->id);
                        });
                 });
-            })
-            ->latest()
-            ->paginate(50);
+            });
+        }
+
+        $events = $eventsQuery->latest()->paginate(50);
 
         return response()->json([
             'success' => true,
             'data' => $events
         ]);
+    }
+
+    /**
+     * Return only participants visible to the current monitor. Centralized exams
+     * are strictly room/session scoped to the Guru's active assignment.
+     */
+    private function visibleParticipantQuery(Exam $exam)
+    {
+        $query = ExamParticipant::query()
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id);
+
+        if (!$exam->isCentralized()) {
+            return $query;
+        }
+
+        $user = request()->user();
+        if (!$user || $user->tenant_id !== $exam->tenant_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $assignmentIds = ExamRoomAssignment::query()
+            ->where('tenant_id', $exam->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->where('scheduled_start', '<=', now())
+            ->where('scheduled_end', '>', now())
+            ->whereHas('activeProctors', fn ($builder) => $builder->where('user_id', $user->id))
+            ->select('id');
+
+        return $query->whereIn('exam_room_assignment_id', $assignmentIds);
     }
 
     public function heartbeat(Request $request, Exam $exam, ExamAttempt $attempt)

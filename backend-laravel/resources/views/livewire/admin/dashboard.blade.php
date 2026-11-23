@@ -19,7 +19,7 @@
     </div>
 
     <!-- Summary Cards Grid -->
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total User</p>
             <p class="text-2xl font-bold text-navy-900 mt-2">{{ $totalUsers }}</p>
@@ -45,15 +45,10 @@
             <p class="text-2xl font-bold text-amber-600 mt-2">{{ $totalSubjects }}</p>
             <p class="text-[11px] text-gray-500 mt-1">Mapel Terdaftar</p>
         </div>
-        <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
-            <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Total Ujian</p>
-            <p class="text-2xl font-bold text-purple-600 mt-2">{{ $totalExams }}</p>
-            <p class="text-[11px] text-gray-500 mt-1">Jadwal Ujian</p>
-        </div>
     </div>
 
     <!-- Quick Operational Actions -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <a href="/admin/users" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
             <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
                 👥
@@ -74,13 +69,6 @@
             </div>
             <h3 class="font-bold text-navy-900 text-base">Kurikulum Merdeka</h3>
             <p class="text-xs text-textSecondary mt-1">Master data Capaian Pembelajaran (CP) dan Tujuan Pembelajaran (TP).</p>
-        </a>
-        <a href="/admin/exams" class="bg-white p-5 rounded-2xl border border-cardBorder hover:border-emerald-500 transition shadow-sm group">
-            <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xl mb-3 group-hover:scale-105 transition">
-                📝
-            </div>
-            <h3 class="font-bold text-navy-900 text-base">Daftar Ujian & Pengawas</h3>
-            <p class="text-xs text-textSecondary mt-1">Melihat daftar ujian Guru dan menetapkan Guru pengawas sementara.</p>
         </a>
     </div>
 

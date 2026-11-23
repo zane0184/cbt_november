@@ -12,10 +12,47 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Exam extends Model
 {
+    public const CATEGORY_REGULAR = 'REGULAR';
+    public const CATEGORY_FORMATIF = 'FORMATIF';
+    public const CATEGORY_SUMATIF_LINGKUP = 'SUMATIF_LINGKUP';
+    public const CATEGORY_SURVEI_KBC = 'SURVEI_KBC';
+    public const CATEGORY_REMEDIAL = 'REMEDIAL';
+    public const CATEGORY_TRYOUT_MANDIRI = 'TRYOUT_MANDIRI';
+    public const CATEGORY_ASTS = 'ASTS';
+    public const CATEGORY_ASAS = 'ASAS';
+    public const CATEGORY_ASAT = 'ASAT';
+    public const CATEGORY_UM = 'UM';
+    public const CATEGORY_SIMULASI_AN = 'SIMULASI_AN';
+
+    public const CENTRALIZED_CATEGORIES = [
+        self::CATEGORY_ASTS, self::CATEGORY_ASAS, self::CATEGORY_ASAT,
+        self::CATEGORY_UM, self::CATEGORY_SIMULASI_AN,
+    ];
+
+    public const ALL_CATEGORIES = [
+        self::CATEGORY_REGULAR, self::CATEGORY_FORMATIF, self::CATEGORY_SUMATIF_LINGKUP,
+        self::CATEGORY_SURVEI_KBC, self::CATEGORY_REMEDIAL, self::CATEGORY_TRYOUT_MANDIRI,
+        self::CATEGORY_ASTS, self::CATEGORY_ASAS, self::CATEGORY_ASAT,
+        self::CATEGORY_UM, self::CATEGORY_SIMULASI_AN,
+    ];
     use HasUuids, HasFactory, SoftDeletes, TenantScoped;
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $exam): void {
+            if (!$exam->category) {
+                $exam->category = self::CATEGORY_REGULAR;
+            }
+            if (!in_array($exam->category, self::ALL_CATEGORIES, true)) {
+                throw new \InvalidArgumentException('Kategori ujian tidak dikenal: '.$exam->category);
+            }
+            // Category is the source of truth; clients cannot forge the centralized flag.
+            $exam->is_centralized = self::isCentralizedCategory($exam->category);
+        });
+    }
+
     protected $fillable = [
-        'assessment_id', 'title', 'instructions', 'status',
+        'assessment_id', 'title', 'category', 'is_centralized', 'instructions', 'status',
         'duration_seconds', 'start_at', 'end_at', 'timezone',
         'attempt_limit', 'shuffle_questions', 'shuffle_options',
         'show_result', 'show_correct_answer', 'allow_resume',
@@ -24,6 +61,7 @@ class Exam extends Model
     ];
 
     protected $casts = [
+        'is_centralized' => 'boolean',
         'start_at' => 'datetime',
         'end_at' => 'datetime',
         'published_at' => 'datetime',
@@ -67,6 +105,22 @@ class Exam extends Model
     public function attempts(): HasMany
     {
         return $this->hasMany(ExamAttempt::class);
+    }
+
+    public function roomAssignments(): HasMany
+    {
+        return $this->hasMany(ExamRoomAssignment::class);
+    }
+
+    public function isCentralized(): bool
+    {
+        return in_array($this->category, self::CENTRALIZED_CATEGORIES, true)
+            && (bool) $this->is_centralized;
+    }
+
+    public static function isCentralizedCategory(?string $category): bool
+    {
+        return in_array($category, self::CENTRALIZED_CATEGORIES, true);
     }
 
     public function isLocked(): bool
