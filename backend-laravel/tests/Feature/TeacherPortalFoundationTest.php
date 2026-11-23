@@ -904,6 +904,75 @@ class TeacherPortalFoundationTest extends TestCase
             ->assertSee('belum terverifikasi sumber resminya');
     }
 
+    public function test_curriculum_outcome_display_limit_is_global_across_registered_versions(): void
+    {
+        $curriculum = MultiCurriculum::create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'MERDEKA-CAP',
+            'name' => 'Kurikulum Merdeka Cap Test',
+            'status' => 'ACTIVE',
+        ]);
+
+        $versions = [];
+        foreach ([
+            ['V1', 'Versi Pertama', now()->subMinute()],
+            ['V2', 'Versi Kedua', now()],
+        ] as [$code, $title, $registeredAt]) {
+            $version = MultiCurriculumVersion::create([
+                'tenant_id' => $this->tenant->id,
+                'multi_curriculum_id' => $curriculum->id,
+                'version_code' => $code,
+                'title' => $title,
+                'effective_year' => 2026,
+                'status' => 'ACTIVE',
+            ]);
+
+            $structure = MultiCurriculumStructure::create([
+                'tenant_id' => $this->tenant->id,
+                'multi_curriculum_version_id' => $version->id,
+                'node_type' => 'FASE',
+                'code' => 'FASE-'.$code,
+                'title' => 'Fase '.$code,
+                'status' => 'ACTIVE',
+            ]);
+
+            for ($index = 1; $index <= 60; $index++) {
+                MultiLearningOutcome::create([
+                    'tenant_id' => $this->tenant->id,
+                    'multi_curriculum_structure_id' => $structure->id,
+                    'multi_curriculum_version_id' => $version->id,
+                    'code' => sprintf('%s-%03d', $code, $index),
+                    'outcome_type' => 'CP',
+                    'description' => 'Capaian '.$code.' '.$index,
+                    'status' => 'ACTIVE',
+                ]);
+            }
+
+            TenantCurriculumRegistration::create([
+                'tenant_id' => $this->tenant->id,
+                'multi_curriculum_version_id' => $version->id,
+                'curriculum_owner_id' => $this->tenant->id,
+                'status' => 'ACTIVE',
+                'registered_at' => $registeredAt,
+            ]);
+
+            $versions[] = $version;
+        }
+
+        $context = app(\\App\\Services\\TeacherPortal\\TeacherCurriculumContextService::class)
+            ->forTenant($this->tenant->id);
+
+        $this->assertSame(120, $context['counts']['CP']);
+        $this->assertCount(100, $context['outcomes']);
+        $this->assertSame('V1-060', $context['outcomes'][59]['code']);
+        $this->assertSame('V2-040', $context['outcomes'][99]['code']);
+
+        $this->actingAs($this->teacher);
+        Livewire::test(TeacherLearning::class)
+            ->assertSee('V2-040')
+            ->assertDontSee('V2-041');
+    }
+
     public function test_teacher_can_open_dedicated_assignments_page_with_tenant_scoped_history(): void
     {
         $this->actingAs($this->teacher);
