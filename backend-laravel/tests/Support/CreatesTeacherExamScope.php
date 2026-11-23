@@ -23,7 +23,7 @@ trait CreatesTeacherExamScope
      * Build the minimum real academic assignment needed for a Guru to access
      * an assessment and its exam participants through TeacherAccess.
      *
-     * @return array{academicYear: AcademicYear, semester: Semester, subject: Subject, rombel: Rombel}
+     * @return array{academicYear: AcademicYear, semester: Semester, subject: Subject, rombel: Rombel, assignment: TeacherSubjectAssignment}
      */
     protected function createTeacherExamScope(
         Tenant $tenant,
@@ -79,7 +79,7 @@ trait CreatesTeacherExamScope
             'user_id' => $teacher->id,
             'full_name' => $teacher->name,
         ]);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $subject->id,
@@ -100,6 +100,7 @@ trait CreatesTeacherExamScope
             'semester' => $semester,
             'subject' => $subject,
             'rombel' => $rombel,
+            'assignment' => $assignment,
         ];
     }
 
