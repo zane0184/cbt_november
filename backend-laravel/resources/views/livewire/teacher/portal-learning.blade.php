@@ -173,6 +173,18 @@
                                             @error('tpForms.' . $assignment->id . '.pm_principles') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                         </div>
                                         <div>
+                                            <p class="mb-2 text-xs font-bold text-navy-900">Olah Pikir, Hati, Rasa, Raga (pilih minimal satu)</p>
+                                            <div class="space-y-1.5">
+                                                @foreach(($context['deep_learning_olah'] ?? []) as $node)
+                                                    <label class="flex items-center gap-2 text-xs text-navy-800">
+                                                        <input type="checkbox" value="{{ $node['id'] }}" wire:model="tpForms.{{ $assignment->id }}.pm_olah" class="rounded border-cardBorder text-emerald-700 focus:ring-emerald-600">
+                                                        {{ $node['title'] }}
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                            @error('tpForms.' . $assignment->id . '.pm_olah') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                        </div>
+                                        <div>
                                             <p class="mb-2 text-xs font-bold text-navy-900">Kerangka Pembelajaran Mendalam (opsional)</p>
                                             <div class="space-y-1.5">
                                                 @foreach(($context['deep_learning_framework'] ?? []) as $node)
