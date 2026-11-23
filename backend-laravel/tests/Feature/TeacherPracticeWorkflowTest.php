@@ -342,7 +342,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('selectedRombelId', $this->rombel->id)
             ->set('selectedQuestionVersionIds', [$version->id])
-            ->set('startAt', now()->format('Y-m-d\TH:i'))
+            ->set('startAt', now()->addHour()->format('Y-m-d\TH:i'))
             ->set('endAt', now()->addDays(2)->format('Y-m-d\TH:i'))
             ->call('saveExam');
 
