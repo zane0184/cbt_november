@@ -49,6 +49,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['exam_id', 'room_id', 'session_number'], 'era_exam_room_session_unique');
+            $table->unique(['id', 'tenant_id'], 'era_id_tenant_unique');
             $table->unique(['id', 'exam_id', 'tenant_id'], 'era_id_exam_tenant_unique');
             $table->unique(['tenant_id', 'session_token'], 'era_tenant_token_unique');
             $table->index(['tenant_id', 'room_id', 'scheduled_start', 'scheduled_end'], 'era_room_schedule_idx');
