@@ -8,6 +8,7 @@ use App\Models\ExamQuestionSnapshot;
 use App\Models\MultiLearningOutcome;
 use App\Models\QuestionVersion;
 use App\Models\TeacherSubjectAssignment;
+use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
 use App\Models\TenantLearningOutcome;
 use Illuminate\Support\Facades\DB;
@@ -251,14 +252,37 @@ class ExamSnapshotService
                 ->with('version.source')
                 ->firstOrFail();
 
-            if (!$assessment->assessmentFunctionOption
-                || !$assessment->assessmentScopeOption
-                || !$assessment->instrumentTypeOption
-                || !$assessment->deliveryModeOption
-                || !$assessment->activity_name
+            $taxonomyOptions = [
+                [$assessment->assessmentFunctionOption, 'ASSESSMENT_FUNCTION'],
+                [$assessment->assessmentScopeOption, 'ASSESSMENT_SCOPE'],
+                [$assessment->instrumentTypeOption, 'INSTRUMENT_TYPE'],
+                [$assessment->deliveryModeOption, 'DELIVERY_MODE'],
+            ];
+
+            if (!$assessment->activity_name
                 || !$assessment->teacher_subject_assignment_id
-                || !$assessment->curriculum_context_snapshot) {
-                abort(422, 'Konteks taksonomi, penugasan, dan kurikulum asesmen belum lengkap.');
+                || !$assessment->curriculum_context_snapshot
+                || $assessment->assessment_taxonomy_owner_id !== Tenant::SYSTEM_TENANT_ID
+                || $assessment->assessment_origin !== 'INTERNAL' && $assessment->assessment_origin !== 'EXTERNAL'
+                || ($assessment->assessment_origin === 'EXTERNAL' && !$assessment->external_program_name)) {
+                abort(422, 'Konteks taksonomi, asal asesmen, penugasan, dan kurikulum asesmen belum lengkap.');
+            }
+
+            foreach ($taxonomyOptions as [$option, $dimension]) {
+                if (!$option
+                    || $option->tenant_id !== Tenant::SYSTEM_TENANT_ID
+                    || $option->dimension !== $dimension
+                    || $option->status !== 'ACTIVE'
+                    || !$option->is_official
+                    || $option->is_editable) {
+                    abort(422, 'Opsi taksonomi asesmen harus berasal dari registry resmi dan aktif.');
+                }
+            }
+
+            if ($assessment->assessment_type !== $assessment->assessmentFunctionOption->code
+                || $assessment->deliveryModeOption->code !== 'CBT'
+                || $assessment->instrumentTypeOption->code !== 'TEST') {
+                abort(422, 'Exam CBT hanya menerima asesmen berinstrumen tes dengan mode CBT dan fungsi sesuai taksonomi.');
             }
 
             $assessmentMappings = $assessment->curriculumMappings;
@@ -395,15 +419,15 @@ class ExamSnapshotService
                 if ($materialId) {
                     $questionMaterialIds = $cpMappings->pluck('material_id')
                         ->merge($outcomeMappings->pluck('material_id'))->unique()->filter()->values();
-                    if (!$questionMaterialIds->contains($materialId)) {
-                        abort(422, 'Materi pada soal tidak sesuai dengan materi asesmen.');
+                    if ($questionMaterialIds->count() !== 1 || !$questionMaterialIds->contains($materialId)) {
+                        abort(422, 'Seluruh pemetaan CP/TP/ATP soal harus memakai materi yang sama dengan asesmen.');
                     }
                 }
                 if ($topicId) {
                     $questionTopicIds = $cpMappings->pluck('material_topic_id')
                         ->merge($outcomeMappings->pluck('material_topic_id'))->unique()->filter()->values();
-                    if (!$questionTopicIds->contains($topicId)) {
-                        abort(422, 'Topik pada soal tidak sesuai dengan topik asesmen.');
+                    if ($questionTopicIds->count() !== 1 || !$questionTopicIds->contains($topicId)) {
+                        abort(422, 'Seluruh pemetaan CP/TP/ATP soal harus memakai topik yang sama dengan asesmen.');
                     }
                 }
 
