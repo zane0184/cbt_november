@@ -279,7 +279,7 @@ class ExamManagementHardeningTest extends TestCase
         $exam = Exam::where('title', 'Ujian Biologi 1 Soal')->first();
         $this->assertTrue((bool) $exam->fresh()->require_token);
         $this->assertNull($exam->fresh()->token);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'CREATE_EXAM', 'entity_id' => $exam->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'EXAM_CREATED', 'entity_id' => $exam->id]);
 
         // Even a legacy draft row with require_token=false must be corrected at publish.
         $exam->update(['require_token' => false]);
