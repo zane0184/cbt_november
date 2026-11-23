@@ -273,6 +273,21 @@ class StudentExamPortalTest extends TestCase
             ->assertSee('disabled', false);
     }
 
+    public function test_user_with_student_and_teacher_roles_cannot_enter_student_portal(): void
+    {
+        $this->student->roles()->attach(
+            Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru'])
+        );
+
+        $this->actingAs($this->student)
+            ->get(route('student.exams.index'))
+            ->assertForbidden();
+
+        $this->actingAs($this->student)
+            ->get(route('student.exams.show', $this->exam->id))
+            ->assertForbidden();
+    }
+
     public function test_user_with_admin_madrasah_role_cannot_enter_student_portal(): void
     {
         $this->student->roles()->attach(
