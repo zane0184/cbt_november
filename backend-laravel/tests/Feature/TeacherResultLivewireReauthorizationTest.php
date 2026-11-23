@@ -159,6 +159,7 @@ class TeacherResultLivewireReauthorizationTest extends TestCase
             'scoring_version' => 1,
         ]);
 
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $this->actingAs($this->teacher);
         $component = Livewire::test(AnalyticsDashboard::class, ['exam' => $this->exam]);
 
