@@ -192,6 +192,10 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
         // Record last_activity_at before reaching limit
         $initialActivityAt = $this->attemptA->fresh()->last_activity_at;
 
+        // Move the test clock forward so a valid heartbeat has a distinct
+        // persisted timestamp even when the suite runs within one wall-clock second.
+        $this->travel(1)->seconds();
+
         // Exhaust 30 heartbeat requests
         for ($i = 0; $i < 30; $i++) {
             $this->withToken($this->tokenA)->withHeaders(['X-Device-Binding-ID' => 'device-user-a', 'X-CBT-Fence-Generation' => (string) $this->attemptA->fence_generation])
