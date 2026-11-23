@@ -304,7 +304,9 @@ class MonitoringController extends Controller
 
             // Room Proctors see only audit events belonging to participants in their room.
             $eventsQuery->where('entity_type', 'ExamAttempt')
-                ->whereIn('entity_id', $visibleAttemptIds);
+                ->whereIn('entity_id', $visibleAttemptIds)
+                // Do not expose audit before/after payloads, device metadata, or request fingerprints to Proctors.
+                ->select(['id', 'user_id', 'action', 'entity_type', 'entity_id', 'created_at']);
         } else {
             $eventsQuery->where(function($q) use ($exam) {
                 $q->where(function($sq) use ($exam) {
