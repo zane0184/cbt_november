@@ -498,7 +498,19 @@ class ExamSnapshotTest extends TestCase
         $otherRombel = Rombel::create([
             'tenant_id' => $otherTenant->id,
             'academic_year_id' => $otherYear->id,
-            'grade_level_id' => $this->gradeLevel->id,
+            'grade_level_id' => GradeLevel::create([
+                'phase_id' => Phase::create([
+                    'curriculum_id' => Curriculum::create([
+                        'name' => 'Other tenant curriculum',
+                        'code' => 'OTH-CUR',
+                    ])->id,
+                    'name' => 'Fase A',
+                    'code' => 'A',
+                ])->id,
+                'name' => 'Kelas 1',
+                'code' => '1',
+                'level' => 1,
+            ])->id,
             'name' => 'Other 1A',
             'status' => 'ACTIVE',
         ]);
@@ -723,11 +735,16 @@ class ExamSnapshotTest extends TestCase
 
             if ($fixturesCommitted) {
                 DB::setDefaultConnection('mysql_concurrency');
+                // Test-only cleanup: canonical outcome fixtures hold restrictive
+                // composite FKs to the assignment. Disable checks only on this
+                // disposable secondary connection after all assertions are complete.
+                $connectionB->statement('SET FOREIGN_KEY_CHECKS=0');
                 $connectionB->table('teacher_subject_assignments')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
                 $connectionB->table('curricula')->where('id', $this->curriculum->id)->delete();
+                $connectionB->statement('SET FOREIGN_KEY_CHECKS=1');
                 $this->role->permissions()->detach();
                 $this->role->delete();
                 if ($this->createdPermissionNames !== []) {
