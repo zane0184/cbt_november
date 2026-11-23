@@ -160,9 +160,11 @@ jobs:
               getenv("DB_PASSWORD"),
               [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
-            $row = $pdo->query(
-              "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tenants'"
-            )->fetch(PDO::FETCH_ASSOC);
+            $stmt = $pdo->prepare(
+              "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?"
+            );
+            $stmt->execute(["tenants"]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
             if (strtoupper((string) ($row["ENGINE"] ?? "")) !== "INNODB") {
               fwrite(STDERR, "Disposable tenant table is missing or does not use InnoDB.\\n");
               exit(1);
