@@ -114,6 +114,8 @@ return new class extends Migration
 
         $this->addTeacherAssignmentCurriculumColumns();
         $this->addTeacherAssignmentContextUniqueIndex();
+        $this->addMaterialContextColumns();
+        $this->addMaterialTopicContextColumns();
 
         if (!Schema::hasTable('tenant_curriculum_subject_mappings')) {
             Schema::create('tenant_curriculum_subject_mappings', function (Blueprint $table): void {
@@ -436,6 +438,8 @@ return new class extends Migration
             ['academic_years', ['id', 'tenant_id'], 'academic_year_id_tenant_uq'],
             ['semesters', ['id', 'tenant_id'], 'semester_id_tenant_uq'],
             ['teacher_subject_assignments', ['id', 'tenant_id'], 'tsa_id_tenant_uq'],
+            ['phases', ['id', 'tenant_id'], 'phase_id_tenant_uq'],
+            ['grade_levels', ['id', 'tenant_id'], 'grade_level_id_tenant_uq'],
             ['users', ['id', 'tenant_id'], 'user_id_tenant_uq'],
         ];
 
@@ -571,6 +575,98 @@ return new class extends Migration
                 ['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'],
                 'tsa_assignment_context_uq'
             );
+        }
+    }
+
+    private function addMaterialContextColumns(): void
+    {
+        if (!Schema::hasTable('materials')) {
+            return;
+        }
+
+        Schema::table('materials', function (Blueprint $table): void {
+            $columns = [
+                'material_code' => fn () => $table->string('material_code', 100)->nullable(),
+                'version_code' => fn () => $table->string('version_code', 80)->default('1'),
+                'teacher_subject_assignment_id' => fn () => $table->uuid('teacher_subject_assignment_id')->nullable(),
+                'tenant_curriculum_registration_id' => fn () => $table->uuid('tenant_curriculum_registration_id')->nullable(),
+                'multi_curriculum_version_id' => fn () => $table->uuid('multi_curriculum_version_id')->nullable(),
+                'curriculum_owner_id' => fn () => $table->uuid('curriculum_owner_id')->nullable(),
+                'academic_year_id' => fn () => $table->uuid('academic_year_id')->nullable(),
+                'semester_id' => fn () => $table->uuid('semester_id')->nullable(),
+                'multi_curriculum_structure_id' => fn () => $table->uuid('multi_curriculum_structure_id')->nullable(),
+                'tenant_learning_outcome_id' => fn () => $table->uuid('tenant_learning_outcome_id')->nullable(),
+                'effective_from' => fn () => $table->date('effective_from')->nullable(),
+                'effective_until' => fn () => $table->date('effective_until')->nullable(),
+                'is_current' => fn () => $table->boolean('is_current')->default(true),
+                'supersedes_id' => fn () => $table->uuid('supersedes_id')->nullable(),
+                'metadata' => fn () => $table->json('metadata')->nullable(),
+            ];
+
+            foreach ($columns as $name => $create) {
+                if (!Schema::hasColumn('materials', $name)) {
+                    $create();
+                }
+            }
+        });
+
+        $this->addUniqueIndexIfMissing(
+            'materials',
+            ['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'],
+            'material_assignment_scope_uq'
+        );
+        $this->addUniqueIndexIfMissing(
+            'materials',
+            ['tenant_id', 'teacher_subject_assignment_id', 'material_code', 'version_code'],
+            'material_assignment_code_uq'
+        );
+
+        if (DB::getDriverName() !== 'sqlite') {
+            $this->addForeignKeyIfMissing('materials', ['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'material_assignment_scope_fk', 'teacher_subject_assignments', ['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['tenant_curriculum_registration_id', 'tenant_id'], 'material_reg_id_fk', 'tenant_curriculum_registrations', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'material_reg_triplet_fk', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['subject_id', 'tenant_id'], 'material_subject_owner_fk', 'subjects', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['phase_id', 'tenant_id'], 'material_phase_owner_fk', 'phases', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['grade_level_id', 'tenant_id'], 'material_grade_owner_fk', 'grade_levels', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['academic_year_id', 'tenant_id'], 'material_year_owner_fk', 'academic_years', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['semester_id', 'tenant_id'], 'material_semester_owner_fk', 'semesters', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['multi_curriculum_structure_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'material_structure_owner_fk', 'multi_curriculum_structures', ['id', 'multi_curriculum_version_id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'material_outcome_scope_fk', 'tenant_learning_outcomes', ['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['supersedes_id', 'tenant_id'], 'material_supersedes_fk', 'materials', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['created_by', 'tenant_id'], 'material_creator_owner_fk', 'users', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('materials', ['updated_by', 'tenant_id'], 'material_updater_owner_fk', 'users', ['id', 'tenant_id'], 'RESTRICT');
+        }
+    }
+
+    private function addMaterialTopicContextColumns(): void
+    {
+        if (!Schema::hasTable('material_topics')) {
+            return;
+        }
+
+        Schema::table('material_topics', function (Blueprint $table): void {
+            if (!Schema::hasColumn('material_topics', 'teacher_subject_assignment_id')) {
+                $table->uuid('teacher_subject_assignment_id')->nullable();
+            }
+            if (!Schema::hasColumn('material_topics', 'tenant_curriculum_registration_id')) {
+                $table->uuid('tenant_curriculum_registration_id')->nullable();
+            }
+            if (!Schema::hasColumn('material_topics', 'multi_curriculum_version_id')) {
+                $table->uuid('multi_curriculum_version_id')->nullable();
+            }
+            if (!Schema::hasColumn('material_topics', 'curriculum_owner_id')) {
+                $table->uuid('curriculum_owner_id')->nullable();
+            }
+            if (!Schema::hasColumn('material_topics', 'tenant_learning_outcome_id')) {
+                $table->uuid('tenant_learning_outcome_id')->nullable();
+            }
+        });
+
+        if (DB::getDriverName() !== 'sqlite') {
+            $this->addForeignKeyIfMissing('material_topics', ['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_assignment_scope_fk', 'teacher_subject_assignments', ['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('material_topics', ['tenant_curriculum_registration_id', 'tenant_id'], 'mt_reg_id_fk', 'tenant_curriculum_registrations', ['id', 'tenant_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('material_topics', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_reg_triplet_fk', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('material_topics', ['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'mt_outcome_scope_fk', 'tenant_learning_outcomes', ['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'RESTRICT');
         }
     }
 
