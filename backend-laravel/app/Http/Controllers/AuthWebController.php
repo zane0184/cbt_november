@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\LoginIdentityResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -56,6 +57,57 @@ class AuthWebController extends Controller
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
         }
 
+        // Serialize Web login with Attempt creation. A Siswa who already has
+        // an active Attempt must resume the bound session, not mint a second one.
+        $loginResult = DB::transaction(function () use ($user): array {
+            $lockedUser = User::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->whereKey($user->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedUser) {
+                return ['status' => 'INVALID'];
+            }
+
+            $tenantContext = app(TenantContext::class);
+            $previousTenantId = $tenantContext->getTenantId();
+            $tenantContextInstance = TenantContext::getInstance();
+            $previousInstanceTenantId = $tenantContextInstance?->getTenantId();
+            $tenantContext->setTenantId((string) $lockedUser->tenant_id);
+            $tenantContextInstance?->setTenantId((string) $lockedUser->tenant_id);
+
+            try {
+                $roleNames = $lockedUser->roles()->pluck('name');
+                if ($roleNames->count() !== 1
+                    || !in_array($roleNames->first(), ['ADMIN_MADRASAH', 'GURU', 'SISWA'], true)) {
+                    return ['status' => 'INVALID'];
+                }
+
+                if ($roleNames->first() === 'SISWA'
+                    && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
+                    return ['status' => 'ACTIVE_EXAM'];
+                }
+
+                return ['status' => 'OK', 'user' => $lockedUser];
+            } finally {
+                $tenantContext->setTenantId($previousTenantId);
+                $tenantContextInstance?->setTenantId($previousInstanceTenantId);
+            }
+        });
+
+        if ($loginResult['status'] === 'ACTIVE_EXAM') {
+            return back()->withErrors([
+                'identifier' => 'Ujian sedang aktif pada sesi/perangkat lain. Lanjutkan ujian dari sesi yang sama; hubungi Admin bila perangkat perlu dipulihkan.',
+            ])->withInput($request->only('identifier'));
+        }
+
+        if ($loginResult['status'] !== 'OK') {
+            RateLimiter::hit($throttleKey, 60);
+            return back()->withErrors(['identifier' => 'Identitas atau role pengguna tidak lagi valid.'])->withInput($request->only('identifier'));
+        }
+
+        $user = $loginResult['user'];
         RateLimiter::clear($throttleKey);
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
