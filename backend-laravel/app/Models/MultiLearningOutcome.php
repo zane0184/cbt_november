@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MultiLearningOutcome extends Model
@@ -26,9 +25,7 @@ class MultiLearningOutcome extends Model
         'status',
         'source_id', 'source_locator', 'effective_from', 'effective_until',
         'verification_status', 'verified_at', 'source_checksum', 'metadata',
-        'title', 'version_code', 'sequence_number', 'is_official', 'is_editable',
-        'parent_outcome_id', 'teacher_subject_assignment_id', 'academic_year_id',
-        'semester_id', 'author_user_id', 'supersedes_id',
+        'is_official', 'is_editable',
     ];
 
     protected static function boot(): void
@@ -71,7 +68,6 @@ class MultiLearningOutcome extends Model
         'effective_until' => 'date',
         'verified_at' => 'datetime',
         'metadata' => 'array',
-        'sequence_number' => 'integer',
         'is_official' => 'boolean',
         'is_editable' => 'boolean',
     ];
@@ -81,40 +77,5 @@ class MultiLearningOutcome extends Model
         return $this->belongsTo(CurriculumReferenceSource::class, 'source_id');
     }
 
-
-    public function parent(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'parent_outcome_id');
-    }
-
-    public function children(): HasMany
-    {
-        return $this->hasMany(self::class, 'parent_outcome_id');
-    }
-
-    public function assignment(): BelongsTo
-    {
-        return $this->belongsTo(TeacherSubjectAssignment::class, 'teacher_subject_assignment_id');
-    }
-
-    public function academicYear(): BelongsTo
-    {
-        return $this->belongsTo(AcademicYear::class, 'academic_year_id');
-    }
-
-    public function semester(): BelongsTo
-    {
-        return $this->belongsTo(Semester::class, 'semester_id');
-    }
-
-    public function author(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'author_user_id');
-    }
-
-    public function supersedes(): BelongsTo
-    {
-        return $this->belongsTo(self::class, 'supersedes_id');
-    }
 
 }
