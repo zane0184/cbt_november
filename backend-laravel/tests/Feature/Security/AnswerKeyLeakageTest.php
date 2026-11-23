@@ -262,6 +262,7 @@ class AnswerKeyLeakageTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->guru->id
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($vMatching, $this->canonicalContext);
         QuestionOption::create([
             'tenant_id' => $this->tenant->id,
             'question_version_id' => $vMatching->id,
@@ -309,23 +310,24 @@ class AnswerKeyLeakageTest extends TestCase
         }
     }
 
-    public function test_student_execution_does_not_leak_short_answer_and_essay_metadata_keys()
+    public function test_student_execution_does_not_leak_legacy_answer_metadata_keys()
     {
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenant->id);
 
         $subject = \App\Models\Subject::first();
-        $qShort = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
+        $qShort = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
         $vShort = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $qShort->id,
             'stem' => 'Capital of France?',
-            'question_type' => 'SHORT_ANSWER',
+            'question_type' => 'ESSAY',
             'default_points' => 10,
             'version_number' => 1,
             'status' => 'PUBLISHED',
             'created_by' => $this->guru->id
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($vShort, $this->canonicalContext);
 
         $this->exam->update(['status' => 'DRAFT', 'locked_at' => null]);
         app(ExamSnapshotService::class)->createSnapshots($this->exam, [$vShort->id]);
