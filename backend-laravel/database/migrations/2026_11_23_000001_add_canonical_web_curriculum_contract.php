@@ -439,6 +439,7 @@ return new class extends Migration
 
         $this->addAssessmentContextColumns();
         $this->addAssessmentCurriculumMappingsTable();
+        $this->addExamCurriculumSnapshotColumn();
         $this->addExamSnapshotColumns();
     }
 
@@ -687,6 +688,19 @@ return new class extends Migration
             $this->addForeignKeyIfMissing('material_topics', ['tenant_curriculum_registration_id', 'tenant_id'], 'mt_reg_id_fk', 'tenant_curriculum_registrations', ['id', 'tenant_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_reg_triplet_fk', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'mt_outcome_scope_fk', 'tenant_learning_outcomes', ['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'RESTRICT');
+        }
+    }
+
+    private function addExamCurriculumSnapshotColumn(): void
+    {
+        if (!Schema::hasTable('exams')) {
+            return;
+        }
+
+        if (!Schema::hasColumn('exams', 'assessment_context_snapshot')) {
+            Schema::table('exams', function (Blueprint $table): void {
+                $table->json('assessment_context_snapshot')->nullable();
+            });
         }
     }
 
