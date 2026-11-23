@@ -262,8 +262,9 @@ class StudentExamPortalTest extends TestCase
             ->get(route('student.exams.index'))
             ->assertOk()
             ->assertSee('2 / 2')
-            ->assertSee('Batas percobaan habis')
-            ->assertSee('Belum dapat dikerjakan');
+            ->assertSee('Selesai')
+            ->assertSee('Belum dapat dikerjakan')
+            ->assertDontSee('Buka Ujian');
 
         $this->actingAs($this->student)
             ->get(route('student.exams.show', $this->exam->id))
