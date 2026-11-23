@@ -71,6 +71,24 @@ class AuthTest extends TestCase
         $this->assertNotEmpty($response->json('data.token'));
     }
 
+    public function test_login_succeeds_when_system_global_tenant_exists(): void
+    {
+        // Production bootstrap intentionally creates SYSTEM_GLOBAL in addition
+        // to this installation's school tenant. Login must resolve the exact
+        // tenant bound to LocalInstallationIdentity, not count all tenants.
+        \Database\Seeders\SystemTenantSeeder::seed();
+
+        $response = $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'test-user',
+            'password' => 'password',
+            'device_name' => 'android',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.tenant_id', $this->tenant->id);
+    }
+
     public function test_login_failed_wrong_password()
     {
         $response = $this->postJson('/api/v1/auth/login', [
