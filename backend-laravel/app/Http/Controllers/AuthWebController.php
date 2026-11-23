@@ -14,16 +14,21 @@ use Illuminate\Support\Str;
 
 class AuthWebController extends Controller
 {
-    public function showLoginForm()
+    public function showLoginForm(Request $request)
     {
         if (Auth::check()) {
-            if (Auth::user()->hasRole('SUPER_ADMIN')) {
-                Auth::logout();
-                request()->session()->invalidate();
-                request()->session()->regenerateToken();
-            } else {
-                return $this->redirectForUser(Auth::user());
+            $user = Auth::user();
+            if ($user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA'])) {
+                return $this->redirectForUser($user);
             }
+
+            // Legacy, multi-role, and retired local identities must not remain
+            // authenticated or loop through a portal redirect.
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            TenantContext::getInstance()?->setTenantId(null);
+            app(TenantContext::class)->setTenantId(null);
         }
 
         return view('auth.login');
@@ -46,9 +51,7 @@ class AuthWebController extends Controller
             return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.'])->withInput($request->only('identifier'));
         }
 
-        $roles = $user->roles->pluck('name')->all();
-        $allowedRoles = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
-        if (count($roles) !== 1 || !in_array($roles[0], $allowedRoles, true)) {
+        if (!$user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA'])) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
         }
@@ -79,13 +82,13 @@ class AuthWebController extends Controller
 
     protected function redirectForUser(User $user)
     {
-        if ($user->hasRole('ADMIN_MADRASAH')) {
+        if ($user->hasExactRole('ADMIN_MADRASAH')) {
             return redirect('/admin/dashboard');
         }
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             return redirect('/guru/dashboard');
         }
-        if ($user->hasRole('SISWA')) {
+        if ($user->hasExactRole('SISWA')) {
             return redirect('/student/exams');
         }
 
