@@ -96,7 +96,6 @@ class AnswerKeyLeakageTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->guru->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
         $this->canonicalContext = $this->createCanonicalCurriculumContext($assignment, $this->guru, $assessment);
 
         $this->exam = Exam::create([
