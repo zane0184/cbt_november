@@ -349,10 +349,16 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
         // Now switch to userA2 (same tenant, but not owner of attempt)
         $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA2));
+        // The same test application issues multiple bearer-token requests. Reset
+        // the cached guard so this request is authenticated as the second user.
+        app('auth')->forgetGuards();
 
         // 1. Execution access
         $execRes = $this->withHeader('X-Device-Binding-ID', 'device-a2')
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
+        if ($execRes->status() !== 404) {
+            fwrite(STDERR, "FOREIGN_EXECUTION_RESPONSE=".$execRes->getContent().PHP_EOL);
+        }
         $execRes->assertStatus(404);
 
         // 2. Direct attempt show access: hide another participant's attempt.
