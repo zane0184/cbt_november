@@ -339,6 +339,7 @@ class TeacherCurriculumContextService
                 'title' => $outcome->title,
                 'description' => $outcome->description,
                 'version_code' => $outcome->version_code,
+                'sequence_number' => $outcome->sequence_number,
                 'status' => $outcome->status,
                 'parent_cp' => $outcome->parentCp?->code,
                 'parent_cp_id' => $outcome->parent_cp_id,
