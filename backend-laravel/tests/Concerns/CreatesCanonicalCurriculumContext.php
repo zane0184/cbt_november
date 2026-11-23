@@ -117,10 +117,11 @@ trait CreatesCanonicalCurriculumContext
 
             $suffix = substr(str_replace('-', '', (string) $assignment->id), 0, 12);
             $checksum = hash('sha256', 'cbt-phpunit-verified-cp-fixture:' . $suffix);
-            $cpSource = CurriculumReferenceSource::query()->create([
+            $cpSource = CurriculumReferenceSource::query()->firstOrCreate([
                 'tenant_id' => $systemTenantId,
-                'issuer' => 'CBT PHPUnit Fixture',
                 'document_number' => 'PHPUNIT-CP-' . $suffix,
+            ], [
+                'issuer' => 'CBT PHPUnit Fixture',
                 'title' => 'Synthetic verified CP fixture',
                 'document_version' => '1',
                 'effective_from' => now()->toDateString(),
@@ -131,11 +132,12 @@ trait CreatesCanonicalCurriculumContext
                 'metadata' => ['test_fixture' => true],
             ]);
 
-            $cp = MultiLearningOutcome::query()->create([
+            $cp = MultiLearningOutcome::query()->firstOrCreate([
                 'tenant_id' => $systemTenantId,
                 'multi_curriculum_version_id' => $version->id,
-                'multi_curriculum_structure_id' => $subjectStructure->id,
                 'code' => 'CP-PHPUNIT-' . $suffix,
+            ], [
+                'multi_curriculum_structure_id' => $subjectStructure->id,
                 'outcome_type' => 'CP',
                 'description' => 'Synthetic verified CP used only by PHPUnit fixtures.',
                 'status' => 'ACTIVE',
@@ -149,9 +151,11 @@ trait CreatesCanonicalCurriculumContext
                 'is_editable' => false,
             ]);
 
-            $tp = TenantLearningOutcome::query()->create([
+            $tp = TenantLearningOutcome::query()->firstOrCreate([
                 'tenant_id' => (string) $assignment->tenant_id,
                 'tenant_curriculum_registration_id' => $registration->id,
+                'code' => 'TP-PHPUNIT-' . $suffix,
+            ], [
                 'multi_curriculum_version_id' => $version->id,
                 'curriculum_owner_id' => $systemTenantId,
                 'subject_id' => $assignment->subject_id,
@@ -160,7 +164,6 @@ trait CreatesCanonicalCurriculumContext
                 'teacher_subject_assignment_id' => $assignment->id,
                 'parent_cp_id' => $cp->id,
                 'outcome_type' => 'TP',
-                'code' => 'TP-PHPUNIT-' . $suffix,
                 'title' => 'Synthetic TP fixture',
                 'description' => 'Synthetic TP linked to the verified PHPUnit CP fixture.',
                 'sequence_number' => 1,
