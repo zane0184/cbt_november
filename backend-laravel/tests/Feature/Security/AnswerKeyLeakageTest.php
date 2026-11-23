@@ -19,6 +19,7 @@ use App\Models\Semester;
 use App\Models\Subject;
 use App\Models\TeacherProfile;
 use App\Models\TeacherSubjectAssignment;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\Question;
@@ -291,6 +292,8 @@ class AnswerKeyLeakageTest extends TestCase
         $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
 
         $context->setTenantId(null);
+        // Ensure each request resolves the persisted Siswa bearer token, not a cached guard.
+        Auth::forgetGuards();
 
         $attemptResponse = $this->withToken($this->studentToken)
             ->withHeader('X-Device-Binding-ID', 'dev1')
@@ -393,6 +396,8 @@ class AnswerKeyLeakageTest extends TestCase
         $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
 
         $context->setTenantId(null);
+        // Ensure each request resolves the persisted Siswa bearer token, not a cached guard.
+        Auth::forgetGuards();
 
         $attemptResponse = $this->withToken($this->studentToken)
             ->withHeader('X-Device-Binding-ID', 'dev1')
