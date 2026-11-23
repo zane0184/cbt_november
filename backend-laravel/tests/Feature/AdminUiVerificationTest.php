@@ -26,10 +26,12 @@ use App\Livewire\Admin\ExamManagement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 class AdminUiVerificationTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenant;
     private $admin;
@@ -70,7 +72,7 @@ class AdminUiVerificationTest extends TestCase
         $this->student->roles()->attach($studentRole);
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'K-MERDEKA', 'is_active' => true]);
-        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase E', 'code' => 'E']);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase C', 'code' => 'C']);
         $this->academicYear = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
         $this->semester = Semester::create([
             'tenant_id' => $this->tenant->id,
@@ -78,10 +80,10 @@ class AdminUiVerificationTest extends TestCase
             'term' => 'GANJIL',
             'is_active' => true,
         ]);
-        $this->gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas X', 'code' => 'X', 'level' => 10]);
+        $this->gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 6', 'code' => '6', 'level' => 6]);
         $this->subject = Subject::create([
             'tenant_id' => $this->tenant->id,
-            'code' => 'MA-10',
+            'code' => 'MAT',
             'name' => 'Matematika',
             'short_name' => 'MTK',
             'status' => 'ACTIVE',
@@ -420,7 +422,7 @@ class AdminUiVerificationTest extends TestCase
             'name' => 'Kelas X-Guru',
             'status' => 'ACTIVE',
         ]);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subject->id,
@@ -428,13 +430,19 @@ class AdminUiVerificationTest extends TestCase
             'academic_year_id' => $this->academicYear->id,
             'semester_id' => $this->semester->id,
             'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYears(5)->toDateString(),
             'status' => 'ACTIVE',
             'created_by' => $guru->id,
         ]);
+        $canonicalContext = $this->createCanonicalCurriculumContext($assignment, $guru);
 
         $this->actingAs($guru);
 
         Livewire::test(QuestionBank::class)
+            ->set('selectedAssignmentId', $assignment->id)
+            ->set('selectedCpIds', [$canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$canonicalContext['tp']->id])
+            ->set('selectedSubjectId', $this->subject->id)
             ->set('questionCode', 'MTK-001')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
@@ -458,9 +466,12 @@ class AdminUiVerificationTest extends TestCase
     {
         $this->actingAs($this->admin);
 
-        Livewire::test(ExamManagement::class)
-            ->call('openCreateModal')
-            ->assertForbidden();
+        try {
+            Livewire::test(ExamManagement::class);
+            $this->fail('Admin Madrasah must not mount Guru exam management.');
+        } catch (\\Symfony\\Component\\HttpKernel\\Exception\\HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
 
         $this->assertDatabaseMissing('exams', [
             'tenant_id' => $this->tenant->id,
