@@ -94,3 +94,13 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 - Perbaikan kode aplikasi terbatas pada query pivot `role_user`, validasi batas Rombel Guru, dan isolasi rate limit heartbeat per user/credential. Penyesuaian selebihnya berupa fixture/helper/test sesuai kontrak akademik, snapshot, jadwal, auth token dan fencing.
 - Tidak ada perubahan production DB/migration, deployment VPS, merge PR atau pekerjaan di luar remediasi PHPUnit.
 - Status fokus: **SELESAI — FULL PHPUNIT HIJAU pada SHA di atas**. Revalidasi wajib jika source berubah setelah SHA tersebut.
+
+
+## Handover agent pengganti — 24 November 2026
+- Laporan handover lengkap: [HANDOVER_AGENT_BARU_LANJUTKAN_BUKAN_MENGULANG_2026-11-24.md](HANDOVER_AGENT_BARU_LANJUTKAN_BUKAN_MENGULANG_2026-11-24.md).
+- Prompt agent diperbarui: [PROMPT_AGENT_PENGGANTI_CBT_2026-11-24.md](PROMPT_AGENT_PENGGANTI_CBT_2026-11-24.md).
+- Entry point diperbarui: [AGENT_START_HERE.md](AGENT_START_HERE.md).
+- Pesan utama: agent baru wajib meneruskan pekerjaan tersisa, bukan mengulang. Full PHPUnit tetap CLOSED/GREEN pada SHA `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51`, CI #45243430635 (518 passed, 2,177 assertions, 0 failed). Jangan mengulang triage/patch/full suite tanpa pemicu sah.
+- Branch kerja saat handover dimulai: `work/solo-web-cbt-completion-20261123-execution`; HEAD terverifikasi sebelum pembaruan dokumen: `a8ad92d9a4319f87827291b6cc02419aab964db9`. Pembaruan dokumen ini menghasilkan commit baru; agent berikutnya wajib membaca HEAD terbaru dan tidak menganggap SHA lama sebagai HEAD aktif.
+- CI #45248980063 untuk commit dokumentasi sebelumnya cancelled karena tersupersesi; bukan regresi source. Baseline source green tetap dibuktikan oleh CI #45243430635.
+- Fokus lanjutan: Issue #20 ADM-01..ADM-23 berdasarkan source aktual, kemudian Web Siswa E2E, Web Guru E2E, kurikulum dan acceptance gates. Tidak ada merge/deploy/migration produksi tanpa approval owner.
