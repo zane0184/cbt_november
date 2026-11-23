@@ -113,6 +113,7 @@ return new class extends Migration
         $this->addMultiOutcomeProtectionColumns();
 
         $this->addTeacherAssignmentCurriculumColumns();
+        $this->addTeacherAssignmentContextUniqueIndex();
 
         if (!Schema::hasTable('tenant_curriculum_subject_mappings')) {
             Schema::create('tenant_curriculum_subject_mappings', function (Blueprint $table): void {
@@ -185,7 +186,7 @@ return new class extends Migration
 
                 $table->unique(['id', 'tenant_id'], 'tlo_id_tenant_uq');
                 $table->unique(
-                    ['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'],
+                    ['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'],
                     'tlo_id_scope_uq'
                 );
                 $table->unique(
@@ -230,6 +231,7 @@ return new class extends Migration
                 $table->uuid('id')->primary();
                 $table->uuid('tenant_id');
                 $table->uuid('tenant_learning_outcome_id');
+                $table->uuid('teacher_subject_assignment_id');
                 $table->uuid('tenant_curriculum_registration_id');
                 $table->uuid('multi_curriculum_version_id');
                 $table->uuid('curriculum_owner_id');
@@ -247,9 +249,12 @@ return new class extends Migration
                 );
                 $table->foreign('tenant_id', 'tlosm_tenant_fk')
                     ->references('id')->on('tenants')->onDelete('RESTRICT');
-                $table->foreign(['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'tlosm_outcome_scope_fk')
-                    ->references(['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                $table->foreign(['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'tlosm_outcome_scope_fk')
+                    ->references(['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'])
                     ->on('tenant_learning_outcomes')->onDelete('CASCADE');
+                $table->foreign(['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'tlosm_assignment_scope_fk')
+                    ->references(['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('teacher_subject_assignments')->onDelete('RESTRICT');
                 $table->foreign(['tenant_curriculum_registration_id', 'tenant_id'], 'tlosm_reg_id_fk')
                     ->references(['id', 'tenant_id'])->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
                 $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'tlosm_reg_triplet_fk')
@@ -268,6 +273,7 @@ return new class extends Migration
                 $table->uuid('id')->primary();
                 $table->uuid('tenant_id');
                 $table->uuid('question_version_id');
+                $table->uuid('teacher_subject_assignment_id');
                 $table->uuid('tenant_curriculum_registration_id');
                 $table->uuid('multi_curriculum_version_id');
                 $table->uuid('curriculum_owner_id');
@@ -293,6 +299,9 @@ return new class extends Migration
                     ->references('id')->on('tenants')->onDelete('RESTRICT');
                 $table->foreign(['question_version_id', 'tenant_id'], 'qvcm_question_owner_fk')
                     ->references(['id', 'tenant_id'])->on('question_versions')->onDelete('CASCADE');
+                $table->foreign(['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvcm_assignment_scope_fk')
+                    ->references(['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('teacher_subject_assignments')->onDelete('RESTRICT');
                 $table->foreign(['tenant_curriculum_registration_id', 'tenant_id'], 'qvcm_reg_id_fk')
                     ->references(['id', 'tenant_id'])->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
                 $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvcm_reg_triplet_fk')
@@ -344,13 +353,16 @@ return new class extends Migration
                     ->references('id')->on('tenants')->onDelete('RESTRICT');
                 $table->foreign(['question_version_id', 'tenant_id'], 'qvtom_question_owner_fk')
                     ->references(['id', 'tenant_id'])->on('question_versions')->onDelete('CASCADE');
+                $table->foreign(['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvtom_assignment_scope_fk')
+                    ->references(['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('teacher_subject_assignments')->onDelete('RESTRICT');
                 $table->foreign(['tenant_curriculum_registration_id', 'tenant_id'], 'qvtom_reg_id_fk')
                     ->references(['id', 'tenant_id'])->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
                 $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvtom_reg_triplet_fk')
                     ->references(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
                     ->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
-                $table->foreign(['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvtom_outcome_scope_fk')
-                    ->references(['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                $table->foreign(['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'qvtom_outcome_scope_fk')
+                    ->references(['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'])
                     ->on('tenant_learning_outcomes')->onDelete('RESTRICT');
                 $table->foreign(['material_id', 'tenant_id'], 'qvtom_material_owner_fk')
                     ->references(['id', 'tenant_id'])->on('materials')->onDelete('RESTRICT');
@@ -391,6 +403,9 @@ return new class extends Migration
                     ->references('id')->on('tenants')->onDelete('RESTRICT');
                 $table->foreign(['question_version_id', 'tenant_id'], 'qvsm_question_owner_fk')
                     ->references(['id', 'tenant_id'])->on('question_versions')->onDelete('CASCADE');
+                $table->foreign(['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvsm_assignment_scope_fk')
+                    ->references(['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('teacher_subject_assignments')->onDelete('RESTRICT');
                 $table->foreign(['tenant_curriculum_registration_id', 'tenant_id'], 'qvsm_reg_id_fk')
                     ->references(['id', 'tenant_id'])->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
                 $table->foreign(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvsm_reg_triplet_fk')
@@ -545,6 +560,20 @@ return new class extends Migration
         }
     }
 
+    private function addTeacherAssignmentContextUniqueIndex(): void
+    {
+        if (Schema::hasTable('teacher_subject_assignments')
+            && Schema::hasColumn('teacher_subject_assignments', 'tenant_curriculum_registration_id')
+            && Schema::hasColumn('teacher_subject_assignments', 'multi_curriculum_version_id')
+            && Schema::hasColumn('teacher_subject_assignments', 'curriculum_owner_id')) {
+            $this->addUniqueIndexIfMissing(
+                'teacher_subject_assignments',
+                ['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'],
+                'tsa_assignment_context_uq'
+            );
+        }
+    }
+
     private function addAssessmentContextColumns(): void
     {
         if (!Schema::hasTable('assessments')) {
@@ -558,6 +587,7 @@ return new class extends Migration
                 'instrument_type_option_id',
                 'delivery_mode_option_id',
                 'assessment_taxonomy_owner_id',
+                'teacher_subject_assignment_id',
                 'curriculum_version_id',
                 'curriculum_owner_id',
                 'tenant_curriculum_registration_id',
@@ -588,6 +618,7 @@ return new class extends Migration
             $this->addForeignKeyIfMissing('assessments', ['assessment_taxonomy_owner_id'], 'assess_tax_owner_fk', 'tenants', ['id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('assessments', ['tenant_curriculum_registration_id', 'tenant_id'], 'assess_curr_reg_id_fk', 'tenant_curriculum_registrations', ['id', 'tenant_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('assessments', ['tenant_id', 'curriculum_version_id', 'curriculum_owner_id'], 'assess_curr_reg_triplet_fk', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
+            $this->addForeignKeyIfMissing('assessments', ['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'curriculum_version_id', 'curriculum_owner_id'], 'assess_assignment_scope_fk', 'teacher_subject_assignments', ['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
         }
     }
 
