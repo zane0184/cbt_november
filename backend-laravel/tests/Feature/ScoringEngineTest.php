@@ -18,12 +18,14 @@ use App\Services\ScoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\CreatesTeacherExamScope;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 use Illuminate\Support\Str;
 
 class ScoringEngineTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesTeacherExamScope;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenant;
     private $teacher;
@@ -52,6 +54,7 @@ class ScoringEngineTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($scope['assignment'], $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
