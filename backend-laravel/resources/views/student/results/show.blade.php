@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Hasil Ujian - CBT Madrasah</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
     <header class="bg-slate-900 text-white shadow">
