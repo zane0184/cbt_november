@@ -173,3 +173,26 @@ Tidak ada source runtime, migration, database produksi, VPS, atau deployment yan
 7. Perbarui laporan dan checkpoint setelah setiap tahap dengan exact source SHA, backup hash, workflow run, dan hasil.
 
 **Batas:** PR #21 tetap Draft/unmerged. Tidak ada migration produksi, perubahan DB produksi, deployment, atau klaim siap ujian/produksi/distribusi.
+
+
+## 9. PENGUJIAN — refresh exact HEAD PR #13 dan PR #19 (23 November 2026)
+
+### Web Siswa Agent 4 — PR #13
+- Exact PR HEAD: `9ef375c407b1faf606c5a268f00b24424d93be9e`.
+- Workflow run: [#45110617970](https://github.com/zane0184/cbt_november/actions/runs/45110617970) — SUCCESS pada exact HEAD.
+- Job `runner-static-audit`: SUCCESS. Static checks meliputi local CSS/no CDN, JS parse, unique IDs, IndexedDB v2, accessibility semantics, durability/conflict/submit barriers, auth-session fencing/heartbeat/media, receipt verification, timer, mobile-first, copy deterrent.
+- Chromium browser E2E: semua skenario pada runner lulus, mencakup mobile/desktop layout, touch target/drawer, answer save/submit, exact retry/receipt mismatch, fail-closed IndexedDB/fencing, token normalization, question types, Arabic/RTL, heartbeat, media MIME/size/auth, reconnect ordering, IndexedDB reload/migration, conflict recovery, expiry, dan unknown submit.
+- WebKit engine compatibility E2E (Safari-engine proxy): SUCCESS. Ini bukan pengujian iPhone/iPad fisik atau iOS Safari operasional.
+- Job `student-results-feature`: SUCCESS pada disposable MySQL 8. Hasil:
+  - StudentResultVisibilityTest: 7 passed / 22 assertions.
+  - StudentExamPortalTest: 10 passed / 47 assertions.
+  - StudentWebLoginTest: 12 passed / 88 assertions.
+  - Total ketiga suite: 29 passed / 157 assertions.
+- Batas: Browser E2E tetap memodelkan API dengan mock. Browser-to-real-Laravel integration untuk semua endpoint Attempt/Answer/Lease/Media/Submit belum terbukti.
+
+### Web Guru — PR #19
+- Exact PR HEAD: `71296ca6e7c48b7295455a26d38bda11b901eb1d`.
+- Workflow run: [#45112459424](https://github.com/zane0184/cbt_november/actions/runs/45112459424) — SUCCESS pada exact HEAD.
+- PHPUnit: 118 passed / 520 assertions.
+- PHP lint, route registration, Composer validation/locked install/platform checks, disposable MySQL 8, dan pemeriksaan tabel InnoDB: PASS.
+- Bukti ini menutup selected Web Guru foundation suite pada exact PR HEAD, bukan keseluruhan acceptance portal. DOCX, provenance QuestionVersion→snapshot, materi/topik, Pembelajaran Mendalam/8 DPL, browser visual QA, concurrency/load dan UAT tetap terbuka.
