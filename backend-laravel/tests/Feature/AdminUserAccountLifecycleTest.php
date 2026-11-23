@@ -64,6 +64,21 @@ class AdminUserAccountLifecycleTest extends TestCase
         return $user;
     }
 
+    private function makeLocalIdentity(): LocalInstallationIdentity
+    {
+        return LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => (string) Str::uuid(),
+            'key_id' => 'lifecycle-key-'.Str::lower(Str::random(12)),
+            'public_key' => 'lifecycle-public-key',
+            'encrypted_private_key' => 'lifecycle-encrypted-private-key',
+            'key_fingerprint' => hash('sha256', 'lifecycle-public-key'),
+            'registered_domain' => 'lifecycle.example.test',
+            'product_code' => 'CBT-MI',
+            'product_version' => '1.0.0',
+        ]);
+    }
+
     private function makeActiveAttemptFixture(User $student): array
     {
         $year = \App\Models\AcademicYear::create([
@@ -208,7 +223,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertStringNotContainsString($temporaryPassword, $logAfter);
 
         // Verify the pre-reset Sanctum token and pre-reset Web session cannot be reused.
-        Auth::logout();
+        Auth::guard('web')->logout();
         $this->actingAs($teacher->fresh())->withSession(['account_auth_version' => 1])
             ->get('/guru/dashboard')->assertRedirect('/login');
         Auth::logout();
