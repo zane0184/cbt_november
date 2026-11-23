@@ -370,6 +370,12 @@ class ExamSnapshotService
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                // Fail closed for legacy SHORT_ANSWER rows: accepted answers are not
+                // yet captured in the immutable snapshot and cannot be scored safely.
+                if ($version->question_type === 'SHORT_ANSWER') {
+                    abort(422, 'SHORT_ANSWER belum dapat dimasukkan ke ujian sampai accepted answers tersimpan di immutable snapshot dan scoring teruji.');
+                }
+
                 $cpMappings = $version->curriculumMappings
                     ->where('teacher_subject_assignment_id', $assignment->id)
                     ->values();
