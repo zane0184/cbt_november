@@ -79,10 +79,6 @@ class UserManagement extends Component
     {
         $this->authorizeUserManagement();
         $this->validate();
-        if ($this->selectedRole === 'GURU' && trim($this->nip) === '' && trim($this->nik) === '') {
-            $this->addError('nip', 'Guru wajib memiliki NIP atau NIK untuk identitas login.');
-            return;
-        }
         $tenantId = auth()->user()->tenant_id;
         DB::transaction(function () use ($tenantId): void {
             $user = User::create([
