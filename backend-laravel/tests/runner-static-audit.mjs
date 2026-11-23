@@ -9,6 +9,24 @@ const backendRoot = resolve(here, '..');
 const bladePath = join(backendRoot, 'resources/views/student/exams/show.blade.php');
 const html = readFileSync(bladePath, 'utf8');
 
+const portalViewPaths = [
+  join(backendRoot, 'resources/views/auth/login.blade.php'),
+  join(backendRoot, 'resources/views/student/exams/index.blade.php'),
+  bladePath,
+  join(backendRoot, 'resources/views/student/results/show.blade.php')
+];
+const localPortalCssPath = join(backendRoot, 'public/css/student-portal.css');
+const localPortalCss = readFileSync(localPortalCssPath, 'utf8');
+assert.ok(localPortalCss.length > 5000, 'Local Web Siswa stylesheet must contain the checked-in utility subset');
+for (const viewPath of portalViewPaths) {
+  const view = readFileSync(viewPath, 'utf8');
+  assert.ok(!view.includes('cdn.tailwindcss.com'), 'Web Siswa view must not load Tailwind CDN: ' + viewPath);
+  assert.ok(!view.includes('fonts.googleapis.com'), 'Web Siswa view must not load remote Google Fonts: ' + viewPath);
+  assert.ok(view.includes("asset('css/student-portal.css')"), 'Web Siswa view must load the local stylesheet: ' + viewPath);
+}
+assert.ok(localPortalCss.includes('.bg-slate-100') && localPortalCss.includes('.runner-layout'), 'Local stylesheet must include portal and runner styling');
+console.log('PASS: login, exam list, exam runner, and results use local CSS without CDN');
+
 const inlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
   .filter((match) => !/\bsrc\s*=/.test(match[1]));
 assert.equal(inlineScripts.length, 1, 'Runner must contain exactly one inline application script');
