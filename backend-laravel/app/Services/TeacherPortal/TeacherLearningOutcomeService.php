@@ -28,6 +28,7 @@ class TeacherLearningOutcomeService
     ): TenantLearningOutcome {
         $user = auth()->user();
         $profile = app(TeacherPortalAccess::class)->profile($user);
+        abort_unless($user->hasPermission('curriculum.manage'), 403, 'Akun Guru tidak memiliki izin mengembangkan TP/ATP.');
         $tenantId = (string) $user->tenant_id;
 
         return DB::transaction(function () use (
