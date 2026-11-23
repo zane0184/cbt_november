@@ -211,3 +211,15 @@ Laporan tahap terbaru: [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHA
 5. Inventaris ADM-01–ADM-23 dan lanjutkan Admin.
 6. Selesaikan read-model kurikulum/laporan agar satu ekosistem terhubung hingga hasil historis.
 7. PR #21 tetap Draft; tidak ada merge, produksi, VPS, Android build, atau ZIP distribusi.
+
+
+## Addendum Koordinasi — 23 November 2026 (recheck agent penerus)
+
+Laporan rekonsiliasi terbaru: [REPORT_KOORDINASI_REKONSILIASI_2026-11-23.md](REPORT_KOORDINASI_REKONSILIASI_2026-11-23.md).
+
+- PR #21 tetap OPEN/DRAFT/UNMERGED; branch kerja `work/solo-web-cbt-completion-20261123`; HEAD saat laporan `b34904ce0f087cda2c4cbcd8d7c75ea824840177`.
+- Tenant Backend CI #45154028522 untuk HEAD tersebut sedang berjalan; job MySQL masih inisialisasi. Agent 4 #45154028554 masih pending. Run exact HEAD sebelumnya dibatalkan. Jangan klaim PASS sebelum hasil exact SHA tersedia.
+- Source statis terverifikasi: resolver sudah mengikat LocalInstallationIdentity dan exact-one tiga role; ExamAttempt sudah mendukung token opsional dan AttemptDeviceLeaseService; ExamAnswer sudah mengembalikan client_request_id dalam receipt baru/replay dan mengunci Attempt lebih dahulu.
+- Gap kurikulum/laporan tetap terbuka: CurriculumAnalyticsController masih memakai achievement/model legacy; hubungan output laporan dengan curriculum_context_snapshot QuestionVersion/Exam belum terbukti.
+- Tidak ada source runtime berubah, tidak ada patch duplikat, tidak ada migration, merge, deployment, atau ZIP.
+- Next: ambil hasil CI, lanjut matriks ADM-01–ADM-23, lalu audit canonical historical reporting contract. Android dan Web Super Admin tetap deferred sampai Juni 2027.
