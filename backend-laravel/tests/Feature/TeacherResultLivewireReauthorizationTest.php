@@ -10,6 +10,8 @@ use App\Livewire\Teacher\ResultList;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
+use App\Models\ExamAttemptScore;
+use App\Models\ExamAttemptScoreCurrent;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -137,6 +139,26 @@ class TeacherResultLivewireReauthorizationTest extends TestCase
 
     public function test_analytics_dashboard_rechecks_policy_after_livewire_mount(): void
     {
+        $score = ExamAttemptScore::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'attempt_id' => $this->attempt->id,
+            'student_id' => $this->attempt->participant->user_id,
+            'raw_score' => 80,
+            'max_score' => 100,
+            'percentage' => 80,
+            'scoring_version' => 1,
+            'grading_status' => 'FINALIZED',
+            'calculated_at' => now(),
+            'finalized_at' => now(),
+        ]);
+        ExamAttemptScoreCurrent::create([
+            'tenant_id' => $this->tenant->id,
+            'attempt_id' => $this->attempt->id,
+            'current_score_id' => $score->id,
+            'scoring_version' => 1,
+        ]);
+
         $this->actingAs($this->teacher);
         $component = Livewire::test(AnalyticsDashboard::class, ['exam' => $this->exam]);
 
