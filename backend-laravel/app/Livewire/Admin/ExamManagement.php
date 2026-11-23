@@ -32,8 +32,8 @@ class ExamManagement extends Component
     public function mount()
     {
         $user = auth()->user();
-        if (!$user || !$user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'OPERATOR', 'GURU'])->exists()) {
-            abort(403, 'Akses ditolak. Anda tidak memiliki izin untuk mengakses manajemen ujian.');
+        if (!$user || !$user->hasRole('GURU')) {
+            abort(403, 'Akses ditolak. Manajemen ujian hanya tersedia bagi Guru.');
         }
     }
 
