@@ -22,6 +22,23 @@ class CurriculumAnalyticsController extends Controller
     ) {}
 
     /**
+     * Achievement analytics expose derived student scores/statuses. They are
+     * available only to an exactly-one-role Guru with report.view; Admin
+     * Madrasah remains limited to administrative reports and cannot inspect
+     * student achievement/grade data through these endpoints.
+     */
+    private function authorizeGuruCurriculumAnalytics(Request $request): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user && $user->hasExactRole('GURU') && $user->hasPermission('report.view'),
+            403,
+            'Capaian pembelajaran hanya dapat diakses Guru sesuai kewenangan laporan.'
+        );
+    }
+
+    /**
      * Curriculum achievements summary for a student.
      */
     public function studentAnalytics(Request $request, User $student)
@@ -125,9 +142,7 @@ class CurriculumAnalyticsController extends Controller
             abort(403, 'Unauthorized tenant access.');
         }
 
-        if (!$request->user()->hasRole('ADMIN_MADRASAH') && !$request->user()->hasRole('GURU')) {
-            abort(403, 'Unauthorized role access.');
-        }
+        $this->authorizeGuruCurriculumAnalytics($request);
 
         $subjectId = $request->query('subject_id');
         $academicYearId = $request->query('academic_year_id');
@@ -213,9 +228,7 @@ class CurriculumAnalyticsController extends Controller
             abort(403, 'Unauthorized tenant access.');
         }
 
-        if (!$request->user()->hasRole('ADMIN_MADRASAH') && !$request->user()->hasRole('GURU')) {
-            abort(403, 'Unauthorized role access.');
-        }
+        $this->authorizeGuruCurriculumAnalytics($request);
 
         $tenantId = $subject->tenant_id;
         $tpQuery = TpAchievement::where('subject_id', $subject->id)
@@ -267,9 +280,7 @@ class CurriculumAnalyticsController extends Controller
             abort(403, 'Unauthorized tenant access.');
         }
 
-        if (!$request->user()->hasRole('ADMIN_MADRASAH') && !$request->user()->hasRole('GURU')) {
-            abort(403, 'Unauthorized role access.');
-        }
+        $this->authorizeGuruCurriculumAnalytics($request);
 
         $tenantId = $tp->tenant_id;
 
