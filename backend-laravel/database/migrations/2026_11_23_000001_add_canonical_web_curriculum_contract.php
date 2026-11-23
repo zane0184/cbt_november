@@ -507,7 +507,7 @@ return new class extends Migration
             $this->addForeignKeyIfMissing(
                 $tableName,
                 ['source_id', 'tenant_id'],
-                substr($tableName, 0, 12) . '_source_owner_fk',
+                $tableName . '_source_owner_fk',
                 'curriculum_reference_sources',
                 ['id', 'tenant_id'],
                 'RESTRICT'
