@@ -60,8 +60,9 @@ class AuthWebController extends Controller
         // Serialize Web login with Attempt creation. A Siswa who already has
         // an active Attempt must resume the bound session, not mint a second one.
         $loginResult = DB::transaction(function () use ($user): array {
-            $lockedUser = User::query()
+            $lockedUser = User::withoutGlobalScopes()
                 ->where('tenant_id', $user->tenant_id)
+                ->whereNull('deleted_at')
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->first();
