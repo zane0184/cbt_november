@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\Exam;
-use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Support\Security\TeacherAccess;
 
@@ -235,7 +234,8 @@ class ExamPolicy
 
     public function viewExamResults(User $user, Exam $exam): bool
     {
-        return app(\App\Policies\ReportPolicy::class)->viewExamResults($user, $exam);
+        return !$this->isAssignedRoomProctor($user, $exam)
+            && app(\App\Policies\ReportPolicy::class)->viewExamResults($user, $exam);
     }
 
     public function publishResults(User $user, Exam $exam): bool
