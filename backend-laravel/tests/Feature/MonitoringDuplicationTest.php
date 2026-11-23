@@ -9,6 +9,17 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\AcademicYear;
+use App\Models\Semester;
+use App\Models\Subject;
+use App\Models\Curriculum;
+use App\Models\Phase;
+use App\Models\GradeLevel;
+use App\Models\Rombel;
+use App\Models\TeacherProfile;
+use App\Models\StudentProfile;
+use App\Models\TeacherSubjectAssignment;
+use App\Models\Role;
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,7 +39,7 @@ class MonitoringDuplicationTest extends TestCase
         $this->tenant = Tenant::create(['name' => 'T1', 'code' => 'T1']);
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
         $this->teacher = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru', 'email' => 'guru@e.com', 'password' => 'p']);
-        $guruRole = \\App\\Models\\Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $this->teacher->roles()->attach($guruRole);
 
         $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'S1', 'email' => 's@e.com', 'password' => 'p']);
