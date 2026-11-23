@@ -24,7 +24,7 @@ Branch kerja: `work/web-admin-remediation-20261123`
 
 File source diubah:
 1. `backend-laravel/app/Livewire/Admin/Dashboard.php` — menghapus query dan data total ujian.
-2. `backend-laravel/resources/views/livewire/admin/dashboard.blade.php` — menghapus kartu Total Ujian dan tautan daftar ujian generik.
+2. `backend-laravel/resources/views/livewire/admin/dashboard.blade.php` — menghapus kartu Total Ujian dan tautan daftar ujian generik; menyesuaikan grid menjadi 5 kartu dan 3 aksi agar tidak menyisakan kolom kosong.
 3. `backend-laravel/app/Livewire/Admin/ExamManagement.php` — mount hanya mengizinkan Guru.
 4. `backend-laravel/app/Policies/ExamPolicy.php` — menghapus hak baca umum Admin pada daftar ujian.
 5. `backend-laravel/app/Livewire/Admin/ProctorAssignmentManagement.php` — menghapus penerimaan role OPERATOR; hanya ADMIN_MADRASAH.
