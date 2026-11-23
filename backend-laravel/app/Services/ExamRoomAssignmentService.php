@@ -53,9 +53,15 @@ class ExamRoomAssignmentService
             if ($sessionNumber < 1 || !$start->lt($end)) {
                 throw ValidationException::withMessages(['scheduledStart' => 'Nomor sesi dan rentang jadwal tidak valid.']);
             }
-            if (($lockedExam->start_at && $start->lt($lockedExam->start_at))
-                || ($lockedExam->end_at && $end->gt($lockedExam->end_at))) {
-                throw ValidationException::withMessages(['scheduledEnd' => 'Jadwal ruang harus berada dalam rentang waktu ujian.']);
+            if (!$lockedExam->start_at || !$lockedExam->end_at) {
+                throw ValidationException::withMessages([
+                    'exam' => 'Ujian terpusat wajib memiliki waktu mulai dan selesai sebelum ruang/sesi dapat ditetapkan.',
+                ]);
+            }
+            if ($start->lt($lockedExam->start_at) || $end->gt($lockedExam->end_at)) {
+                throw ValidationException::withMessages([
+                    'scheduledEnd' => 'Seluruh rentang jadwal ruang harus berada di dalam rentang waktu ujian.',
+                ]);
             }
 
             $lockedRoom = Room::query()->where('tenant_id', $tenantId)
