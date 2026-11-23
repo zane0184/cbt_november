@@ -3,12 +3,17 @@
 namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
+use App\Models\Assessment;
 use App\Models\Exam;
+use App\Models\ExamAttempt;
 use App\Models\Role;
 use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Policies\AssessmentPolicy;
+use App\Policies\ExamAttemptPolicy;
 use App\Policies\ExamPolicy;
+use App\Policies\QuestionPolicy;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -123,6 +128,28 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->guruA)->get('/student/exams')->assertForbidden();
         $this->actingAs($this->legacyOperator)->get('/student/exams')->assertForbidden();
         $this->actingAs($this->multiRoleSiswaA)->get('/student/exams')->assertForbidden();
+    }
+
+    public function test_retired_roles_and_multi_role_users_are_denied_by_policy_layer(): void
+    {
+        $assessment = new Assessment();
+        $assessment->tenant_id = $this->tenantA->id;
+
+        $attempt = new ExamAttempt();
+        $attempt->tenant_id = $this->tenantA->id;
+
+        $assessmentPolicy = app(AssessmentPolicy::class);
+        $attemptPolicy = app(ExamAttemptPolicy::class);
+        $examPolicy = app(ExamPolicy::class);
+        $questionPolicy = app(QuestionPolicy::class);
+
+        $this->assertFalse($assessmentPolicy->viewAny($this->legacyKamad));
+        $this->assertFalse($assessmentPolicy->view($this->legacyKamad, $assessment));
+        $this->assertFalse($attemptPolicy->view($this->legacyKamad, $attempt));
+        $this->assertFalse($attemptPolicy->viewScore($this->legacyKamad, $attempt));
+        $this->assertFalse($examPolicy->viewAny($this->legacyProktor));
+        $this->assertFalse($questionPolicy->viewAny($this->multiRoleAdminA));
+        $this->assertFalse($examPolicy->viewAny($this->multiRoleAdminA));
     }
 
     public function test_admin_has_read_only_exam_register_access_and_no_teacher_cbt_operations(): void
