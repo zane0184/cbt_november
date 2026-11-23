@@ -291,9 +291,18 @@ class TeacherMaterialManagement extends Component
             ->where('tenant_id', $tenantId)
             ->where('teacher_subject_assignment_id', $this->selectedAssignmentId)
             ->whereKey($materialId)
+            ->with('learningOutcome')
             ->firstOrFail();
 
         $assignment = $this->activeAssignment($material->teacher_subject_assignment_id);
+        if ($material->tenant_learning_outcome_id
+            && (!$material->learningOutcome
+                || $material->learningOutcome->status !== 'PUBLISHED'
+                || !$material->learningOutcome->is_current)) {
+            throw ValidationException::withMessages([
+                'selectedMaterialOutcomeId' => 'TP/ATP yang dipetakan ke materi tidak lagi terpublikasi atau bukan versi terkini.',
+            ]);
+        }
         $before = $material->only(['status', 'is_current']);
         $material->update(['status' => 'PUBLISHED', 'is_current' => true]);
 
@@ -316,9 +325,22 @@ class TeacherMaterialManagement extends Component
 
         $topic = MaterialTopic::query()
             ->where('tenant_id', $tenantId)
-            ->whereHas('material', fn ($query) => $query->where('teacher_subject_assignment_id', $this->selectedAssignmentId))
+            ->whereHas('material', fn ($query) => $query
+                ->where('teacher_subject_assignment_id', $this->selectedAssignmentId)
+                ->where('status', 'PUBLISHED'))
             ->whereKey($topicId)
+            ->with(['material', 'learningOutcome'])
             ->firstOrFail();
+
+        $this->activeAssignment($topic->teacher_subject_assignment_id);
+        if ($topic->tenant_learning_outcome_id
+            && (!$topic->learningOutcome
+                || $topic->learningOutcome->status !== 'PUBLISHED'
+                || !$topic->learningOutcome->is_current)) {
+            throw ValidationException::withMessages([
+                'selectedTopicOutcomeId' => 'TP/ATP yang dipetakan ke topik tidak lagi terpublikasi atau bukan versi terkini.',
+            ]);
+        }
 
         $before = $topic->only(['status']);
         $topic->update(['status' => 'PUBLISHED']);
