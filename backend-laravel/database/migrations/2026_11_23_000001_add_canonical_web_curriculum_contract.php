@@ -114,8 +114,6 @@ return new class extends Migration
 
         $this->addTeacherAssignmentCurriculumColumns();
         $this->addTeacherAssignmentContextUniqueIndex();
-        $this->addMaterialContextColumns();
-        $this->addMaterialTopicContextColumns();
 
         if (!Schema::hasTable('tenant_curriculum_subject_mappings')) {
             Schema::create('tenant_curriculum_subject_mappings', function (Blueprint $table): void {
@@ -227,6 +225,11 @@ return new class extends Migration
                     ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
+
+        // Materials and topics reference tenant_learning_outcomes; create that
+        // parent table before adding the dependent foreign keys.
+        $this->addMaterialContextColumns();
+        $this->addMaterialTopicContextColumns();
 
         if (!Schema::hasTable('tenant_learning_outcome_structure_mappings')) {
             Schema::create('tenant_learning_outcome_structure_mappings', function (Blueprint $table): void {
