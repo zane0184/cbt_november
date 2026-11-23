@@ -254,6 +254,8 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->actingAs($disabled)->withSession(['account_auth_version' => 1])
             ->get('/student/exams')->assertRedirect('/login');
 
+        // Re-authenticate the administrator before starting a new Livewire test request.
+        $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('activateUser', $student->id);
         $activated = $student->fresh();
         $this->assertTrue((bool) $activated->is_active);
@@ -269,6 +271,9 @@ class AdminUserAccountLifecycleTest extends TestCase
         $teacher->save();
         $teacher->createToken('temporary-token');
 
+        // The production Blade view keeps its @vite assets; this backend test
+        // explicitly disables Vite manifest resolution without changing production rendering.
+        $this->withoutVite();
         $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
             ->get('/account/password/change')->assertOk();
 
