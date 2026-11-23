@@ -38,7 +38,7 @@ class AssessmentPolicy
     public function update(User $user, Assessment $assessment): bool
     {
         if ($user->tenant_id !== $assessment->tenant_id) return false;
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && (string) $assessment->created_by === (string) $user->id
             && TeacherAccess::canManageAssessment($user, $assessment);
@@ -49,7 +49,7 @@ class AssessmentPolicy
         if ($user->tenant_id !== $assessment->tenant_id) return false;
         if ($assessment->exams()->count() > 0) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && (string) $assessment->created_by === (string) $user->id
             && TeacherAccess::canManageAssessment($user, $assessment);
