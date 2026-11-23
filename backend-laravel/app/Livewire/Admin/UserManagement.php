@@ -31,6 +31,7 @@ class UserManagement extends Component
 
     public bool $showEditModal = false;
     public ?string $editingUserId = null;
+    public string $editingRole = '';
     public $editName = '';
     public $editUsername = '';
     public $editEmail = '';
@@ -171,6 +172,7 @@ class UserManagement extends Component
         }
 
         $this->editingUserId = (string) $target->id;
+        $this->editingRole = $roleNames->first();
         $this->editName = (string) $target->name;
         $this->editUsername = (string) ($target->username ?? '');
         $this->editEmail = (string) ($target->email ?? '');
@@ -184,7 +186,7 @@ class UserManagement extends Component
         } else {
             $this->editNisn = (string) ($profile->nisn ?? '');
             $this->editBirthPlace = (string) ($profile->birth_place ?? '');
-            $this->editBirthDate = $profile->birth_date?->format('Y-m-d') ?? '';
+            $this->editBirthDate = $profile->birth_date ? substr((string) $profile->birth_date, 0, 10) : '';
             $this->editParentName = (string) ($profile->parent_name ?? '');
             $this->editAddress = (string) ($profile->address ?? '');
         }
@@ -310,6 +312,7 @@ class UserManagement extends Component
 
         $this->showEditModal = false;
         $this->editingUserId = null;
+        $this->editingRole = '';
         $this->reset([
             'editName', 'editUsername', 'editEmail', 'editNip', 'editNik', 'editNuptk',
             'editNisn', 'editGender', 'editPhone', 'editBirthPlace', 'editBirthDate',
