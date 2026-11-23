@@ -44,11 +44,13 @@ Tidak digunakan ZIP baseline atau ChatGPT Library. Tidak ada perubahan pada bran
 | Branch perbaikan | `work/phpunit-41-root-cause-20261123` |
 | SHA source/test yang diuji pertama kali | `085a20eea16ada12e8c055fca6be9bb1d6d6972a` |
 | SHA branch HEAD dokumentasi yang diuji ulang | `6b5e412e18e5c9230c0b17f18a9d569bdd4d7982` |
+| SHA HEAD PR #22 yang diuji ulang | `e3dd533be36121c592eeec19cc9f820c23d51fa4` |
 | CI baseline #45191014821 | FAILURE — 41 failed, 477 passed, 1.867 assertions |
 | CI perbaikan #45215342323 | **SUCCESS — 518 passed, 0 failed, 2.189 assertions** |
 | CI dokumentasi/branch HEAD #45217367885 | **SUCCESS — 518 passed, 0 failed, 2.189 assertions** |
+| CI HEAD PR #22 #45218279043 | **SUCCESS — 518 passed, 0 failed, 2.189 assertions** |
 
-Bukti: [CI #45191014821](https://github.com/zane0184/cbt_november/actions/runs/45191014821), [CI #45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323), dan [CI #45217367885](https://github.com/zane0184/cbt_november/actions/runs/45217367885).
+Bukti: [CI #45191014821](https://github.com/zane0184/cbt_november/actions/runs/45191014821), [CI #45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323), dan [CI #45217367885](https://github.com/zane0184/cbt_november/actions/runs/45217367885), serta [CI HEAD PR #22 #45218279043](https://github.com/zane0184/cbt_november/actions/runs/45218279043).
 
 Environment CI:
 - PHP 8.3.
@@ -128,7 +130,7 @@ Terdapat baseline backup utama dan backup per iterasi round2–round6. Workflow 
 - CI #45215342323: **518/518 passed, 0 failed, 2.189 assertions**.
 - Exact SHA diuji: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`.
 - Tidak ada migration produksi, deployment VPS, merge, atau ZIP final.
-- PR perbaikan ke branch eksekusi belum dibuat pada saat checkpoint ini; branch perbaikan masih terisolasi.
+- [PR #22](https://github.com/zane0184/cbt_november/pull/22) telah dibuat sebagai Draft ke branch eksekusi; mergeable state clean. Tidak ada merge otomatis.
 
 ## D. INVENTARIS PR DAN ISSUE GITHUB TERBUKA
 
@@ -136,6 +138,7 @@ Terdapat baseline backup utama dan backup per iterasi round2–round6. Workflow 
 
 | PR | Fokus | Status dan arahan integrasi |
 |---|---|---|
+| [#22](https://github.com/zane0184/cbt_november/pull/22) | Remediasi 41 PHPUnit failures | Draft, base branch eksekusi d6, HEAD e3dd533, mergeable clean; CI #452182 lulus 518/0. Jangan merge otomatis. |
 | [#21](https://github.com/zane0184/cbt_november/pull/21) | Solo Web CBT curriculum/portal integration | Draft, HEAD `13bf440`, base `work/solo-web-cbt-ci-base-20261123`; bukan branch eksekusi d6. Stale/divergen; jangan dianggap source aktif atau merge tanpa compare. |
 | [#19](https://github.com/zane0184/cbt_november/pull/19) | Web Guru remove XLSX question import path | Draft; targeted tests dilaporkan PASS pada SHA lama. Reconcile dengan Master Guru §5.8 dan Issues #8/#9/#16 sebelum integrasi. |
 | [#18](https://github.com/zane0184/cbt_november/pull/18) | Web Admin remediation | Draft; sebagian konsep Room/Proktor. Diff membawa field/session lifecycle yang bertentangan dengan aturan serentak/no ExamSession; jangan merge apa adanya. |
@@ -226,7 +229,7 @@ Master Guru §5.8 dan Issues #8/#9/#16 menjelaskan XLSX dan DOCX sebagai parser 
 
 1. `AGENT_START_HERE.md`, report, dan checkpoint telah menunjuk run #452173 dan SHA yang diuji; buat PR draft ke branch eksekusi.
 2. Jalankan CI lagi setelah commit dokumentasi, sehingga exact branch HEAD terbaru juga mempunyai bukti 518/0.
-3. Buat PR draft dari `work/phpunit-41-root-cause-20261123` ke branch eksekusi `work/solo-web-cbt-completion-20261123-execution`; jangan merge otomatis.
+3. PR #22 sudah dibuat Draft ke branch eksekusi; lakukan review source/test/docs dan jangan merge otomatis.
 4. Setelah P0 PR tersedia, lanjutkan P1 Proktor dan audit portal tanpa mengulang source yang sudah ada di PR lain.
 5. Rekonsiliasi XLSX/DOCX sesuai sumber terbaru sebelum implementasi import.
 6. Perbarui laporan/checkpoint setiap tahap. Deployment, migration produksi, dan ZIP final tetap menunggu approval dan seluruh acceptance.
