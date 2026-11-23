@@ -9,8 +9,6 @@ use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\CurriculumManagement;
-use App\Livewire\Admin\QuestionBank;
-use App\Livewire\Admin\ExamManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
 
