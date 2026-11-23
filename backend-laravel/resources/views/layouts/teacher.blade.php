@@ -91,7 +91,11 @@
     @livewireStyles
 </head>
 <body>
-    @php($currentUser = auth()->user())
+    @php
+        $currentUser = auth()->user();
+        $hasTemporaryProctorDuty = $currentUser && \\App\\Models\\ExamProctorAssignment::query()
+            ->activeNow()->where('tenant_id', $currentUser->tenant_id)->where('proctor_user_id', $currentUser->id)->exists();
+    @endphp
     <div class="min-h-screen md:flex">
         <aside class="portal-nav hidden w-72 shrink-0 flex-col md:fixed md:inset-y-0 md:flex">
             <div class="border-b border-white/10 px-6 py-5">
@@ -118,7 +122,7 @@
                 <div class="portal-disabled" aria-disabled="true" title="Tautan monitoring tersedia dari ujian yang diizinkan"><span>Monitoring Ujian</span><span class="text-[10px] uppercase tracking-wide">Per ujian</span></div>
                 <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link"><span>📊</span> Penilaian & Hasil <span class="ml-auto text-[10px] uppercase tracking-wide">Pilih ujian</span></a>
                 <a href="{{ route('teacher.exams.index') }}" class="portal-nav-link"><span>📈</span> Analytics & Ekspor <span class="ml-auto text-[10px] uppercase tracking-wide">Pilih ujian</span></a>
-                <p class="px-3 py-2 text-[11px] leading-relaxed text-emerald-100/60">Pengawasan asesmen mandiri mengikuti lingkup Guru pembuat. Pengawasan ujian terpusat hanya tersedia melalui penugasan Proktor yang sah.</p>
+                <p class="px-3 py-2 text-[11px] leading-relaxed text-emerald-100/60">Pengawasan asesmen mandiri mengikuti lingkup Guru pembuat. Pengawasan ujian terpusat hanya melalui penugasan Guru pengawas sementara yang sah. Tidak ada role atau portal Proktor permanen.</p>
                 <div class="my-3 border-t border-white/10"></div>
                 <a href="{{ route('teacher.profile') }}" class="portal-nav-link {{ request()->routeIs('teacher.profile') ? 'active' : '' }}"><span>♙</span> Profil Guru</a>
                 <div class="portal-disabled" aria-disabled="true" title="Belum diimplementasikan pada fondasi Web Guru"><span>Pengaturan</span><span class="text-[10px] uppercase tracking-wide">Tahap berikutnya</span></div>
@@ -141,6 +145,9 @@
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wider portal-muted">CBT Madrasah</p>
                         <p class="text-sm font-bold">Ruang Kerja Guru</p>
+                        @if($hasTemporaryProctorDuty)
+                            <span class="mt-1 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900">Tugas pengawas sementara aktif</span>
+                        @endif
                     </div>
                     <div class="flex items-center gap-2">
                         <details class="relative md:hidden">
@@ -185,6 +192,22 @@
             <footer class="px-4 pb-6 text-center text-xs portal-muted md:px-8">CBT Madrasah · Portal Guru</footer>
         </div>
     </div>
+    <div id="teacher-toast" role="status" aria-live="polite" hidden class="fixed bottom-5 right-5 z-50 max-w-sm rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-navy-900 shadow-xl transition duration-200"></div>
     @livewireScripts
+    <script>
+        window.addEventListener('notify', event => {
+            const payload = Array.isArray(event.detail) ? event.detail[0] : event.detail;
+            const toast = document.getElementById('teacher-toast');
+            if (!toast || !payload?.message) return;
+            toast.textContent = payload.message;
+            toast.hidden = false;
+            toast.classList.remove('opacity-0', 'translate-y-2');
+            window.clearTimeout(window.__cbtTeacherToastTimer);
+            window.__cbtTeacherToastTimer = window.setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                window.setTimeout(() => { toast.hidden = true; }, 250);
+            }, 3200);
+        });
+    </script>
 </body>
 </html>
