@@ -221,7 +221,7 @@ class AdminUserProfileLifecycleTest extends TestCase
         TenantContext::getInstance()?->setTenantId($this->tenant->id);
         $this->actingAs($this->admin);
 
-        $this->expectException(\\Illuminate\\Database\\Eloquent\\ModelNotFoundException::class);
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
         Livewire::test(UserManagement::class)->call('openEditModal', $foreign->id);
     }
 
