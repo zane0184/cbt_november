@@ -24,7 +24,7 @@ assert.ok(runnerStyles.includes('.runner-layout') && runnerStyles.includes('.que
 const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
   '<meta name="csrf-token" content="test-csrf"><link rel="stylesheet" href="/css/student-portal.css"><style>.hidden{display:none!important}button{min-height:44px}' + runnerStyles + '</style></head><body>',
-  '<div id="local-css-check" class="bg-slate-100 p-4"></div>',
+  '<div id="local-css-check" class="bg-slate-100 p-4 sm:p-6"></div>',
   '<main id="exam-app" data-exam-id="exam-1" data-student-id="student-1" data-device-binding="11111111-1111-4111-8111-111111111111" data-require-token="0">',
   '<section id="instruction-panel">{{TOKEN_INPUT}}<button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
   '<section id="runner-panel" class="hidden"><div id="question-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div><div class="runner-layout"><div class="runner-main"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
@@ -257,6 +257,8 @@ try {
     }));
     assert.equal(style.background, 'rgb(241, 245, 249)');
     assert.equal(style.padding, '16px');
+    await page.setViewportSize({ width: 700, height: 900 });
+    assert.equal(await page.locator('#local-css-check').evaluate(element => getComputedStyle(element).padding), '24px', 'Responsive local CSS utility must activate at the tablet breakpoint');
     assert.deepEqual(scenario.pageErrors, []);
     await context.close();
     console.log('PASS: local Web Siswa stylesheet loads and applies offline-safe utility styles');
