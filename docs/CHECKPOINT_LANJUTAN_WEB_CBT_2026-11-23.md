@@ -50,3 +50,11 @@ Browser E2E, concurrency MySQL multi-connection, fresh-install/legacy-upgrade le
 7. Rakit ZIP generik setelah seluruh verifikasi dan acceptance selesai.
 
 Tidak ada merge PR #21, production migration, deployment, atau perubahan database produksi. Jangan menyebut proyek siap produksi/distribusi.
+
+
+## Tambahan CI 23 November 2026 — pembatalan run
+
+- Run #45138531873 pada source SHA `8d5d45b9ae596534a41a72b145815c1cfc76bbf0` berakhir **CANCELLED**, bukan FAILURE.
+- Pemeriksaan workflow menunjukkan run dibatalkan saat commit dokumentasi checkpoint baru masuk ke branch eksekusi. Karena itu run tersebut tidak membuktikan patch test pass atau fail.
+- Source tidak berubah setelah run itu; hanya checkpoint dokumentasi yang maju. HEAD saat ini: `614fe37c86cea2a606f71c0bf466621e040ff111`.
+- Validasi ulang akan dipicu dengan perubahan dokumentasi berlabel `[skip ci]` agar source SHA yang sedang ditinjau tidak terus dibatalkan oleh pembaruan checkpoint.
