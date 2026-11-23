@@ -27,6 +27,7 @@ class ServerTimeAndClockTamperingTest extends TestCase
     private $exam;
     private $attempt;
     private $snapshot;
+    private string $studentToken;
 
     protected function setUp(): void
     {
@@ -71,18 +72,6 @@ class ServerTimeAndClockTamperingTest extends TestCase
         $participant->exam_id = $this->exam->id;
         $participant->save();
 
-        $this->attempt = new ExamAttempt([
-            'exam_id' => $this->exam->id,
-            'participant_id' => $participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'device_fingerprint' => 'device-6g4',
-            'started_at' => now()->subMinutes(5),
-            'expires_at' => now()->addMinutes(25)
-        ]);
-        $this->attempt->tenant_id = $this->tenant->id;
-        $this->attempt->save();
-
         $q = new Question(['created_by' => $this->student->id]);
         $q->tenant_id = $this->tenant->id;
         $q->save();
@@ -125,17 +114,23 @@ class ServerTimeAndClockTamperingTest extends TestCase
         $this->snapshot->exam_id = $this->exam->id;
         $this->snapshot->save();
 
-        $this->attempt->update([
-            'question_order' => [$this->snapshot->id],
-            'options_order' => [$this->snapshot->id => [$opt1->id]]
+        // Start through the real API so the fixture receives a persisted
+        // Sanctum auth-session binding, active DeviceLease, and fence generation.
+        $this->studentToken = $this->student->createToken('server-time-tests')->plainTextToken;
+        $this->withToken($this->studentToken)->withHeaders([
+            'X-Device-Binding-ID' => 'device-6g4',
+            'X-CBT-Fence-Generation' => '1',
         ]);
+        $startResponse = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", []);
+        $startResponse->assertStatus(201);
+        $this->attempt = ExamAttempt::query()->findOrFail($startResponse->json('data.id'));
     }
 
     public function test_test_a_normal_server_time_and_answer()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withToken($this->studentToken);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-6g4')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-6g4', 'X-CBT-Fence-Generation' => '1'])
             ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
@@ -148,7 +143,7 @@ class ServerTimeAndClockTamperingTest extends TestCase
         $optId = $this->snapshot->snapshot_options[0]['id'];
 
         // Submit answer
-        $ansResponse = $this->withHeader('X-Device-Binding-ID', 'device-6g4')
+        $ansResponse = $this->withHeaders(['X-Device-Binding-ID' => 'device-6g4', 'X-CBT-Fence-Generation' => '1'])
             ->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
                 'client_request_id' => 'req-normal-1',
                 'answer_state' => 'ANSWERED',
@@ -161,7 +156,7 @@ class ServerTimeAndClockTamperingTest extends TestCase
 
     public function test_test_b_and_c_device_clock_tampering_ignored_by_server()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withToken($this->studentToken);
 
         $optId = $this->snapshot->snapshot_options[0]['id'];
 
@@ -193,7 +188,7 @@ class ServerTimeAndClockTamperingTest extends TestCase
 
     public function test_test_d_expired_attempt_answer_rejected_regardless_of_client_time()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withToken($this->studentToken);
 
         $optId = $this->snapshot->snapshot_options[0]['id'];
 
@@ -203,7 +198,7 @@ class ServerTimeAndClockTamperingTest extends TestCase
         ]);
 
         // Attempt answer submission while expired
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-6g4')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-6g4', 'X-CBT-Fence-Generation' => '1'])
             ->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
                 'client_request_id' => 'req-expired-1',
                 'answer_state' => 'ANSWERED',
@@ -219,12 +214,12 @@ class ServerTimeAndClockTamperingTest extends TestCase
 
     public function test_test_e_client_timestamp_manipulation_has_no_effect()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withToken($this->studentToken);
 
         $optId = $this->snapshot->snapshot_options[0]['id'];
 
         // Send a custom timestamp payload
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-6g4')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-6g4', 'X-CBT-Fence-Generation' => '1'])
             ->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
                 'client_request_id' => 'req-ts-1',
                 'answer_state' => 'ANSWERED',
@@ -241,16 +236,16 @@ class ServerTimeAndClockTamperingTest extends TestCase
 
     public function test_test_f_server_now_consistency()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withToken($this->studentToken);
 
         $optId = $this->snapshot->snapshot_options[0]['id'];
 
-        $execRes = $this->withHeader('X-Device-Binding-ID', 'device-6g4')
+        $execRes = $this->withHeaders(['X-Device-Binding-ID' => 'device-6g4', 'X-CBT-Fence-Generation' => '1'])
             ->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $execRes->assertStatus(200);
         $serverNow1 = $execRes->json('data.exam.server_now');
 
-        $ansRes = $this->withHeader('X-Device-Binding-ID', 'device-6g4')
+        $ansRes = $this->withHeaders(['X-Device-Binding-ID' => 'device-6g4', 'X-CBT-Fence-Generation' => '1'])
             ->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
                 'client_request_id' => 'req-consistency-1',
                 'answer_state' => 'ANSWERED',
