@@ -61,12 +61,10 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 
     public function test_system_tenant_seeder_condition_3_halts_if_uuid_exists_with_different_code(): void
     {
-        Tenant::create([
-            'id' => Tenant::SYSTEM_TENANT_ID,
-            'name' => 'Conflict Tenant',
-            'code' => 'DIFFERENT_CODE',
-            'status' => 'ACTIVE',
-        ]);
+        // The test database seeder already creates the reserved System Tenant.
+        // Mutate that fixture instead of inserting a duplicate primary key.
+        $systemTenant = Tenant::withTrashed()->findOrFail(Tenant::SYSTEM_TENANT_ID);
+        $systemTenant->forceFill(['code' => 'DIFFERENT_CODE'])->save();
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/System Tenant Seeding Halted/i');
@@ -76,6 +74,11 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 
     public function test_system_tenant_seeder_condition_4_halts_if_code_exists_with_different_uuid(): void
     {
+        // Free the reserved UUID in this isolated test transaction so the
+        // conflicting reserved code is the only collision under examination.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        Tenant::withTrashed()->whereKey(Tenant::SYSTEM_TENANT_ID)->forceDelete();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
         Tenant::create([
             'id' => (string) Str::uuid(),
             'name' => 'Conflict Tenant Code',
@@ -91,12 +94,8 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 
     public function test_system_tenant_seeder_halts_when_reserved_uuid_is_soft_deleted(): void
     {
-        $tenant = Tenant::create([
-            'id' => Tenant::SYSTEM_TENANT_ID,
-            'name' => 'Soft Deleted Reserved UUID',
-            'code' => 'SOFT_DELETED_UUID',
-            'status' => 'ACTIVE',
-        ]);
+        $tenant = Tenant::withTrashed()->findOrFail(Tenant::SYSTEM_TENANT_ID);
+        $tenant->forceFill(['code' => 'SOFT_DELETED_UUID'])->save();
         $tenant->delete();
 
         try {
@@ -115,6 +114,10 @@ class Fase1cMultiCurriculumIntegrityTest extends TestCase
 
     public function test_system_tenant_seeder_halts_when_reserved_code_is_soft_deleted(): void
     {
+        // Move the seeded System Tenant off the reserved code, then create
+        // a separate row owning that code and soft-delete it for this condition.
+        Tenant::withTrashed()->findOrFail(Tenant::SYSTEM_TENANT_ID)
+            ->forceFill(['code' => 'TEMP_SYSTEM_CODE'])->save();
         $tenant = Tenant::create([
             'id' => (string) Str::uuid(),
             'name' => 'Soft Deleted Reserved Code',
