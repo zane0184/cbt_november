@@ -20,7 +20,7 @@ class Assessment extends Model
         'assessment_type', 'status', 'weight', 'created_by',
         'assessment_function_option_id', 'assessment_scope_option_id',
         'instrument_type_option_id', 'delivery_mode_option_id',
-        'activity_name', 'curriculum_version_id', 'curriculum_context_snapshot'
+        'activity_name', 'assessment_origin', 'external_program_name', 'curriculum_version_id', 'curriculum_context_snapshot'
     ];
 
     protected $casts = [
