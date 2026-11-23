@@ -11,6 +11,7 @@ on:
   pull_request:
     branches:
       - main
+      - work/web-admin-implementation-20261123
   workflow_dispatch:
 
 permissions:
