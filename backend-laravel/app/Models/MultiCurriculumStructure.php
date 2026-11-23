@@ -26,7 +26,7 @@ class MultiCurriculumStructure extends Model
         'sort_order',
         'status',
         'source_id', 'source_locator', 'effective_from', 'effective_until',
-        'verification_status', 'verified_at', 'source_checksum', 'metadata',
+        'verification_status', 'verified_at', 'source_checksum', 'metadata', 'is_official', 'is_editable',
     ];
 
     public function version(): BelongsTo
@@ -59,6 +59,8 @@ class MultiCurriculumStructure extends Model
         'effective_until' => 'date',
         'verified_at' => 'datetime',
         'metadata' => 'array',
+        'is_official' => 'boolean',
+        'is_editable' => 'boolean',
     ];
 
     public function source(): BelongsTo
