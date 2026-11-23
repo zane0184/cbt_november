@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Ujian Saya - CBT Madrasah</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
     <header class="bg-slate-900 text-white shadow">
@@ -17,7 +17,7 @@
     <main class="mx-auto max-w-5xl px-4 py-8">
         <section class="mb-6 rounded-2xl bg-white p-5 shadow-sm">
             <p class="text-sm text-slate-500">Selamat datang,</p>
-            <h2 class="text-2xl font-bold">{{ $student->name }}</h2>
+            <h2 dir="auto" class="text-2xl font-bold">{{ $student->name }}</h2>
             <p class="mt-1 text-sm text-slate-500">Pilih ujian yang ditugaskan kepada Anda. Jadwal resmi mengikuti waktu server madrasah.</p>
         </section>
 
@@ -35,7 +35,7 @@
                 @foreach ($examRows as $row)
                     <article class="rounded-2xl bg-white p-5 shadow-sm">
                         <div class="flex items-start justify-between gap-3">
-                            <h3 class="text-lg font-bold">{{ $row['exam']->title }}</h3>
+                            <h3 dir="auto" class="text-lg font-bold">{{ $row['exam']->title }}</h3>
                             <span class="shrink-0 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">{{ $row['statusLabel'] }}</span>
                         </div>
                         <dl class="mt-4 space-y-2 text-sm text-slate-600">

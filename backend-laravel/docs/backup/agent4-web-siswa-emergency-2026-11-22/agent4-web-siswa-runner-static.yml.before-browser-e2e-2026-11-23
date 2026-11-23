@@ -1,0 +1,38 @@
+name: Agent 4 — Web Siswa Runner Static Audit
+
+on:
+  push:
+    branches:
+      - work/agent4-web-siswa-emergency-20261122
+  pull_request:
+    branches:
+      - work/stage4d-account-lifecycle-20261122
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agent4-web-siswa-static-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  runner-static-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend-laravel
+    steps:
+      - name: Checkout exact Web Siswa branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Run Web Siswa runner static audit
+        run: node tests/runner-static-audit.mjs

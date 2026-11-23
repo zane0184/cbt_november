@@ -4,37 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login CBT Madrasah</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        emerald: {
-                            50: '#E6F4F1',
-                            100: '#D0EAE4',
-                            500: '#10B981',
-                            600: '#0F8B72',
-                            700: '#0B6B58',
-                            900: '#053B30',
-                        },
-                        navy: {
-                            800: '#1E3452',
-                            900: '#14243A',
-                            950: '#0D1827',
-                        },
-                        contentBg: '#F7F9FB',
-                        cardBorder: '#E4E9EF',
-                        textPrimary: '#172536',
-                        textSecondary: '#68778A',
-                    }
-                }
-            }
-        }
-    </script>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     </style>
 </head>
 <body class="bg-contentBg text-textPrimary flex items-center justify-center min-h-screen p-4 sm:p-6">
