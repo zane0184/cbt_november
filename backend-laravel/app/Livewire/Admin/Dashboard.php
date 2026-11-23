@@ -3,7 +3,6 @@
 namespace App\Livewire\Admin;
 
 use App\Models\AcademicYear;
-use App\Models\Exam;
 use App\Models\Rombel;
 use App\Models\Subject;
 use App\Models\User;
@@ -33,7 +32,6 @@ class Dashboard extends Component
             ->whereHas('teacherProfile')->count();
         $totalRombels = Rombel::query()->where('tenant_id', $tenantId)->count();
         $totalSubjects = Subject::query()->where('tenant_id', $tenantId)->count();
-        $totalExams = Exam::query()->where('tenant_id', $tenantId)->count();
         $activeAcademicYear = AcademicYear::query()->where('tenant_id', $tenantId)->where('is_active', true)->first();
 
         $recentUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
@@ -46,7 +44,6 @@ class Dashboard extends Component
             'totalTeachers' => $totalTeachers,
             'totalRombels' => $totalRombels,
             'totalSubjects' => $totalSubjects,
-            'totalExams' => $totalExams,
             'activeAcademicYear' => $activeAcademicYear,
             'recentUsers' => $recentUsers,
             'recentRombels' => $recentRombels,
