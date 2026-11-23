@@ -20,12 +20,15 @@ class TeacherSubjectAssignment extends Model
         'starts_at',
         'ends_at',
         'status',
+        'multi_curriculum_version_id',
+        'curriculum_context_snapshot',
         'created_by',
     ];
 
     protected $casts = [
         'starts_at' => 'date',
         'ends_at' => 'date',
+        'curriculum_context_snapshot' => 'array',
     ];
 
     public function teacher(): BelongsTo
@@ -66,4 +69,10 @@ class TeacherSubjectAssignment extends Model
             ->where(fn ($q) => $q->whereNull('starts_at')->orWhereDate('starts_at', '<=', $date))
             ->where(fn ($q) => $q->whereNull('ends_at')->orWhereDate('ends_at', '>=', $date));
     }
+
+    public function curriculumVersion(): BelongsTo
+    {
+        return $this->belongsTo(MultiCurriculumVersion::class, 'multi_curriculum_version_id');
+    }
+
 }
