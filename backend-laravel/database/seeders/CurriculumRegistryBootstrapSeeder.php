@@ -355,7 +355,7 @@ class CurriculumRegistryBootstrapSeeder extends Seeder
                         ] as $categoryIndex => [$categoryCode, $categoryTitle]) {
                             $upsertNode(
                                 'LOCAL_CONTENT_CATEGORY',
-                                'FASE_' . $phaseCode . '_' . $categoryCode,
+                                'FASE_' . $phaseCode . '_MULOK_' . $categoryCode,
                                 $categoryTitle,
                                 $subjectNode->id,
                                 $kma,
