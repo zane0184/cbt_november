@@ -420,6 +420,20 @@ class AdminUiVerificationTest extends TestCase
         $created = User::query()->where('tenant_id', $this->tenant->id)->where('email', 'gurubaru@man1.sch.id')->firstOrFail();
         $this->assertTrue($created->hasRole('GURU'));
         $this->assertNotNull($created->teacherProfile);
+
+        $audit = \\App\\Models\\AuditLog::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('user_id', $this->admin->id)
+            ->where('action', 'CREATE_LOCAL_USER')
+            ->where('entity_type', 'User')
+            ->where('entity_id', $created->id)
+            ->firstOrFail();
+        $this->assertSame('Guru Baru', $audit->new_values['name']);
+        $this->assertSame('GURU', $audit->new_values['role']);
+        $this->assertSame('TeacherProfile', $audit->new_values['profile_type']);
+        $this->assertArrayNotHasKey('password', $audit->new_values);
+        $this->assertArrayNotHasKey('nip', $audit->new_values);
+        $this->assertArrayNotHasKey('nik', $audit->new_values);
     }
 
     /** @test */
@@ -474,6 +488,19 @@ class AdminUiVerificationTest extends TestCase
             'user_id' => $student->id,
             'nisn' => '0098765432',
         ]);
+
+        $audit = \\App\\Models\\AuditLog::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('user_id', $this->admin->id)
+            ->where('action', 'CREATE_LOCAL_USER')
+            ->where('entity_type', 'User')
+            ->where('entity_id', $student->id)
+            ->firstOrFail();
+        $this->assertSame('Siswa Baru', $audit->new_values['name']);
+        $this->assertSame('SISWA', $audit->new_values['role']);
+        $this->assertSame('StudentProfile', $audit->new_values['profile_type']);
+        $this->assertArrayNotHasKey('password', $audit->new_values);
+        $this->assertArrayNotHasKey('nisn', $audit->new_values);
     }
 
     /** @test */
