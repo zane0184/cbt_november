@@ -6,6 +6,8 @@ use App\Contexts\TenantContext;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Auth\Events\Authenticated;
 use App\Policies\ReportPolicy;
 use App\Policies\QuestionPolicy;
@@ -28,6 +30,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Heartbeat limits are per authenticated participant, not per shared NAT/IP.
+        // Keep a conservative IP fallback for unauthenticated requests.
+        RateLimiter::for('exam-heartbeat', function ($request) {
+            $user = $request->user();
+            $key = $user && $user->tenant_id
+                ? 'tenant:' . $user->tenant_id . ':user:' . $user->id
+                : 'ip:' . $request->ip();
+
+            return Limit::perMinute(30)->by($key);
+        });
+
         Event::listen(Authenticated::class, function ($event) {
             if ($event->user && $event->user->tenant_id) {
                 app(TenantContext::class)->setTenantId($event->user->tenant_id);
