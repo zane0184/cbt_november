@@ -49,7 +49,12 @@ class AuthController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedUser || !(bool) $lockedUser->is_active) {
+            // Re-check the submitted password against the locked row so a
+            // reset committed between identity resolution and this mutex cannot
+            // mint a token using the pre-reset credential.
+            if (!$lockedUser
+                || !(bool) $lockedUser->is_active
+                || !Hash::check((string) $validated['password'], (string) $lockedUser->password)) {
                 return ['status' => 'INVALID'];
             }
 
