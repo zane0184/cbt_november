@@ -80,3 +80,7 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 ### Status pengujian
 - Patch tahap ini belum boleh dinyatakan lulus sampai satu run PHPUnit lengkap pada HEAD terbaru selesai. Run lama #45238343063 berasal dari SHA sebelum patch lengkap dan tidak boleh dipakai sebagai bukti final.
 - Langkah berikut: validasi full suite pada HEAD terbaru, ambil semua stack trace baru, kelompokkan ulang, lalu perbaiki akar masalah sampai run penuh hijau.
+
+
+### Catatan validasi PHPUnit terisolasi
+Branch validasi sementara `work/solo-web-cbt-phpunit-20261124` dibuat dari source HEAD yang sama untuk menghindari antrean runner pada branch eksekusi. Branch ini hanya untuk menjalankan workflow PHPUnit; tidak menggantikan branch eksekusi dan tidak di-merge otomatis.
