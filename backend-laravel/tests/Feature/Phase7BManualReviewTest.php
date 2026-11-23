@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+
 use App\Contexts\TenantContext;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
@@ -35,6 +37,7 @@ use Tests\TestCase;
 class Phase7BManualReviewTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private Tenant $tenantA;
     private Tenant $tenantB;
@@ -142,7 +145,7 @@ class Phase7BManualReviewTest extends TestCase
             'tenant_id' => $this->tenantA->id, 'user_id' => $this->studentA->id, 'full_name' => 'Siswa Tenant A',
         ]);
         $studentProfile->rombels()->attach($this->rombelA->id, ['id' => (string) Str::uuid(), 'tenant_id' => $this->tenantA->id]);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id, 'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subjectA->id, 'rombel_id' => $this->rombelA->id,
             'academic_year_id' => $this->academicYearA->id, 'semester_id' => $this->semesterA->id,
@@ -158,6 +161,8 @@ class Phase7BManualReviewTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacherA->id,
         ]);
+
+        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
 
         $this->examA = Exam::create([
             'tenant_id' => $this->tenantA->id,
