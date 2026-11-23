@@ -5,11 +5,13 @@ namespace Tests\Feature;
 use App\Contexts\TenantContext;
 use App\Livewire\Admin\UserManagement;
 use App\Models\AuditLog;
+use App\Models\LocalInstallationIdentity;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -162,7 +164,7 @@ class AdminUserAccountLifecycleTest extends TestCase
     {
         $teacher = $this->makeLocalUser('GURU');
         $other = $this->makeLocalUser('GURU', '02');
-        $teacher->createToken('teacher-device');
+        $teacherToken = $teacher->createToken('teacher-device')->plainTextToken;
         $other->createToken('other-device');
         DB::table('sessions')->insert([
             'id' => 'target-session', 'user_id' => $teacher->id, 'payload' => 'encrypted-session',
@@ -172,6 +174,9 @@ class AdminUserAccountLifecycleTest extends TestCase
             'id' => 'other-session', 'user_id' => $other->id, 'payload' => 'encrypted-session',
             'last_activity' => now()->timestamp,
         ]);
+
+        $logPath = storage_path('logs/laravel.log');
+        $logBefore = is_file($logPath) ? (string) file_get_contents($logPath) : '';
 
         $this->actingAs($this->admin);
         $component = Livewire::test(UserManagement::class)
@@ -197,6 +202,16 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertStringNotContainsString($fresh->password, $auditPayload);
 
         $component->call('dismissTemporaryPassword')->assertSet('temporaryPassword', null)->assertSet('showTemporaryPasswordModal', false);
+
+        $logAfter = is_file($logPath) ? (string) file_get_contents($logPath) : $logBefore;
+        $this->assertStringNotContainsString($temporaryPassword, $logAfter);
+
+        // Verify the pre-reset Sanctum token and pre-reset Web session cannot be reused.
+        Auth::logout();
+        $this->actingAs($teacher->fresh())->withSession(['account_auth_version' => 1])
+            ->get('/guru/dashboard')->assertRedirect('/login');
+        Auth::logout();
+        $this->withToken($teacherToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
     }
 
     public function test_reset_rejects_official_in_progress_attempt_without_mutating_attempt_answer_score_lease_or_fence(): void
@@ -235,6 +250,13 @@ class AdminUserAccountLifecycleTest extends TestCase
             'tenant_id' => $this->tenant->id, 'user_id' => $student->id,
             'full_name' => $student->name, 'nisn' => '0099887766',
         ]);
+        [$exam, $participant, $attempt] = $this->makeActiveAttemptFixture($student);
+        DB::table('exam_attempts')->where('id', $attempt->id)->update(['status' => 'SUBMITTED']);
+        $beforeAttempt = (array) DB::table('exam_attempts')->where('id', $attempt->id)->first();
+        $beforeAnswer = (array) DB::table('exam_attempt_answers')->where('exam_attempt_id', $attempt->id)->first();
+        $beforeScore = (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first();
+        $beforeLease = (array) DB::table('device_leases')->where('exam_attempt_id', $attempt->id)->first();
+
         $student->createToken('student-device');
         DB::table('sessions')->insert([
             'id' => 'student-session', 'user_id' => $student->id, 'payload' => 'encrypted-session',
@@ -250,6 +272,10 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $student->id)->count());
         $this->assertDatabaseMissing('sessions', ['id' => 'student-session']);
         $this->assertDatabaseHas('student_profiles', ['id' => $profile->id, 'nisn' => '0099887766']);
+        $this->assertSame($beforeAttempt, (array) DB::table('exam_attempts')->where('id', $attempt->id)->first());
+        $this->assertSame($beforeAnswer, (array) DB::table('exam_attempt_answers')->where('exam_attempt_id', $attempt->id)->first());
+        $this->assertSame($beforeScore, (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first());
+        $this->assertSame($beforeLease, (array) DB::table('device_leases')->where('exam_attempt_id', $attempt->id)->first());
 
         $this->actingAs($disabled)->withSession(['account_auth_version' => 1])
             ->get('/student/exams')->assertRedirect('/login');
@@ -262,6 +288,10 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertSame(3, (int) $activated->auth_version);
         $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $student->id)->count());
         $this->assertDatabaseHas('student_profiles', ['id' => $profile->id, 'nisn' => '0099887766']);
+
+        // The old Web session stays invalid even after the account is reactivated.
+        $this->actingAs($activated)->withSession(['account_auth_version' => 1])
+            ->get('/student/exams')->assertRedirect('/login');
     }
 
     public function test_forced_password_change_updates_hash_and_requires_reauthentication(): void
@@ -269,11 +299,17 @@ class AdminUserAccountLifecycleTest extends TestCase
         $teacher = $this->makeLocalUser('GURU');
         $teacher->must_change_password = true;
         $teacher->save();
-        $teacher->createToken('temporary-token');
+        $temporaryToken = $teacher->createToken('temporary-token', ['*', 'account-version:1'])->plainTextToken;
 
         // The production Blade view keeps its @vite assets; this backend test
         // explicitly disables Vite manifest resolution without changing production rendering.
         $this->withoutVite();
+        $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
+            ->get('/admin/dashboard')->assertRedirect('/account/password/change');
+
+        Auth::logout();
+        $this->withToken($temporaryToken)->getJson('/api/v1/auth/me')->assertStatus(423);
+
         $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
             ->get('/account/password/change')->assertOk();
 
@@ -293,5 +329,94 @@ class AdminUserAccountLifecycleTest extends TestCase
         $payload = json_encode([$audit->old_values, $audit->new_values]);
         $this->assertStringNotContainsString('new-password-strong-2026', $payload);
         $this->assertSame('SUCCESS', $audit->new_values['outcome']);
+
+        Auth::logout();
+        $this->withToken($temporaryToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
+    }
+
+    public function test_deactivation_is_rejected_during_official_in_progress_attempt_without_exam_data_mutation(): void
+    {
+        $student = $this->makeLocalUser('SISWA');
+        [$exam, $participant, $attempt] = $this->makeActiveAttemptFixture($student);
+        $student->createToken('student-device');
+        DB::table('sessions')->insert([
+            'id' => 'active-attempt-session', 'user_id' => $student->id,
+            'payload' => 'encrypted-session', 'last_activity' => now()->timestamp,
+        ]);
+
+        $beforeAttempt = (array) DB::table('exam_attempts')->where('id', $attempt->id)->first();
+        $beforeAnswer = (array) DB::table('exam_attempt_answers')->where('exam_attempt_id', $attempt->id)->first();
+        $beforeScore = (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first();
+        $beforeLease = (array) DB::table('device_leases')->where('exam_attempt_id', $attempt->id)->first();
+
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('deactivateUser', $student->id);
+
+        $this->assertTrue((bool) $student->fresh()->is_active);
+        $this->assertSame(1, (int) $student->fresh()->auth_version);
+        $this->assertSame(1, DB::table('personal_access_tokens')->where('tokenable_id', $student->id)->count());
+        $this->assertDatabaseHas('sessions', ['id' => 'active-attempt-session']);
+        $this->assertSame($beforeAttempt, (array) DB::table('exam_attempts')->where('id', $attempt->id)->first());
+        $this->assertSame($beforeAnswer, (array) DB::table('exam_attempt_answers')->where('exam_attempt_id', $attempt->id)->first());
+        $this->assertSame($beforeScore, (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first());
+        $this->assertSame($beforeLease, (array) DB::table('device_leases')->where('exam_attempt_id', $attempt->id)->first());
+        $this->assertSame(9, (int) DB::table('exam_attempts')->where('id', $attempt->id)->value('fence_generation'));
+
+        $audit = AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')->where('entity_id', $student->id)->firstOrFail();
+        $this->assertSame('REJECTED', $audit->new_values['outcome']);
+        $this->assertSame('ACTIVE_ATTEMPT_IN_PROGRESS', $audit->new_values['reason']);
+    }
+
+    public function test_reset_is_limited_to_guru_or_siswa_in_the_admin_tenant(): void
+    {
+        $adminTarget = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Second Admin',
+            'username' => 'second.admin',
+            'email' => 'second.admin@test.local',
+            'password' => Hash::make('old-password-strong'),
+        ]);
+        $adminTarget->roles()->attach(Role::where('name', 'ADMIN_MADRASAH')->firstOrFail());
+
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)
+            ->call('resetUserPassword', $adminTarget->id)
+            ->assertForbidden();
+
+        $otherTenant = Tenant::create(['name' => 'Other Lifecycle Tenant', 'code' => 'ALT02']);
+        app(TenantContext::class)->setTenantId((string) $otherTenant->id);
+        TenantContext::getInstance()?->setTenantId((string) $otherTenant->id);
+        $foreignTeacher = User::create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Foreign Teacher',
+            'username' => 'foreign.teacher',
+            'email' => 'foreign.teacher@test.local',
+            'password' => Hash::make('old-password-strong'),
+        ]);
+        $foreignTeacher->roles()->attach(Role::where('name', 'GURU')->firstOrFail());
+        app(TenantContext::class)->setTenantId((string) $this->tenant->id);
+        TenantContext::getInstance()?->setTenantId((string) $this->tenant->id);
+
+        $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
+        Livewire::test(UserManagement::class)->call('resetUserPassword', $foreignTeacher->id);
+    }
+
+    public function test_disabled_account_cannot_login_through_web_or_api(): void
+    {
+        $teacher = $this->makeLocalUser('GURU');
+        $teacher->forceFill(['is_active' => false])->save();
+        $this->makeLocalIdentity();
+
+        $this->post('/login', [
+            'identifier' => $teacher->username,
+            'password' => 'old-password-strong',
+        ])->assertSessionHasErrors('identifier');
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => $teacher->username,
+            'password' => 'old-password-strong',
+        ])->assertUnprocessable();
+
+        $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $teacher->id)->count());
     }
 }
