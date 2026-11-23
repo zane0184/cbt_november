@@ -116,3 +116,15 @@ Acuan handover terbaru: [PROMPT_AGENT_PENGGANTI_CBT_W3_FINAL_2026-11-24.md](PROM
 **Status CI diperbarui:** post-check InnoDB sudah diperbaiki pada commit `1b25c3bbed07fba6def2dfe869d686a8559be1cc`; GitHub Actions #1722 SUCCESS pada exact SHA `df079f0ab51235b611b97b96c2cb10cc3d33d8eb`: 536 passed / 2,231 assertions / 0 failed; focused login/tenant 30/99, Admin 5/5, Guru 4/8; InnoDB post-check PASS. Link: https://github.com/zane0184/cbt_november/actions/runs/45276501877.
 
 Jangan ulang patch CI, jangan mengulang profil dasar Admin, triage 42 failure PHPUnit, atau W1 reauthorization yang telah diverifikasi. **LANJUTKAN GAP FITUR YANG BELUM SELESAI.** Fokus berikutnya: profil Admin lanjutan dan backlog ADM-01..23, Web Guru/Siswa E2E, integritas dan security, kemudian satu ZIP final setelah acceptance lengkap. Jangan meminta spesifikasi VPS; owner menyatakan VPS/instalasi sudah terverifikasi.
+
+ 
+## ADDENDUM TERBARU — W3 ADMIN AUDIT EVENTS (24 NOVEMBER 2026)
+
+Laporan: [REPORT_W3_ADMIN_AUDIT_EVENTS_2026-11-24.md](REPORT_W3_ADMIN_AUDIT_EVENTS_2026-11-24.md).  
+Checkpoint: [CHECKPOINT_W3_ADMIN_AUDIT_EVENTS_2026-11-24.md](CHECKPOINT_W3_ADMIN_AUDIT_EVENTS_2026-11-24.md).
+
+Pada branch `work/solo-web-cbt-completion-20261123-execution`, HEAD source setelah patch adalah `f4397b8999ddf31a96d4d04b15bcfac4473b5203`. Perubahan menambahkan AuditLog transaksional untuk create Rombel, Subject, User Guru, dan User Siswa. Backup pra-patch dan pra-koreksi test tersedia sesuai laporan.
+
+**PENGUJIAN:** CI #1734 dijalankan pada exact source SHA `f4397b8999ddf31a96d4d04b15bcfac4473b5203`, link https://github.com/zane0184/cbt_november/actions/runs/45278477028. Status saat addendum ini ditulis masih belum final; jangan klaim PASS sebelum job selesai.
+
+Lanjutkan dari checkpoint W3. Jangan ulang patch audit event ini atau pekerjaan W1/W2 yang sudah diverifikasi. ZIP final masih NOT READY FOR DISTRIBUTION.
