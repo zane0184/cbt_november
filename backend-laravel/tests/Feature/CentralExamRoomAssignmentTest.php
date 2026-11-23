@@ -172,4 +172,29 @@ class CentralExamRoomAssignmentTest extends TestCase
             $this->assertTrue(true);
         }
     }
+
+    public function test_assigned_guru_can_monitor_room_only_during_session_and_cannot_access_exam_authoring(): void
+    {
+        $this->actingAs($this->admin);
+        $assignment = app(ExamRoomAssignmentService::class)->create(
+            $this->admin, $this->examA, $this->roomA,
+            [$this->guruA->id => 'proctor'], 1,
+            now()->addMinutes(10), now()->addHours(2)
+        );
+
+        $this->actingAs($this->guruA);
+        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('monitor', $this->examA));
+        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('viewQuestionBank', $this->examA));
+        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('manageQuestions', $this->examA));
+        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('viewParticipants', $assignment));
+
+        $this->travelTo(now()->addMinutes(15));
+        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('monitor', $this->examA));
+        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('releaseToken', $assignment));
+        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('resetLogin', $assignment));
+        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('grantExtraTime', $assignment));
+        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('printAttendance', $assignment));
+        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('viewAnswerKey', $assignment));
+    }
+
 }
