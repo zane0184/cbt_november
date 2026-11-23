@@ -8,6 +8,7 @@ use App\Models\ExamAttempt;
 use App\Models\MediaAsset;
 use App\Models\Question;
 use App\Models\QuestionVersion;
+use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,14 +27,12 @@ class MediaController extends Controller
     {
         $user = $request->user();
 
-        abort_unless(
-            $user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'),
-            ResponseCode::HTTP_FORBIDDEN
-        );
+        // Hide the library from multi-role/legacy identities.
+        abort_unless($this->canManageQuestionMedia($user), ResponseCode::HTTP_NOT_FOUND);
 
         $query = MediaAsset::query()->where('tenant_id', $user->tenant_id);
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             // A teacher's library is limited to assets uploaded by that teacher.
             $query->where('uploaded_by', $user->id);
         } else {
@@ -57,17 +56,19 @@ class MediaController extends Controller
 
         $user = $request->user();
         $tenantId = $user->tenant_id;
+        abort_unless($this->isSupportedPortalUser($user), ResponseCode::HTTP_FORBIDDEN);
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
 
         if ($validated['owner_type'] === 'USER') {
             // A client cannot upload a private asset on behalf of another account.
+            abort_unless($this->isSupportedPortalUser($user), ResponseCode::HTTP_FORBIDDEN);
             if (!empty($validated['owner_id']) && $validated['owner_id'] !== $user->id) {
                 abort(ResponseCode::HTTP_FORBIDDEN, 'Media USER hanya boleh dimiliki pengguna yang mengunggah.');
             }
             $ownerId = $user->id;
         } else {
             abort_unless(
-                $user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'),
+                $this->canManageQuestionMedia($user),
                 ResponseCode::HTTP_FORBIDDEN
             );
 
@@ -137,9 +138,10 @@ class MediaController extends Controller
         ]);
 
         $user = $request->user();
+        abort_unless($this->isSupportedPortalUser($user), ResponseCode::HTTP_FORBIDDEN);
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($this->canManageQuestionMedia($user), ResponseCode::HTTP_FORBIDDEN);
 
         $result = DB::transaction(function () use ($questionId, $versionId, $validated, $user, $tenantId) {
             // Consistent lock order: Question -> QuestionVersion -> MediaAsset.
@@ -280,7 +282,7 @@ class MediaController extends Controller
                 ->find($media->owner_id);
 
             $questionReadable = false;
-            if ($question && ($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'))) {
+            if ($question && $this->canManageQuestionMedia($user)) {
                 $questionReadable = Gate::allows('view', $question);
             }
 
@@ -323,9 +325,9 @@ class MediaController extends Controller
                 ->findOrFail($media->owner_id);
 
             Gate::authorize('update', $question);
-            if ($user->hasRole('GURU')) {
+            if ($user->hasExactRole('GURU')) {
                 abort_unless($media->uploaded_by === $user->id, ResponseCode::HTTP_FORBIDDEN);
-            } elseif (!$user->hasRole('ADMIN_MADRASAH')) {
+            } elseif (!$user->hasExactRole('ADMIN_MADRASAH')) {
                 abort(ResponseCode::HTTP_FORBIDDEN);
             }
         } else {
@@ -380,6 +382,18 @@ class MediaController extends Controller
             'success' => true,
             'file_deleted' => $deleted,
         ]);
+    }
+
+    private function canManageQuestionMedia(?User $user): bool
+    {
+        return $user !== null
+            && $user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU']);
+    }
+
+    private function isSupportedPortalUser(?User $user): bool
+    {
+        return $user !== null
+            && $user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA']);
     }
 
     /**
