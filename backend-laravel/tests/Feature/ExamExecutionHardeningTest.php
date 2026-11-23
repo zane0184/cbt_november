@@ -12,7 +12,7 @@ use App\Models\AcademicYear;
 use App\Models\Subject;
 use App\Models\Question;
 use App\Models\QuestionVersion;
-use App\Services\ExamSnapshotService;
+use App\Models\ExamQuestionSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Carbon\Carbon;
