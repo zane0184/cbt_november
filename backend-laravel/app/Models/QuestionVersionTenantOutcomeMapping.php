@@ -57,6 +57,11 @@ class QuestionVersionTenantOutcomeMapping extends Model
         return $this->belongsTo(MaterialTopic::class, 'material_topic_id');
     }
 
+    public function materialTopic(): BelongsTo
+    {
+        return $this->belongsTo(MaterialTopic::class, 'material_topic_id');
+    }
+
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class, 'academic_year_id');
