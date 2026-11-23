@@ -218,9 +218,14 @@ class ExamManagement extends Component
     {
         $this->assertCanAccess();
 
+        // A Guru may publish only for the single Rombel in the selected active assignment.
+        // Never interpret a client-supplied ALL value as a cross-Rombel participant grant.
+        abort_if($this->selectedRombelId === 'ALL', 403, 'Guru hanya dapat mengelola peserta pada Rombel penugasannya.');
+
         $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'selectedAssignmentId' => ['required', 'uuid'],
+            'selectedRombelId' => ['required', 'uuid'],
             'activityName' => ['required', 'string', 'max:255'],
             'assessmentPurpose' => ['required', 'string', 'max:5000'],
             'assessmentOrigin' => ['required', 'in:INTERNAL,EXTERNAL'],
@@ -257,6 +262,8 @@ class ExamManagement extends Component
             ->whereDate('ends_at', '>=', now()->toDateString())
             ->with(['subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumRegistration', 'curriculumVersion.source'])
             ->firstOrFail();
+
+        abort_unless((string) $this->selectedRombelId === (string) $assignment->rombel_id, 403, 'Rombel di luar penugasan Guru tidak dapat dipilih.');
 
         if (!$assignment->curriculumRegistration
             || $assignment->curriculumRegistration->status !== 'ACTIVE'
