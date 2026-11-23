@@ -111,7 +111,7 @@
                                     <div>
                                         <label class="block text-xs font-bold text-textSecondary uppercase mb-1">Nilai Manual</label>
                                         <input wire:model="manualScore" type="number" step="0.01" class="w-36 border border-cardBorder rounded-lg px-3 py-1.5 text-sm font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                                        @error('manualScore') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @error
+                                        @error('manualScore') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-textSecondary uppercase mb-1">Catatan / Feedback Guru</label>
