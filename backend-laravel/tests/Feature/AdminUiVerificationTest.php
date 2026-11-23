@@ -201,7 +201,7 @@ class AdminUiVerificationTest extends TestCase
             ->assertSee('6B Nonaktif')
             ->assertDontSee('6C Tahun Lalu');
 
-        $this->assertSame(1, Subject::query()->where('status', 'ACTIVE')->count());
+        $this->assertSame(2, Subject::query()->where('status', 'ACTIVE')->count());
         $this->assertSame(1, Rombel::query()->where('academic_year_id', $this->academicYear->id)->where('status', 'ACTIVE')->count());
     }
 
