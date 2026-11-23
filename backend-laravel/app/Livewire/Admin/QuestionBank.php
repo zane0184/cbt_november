@@ -565,10 +565,12 @@ class QuestionBank extends Component
             $cpMappings = QuestionVersionCurriculumMapping::query()
                 ->where('tenant_id', auth()->user()->tenant_id)
                 ->where('question_version_id', $version->id)
+                ->with('learningOutcome.source')
                 ->get();
             $outcomeMappings = QuestionVersionTenantOutcomeMapping::query()
                 ->where('tenant_id', auth()->user()->tenant_id)
                 ->where('question_version_id', $version->id)
+                ->with('learningOutcome')
                 ->get();
             $structureMappings = QuestionVersionStructureMapping::query()
                 ->where('tenant_id', auth()->user()->tenant_id)
@@ -576,7 +578,27 @@ class QuestionBank extends Component
                 ->get();
 
             $assignmentIds = $cpMappings->pluck('teacher_subject_assignment_id')->unique()->values();
+            $outcomeAssignmentIds = $outcomeMappings->pluck('teacher_subject_assignment_id')->unique()->values();
             abort_unless($assignmentIds->isNotEmpty(), 409, 'Versi soal belum dipetakan ke CP resmi dan penugasan Guru.');
+            abort_unless($assignmentIds->sort()->values()->all() === $outcomeAssignmentIds->sort()->values()->all(), 409, 'Pemetaan CP dan TP/ATP harus konsisten untuk setiap penugasan.');
+            foreach ($cpMappings as $cpMapping) {
+                $cp = $cpMapping->learningOutcome;
+                abort_unless($cp && $cp->is_official && !$cp->is_editable
+                    && $cp->source
+                    && $cp->source->verification_status === 'ARTIFACT_CHECKSUM_VERIFIED'
+                    && $cp->source->checksum_sha256
+                    && $cp->source_checksum
+                    && hash_equals((string) $cp->source->checksum_sha256, (string) $cp->source_checksum),
+                    409,
+                    'CP resmi pada pemetaan soal tidak lagi memenuhi verifikasi sumber/checksum.');
+            }
+            foreach ($outcomeMappings as $outcomeMapping) {
+                abort_unless($outcomeMapping->learningOutcome
+                    && $outcomeMapping->learningOutcome->status === 'PUBLISHED'
+                    && $outcomeMapping->learningOutcome->is_current,
+                    409,
+                    'TP/ATP pada pemetaan soal harus tetap berstatus PUBLISHED dan versi terkini.');
+            }
             $profile = app(TeacherPortalAccess::class)->profile(auth()->user());
 
             foreach ($assignmentIds as $assignmentId) {
@@ -707,8 +729,11 @@ class QuestionBank extends Component
 
         $assignmentRows = app(TeacherPortalDataService::class)->assignmentOptions($user);
         if ($this->selectedAssignmentId === '' && $this->showModal && $assignmentRows !== []) {
-            $this->selectedAssignmentId = (string) $assignmentRows[0]['assignment']->id;
-            $this->selectedSubjectId = (string) $assignmentRows[0]['assignment']->subject_id;
+            $preferredRow = collect($assignmentRows)->first(
+                fn (array $row) => (string) $row['assignment']->subject_id === (string) $this->selectedSubjectId
+            ) ?? $assignmentRows[0];
+            $this->selectedAssignmentId = (string) $preferredRow['assignment']->id;
+            $this->selectedSubjectId = (string) $preferredRow['assignment']->subject_id;
         }
 
         $selectedAssignmentRow = collect($assignmentRows)->first(
