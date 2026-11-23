@@ -6,6 +6,7 @@ on:
     branches:
       - work/web-guru-foundation-20261122
       - work/web-guru-phase1-audit-implementation-20261122
+      - work/web-guru-remove-xlsx-20261123
     paths:
       - 'backend-laravel/**'
       - '.github/workflows/web-guru-foundation-ci.yml'
@@ -169,7 +170,7 @@ jobs:
           test ! -e .env
           : > .env
           trap 'rm -f .env' EXIT
-          php artisan test --filter='TeacherPortalFoundationTest|TeacherPracticeWorkflowTest|QuestionImportTemplateDownloadTest|QuestionImportTest|QuestionImportWizardTest|PortalLoginRoleBoundaryTest|ItemAnalysisTest|CurrentScoreAnalyticsTest|TeacherResultAccessTest|TeacherResultNavigationTest|TeacherQuestionMediaTest' --display-warnings
+          php artisan test --filter='TeacherPortalFoundationTest|TeacherPracticeWorkflowTest|QuestionBankTest|QuestionImportTest|PortalLoginRoleBoundaryTest|ItemAnalysisTest|CurrentScoreAnalyticsTest|TeacherResultAccessTest|TeacherResultNavigationTest|TeacherQuestionMediaTest' --display-warnings
 
       - name: Verify migrated tables use InnoDB
         shell: bash
