@@ -47,3 +47,36 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 - Commits source: `8f3dd62f064be8f2940eb3afc30f6a6d2d28fdd4`, `3ada2353b9471b2986a7138665636d458fcca4f9`.
 - Belum diuji ulang pada CI. Run lama #45228426438 adalah bukti kegagalan sebelum patch, bukan hasil validasi perubahan.
 - Berikutnya: jalankan CI exact HEAD, lanjutkan perbaikan test heartbeat/rate-limit hanya setelah membedakan kekurangan fixture dari regresi proteksi aktual.
+
+
+## Fokus remediasi PHPUnit — audit pola dan patch tahap berikutnya (24 November 2026)
+
+### Baseline CI terbaru sebelum patch tahap ini
+- Run #45236488920 pada SHA `30aa1bfd36ec4a24e689ef0fc88ac9ce7a95f02f`: **26 failed, 492 passed, 2,017 assertions**.
+- Ini menggantikan angka 42 failed/476 passed pada run sebelumnya. Angka 41 yang disebut dalam permintaan adalah hitungan tahap terdahulu; audit ini memakai output CI yang dapat diverifikasi.
+- Kegagalan yang dikelompokkan dari output tersebut:
+  1. 17 kegagalan snapshot/answer-key: `ExamSnapshotService` menolak QuestionVersion yang tidak berstatus PUBLISHED dan parent Question yang belum PUBLISHED; satu jalur snapshot juga menguji assignment yang tidak cocok dengan kontrak konteks.
+  2. 1 ExamBuilder endpoint 404: fixture soal/versi soal belum memenuhi status terbit yang diwajibkan snapshot service.
+  3. 4 ExamManagementHardening: timestamp startAt pada menit saat ini menjadi masa lalu saat validasi detik; validasi rombel belum eksplisit dan nilai ALL tidak ditolak.
+  4. 1 Phase7D reopen: test memakai ADMIN untuk aksi reopen skor, bertentangan dengan batas kewenangan Guru.
+  5. 2 RateLimit/heartbeat: route throttle bawaan berbasis IP membuat pengguna di belakang IP yang sama berbagi kuota; assertion timestamp MySQL presisi detik tidak memajukan waktu.
+  6. 1 TeacherPracticeWorkflow: startAt dibentuk pada menit saat ini sehingga validasi after_or_equal:now gagal dan exam tidak pernah dibuat.
+
+### Patch kode aplikasi
+- `ExamManagement.php`: menolak `selectedRombelId=ALL`, mewajibkan UUID Rombel, dan memastikan Rombel yang dipilih sama dengan Rombel pada assignment aktif. Ini perbaikan batas akses, bukan sekadar pelonggaran test.
+- `AppServiceProvider.php` dan `routes/api.php`: limiter heartbeat bernama `exam-heartbeat` memakai key tenant+user (fallback IP hanya bila tidak ada user terautentikasi), 30 permintaan/menit per pengguna. Menghindari kuota global per-IP/NAT.
+
+### Patch fixture/test
+- ExamBuilder, ExamSnapshot, AnswerKeyLeakage: status Question dan QuestionVersion yang memang menjadi sumber snapshot kini dinyatakan PUBLISHED; fixture yang menguji versi nonpublished tetap dipertahankan sesuai tujuan tes.
+- ExamManagementHardening dan TeacherPracticeWorkflow: jadwal ujian valid dipindah ke waktu mendatang.
+- Phase7D: aksi reopen yang diharapkan berhasil dijalankan sebagai Guru, bukan Admin, sesuai ExamAttemptPolicy dan RolePermissionBootstrapper.
+- RateLimiting: waktu uji dimajukan satu detik sebelum assertion mutasi last_activity_at agar sesuai presisi timestamp MySQL.
+
+### Backup
+- Backup byte-exact untuk sembilan file sebelum patch tersedia di `backend-laravel/backup_before_patch/P0_PHPUNIT_26_FAILURES_20261124/`.
+- Backup sebelumnya untuk fixture kanonis dan ExamManagement pivot tetap disimpan di folder backup P0 masing-masing.
+- Semua patch hanya pada branch eksekusi; tidak ada migration, database produksi, VPS, atau PR merge.
+
+### Status pengujian
+- Patch tahap ini belum boleh dinyatakan lulus sampai satu run PHPUnit lengkap pada HEAD terbaru selesai. Run lama #45238343063 berasal dari SHA sebelum patch lengkap dan tidak boleh dipakai sebagai bukti final.
+- Langkah berikut: validasi full suite pada HEAD terbaru, ambil semua stack trace baru, kelompokkan ulang, lalu perbaiki akar masalah sampai run penuh hijau.
