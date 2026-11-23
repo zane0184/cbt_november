@@ -47,9 +47,13 @@ class TeacherAccess
     public static function canManageAssessment(User $user, $assessment): bool
     {
         if ($user->tenant_id !== $assessment->tenant_id
+            || !$assessment->teacher_subject_assignment_id
             || !$assessment->subject_id
             || !$assessment->academic_year_id
-            || !$assessment->semester_id) {
+            || !$assessment->semester_id
+            || !$assessment->tenant_curriculum_registration_id
+            || !$assessment->curriculum_version_id
+            || !$assessment->curriculum_owner_id) {
             return false;
         }
 
@@ -60,15 +64,20 @@ class TeacherAccess
 
         return TeacherSubjectAssignment::query()
             ->where('tenant_id', $user->tenant_id)
+            ->whereKey($assessment->teacher_subject_assignment_id)
             ->whereIn('teacher_profile_id', $profileIds)
             ->where('subject_id', $assessment->subject_id)
             ->where('academic_year_id', $assessment->academic_year_id)
             ->where('semester_id', $assessment->semester_id)
+            ->where('tenant_curriculum_registration_id', $assessment->tenant_curriculum_registration_id)
+            ->where('multi_curriculum_version_id', $assessment->curriculum_version_id)
+            ->where('curriculum_owner_id', $assessment->curriculum_owner_id)
+            ->where('status', 'ACTIVE')
             ->activeForDate()
             ->exists();
     }
 
-    public static function canCreateAssessment(User $user, string $subjectId, string $academicYearId, string $semesterId): bool
+        public static function canCreateAssessment(User $user, string $subjectId, string $academicYearId, string $semesterId): bool
     {
         $profileIds = self::profileIds($user);
         if ($profileIds === []) {
@@ -118,26 +127,33 @@ class TeacherAccess
     {
         if ($user->tenant_id !== $rombel->tenant_id
             || $user->tenant_id !== $assessment->tenant_id
-            || !$assessment->subject_id
-            || !$assessment->academic_year_id
-            || !$assessment->semester_id
+            || !$assessment->teacher_subject_assignment_id
             || $rombel->academic_year_id !== $assessment->academic_year_id) {
             return false;
         }
 
-        return in_array(
-            $rombel->id,
-            self::assignedRombelIdsForScope(
-                $user,
-                $assessment->subject_id,
-                $assessment->academic_year_id,
-                $assessment->semester_id
-            ),
-            true
-        );
+        $profileIds = self::profileIds($user);
+        if ($profileIds === []) {
+            return false;
+        }
+
+        return TeacherSubjectAssignment::query()
+            ->where('tenant_id', $user->tenant_id)
+            ->whereKey($assessment->teacher_subject_assignment_id)
+            ->whereIn('teacher_profile_id', $profileIds)
+            ->where('rombel_id', $rombel->id)
+            ->where('subject_id', $assessment->subject_id)
+            ->where('academic_year_id', $assessment->academic_year_id)
+            ->where('semester_id', $assessment->semester_id)
+            ->where('tenant_curriculum_registration_id', $assessment->tenant_curriculum_registration_id)
+            ->where('multi_curriculum_version_id', $assessment->curriculum_version_id)
+            ->where('curriculum_owner_id', $assessment->curriculum_owner_id)
+            ->where('status', 'ACTIVE')
+            ->activeForDate()
+            ->exists();
     }
 
-    /**
+        /**
      * Apply teacher visibility as correlated SQL predicates before pagination.
      * This avoids loading every exam and participant in a tenant into PHP.
      */
@@ -154,17 +170,18 @@ class TeacherAccess
             $assessmentQuery->selectRaw('1')
                 ->from('assessments as teacher_assessments')
                 ->join('teacher_subject_assignments as teacher_assignments', function ($join) {
-                    $join->on('teacher_assignments.tenant_id', '=', 'teacher_assessments.tenant_id')
+                    $join->on('teacher_assignments.id', '=', 'teacher_assessments.teacher_subject_assignment_id')
+                        ->on('teacher_assignments.tenant_id', '=', 'teacher_assessments.tenant_id')
                         ->on('teacher_assignments.subject_id', '=', 'teacher_assessments.subject_id')
                         ->on('teacher_assignments.academic_year_id', '=', 'teacher_assessments.academic_year_id')
-                        ->on('teacher_assignments.semester_id', '=', 'teacher_assessments.semester_id');
+                        ->on('teacher_assignments.semester_id', '=', 'teacher_assessments.semester_id')
+                        ->on('teacher_assignments.tenant_curriculum_registration_id', '=', 'teacher_assessments.tenant_curriculum_registration_id')
+                        ->on('teacher_assignments.multi_curriculum_version_id', '=', 'teacher_assessments.curriculum_version_id')
+                        ->on('teacher_assignments.curriculum_owner_id', '=', 'teacher_assessments.curriculum_owner_id');
                 })
                 ->whereColumn('teacher_assessments.id', 'exams.assessment_id')
                 ->whereColumn('teacher_assessments.tenant_id', 'exams.tenant_id')
                 ->whereNull('teacher_assessments.deleted_at')
-                ->whereNotNull('teacher_assessments.subject_id')
-                ->whereNotNull('teacher_assessments.academic_year_id')
-                ->whereNotNull('teacher_assessments.semester_id')
                 ->whereIn('teacher_assignments.teacher_profile_id', $profileIds)
                 ->where('teacher_assignments.status', 'ACTIVE')
                 ->where(function ($dates) use ($today) {
@@ -177,10 +194,6 @@ class TeacherAccess
                 });
         });
 
-        // An empty participant list is not evidence of teacher coverage.
-        // A teacher may see their own unassigned draft so they can continue
-        // building it. Any exam with participants must still have every
-        // participant covered by the teacher's exact active assignment scope.
         $query->where(function ($visibility) use ($user) {
             $visibility->whereExists(function ($participants) {
                 $participants->selectRaw('1')
@@ -216,11 +229,15 @@ class TeacherAccess
                         })
                         ->join('assessments as teacher_coverage_assessments', 'teacher_coverage_assessments.id', '=', 'exams.assessment_id')
                         ->join('teacher_subject_assignments as teacher_coverage_assignments', function ($join) {
-                            $join->on('teacher_coverage_assignments.tenant_id', '=', 'teacher_coverage_assessments.tenant_id')
+                            $join->on('teacher_coverage_assignments.id', '=', 'teacher_coverage_assessments.teacher_subject_assignment_id')
+                                ->on('teacher_coverage_assignments.tenant_id', '=', 'teacher_coverage_assessments.tenant_id')
                                 ->on('teacher_coverage_assignments.rombel_id', '=', 'teacher_rombels.id')
                                 ->on('teacher_coverage_assignments.subject_id', '=', 'teacher_coverage_assessments.subject_id')
                                 ->on('teacher_coverage_assignments.academic_year_id', '=', 'teacher_coverage_assessments.academic_year_id')
-                                ->on('teacher_coverage_assignments.semester_id', '=', 'teacher_coverage_assessments.semester_id');
+                                ->on('teacher_coverage_assignments.semester_id', '=', 'teacher_coverage_assessments.semester_id')
+                                ->on('teacher_coverage_assignments.tenant_curriculum_registration_id', '=', 'teacher_coverage_assessments.tenant_curriculum_registration_id')
+                                ->on('teacher_coverage_assignments.multi_curriculum_version_id', '=', 'teacher_coverage_assessments.curriculum_version_id')
+                                ->on('teacher_coverage_assignments.curriculum_owner_id', '=', 'teacher_coverage_assessments.curriculum_owner_id');
                         })
                         ->whereColumn('teacher_student_profiles.user_id', 'teacher_uncovered_participants.user_id')
                         ->whereColumn('teacher_student_users.tenant_id', 'teacher_uncovered_participants.tenant_id')
@@ -246,7 +263,7 @@ class TeacherAccess
         return $query;
     }
 
-    /**
+        /**
      * Resolve only exams whose subject/year/semester match the requested scope
      * and whose entire participant roster is covered by this teacher's active
      * rombel assignments. Used by student-level report/analytics queries.
@@ -306,30 +323,20 @@ class TeacherAccess
         }
 
         $assessment = $exam->assessment;
-        if (!$assessment
-            || $assessment->tenant_id !== $user->tenant_id
-            || !$assessment->subject_id
-            || !$assessment->academic_year_id
-            || !$assessment->semester_id) {
+        if (!$assessment || !self::canManageAssessment($user, $assessment)) {
             return false;
         }
 
         $profileIds = self::profileIds($user);
-        if ($profileIds === []) {
-            return false;
-        }
-
-        $assignedRombelIds = TeacherSubjectAssignment::query()
+        $assignment = TeacherSubjectAssignment::query()
             ->where('tenant_id', $user->tenant_id)
+            ->whereKey($assessment->teacher_subject_assignment_id)
             ->whereIn('teacher_profile_id', $profileIds)
-            ->where('subject_id', $assessment->subject_id)
-            ->where('academic_year_id', $assessment->academic_year_id)
-            ->where('semester_id', $assessment->semester_id)
             ->where('status', 'ACTIVE')
             ->activeForDate()
-            ->pluck('rombel_id');
+            ->first();
 
-        if ($assignedRombelIds->isEmpty()) {
+        if (!$assignment) {
             return false;
         }
 
@@ -340,14 +347,14 @@ class TeacherAccess
         }
 
         $covered = (clone $participants)
-            ->whereHas('user', function ($userQuery) use ($user, $assignedRombelIds, $assessment) {
+            ->whereHas('user', function ($userQuery) use ($user, $assignment) {
                 $userQuery->where('users.tenant_id', $user->tenant_id)
-                    ->whereHas('studentProfile', function ($profileQuery) use ($user, $assignedRombelIds, $assessment) {
+                    ->whereHas('studentProfile', function ($profileQuery) use ($user, $assignment) {
                         $profileQuery->where('student_profiles.tenant_id', $user->tenant_id)
-                            ->whereHas('rombels', function ($rombelQuery) use ($user, $assignedRombelIds, $assessment) {
-                                $rombelQuery->whereIn('rombels.id', $assignedRombelIds)
+                            ->whereHas('rombels', function ($rombelQuery) use ($user, $assignment) {
+                                $rombelQuery->where('rombels.id', $assignment->rombel_id)
                                     ->where('rombels.tenant_id', $user->tenant_id)
-                                    ->where('rombels.academic_year_id', $assessment->academic_year_id);
+                                    ->where('rombels.academic_year_id', $assignment->academic_year_id);
                             });
                     });
             })
@@ -356,7 +363,7 @@ class TeacherAccess
         return $total === $covered;
     }
 
-    /**
+        /**
      * Student result access is subject/rombel/year/semester-specific. A teacher
      * must not gain access to every subject result merely because they teach
      * one subject in the student's rombel.
