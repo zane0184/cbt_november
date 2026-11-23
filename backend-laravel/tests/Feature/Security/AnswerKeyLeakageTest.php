@@ -159,7 +159,7 @@ class AnswerKeyLeakageTest extends TestCase
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
              ->assertStatus(201);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
+        $response = $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
@@ -213,7 +213,7 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_student_show_does_not_leak_answer_key()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}");
         $response->assertStatus(200);
@@ -291,7 +291,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         $this->actingAs($this->student);
 
-        $this->withHeader('X-Device-Binding-ID', 'dev1')
+        $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
