@@ -26,6 +26,7 @@ use Tests\TestCase;
 class ExamVerificationTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenantA;
     private $tenantB;
@@ -205,6 +206,7 @@ class ExamVerificationTest extends TestCase
     /** 3. Attempt Submission Verification **/
     public function test_attempt_submission_integrity()
     {
+        $this->examA->update(['status' => 'PUBLISHED', 'published_at' => now(), 'locked_at' => now()]);
         $this->withToken($this->studentToken);
         $this->withHeaders([
             'X-Device-Binding-ID' => 'dev-1',
@@ -268,7 +270,7 @@ class ExamVerificationTest extends TestCase
 
         // Replace the setup participant with the Rombel-scoped assignment under test.
         $this->examA->participants()->delete();
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
             'teacher_profile_id' => $tp->id,
             'subject_id' => $this->subjectA->id,
@@ -279,6 +281,7 @@ class ExamVerificationTest extends TestCase
             'status' => 'ACTIVE',
             'created_by' => $this->guruA->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($assignment, $this->examA->assessment);
 
         $this->withToken($this->guruToken);
 
