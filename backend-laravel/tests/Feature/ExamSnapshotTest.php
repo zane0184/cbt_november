@@ -754,7 +754,7 @@ class ExamSnapshotTest extends TestCase
                 // registry so the second connection can see it. Remove that
                 // disposable registry after local dependants are cleaned; later
                 // tests seed it again through the canonical helper.
-                $connectionB->table('tenants')->where('id', \\App\\Models\\Tenant::SYSTEM_TENANT_ID)->delete();
+                $connectionB->table('tenants')->where('id', \App\Models\Tenant::SYSTEM_TENANT_ID)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
                 $connectionB->table('curricula')->where('id', $this->curriculum->id)->delete();
