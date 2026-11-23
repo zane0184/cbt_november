@@ -17,7 +17,7 @@ class ExamPolicy
 
     public function view(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) {
+        if ($user->tenant_id !== $exam->tenant_id || $this->isAssignedRoomProctor($user, $exam)) {
             return false;
         }
 
@@ -34,7 +34,7 @@ class ExamPolicy
 
     public function preview(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('GURU')) {
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('GURU') || $this->isAssignedRoomProctor($user, $exam)) {
             return false;
         }
 
@@ -57,7 +57,7 @@ class ExamPolicy
 
     public function update(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || $exam->isLocked()) {
+        if ($user->tenant_id !== $exam->tenant_id || $exam->isLocked() || $this->isAssignedRoomProctor($user, $exam)) {
             return false;
         }
 
@@ -70,7 +70,7 @@ class ExamPolicy
 
     public function delete(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || $exam->isLocked()) {
+        if ($user->tenant_id !== $exam->tenant_id || $exam->isLocked() || $this->isAssignedRoomProctor($user, $exam)) {
             return false;
         }
 
@@ -83,20 +83,15 @@ class ExamPolicy
 
     public function viewQuestionBank(User $user, Exam $exam): bool
     {
-        if ($exam->isCentralized() && \\App\\Models\\ExamRoomAssignment::query()
-            ->where('tenant_id', $user->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->whereHas('activeProctors', fn ($query) => $query->where('user_id', $user->id))
-            ->exists()) {
-            return false;
-        }
-
-        return $user->hasRole('GURU') && TeacherAccess::canManageExam($user, $exam);
+        return !$this->isAssignedRoomProctor($user, $exam)
+            && $user->hasRole('GURU')
+            && TeacherAccess::canManageExam($user, $exam);
     }
 
     public function manageQuestions(User $user, Exam $exam): bool
     {
-        return $user->hasRole('GURU')
+        return !$this->isAssignedRoomProctor($user, $exam)
+            && $user->hasRole('GURU')
             && $user->hasPermission('question.manage')
             && $this->update($user, $exam);
     }
@@ -108,7 +103,7 @@ class ExamPolicy
 
     public function generateToken(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || $exam->status !== 'PUBLISHED' || !$exam->locked_at) {
+        if ($user->tenant_id !== $exam->tenant_id || $exam->status !== 'PUBLISHED' || !$exam->locked_at || $this->isAssignedRoomProctor($user, $exam)) {
             return false;
         }
 
@@ -224,6 +219,19 @@ class ExamPolicy
         return $user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam);
     }
 
+    private function isAssignedRoomProctor(User $user, Exam $exam): bool
+    {
+        if (!$exam->isCentralized() || $user->tenant_id !== $exam->tenant_id) {
+            return false;
+        }
+
+        return \\App\\Models\\ExamRoomAssignment::query()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('exam_id', $exam->id)
+            ->whereHas('activeProctors', fn ($query) => $query->where('user_id', $user->id))
+            ->exists();
+    }
+
     public function viewExamResults(User $user, Exam $exam): bool
     {
         return app(\App\Policies\ReportPolicy::class)->viewExamResults($user, $exam);
@@ -238,7 +246,8 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return !$this->isAssignedRoomProctor($user, $exam)
+            && $user->hasRole('GURU')
             && $user->hasPermission('exam.grade')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
