@@ -45,7 +45,7 @@ Catatan:
   - `admin_can_view_and_update_own_madrasah_profile_with_audit_log`
   - `admin_madrasah_profile_requires_exact_admin_role_and_tenant_manage_permission`
   - `madrasah_profile_uses_only_authenticated_admin_tenant_and_never_updates_installation_code`
-- CI exact-SHA belum selesai saat laporan dibuat. Status test: PENDING; jangan klaim PASS sampai Actions selesai.
+- CI test fitur profil masih PENDING. Runs #1702, #1705, #1707, #1708, dan #1709 dibatalkan sebelum checkout oleh workflow concurrency; run #1703/#1706 gagal pada probe MySQL yang diperbaiki terpisah. Belum ada focused test atau PHPUnit yang dijalankan untuk fitur profil. Run final harus dijalankan pada satu HEAD stabil sebelum status berubah menjadi VERIFIED.
 - Tidak ada runtime browser/manual UAT yang dijalankan dalam tahap ini.
 
 ## Tambahan — temuan CI MySQL identity probe
