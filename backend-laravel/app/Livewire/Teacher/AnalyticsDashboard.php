@@ -23,6 +23,9 @@ class AnalyticsDashboard extends Component
 
     public function render()
     {
+        // Re-check persisted Guru role, permission and assignment on every Livewire request.
+        $this->authorize('viewExamResults', $this->exam);
+
         return view('livewire.teacher.analytics-dashboard');
     }
 }

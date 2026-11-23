@@ -238,6 +238,9 @@ class ResultDetail extends Component
 
     public function render()
     {
+        // Re-check persisted Guru role, permission and assignment on every Livewire request.
+        $this->authorize('view', $this->attempt);
+
         $currentVersion = $this->attempt->score ? $this->attempt->score->scoring_version : 1;
         $questionScores = $this->attempt->questionScores
             ->where('scoring_version', $currentVersion)

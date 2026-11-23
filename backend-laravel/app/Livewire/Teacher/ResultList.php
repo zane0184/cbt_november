@@ -242,6 +242,9 @@ class ResultList extends Component
 
     public function render()
     {
+        // Re-check persisted Guru role, permission and assignment on every Livewire request.
+        $this->authorize('viewExamResults', $this->exam);
+
         $participantUserIds = ExamParticipant::query()
             ->where('exam_id', $this->exam->id)
             ->pluck('user_id');

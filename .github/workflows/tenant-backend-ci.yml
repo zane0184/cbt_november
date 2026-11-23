@@ -143,5 +143,8 @@ jobs:
       - name: Run focused Admin Livewire reauthorization regression tests
         run: php artisan test --display-warnings --filter='AdminLivewireReauthorizationTest'
 
+      - name: Run focused Teacher result Livewire reauthorization regression tests
+        run: php artisan test --display-warnings --filter='TeacherResultLivewireReauthorizationTest'
+
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
