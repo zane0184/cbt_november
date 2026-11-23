@@ -162,6 +162,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q1',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
 
@@ -216,6 +217,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'Q-WRONG-SUBJECT',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
         $version = QuestionVersion::create([
@@ -295,6 +297,7 @@ class ExamSnapshotTest extends TestCase
         $q = Question::create([
             'tenant_id' => $this->tenant->id,
             'subject_id' => $this->subject->id,
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
@@ -502,6 +505,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $otherUser->id,
             'question_code' => 'OTHER-TENANT-Q1',
+            'status' => 'PUBLISHED',
             'created_by' => $otherUser->id,
         ]);
         $otherVersion = QuestionVersion::create([
@@ -713,6 +717,7 @@ class ExamSnapshotTest extends TestCase
             'owner_type' => 'TENANT',
             'owner_user_id' => $this->user->id,
             'question_code' => 'MUTATION-1',
+            'status' => 'PUBLISHED',
             'created_by' => $this->user->id,
         ]);
 
