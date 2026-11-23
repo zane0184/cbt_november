@@ -104,3 +104,43 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 - Branch kerja saat handover dimulai: `work/solo-web-cbt-completion-20261123-execution`; HEAD terverifikasi sebelum pembaruan dokumen: `a8ad92d9a4319f87827291b6cc02419aab964db9`. Pembaruan dokumen ini menghasilkan commit baru; agent berikutnya wajib membaca HEAD terbaru dan tidak menganggap SHA lama sebagai HEAD aktif.
 - CI #45248980063 untuk commit dokumentasi sebelumnya cancelled karena tersupersesi; bukan regresi source. Baseline source green tetap dibuktikan oleh CI #45243430635.
 - Fokus lanjutan: Issue #20 ADM-01..ADM-23 berdasarkan source aktual, kemudian Web Siswa E2E, Web Guru E2E, kurikulum dan acceptance gates. Tidak ada merge/deploy/migration produksi tanpa approval owner.
+
+
+## Update koordinasi W1 — 24 November 2026
+
+### Source dan status branch
+- Branch: `work/solo-web-cbt-completion-20261123-execution`
+- Exact HEAD saat addendum ini disusun: `413fc1f017e4d515a9f373fa99683a521cf31f17`.
+- Backup checkpoint sebelum update tersimpan di `docs/backup/CHECKPOINT_OWNER_DIRECTED_EXECUTION_2026-11-24.md.before-w1-update`; source blob `ff4510b58235511285b2d305eb73567ef8d0190a`, backup telah diverifikasi identik.
+- Laporan W1: [REPORT_W1_ADMIN_TEACHER_LIVEWIRE_REAUTH_2026-11-24.md](REPORT_W1_ADMIN_TEACHER_LIVEWIRE_REAUTH_2026-11-24.md).
+- Matriks ADM diperbarui: [MATRIKS_ADM_01_23_AUDIT_2026-11-23.md](MATRIKS_ADM_01_23_AUDIT_2026-11-23.md).
+- Issue koordinasi #20 tetap OPEN; update report diposting sebagai komentar GitHub #7112420074.
+
+### AUDIT
+- Empat halaman Guru hasil/analitik dan beberapa komponen Admin memerlukan reauthorization pada setiap render/request Livewire.
+- Penugasan Proktor masih BLOCKED karena canonical central exam eligibility marker belum tersedia. `EXTERNAL` bukan bukti ujian pusat.
+- Web Siswa source terkini sudah memiliki IndexedDB queue/receipt/conflict/submit barrier dan media authorization yang lebih lengkap daripada audit spesifikasi lamanya, tetapi browser E2E masih NOT RUN.
+- ADM-01..ADM-23 tetap NOT VERIFIED secara end-to-end. ADM-20 tetap BLOCKED.
+
+### IMPLEMENTASI dan backup
+- Admin reauthorization: Dashboard, UserManagement, AcademicManagement, CurriculumManagement, ProctorAssignmentManagement callback.
+- Guru reauthorization: ResultList, ResultDetail, AnalyticsDashboard, ItemAnalysis.
+- Regression tests: `AdminLivewireReauthorizationTest` (5), `TeacherResultLivewireReauthorizationTest` (4).
+- Fix directive Blade pada `result-detail.blade.php`: `@error` penutup salah menjadi `@enderror`.
+- Backup byte-exact untuk source sebelum patch tersedia di `backend-laravel/docs/backup/livewire-admin-render-reauth-2026-11-24/` dan `backend-laravel/docs/backup/teacher-result-render-reauth-2026-11-24/`.
+- Tidak ada migration atau mutasi database, tidak ada VPS/deployment, tidak ada merge PR, Android, atau Super Admin.
+
+### PENGUJIAN
+1. Run #45251932629, exact SHA `b4592f8a93fd4d306cdab5105c244ba9c6a37eb0`: focused Admin 5/5 PASS; full PHPUnit disposable MySQL 8/InnoDB **523 passed, 2,182 assertions, 0 failed**.
+2. Run #45254047440, SHA `1c0b72260eb0c19d36fb48fddd092bc58a649e53`: focused Guru gagal 2/4 karena Blade syntax error pada ResultDetail; tidak ada full-suite run.
+3. Run #45254396061 pada SHA `cbce0df331784ecfbef50c4da29c3e781a03d7d7` dibatalkan oleh `cancel-in-progress` setelah perubahan docs; tidak dianggap hasil test.
+4. Run terbaru #45254547688 pada exact HEAD `413fc1f017e4d515a9f373fa99683a521cf31f17` masih IN PROGRESS ketika addendum dibuat; focused login, Admin, Guru dan full suite belum selesai. Status ini wajib diperiksa ulang sebelum klaim Guru lulus.
+
+### Berikutnya
+1. Selesaikan CI #45254547688 pada exact HEAD; baca focused Teacher logs dan full suite result.
+2. Lanjutkan W2–W8 dari issue #20 dan master spec, satu tahap dengan backup, test serta report.
+3. Tutup canonical curriculum/KBC, QuestionVersion/ExamSnapshot provenance, DOCX import contract, Student browser E2E dan Guru acceptance.
+4. Selesaikan fresh install, upgrade, backup/restore, security, stability dan UAT sebelum ZIP generik final.
+5. Deployment aaPanel/VPS hanya setelah staging gate dan persetujuan owner.
+
+Status proyek tetap **IN PROGRESS — NOT READY FOR DISTRIBUTION / NOT READY FOR PRODUCTION**.
