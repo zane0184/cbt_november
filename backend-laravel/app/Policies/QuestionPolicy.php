@@ -12,14 +12,14 @@ class QuestionPolicy extends BasePolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->tenant_id !== null && $user->hasRole('GURU') && $user->hasPermission('question.view');
+        return $user->tenant_id !== null && $user->hasExactRole('GURU') && $user->hasPermission('question.view');
     }
 
     public function view(User $user, $model): bool
     {
         if (!$model instanceof Question
             || !$user->tenant_id
-            || !$user->hasRole('GURU')
+            || !$user->hasExactRole('GURU')
             || $user->tenant_id !== $model->tenant_id
             || !$user->hasPermission('question.view')) {
             return false;
@@ -44,7 +44,7 @@ class QuestionPolicy extends BasePolicy
         // Question authoring is a Guru responsibility; Admin Madrasah does not
         // implicitly gain authoring rights merely by administering the tenant.
         return $user->tenant_id !== null
-            && $user->hasRole('GURU')
+            && $user->hasExactRole('GURU')
             && $user->hasPermission('question.manage');
     }
 
@@ -54,7 +54,7 @@ class QuestionPolicy extends BasePolicy
             || $model->status === 'ARCHIVED'
             || $user->tenant_id === null
             || $user->tenant_id !== $model->tenant_id
-            || !$user->hasRole('GURU')
+            || !$user->hasExactRole('GURU')
             || !$user->hasPermission('question.manage')) {
             return false;
         }
@@ -86,7 +86,7 @@ class QuestionPolicy extends BasePolicy
     private function canAccessSubject(User $user, Question $question): bool
     {
         return $question->subject_id !== null
-            && $user->hasRole('GURU')
+            && $user->hasExactRole('GURU')
             && TeacherAccess::canManageSubject($user, $question->subject_id);
     }
 }
