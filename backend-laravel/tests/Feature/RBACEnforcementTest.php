@@ -132,7 +132,7 @@ class RBACEnforcementTest extends TestCase
 
         // No mutation route is registered for any role.
         $response = $this->postJson('/api/v1/curricula', ['name' => 'New Cur']);
-        $response->assertStatus(404);
+        $response->assertStatus(405);
     }
 
     public function test_admin_cannot_mutate_retired_legacy_curriculum_resource()
@@ -147,7 +147,7 @@ class RBACEnforcementTest extends TestCase
             'is_active' => true
         ]);
 
-        $response->assertStatus(404);
+        $response->assertStatus(405);
         $this->assertDatabaseMissing('curricula', ['code' => 'K-MERDEKA']);
     }
 }
