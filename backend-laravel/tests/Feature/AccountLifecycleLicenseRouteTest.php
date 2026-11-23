@@ -26,6 +26,12 @@ class AccountLifecycleLicenseRouteTest extends TestCase
 
         $this->tenantA = Tenant::create(['name' => 'License Tenant A', 'code' => 'LTA01']);
         $this->tenantB = Tenant::create(['name' => 'License Tenant B', 'code' => 'LTB01']);
+
+        // User creation is tenant-guarded; establish the local tenant before
+        // creating its Admin identity in this fixture.
+        app(TenantContext::class)->setTenantId((string) $this->tenantA->id);
+        TenantContext::getInstance()?->setTenantId((string) $this->tenantA->id);
+
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
 
         $this->adminA = User::create([
