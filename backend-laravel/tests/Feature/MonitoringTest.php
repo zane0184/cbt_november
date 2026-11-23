@@ -362,6 +362,8 @@ class MonitoringTest extends TestCase
 
         $response->assertCreated();
         $attempt = ExamAttempt::query()->whereKey($response->json('data.id'))->firstOrFail();
+        $attempt->forceFill(['last_activity_at' => now()->subMinutes(5)])->save();
+        $attempt->refresh();
 
         return [$attempt, $token];
     }
