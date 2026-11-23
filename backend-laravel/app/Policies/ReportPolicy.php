@@ -12,7 +12,7 @@ class ReportPolicy
     {
         if (!$exam || $user->tenant_id !== $exam->tenant_id) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('report.view')
             && TeacherAccess::canViewExam($user, $exam);
     }
@@ -20,9 +20,9 @@ class ReportPolicy
     public function viewStudentResults(User $user, User $student): bool
     {
         if ($user->tenant_id !== $student->tenant_id) return false;
-        if ($user->id === $student->id) return true;
+        if ($user->id === $student->id) return $user->hasExactRole('SISWA');
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('report.view')
             && TeacherAccess::profileIds($user) !== [];
     }
@@ -31,7 +31,7 @@ class ReportPolicy
     {
         if ($user->tenant_id !== $subject->tenant_id) return false;
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('report.view')
             && TeacherAccess::profileIds($user) !== [];
     }
