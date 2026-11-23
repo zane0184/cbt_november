@@ -186,6 +186,79 @@ class ExamRoomAssignmentService
         });
     }
 
+    public function addProctor(
+        User $actor,
+        ExamRoomAssignment $assignment,
+        string $userId,
+        string $roleLabel = 'proctor'
+    ): ExamRoomProctor {
+        return DB::transaction(function () use ($actor, $assignment, $userId, $roleLabel) {
+            $tenantId = (string) $actor->tenant_id;
+            $lockedAssignment = ExamRoomAssignment::query()->where('tenant_id', $tenantId)
+                ->whereKey($assignment->id)->lockForUpdate()->firstOrFail();
+            Gate::forUser($actor)->authorize('manageProctors', $lockedAssignment);
+
+            if (!in_array($roleLabel, ['proctor', 'supervisor'], true)) {
+                throw ValidationException::withMessages(['roleLabel' => 'Label pengawas hanya boleh proctor atau supervisor.']);
+            }
+
+            $guru = User::query()->where('tenant_id', $tenantId)->whereKey($userId)
+                ->whereNull('deleted_at')->lockForUpdate()->first();
+            if (!$guru || !$guru->roles()->where('name', 'GURU')->exists() || !$guru->teacherProfile()->exists()) {
+                throw ValidationException::withMessages(['userId' => 'Pengawas harus merupakan Guru aktif pada madrasah ini.']);
+            }
+
+            $conflict = DB::table('exam_room_proctors as erp')
+                ->join('exam_room_assignments as era', function ($join) {
+                    $join->on('era.id', '=', 'erp.exam_room_assignment_id')
+                        ->on('era.tenant_id', '=', 'erp.tenant_id');
+                })
+                ->where('erp.tenant_id', $tenantId)
+                ->where('erp.user_id', $guru->id)
+                ->where('erp.status', 'ACTIVE')
+                ->whereNull('erp.revoked_at')
+                ->where('era.id', '<>', $lockedAssignment->id)
+                ->where('era.scheduled_start', '<', $lockedAssignment->scheduled_end)
+                ->where('era.scheduled_end', '>', $lockedAssignment->scheduled_start)
+                ->exists();
+
+            if ($conflict) {
+                throw ValidationException::withMessages([
+                    'userId' => 'Guru sudah ditugaskan pada ruang/sesi lain dengan waktu yang beririsan.',
+                ]);
+            }
+
+            $membership = ExamRoomProctor::query()->where('tenant_id', $tenantId)
+                ->where('exam_room_assignment_id', $lockedAssignment->id)
+                ->where('user_id', $guru->id)->lockForUpdate()->first();
+
+            $old = $membership?->only(['role_label', 'status', 'revoked_at', 'revoked_by', 'revoke_reason']);
+            $membership ??= new ExamRoomProctor();
+            $membership->fill([
+                'tenant_id' => $tenantId,
+                'exam_room_assignment_id' => $lockedAssignment->id,
+                'user_id' => $guru->id,
+                'role_label' => $roleLabel,
+                'status' => 'ACTIVE',
+                'assigned_by' => $actor->id,
+                'revoked_at' => null,
+                'revoked_by' => null,
+                'revoke_reason' => null,
+            ]);
+            $membership->save();
+
+            $this->auditService->log(
+                $old ? 'EXAM_ROOM_PROCTOR_REASSIGN' : 'EXAM_ROOM_PROCTOR_ASSIGN',
+                'ExamRoomProctor',
+                $membership->id,
+                $old,
+                $membership->only(['tenant_id', 'exam_room_assignment_id', 'user_id', 'role_label', 'status', 'assigned_by'])
+            );
+
+            return $membership->fresh()->load(['assignment', 'user', 'assigner']);
+        });
+    }
+
     public function revokeProctor(User $actor, ExamRoomAssignment $assignment, string $userId, string $reason): ExamRoomProctor
     {
         return DB::transaction(function () use ($actor, $assignment, $userId, $reason) {
