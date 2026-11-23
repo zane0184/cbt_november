@@ -131,11 +131,11 @@
             <a href="{{ route('teacher.assignments') }}#kurikulum" class="text-sm font-bold" style="color:var(--accent)">Buka konteks kurikulum →</a>
         </div>
         <div class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">Versi Terdaftar</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['version_count'] }}</p></div>
-            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">CP Tersimpan</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['CP'] }}</p></div>
-            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">TP Tersimpan</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['TP'] }}</p></div>
-            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">ATP Tersimpan</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['ATP'] }}</p></div>
+            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">Versi Terdaftar</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['registered_versions'] ?? 0 }}</p></div>
+            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">CP Tersimpan</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['cp_artifact_verified'] ?? 0 }}</p></div>
+            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">TP Tersimpan</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['teacher_tp'] ?? 0 }}</p></div>
+            <div class="portal-soft rounded-xl p-3"><p class="text-xs portal-muted">ATP Tersimpan</p><p class="mt-1 text-2xl font-extrabold">{{ $curriculum['counts']['teacher_atp'] ?? 0 }}</p></div>
         </div>
-        <p class="mt-3 text-xs portal-muted">{{ $curriculum['official_cp_note'] }}</p>
+        <p class="mt-3 text-xs portal-muted">{{ $curriculum['notice'] ?? 'CP resmi belum dapat dipilih sampai sumber dan checksum terverifikasi.' }}</p>
     </section>
 </div>
