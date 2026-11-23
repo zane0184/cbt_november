@@ -46,4 +46,15 @@ class QuestionVersion extends Model
     {
         return $this->belongsTo(LearningObjective::class, 'learning_objective_id');
     }
+
+    public function curriculumMappings(): HasMany
+    {
+        return $this->hasMany(QuestionVersionCurriculumMapping::class, 'question_version_id');
+    }
+
+    public function structureMappings(): HasMany
+    {
+        return $this->hasMany(QuestionVersionStructureMapping::class, 'question_version_id');
+    }
+
 }
