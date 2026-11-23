@@ -140,3 +140,70 @@ Pekerjaan tertunda:
 8. Siapkan ZIP generik setelah seluruh gate kelengkapan, keamanan dan uji terpenuhi.
 
 PR #21 tetap Draft/Unmerged. Tidak ada perubahan database produksi dan tidak ada deployment. Proyek belum siap produksi maupun distribusi.
+
+
+## Addendum: hasil patch W3 dan CI exact HEAD (23 November 2026)
+
+Source HEAD: `a97301d8b5512a7104978197c3b5dcfeef55458d`.
+PR #21 tetap OPEN / DRAFT / UNMERGED.
+CI: [run #45140404370](https://github.com/zane0184/cbt_november/actions/runs/45140404370).
+
+### AUDIT
+- Run #45139904414 pada `96a9719` gagal karena exception test Proktor tidak sama dengan guard service. Source telah ditelusuri dan diperbaiki.
+- Run #45140212102 dan run antara lainnya dibatalkan oleh commit source lanjutan; tidak dianggap hasil final.
+- Issue #20 komentar #7094422204 menetapkan assignment eligibility tetap BLOCKED sampai ada penanda kanonis ujian terpusat; tidak boleh menganggap setiap Exam PUBLISHED/EXTERNAL sebagai ujian pusat.
+- Assignment adalah metadata administratif Guru/Exam/rentang waktu/alasan/aktor/status/audit; tidak menjadi grant room/session/seat/roster/monitoring/Attempt/CBT. Tidak ada portal Proktor permanen.
+
+### DESAIN
+- Fail-closed assignment: sampai penanda pusat kanonis tersedia, Admin hanya membaca histori assignment; tidak menampilkan daftar Exam atau Guru sebagai pilihan dan tidak dapat membuat assignment baru.
+- Service assignment menolak direct call dengan `LogicException`; pencabutan record histori tetap diperbolehkan.
+- Tidak ada penambahan room_id/session/roster dan tidak ada perubahan data assignment histori.
+- Dashboard Guru menampilkan hanya statistik curriculum yang disediakan service aktual: versi terdaftar, CP dengan artefak terverifikasi, Panca Cinta, dan dimensi profil lulusan. Tidak mengarang angka TP/ATP dari key yang tidak disediakan service.
+
+### IMPLEMENTASI
+Source changes pada branch kerja:
+- `database/seeders/CurriculumRegistryBootstrapSeeder.php`: escape `RuntimeException` dibetulkan.
+- `app/Livewire/Admin/TeacherSubjectAssignmentManagement.php`: dropdown Semester mengurutkan kolom `term` yang benar.
+- `resources/views/livewire/teacher/portal-dashboard.blade.php`: statistik diselaraskan dengan service payload yang tersedia.
+- `app/Livewire/Admin/ProctorAssignmentManagement.php`: render Admin hanya membaca histori; daftar Exam/Guru untuk assignment tidak di-load.
+- `resources/views/livewire/admin/proctor-assignment-management.blade.php`: form assignment baru dihapus; teks menegaskan tidak ada akses monitoring/CBT dari appointment.
+- `app/Services/ExamProctorAssignmentService.php`: method assign fail-closed sampai canonical marker tersedia; dead/unreachable implementation dibuang.
+- `tests/Feature/ProctorAssignmentSecurityTest.php`: expected LogicException, no-assignment creation, monitoring denial, history revoke and expired history scenarios.
+
+Backup byte-exact baru pada branch `backup/solo-web-cbt-ci-repair-20261123`, folder `backend-laravel/docs/backup/solo-web-cbt-ci-repair-2026-11-23/`:
+- `CurriculumRegistryBootstrapSeeder.php.before-escape-fix` (verified exact).
+- `TeacherSubjectAssignmentManagement.php.before-admin-ui-fix` (verified exact).
+- `portal-dashboard.blade.php.before-contract-fix` (verified exact).
+- `ProctorAssignmentManagement.php.before-central-eligibility-gate` (verified exact).
+- `proctor-assignment-management.blade.php.before-central-eligibility-gate` (verified exact).
+- `ExamProctorAssignmentService.php.before-central-eligibility-gate` (verified exact).
+- `ProctorAssignmentSecurityTest.php.before-central-eligibility-gate` (verified exact).
+- `ExamProctorAssignmentService.php.before-final-ci-syntax-fixture-fix`, `ProctorAssignmentSecurityTest.php.before-final-ci-syntax-fixture-fix`, `portal-dashboard.blade.php.before-final-ci-syntax-fixture-fix`, `proctor-assignment-management.blade.php.before-final-ci-syntax-fixture-fix` (verified exact).
+- `ExamProctorAssignmentService.php.before-unreachable-code-removal` (verified exact).
+- `ExamProctorAssignmentService.php.before-php-namespace-escape-fix`, `ProctorAssignmentSecurityTest.php.before-php-namespace-escape-fix` (verified exact).
+
+Patch commits penting pada HEAD laporan: `da69b813`, `58129251`, `3261c586`, `76eb9363`, `3e61901c`, `93d329ce`, `b27152de`, `ca64878f`, `96a97194`, `34fb2b3e`, `df842704`, `2dc31057`, `a97301d8`.
+
+### PENGUJIAN
+Run #45140404370 pada exact SHA `a97301d8b5512a7104978197c3b5dcfeef55458d`:
+- PHP 8.3 setup: PASS.
+- MySQL disposable identity / MySQL 8: PASS.
+- Composer validate/platform: PASS.
+- Locked dependencies installation: PASS.
+- Laravel package discovery: PASS.
+- Disposable installer DB: PASS.
+- Focused WebAdminAuth / StudentWebLogin smoke tests: PASS.
+- Full PHPUnit suite: **IN PROGRESS** saat checkpoint ini diperbarui. Belum ada hasil akhir. Jangan menganggap suite penuh lulus.
+
+Sebelumnya, run #45138746855 pada SHA `614fe37` gagal full PHPUnit: 124 gagal, 366 lulus, 1.421 assertions. Itu adalah hasil sebelum perbaikan W3 dan bukan hasil HEAD terkini.
+
+### CHECKPOINT
+Pekerjaan berikutnya:
+1. Ambil status dan full PHPUnit log run #45140404370 setelah selesai.
+2. Perbaiki sisa failure berdasarkan akar masalah aktual; jangan melemahkan exact-role/TeacherAccess untuk meluluskan fixture lama.
+3. Audit keseluruhan ADM-01–ADM-23 per route/Livewire/model/policy/migration/audit/test.
+4. Selesaikan integrasi Guru/Siswa termasuk taxonomy/CP provenance, DOCX, snapshot, answer/receipt/recovery, E2E.
+5. Fresh-install, upgrade, backup/restore dan security/concurrency disposable DB.
+6. Package satu ZIP generik hanya setelah semua gate uji dan UAT lulus.
+
+Tidak ada merge PR, migration produksi, deployment VPS, atau akses ke Android (ditunda Juni 2027). Belum siap produksi/distribusi.
