@@ -84,3 +84,7 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 
 ### Catatan validasi PHPUnit terisolasi
 Branch validasi sementara `work/solo-web-cbt-phpunit-20261124` dibuat dari source HEAD yang sama untuk menghindari antrean runner pada branch eksekusi. Branch ini hanya untuk menjalankan workflow PHPUnit; tidak menggantikan branch eksekusi dan tidak di-merge otomatis.
+
+
+### Patch lanjutan pasca-run #45239034559
+Run #45239034559 pada SHA `bd275f7b12df23515cab258f96060f10e9e63c8f` menghasilkan **7 failed, 511 passed, 2,151 assertions**. Kegagalan baru dikelompokkan: audit action test mengharapkan nama lama; fixture GradeLevel lintas tenant memakai parent tenant lain; cleanup test concurrency menghapus assignment sebelum outcome dependen; throttle masih berbagi IP karena auth belum resolve pada saat limiter dievaluasi; AnswerKeyLeakage memakai session sementara tanpa token Sanctum dan fixture matching/short-answer belum sesuai kontrak snapshot. Patch tahap berikut telah disinkronkan dari branch eksekusi untuk validasi berikutnya.
