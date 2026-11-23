@@ -166,6 +166,15 @@ class TeacherSubjectAssignmentManagement extends Component
                 ]);
             }
 
+            if (!$subjectMapping->curriculumStructure->is_official
+                || $subjectMapping->curriculumStructure->is_editable
+                || !$subjectMapping->curriculumStructure->source
+                || !in_array($subjectMapping->curriculumStructure->source->verification_status, ['METADATA_VERIFIED', 'ARTIFACT_CHECKSUM_VERIFIED'], true)) {
+                throw ValidationException::withMessages([
+                    'selectedSubjectId' => 'Node mata pelajaran resmi atau provenance sumbernya belum memenuhi syarat.',
+                ]);
+            }
+
             $source = $registration->version?->source;
             if (!$source || !in_array($source->verification_status, ['METADATA_VERIFIED', 'ARTIFACT_CHECKSUM_VERIFIED'], true)) {
                 throw ValidationException::withMessages([
@@ -181,6 +190,7 @@ class TeacherSubjectAssignmentManagement extends Component
                 ->where('academic_year_id', $rombel->academic_year_id)
                 ->where('semester_id', $semester->id)
                 ->where('status', 'ACTIVE')
+                ->whereDate('starts_at', '<=', $this->endsAt)
                 ->whereDate('ends_at', '>=', $this->startsAt)
                 ->exists();
 
