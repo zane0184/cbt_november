@@ -32,9 +32,15 @@ console.log('PASS: IndexedDB v2 stores and open version are present');
 
 assert.ok(applicationScript.includes('client_request_id'), 'Answer queue must retain a stable client request ID');
 assert.ok(applicationScript.includes('function flushPendingSaves()'), 'Submit must flush pending answer writes');
+assert.ok(!html.includes('cdn.tailwindcss.com'), 'Runner must not depend on Tailwind CDN');
 assert.match(html, /id="question-announcement"[^>]*aria-live="polite"[^>]*aria-atomic="true"/, 'Question changes must be announced to assistive technology');
 assert.ok(applicationScript.includes("button.setAttribute('aria-current', 'step')"), 'Current question navigation item must expose aria-current');
-assert.ok(applicationScript.includes("textarea.setAttribute('aria-label'"), 'Free-text answer editor must have an accessible name');
+assert.ok(applicationScript.includes("textarea.setAttribute('aria-label'"), 'Essay answer editor must have an accessible name');
+assert.ok(applicationScript.includes("question.metadata?.question_type || 'MC') === 'SHORT_ANSWER'"), 'Disabled SHORT_ANSWER snapshot types must be detected');
+assert.ok(applicationScript.includes('unsupportedQuestionIds.size'), 'Disabled SHORT_ANSWER must block submit');
+assert.ok(applicationScript.includes("} else if (type === 'ESSAY') {"), 'Only ESSAY may render the free-text answer editor');
+assert.ok(!applicationScript.includes("type === 'SHORT_ANSWER' || type === 'ESSAY'"), 'SHORT_ANSWER must not share the enabled free-text renderer');
+assert.ok(applicationScript.includes('Token ujian wajib diisi sebelum memulai.'), 'Required token must be validated before start POST');
 assert.ok(applicationScript.includes("select.setAttribute('aria-label'"), 'Matching answer selector must have an accessible name');
 console.log('PASS: question navigation and answer controls expose accessible semantics');
 assert.ok(applicationScript.includes('state.pending.size'), 'Submit barrier must inspect pending answers');
