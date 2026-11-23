@@ -129,7 +129,8 @@ class TeacherResultLivewireReauthorizationTest extends TestCase
 
         $this->revokeGuruRole();
 
-        $component->set('feedbackText', 'Perubahan yang tidak boleh tersimpan')->assertForbidden();
+        // Re-render through the next Livewire request after revoking the persisted Guru role.
+        $component->call('$refresh')->assertForbidden();
     }
 
     public function test_analytics_dashboard_rechecks_policy_after_livewire_mount(): void
