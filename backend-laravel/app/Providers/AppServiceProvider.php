@@ -34,9 +34,12 @@ class AppServiceProvider extends ServiceProvider
         // Keep a conservative IP fallback for unauthenticated requests.
         RateLimiter::for('exam-heartbeat', function ($request) {
             $user = $request->user();
+            $bearerToken = $request->bearerToken();
             $key = $user && $user->tenant_id
                 ? 'tenant:' . $user->tenant_id . ':user:' . $user->id
-                : 'ip:' . $request->ip();
+                : ($bearerToken
+                    ? 'sanctum-token:' . hash('sha256', $bearerToken)
+                    : 'ip:' . $request->ip());
 
             return Limit::perMinute(30)->by($key);
         });
