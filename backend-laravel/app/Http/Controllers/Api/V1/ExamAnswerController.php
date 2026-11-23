@@ -325,6 +325,11 @@ class ExamAnswerController extends Controller
                 }
 
                 $replayResponse = json_decode((string) $requestReplay->response_json, true, 512, JSON_THROW_ON_ERROR);
+                // Backfill the immutable request identifier for older ledger rows
+                // created before this receipt field was added to the response contract.
+                if (isset($replayResponse['receipt']) && is_array($replayResponse['receipt'])) {
+                    $replayResponse['receipt']['client_request_id'] = (string) $requestReplay->client_request_id;
+                }
                 $replayResponse['fence_generation'] = (int) $lockedAttempt->fence_generation;
                 if (isset($replayResponse['data']) && is_array($replayResponse['data'])) {
                     $replayResponse['data']['fence_generation'] = (int) $lockedAttempt->fence_generation;
@@ -404,6 +409,7 @@ class ExamAnswerController extends Controller
 
             $receipt = [
                 'id' => (string) Str::uuid(),
+                'client_request_id' => (string) $validated['client_request_id'],
                 'attempt_id' => $lockedAttempt->id,
                 'snapshot_id' => $lockedSnapshot->id,
                 'revision_number' => $answer->revision_number,
