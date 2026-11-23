@@ -16,10 +16,16 @@ class CurriculumManagement extends Component
 
     public function mount(): void
     {
+        $this->authorizeCurriculumView();
+    }
+
+    private function authorizeCurriculumView(): void
+    {
         $user = auth()->user();
 
         abort_unless(
             $user
+            && $user->tenant_id
             && $user->roles()->count() === 1
             && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
             && $user->hasPermission('curriculum.view'),
@@ -57,6 +63,9 @@ class CurriculumManagement extends Component
 
     public function render()
     {
+        // Re-check persisted role, tenant and permission before returning curriculum data.
+        $this->authorizeCurriculumView();
+
         $outcomes = LearningOutcome::with(['subject', 'phase', 'currentVersion', 'objectives'])
             ->when($this->subjectFilter, fn ($query) => $query->where('subject_id', $this->subjectFilter))
             ->when($this->search, function ($query): void {
