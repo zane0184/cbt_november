@@ -133,6 +133,7 @@ class ExamManagement extends Component
             ])
             ->findOrFail($examId);
         Gate::authorize('update', $exam);
+        abort_unless(TeacherAccess::canManageExam(auth()->user(), $exam), 403, 'Ujian berada di luar penugasan Guru ini.');
         abort_unless($exam->canBeEdited(), 403, 'Ujian yang telah diterbitkan tidak dapat diedit.');
 
         $assessment = $exam->assessment;
@@ -497,12 +498,14 @@ class ExamManagement extends Component
         $tenantId = auth()->user()->tenant_id;
         $exam = Exam::where('tenant_id', $tenantId)->where('id', $examId)->firstOrFail();
         Gate::authorize('generateToken', $exam);
+        abort_unless(TeacherAccess::canManageExam(auth()->user(), $exam), 403, 'Ujian berada di luar penugasan Guru ini.');
         if ($exam->status !== 'PUBLISHED' || !$exam->locked_at) {
             abort(409, 'Token ujian baru tersedia setelah Guru menerbitkan dan mengunci ujian.');
         }
         $newToken = DB::transaction(function () use ($exam) {
             $lockedExam = Exam::query()->whereKey($exam->id)->lockForUpdate()->firstOrFail();
             Gate::authorize('generateToken', $lockedExam);
+            abort_unless(TeacherAccess::canManageExam(auth()->user(), $lockedExam), 403, 'Ujian berada di luar penugasan Guru ini.');
             if ($lockedExam->status !== 'PUBLISHED' || !$lockedExam->locked_at) {
                 abort(409, 'Token hanya dapat dibuat atau diperbarui setelah ujian diterbitkan.');
             }
@@ -533,8 +536,10 @@ class ExamManagement extends Component
             ->firstOrFail();
 
         Gate::authorize('lock', $exam);
+        abort_unless(TeacherAccess::canManageExam(auth()->user(), $exam), 403, 'Ujian berada di luar penugasan Guru ini.');
+        abort_unless($exam->assessment_context_snapshot, 409, 'Snapshot konteks asesmen dan kurikulum belum tersedia. Simpan ulang draft sebelum menerbitkan.');
 
-        // 6B: Minimal 1 explicit question snapshot must exist before locking
+        // Minimal 1 explicit question snapshot must exist before locking
         if ($exam->snapshots->isEmpty()) {
             session()->flash('error', "Gagal mengunci: Ujian '{$exam->title}' belum memiliki soal. Wajib memilih minimal satu soal!");
             return;
