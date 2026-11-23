@@ -1,3 +1,27 @@
+
+
+## PEMUTAKHIRAN FINAL HANDOVER — 23 NOVEMBER 2026
+
+### AUDIT — CI exact HEAD terbaru
+
+CI [#45220055382](https://github.com/zane0184/cbt_november/actions/runs/45220055382) selesai SUCCESS pada exact HEAD `856294037312c186f03422071368bcaa2987516a`, branch `work/phpunit-41-root-cause-20261123`, job `laravel-mysql` ID `137851568268`. Environment PHP 8.3 + disposable MySQL 8.0.46/InnoDB. Focused login/tenant smoke **27 passed/90 assertions**; full PHPUnit **518 passed/0 failed/2,189 assertions**. Setup, isolated DB checks, installer DB prep, Composer/dependencies, package discovery, test, dan cleanup steps sukses.
+
+### IMPLEMENTASI — dokumen handover
+
+Ditambahkan pada branch remediasi:
+- `docs/HANDOVER_AGENT_BARU_2026-11-23_P0_518_PASS.md` — status kanonis, exact SHA/CI, daftar perubahan P0, backup, keputusan owner, PR/issue, backlog, matriks kesiapan dan protokol kerja.
+- `docs/PROMPT_AGENT_BARU_LANJUTAN_2026-11-23.md` — prompt operasional untuk agent berikutnya, dengan larangan mengulang P0.
+- `docs/AGENT_START_HERE.md` diberi banner entry point menuju dua dokumen tersebut.
+- Checkpoint ini ditambahkan bukti CI #45220055382.
+- Prompt lama diberi tanda superseded agar branch/status historis tidak dijadikan instruksi aktif.
+
+### PENGUJIAN
+
+Bukti CI #45220055382 menjalankan smoke dan seluruh PHPUnit pada exact HEAD 8562940. Perubahan dokumentasi handover setelahnya tidak mengubah source/test aplikasi; tetap jalankan CI pada HEAD terbaru setelah perubahan dokumentasi selesai bila workflow memicu run baru.
+
+### CHECKPOINT
+
+PR #22 tetap Draft dan belum digabung. Agent selanjutnya mulai dari P1-A: review PR #22 dan minta persetujuan owner sebelum merge ke branch eksekusi. Setelah itu lanjutkan Proktor Mode B, ADM-01–23, Web Guru, Web Siswa, provenance kurikulum, dan acceptance VPS/ZIP. Jangan mengulang 41 failure.
 # LAPORAN KOORDINATOR — AUDIT GITHUB, PEMULIHAN ROOT CAUSE PHPUNIT, DAN BACKLOG WEB CBT
 
 Tanggal pembaruan: 23 November 2026  
