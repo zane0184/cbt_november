@@ -37,6 +37,14 @@ class Exam extends Model
     ];
     use HasUuids, HasFactory, SoftDeletes, TenantScoped;
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $exam): void {
+            // Category is the source of truth; clients cannot forge the centralized flag.
+            $exam->is_centralized = self::isCentralizedCategory($exam->category);
+        });
+    }
+
     protected $fillable = [
         'assessment_id', 'title', 'category', 'is_centralized', 'instructions', 'status',
         'duration_seconds', 'start_at', 'end_at', 'timezone',
