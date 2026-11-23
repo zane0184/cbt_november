@@ -128,7 +128,8 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return !$this->isAssignedRoomProctor($user, $exam)
+            && $user->hasRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
