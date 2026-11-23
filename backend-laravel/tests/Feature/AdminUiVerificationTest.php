@@ -421,7 +421,7 @@ class AdminUiVerificationTest extends TestCase
         $this->assertTrue($created->hasRole('GURU'));
         $this->assertNotNull($created->teacherProfile);
 
-        $audit = \\App\\Models\\AuditLog::query()
+        $audit = \App\Models\AuditLog::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('user_id', $this->admin->id)
             ->where('action', 'CREATE_LOCAL_USER')
@@ -489,7 +489,7 @@ class AdminUiVerificationTest extends TestCase
             'nisn' => '0098765432',
         ]);
 
-        $audit = \\App\\Models\\AuditLog::query()
+        $audit = \App\Models\AuditLog::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('user_id', $this->admin->id)
             ->where('action', 'CREATE_LOCAL_USER')
@@ -643,7 +643,7 @@ class AdminUiVerificationTest extends TestCase
             'entity_id' => $subject->id,
         ]);
 
-        $rombelAudit = \\App\\Models\\AuditLog::query()
+        $rombelAudit = \App\Models\AuditLog::query()
             ->where('action', 'CREATE_ACADEMIC_ROMBEL')
             ->where('entity_id', $rombel->id)
             ->firstOrFail();
@@ -651,7 +651,7 @@ class AdminUiVerificationTest extends TestCase
         $this->assertSame($this->academicYear->id, $rombelAudit->new_values['academic_year_id']);
         $this->assertSame($this->gradeLevel->id, $rombelAudit->new_values['grade_level_id']);
 
-        $subjectAudit = \\App\\Models\\AuditLog::query()
+        $subjectAudit = \App\Models\AuditLog::query()
             ->where('action', 'CREATE_ACADEMIC_SUBJECT')
             ->where('entity_id', $subject->id)
             ->firstOrFail();
