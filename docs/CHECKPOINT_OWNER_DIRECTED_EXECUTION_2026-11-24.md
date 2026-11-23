@@ -100,3 +100,7 @@ Run #45242146752 menghasilkan **3 failed, 515 passed, 2,163 assertions**. Ketiga
 
 ### Koreksi sintaks helper fencing test
 Run #45242923647 berhenti pada focused smoke test sebelum PHPUnit dijalankan karena helper `studentFenceGeneration()` memiliki backslash namespace ganda (`\\App\\Models`), sehingga PHP melaporkan `unexpected token \\`. Namespace telah diperbaiki menjadi FQCN PHP yang valid. Tidak ada hasil test yang dihitung dari run ini.
+
+
+### Koreksi lanjutan namespace helper
+Run #45243211722 masih berhenti pada focused smoke test karena hanya separator awal FQCN yang terkoreksi; `ExamParticipant` dan `ExamAttempt` masih diawali backslash ganda. Kedua FQCN kini telah dinormalisasi sepenuhnya menjadi `\App\Models\ExamParticipant` dan `\App\Models\ExamAttempt` dalam source PHP (satu separator namespace).
