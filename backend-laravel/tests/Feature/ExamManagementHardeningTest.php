@@ -231,6 +231,38 @@ class ExamManagementHardeningTest extends TestCase
             'status' => 'ACTIVE',
             'created_by' => $foreignTeacher->id,
         ]);
+        $foreignTeacher->roles()->attach(\\App\\Models\\Role::where('name', 'GURU')->firstOrFail());
+
+        $foreignAssessment = \\App\\Models\\Assessment::create([
+            'tenant_id' => $this->tenant->id,
+            'title' => 'Asesmen Guru Lain',
+            'subject_id' => $this->subject->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'assessment_type' => 'SUMMATIVE',
+            'status' => 'ACTIVE',
+            'weight' => 1,
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $foreignContext = $this->createCanonicalCurriculumContext($foreignAssignment, $foreignTeacher, $foreignAssessment);
+        $foreignQuestion = \\App\\Models\\Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'status' => 'PUBLISHED',
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $foreignVersion = \\App\\Models\\QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $foreignQuestion->id,
+            'question_type' => 'MC',
+            'stem' => 'Soal Guru Lain',
+            'default_points' => 1,
+            'version_number' => 1,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $foreignTeacher->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($foreignVersion, $foreignContext);
 
         $this->assertNotContains(
             $foreignProfile->id,
@@ -242,6 +274,9 @@ class ExamManagementHardeningTest extends TestCase
         $this->examManagementComponent()
             ->set('title', 'Ujian Penugasan Terlarang')
             ->set('selectedAssignmentId', $foreignAssignment->id)
+            ->set('selectedCpIds', [$foreignContext['cp']->id])
+            ->set('selectedOutcomeIds', [$foreignContext['tp']->id])
+            ->set('selectedQuestionVersionIds', [$foreignVersion->id])
             ->call('saveExam');
 
         $this->assertDatabaseMissing('exams', ['title' => 'Ujian Penugasan Terlarang']);
