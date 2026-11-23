@@ -93,6 +93,31 @@ return new class extends Migration
             });
         }
 
+
+        if (!Schema::hasTable('tenant_curriculum_subject_mappings')) {
+            Schema::create('tenant_curriculum_subject_mappings', function (Blueprint $table): void {
+                $table->uuid('id')->primary();
+                $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
+                $table->foreignUuid('subject_id')->constrained('subjects')->cascadeOnDelete();
+                $table->foreignUuid('multi_curriculum_version_id')
+                    ->constrained('multi_curriculum_versions')->restrictOnDelete();
+                $table->foreignUuid('multi_curriculum_structure_id')
+                    ->constrained('multi_curriculum_structures')->restrictOnDelete();
+                $table->string('status', 30)->default('ACTIVE');
+                $table->date('effective_from')->nullable();
+                $table->date('effective_until')->nullable();
+                $table->uuid('created_by')->nullable();
+                $table->json('metadata')->nullable();
+                $table->timestamps();
+
+                $table->unique(
+                    ['tenant_id', 'subject_id', 'multi_curriculum_version_id'],
+                    'tenant_curr_subject_mapping_unique'
+                );
+                $table->index(['tenant_id', 'multi_curriculum_version_id', 'status'], 'tenant_curr_subject_mapping_scope_idx');
+            });
+        }
+
         if (!Schema::hasTable('question_version_curriculum_mappings')) {
             Schema::create('question_version_curriculum_mappings', function (Blueprint $table): void {
                 $table->uuid('id')->primary();
@@ -185,6 +210,7 @@ return new class extends Migration
         $this->addProvenanceColumns('multi_curriculum_structures');
         $this->addProvenanceColumns('multi_learning_outcomes');
         $this->addLearningOutcomeAuthoringColumns();
+        $this->addTeacherAssignmentCurriculumColumns();
 
         if (Schema::hasTable('assessments')) {
             Schema::table('assessments', function (Blueprint $table): void {
@@ -366,6 +392,20 @@ return new class extends Migration
             });
         }
 
+
+
+        if (Schema::hasTable('teacher_subject_assignments')) {
+            Schema::table('teacher_subject_assignments', function (Blueprint $table): void {
+                $table->dropForeign('tsa_curriculum_version_fk');
+                foreach (['multi_curriculum_version_id', 'curriculum_context_snapshot'] as $column) {
+                    if (Schema::hasColumn('teacher_subject_assignments', $column)) {
+                        $table->dropColumn($column);
+                    }
+                }
+            });
+        }
+
+        Schema::dropIfExists('tenant_curriculum_subject_mappings');
 
         if (Schema::hasTable('multi_learning_outcomes')) {
             Schema::table('multi_learning_outcomes', function (Blueprint $table): void {
