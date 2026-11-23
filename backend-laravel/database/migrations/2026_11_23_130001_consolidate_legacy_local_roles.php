@@ -22,7 +22,19 @@ return new class extends Migration
         DB::transaction(function (): void {
             $adminRole = DB::table('roles')->where('name', 'ADMIN_MADRASAH')->lockForUpdate()->first();
             if (!$adminRole) {
-                throw new \RuntimeException('Role consolidation aborted: ADMIN_MADRASAH is not present.');
+                // Migrations run before DatabaseSeeder on a fresh installation.
+                // Create only the canonical role row required for the audited
+                // OPERATOR-to-ADMIN_MADRASAH mapping; permission grants are
+                // attached later by RolePermissionBootstrapper during seeding.
+                $adminRoleId = (string) Str::uuid();
+                DB::table('roles')->insert([
+                    'id' => $adminRoleId,
+                    'name' => 'ADMIN_MADRASAH',
+                    'label' => 'Admin Madrasah',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $adminRole = DB::table('roles')->where('id', $adminRoleId)->lockForUpdate()->first();
             }
 
             $legacyNames = ['OPERATOR', 'KAMAD', 'PROKTOR', 'SUPER_ADMIN'];
