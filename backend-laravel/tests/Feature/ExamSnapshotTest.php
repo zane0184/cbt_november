@@ -490,8 +490,13 @@ class ExamSnapshotTest extends TestCase
             'user_id' => $otherUser->id,
             'full_name' => 'Other Guru',
         ]);
+        $otherCurriculum = Curriculum::create([
+            'name' => 'Kurikulum Tenant 2',
+            'code' => 'KM-OTHER-' . $otherTenant->code,
+            'is_active' => true,
+        ]);
         $otherPhase = Phase::create([
-            'curriculum_id' => $this->curriculum->id,
+            'curriculum_id' => $otherCurriculum->id,
             'name' => 'Fase A',
             'code' => 'A',
         ]);
@@ -730,10 +735,13 @@ class ExamSnapshotTest extends TestCase
 
             if ($fixturesCommitted) {
                 DB::setDefaultConnection('mysql_concurrency');
-                // Remove assignment-scoped mapping children before their protected
-                // TenantLearningOutcome and TeacherSubjectAssignment parents.
-                $connectionB->table('tenant_learning_outcome_structure_mappings')->where('tenant_id', $tenantId)->delete();
+                // Remove exam/assessment dependants before their protected assignment
+                // parent, then remove assignment-scoped curriculum mapping children.
+                $connectionB->table('exam_question_snapshots')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('exams')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('assessment_curriculum_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('assessments')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('tenant_learning_outcome_structure_mappings')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('question_version_tenant_outcome_mappings')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('question_version_curriculum_mappings')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('question_version_structure_mappings')->where('tenant_id', $tenantId)->delete();
