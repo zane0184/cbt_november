@@ -154,24 +154,16 @@ class MonitoringTest extends TestCase
 
     public function test_heartbeat_updates_last_activity_at()
     {
-        $participant = ExamParticipant::where('exam_id', $this->exam->id)->where('user_id', $this->student->id)->first();
-        $attempt = ExamAttempt::create([
-            'tenant_id' => $this->tenant->id,
-            'exam_id' => $this->exam->id,
-            'participant_id' => $participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'started_at' => now(),
-            'expires_at' => now()->addHour(),
-            'last_activity_at' => now()->subMinutes(5)
-        ]);
+        [$attempt, $token] = $this->startBoundStudentAttempt('test-device');
+        $before = $attempt->fresh()->last_activity_at;
 
-        $this->actingAs($this->student);
-        $response = $this->withHeaders(['X-Device-Binding-ID' => 'test-device'])
-            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/heartbeat");
+        $response = $this->withToken($token)->withHeaders([
+            'X-Device-Binding-ID' => 'test-device',
+            'X-CBT-Fence-Generation' => (string) $attempt->fence_generation,
+        ])->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/heartbeat");
 
         $response->assertStatus(200);
-        $this->assertTrue($attempt->fresh()->last_activity_at->gt(now()->subMinute()));
+        $this->assertNotEquals($before, $attempt->fresh()->last_activity_at);
     }
 
     public function test_participants_list_with_search_and_filter()
@@ -338,22 +330,40 @@ class MonitoringTest extends TestCase
 
     public function test_student_can_read_only_own_attempt_detail(): void
     {
-        $participant = ExamParticipant::where('exam_id', $this->exam->id)
-            ->where('user_id', $this->student->id)
-            ->firstOrFail();
-        $ownAttempt = ExamAttempt::create([
-            'tenant_id' => $this->tenant->id,
-            'exam_id' => $this->exam->id,
-            'participant_id' => $participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'started_at' => now(),
-            'expires_at' => now()->addHour(),
-        ]);
+        [$ownAttempt, $token] = $this->startBoundStudentAttempt('own-attempt-device');
 
-        $this->actingAs($this->student);
-        $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$ownAttempt->id}")
+        $this->withToken($token)->withHeaders([
+            'X-Device-Binding-ID' => 'own-attempt-device',
+            'X-CBT-Fence-Generation' => (string) $ownAttempt->fence_generation,
+        ])->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$ownAttempt->id}")
             ->assertStatus(200);
+    }
+
+    /**
+     * Start an attempt through the real API so the auth-session binding and
+     * DeviceLease/fence are created exactly as they are for an exam participant.
+     *
+     * @return array{0: ExamAttempt, 1: string}
+     */
+    private function startBoundStudentAttempt(string $deviceId): array
+    {
+        $this->exam->forceFill([
+            'status' => 'PUBLISHED',
+            'require_token' => false,
+            'start_at' => now()->subMinute(),
+            'end_at' => now()->addHour(),
+            'locked_at' => $this->exam->locked_at ?? now(),
+        ])->save();
+
+        $token = $this->student->createToken('monitoring-test')->plainTextToken;
+        $response = $this->withToken($token)->withHeaders([
+            'X-Device-Binding-ID' => $deviceId,
+        ])->postJson("/api/v1/exams/{$this->exam->id}/attempts", []);
+
+        $response->assertCreated();
+        $attempt = ExamAttempt::query()->whereKey($response->json('data.id'))->firstOrFail();
+
+        return [$attempt, $token];
     }
 
 }
