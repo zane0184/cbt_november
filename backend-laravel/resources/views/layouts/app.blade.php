@@ -65,6 +65,11 @@
                     <a href="/admin/dashboard" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/dashboard') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                         <span aria-hidden="true">▦</span><span>Dashboard Admin</span>
                     </a>
+                    @if($u->hasPermission('tenant.manage'))
+                        <a href="/admin/profile" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/profile*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span aria-hidden="true">⌂</span><span>Profil Madrasah</span>
+                        </a>
+                    @endif
                     @if($u->hasPermission('academic.manage'))
                         <a href="/admin/academic" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/academic*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span aria-hidden="true">▤</span><span>Data Akademik & Rombel</span>
