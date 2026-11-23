@@ -53,6 +53,8 @@ class AssessmentTaxonomySeeder extends Seeder
                         'effective_from' => '2025-09-22',
                         'status' => 'ACTIVE',
                         'is_selectable' => true,
+                        'is_official' => true,
+                        'is_editable' => false,
                         'sort_order' => $index + 1,
                         'metadata' => $metadata + ['customizable' => true],
                     ]
