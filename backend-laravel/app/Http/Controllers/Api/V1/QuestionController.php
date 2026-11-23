@@ -14,7 +14,7 @@ class QuestionController extends Controller
 {
     private const ALLOWED_TYPES = [
         'MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE',
-        'MATCHING', 'SHORT_ANSWER', 'ESSAY'
+        'MATCHING', 'ESSAY'
     ];
 
     public function __construct(protected AuditService $auditService)
@@ -206,6 +206,9 @@ class QuestionController extends Controller
         if (!$current) {
             return response()->json(['success' => false, 'message' => 'Question has no current version.'], 409);
         }
+        if ($current->question_type === 'SHORT_ANSWER') {
+            abort(422, 'SHORT_ANSWER belum didukung sampai accepted answers masuk ke immutable snapshot dan scoring teruji.');
+        }
 
         // If published, edits MUST create a new version
         $isPublished = ($current->status === 'PUBLISHED');
@@ -270,6 +273,9 @@ class QuestionController extends Controller
             $current = $lockedQuestion->currentVersion;
             if (!$current) {
                 return response()->json(['success' => false, 'message' => 'Question has no current version.'], 409);
+            }
+            if ($current->question_type === 'SHORT_ANSWER') {
+                abort(422, 'SHORT_ANSWER belum didukung sampai accepted answers masuk ke immutable snapshot dan scoring teruji.');
             }
             $isPublishedNow = $current->status === 'PUBLISHED';
 
@@ -336,6 +342,9 @@ class QuestionController extends Controller
 
             if ($current->status === 'PUBLISHED') {
                 return response()->json(['success' => false, 'message' => 'Already published'], 422);
+            }
+            if ($current->question_type === 'SHORT_ANSWER') {
+                abort(422, 'SHORT_ANSWER belum didukung sampai accepted answers masuk ke immutable snapshot dan scoring teruji.');
             }
 
             $current->update(['status' => 'PUBLISHED']);
