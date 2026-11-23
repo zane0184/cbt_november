@@ -42,3 +42,39 @@ Branch audit: `work/solo-web-cbt-completion-20261123-execution`.
 
 ## Status implementasi
 Belum ada baris ADM yang dinyatakan VERIFIED pada pembuatan matriks ini. Pemetaan route/class/model/policy/migration/test akan ditambahkan satu per satu setelah audit source; jangan menandai lengkap hanya karena menu atau komponen ditemukan.
+
+
+---
+
+## ADDENDUM STATUS AUDIT TERBARU — 23 NOVEMBER 2026
+
+Matriks ADM-01–ADM-23 tetap menggunakan status **NOT VERIFIED** sampai ada bukti end-to-end. Penambahan atau pengetatan satu controller/API tidak cukup untuk menandai modul Admin selesai.
+
+### Temuan source yang sudah dapat dicatat (parsial, bukan acceptance PASS)
+
+- **API master akademik legacy:** route generic `curricula`, `phases`, `grade-levels`, dan `elements` pada branch ini dibatasi menjadi read-only `index/show`. Regression tests memastikan jalur mutasi legacy tidak terdaftar. Audit tetap harus mencari route/controller lain yang dapat menulis langsung dan memastikan registry kanonis adalah satu-satunya write path.
+- **Laporan/analitik hasil:** `CurriculumAnalyticsController` diperketat agar ringkasan capaian/hasil siswa memerlukan role tunggal GURU dan permission `report.view`; Admin ditolak. Ini bukan implementasi laporan administratif Admin dan bukan integrasi snapshot historis yang lengkap.
+- **Installer & role:** postcondition installer diselaraskan dengan role aktif `ADMIN_MADRASAH`, `GURU`, `SISWA`. Ini belum membuktikan seluruh portal, menu, route, API, export, dan direct model access telah sesuai.
+- **User/Guru/Siswa CRUD:** audit awal source menunjukkan komponen manajemen pengguna/akademik sebagian besar masih create/list; CRUD penuh, lifecycle status, histori, import/export dan audit belum dibuktikan lengkap.
+- **Branding/kop:** model tenant metadata/logo dan service header laporan tersedia, tetapi alur Admin untuk identitas, logo/favicon, branding login/footer, kop fleksibel, preview dan output cetak belum diverifikasi end-to-end.
+- **Audit log:** service/model audit tersedia; halaman Admin dan cakupan event login/denied/import/export/perubahan sensitif belum dibuktikan lengkap.
+- **Proktor:** service assignment masih fail-closed karena eligibility ujian pusat belum didefinisikan kanonis. Jangan menandai ADM-20 selesai dan jangan membuka hak monitoring/room/session/Attempt.
+- **Snapshot kurikulum dan laporan historis:** fondasi mapping assignment/version/snapshot ada, tetapi laporan/capaian historis masih memakai beberapa model legacy dan belum terbukti membaca provenance dari snapshot kurikulum kanonis.
+
+### Status pengujian terkait matriks
+
+- Full PHPUnit terakhir pada exact SHA `b31d7a2713383ddcc1282317cdb295d6992d5dce`: FAIL, 92 failed / 426 passed (1,723 assertions), run [#45168433247](https://github.com/zane0184/cbt_november/actions/runs/45168433247).
+- Karena suite belum PASS dan belum ada E2E ketiga portal, tidak ada item ADM yang boleh diberi label VERIFIED.
+- Fresh install/upgrade, backup/restore, UAT, dan distribusi ZIP belum dilakukan.
+
+### Pemetaan prioritas lanjutan
+
+| Prioritas | ADM | Tindakan |
+|---|---|---|
+| P0 | ADM-06–ADM-10, ADM-13–ADM-17 | Lengkapi CRUD Guru/Siswa, akun, import, tahun/semester, rombel, mapel, assignment; uji scope, transaksi, uniqueness, audit dan histori. |
+| P0 | ADM-18–ADM-19 | Tutup seluruh jalur write legacy; verifikasi registry, registrasi, CP read-only, TP/ATP assignment-scoped dan provenance. |
+| P1 | ADM-02–ADM-05, ADM-23 | Lengkapi identitas, logo/favicon, branding, kop, settings, backup/restore dengan validasi file/storage/policy. |
+| P1 | ADM-11–ADM-12, ADM-21–ADM-22 | Export aman tanpa credential, laporan administratif terfilter, audit log lengkap; Admin tidak mengakses nilai/Attempt/analitik hasil siswa. |
+| BLOCKED | ADM-20 | Tetap fail-closed sampai eligibility ujian pusat ditetapkan kanonis oleh owner; assignment tidak memberi izin operasional CBT. |
+
+Semua status tetap **NOT VERIFIED / PARTIAL** sampai tiap baris mempunyai bukti route/UI → policy → service → persistence → audit → test dan exact CI PASS.
