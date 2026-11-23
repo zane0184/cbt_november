@@ -341,7 +341,10 @@ class TeacherCurriculumContextService
                 'version_code' => $outcome->version_code,
                 'status' => $outcome->status,
                 'parent_cp' => $outcome->parentCp?->code,
+                'parent_cp_id' => $outcome->parent_cp_id,
                 'parent_tp' => $outcome->parentTp?->code,
+                'parent_tp_id' => $outcome->parent_tp_id,
+                'is_current' => (bool) $outcome->is_current,
                 'mappings' => $outcome->structureMappings->map(fn ($mapping) => [
                     'role' => $mapping->mapping_role,
                     'code' => $mapping->structure?->code,
