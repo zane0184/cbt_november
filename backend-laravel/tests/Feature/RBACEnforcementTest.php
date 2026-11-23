@@ -73,7 +73,7 @@ class RBACEnforcementTest extends TestCase
         $this->actingAs($this->admin, 'sanctum');
 
         $response = $this->postJson('/api/v1/teacher-subject-assignments', []);
-        $response->assertStatus(404);
+        $response->assertStatus(403);
     }
 
     public function test_admin_with_academic_manage_reaches_teacher_assignment_validation()
