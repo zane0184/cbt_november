@@ -38,3 +38,9 @@ Jika dibuka kembali:
 Baca catatan ini sebelum menjalankan test. Tandai area PHPUnit sebagai **CLOSED / GREEN BASELINE** dan lanjutkan hanya pekerjaan lain yang belum selesai. Jika perlu menyebut hasilnya, tautkan CI #45243430635 dan laporan taksonomi di atas; jangan mengulang pekerjaan tersebut.
 
 Catatan ini membekukan ruang lingkup pekerjaan, bukan membuat branch GitHub secara teknis read-only. Proteksi branch/repository tetap mengikuti pengaturan GitHub owner.
+
+## Snapshot branch pembanding
+- Snapshot branch dibuat dari exact green SHA: `baseline/phpunit-green-20261124`.
+- [Buka snapshot branch baseline hijau](https://github.com/zane0184/cbt_november/tree/baseline/phpunit-green-20261124).
+- Branch snapshot ini dimaksudkan sebagai referensi pembanding dan **jangan diperbarui/dipakai untuk pekerjaan lanjutan**. Kerjakan perubahan baru pada branch eksekusi baru/aktif dan bandingkan terhadap baseline ini.
+- Snapshot branch bukan pengganti GitHub branch protection. Saya tidak memiliki jalur tool yang dapat mengaktifkan ruleset/branch protection atau menjadikan ref ini immutable secara teknis; owner dapat mengatur proteksi di GitHub Settings → Rules → Rulesets (atau Branches → Branch protection rules).
