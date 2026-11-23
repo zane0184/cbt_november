@@ -107,3 +107,12 @@ Perbaikan query post-check InnoDB pada `.github/workflows/tenant-backend-ci.yml`
 **PENGUJIAN:** source dan backup sudah difetch ulang; blob SHA backup sama dengan source sebelum patch. GitHub Actions pada commit patch belum terverifikasi saat addendum ini dibuat. Jangan menyatakan CI lulus sampai hasil run tersedia.
 
 **LANJUTKAN:** verifikasi Actions pada patch CI, lalu lanjutkan gap W2 profil Admin (metadata, logo/private asset, branding login, kop surat/preview) dan backlog portal sesuai Issue #20. Jangan ulang profil dasar atau W1 reauthorization yang sudah lulus. ZIP final belum dibuat dan belum siap distribusi.
+
+
+## PROMPT AGENT TERBARU — W3 FINAL (CI GREEN)
+
+Acuan handover terbaru: [PROMPT_AGENT_PENGGANTI_CBT_W3_FINAL_2026-11-24.md](PROMPT_AGENT_PENGGANTI_CBT_W3_FINAL_2026-11-24.md).
+
+**Status CI diperbarui:** post-check InnoDB sudah diperbaiki pada commit `1b25c3bbed07fba6def2dfe869d686a8559be1cc`; GitHub Actions #1722 SUCCESS pada exact SHA `df079f0ab51235b611b97b96c2cb10cc3d33d8eb`: 536 passed / 2,231 assertions / 0 failed; focused login/tenant 30/99, Admin 5/5, Guru 4/8; InnoDB post-check PASS. Link: https://github.com/zane0184/cbt_november/actions/runs/45276501877.
+
+Jangan ulang patch CI, jangan mengulang profil dasar Admin, triage 42 failure PHPUnit, atau W1 reauthorization yang telah diverifikasi. **LANJUTKAN GAP FITUR YANG BELUM SELESAI.** Fokus berikutnya: profil Admin lanjutan dan backlog ADM-01..23, Web Guru/Siswa E2E, integritas dan security, kemudian satu ZIP final setelah acceptance lengkap. Jangan meminta spesifikasi VPS; owner menyatakan VPS/instalasi sudah terverifikasi.
