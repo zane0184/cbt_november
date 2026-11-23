@@ -26,11 +26,7 @@ class AuthWebController extends Controller
             } elseif ((bool) $user->must_change_password) {
                 return redirect('/account/password/change');
             } elseif ($user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA'])) {
-                if ((bool) $user->must_change_password) {
-            return redirect('/account/password/change');
-        }
-
-        return $this->redirectForUser($user);
+                return $this->redirectForUser($user);
             }
 
             // Legacy, multi-role, and retired local identities must not remain
@@ -128,6 +124,10 @@ class AuthWebController extends Controller
         if ($identity && $user->tenant_id) {
             TenantContext::getInstance()?->setTenantId($identity->tenant_id);
             app(TenantContext::class)->setTenantId($identity->tenant_id);
+        }
+
+        if ((bool) $user->must_change_password) {
+            return redirect('/account/password/change');
         }
 
         return $this->redirectForUser($user);
