@@ -180,6 +180,13 @@ class ExamVerificationTest extends TestCase
                          ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'SECRET']);
         $response->assertStatus(201);
 
+        // Reset dependent device leases before deleting attempts; the production FK is RESTRICT.
+        $attemptIds = $this->examA->attempts()->pluck('id');
+        \\Illuminate\\Support\\Facades\\DB::table('device_leases')
+            ->where('tenant_id', $this->tenantA->id)
+            ->whereIn('exam_attempt_id', $attemptIds)
+            ->delete();
+
         // Reset participant to try again (limit override)
         $this->examA->attempts()->delete();
 
