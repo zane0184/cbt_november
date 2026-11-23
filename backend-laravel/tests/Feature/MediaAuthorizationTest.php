@@ -74,7 +74,7 @@ class MediaAuthorizationTest extends TestCase
 
         $this->actingAs($admin, 'sanctum')
             ->getJson('/api/v1/media')
-            ->assertForbidden();
+            ->assertNotFound(); // Exact-one-role guard hides protected media library.
     }
 
     public function test_user_media_owner_is_forced_to_authenticated_user(): void
