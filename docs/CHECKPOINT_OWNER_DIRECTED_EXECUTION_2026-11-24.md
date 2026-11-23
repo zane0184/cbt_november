@@ -88,3 +88,7 @@ Branch sementara `work/solo-web-cbt-phpunit-final-20261124` berisi source ekseku
 
 ### Patch lanjutan pasca-run #45240443836
 Run #45240443836 menghasilkan **8 failed, 510 passed, 2,148 assertions**. Kelompok baru: 4 test Fase1C memakai fixture bentrok dengan System Tenant yang memang telah dibuat DatabaseSeeder; limiter heartbeat masih mengambil identitas user stale sebelum bearer token; 3 alur AnswerKeyLeakage tidak mengirim token pada setiap request sehingga binding sesi tidak cocok. Fixture dan limiter telah disesuaikan, menunggu validasi ulang.
+
+
+### Patch lanjutan pasca-run #45241315638
+Run #45241315638 menghasilkan **4 failed, 514 passed, 2,162 assertions**. Fase1C reserved-tenant tests sudah lulus. Sisa kegagalan: satu rate-limit test memakai guard lama dari request A ketika mensimulasikan request B dalam proses PHPUnit yang sama; tiga AnswerKeyLeakage test belum mengirim token pada setiap request GET/POST (binding attempt harus tetap pada Sanctum token yang sama). Test fixtures kini reset guard saat berpindah user dan menyertakan token pada tiap request.
