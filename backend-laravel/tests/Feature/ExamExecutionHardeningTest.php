@@ -73,7 +73,23 @@ class ExamExecutionHardeningTest extends TestCase
             'is_current' => true,
             'created_by' => $this->student->id,
         ]);
-        app(ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
+        // Execution lifecycle tests seed an immutable snapshot directly.
+        // Snapshot authoring/assignment validation is covered by ExamSnapshotTest;
+        // keeping the fixture independent avoids treating a student-created legacy
+        // assessment as a valid Guru assignment.
+        $snapshot = new ExamQuestionSnapshot([
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'sequence' => 1,
+            'points' => 10,
+            'snapshot_stem' => 'Soal uji eksekusi',
+            'snapshot_options' => [],
+            'snapshot_media' => [],
+            'metadata' => ['question_type' => 'ESSAY'],
+        ]);
+        $snapshot->tenant_id = $this->tenant->id;
+        $snapshot->exam_id = $this->exam->id;
+        $snapshot->save();
         $this->exam->update([
             'status' => 'PUBLISHED',
             'locked_at' => now(),
