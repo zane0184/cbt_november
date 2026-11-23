@@ -14,6 +14,11 @@
         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('proctorAssignmentMessage') }}</div>
     @endif
 
+    @if ($assignmentCreationBlocked)
+        <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            Penugasan baru belum dapat dilakukan. Kelayakan ujian terpusat belum memiliki penanda kanonis yang ditetapkan dan diaudit oleh owner.
+        </div>
+    @else
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
         <h2 class="text-lg font-bold text-navy-900">Buat atau perbarui penugasan</h2>
         <form wire:submit="assign" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -53,6 +58,8 @@
             </div>
         </form>
     </div>
+
+    @endif
 
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
         <div><h2 class="text-lg font-bold text-navy-900">Riwayat penugasan</h2><p class="text-xs text-textSecondary mt-1">Maksimal 100 perubahan terakhir pada tenant aktif. Riwayat perubahan juga dicatat dalam audit log.</p></div>
