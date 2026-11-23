@@ -351,7 +351,10 @@ class ExamAnswerTest extends TestCase
             'answer_payload' => ['selected_option_id' => $optionId],
             'answer_state' => 'ANSWERED'
         ]);
-        $firstResponse->assertStatus(200);
+        $firstResponse->assertStatus(200)
+            ->assertJsonPath('receipt.client_request_id', $requestId)
+            ->assertJsonPath('receipt.attempt_id', $this->attempt->id)
+            ->assertJsonPath('receipt.snapshot_id', $this->snapshot->id);
 
         $revision1 = \App\Models\ExamAttemptAnswer::first()->revision_number;
 
@@ -364,6 +367,7 @@ class ExamAnswerTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonPath('idempotent', true);
+        $response->assertJsonPath('receipt.client_request_id', $requestId);
         $response->assertJsonPath('data.revision_number', $revision1);
         $this->assertEquals($revision1, \App\Models\ExamAttemptAnswer::first()->revision_number);
     }
