@@ -142,3 +142,24 @@ HEAD saat checkpoint follow-up: `121addf5a4cb1814b71e5dd1abc372a699f35eb9`.
 
 ### STATUS
 Fondasi metadata dan authoring TP/ATP diperluas; belum diuji. Konten CP penuh, mapping materi/topik pada UI Guru, integrasi snapshot/report/Siswa, dan audit menyeluruh Admin masih terbuka.
+
+
+---
+
+# ADDENDUM CHECKPOINT TERBARU — 23 NOVEMBER 2026 (PENGGANTI CHECKPOINT LAMA)
+
+Gunakan dokumen terbaru [HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md](HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md) sebagai entry point agent pengganti. Bagian lama di atas tetap menjadi riwayat desain dan implementasi; informasi branch/angka CI yang lama tidak lagi menjadi status terkini.
+
+- Repository: zane0184/cbt_november.
+- Branch aktif: work/solo-web-cbt-completion-20261123-execution.
+- Source SHA full PHPUnit terakhir: b31d7a2713383ddcc1282317cdb295d6992d5dce.
+- HEAD dokumen setelah update laporan: lihat ref branch aktual; commit dokumentasi/backup setelah source SHA di atas tidak mengubah source code yang diuji.
+- CI terakhir: [#45168433247](https://github.com/zane0184/cbt_november/actions/runs/45168433247), MySQL 8.0.46, focused login smoke 27 passed/90 assertions, full PHPUnit **92 failed / 426 passed / 1,723 assertions**.
+- Baseline full PHPUnit [#45156925960](https://github.com/zane0184/cbt_november/actions/runs/45156925960): 160 failed / 357 passed / 1,475 assertions. Perbaikan mengurangi 68 kegagalan; belum PASS.
+- Laporan triage terbaru: REPORT_P0_TRIAGE_FULL_PHPUNIT_2026-11-23.md.
+- Matriks ADM terbaru: MATRIKS_ADM_01_23_AUDIT_2026-11-23.md. Semua ADM-01–ADM-23 masih NOT VERIFIED.
+- Prioritas langsung: regresi ExamListContractTest ($assignment undefined), 15 ExamSnapshotTest karena assignment kanonis, cleanup FK ExamVerificationTest, otorisasi/fixture Phase7CReopen dan scoring, stale Livewire tests Admin/Guru, token/lease/fencing, Proctor fail-closed.
+- Source/backup sudah ada di branch ini. Jangan ulang patch. Verifikasi source dan CI exact SHA sebelum mengubah apa pun.
+- Tidak ada merge, production migration, deployment, backup/restore, UAT, atau ZIP distribusi.
+
+Status: **FULL PHPUNIT FAIL — WORK IN PROGRESS — NOT PRODUCTION READY**.
