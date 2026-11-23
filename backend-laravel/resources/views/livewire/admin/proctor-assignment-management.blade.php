@@ -14,49 +14,8 @@
         <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('proctorAssignmentMessage') }}</div>
     @endif
 
-    @if ($assignmentCreationBlocked)
-    @else
-    <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
-        <h2 class="text-lg font-bold text-navy-900">Buat atau perbarui penugasan</h2>
-        <form wire:submit="assign" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-sm font-semibold mb-1">Ujian terbit</label>
-                <select wire:model="selectedExamId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                    <option value="">Pilih ujian</option>
-                    @foreach ($exams as $exam)<option value="{{ $exam->id }}">{{ $exam->title }}</option>@endforeach
-                </select>
-                @error('selectedExamId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">Guru aktif</label>
-                <select wire:model="selectedProctorId" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                    <option value="">Pilih Guru aktif tenant ini</option>
-                    @foreach ($proctors as $proctor)<option value="{{ $proctor->id }}">{{ $proctor->name }} — {{ $proctor->email }}</option>@endforeach
-                </select>
-                @error('selectedProctorId') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">Mulai penugasan</label>
-                <input type="datetime-local" wire:model="startsAt" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                @error('startsAt') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div>
-                <label class="block text-sm font-semibold mb-1">Berakhir penugasan</label>
-                <input type="datetime-local" wire:model="expiresAt" class="w-full rounded-lg border border-cardBorder px-3 py-2">
-                @error('expiresAt') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div class="md:col-span-2">
-                <label class="block text-sm font-semibold mb-1">Alasan penugasan</label>
-                <textarea wire:model="reason" rows="2" class="w-full rounded-lg border border-cardBorder px-3 py-2" placeholder="Contoh: penugasan pengawasan ujian kelas 6"></textarea>
-                @error('reason') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
-            </div>
-            <div class="md:col-span-2">
-                <button type="submit" wire:loading.attr="disabled" class="rounded-lg bg-navy-900 text-white font-semibold px-5 py-2.5 hover:bg-navy-800 disabled:opacity-50">Simpan penugasan</button>
-            </div>
-        </form>
-    </div>
+    {{-- Assignment controls remain intentionally absent until owner-approved central-exam eligibility exists. --}}
 
-    @endif
 
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
         <div><h2 class="text-lg font-bold text-navy-900">Riwayat penugasan</h2><p class="text-xs text-textSecondary mt-1">Maksimal 100 perubahan terakhir pada tenant aktif. Riwayat perubahan juga dicatat dalam audit log.</p></div>
