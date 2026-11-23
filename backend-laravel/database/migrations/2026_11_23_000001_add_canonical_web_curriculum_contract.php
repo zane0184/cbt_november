@@ -744,7 +744,7 @@ return new class extends Migration
                     ->references(['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
                     ->on('tenant_curriculum_registrations')->onDelete('RESTRICT');
                 $table->foreign(['multi_learning_outcome_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'acm_cp_scope_fk')
-                    ->references(['id', 'multi_curriculum_version_id', 'tenant'])
+                    ->references(['id', 'multi_curriculum_version_id', 'tenant_id'])
                     ->on('multi_learning_outcomes')->onDelete('RESTRICT');
                 $table->foreign(['tenant_learning_outcome_id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'], 'acm_tenant_outcome_scope_fk')
                     ->references(['id', 'tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id', 'teacher_subject_assignment_id'])
