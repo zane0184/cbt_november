@@ -26,10 +26,12 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 class QuestionBankTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenantA;
     private $tenantB;
@@ -38,6 +40,8 @@ class QuestionBankTest extends TestCase
     private $subjectA;
     private $cpA;
     private $tpA;
+    private $assignment;
+    private array $canonicalContext = [];
 
     protected function setUp(): void
     {
@@ -48,7 +52,8 @@ class QuestionBankTest extends TestCase
         $roleGuru = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $questionView = Permission::firstOrCreate(['name' => 'question.view'], ['label' => 'Lihat Bank Soal']);
         $questionManage = Permission::firstOrCreate(['name' => 'question.manage'], ['label' => 'Kelola Bank Soal']);
-        $roleGuru->permissions()->syncWithoutDetaching([$questionView->id, $questionManage->id]);
+        $curriculumManage = Permission::firstOrCreate(['name' => 'curriculum.manage'], ['label' => 'Kelola Kurikulum']);
+        $roleGuru->permissions()->syncWithoutDetaching([$questionView->id, $questionManage->id, $curriculumManage->id]);
 
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantA->id);
         $this->userA = User::create([
@@ -72,15 +77,18 @@ class QuestionBankTest extends TestCase
         $phaseForAssignment = Phase::create(['curriculum_id' => $curriculumA->id, 'name' => 'Fase Assignment', 'code' => 'FA']);
         $gradeLevel = GradeLevel::create(['phase_id' => $phaseForAssignment->id, 'name' => 'Kelas 4', 'code' => '4', 'level' => 4]);
         $rombel = Rombel::create(['academic_year_id' => $academicYear->id, 'grade_level_id' => $gradeLevel->id, 'name' => '4A']);
-        TeacherSubjectAssignment::create([
+        $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subjectA->id,
             'rombel_id' => $rombel->id,
             'academic_year_id' => $academicYear->id,
             'semester_id' => $semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYears(5)->toDateString(),
             'status' => 'ACTIVE',
         ]);
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($this->assignment, $this->userA);
         $this->cpA = LearningOutcome::create([
             'curriculum_id' => $curriculumA->id,
             'phase_id' => $phaseA->id,
@@ -169,8 +177,9 @@ class QuestionBankTest extends TestCase
             'is_current' => true,
             'created_by' => $this->userA->id,
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($published, $this->canonicalContext);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->call('openEditModal', $question->id)
             ->set('stem', 'Stem versi baru')
             ->call('saveQuestion')
@@ -281,7 +290,7 @@ class QuestionBankTest extends TestCase
     {
         $this->actingAs($this->userA);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->call('gotoPage', 2)
             ->set('subjectFilter', $this->subjectA->id)
             ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1)
@@ -294,12 +303,12 @@ class QuestionBankTest extends TestCase
     {
         $this->actingAs($this->userA);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'MR-01')
             ->set('questionType', 'MULTIPLE_RESPONSE')
             ->set('selectedSubjectId', $this->subjectA->id)
-            ->set('selectedOutcomeId', $this->cpA->id)
-            ->set('selectedObjectiveId', $this->tpA->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id])
             ->set('stem', 'Pilihlah bilangan genap!')
             ->set('defaultPoints', 10)
             ->set('optionA', '2')
@@ -322,7 +331,7 @@ class QuestionBankTest extends TestCase
         $this->assertEquals(['A', 'C'], $correctKeys);
 
         // Edit question to change correct options
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->call('openEditModal', $question->id)
             ->set('correctOptions', ['A', 'B'])
             ->call('saveQuestion')
@@ -337,7 +346,7 @@ class QuestionBankTest extends TestCase
     {
         $this->actingAs($this->userA);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'MC-EMPTY-KEY')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subjectA->id)
@@ -357,7 +366,7 @@ class QuestionBankTest extends TestCase
     {
         $this->actingAs($this->userA);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'MR-EMPTY-KEY')
             ->set('questionType', 'MULTIPLE_RESPONSE')
             ->set('selectedSubjectId', $this->subjectA->id)
@@ -377,7 +386,7 @@ class QuestionBankTest extends TestCase
     {
         $this->actingAs($this->userA);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'MR-INVALID')
             ->set('questionType', 'MULTIPLE_RESPONSE')
             ->set('selectedSubjectId', $this->subjectA->id)
@@ -393,7 +402,7 @@ class QuestionBankTest extends TestCase
     {
         $this->actingAs($this->userA);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'MATCH-01')
             ->set('questionType', 'MATCHING')
             ->set('selectedSubjectId', $this->subjectA->id)
@@ -433,11 +442,11 @@ class QuestionBankTest extends TestCase
 
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantA->id);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'REJECT-CP')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subjectA->id)
-            ->set('selectedOutcomeId', $cpB->id)
+            ->set('selectedCpIds', [$cpB->id])
             ->set('stem', 'Pengujian CP Lintas Tenant')
             ->set('optionA', 'A')
             ->set('optionB', 'B')
@@ -453,12 +462,12 @@ class QuestionBankTest extends TestCase
         $cp2 = LearningOutcome::create(['curriculum_id' => $this->cpA->curriculum_id, 'phase_id' => $this->cpA->phase_id, 'subject_id' => $this->subjectA->id, 'code' => 'CP-2']);
         $tp2 = LearningObjective::create(['learning_outcome_id' => $cp2->id, 'code' => 'TP-2', 'title' => 'Title 2', 'description' => 'Desc 2']);
 
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'REJECT-TP')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subjectA->id)
-            ->set('selectedOutcomeId', $this->cpA->id)
-            ->set('selectedObjectiveId', $tp2->id) // tp2 belongs to cp2, not cpA!
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$tp2->id]) // tp2 belongs to cp2, not cpA!
             ->set('stem', 'Pengujian TP Tidak Sesuai CP')
             ->set('optionA', 'A')
             ->set('optionB', 'B')
@@ -527,5 +536,14 @@ class QuestionBankTest extends TestCase
 
         $response->assertStatus(422);
     }
+    private function questionBankComponent()
+    {
+        return Livewire::test(QuestionBank::class)
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->set('selectedSubjectId', $this->subjectA->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id]);
+    }
+
 }
 
