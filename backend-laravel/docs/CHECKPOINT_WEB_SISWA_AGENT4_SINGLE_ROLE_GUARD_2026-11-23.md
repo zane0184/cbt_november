@@ -71,3 +71,19 @@ PR #13 tetap Draft/unmerged. Tidak ada merge, deployment, migration produksi, pe
 - Karena run dibatalkan, hasil pengujian patch role tunggal tetap **BELUM TERVERIFIKASI**. Jangan menafsirkan cancellation sebagai PASS atau FAIL kode.
 - Workflow `agent4-web-siswa-runner-static.yml` memiliki trigger push untuk branch Agent 4, pull_request ke base `work/stage4d-account-lifecycle-20261122`, dan workflow_dispatch. Connector yang tersedia pada sesi ini hanya mengembalikan run PR; run push tidak dapat diverifikasi melalui fetch PR-run tersebut.
 - Langkah berikutnya: jalankan ulang workflow melalui GitHub Actions UI (workflow_dispatch) atau tunggu run PR baru yang dapat diverifikasi. Periksa kedua job: runner static/browser (Chromium + WebKit) dan feature tests MySQL 8.
+
+## PEMBARUAN FIXTURE REGRESI ROLE — 23 November 2026
+
+Audit ulang sesudah patch menemukan test role ganda sebelumnya memakai fixture SISWA tanpa StudentProfile. Karena model User `hasExactRole('SISWA')` mensyaratkan profil akademik aktif, regresi perlu memastikan profil SISWA valid terlebih dahulu agar hasil penolakan benar-benar menguji role kedua, bukan profil yang tidak lengkap.
+
+### IMPLEMENTASI
+- `StudentExamPortalTest.php` sekarang membuat StudentProfile dengan NISN untuk fixture siswa.
+- Tes SISWA+GURU memverifikasi dahulu bahwa StudentProfile aktif ada, baru menambah role GURU dan memastikan route daftar/detail ditolak.
+- Backup pre-patch baru: `backend-laravel/docs/backup/agent4-web-siswa-emergency-2026-11-22/StudentExamPortalTest.php.before-student-profile-fixture-2026-11-23`.
+- Backup blob yang diverifikasi: `66c8eafe5732197c2c8af42ca70c83b09a911206` (sama dengan source test tepat sebelum fixture diperbaiki).
+- Patch commit: `b8e6a3c8033f9b1dac97b199c5846d6f52e51b00`; test blob: `bb4a2a6df0358ff84d1a81c535b4b00d701b41a0`.
+
+### PENGUJIAN
+- Backup diperiksa fetch ulang; blob sama dengan file test pra-patch.
+- Source test sesudah patch diperiksa fetch ulang; import StudentProfile, fixture creation, dan assertion profil valid ditemukan.
+- Workflow CI baru belum tersedia pada saat addendum dibuat. Tidak ada klaim PHPUnit PASS.
