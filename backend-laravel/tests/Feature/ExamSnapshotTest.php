@@ -490,10 +490,21 @@ class ExamSnapshotTest extends TestCase
             'user_id' => $otherUser->id,
             'full_name' => 'Other Guru',
         ]);
+        $otherPhase = Phase::create([
+            'curriculum_id' => $this->curriculum->id,
+            'name' => 'Fase A',
+            'code' => 'A',
+        ]);
+        $otherGradeLevel = GradeLevel::create([
+            'phase_id' => $otherPhase->id,
+            'name' => 'Kelas 1',
+            'code' => '1',
+            'level' => 1,
+        ]);
         $otherRombel = Rombel::create([
             'tenant_id' => $otherTenant->id,
             'academic_year_id' => $otherYear->id,
-            'grade_level_id' => $this->gradeLevel->id,
+            'grade_level_id' => $otherGradeLevel->id,
             'name' => 'Other 1A',
             'status' => 'ACTIVE',
         ]);
@@ -719,6 +730,14 @@ class ExamSnapshotTest extends TestCase
 
             if ($fixturesCommitted) {
                 DB::setDefaultConnection('mysql_concurrency');
+                // Remove assignment-scoped mapping children before their protected
+                // TenantLearningOutcome and TeacherSubjectAssignment parents.
+                $connectionB->table('tenant_learning_outcome_structure_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('assessment_curriculum_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('question_version_tenant_outcome_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('question_version_curriculum_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('question_version_structure_mappings')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('tenant_learning_outcomes')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('teacher_subject_assignments')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
