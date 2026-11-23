@@ -10,6 +10,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\LoginIdentityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -399,6 +400,56 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
         Livewire::test(UserManagement::class)->call('resetUserPassword', $foreignTeacher->id);
+    }
+
+    public function test_web_and_api_login_recheck_password_after_account_row_lock(): void
+    {
+        $webUser = $this->makeLocalUser('GURU', 'race-web');
+        $staleWebUser = $webUser->fresh();
+        $webResolver = \Mockery::mock(LoginIdentityResolver::class);
+        $webResolver->shouldReceive('resolve')
+            ->once()
+            ->with($webUser->username)
+            ->andReturnUsing(function () use ($webUser, $staleWebUser) {
+                $webUser->forceFill([
+                    'password' => Hash::make('new-temporary-password'),
+                    'must_change_password' => true,
+                    'auth_version' => 2,
+                ])->save();
+
+                return $staleWebUser;
+            });
+        $this->app->instance(LoginIdentityResolver::class, $webResolver);
+
+        $this->post('/login', [
+            'identifier' => $webUser->username,
+            'password' => 'old-password-strong',
+        ])->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+
+        $apiUser = $this->makeLocalUser('GURU', 'race-api');
+        $staleApiUser = $apiUser->fresh();
+        $apiResolver = \Mockery::mock(LoginIdentityResolver::class);
+        $apiResolver->shouldReceive('resolve')
+            ->once()
+            ->with($apiUser->username)
+            ->andReturnUsing(function () use ($apiUser, $staleApiUser) {
+                $apiUser->forceFill([
+                    'password' => Hash::make('new-temporary-password'),
+                    'must_change_password' => true,
+                    'auth_version' => 2,
+                ])->save();
+
+                return $staleApiUser;
+            });
+        $this->app->instance(LoginIdentityResolver::class, $apiResolver);
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => $apiUser->username,
+            'password' => 'old-password-strong',
+        ])->assertUnprocessable();
+
+        $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $apiUser->id)->count());
     }
 
     public function test_disabled_account_cannot_login_through_web_or_api(): void
