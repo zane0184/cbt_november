@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\ExamQuestionSnapshot;
+use App\Models\ExamAttempt;
 use App\Models\MediaAsset;
 use App\Models\Question;
 use App\Models\QuestionVersion;
@@ -283,7 +284,7 @@ class MediaController extends Controller
                 $questionReadable = Gate::allows('view', $question);
             }
 
-            $activeAttemptReadable = $this->isReferencedByOwnActiveAttempt($media, $user->id, $user->tenant_id);
+            $activeAttemptReadable = $this->isReferencedByOwnActiveAttempt($media, $user->id, $user->tenant_id, $request);
 
             abort_unless($questionReadable || $activeAttemptReadable, ResponseCode::HTTP_FORBIDDEN);
         } else {
@@ -406,32 +407,43 @@ class MediaController extends Controller
             && $segments[4] !== '..';
     }
 
-    private function isReferencedByOwnActiveAttempt(MediaAsset $media, string $userId, string $tenantId): bool
+    private function isReferencedByOwnActiveAttempt(MediaAsset $media, string $userId, string $tenantId, Request $request): bool
     {
-        $now = now();
+        $attempts = ExamAttempt::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'IN_PROGRESS')
+            ->where('expires_at', '>', now())
+            ->whereHas('participant', fn ($query) => $query
+                ->where('tenant_id', $tenantId)
+                ->where('user_id', $userId))
+            ->whereHas('exam', fn ($query) => $query
+                ->where('tenant_id', $tenantId)
+                ->whereNotNull('locked_at')
+                ->where('start_at', '<=', now())
+                ->where('end_at', '>=', now())
+                ->whereNotIn('status', ['CLOSED', 'ARCHIVED']))
+            ->get();
 
-        return ExamQuestionSnapshot::query()
-            ->where('exam_question_snapshots.tenant_id', $tenantId)
-            ->whereJsonContains('snapshot_media', ['id' => $media->id])
-            ->join('exams', function ($join) use ($tenantId) {
-                $join->on('exams.id', '=', 'exam_question_snapshots.exam_id')
-                    ->where('exams.tenant_id', '=', $tenantId)
-                    ->whereNull('exams.deleted_at');
-            })
-            ->join('exam_attempts', function ($join) use ($tenantId) {
-                $join->on('exam_attempts.exam_id', '=', 'exams.id')
-                    ->where('exam_attempts.tenant_id', '=', $tenantId)
-                    ->where('exam_attempts.status', '=', 'IN_PROGRESS');
-            })
-            ->join('exam_participants', function ($join) use ($tenantId, $userId) {
-                $join->on('exam_participants.id', '=', 'exam_attempts.participant_id')
-                    ->where('exam_participants.tenant_id', '=', $tenantId)
-                    ->where('exam_participants.user_id', '=', $userId);
-            })
-            ->whereNotNull('exams.locked_at')
-            ->where('exams.start_at', '<=', $now)
-            ->where('exams.end_at', '>=', $now)
-            ->whereNotIn('exams.status', ['CLOSED', 'ARCHIVED'])
-            ->exists();
+        foreach ($attempts as $attempt) {
+            if (!app(\App\Services\AttemptAuthSessionBinding::class)->matches($attempt, $request)
+                || !app(\App\Services\AttemptDeviceLeaseService::class)->isCurrent($attempt, $request)) {
+                continue;
+            }
+
+            $assignedSnapshotIds = is_array($attempt->question_order)
+                ? array_map('strval', $attempt->question_order)
+                : [];
+
+            if (ExamQuestionSnapshot::query()
+                ->where('tenant_id', $tenantId)
+                ->where('exam_id', $attempt->exam_id)
+                ->whereIn('id', $assignedSnapshotIds)
+                ->whereJsonContains('snapshot_media', ['id' => $media->id])
+                ->exists()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
