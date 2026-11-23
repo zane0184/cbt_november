@@ -280,7 +280,8 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
     }
     private function startAttempt(string $token, string $deviceId): ExamAttempt
     {
-        $response = $this->withToken($token)->withHeaders([
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer ' . $token,
             'X-Device-Binding-ID' => $deviceId,
         ])->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
