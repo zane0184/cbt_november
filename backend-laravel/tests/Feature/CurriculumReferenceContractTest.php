@@ -27,6 +27,8 @@ class CurriculumReferenceContractTest extends TestCase
         $this->assertTrue(Schema::hasColumn('multi_learning_outcomes', 'source_checksum'));
         $this->assertTrue(Schema::hasColumn('assessments', 'assessment_function_option_id'));
         $this->assertTrue(Schema::hasColumn('assessments', 'curriculum_context_snapshot'));
+        $this->assertTrue(Schema::hasColumn('assessments', 'assessment_origin'));
+        $this->assertTrue(Schema::hasColumn('assessments', 'external_program_name'));
         $this->assertTrue(Schema::hasColumn('exams', 'assessment_context_snapshot'));
         $this->assertTrue(Schema::hasColumn('exam_question_snapshots', 'curriculum_context_snapshot'));
     }
@@ -55,6 +57,29 @@ class CurriculumReferenceContractTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('PENDING', $religionCp->verification_status);
+
+        $this->assertDatabaseHas('assessment_taxonomy_options', [
+            'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+            'dimension' => 'FUNCTION',
+            'code' => 'FORMATIF',
+            'is_selectable' => true,
+        ]);
+        $this->assertDatabaseHas('assessment_taxonomy_options', [
+            'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+            'dimension' => 'FUNCTION',
+            'code' => 'SUMATIF',
+            'is_selectable' => true,
+        ]);
+        $this->assertDatabaseHas('assessment_taxonomy_options', [
+            'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+            'dimension' => 'INSTRUMENT',
+            'code' => 'OBSERVASI',
+            'is_selectable' => true,
+        ]);
+        $this->assertDatabaseMissing('assessment_taxonomy_options', ['code' => 'UTS']);
+        $this->assertDatabaseMissing('assessment_taxonomy_options', ['code' => 'UAS']);
+        $this->assertDatabaseMissing('assessment_taxonomy_options', ['code' => 'UM']);
+        $this->assertDatabaseMissing('assessment_taxonomy_options', ['code' => 'SIMULASI_TKA']);
     }
 
     /** @test */
