@@ -7,7 +7,12 @@ use App\Models\User;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
+use App\Models\DeviceLease;
+use App\Models\ExamAttemptAnswer;
+use App\Models\MediaAsset;
+use App\Services\AuditService;
 use App\Models\ExamParticipant;
+use App\Models\StudentProfile;
 use App\Models\AcademicYear;
 use App\Models\Question;
 use App\Models\QuestionVersion;
@@ -15,6 +20,7 @@ use App\Models\QuestionOption;
 use App\Models\ExamQuestionSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ExamAnswerTest extends TestCase
@@ -26,10 +32,13 @@ class ExamAnswerTest extends TestCase
     private $exam;
     private $attempt;
     private $snapshot;
+    private string $apiToken;
+    private string $secondApiToken;
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withHeader('X-CBT-Fence-Generation', '1');
         $this->tenant = Tenant::create(['name' => 'T1', 'code' => 'T1']);
         app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
 
@@ -37,6 +46,16 @@ class ExamAnswerTest extends TestCase
         $this->student->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+
+        StudentProfile::create([
+            'user_id' => $this->student->id,
+            'nis' => 'ANS-' . Str::random(8),
+            'full_name' => $this->student->name,
+        ]);
+
+        // Two independent API sessions exist before the Attempt starts.
+        $this->apiToken = $this->student->createToken('answer-test-session')->plainTextToken;
+        $this->secondApiToken = $this->student->createToken('second-preexisting-session')->plainTextToken;
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $assessment = Assessment::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'title' => 'A1', 'assessment_type' => 'DAILY', 'created_by' => $this->student->id]);
@@ -102,15 +121,34 @@ class ExamAnswerTest extends TestCase
         $this->snapshot->tenant_id = $this->tenant->id;
         $this->snapshot->exam_id = $this->exam->id;
         $this->snapshot->save();
-        $this->attempt->update(['question_order' => [(string) $this->snapshot->id]]);
+        $tokenId = explode('|', $this->apiToken, 2)[0];
+        $sessionHash = hash_hmac('sha256', 'sanctum-token:'.$tokenId, (string) config('app.key'));
+        $this->attempt->update([
+            'question_order' => [(string) $this->snapshot->id],
+            'auth_session_hash' => $sessionHash,
+            'auth_session_type' => 'SANCTUM_TOKEN',
+            'auth_session_bound_at' => now(),
+            'fence_generation' => 1,
+        ]);
+        DeviceLease::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'registered_device_id' => null,
+            'auth_session_hash' => $sessionHash,
+            'fence_generation' => 1,
+            'status' => 'ACTIVE',
+            'leased_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+        ]);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-test');
+        $this->withHeader('X-Device-Binding-ID', 'device-test')
+            ->withHeader('Authorization', 'Bearer '.$this->apiToken);
     }
 
 
     public function test_matching_payload_rejects_foreign_or_duplicate_pair_ids()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $this->snapshot->update([
             'snapshot_options' => [
                 ['id' => 'LEFT-1', 'content' => 'Kiri 1', 'option_key' => 'PAIR-1'],
@@ -142,7 +180,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_restore_rejects_different_device_binding()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'another-device')
             ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers");
@@ -153,7 +191,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_restore_response_omits_internal_and_identity_fields()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         \App\Models\ExamAttemptAnswer::create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
@@ -178,7 +216,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answered_state_requires_non_null_payload()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
             'answer_payload' => null,
@@ -190,7 +228,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_future_base_revision_is_rejected_for_a_new_answer(): void
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -211,7 +249,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_student_can_save_mc_answer()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $this->withHeader('X-Device-Binding-ID', 'device-test');
 
         $optionId = $this->snapshot->snapshot_options[0]['id'];
@@ -231,7 +269,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_student_can_clear_answer()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -248,7 +286,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_invalid_option_id_rejected()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -261,7 +299,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_revision_conflict_detection()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $optionId = $this->snapshot->snapshot_options[0]['id'];
 
         // 1. First Save (Revision 1)
@@ -295,7 +333,7 @@ class ExamAnswerTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        $this->actingAs($otherStudent, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$otherStudent->createToken('foreign-answer-test')->plainTextToken);
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers");
         $response->assertStatus(403);
@@ -303,16 +341,20 @@ class ExamAnswerTest extends TestCase
 
     public function test_idempotent_request_handling()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $optionId = $this->snapshot->snapshot_options[0]['id'];
         $requestId = (string) Str::uuid();
 
         // 1. Initial Request
-        $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
+        $firstResponse = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => $requestId,
             'answer_payload' => ['selected_option_id' => $optionId],
             'answer_state' => 'ANSWERED'
         ]);
+        $firstResponse->assertStatus(200)
+            ->assertJsonPath('receipt.client_request_id', $requestId)
+            ->assertJsonPath('receipt.attempt_id', $this->attempt->id)
+            ->assertJsonPath('receipt.snapshot_id', $this->snapshot->id);
 
         $revision1 = \App\Models\ExamAttemptAnswer::first()->revision_number;
 
@@ -324,13 +366,99 @@ class ExamAnswerTest extends TestCase
         ]);
 
         $response->assertStatus(200);
-        $response->assertJson(['message' => 'Idempotent request handled.']);
+        $response->assertJsonPath('idempotent', true);
+        $response->assertJsonPath('receipt.client_request_id', $requestId);
+        $response->assertJsonPath('data.revision_number', $revision1);
         $this->assertEquals($revision1, \App\Models\ExamAttemptAnswer::first()->revision_number);
+    }
+
+    public function test_reused_request_id_with_different_payload_is_rejected_without_mutation()
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $requestId = (string) Str::uuid();
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+
+        $this->putJson($url, [
+            'client_request_id' => $requestId,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+            'base_revision' => 0,
+        ])->assertStatus(200);
+
+        $response = $this->putJson($url, [
+            'client_request_id' => $requestId,
+            'answer_payload' => null,
+            'answer_state' => 'CLEARED',
+            'base_revision' => 1,
+        ]);
+
+        $response->assertStatus(409)->assertJsonPath('code', 'IDEMPOTENCY_KEY_REUSED');
+        $this->assertDatabaseCount('exam_attempt_answers', 1);
+        $this->assertDatabaseHas('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $this->snapshot->id,
+            'revision_number' => 1,
+            'answer_state' => 'ANSWERED',
+        ]);
+    }
+
+    public function test_reused_request_id_on_another_assigned_snapshot_is_rejected()
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $requestId = (string) Str::uuid();
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+
+        $this->putJson($url, [
+            'client_request_id' => $requestId,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+            'base_revision' => 0,
+        ])->assertStatus(200);
+
+        $anotherSnapshot = $this->createUnassignedSnapshot('Second assigned question');
+        $this->attempt->update([
+            'question_order' => array_values(array_merge(
+                $this->attempt->fresh()->question_order ?? [],
+                [(string) $anotherSnapshot->id]
+            )),
+        ]);
+
+        $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$anotherSnapshot->id}", [
+            'client_request_id' => $requestId,
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+            'base_revision' => 0,
+        ]);
+
+        $response->assertStatus(409)->assertJsonPath('code', 'IDEMPOTENCY_KEY_REUSED');
+        $this->assertDatabaseCount('exam_attempt_answers', 1);
+    }
+
+    public function test_answer_read_and_write_are_rejected_after_attempt_is_terminal_or_expired()
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers";
+
+        $this->attempt->update(['status' => 'SUBMITTED']);
+        $this->getJson($url)->assertStatus(409)->assertJsonPath('code', 'ATTEMPT_NOT_RESUMABLE');
+        $this->putJson($url . "/{$this->snapshot->id}", [
+            'client_request_id' => (string) Str::uuid(),
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(422)->assertJsonPath('code', 'ATTEMPT_CLOSED');
+
+        $this->attempt->update(['status' => 'IN_PROGRESS', 'expires_at' => now()->subSecond()]);
+        $this->getJson($url)->assertStatus(409)->assertJsonPath('code', 'ATTEMPT_NOT_RESUMABLE');
+        $this->putJson($url . "/{$this->snapshot->id}", [
+            'client_request_id' => (string) Str::uuid(),
+            'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(422)->assertJsonPath('code', 'ATTEMPT_EXPIRED');
     }
 
     public function test_all_question_types_payload_validation()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $types = [
             'MULTIPLE_RESPONSE' => ['selected_option_ids' => []],
@@ -372,13 +500,21 @@ class ExamAnswerTest extends TestCase
                 'answer_state' => 'ANSWERED'
             ]);
 
-            $response->assertStatus(200);
+            if ($type === 'SHORT_ANSWER') {
+                $response->assertStatus(422);
+                $this->assertDatabaseMissing('exam_attempt_answers', [
+                    'exam_attempt_id' => $this->attempt->id,
+                    'exam_question_snapshot_id' => $snapshot->id,
+                ]);
+            } else {
+                $response->assertStatus(200);
+            }
         }
     }
 
     public function test_same_exam_snapshot_not_in_attempt_question_order_is_rejected()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $unassignedSnapshot = $this->createUnassignedSnapshot('Not assigned to this attempt');
 
@@ -397,7 +533,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_answer_restore_hides_rows_for_snapshots_not_assigned_to_attempt()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $unassignedSnapshot = $this->createUnassignedSnapshot('Legacy unassigned answer');
 
@@ -453,7 +589,7 @@ class ExamAnswerTest extends TestCase
         $otherSnapshot->tenant_id = $this->tenant->id;
         $otherSnapshot->save();
 
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$otherSnapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -466,7 +602,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_live_question_bank_isolation()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         // 1. Snapshot exists with Option 1
         $optionId = $this->snapshot->snapshot_options[0]['id'];
@@ -488,7 +624,7 @@ class ExamAnswerTest extends TestCase
     public function test_answer_mutation_on_submitted_attempt_rejected()
     {
         $this->attempt->update(['status' => 'SUBMITTED']);
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -503,7 +639,7 @@ class ExamAnswerTest extends TestCase
     public function test_answer_mutation_on_expired_attempt_rejected()
     {
         $this->attempt->update(['expires_at' => now()->subMinute()]);
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
         $response = $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
             'client_request_id' => Str::uuid(),
@@ -517,7 +653,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_concurrent_revision_conflict_prevention()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $optionId = $this->snapshot->snapshot_options[0]['id'];
 
         // 1. Initial State (Revision 1)
@@ -551,7 +687,7 @@ class ExamAnswerTest extends TestCase
 
     public function test_idempotency_same_request_id_no_mutation()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
         $optionId = $this->snapshot->snapshot_options[0]['id'];
         $requestId = (string) Str::uuid();
 
@@ -582,9 +718,9 @@ class ExamAnswerTest extends TestCase
 
     public function test_text_questions_draft_validation()
     {
-        $this->actingAs($this->student, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
 
-        foreach (['SHORT_ANSWER', 'ESSAY'] as $type) {
+        foreach (['ESSAY'] as $type) {
             $q = new Question(['created_by' => $this->student->id]);
             $q->tenant_id = $this->tenant->id;
             $q->save();
@@ -692,5 +828,276 @@ class ExamAnswerTest extends TestCase
 
         return $snapshot;
     }
+
+    public function test_late_retry_of_superseded_request_replays_receipt_without_overwriting_newer_answer()
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+        $firstRequestId = (string) Str::uuid();
+        $secondRequestId = (string) Str::uuid();
+        $optionId = $this->snapshot->snapshot_options[0]['id'];
+
+        $this->putJson($url, [
+            'client_request_id' => $firstRequestId,
+            'base_revision' => 0,
+            'answer_payload' => ['selected_option_id' => $optionId],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(200);
+
+        $this->putJson($url, [
+            'client_request_id' => $secondRequestId,
+            'base_revision' => 1,
+            'answer_payload' => ['selected_option_id' => $optionId, 'note' => 'newer edit'],
+            'answer_state' => 'ANSWERED',
+        ])->assertStatus(200);
+
+        $lateRetry = $this->putJson($url, [
+            'client_request_id' => $firstRequestId,
+            'base_revision' => 0,
+            'answer_payload' => ['selected_option_id' => $optionId],
+            'answer_state' => 'ANSWERED',
+        ]);
+
+        $lateRetry->assertOk()
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('data.revision_number', 1);
+        $this->assertDatabaseCount('exam_attempt_answers', 1);
+        $this->assertDatabaseHas('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $this->snapshot->id,
+            'revision_number' => 2,
+            'client_request_id' => $secondRequestId,
+        ]);
+    }
+
+
+    public function test_second_authentication_token_cannot_use_same_attempt_even_with_same_device_id(): void
+    {
+        $secondToken = $this->secondApiToken;
+        $base = "/api/v1/exams/{$this->exam->id}";
+        $attempt = "/attempts/{$this->attempt->id}";
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->getJson($base.'/execution')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->getJson($base.$attempt.'/answers')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->putJson($base.$attempt.'/answers/'.$this->snapshot->id, [
+                'client_request_id' => 'second-session-write',
+                'base_revision' => 0,
+                'answer_payload' => ['selected_option_id' => 'foreign-option'],
+                'answer_state' => 'ANSWERED',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->postJson($base.$attempt.'/heartbeat')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->postJson($base.$attempt.'/submit')
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->withHeader('Authorization', 'Bearer '.$secondToken)
+            ->getJson($base.$attempt)
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+
+        $this->assertDatabaseCount('exam_attempt_answers', 0);
+        $this->assertSame('IN_PROGRESS', $this->attempt->fresh()->status);
+
+        // The Laravel test application reuses guard instances across requests;
+        // forget the cached Sanctum guard when deliberately switching bearer tokens.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->getJson($base.$attempt.'/answers')
+            ->assertOk();
+    }
+
+    public function test_old_idempotency_request_replay_returns_original_receipt_without_overwriting_newer_revision(): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+        $optionA = (string) data_get($this->snapshot->snapshot_options, '0.id');
+        $optionB = (string) Str::uuid();
+        $this->snapshot->update(['snapshot_options' => array_merge(
+            $this->snapshot->snapshot_options,
+            [['id' => $optionB, 'content' => 'Option 2']]
+        )]);
+        $firstPayload = ['selected_option_id' => $optionA];
+        $secondPayload = ['selected_option_id' => $optionB];
+
+        $first = $this->putJson($url, [
+            'client_request_id' => 'immutable-request-1',
+            'base_revision' => 0,
+            'answer_payload' => $firstPayload,
+            'answer_state' => 'ANSWERED',
+        ]);
+        $first->assertOk()->assertJsonPath('data.revision_number', 1);
+        $firstReceipt = $first->json('receipt.id');
+
+        $second = $this->putJson($url, [
+            'client_request_id' => 'immutable-request-2',
+            'base_revision' => 1,
+            'answer_payload' => $secondPayload,
+            'answer_state' => 'ANSWERED',
+        ]);
+        $second->assertOk()->assertJsonPath('data.revision_number', 2);
+
+        $replay = $this->putJson($url, [
+            'client_request_id' => 'immutable-request-1',
+            'base_revision' => 0,
+            'answer_payload' => $firstPayload,
+            'answer_state' => 'ANSWERED',
+        ]);
+        $replay->assertOk()
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('data.revision_number', 1)
+            ->assertJsonPath('receipt.id', $firstReceipt);
+
+        $this->assertDatabaseHas('exam_attempt_answers', [
+            'exam_attempt_id' => $this->attempt->id,
+            'revision_number' => 2,
+        ]);
+        $savedAnswer = ExamAttemptAnswer::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_attempt_id', $this->attempt->id)
+            ->firstOrFail();
+        $this->assertSame($secondPayload, $savedAnswer->answer_payload);
+        $this->assertDatabaseCount('exam_attempt_answer_requests', 2);
+    }
+
+
+
+    public function test_expired_lease_can_only_be_recovered_by_the_same_bound_auth_session_and_advances_fence(): void
+    {
+        DeviceLease::query()->where('exam_attempt_id', $this->attempt->id)->update([
+            'expires_at' => now()->subSecond(),
+        ]);
+
+        $renewed = $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat");
+        $renewed->assertOk()->assertJsonPath('fence_generation', 2);
+
+        $this->assertSame(2, (int) $this->attempt->fresh()->fence_generation);
+        $this->withHeader('X-CBT-Fence-Generation', '1')
+            ->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers")
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_FENCE_MISMATCH');
+
+        $this->withHeader('X-CBT-Fence-Generation', '2')
+            ->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers")
+            ->assertOk();
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $this->attempt->id,
+            'fence_generation' => 1,
+            'status' => 'EXPIRED',
+        ]);
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $this->attempt->id,
+            'fence_generation' => 2,
+            'status' => 'ACTIVE',
+        ]);
+
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withHeader('Authorization', 'Bearer '.$this->secondApiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/heartbeat")
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'ATTEMPT_SESSION_MISMATCH');
+    }
+
+    public function test_submit_releases_lease_and_preserves_terminal_fence_generation(): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit")
+            ->assertSuccessful();
+
+        $retry = $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit");
+        $retry->assertOk()
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('data.fence_generation', 1);
+
+        $this->assertSame('SUBMITTED', $this->attempt->fresh()->status);
+        $this->assertSame(1, (int) $this->attempt->fresh()->fence_generation);
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $this->attempt->id,
+            'fence_generation' => 1,
+            'status' => 'RELEASED',
+            'release_reason' => 'STUDENT_SUBMITTED',
+        ]);
+    }
+
+
+
+    public function test_student_media_requires_the_same_bound_auth_session_and_active_lease(): void
+    {
+        Storage::fake('local');
+        $path = 'private/tenants/'.$this->tenant->id.'/media/exam-figure.pdf';
+        Storage::disk('local')->put($path, 'exam media');
+
+        $media = MediaAsset::create([
+            'tenant_id' => $this->tenant->id,
+            'owner_type' => 'QUESTION',
+            'owner_id' => $this->snapshot->source_question_id,
+            'file_name' => 'exam-figure.pdf',
+            'original_name' => 'exam-figure.pdf',
+            'storage_path' => $path,
+            'mime_type' => 'application/pdf',
+            'extension' => 'pdf',
+            'file_size' => 10,
+            'disk' => 'local',
+            'uploaded_by' => $this->student->id,
+        ]);
+        $this->snapshot->update([
+            'snapshot_media' => [['id' => $media->id, 'role' => 'STEM', 'mime_type' => 'application/pdf']],
+        ]);
+
+        $url = "/api/v1/media/{$media->id}";
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withHeader('Authorization', 'Bearer '.$this->secondApiToken)
+            ->get($url)
+            ->assertForbidden();
+
+        \Illuminate\Support\Facades\Auth::forgetGuards();
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->withHeader('X-Device-Binding-ID', 'device-test')
+            ->withHeader('X-CBT-Fence-Generation', '1')
+            ->get($url)
+            ->assertOk();
+    }
+
+
+
+    public function test_answer_receipt_is_not_persisted_when_transaction_audit_fails(): void
+    {
+        $audit = \Mockery::mock(AuditService::class);
+        $audit->shouldReceive('log')->once()->andThrow(new \RuntimeException('audit unavailable'));
+        $this->app->instance(AuditService::class, $audit);
+
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken)
+            ->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}", [
+                'client_request_id' => 'transaction-must-rollback',
+                'base_revision' => 0,
+                'answer_payload' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+                'answer_state' => 'ANSWERED',
+            ])
+            ->assertServerError();
+
+        $this->assertDatabaseCount('exam_attempt_answers', 0);
+        $this->assertDatabaseCount('exam_attempt_answer_requests', 0);
+    }
+
 
 }
