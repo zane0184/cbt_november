@@ -196,8 +196,28 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
         }
         $response->assertStatus(201);
         $response->assertJson(['success' => true]);
+        $response->assertJsonPath('data.fence_generation', 1);
         $this->assertNotNull($response->json('data.id'));
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $response->json('data.id'),
+            'fence_generation' => 1,
+            'status' => 'ACTIVE',
+        ]);
 
+        $this->assertEquals(1, $this->participantA1->attempts()->count());
+    }
+
+    public function test_exam_without_required_token_can_start_without_token()
+    {
+        $this->examA->update(['require_token' => false, 'token' => null]);
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
+
+        $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", []);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.fence_generation', 1);
         $this->assertEquals(1, $this->participantA1->attempts()->count());
     }
 
