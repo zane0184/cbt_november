@@ -1,0 +1,63 @@
+# Laporan W2 — Profil Dasar Madrasah Admin
+
+Tanggal: 24 November 2026
+Repository: `zane0184/cbt_november`
+Branch: `work/solo-web-cbt-completion-20261123-execution`
+
+## AUDIT
+- Skema existing `tenants` sudah memiliki `name`, `code`, `nsm`, `npsn`, `address`, `phone`, `email`, `logo_path`, dan `status`.
+- Model Tenant mendukung SoftDeletes/UUID, dan installer membuat tenant lokal dengan `code` yang terikat pada state instalasi.
+- Permission `tenant.manage` sudah tersedia pada katalog permission dan diberikan kepada role `ADMIN_MADRASAH`.
+- Sebelumnya tidak ada route, komponen, atau view profil madrasah pada Web Admin. Layout menampilkan identitas statis.
+- Tidak ada perubahan skema atau field tambahan untuk jenjang, status negeri/swasta, wilayah terperinci, website, nama Kepala Madrasah, kop surat, atau branding lanjutan pada tahap ini.
+
+## DESAIN
+- Satu profil Admin hanya boleh mengelola tenant yang berasal dari `auth()->user()->tenant_id`.
+- Wajib exact role tunggal `ADMIN_MADRASAH`, permission `tenant.manage`, dan bukan System Tenant.
+- Semua query update dikunci dan di-scope pada tenant pengguna; field `code` dan `status` tidak dapat diedit.
+- Perubahan dasar dicatat pada `audit_logs` melalui AuditService dalam transaksi yang sama.
+- Gunakan kolom yang sudah tersedia; tidak membuat migration.
+- Upload logo/login header/file assets ditahan dari patch ini sampai audit disk/storage dan route penayangan privat selesai.
+
+## IMPLEMENTASI
+File baru:
+- `backend-laravel/app/Livewire/Admin/MadrasahProfile.php`
+- `backend-laravel/resources/views/livewire/admin/madrasah-profile.blade.php`
+
+File existing diubah:
+- `backend-laravel/routes/web.php`: route `GET /admin/profile`.
+- `backend-laravel/resources/views/layouts/app.blade.php`: link sidebar menggunakan permission `tenant.manage`.
+- `backend-laravel/tests/Feature/AdminUiVerificationTest.php`: test positif, negative role/permission, audit values, dan batas tenant.
+
+Byte-exact backups verified:
+- `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/web.php.before` — `f6df667627c7b134ce7ed6f90f916a9bab2730a9`.
+- `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/app.blade.php.before` — `4830d03985f00fdf6fea5297c8950d211191cc63`.
+- `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/AdminUiVerificationTest.php.before-profile` — `a9e3a071320eb0c05273add0888b58edd5ea705b`.
+- Komponen baru sebelum koreksi namespace: `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/MadrasahProfile.php.before-namespace-fix` — `08378afcad67816c16419e7a05f7676e9776b229`.
+
+Catatan:
+- File baru `MadrasahProfile.php` dan view tidak memiliki file pra-patch untuk dibackup.
+- Namespace awal terduplikasi akibat serialisasi tool; telah diperbaiki dan backup sebelum koreksi dibuat.
+- Tidak ada database, migration, VPS, ZIP, Android, atau Web Super Admin disentuh.
+
+## PENGUJIAN
+- Test baru:
+  - `admin_can_view_and_update_own_madrasah_profile_with_audit_log`
+  - `admin_madrasah_profile_requires_exact_admin_role_and_tenant_manage_permission`
+  - `madrasah_profile_uses_only_authenticated_admin_tenant_and_never_updates_installation_code`
+- CI exact-SHA belum selesai saat laporan dibuat. Status test: PENDING; jangan klaim PASS sampai Actions selesai.
+- Tidak ada runtime browser/manual UAT yang dijalankan dalam tahap ini.
+
+## STATUS BACKLOG
+- Profil dasar (nama, NSM, NPSN, alamat, telepon, email): IMPLEMENTED / TEST PENDING.
+- Identitas instalasi/code/status protection: IMPLEMENTED / TEST PENDING.
+- Logo/favicon/login branding: NOT STARTED; perlu audit private storage/delivery.
+- Metadata lokasi rinci, jenjang, negeri/swasta, kepala madrasah, website/media sosial: BLOCKED BY SCHEMA/DESIGN; belum ada kolom pada schema aktif.
+- Kop surat fleksibel dan preview laporan: NOT STARTED.
+- ADM-20 tetap BLOCKED menunggu marker kelayakan ujian pusat kanonis.
+- Android dan Web Super Admin tetap DEFERRED sampai Juni 2027.
+
+## LANGKAH BERIKUTNYA
+1. Tunggu CI pada exact source SHA dan perbaiki hanya kegagalan yang terbukti.
+2. Setelah PASS, lanjutkan desain additive untuk metadata profil tambahan dan audit logo private storage/delivery.
+3. Jangan membuat migration untuk field tambahan sebelum desain schema/backward compatibility ditinjau.
