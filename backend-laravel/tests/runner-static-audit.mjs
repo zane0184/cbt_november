@@ -25,6 +25,21 @@ for (const viewPath of portalViewPaths) {
   assert.ok(view.includes("asset('css/student-portal.css')"), 'Web Siswa view must load the local stylesheet: ' + viewPath);
 }
 assert.ok(localPortalCss.includes('.bg-slate-100') && localPortalCss.includes('.p-4'), 'Local stylesheet must include the shared portal utility styles');
+
+const runnerOwnedClasses = new Set(['question-card', 'question-copy-protected', 'question-nav-content', 'question-nav-panel', 'question-nav-toggle', 'runner-layout']);
+const usedPortalClasses = new Set();
+for (const viewPath of portalViewPaths) {
+  const view = readFileSync(viewPath, 'utf8');
+  for (const match of view.matchAll(/\\bclass(?:Name)?\\s*=\\s*["']([^"']+)["']/g)) {
+    for (const token of match[1].split(/\\s+/).filter(Boolean)) usedPortalClasses.add(token);
+  }
+}
+for (const token of usedPortalClasses) {
+  if (runnerOwnedClasses.has(token)) continue;
+  const selector = '.' + token.replaceAll(':', '\\\\:').replaceAll('.', '\\\\.').replaceAll('/', '\\\\/').replaceAll('[', '\\\\[').replaceAll(']', '\\\\]');
+  assert.ok(localPortalCss.includes(selector), 'Local stylesheet utility is missing: ' + token);
+}
+console.log('PASS: every static and dynamically assigned Web Siswa utility class has a local CSS selector');
 console.log('PASS: login, exam list, exam runner, and results use local CSS without CDN');
 
 const inlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
