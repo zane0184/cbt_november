@@ -1,14 +1,14 @@
 <?php
 
-namespace Database\\Seeders;
+namespace Database\Seeders;
 
-use App\\Models\\CurriculumReferenceSource;
-use App\\Models\\MultiCurriculum;
-use App\\Models\\MultiCurriculumStructure;
-use App\\Models\\MultiCurriculumVersion;
-use App\\Models\\Tenant;
-use Illuminate\\Database\\Seeder;
-use Illuminate\\Support\\Facades\\DB;
+use App\Models\CurriculumReferenceSource;
+use App\Models\MultiCurriculum;
+use App\Models\MultiCurriculumStructure;
+use App\Models\MultiCurriculumVersion;
+use App\Models\Tenant;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class CurriculumRegistryBootstrapSeeder extends Seeder
 {
