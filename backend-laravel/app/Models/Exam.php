@@ -20,7 +20,7 @@ class Exam extends Model
         'attempt_limit', 'shuffle_questions', 'shuffle_options',
         'show_result', 'show_correct_answer', 'allow_resume',
         'auto_submit', 'require_token', 'token', 'token_mode',
-        'revision_number', 'created_by', 'published_at', 'locked_at'
+        'revision_number', 'created_by', 'published_at', 'locked_at', 'assessment_context_snapshot'
     ];
 
     protected $casts = [
@@ -35,6 +35,7 @@ class Exam extends Model
         'auto_submit' => 'boolean',
         'show_result' => 'boolean',
         'show_correct_answer' => 'boolean',
+        'assessment_context_snapshot' => 'array',
     ];
 
     public function assessment(): BelongsTo
