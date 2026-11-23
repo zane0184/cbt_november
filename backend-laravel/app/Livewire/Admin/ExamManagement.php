@@ -166,6 +166,34 @@ class ExamManagement extends Component
         $this->showModal = true;
     }
 
+    public function updatedSelectedAssignmentId($value): void
+    {
+        $user = auth()->user();
+        $profile = app(TeacherPortalAccess::class)->profile($user);
+        $assignment = TeacherSubjectAssignment::query()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('teacher_profile_id', $profile->id)
+            ->whereKey($value)
+            ->where('status', 'ACTIVE')
+            ->whereDate('starts_at', '<=', now()->toDateString())
+            ->whereDate('ends_at', '>=', now()->toDateString())
+            ->first();
+
+        $this->selectedSubjectId = $assignment?->subject_id ?? '';
+        $this->selectedSemesterId = $assignment?->semester_id ?? '';
+        $this->selectedRombelId = $assignment?->rombel_id ?? '';
+        $this->selectedCpIds = [];
+        $this->selectedOutcomeIds = [];
+        $this->selectedMaterialId = '';
+        $this->selectedMaterialTopicId = '';
+        $this->selectedQuestionVersionIds = [];
+    }
+
+    public function updatedSelectedMaterialId(): void
+    {
+        $this->selectedMaterialTopicId = '';
+    }
+
     public function toggleQuestionSelection($versionId)
     {
         if (in_array($versionId, $this->selectedQuestionVersionIds)) {
