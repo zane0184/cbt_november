@@ -44,6 +44,14 @@ class AccountLifecycleLicenseRouteTest extends TestCase
         $this->adminA->roles()->attach($adminRole);
     }
 
+    protected function tearDown(): void
+    {
+        TenantContext::getInstance()?->setTenantId(null);
+        app(TenantContext::class)->setTenantId(null);
+
+        parent::tearDown();
+    }
+
     private function createIdentity(Tenant $tenant, string $domain): LocalInstallationIdentity
     {
         return LocalInstallationIdentity::create([
