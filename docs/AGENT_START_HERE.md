@@ -128,3 +128,14 @@ Pada branch `work/solo-web-cbt-completion-20261123-execution`, HEAD source setel
 **PENGUJIAN:** CI #1734 dijalankan pada exact source SHA `f4397b8999ddf31a96d4d04b15bcfac4473b5203`, link https://github.com/zane0184/cbt_november/actions/runs/45278477028. Status saat addendum ini ditulis masih belum final; jangan klaim PASS sebelum job selesai.
 
 Lanjutkan dari checkpoint W3. Jangan ulang patch audit event ini atau pekerjaan W1/W2 yang sudah diverifikasi. ZIP final masih NOT READY FOR DISTRIBUTION.
+
+
+## PROMPT TERBARU — W4 FINAL (AUDIT EVENTS TESTED)
+
+**Prompt operasional terbaru:** [PROMPT_AGENT_PENGGANTI_CBT_W4_FINAL_2026-11-24.md](PROMPT_AGENT_PENGGANTI_CBT_W4_FINAL_2026-11-24.md).
+
+**Status terbaru yang diverifikasi:** Actions #1734 attempt 2 SUCCESS pada source SHA `f4397b8999ddf31a96d4d04b15bcfac4473b5203`: 536 passed / 2,250 assertions / 0 failed; focused login/tenant, Admin, Guru, InnoDB check dan cleanup semua SUCCESS. Run attempt 1 dibatalkan concurrency, attempt 2 adalah bukti final.
+
+W3 Audit Events untuk CREATE akun Guru/Siswa, rombel dan mapel berstatus IMPLEMENTED & TESTED. Jangan ulangi patch, syntax correction, atau tests yang sama. Backup byte-exact tersedia dan dirujuk dalam laporan W3. CI post-check, profil dasar Admin, W1 reauthorization dan remediasi baseline PHPUnit juga jangan diulang tanpa pemicu yang sah.
+
+Lanjutkan backlog nyata yang tersisa: lifecycle akun Guru/Siswa; tahun ajaran/semester/histori rombel; administrasi import/export; gap profil lanjutan/branding/kop surat; integrasi Web Guru/Siswa; kurikulum Merdeka + KBC; audit operasi lain yang memang belum tercakup; backup/restore/security/acceptance. DOCX contract dan ADM-20 marker tetap blocker sesuai owner. Jangan minta spesifikasi VPS ulang. ZIP final hanya setelah semua gate lulus.
