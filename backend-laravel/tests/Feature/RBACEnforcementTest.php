@@ -73,7 +73,7 @@ class RBACEnforcementTest extends TestCase
         $this->actingAs($this->admin, 'sanctum');
 
         $response = $this->postJson('/api/v1/teacher-subject-assignments', []);
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 
     public function test_admin_with_academic_manage_reaches_teacher_assignment_validation()
@@ -126,24 +126,28 @@ class RBACEnforcementTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_student_cannot_access_curricula_store()
+    public function test_student_cannot_mutate_retired_legacy_curriculum_resource()
     {
         $this->actingAs($this->student, 'sanctum');
 
+        // No mutation route is registered for any role.
         $response = $this->postJson('/api/v1/curricula', ['name' => 'New Cur']);
-        $response->assertStatus(403);
+        $response->assertStatus(404);
     }
 
-    public function test_admin_can_access_curricula_store()
+    public function test_admin_cannot_mutate_retired_legacy_curriculum_resource()
     {
         $this->actingAs($this->admin, 'sanctum');
 
+        // The legacy generic resource is deliberately read-only. Registry writes
+        // must use the authorized curriculum registry workflow, not this endpoint.
         $response = $this->postJson('/api/v1/curricula', [
             'name' => 'New Cur',
             'code' => 'K-MERDEKA',
             'is_active' => true
         ]);
 
-        $response->assertStatus(201);
+        $response->assertStatus(404);
+        $this->assertDatabaseMissing('curricula', ['code' => 'K-MERDEKA']);
     }
 }
