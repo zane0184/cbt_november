@@ -9,6 +9,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\Role;
+use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -40,6 +41,12 @@ class StudentExamPortalTest extends TestCase
         $this->student->roles()->attach(
             Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+
+        StudentProfile::create([
+            'user_id' => $this->student->id,
+            'nisn' => '0001234567',
+            'full_name' => 'Student Portal',
+        ]);
 
         $year = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2026/2027']);
         $assessment = Assessment::create([
@@ -275,6 +282,14 @@ class StudentExamPortalTest extends TestCase
 
     public function test_user_with_student_and_teacher_roles_cannot_enter_student_portal(): void
     {
+        // Keep the SISWA academic profile valid: the denial must be caused by
+        // the second persisted role, not by an incomplete identity fixture.
+        $this->assertDatabaseHas('student_profiles', [
+            'user_id' => $this->student->id,
+            'tenant_id' => $this->tenant->id,
+            'deleted_at' => null,
+        ]);
+
         $this->student->roles()->attach(
             Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru'])
         );
