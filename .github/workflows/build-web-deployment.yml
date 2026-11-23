@@ -6,6 +6,7 @@ on:
       - work/schema-dump-export-20261119
       - fix/p0-96g-installer-private-db-config-20261120
       - fix/web-portal-usability-rbac-20261120
+      - work/p1-seven-targets-20261124
     paths:
       - '.github/workflows/build-web-deployment.yml'
       - 'backend-laravel/**'
