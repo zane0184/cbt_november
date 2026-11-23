@@ -11,7 +11,7 @@ Status: DESAIN IMPLEMENTASI TERPADU — source schema belum diubah pada dokumen 
 | Profil lulusan | Permendikdasmen 10 Tahun 2025 | Pasal 4 menetapkan delapan dimensi profil lulusan | JDIH/BPK; status peraturan berlaku pada halaman metadata |
 | Pembelajaran Mendalam | Kepmendikdasmen 126/P/2025 | Pedoman implementasi PM; prinsip memuliakan, berkesadaran, bermakna, menggembirakan; olah pikir, hati, rasa, raga | Salinan dokumen pemerintah/BPMP berhasil diperiksa |
 | Panduan kurikulum satuan pendidikan | Panduan Pengembangan Kurikulum Satuan Pendidikan edisi revisi 2025 | Referensi panduan pengembangan kurikulum satuan pendidikan | Dokumen BSKAP Kemendikdasmen berhasil diperiksa |
-| CP | KMA 1503/2025 menyatakan CP ditetapkan pejabat berwenang; dokumen CP khusus MI perlu diregistrasi per keputusan/versi yang tepat | CP induk tidak boleh dikarang atau diisi dari sumber tidak terverifikasi | Belum dilakukan import konten CP penuh |
+| CP | CP umum mengacu pada Keputusan Kepala BSKAP 046/H/KR/2025, dengan perubahan terbatas melalui Keputusan Kepala BKPDM 020 Tahun 2026 untuk Pendidikan Agama dan Budi Pekerti; CP PAI dan Bahasa Arab madrasah perlu memperhatikan keputusan Dirjen Pendis 9941/2025 yang artefaknya masih harus diverifikasi | CP induk tidak boleh dikarang atau diisi dari sumber tidak terverifikasi | Belum dilakukan import konten CP penuh |
 
 ### 1.1 Panca Cinta
 Sesuai KMA 1503/2025 dan Kepdirjen Pendis 6077/2025:
@@ -37,10 +37,10 @@ Sesuai Pasal 4 Permendikdasmen 10/2025:
 Delapan dimensi adalah profil lulusan; bukan jenis soal atau pengganti CP/TP.
 
 ### 1.3 Pembelajaran Mendalam
-Kepmendikdasmen 126/P/2025 dan panduan pemerintah menjelaskan:
-- Prinsip: berkesadaran, bermakna, menggembirakan.
+Kepmendikdasmen 126/P/2025 (ditetapkan 4 September 2025) dan panduan pemerintah menjelaskan:
+- Prinsip: memuliakan, berkesadaran, bermakna, menggembirakan.
 - Olah: pikir, hati, rasa, raga.
-- Pengalaman belajar: memahami, mengaplikasi, merefleksi.
+- Dokumen menjelaskan bahwa pembelajaran mendalam menuntut murid memahami, menganalisis, menerapkan konsep, dan melakukan refleksi dalam beragam konteks; ini bukan enum fase belajar yang harus dikunci.
 - Kerangka pembelajaran: praktik pedagogis, kemitraan, lingkungan, pemanfaatan digital.
 
 PM adalah pendekatan pembelajaran, bukan kurikulum baru.
@@ -55,7 +55,10 @@ KMA 1503/2025 Bab II:
 - KMA 1503/2025 (salinan Kanwil Kemenag): https://sulteng.kemenag.go.id/files/show/20251020162801surat-penyampaian-kma-kurikulum-2025%2Blampiran_compressed-tzR.pdf
 - Kepdirjen Pendis 6077/2025 (CDN Kemenag): https://cdn.kemenag.go.id/storage/archives/panduan-kurikulum-berbasis-cinta.pdf
 - Permendikdasmen 10/2025 (JDIH/BPK): https://peraturan.bpk.go.id/Details/321419/permendikdasmen-no-10-tahun-2025
-- Kepmendikdasmen 126/P/2025 (BPMP Kemendikdasmen): https://bpmpbabel.kemendikdasmen.go.id/PPID/wp-content/uploads/2025/09/Salinan-Kepmendikdasmen-Nomor-126_P_2025-CAP.pdf
+- Kepmendikdasmen 126/P/2025 (ditetapkan 4 September 2025; BPMP Kemendikdasmen): https://bpmpbabel.kemendikdasmen.go.id/PPID/wp-content/uploads/2025/09/Salinan-Kepmendikdasmen-Nomor-126_P_2025-CAP.pdf
+- Keputusan Kepala BSKAP 046/H/KR/2025 (CP umum): https://kurikulum.kemendikdasmen.go.id/file/1753929861_manage_file.pdf
+- Keputusan Kepala BKPDM 020 Tahun 2026 (siaran pers resmi menyatakan perubahan hanya untuk Pendidikan Agama dan Budi Pekerti): https://www.kemendikdasmen.go.id/siaran-pers/15636-capaian-pembelajaran-baru-telah-terbit-yang-berubah-hanya-mata-pelajaran-agama-dan-budi-pekerti
+- Kepdirjen Pendis 9941 Tahun 2025 (CP PAI dan Bahasa Arab madrasah; artefak keputusan masih perlu diverifikasi): https://batam.kemenag.go.id/main/perkuat-mutu-pembelajaran-pengawas-madrasah-hadiri-perdana-mgmp-pai-dan-bahasa-arab-mts-kota-batam
 - Panduan Pengembangan Kurikulum Satuan Pendidikan Revisi 2025: https://kurikulum.kemendikdasmen.go.id/file/1755670818_manage_file.pdf
 
 Checksum PDF belum dihitung karena binary belum diarsipkan ke workspace branch. Source record harus membedakan metadata verified dengan artifact checksum verified.
