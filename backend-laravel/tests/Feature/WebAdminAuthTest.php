@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -231,4 +232,47 @@ class WebAdminAuthTest extends TestCase
         $this->post('/logout')->assertRedirect('/login');
         $this->assertGuest();
     }
+
+    public function test_web_login_fails_closed_when_local_installation_identity_is_missing(): void
+    {
+        DB::table('local_installation_identities')->delete();
+
+        $response = $this->post('/login', [
+            'identifier' => 'guru.uji',
+            'password' => $this->password,
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_web_login_fails_closed_when_installation_identity_is_bound_to_system_tenant(): void
+    {
+        \\Database\\Seeders\\SystemTenantSeeder::seed();
+        DB::table('local_installation_identities')
+            ->where('tenant_id', $this->tenant->id)
+            ->update(['tenant_id' => Tenant::SYSTEM_TENANT_ID]);
+
+        $response = $this->post('/login', [
+            'identifier' => 'guru.uji',
+            'password' => $this->password,
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_web_login_fails_closed_when_database_contains_multiple_madrasah_tenants(): void
+    {
+        Tenant::create(['name' => 'Madrasah Kedua', 'code' => 'MADUJI2']);
+
+        $response = $this->post('/login', [
+            'identifier' => 'guru.uji',
+            'password' => $this->password,
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
 }
