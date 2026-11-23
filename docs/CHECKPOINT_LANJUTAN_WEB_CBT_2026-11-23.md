@@ -223,3 +223,32 @@ Laporan rekonsiliasi terbaru: [REPORT_KOORDINASI_REKONSILIASI_2026-11-23.md](REP
 - Gap kurikulum/laporan tetap terbuka: CurriculumAnalyticsController masih memakai achievement/model legacy; hubungan output laporan dengan curriculum_context_snapshot QuestionVersion/Exam belum terbukti.
 - Tidak ada source runtime berubah, tidak ada patch duplikat, tidak ada migration, merge, deployment, atau ZIP.
 - Next: ambil hasil CI, lanjut matriks ADM-01–ADM-23, lalu audit canonical historical reporting contract. Android dan Web Super Admin tetap deferred sampai Juni 2027.
+
+
+## Addendum checkpoint handover agent pengganti — 23 November 2026
+
+### AUDIT exact HEAD
+- Branch: `work/solo-web-cbt-completion-20261123`
+- HEAD: `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4`
+- PR #21: OPEN / DRAFT / UNMERGED; base `work/solo-web-cbt-ci-base-20261123`.
+- Backend CI #45156925960: MySQL 8/PHP 8.3/Composer/installer PASS; focused login/tenant PASS; full PHPUnit FAILURE. Log detail tidak tersedia.
+- Agent 4 Web Siswa #45156926014: static audit, Chromium, WebKit compatibility, selected Laravel Student result/exam/login jobs PASS. Bukan real-Laravel E2E/UAT Safari fisik.
+- PR #13/#18/#19 OPEN/DRAFT/UNMERGED dengan base masing-masing; belum otomatis terintegrasi ke PR #21.
+
+### IMPLEMENTASI terakhir
+Commit `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4`:
+- API materials dibatasi index/show; MaterialController read methods memakai policy.
+- Filter UI role Operator/Kamad dihapus.
+- Regression test ditambahkan.
+- Backup byte-exact empat file di `backend-laravel/docs/backup/solo-web-cbt-2026-11-23/`, suffix `.before-legacy-material-rbac-and-role-filter`.
+- Wajib audit kompatibilitas MaterialController karena diff menghapus metode lama; jangan kembalikan write endpoint tanpa kontrak assignment/policy/test.
+
+### NEXT — urutan wajib
+1. Ambil log/artifact #45156925960; jika tidak tersedia, rerun workflow pada exact source SHA dan triase full PHPUnit. Jangan tebak root cause.
+2. Audit MaterialController read-only patch, consumers, policy, scope, response compatibility.
+3. Integrasikan Web Siswa PR #13 ke Laravel nyata tanpa mengulang runner.
+4. Buat matriks ADM-01–ADM-23 berdasarkan source.
+5. Selesaikan Guru end-to-end dan kurikulum sampai laporan historis.
+6. Full acceptance, backup/restore, UAT, lalu rencana VPS dan ZIP setelah persetujuan.
+
+Lihat laporan lengkap dan prompt agent pengganti pada tautan di atas. Tidak ada merge, production migration, deployment, Android/Web Super Admin (deferred Juni 2027), atau ZIP final.

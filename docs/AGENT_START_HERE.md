@@ -47,3 +47,12 @@ Add current continuation report link
 
 ## Laporan lanjutan terbaru
 Baca juga [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md) dan [DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md](DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md) sebelum coding. Laporan terbaru mencatat exact CI failure, patch resolver SYSTEM_GLOBAL dan backup, serta gap integrasi kurikulum sampai laporan historis. Jangan ulang patch yang telah tercatat.
+
+
+## HANDOVER AGENT PENGGANTI — 23 NOVEMBER 2026
+- [Laporan handover lengkap, kondisi source/CI, perubahan terbaru, backlog dan kriteria selesai](REPORT_HANDOVER_AGENT_PENGGANTI_2026-11-23.md)
+- [Prompt operasional agent pengganti — siap salin](PROMPT_AGENT_PENGGANTI_CBT_2026-11-23.md)
+
+HEAD saat handover dibuat: `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4` pada `work/solo-web-cbt-completion-20261123`. **Wajib verifikasi ulang** karena branch/CI dapat berubah.
+Backend CI #45156925960: focused login/tenant PASS, full PHPUnit FAILURE. Web Siswa #45156926014: job Agent 4 yang disebut di laporan PASS, tetapi belum real-Laravel E2E.
+Jangan ulang patch `dbebbd5`; audit kompatibilitas MaterialController read-only terlebih dahulu. PR #21 tetap OPEN/DRAFT/UNMERGED.

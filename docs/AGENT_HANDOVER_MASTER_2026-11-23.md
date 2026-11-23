@@ -238,3 +238,15 @@ Read [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH
 - Curriculum owner clarification is appended to `docs/DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md`: Kurmer, Panca Cinta, and Pembelajaran Mendalam are one integrated ecosystem, not three separate curricula. Canonical mapping/snapshot code exists; achievement/report code still uses legacy LearningOutcome/LearningObjective/LearningPath. This is a material P3 gap.
 - Do not repeat the existing auth/lease/receipt integration patches or rebuild the Agent 4 runner. Read the latest source and test evidence first.
 - Keep PR #21 Draft/unmerged. No production migration, deployment, Android build, or distribution ZIP.
+
+
+## Addendum handover agent pengganti — 23 November 2026
+Baca [REPORT_HANDOVER_AGENT_PENGGANTI_2026-11-23.md](REPORT_HANDOVER_AGENT_PENGGANTI_2026-11-23.md) dan ikuti [PROMPT_AGENT_PENGGANTI_CBT_2026-11-23.md](PROMPT_AGENT_PENGGANTI_CBT_2026-11-23.md).
+
+- Branch `work/solo-web-cbt-completion-20261123`, HEAD `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4`.
+- PR #21 OPEN/DRAFT/UNMERGED.
+- Backend run #45156925960: focused login/tenant PASS; full PHPUnit FAILURE; log detail tidak tersedia pada saat handover.
+- Agent 4 Web Siswa run #45156926014: static audit, Chromium, WebKit compatibility, selected Laravel Student feature jobs PASS; belum browser-to-real-Laravel E2E atau UAT Safari fisik.
+- Commit koordinator `dbebbd5` membatasi API materials menjadi read-only, menambah policy read, menghapus pilihan filter role legacy UI Admin, dan menambah regression test. Empat file existing dibackup byte-exact.
+- Prioritas: triase full PHPUnit dari log aktual; audit kompatibilitas MaterialController; integrasi Web Siswa ke Laravel nyata; matriks ADM-01–ADM-23; Guru end-to-end; kurikulum sampai laporan historis; acceptance, backup/restore, UAT.
+- Keputusan owner Issue #20 tetap mengikat. Tidak ada merge, production migration, deployment, atau ZIP.
