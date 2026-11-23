@@ -191,6 +191,9 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
         // Record last_activity_at before reaching limit
         $initialActivityAt = $this->attemptA->fresh()->last_activity_at;
 
+        // Advance the clock so MySQL's second-precision timestamp changes.
+        $this->travel(1)->seconds();
+
         // Exhaust 30 heartbeat requests
         for ($i = 0; $i < 30; $i++) {
             $this->withToken($this->tokenA)->withHeaders(['X-Device-Binding-ID' => 'device-user-a', 'X-CBT-Fence-Generation' => (string) $this->attemptA->fence_generation])
