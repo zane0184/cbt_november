@@ -151,11 +151,13 @@ trait CreatesCanonicalCurriculumContext
                 'is_editable' => false,
             ]);
 
-            $tp = TenantLearningOutcome::query()->firstOrCreate([
+            $tp = TenantLearningOutcome::query()->firstOrNew([
                 'tenant_id' => (string) $assignment->tenant_id,
                 'tenant_curriculum_registration_id' => $registration->id,
                 'code' => 'TP-PHPUNIT-' . $suffix,
-            ], [
+            ]);
+            $tp->forceFill([
+                'multi_curriculum_structure_id' => $subjectStructure->id,
                 'multi_curriculum_version_id' => $version->id,
                 'curriculum_owner_id' => $systemTenantId,
                 'subject_id' => $assignment->subject_id,
@@ -171,7 +173,7 @@ trait CreatesCanonicalCurriculumContext
                 'is_current' => true,
                 'status' => 'PUBLISHED',
                 'author_user_id' => $teacher->id,
-            ]);
+            ])->save();
 
             $frameworkDefinitions = [
                 ['role' => 'PANCA_CINTA', 'code' => 'CINTA_ILMU'],
