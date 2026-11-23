@@ -183,19 +183,19 @@ class CentralExamRoomAssignmentTest extends TestCase
         );
 
         $this->actingAs($this->guruA);
-        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('monitor', $this->examA));
-        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('viewQuestionBank', $this->examA));
-        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('manageQuestions', $this->examA));
-        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('viewParticipants', $assignment));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::allows('monitor', $this->examA));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::allows('viewQuestionBank', $this->examA));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::allows('manageQuestions', $this->examA));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::allows('viewParticipants', $assignment));
 
         $this->travelTo(now()->addMinutes(15));
-        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('monitor', $this->examA));
-        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('viewParticipants', $assignment));
-        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('releaseToken', $assignment));
-        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('resetLogin', $assignment));
-        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('grantExtraTime', $assignment));
-        $this->assertTrue(\\Illuminate\\Support\\Facades\\Gate::allows('printAttendance', $assignment));
-        $this->assertFalse(\\Illuminate\\Support\\Facades\\Gate::allows('viewAnswerKey', $assignment));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::allows('monitor', $this->examA));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::allows('viewParticipants', $assignment));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::allows('releaseToken', $assignment));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::allows('resetLogin', $assignment));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::allows('grantExtraTime', $assignment));
+        $this->assertTrue(\Illuminate\Support\Facades\Gate::allows('printAttendance', $assignment));
+        $this->assertFalse(\Illuminate\Support\Facades\Gate::allows('viewAnswerKey', $assignment));
     }
 
 }
