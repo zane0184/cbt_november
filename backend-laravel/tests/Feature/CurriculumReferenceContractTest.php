@@ -1,13 +1,13 @@
 <?php
 
-namespace Tests\\Feature;
+namespace Tests\Feature;
 
-use App\\Models\\CurriculumReferenceSource;
-use App\\Models\\Role;
-use Database\\Seeders\\DatabaseSeeder;
-use Illuminate\\Foundation\\Testing\\RefreshDatabase;
-use Illuminate\\Support\\Facades\\Schema;
-use Tests\\TestCase;
+use App\Models\CurriculumReferenceSource;
+use App\Models\Role;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
 
 class CurriculumReferenceContractTest extends TestCase
 {
