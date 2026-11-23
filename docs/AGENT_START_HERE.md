@@ -6,13 +6,14 @@
 - Branch sumber eksekusi: `work/solo-web-cbt-completion-20261123-execution`.
 - HEAD source eksekusi: `d6aaeae6f2851bf15272d0cc2bce9e68989d3a4d`.
 - Branch remediasi P0: `work/phpunit-41-root-cause-20261123`.
-- SHA yang telah lulus full CI: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`.
-- CI [#45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323): **518 passed, 0 failed, 2.189 assertions**, PHP 8.3, disposable MySQL 8.0.46/InnoDB.
+- SHA source/test yang lulus full CI pertama kali: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`.
+- SHA branch dokumentasi yang lulus verifikasi ulang: `6b5e412e18e5c9230c0b17f18a9d569bdd4d7982`.
+- CI [#45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323) dan [#45217367885](https://github.com/zane0184/cbt_november/actions/runs/45217367885): **518 passed, 0 failed, 2.189 assertions**, PHP 8.3, disposable MySQL 8.0.46/InnoDB.
 - Current checkpoint: [CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md](CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md).
 - Audit dan backlog: [REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md](REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md).
 - Arahan owner terbaru: [ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md](ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md).
 
-**Perhatian exact SHA:** Setelah CI #452153, source/test code tidak berubah; hanya dokumentasi/checkpoint yang diperbarui. CI push terbaru pada HEAD dokumentasi tetap harus selesai sebelum PR perbaikan dibuat.
+**Perhatian exact SHA:** Tidak ada perubahan source/test setelah SHA 085a20ee; SHA 6b5e412e menguji ulang branch dokumentasi. Perubahan dokumentasi lanjutan setelah itu akan diuji lagi oleh CI push sebelum PR perbaikan dibuat.
 
 ## Arahan kerja yang mengikat
 
