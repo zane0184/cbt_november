@@ -336,7 +336,7 @@ class ExamAnswerTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$otherStudent->createToken('foreign-answer-test')->plainTextToken);
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers");
-        $response->assertStatus(403);
+        $response->assertStatus(404); // Hide another student's Attempt existence.
     }
 
     public function test_idempotent_request_handling()
