@@ -139,21 +139,27 @@ class TeacherResultLivewireReauthorizationTest extends TestCase
 
     public function test_analytics_dashboard_rechecks_policy_after_role_revocation(): void
     {
-        $this->actingAs($this->teacher);
-        $component = new AnalyticsDashboard();
-        $component->exam = $this->exam;
+        $analytics = $this->mock(\App\Services\Analytics\ExamAnalyticsService::class);
+        $analytics->shouldReceive('getSummary')->once()->andReturn([
+            'participant_count' => 0,
+            'average_percentage' => null,
+            'median_percentage' => null,
+            'highest_percentage' => null,
+            'lowest_percentage' => null,
+            'standard_deviation_percentage' => null,
+            'average_raw_score' => null,
+            'highest_raw_score' => null,
+            'lowest_raw_score' => null,
+        ]);
+        $analytics->shouldReceive('getDistribution')->once()->andReturn([]);
 
-        // Prove authorized rendering without invoking analytics data queries in mount().
-        $component->render();
+        $this->actingAs($this->teacher);
+        $component = Livewire::test(AnalyticsDashboard::class, ['exam' => $this->exam])
+            ->assertSuccessful();
 
         $this->revokeGuruRole();
 
-        try {
-            $component->render();
-            $this->fail('Analytics dashboard render must deny a user whose Guru role was revoked.');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
-            $this->assertSame(403, $exception->getStatusCode());
-        }
+        $component->set('summary', ['tampered' => true])->assertForbidden();
     }
 
     public function test_item_analysis_rechecks_policy_after_livewire_mount(): void
