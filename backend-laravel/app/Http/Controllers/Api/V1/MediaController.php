@@ -216,7 +216,7 @@ class MediaController extends Controller
         $user = $request->user();
         $tenantId = $user->tenant_id;
         abort_unless($tenantId, ResponseCode::HTTP_FORBIDDEN);
-        abort_unless($user->hasRole('ADMIN_MADRASAH') || $user->hasRole('GURU'), ResponseCode::HTTP_FORBIDDEN);
+        abort_unless($this->canManageQuestionMedia($user), ResponseCode::HTTP_FORBIDDEN);
 
         DB::transaction(function () use ($questionId, $versionId, $mediaId, $user, $tenantId) {
             // Keep the same lock order as attach to reduce deadlock risk.
@@ -268,6 +268,7 @@ class MediaController extends Controller
     public function show(Request $request, MediaAsset $media)
     {
         $user = $request->user();
+        abort_unless($this->isSupportedPortalUser($user), ResponseCode::HTTP_FORBIDDEN);
 
         abort_unless($media->tenant_id === $user->tenant_id, ResponseCode::HTTP_FORBIDDEN);
 
@@ -312,6 +313,7 @@ class MediaController extends Controller
     public function destroy(Request $request, MediaAsset $media)
     {
         $user = $request->user();
+        abort_unless($this->isSupportedPortalUser($user), ResponseCode::HTTP_FORBIDDEN);
         abort_unless($media->tenant_id === $user->tenant_id, ResponseCode::HTTP_FORBIDDEN);
 
         if ($media->owner_type === 'USER') {
