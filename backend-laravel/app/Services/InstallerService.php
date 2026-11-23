@@ -691,18 +691,74 @@ class InstallerService
                 return ['success' => false, 'message' => 'Admin role boundary failed.'];
             }
 
-            if (!$admin->hasPermission('curriculum.view') || !$admin->hasPermission('curriculum.manage') || !$admin->hasPermission('academic.manage') || !$admin->hasPermission('user.manage')) {
-                return ['success' => false, 'message' => 'Academic, curriculum, or user-management permission bootstrap is incomplete.'];
+            // Verify the current three-portal permission contract. Admin manages
+            // registry/administration; Guru authors TP/ATP under assignments;
+            // Siswa has no administrative or authoring grants. KAMAD/OPERATOR/
+            // PROKTOR/SUPER_ADMIN are retired identities and are not installer roles.
+            $roles = Role::with('permissions')
+                ->whereIn('name', ['ADMIN_MADRASAH', 'GURU', 'SISWA'])
+                ->get()
+                ->keyBy('name');
+
+            if (!$roles->has('ADMIN_MADRASAH') || !$roles->has('GURU') || !$roles->has('SISWA')) {
+                return ['success' => false, 'message' => 'Required Admin/Guru/Siswa role bootstrap is incomplete.'];
             }
 
-            $kamadRole = Role::with('permissions')->where('name', 'KAMAD')->first();
-            $guruRole = Role::with('permissions')->where('name', 'GURU')->first();
-            if (!$kamadRole || !$guruRole
-                || !$kamadRole->permissions->contains('name', 'curriculum.view')
-                || !$guruRole->permissions->contains('name', 'curriculum.view')
-                || $kamadRole->permissions->contains('name', 'curriculum.manage')
-                || $guruRole->permissions->contains('name', 'curriculum.manage')) {
-                return ['success' => false, 'message' => 'Curriculum role permission boundary failed.'];
+            $adminRole = $roles->get('ADMIN_MADRASAH');
+            $guruRole = $roles->get('GURU');
+            $siswaRole = $roles->get('SISWA');
+
+            $requiredAdminPermissions = [
+                'curriculum.view', 'curriculum.registry.manage', 'curriculum.source.manage',
+                'assessment.taxonomy.manage', 'academic.manage', 'user.manage',
+                'tenant.manage', 'exam.proctor.assign',
+            ];
+            foreach ($requiredAdminPermissions as $permission) {
+                if (!$adminRole->permissions->contains('name', $permission)) {
+                    return ['success' => false, 'message' => 'Admin Madrasah permission bootstrap is incomplete.'];
+                }
+            }
+
+            $forbiddenAdminPermissions = [
+                'curriculum.manage', 'question.manage', 'exam.manage', 'exam.assign',
+                'exam.monitor', 'exam.token', 'exam.grade', 'exam.reopen', 'report.view',
+            ];
+            foreach ($forbiddenAdminPermissions as $permission) {
+                if ($adminRole->permissions->contains('name', $permission)) {
+                    return ['success' => false, 'message' => 'Admin/Guru permission boundary failed.'];
+                }
+            }
+
+            $requiredGuruPermissions = [
+                'curriculum.view', 'curriculum.manage', 'question.view', 'question.manage',
+                'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token',
+                'exam.grade', 'exam.reopen', 'report.view',
+            ];
+            foreach ($requiredGuruPermissions as $permission) {
+                if (!$guruRole->permissions->contains('name', $permission)) {
+                    return ['success' => false, 'message' => 'Guru permission bootstrap is incomplete.'];
+                }
+            }
+
+            $forbiddenGuruPermissions = [
+                'curriculum.registry.manage', 'curriculum.source.manage', 'academic.manage',
+                'user.manage', 'tenant.manage', 'exam.proctor.assign',
+            ];
+            foreach ($forbiddenGuruPermissions as $permission) {
+                if ($guruRole->permissions->contains('name', $permission)) {
+                    return ['success' => false, 'message' => 'Guru/Admin permission boundary failed.'];
+                }
+            }
+
+            if ($siswaRole->permissions->isNotEmpty()) {
+                return ['success' => false, 'message' => 'Siswa role must not receive administrative or authoring permissions.'];
+            }
+
+            $legacyRoles = Role::with('permissions')
+                ->whereIn('name', ['OPERATOR', 'KAMAD', 'PROKTOR', 'SUPER_ADMIN'])
+                ->get();
+            if ($legacyRoles->contains(fn (Role $role) => $role->permissions->isNotEmpty())) {
+                return ['success' => false, 'message' => 'Retired role grants must be revoked before installation is verified.'];
             }
 
             return [
