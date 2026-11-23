@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthWebController;
+use App\Http\Controllers\AccountPasswordController;
 use App\Http\Controllers\StudentExamController;
 use App\Livewire\Teacher\ResultList;
 use App\Livewire\Teacher\ResultDetail;
@@ -36,6 +37,10 @@ Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login')
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
+Route::middleware(['auth', 'tenant'])->group(function () {
+    Route::get('/account/password/change', [AccountPasswordController::class, 'show'])->name('account.password.change');
+    Route::post('/account/password/change', [AccountPasswordController::class, 'update'])->name('account.password.change.update');
+});
 Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
 Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
 
