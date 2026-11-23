@@ -15,7 +15,7 @@ class ExamProctorAssignmentService
 
     public function assign(User $actor, Exam $exam, string $proctorUserId, CarbonInterface $startsAt, CarbonInterface $expiresAt, string $reason): ExamProctorAssignment
     {
-        throw new \\LogicException('Central exam eligibility is not yet canonically defined; proctor assignment is blocked.');
+        throw new \LogicException('Central exam eligibility is not yet canonically defined; proctor assignment is blocked.');
         return DB::transaction(function () use ($actor, $exam, $proctorUserId, $startsAt, $expiresAt, $reason) {
             $tenantId = (string) $actor->tenant_id;
             $lockedExam = Exam::query()->where('tenant_id', $tenantId)->whereKey($exam->id)->lockForUpdate()->firstOrFail();
