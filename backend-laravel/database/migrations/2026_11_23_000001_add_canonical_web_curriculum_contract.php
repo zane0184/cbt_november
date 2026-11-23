@@ -314,8 +314,14 @@ return new class extends Migration
                     ->on('multi_learning_outcomes')->onDelete('RESTRICT');
                 $table->foreign(['material_id', 'tenant_id'], 'qvcm_material_owner_fk')
                     ->references(['id', 'tenant_id'])->on('materials')->onDelete('RESTRICT');
+                $table->foreign(['material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvcm_material_assignment_fk')
+                    ->references(['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('materials')->onDelete('RESTRICT');
                 $table->foreign(['material_topic_id', 'material_id', 'tenant_id'], 'qvcm_topic_material_owner_fk')
                     ->references(['id', 'material_id', 'tenant_id'])->on('material_topics')->onDelete('RESTRICT');
+                $table->foreign(['material_topic_id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvcm_topic_assignment_fk')
+                    ->references(['id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('material_topics')->onDelete('RESTRICT');
                 $table->foreign(['academic_year_id', 'tenant_id'], 'qvcm_year_owner_fk')
                     ->references(['id', 'tenant_id'])->on('academic_years')->onDelete('RESTRICT');
                 $table->foreign(['semester_id', 'tenant_id'], 'qvcm_semester_owner_fk')
@@ -368,8 +374,14 @@ return new class extends Migration
                     ->on('tenant_learning_outcomes')->onDelete('RESTRICT');
                 $table->foreign(['material_id', 'tenant_id'], 'qvtom_material_owner_fk')
                     ->references(['id', 'tenant_id'])->on('materials')->onDelete('RESTRICT');
+                $table->foreign(['material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvtom_material_assignment_fk')
+                    ->references(['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('materials')->onDelete('RESTRICT');
                 $table->foreign(['material_topic_id', 'material_id', 'tenant_id'], 'qvtom_topic_material_owner_fk')
                     ->references(['id', 'material_id', 'tenant_id'])->on('material_topics')->onDelete('RESTRICT');
+                $table->foreign(['material_topic_id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'qvtom_topic_assignment_fk')
+                    ->references(['id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'])
+                    ->on('material_topics')->onDelete('RESTRICT');
                 $table->foreign(['academic_year_id', 'tenant_id'], 'qvtom_year_owner_fk')
                     ->references(['id', 'tenant_id'])->on('academic_years')->onDelete('RESTRICT');
                 $table->foreign(['semester_id', 'tenant_id'], 'qvtom_semester_owner_fk')
@@ -662,7 +674,14 @@ return new class extends Migration
             }
         });
 
+        $this->addUniqueIndexIfMissing(
+            'material_topics',
+            ['id', 'material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'],
+            'mt_id_assignment_scope_uq'
+        );
+
         if (DB::getDriverName() !== 'sqlite') {
+            $this->addForeignKeyIfMissing('material_topics', ['material_id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_material_context_fk', 'materials', ['id', 'tenant_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['teacher_subject_assignment_id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_assignment_scope_fk', 'teacher_subject_assignments', ['id', 'tenant_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['tenant_curriculum_registration_id', 'tenant_id'], 'mt_reg_id_fk', 'tenant_curriculum_registrations', ['id', 'tenant_id'], 'RESTRICT');
             $this->addForeignKeyIfMissing('material_topics', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'mt_reg_triplet_fk', 'tenant_curriculum_registrations', ['tenant_id', 'multi_curriculum_version_id', 'curriculum_owner_id'], 'RESTRICT');
