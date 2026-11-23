@@ -314,6 +314,7 @@ class ExamManagementHardeningTest extends TestCase
             'weight' => 1,
             'created_by' => $this->teacher->id,
         ]);
+        $this->createCanonicalCurriculumContext($this->assignment, $this->teacher, $assessment);
         $exam = Exam::create([
             'tenant_id' => $this->tenant->id,
             'assessment_id' => $assessment->id,
