@@ -56,6 +56,18 @@ class AuthTest extends TestCase
 
     public function test_login_successful()
     {
+        $this->assertSame(1, LocalInstallationIdentity::withoutGlobalScopes()->count());
+        $this->assertSame(
+            1,
+            Tenant::withoutGlobalScopes()
+                ->where('id', '<>', Tenant::SYSTEM_TENANT_ID)
+                ->whereNull('deleted_at')
+                ->count()
+        );
+        $this->assertSame($this->tenant->id, LocalInstallationIdentity::withoutGlobalScopes()->value('tenant_id'));
+        $this->assertSame(['ADMIN_MADRASAH'], $this->user->roles()->pluck('name')->all());
+        $this->assertSame($this->user->id, app(\App\Services\LoginIdentityResolver::class)->resolve('test-user')?->id);
+
         $response = $this->postJson('/api/v1/auth/login', [
             'identifier' => 'test-user',
             'password' => 'password',
