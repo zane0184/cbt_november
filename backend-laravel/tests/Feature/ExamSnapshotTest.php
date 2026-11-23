@@ -492,6 +492,37 @@ class ExamSnapshotTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $otherUser->id,
         ]);
+
+        // Build a real tenant-local assignment and canonical curriculum context.
+        // Snapshot creation now correctly rejects legacy assessments without this scope.
+        $otherRombel = Rombel::create([
+            'tenant_id' => $otherTenant->id,
+            'academic_year_id' => $otherYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => 'Other 1A',
+            'status' => 'ACTIVE',
+        ]);
+        $otherTeacherProfile = TeacherProfile::create([
+            'tenant_id' => $otherTenant->id,
+            'user_id' => $otherUser->id,
+            'full_name' => 'Other Guru',
+        ]);
+        $otherAssignment = TeacherSubjectAssignment::create([
+            'tenant_id' => $otherTenant->id,
+            'teacher_profile_id' => $otherTeacherProfile->id,
+            'subject_id' => $otherSubject->id,
+            'rombel_id' => $otherRombel->id,
+            'academic_year_id' => $otherYear->id,
+            'semester_id' => $otherSemester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $otherUser->id,
+        ]);
+        $otherCanonicalContext = $this->createCanonicalCurriculumContext(
+            $otherAssignment,
+            $otherUser,
+            $otherAssessment
+        );
         $otherExam = Exam::create([
             'tenant_id' => $otherTenant->id,
             'assessment_id' => $otherAssessment->id,
@@ -519,6 +550,7 @@ class ExamSnapshotTest extends TestCase
             'is_current' => true,
             'created_by' => $otherUser->id,
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($otherVersion, $otherCanonicalContext);
         app(\App\Services\ExamSnapshotService::class)->createSnapshots($otherExam, [$otherVersion->id]);
         $foreignSnapshot = $otherExam->snapshots()->firstOrFail();
 
