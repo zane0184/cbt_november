@@ -74,3 +74,11 @@ Baca:
 - [Keputusan owner](https://github.com/zane0184/cbt_november/issues/20)
 
 **Instruksi ringkas untuk agent berikutnya:** baca dokumen ini dan seluruh referensi di atas, verifikasi source/HEAD/CI terbaru, lalu lanjutkan hanya pekerjaan yang belum selesai. Jangan mulai ulang, jangan memakai sumber di luar GitHub, dan jangan mengubah keputusan owner.
+
+## HANDOVER AGENT BARU — WAJIB LANJUTKAN, JANGAN MENGULANG
+Dokumen handover terbaru dan lengkap: [HANDOVER_AGENT_BARU_LANJUTKAN_BUKAN_MENGULANG_2026-11-24.md](HANDOVER_AGENT_BARU_LANJUTKAN_BUKAN_MENGULANG_2026-11-24.md).
+Prompt agent pengganti: [PROMPT_AGENT_PENGGANTI_CBT_2026-11-24.md](PROMPT_AGENT_PENGGANTI_CBT_2026-11-24.md).
+
+Tugas agent baru adalah meneruskan backlog yang belum selesai. Jangan memulai ulang proyek, mengulang triage/remediasi Full PHPUnit, menjalankan full suite hanya untuk konfirmasi, atau mengulang patch yang sudah ada. Full PHPUnit CLOSED/GREEN: exact source SHA `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51`, CI #45243430635, 518 passed / 2,177 assertions / 0 failed. Buka kembali hanya dengan pemicu sah pada lock note.
+
+Branch kerja terakhir saat handover: `work/solo-web-cbt-completion-20261123-execution`; HEAD saat handover: `a8ad92d9a4319f87827291b6cc02419aab964db9`. Selalu verifikasi ulang HEAD dan CI terkini. Lanjutkan backlog Issue #20 ADM-01..ADM-23 berdasarkan source aktual; kemudian Web Siswa/Guru E2E dan acceptance sesuai urutan handover. Baca laporan handover lengkap sebelum menyentuh source.
