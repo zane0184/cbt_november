@@ -163,7 +163,7 @@ class ExamSessionHardeningTest extends TestCase
     {
         $this->assertIsArray($payload);
         $this->assertSame(
-            ['id', 'status', 'attempt_number', 'started_at', 'expires_at', 'submitted_at'],
+            ['id', 'status', 'attempt_number', 'started_at', 'expires_at', 'submitted_at', 'fence_generation', 'lease_expires_at'],
             array_keys($payload)
         );
 
@@ -173,9 +173,10 @@ class ExamSessionHardeningTest extends TestCase
             'question_order',
             'options_order',
             'current_device_token',
-            'fence_generation',
             'device_lease_expires_at',
             'last_lease_heartbeat_at',
+            'auth_session_hash',
+            'auth_session_type',
         ] as $sensitiveField) {
             $this->assertArrayNotHasKey($sensitiveField, $payload);
         }
