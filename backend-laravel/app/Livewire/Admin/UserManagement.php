@@ -3,12 +3,17 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Role;
+use App\Models\Exam;
+use App\Models\ExamAttempt;
+use App\Models\ExamParticipant;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -45,6 +50,9 @@ class UserManagement extends Component
     public $editBirthDate = '';
     public $editParentName = '';
     public $editAddress = '';
+
+    public bool $showTemporaryPasswordModal = false;
+    public ?string $temporaryPassword = null;
 
     public function mount(): void
     {
@@ -320,6 +328,238 @@ class UserManagement extends Component
         ]);
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Profil akun berhasil diperbarui.']);
         session()->flash('message', 'Profil akun berhasil diperbarui.');
+    }
+
+
+    /**
+     * Apply the same parent-first locks as Attempt start. The account row is
+     * always locked last: Exam -> Participant -> Attempt -> User.
+     */
+    private function lockAccountExamLifecycle(string $tenantId, string $userId): array
+    {
+        $examIds = ExamParticipant::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $userId)
+            ->orderBy('exam_id')
+            ->pluck('exam_id')
+            ->unique()
+            ->values();
+
+        if ($examIds->isNotEmpty()) {
+            Exam::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereIn('id', $examIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+        }
+
+        $participants = ExamParticipant::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('user_id', $userId)
+            ->orderBy('exam_id')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+
+        $participantIds = $participants->pluck('id')->all();
+        $attempts = $participantIds === []
+            ? collect()
+            : ExamAttempt::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereIn('participant_id', $participantIds)
+                ->orderBy('exam_id')
+                ->orderBy('participant_id')
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+        return [$participants, $attempts];
+    }
+
+    private function prepareAccountLifecycleTransaction(): void
+    {
+        // A fresh read after the User mutex must see an Attempt that committed
+        // while this operation waited for that mutex. READ COMMITTED provides
+        // that visibility without taking Attempt locks after the User lock.
+        if (DB::connection()->getDriverName() === 'mysql' && DB::transactionLevel() === 0) {
+            DB::statement('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        }
+    }
+
+    private function hasOfficialActiveAttempt(string $tenantId, string $userId): bool
+    {
+        return ExamAttempt::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'IN_PROGRESS')
+            ->whereHas('participant', function ($query) use ($tenantId, $userId): void {
+                $query->withoutGlobalScopes()
+                    ->where('tenant_id', $tenantId)
+                    ->where('user_id', $userId);
+            })
+            ->exists();
+    }
+
+    private function revokeAccountCredentials(User $user): void
+    {
+        $user->tokens()->delete();
+
+        // Database sessions are deleted directly when present. File/other
+        // session drivers are invalidated by auth_version on their next request.
+        if (Schema::hasTable('sessions')) {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
+    }
+
+    public function resetUserPassword(string $userId): void
+    {
+        $this->authorizeUserManagement();
+        $tenantId = (string) auth()->user()->tenant_id;
+        $this->temporaryPassword = null;
+        $this->showTemporaryPasswordModal = false;
+        $this->prepareAccountLifecycleTransaction();
+
+        $result = DB::transaction(function () use ($tenantId, $userId): array {
+            [$participants, $attempts] = $this->lockAccountExamLifecycle($tenantId, $userId);
+
+            $lockedUser = User::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $roles = $lockedUser->roles()->pluck('name');
+            if ($roles->count() !== 1 || !in_array($roles->first(), ['GURU', 'SISWA'], true)) {
+                abort(403, 'Reset password hanya tersedia untuk akun Guru atau Siswa dalam madrasah ini.');
+            }
+
+            // Re-check after acquiring the User mutex. Attempt start also locks
+            // User last and rejects when must_change_password is true.
+            if ($this->hasOfficialActiveAttempt($tenantId, $userId)) {
+                app(AuditService::class)->log(
+                    'RESET_LOCAL_USER_PASSWORD',
+                    'User',
+                    (string) $lockedUser->id,
+                    null,
+                    ['outcome' => 'REJECTED', 'reason' => 'ACTIVE_ATTEMPT_IN_PROGRESS']
+                );
+
+                return ['status' => 'REJECTED_ACTIVE_ATTEMPT'];
+            }
+
+            $temporaryPassword = Str::random(48);
+            $lockedUser->password = Hash::make($temporaryPassword);
+            $lockedUser->must_change_password = true;
+            $lockedUser->auth_version = (int) $lockedUser->auth_version + 1;
+            $lockedUser->save();
+            $this->revokeAccountCredentials($lockedUser);
+
+            app(AuditService::class)->log(
+                'RESET_LOCAL_USER_PASSWORD',
+                'User',
+                (string) $lockedUser->id,
+                null,
+                ['outcome' => 'SUCCESS', 'auth_version' => (int) $lockedUser->auth_version]
+            );
+
+            return ['status' => 'SUCCESS', 'temporary_password' => $temporaryPassword];
+        }, 3);
+
+        if ($result['status'] === 'REJECTED_ACTIVE_ATTEMPT') {
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Reset ditolak: siswa masih memiliki Attempt berstatus IN_PROGRESS. Tidak ada data Attempt yang diubah.']);
+            return;
+        }
+
+        $this->temporaryPassword = $result['temporary_password'];
+        $this->showTemporaryPasswordModal = true;
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Password sementara dibuat. Salin sekarang; password hanya ditampilkan pada dialog ini.']);
+    }
+
+    public function dismissTemporaryPassword(): void
+    {
+        $this->temporaryPassword = null;
+        $this->showTemporaryPasswordModal = false;
+    }
+
+    public function deactivateUser(string $userId): void
+    {
+        $this->authorizeUserManagement();
+        $tenantId = (string) auth()->user()->tenant_id;
+        $this->prepareAccountLifecycleTransaction();
+
+        $result = DB::transaction(function () use ($tenantId, $userId): array {
+            [$participants, $attempts] = $this->lockAccountExamLifecycle($tenantId, $userId);
+            $lockedUser = User::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $roles = $lockedUser->roles()->pluck('name');
+            if ($roles->count() !== 1 || !in_array($roles->first(), ['GURU', 'SISWA'], true)) {
+                abort(403, 'Penonaktifan hanya tersedia untuk akun Guru atau Siswa dalam madrasah ini.');
+            }
+
+            if (!(bool) $lockedUser->is_active) {
+                return ['status' => 'UNCHANGED'];
+            }
+
+            if ($this->hasOfficialActiveAttempt($tenantId, $userId)) {
+                app(AuditService::class)->log('DEACTIVATE_LOCAL_USER', 'User', (string) $lockedUser->id, null, [
+                    'outcome' => 'REJECTED', 'reason' => 'ACTIVE_ATTEMPT_IN_PROGRESS',
+                ]);
+                return ['status' => 'REJECTED_ACTIVE_ATTEMPT'];
+            }
+
+            $lockedUser->is_active = false;
+            $lockedUser->auth_version = (int) $lockedUser->auth_version + 1;
+            $lockedUser->save();
+            $this->revokeAccountCredentials($lockedUser);
+
+            app(AuditService::class)->log('DEACTIVATE_LOCAL_USER', 'User', (string) $lockedUser->id, null, [
+                'outcome' => 'SUCCESS', 'auth_version' => (int) $lockedUser->auth_version,
+            ]);
+
+            return ['status' => 'SUCCESS'];
+        }, 3);
+
+        $message = match ($result['status']) {
+            'SUCCESS' => 'Akun dinonaktifkan. Sesi dan token lama telah dicabut; data akademik tetap dipertahankan.',
+            'REJECTED_ACTIVE_ATTEMPT' => 'Penonaktifan ditolak karena masih ada Attempt IN_PROGRESS.',
+            default => 'Akun sudah nonaktif.',
+        };
+        $this->dispatch('notify', ['type' => $result['status'] === 'SUCCESS' ? 'success' : 'error', 'message' => $message]);
+    }
+
+    public function activateUser(string $userId): void
+    {
+        $this->authorizeUserManagement();
+        $tenantId = (string) auth()->user()->tenant_id;
+
+        DB::transaction(function () use ($tenantId, $userId): void {
+            $lockedUser = User::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($userId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $roles = $lockedUser->roles()->pluck('name');
+            if ($roles->count() !== 1 || !in_array($roles->first(), ['GURU', 'SISWA'], true)) {
+                abort(403, 'Aktivasi hanya tersedia untuk akun Guru atau Siswa dalam madrasah ini.');
+            }
+
+            if (!(bool) $lockedUser->is_active) {
+                $lockedUser->is_active = true;
+                $lockedUser->auth_version = (int) $lockedUser->auth_version + 1;
+                $lockedUser->save();
+
+                app(AuditService::class)->log('ACTIVATE_LOCAL_USER', 'User', (string) $lockedUser->id, null, [
+                    'outcome' => 'SUCCESS', 'auth_version' => (int) $lockedUser->auth_version,
+                ]);
+            }
+        }, 3);
+
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Akun diaktifkan. Pengguna harus login ulang; sesi/token lama tidak dipulihkan.']);
     }
 
     public function updatingSearch(): void { $this->resetPage(); }
