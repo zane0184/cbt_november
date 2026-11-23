@@ -40,7 +40,7 @@ class ReportController extends Controller
         $this->authorize('viewExamResults', $exam);
 
         $filters = $request->only(['search', 'status', 'grading_status', 'rombel_id', 'per_page']);
-        if ($request->user()->hasRole('GURU') && !empty($filters['rombel_id'])) {
+        if ($request->user()->hasExactRole('GURU') && !empty($filters['rombel_id'])) {
             $rombel = Rombel::query()->whereKey($filters['rombel_id'])->firstOrFail();
             abort_unless($exam->assessment && TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $exam->assessment), 403);
         }
@@ -87,7 +87,7 @@ class ReportController extends Controller
         $filters = $request->only(['subject_id', 'academic_year_id', 'semester_id', 'per_page']);
         $assignedRombelIds = null;
 
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             $filters = $request->validate([
                 'subject_id' => ['required', 'uuid'],
                 'academic_year_id' => ['required', 'uuid'],
@@ -106,7 +106,7 @@ class ReportController extends Controller
         }
 
         // If student is viewing their own results, apply strict visibility
-        if ($request->user()->id === $student->id && $request->user()->hasRole('SISWA')) {
+        if ($request->user()->id === $student->id && $request->user()->hasExactRole('SISWA')) {
             $filters['finalized_only'] = true;
             $filters['visible_only'] = true;
         }
@@ -117,7 +117,7 @@ class ReportController extends Controller
         // Student self-service receives a deliberately small DTO. Do not serialize
         // Eloquent internals such as tenant IDs, participant IDs, score-pointer IDs,
         // or score-history relations into the browser response.
-        if ($request->user()->id === $student->id && $request->user()->hasRole('SISWA')) {
+        if ($request->user()->id === $student->id && $request->user()->hasExactRole('SISWA')) {
             $data = collect($data)->map(function ($attempt) {
                 $exam = $attempt->exam;
                 $assessment = $exam?->assessment;
@@ -172,7 +172,7 @@ class ReportController extends Controller
         $this->authorize('viewExamResults', $exam);
 
         $filters = $request->only(['status', 'grading_status', 'rombel_id']);
-        if ($request->user()->hasRole('GURU') && !empty($filters['rombel_id'])) {
+        if ($request->user()->hasExactRole('GURU') && !empty($filters['rombel_id'])) {
             $rombel = Rombel::query()->whereKey($filters['rombel_id'])->firstOrFail();
             abort_unless($exam->assessment && TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $exam->assessment), 403);
         }
@@ -193,7 +193,7 @@ class ReportController extends Controller
         $this->authorize('viewExamResults', $exam);
 
         $filters = $request->only(['status', 'grading_status', 'rombel_id']);
-        if ($request->user()->hasRole('GURU') && !empty($filters['rombel_id'])) {
+        if ($request->user()->hasExactRole('GURU') && !empty($filters['rombel_id'])) {
             $rombel = Rombel::query()->whereKey($filters['rombel_id'])->firstOrFail();
             abort_unless($exam->assessment && TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $exam->assessment), 403);
         }
@@ -222,7 +222,7 @@ class ReportController extends Controller
 
         $filters = ['per_page' => 100];
         $assignedRombelIds = null;
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             $filters = $request->validate([
                 'subject_id' => ['required', 'uuid'],
                 'academic_year_id' => ['required', 'uuid'],
@@ -239,7 +239,7 @@ class ReportController extends Controller
             );
             $filters['per_page'] = 100;
         }
-        if ($request->user()->id === $student->id && $request->user()->hasRole('SISWA')) {
+        if ($request->user()->id === $student->id && $request->user()->hasExactRole('SISWA')) {
             $filters['finalized_only'] = true;
             $filters['visible_only'] = true;
         }
@@ -299,7 +299,7 @@ class ReportController extends Controller
         if ($rombel->tenant_id !== $exam->tenant_id) {
             abort(404);
         }
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             abort_unless($exam->assessment && TeacherAccess::canAssignRombelForAssessment($request->user(), $rombel, $exam->assessment), 403);
         }
 
@@ -329,7 +329,7 @@ class ReportController extends Controller
             'semester_id' => ['sometimes', 'required', 'uuid'],
         ]);
 
-        if ($request->user()->hasRole('GURU')) {
+        if ($request->user()->hasExactRole('GURU')) {
             $filters = $request->validate([
                 'academic_year_id' => ['required', 'uuid'],
                 'semester_id' => ['required', 'uuid'],

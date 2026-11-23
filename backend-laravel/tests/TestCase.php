@@ -20,8 +20,8 @@ abstract class TestCase extends BaseTestCase
     {
         foreach ([
             'ADMIN_MADRASAH' => 'Admin Madrasah',
-            'KAMAD' => 'Kepala Madrasah',
             'GURU' => 'Guru',
+            'SISWA' => 'Siswa',
         ] as $name => $label) {
             \App\Models\Role::firstOrCreate(['name' => $name], ['label' => $label]);
         }

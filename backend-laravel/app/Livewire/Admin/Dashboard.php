@@ -27,9 +27,11 @@ class Dashboard extends Component
 
         $totalUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')->count();
         $totalStudents = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereHas('roles', fn ($query) => $query->where('name', 'SISWA'))->count();
+            ->whereHas('roles', fn ($query) => $query->where('name', 'SISWA'))
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', '!=', 'SISWA'))->count();
         $totalTeachers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
+            ->whereDoesntHave('roles', fn ($query) => $query->where('name', '!=', 'GURU'))
             ->whereHas('teacherProfile')->count();
         $totalRombels = Rombel::query()->where('tenant_id', $tenantId)->count();
         $totalSubjects = Subject::query()->where('tenant_id', $tenantId)->count();

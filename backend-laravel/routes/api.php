@@ -54,7 +54,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('teacher-subject-assignments', \App\Http\Controllers\Api\V1\TeacherSubjectAssignmentController::class);
 
         // Assessment & Exam Builder
-        Route::apiResource('assessments', \App\Http\Controllers\Api\V1\AssessmentController::class);
+        Route::apiResource('assessments', \App\Http\Controllers\Api\V1\AssessmentController::class)->only(['index', 'show', 'destroy']);
         Route::apiResource('exams', \App\Http\Controllers\Api\V1\ExamController::class);
         Route::get('/exams/{exam}/monitoring', [\App\Http\Controllers\Api\V1\MonitoringController::class, 'summary']);
         Route::get('/exams/{exam}/monitoring/participants', [\App\Http\Controllers\Api\V1\MonitoringController::class, 'participants']);
