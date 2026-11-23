@@ -21,6 +21,10 @@ class CurriculumReferenceContractTest extends TestCase
         $this->assertTrue(Schema::hasTable('material_topics'));
         $this->assertTrue(Schema::hasTable('question_version_curriculum_mappings'));
         $this->assertTrue(Schema::hasTable('question_version_structure_mappings'));
+        $this->assertTrue(Schema::hasTable('tenant_curriculum_subject_mappings'));
+        $this->assertTrue(Schema::hasTable('tenant_learning_outcomes'));
+        $this->assertTrue(Schema::hasTable('tenant_learning_outcome_structure_mappings'));
+        $this->assertTrue(Schema::hasTable('question_version_tenant_outcome_mappings'));
 
         $this->assertTrue(Schema::hasColumn('multi_curriculum_versions', 'source_id'));
         $this->assertTrue(Schema::hasColumn('multi_curriculum_structures', 'verification_status'));
@@ -31,6 +35,8 @@ class CurriculumReferenceContractTest extends TestCase
         $this->assertTrue(Schema::hasColumn('assessments', 'external_program_name'));
         $this->assertTrue(Schema::hasColumn('exams', 'assessment_context_snapshot'));
         $this->assertTrue(Schema::hasColumn('exam_question_snapshots', 'curriculum_context_snapshot'));
+        $this->assertTrue(Schema::hasColumn('teacher_subject_assignments', 'tenant_curriculum_registration_id'));
+        $this->assertTrue(Schema::hasColumn('teacher_subject_assignments', 'curriculum_context_snapshot'));
     }
 
     /** @test */
@@ -51,6 +57,28 @@ class CurriculumReferenceContractTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame('METADATA_VERIFIED', $kbc->verification_status);
+
+        $systemTenantId = \\App\\Models\\Tenant::SYSTEM_TENANT_ID;
+        $this->assertSame(5, \\App\\Models\\MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('node_type', 'PANCA_CINTA')
+            ->count());
+        $this->assertSame(4, \\App\\Models\\MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('node_type', 'PM_PRINCIPLE')
+            ->count());
+        $this->assertSame(4, \\App\\Models\\MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('node_type', 'PM_OLAH')
+            ->count());
+        $this->assertSame(4, \\App\\Models\\MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('node_type', 'PM_FRAMEWORK')
+            ->count());
+        $this->assertSame(8, \\App\\Models\\MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('node_type', 'DIMENSI_PROFIL_LULUSAN')
+            ->count());
 
         $religionCp = CurriculumReferenceSource::query()
             ->where('document_number', 'Kepdirjen Pendis 9941 Tahun 2025')
