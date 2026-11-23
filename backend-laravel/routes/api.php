@@ -36,7 +36,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('materials', \App\Http\Controllers\Api\V1\MaterialController::class);
 
         // Bank Soal
-        Route::post('/questions/import', [\App\Http\Controllers\Api\V1\QuestionController::class, 'import']);
+        // Legacy rows/XLSX import is disabled; use the canonical teacher authoring/import workflow.
         Route::apiResource('questions', \App\Http\Controllers\Api\V1\QuestionController::class);
         Route::get('/questions/{question}/versions', [\App\Http\Controllers\Api\V1\QuestionController::class, 'versions']);
         Route::post('/questions/{question}/publish', [\App\Http\Controllers\Api\V1\QuestionController::class, 'publish']);
