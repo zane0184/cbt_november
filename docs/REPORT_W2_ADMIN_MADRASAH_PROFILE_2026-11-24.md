@@ -48,6 +48,21 @@ Catatan:
 - CI exact-SHA belum selesai saat laporan dibuat. Status test: PENDING; jangan klaim PASS sampai Actions selesai.
 - Tidak ada runtime browser/manual UAT yang dijalankan dalam tahap ini.
 
+## Tambahan — temuan CI MySQL identity probe
+
+Run #1703 pada dokumentasi HEAD `d09af63ddb0372d6af73c5079b54ce849cc5a3f5` gagal sebelum checkout/test aplikasi karena workflow memeriksa `@@default_storage_engine` untuk menyimpulkan engine database, padahal nilai itu adalah default global dan bukan engine tabel target. Semua focused tests dan PHPUnit dilewati; hasil ini bukan bukti kegagalan profil.
+
+Probe workflow diperbaiki agar:
+- memverifikasi nama database dan versi MySQL 8;
+- membaca engine aktual tabel `tenants` dari `information_schema.TABLES` pada database disposable;
+- tetap fail-closed kecuali tabel target nyata ber-ENGINE InnoDB.
+
+Backup workflow byte-exact:
+- `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/tenant-backend-ci.yml.before-mysql-engine-probe-fix`
+- blob SHA `caf4202cbeb5b7f750222d4f5f0414d456fee180`.
+- source workflow sebelum patch: blob SHA `caf4202cbeb5b7f750222d4f5f0414d456fee180`.
+- fix workflow commit: `37a954e0f9006a90d109c5165436b9ef3e7c22f3`.
+
 ## STATUS BACKLOG
 - Profil dasar (nama, NSM, NPSN, alamat, telepon, email): IMPLEMENTED / TEST PENDING.
 - Identitas instalasi/code/status protection: IMPLEMENTED / TEST PENDING.
