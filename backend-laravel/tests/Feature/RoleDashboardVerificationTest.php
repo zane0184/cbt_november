@@ -2,50 +2,30 @@
 
 namespace Tests\Feature;
 
-use App\Models\AcademicYear;
-use App\Models\Assessment;
-use App\Models\Curriculum;
+use App\Contexts\TenantContext;
 use App\Models\Exam;
-use App\Models\ExamAttempt;
-use App\Models\ExamParticipant;
-use App\Models\GradeLevel;
-use App\Models\Phase;
 use App\Models\Role;
-use App\Models\Rombel;
+use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Policies\ExamPolicy;
 use App\Services\RolePermissionBootstrapper;
-use App\Livewire\Operator\OperatorDashboard;
-use App\Livewire\Kamad\KamadDashboard;
-use App\Livewire\Proktor\ProktorDashboard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Tests\TestCase;
 
 class RoleDashboardVerificationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private $tenantA;
-    private $tenantB;
-    private $superAdmin;
-    private $adminA;
-    private $operatorA;
-    private $kamadA;
-    private $proctorA;
-    private $guruA;
-    private $siswaA;
-
-    private $adminB;
-    private $siswaB;
-
-    private $roleSuperAdmin;
-    private $roleAdmin;
-    private $roleOperator;
-    private $roleKamad;
-    private $roleProctor;
-    private $roleTeacher;
-    private $roleStudent;
+    private Tenant $tenantA;
+    private Tenant $tenantB;
+    private User $adminA;
+    private User $guruA;
+    private User $siswaA;
+    private User $adminB;
+    private User $legacyOperator;
+    private User $legacyKamad;
+    private User $legacyProktor;
 
     protected function setUp(): void
     {
@@ -54,320 +34,109 @@ class RoleDashboardVerificationTest extends TestCase
         $this->tenantA = Tenant::create(['name' => 'Madrasah Demo A', 'code' => 'DEMOA']);
         $this->tenantB = Tenant::create(['name' => 'Madrasah Demo B', 'code' => 'DEMOB']);
 
-        $context = app(\App\Contexts\TenantContext::class);
+        $context = app(TenantContext::class);
         $context->setTenantId($this->tenantA->id);
 
-        $this->roleSuperAdmin = Role::create(['name' => 'SUPER_ADMIN', 'label' => 'Super Admin']);
-        $this->roleAdmin      = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
-        $this->roleOperator   = Role::create(['name' => 'OPERATOR', 'label' => 'Operator']);
-        $this->roleKamad      = Role::create(['name' => 'KAMAD', 'label' => 'Kepala Madrasah']);
-        $this->roleProctor    = Role::create(['name' => 'PROKTOR', 'label' => 'Proktor']);
-        $this->roleTeacher    = Role::create(['name' => 'GURU', 'label' => 'Guru']);
-        $this->roleStudent    = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $roles = [];
+        foreach ([
+            'ADMIN_MADRASAH' => 'Admin Madrasah',
+            'GURU' => 'Guru',
+            'SISWA' => 'Siswa',
+            'OPERATOR' => 'Legacy Operator',
+            'KAMAD' => 'Legacy Kamad',
+            'PROKTOR' => 'Legacy Proktor',
+        ] as $name => $label) {
+            $roles[$name] = Role::create(['name' => $name, 'label' => $label]);
+        }
 
         app(RolePermissionBootstrapper::class)->bootstrap();
 
-        // Tenant A Users
-        $this->superAdmin = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Super Admin',
-            'email' => 'super@demoa.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->superAdmin->roles()->attach($this->roleSuperAdmin);
+        $this->adminA = $this->makeUser('admin-a', $roles['ADMIN_MADRASAH']);
+        $this->guruA = $this->makeUser('guru-a', $roles['GURU']);
+        $this->siswaA = $this->makeUser('siswa-a', $roles['SISWA']);
+        $this->legacyOperator = $this->makeUser('operator-a', $roles['OPERATOR']);
+        $this->legacyKamad = $this->makeUser('kamad-a', $roles['KAMAD']);
+        $this->legacyProktor = $this->makeUser('proktor-a', $roles['PROKTOR']);
 
-        $this->adminA = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Admin A',
-            'email' => 'admin@demoa.sch.id',
-            'password' => bcrypt('password'),
+        TeacherProfile::create([
+            'user_id' => $this->guruA->id,
+            'full_name' => 'Guru A',
         ]);
-        $this->adminA->roles()->attach($this->roleAdmin);
 
-        $this->operatorA = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Operator A',
-            'email' => 'operator@demoa.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->operatorA->roles()->attach($this->roleOperator);
-
-        $this->kamadA = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Kamad A',
-            'email' => 'kamad@demoa.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->kamadA->roles()->attach($this->roleKamad);
-
-        $this->proctorA = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Proktor A',
-            'email' => 'proctor@demoa.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->proctorA->roles()->attach($this->roleProctor);
-
-        $this->guruA = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Guru A',
-            'email' => 'guru@demoa.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->guruA->roles()->attach($this->roleTeacher);
-
-        $this->siswaA = User::create([
-            'tenant_id' => $this->tenantA->id,
-            'name' => 'Siswa A',
-            'email' => 'siswa@demoa.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->siswaA->roles()->attach($this->roleStudent);
-
-        // Tenant B Users
         $context->setTenantId($this->tenantB->id);
-        $this->adminB = User::create([
-            'tenant_id' => $this->tenantB->id,
-            'name' => 'Admin B',
-            'email' => 'admin@demob.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->adminB->roles()->attach($this->roleAdmin);
-
-        $this->siswaB = User::create([
-            'tenant_id' => $this->tenantB->id,
-            'name' => 'Siswa B',
-            'email' => 'siswa@demob.sch.id',
-            'password' => bcrypt('password'),
-        ]);
-        $this->siswaB->roles()->attach($this->roleStudent);
+        $adminRole = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $this->adminB = $this->makeUser('admin-b', $adminRole);
 
         $context->setTenantId(null);
+        $this->withoutMiddleware(\App\Http\Middleware\EnsureLicenseActive::class);
     }
 
-    /** @test */
-    public function admin_and_legacy_operator_share_the_admin_dashboard()
+    private function makeUser(string $username, Role $role): User
     {
-        // Unauthenticated
-        $this->get('/operator/dashboard')->assertRedirect('/login');
+        $user = User::create([
+            'tenant_id' => app(TenantContext::class)->getTenantId(),
+            'name' => $username,
+            'username' => $username,
+            'password' => bcrypt('SandiUji#2026'),
+        ]);
+        $user->roles()->attach($role);
 
-        // Authorized roles
-        $this->actingAs($this->operatorA)->get('/operator/dashboard')->assertRedirect('/admin/dashboard');
-        $this->actingAs($this->operatorA)->get('/admin/dashboard')->assertOk();
-        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertOk();
-        $this->actingAs($this->superAdmin)->get('/operator/dashboard')->assertStatus(403);
-        $this->actingAs($this->superAdmin)->get('/admin/dashboard')->assertStatus(403);
-
-        // Unauthorized roles
-        $this->actingAs($this->kamadA)->get('/admin/dashboard')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/admin/dashboard')->assertStatus(403);
+        return $user;
     }
 
-    /** @test */
-    public function kamad_has_no_separate_permanent_dashboard_route()
+    public function test_only_three_local_portals_are_routed_and_legacy_portals_are_absent(): void
     {
-        // Kamad retains monitoring/report permissions but uses the approved portal structure.
+        $this->get('/operator/dashboard')->assertNotFound();
         $this->get('/kamad/dashboard')->assertNotFound();
-        $this->actingAs($this->kamadA)->get('/kamad/dashboard')->assertNotFound();
-        $this->actingAs($this->adminA)->get('/kamad/dashboard')->assertNotFound();
-        $this->actingAs($this->operatorA)->get('/kamad/dashboard')->assertNotFound();
-        $this->actingAs($this->siswaA)->get('/kamad/dashboard')->assertNotFound();
-    }
-
-    /** @test */
-    public function legacy_proktor_role_has_no_permanent_portal_or_monitoring_access()
-    {
         $this->get('/proktor/dashboard')->assertNotFound();
-        $this->actingAs($this->proctorA)->get('/proktor/dashboard')->assertNotFound();
+        $this->get('/proktor/assignments')->assertNotFound();
 
-        // A legacy PROKTOR role is retained only for historical compatibility and cannot authenticate as a portal.
-        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertForbidden();
-        $this->actingAs($this->adminA)->get('/proktor/assignments')->assertStatus(403);
-        $this->actingAs($this->superAdmin)->get('/proktor/assignments')->assertStatus(403);
-        $this->actingAs($this->guruA)->get('/proktor/assignments')->assertStatus(403);
-        $this->actingAs($this->operatorA)->get('/proktor/assignments')->assertStatus(403);
-        $this->actingAs($this->kamadA)->get('/proktor/assignments')->assertStatus(403);
-        $this->actingAs($this->siswaA)->get('/proktor/assignments')->assertStatus(403);
+        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertOk();
+        $this->actingAs($this->guruA)->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($this->siswaA)->get('/admin/dashboard')->assertForbidden();
+
+        $this->actingAs($this->legacyOperator)->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($this->legacyKamad)->get('/admin/dashboard')->assertForbidden();
+        $this->actingAs($this->legacyProktor)->get('/admin/dashboard')->assertForbidden();
     }
 
-    /** @test */
-    public function guru_dashboard_access_control_and_sidebar_isolation()
+    public function test_guru_portal_requires_exact_guru_role_and_profile(): void
     {
-        // Authorized routes for GURU
-        $this->actingAs($this->guruA)->get('/admin/exams')->assertStatus(200);
-        $this->actingAs($this->guruA)->get('/admin/questions')->assertStatus(200);
-
-        // Sidebar rendering verification for GURU (Proktor Dashboard menu MUST NOT be present)
-        $response = $this->actingAs($this->guruA)->get('/admin/exams');
-        $response->assertDontSee('Dashboard Proktor');
-        $response->assertSee('Manajemen Ujian');
-        $response->assertSee('Bank Soal');
-
-        // Sidebar rendering verification for OPERATOR (Proktor Dashboard menu MUST NOT be present)
-        $opResponse = $this->actingAs($this->operatorA)->get('/admin/dashboard');
-        $opResponse->assertDontSee('Dashboard Proktor');
-        $opResponse->assertSee('Dashboard Admin Madrasah');
-
-        // A legacy permanent PROKTOR role has no portal; temporary monitoring is available only to an assigned Guru.
-        $this->actingAs($this->proctorA)->get('/proktor/assignments')->assertForbidden();
+        $this->actingAs($this->guruA)->get('/guru/dashboard')->assertOk();
+        $this->actingAs($this->adminA)->get('/guru/dashboard')->assertForbidden();
+        $this->actingAs($this->siswaA)->get('/guru/dashboard')->assertForbidden();
+        $this->actingAs($this->legacyProktor)->get('/guru/dashboard')->assertForbidden();
     }
 
-    /** @test */
-    public function operator_can_access_curriculum_and_exams()
+    public function test_student_portal_is_limited_to_student_role(): void
     {
-        $this->actingAs($this->operatorA);
-        $this->get('/admin/curriculum')->assertStatus(200);
-        $this->get('/admin/exams')->assertStatus(200);
+        $this->actingAs($this->siswaA)->get('/student/exams')->assertOk();
+        $this->actingAs($this->adminA)->get('/student/exams')->assertForbidden();
+        $this->actingAs($this->guruA)->get('/student/exams')->assertForbidden();
+        $this->actingAs($this->legacyOperator)->get('/student/exams')->assertForbidden();
     }
 
-    /** @test */
-    public function operator_and_student_cannot_open_teacher_result_detail_surface()
+    public function test_admin_has_read_only_exam_register_access_and_no_teacher_cbt_operations(): void
     {
-        $attempt = new ExamAttempt([
+        $exam = new Exam([
             'tenant_id' => $this->tenantA->id,
-            'exam_id' => (string) \Illuminate\Support\Str::uuid(),
-        ]);
-
-        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($this->operatorA)->allows('view', $attempt));
-        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($this->siswaA)->allows('view', $attempt));
-    }
-
-    /** @test */
-    public function kamad_cannot_manage_exams()
-    {
-        $this->actingAs($this->kamadA);
-        $this->get('/admin/exams')->assertStatus(403);
-    }
-
-    /** @test */
-    public function monitoring_access_control_and_tenant_isolation()
-    {
-        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantA->id);
-
-        $curriculum = Curriculum::create(['name' => 'K-Merdeka', 'code' => 'KM', 'is_active' => true]);
-        $year = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
-        $assessment = Assessment::create([
-            'academic_year_id' => $year->id,
-            'title' => 'Sumatif Mid',
-            'assessment_type' => 'SUMMATIVE',
-            'created_by' => $this->adminA->id
-        ]);
-
-        $exam = Exam::create([
-            'tenant_id' => $this->tenantA->id,
-            'assessment_id' => $assessment->id,
-            'title' => 'Ujian Mid Semester',
-            'duration_seconds' => 3600,
             'status' => 'PUBLISHED',
-            'created_by' => $this->adminA->id,
+            'locked_at' => now(),
+            'end_at' => now()->addHour(),
         ]);
 
-        $participant = ExamParticipant::create([
-            'exam_id' => $exam->id,
-            'user_id' => $this->siswaA->id,
-            'status' => 'ASSIGNED',
-        ]);
-        $attempt = ExamAttempt::create([
-            'exam_id' => $exam->id,
-            'participant_id' => $participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'device_fingerprint' => 'DEVICE-FINGERPRINT-SECRET',
-            'server_start_reference' => 'SERVER-REFERENCE-SECRET',
-            'question_order' => ['QUESTION-ORDER-SECRET'],
-            'options_order' => ['OPTIONS-ORDER-SECRET'],
-            'started_at' => now(),
-            'expires_at' => now()->addHour(),
-        ]);
+        $policy = app(ExamPolicy::class);
 
-        app(\App\Contexts\TenantContext::class)->setTenantId(null);
-
-        // Tenant A authorized users can access monitoring
-        $this->actingAs($this->proctorA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
-        $this->actingAs($this->kamadA)->get("/exams/{$exam->id}/monitoring")->assertStatus(200);
-        $this->actingAs($this->operatorA)->get("/exams/{$exam->id}/monitoring")->assertForbidden();
-        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/monitoring")->assertForbidden();
-        $this->actingAs($this->adminA)->get("/exams/{$exam->id}/results")->assertForbidden();
-        $this->assertFalse(\Illuminate\Support\Facades\Gate::forUser($this->adminA)->allows('close', $exam));
-
-        // The monitoring detail response must be an allowlist, not a raw attempt model.
-        $attemptResponse = $this->actingAs($this->kamadA, 'sanctum')
-            ->getJson("/api/v1/exams/{$exam->id}/monitoring/attempts/{$attempt->id}");
-        $attemptResponse->assertStatus(200)
-            ->assertJsonPath('data.attempt.participant.user.name', 'Siswa A')
-            ->assertJsonMissingPath('data.attempt.tenant_id')
-            ->assertJsonMissingPath('data.attempt.device_fingerprint')
-            ->assertJsonMissingPath('data.attempt.server_start_reference')
-            ->assertJsonMissingPath('data.attempt.question_order')
-            ->assertJsonMissingPath('data.attempt.options_order')
-            ->assertDontSee('DEVICE-FINGERPRINT-SECRET')
-            ->assertDontSee('SERVER-REFERENCE-SECRET')
-            ->assertDontSee('QUESTION-ORDER-SECRET')
-            ->assertDontSee('OPTIONS-ORDER-SECRET');
-
-        // Tenant A Siswa is blocked
-        $this->actingAs($this->siswaA)->get("/exams/{$exam->id}/monitoring")->assertStatus(403);
-
-        // Tenant B Admin is blocked by tenant isolation (404 or 403)
-        $responseB = $this->actingAs($this->adminB)->get("/exams/{$exam->id}/monitoring");
-        $this->assertTrue(in_array($responseB->getStatusCode(), [403, 404]));
-    }
-
-    /** @test */
-    public function dashboards_render_tenant_isolated_data()
-    {
-        // Set up Tenant A data
-        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantA->id);
-        $curriculumA = Curriculum::create(['name' => 'K-Merdeka A', 'code' => 'KM-A', 'is_active' => true]);
-        $phaseA = Phase::create(['curriculum_id' => $curriculumA->id, 'name' => 'Fase E', 'code' => 'E']);
-        $gradeLevelA = GradeLevel::create(['phase_id' => $phaseA->id, 'name' => 'Kelas X', 'code' => 'X', 'level' => 10]);
-
-        $yearA = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
-        $rombelA = Rombel::create(['name' => 'X-1', 'academic_year_id' => $yearA->id, 'grade_level_id' => $gradeLevelA->id]);
-
-        $assessmentA = Assessment::create([
-            'academic_year_id' => $yearA->id,
-            'title' => 'Assesmen A',
-            'assessment_type' => 'SUMMATIVE',
-            'created_by' => $this->adminA->id
-        ]);
-
-        $examA = Exam::create([
-            'tenant_id' => $this->tenantA->id,
-            'assessment_id' => $assessmentA->id,
-            'title' => 'Ujian A',
-            'duration_seconds' => 1800,
-            'status' => 'PUBLISHED',
-            'created_by' => $this->adminA->id,
-        ]);
-
-        // Set up Tenant B data
-        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenantB->id);
-        $curriculumB = Curriculum::create(['name' => 'K-Merdeka B', 'code' => 'KM-B', 'is_active' => true]);
-        $phaseB = Phase::create(['curriculum_id' => $curriculumB->id, 'name' => 'Fase F', 'code' => 'F']);
-        $gradeLevelB = GradeLevel::create(['phase_id' => $phaseB->id, 'name' => 'Kelas XI', 'code' => 'XI', 'level' => 11]);
-
-        $yearB = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
-        $rombelB1 = Rombel::create(['name' => 'XI-1', 'academic_year_id' => $yearB->id, 'grade_level_id' => $gradeLevelB->id]);
-        $rombelB2 = Rombel::create(['name' => 'XI-2', 'academic_year_id' => $yearB->id, 'grade_level_id' => $gradeLevelB->id]);
-
-        app(\App\Contexts\TenantContext::class)->setTenantId(null);
-
-        // Test Operator Dashboard for Tenant A
-        $this->actingAs($this->operatorA);
-        Livewire::test(OperatorDashboard::class)
-            ->assertViewHas('totalStudents', 1)
-            ->assertViewHas('totalRombels', 1)
-            ->assertViewHas('totalExams', 1);
-
-        // Test Kamad Dashboard for Tenant A
-        $this->actingAs($this->kamadA);
-        Livewire::test(KamadDashboard::class)
-            ->assertViewHas('totalExams', 1)
-            ->assertViewHas('activeExams', 1);
-
-        // Test Proktor Dashboard for Tenant A
-        $this->actingAs($this->proctorA);
-        Livewire::test(ProktorDashboard::class)->assertForbidden();
+        $this->assertTrue($policy->view($this->adminA, $exam), 'Admin may view the local exam register.');
+        $this->assertFalse($policy->update($this->adminA, $exam));
+        $this->assertFalse($policy->delete($this->adminA, $exam));
+        $this->assertFalse($policy->manageQuestions($this->adminA, $exam));
+        $this->assertFalse($policy->manageParticipants($this->adminA, $exam));
+        $this->assertFalse($policy->generateToken($this->adminA, $exam));
+        $this->assertFalse($policy->monitor($this->adminA, $exam));
+        $this->assertFalse($policy->close($this->adminA, $exam));
+        $this->assertFalse($policy->viewExamResults($this->adminA, $exam));
+        $this->assertTrue($policy->assignProctor($this->adminA, $exam));
+        $this->assertFalse($policy->view($this->adminB, $exam), 'Cross-installation exam access must be denied.');
     }
 }
