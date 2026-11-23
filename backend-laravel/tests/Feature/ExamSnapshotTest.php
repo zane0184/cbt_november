@@ -27,6 +27,7 @@ use App\Models\MediaAsset;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -726,6 +727,7 @@ class ExamSnapshotTest extends TestCase
             'created_by' => $this->user->id,
         ]);
 
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
         app(\App\Services\ExamSnapshotService::class)->createSnapshots($this->exam, [$version->id]);
 
         return $this->exam->snapshots()->firstOrFail();
