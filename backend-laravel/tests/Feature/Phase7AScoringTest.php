@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+
 use App\Contexts\TenantContext;
 use App\Models\AcademicYear;
 use App\Models\Assessment;
