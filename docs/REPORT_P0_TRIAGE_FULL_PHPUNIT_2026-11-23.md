@@ -77,3 +77,79 @@ CI workflow:
 
 ## BATAS
 Tidak ada production migration, deployment VPS, perubahan database produksi, merge PR, atau ZIP distribusi pada checkpoint ini.
+
+
+---
+
+# ADDENDUM PEMUTAKHIRAN TRIAGE — 23 NOVEMBER 2026 (HANDOVER AGENT BARU)
+
+**Addendum ini menggantikan angka/status CI yang tercantum pada bagian awal laporan lama.** Laporan awal tetap dipertahankan sebagai catatan historis.
+
+## AUDIT TERBARU
+
+- Branch aktif: `work/solo-web-cbt-completion-20261123-execution`.
+- Exact HEAD yang diuji: `b31d7a2713383ddcc1282317cdb295d6992d5dce`.
+- CI: [run #45168433247](https://github.com/zane0184/cbt_november/actions/runs/45168433247), job `137671393026`.
+- Environment: GitHub Actions disposable MySQL **8.0.46**.
+- Focused login/tenant smoke: **27 passed (90 assertions)**.
+- Full PHPUnit: **92 failed, 426 passed (1,723 assertions)**.
+- Baseline run #45156925960 pada SHA `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4`: **160 failed, 357 passed (1,475 assertions)**.
+- Perubahan dari baseline ke CI terakhir: kegagalan berkurang **68 test**; jumlah pass bertambah **69 test**. Suite masih FAIL; tidak boleh disebut selesai.
+
+## RINCIAN KEGAGALAN TERAKHIR BERDASARKAN LOG
+
+| Kelompok | Gagal | Temuan log / akar masalah yang perlu ditindaklanjuti |
+|---|---:|---|
+| ExamSnapshotTest | 15 | Setup menolak fixture karena tidak memiliki assignment Guru aktif yang cocok. Test ini belum menggunakan helper kanonis baru. |
+| Phase7CReopenTest | 12 | Banyak request mendapat 403, satu skenario justru menerima 200 ketika diharapkan ditolak. Audit role tunggal, permission, route, policy, dan fixture; jangan melemahkan otorisasi. |
+| QuestionBankTest | 8 | Test lama mengakses properti Livewire Admin yang tidak ada (questionType/selectedOutcomeId/correctOption(s)); Admin tidak boleh diberi kembali hak authoring soal. Audit apakah test harus dipindah ke Guru atau diubah menjadi negative access test. |
+| Security/AnswerKeyLeakageTest | 7 | TeacherSubjectAssignment tidak ditemukan; fixture tidak sesuai assignment yang diperlukan. |
+| RateLimitingAndAbuseProtectionTest | 6 | Beberapa request 401; autentikasi/token/lease fixture perlu diperbaiki berdasarkan middleware yang sebenarnya. |
+| ExamManagementHardeningTest | 5 | Properti Livewire lama hilang; satu test menerima 200 saat mengharapkan 403; authoring exam form memakai contract lama. |
+| ScoringHardeningTest | 5 | Perbedaan state FINALIZED/AUTO_SCORED, response 403, permission reopen Admin, dan nilai hasil recalculate. Audit state machine dan ownership; jangan sekadar mengganti expected status. |
+| ExamListContractTest | 4 | **Regresi dari patch fixture terbaru: variabel `$assignment` dipakai tetapi belum didefinisikan** di setup. Backup tersedia. Perbaiki sebelum melanjutkan kelompok lain. |
+| ProctorAssignmentSecurityTest | 4 | Dua test membuat model tenant-scoped tanpa TenantContext; dua test masih mengharapkan exception lama, sementara service memblokir assignment karena eligibility ujian pusat belum kanonis. Jangan membuka fitur Proktor sebelum marker kanonis dan keputusan owner. |
+| ResultWorkflowTest | 4 | Invalid Livewire snapshot structure dan satu null scoring_status; audit cara membuat Livewire component test serta state scoring. |
+| ExamVerificationTest | 3 | FK RESTRICT pada device_leases saat cleanup; dua response 403. Cleanup harus menghapus lease sebelum Attempt; periksa permission/fixture untuk attempt start dan exam read. |
+| TeacherPracticeWorkflowTest | 3 | Properti legacy question-bank dan null model/ID; perlu sesuaikan fixture dan komponen Guru aktual. |
+| AdminUiVerificationTest | 2 | Properti selectedAssignmentId/selectedCpIds/selectedOutcomeIds tidak cocok dengan component contract; satu invalid Livewire snapshot. |
+| MonitoringTest | 2 | Heartbeat 401; read Attempt 409. Audit token session, lease, fence generation, dan status Attempt. |
+| Phase7AScoringTest | 2 | Response 403 menggantikan 422/200; validasi role/permission/assignment dan urutan validasi request. |
+| Kelompok satu kegagalan | 5 | Analytics Cache 403; ExamBuilder bulk add 422; MonitoringDuplication 403; ScoringEngine 403; TeacherPracticeWorkflow tambahan tercatat terpisah pada log. |
+
+> Angka kelompok adalah hasil pengelompokan baris FAILED dari log run #45168433247. Jangan menganggap semua penyebab telah terbukti pada level source hanya dari pesan test; lakukan trace controller/service/policy/middleware dan fixture.
+
+## IMPLEMENTASI YANG SUDAH DILAKUKAN PADA BRANCH INI
+
+1. Membersihkan fixture committed pada `AttemptTransactionConcurrencyTest` agar tenant test tidak bocor ke test berikutnya. Backup byte-exact tersedia.
+2. Menjadikan legacy generic resource API `curricula`, `phases`, `grade-levels`, `elements` hanya read-only (`index/show`); menambah regression tests. Backup route/test tersedia.
+3. Menyelaraskan InstallerService postconditions dengan tiga role aktif `ADMIN_MADRASAH/GURU/SISWA` dan batas permission; memperbarui test. Backup tersedia.
+4. Menambahkan guard CurriculumAnalytics agar data capaian/analitik hasil siswa hanya dapat diakses Guru dengan permission yang tepat; Admin ditolak. Backup tersedia.
+5. Mengisolasi beberapa execution tests dari authoring snapshot dengan fixture immutable snapshot langsung; ini hanya fixture test, bukan perubahan production behavior.
+6. Mengubah fixture beberapa lifecycle test agar memakai token Sanctum tersimpan dan header device/fence; beberapa test kemudian melewati auth 401, tetapi suite masih FAIL.
+7. Memperbaiki tipe `sessions.user_id` agar kompatibel dengan UUID user dan menambahkan migration upgrade. Backup migration awal ada. Migration belum dijalankan di produksi dan harus diaudit terhadap instalasi upgrade.
+8. Membuat helper `CreatesCanonicalTeacherAssignment` untuk test fixture assignment/assessment berbasis versi kurikulum dan registrasi resmi. Integrasi helper belum tuntas: ExamSnapshotTest masih gagal 15 test; ExamListContractTest memiliki regresi `$assignment` undefined.
+
+## BATAS DESAIN YANG TIDAK BOLEH DILANGGAR
+
+- Jangan mengubah LoginIdentityResolver untuk menerima lebih dari satu tenant lokal; cleanup fixture concurrency adalah solusi.
+- Jangan melonggarkan TeacherAccess, policy, exact-one-role, assignment, ownership, session binding, lease/fencing hanya untuk membuat PHPUnit hijau.
+- Admin tidak boleh authoring soal/ujian atau membaca nilai/Attempt/analitik hasil siswa.
+- Jangan memulihkan mutating legacy curriculum routes. Jalur write harus melalui service/route kanonis yang terotorisasi.
+- Jangan mengaktifkan Proktor/monitoring/room/session. Service saat ini memblokir assignment karena eligibility ujian pusat belum didefinisikan kanonis; itu blocker produk, bukan alasan mengubah test menjadi PASS.
+- Jangan mengubah expected status secara massal. Periksa kontrak response dan middleware terlebih dahulu.
+
+## CHECKPOINT BERIKUTNYA — PRIORITAS
+
+1. Perbaiki regresi `ExamListContractTest::$assignment` (backup file sebelum edit, lalu focused test).
+2. Audit `ExamSnapshotTest` setup dan gunakan helper canonical assignment dengan seluruh metadata yang disyaratkan `TeacherAccess`; pastikan test CP/TP mapping terpisah tetap memvalidasi snapshot.
+3. Perbaiki FK cleanup `ExamVerificationTest` dalam urutan device_leases → attempts.
+4. Rekonsiliasi seluruh Livewire tests Admin question bank/exam dengan keputusan owner: Admin tidak authoring; pindahkan test authoring ke komponen Guru yang benar atau uji akses Admin ditolak.
+5. Triage Phase7CReopen/Scoring: cek source state machine, exact role/permission, finalization pointer dan tenant scope; jangan beri Admin hak reopen/score jika keputusan produk tidak mengizinkan.
+6. Perbaiki Proctor tests hanya setelah audit bahwa service sengaja fail-closed; eligibility ujian pusat harus ditetapkan eksplisit oleh owner sebelum fitur dibuka.
+7. Jalankan focused tests per file, lalu full PHPUnit exact SHA di MySQL 8.0.46.
+
+## FILE / BACKUP / RIWAYAT
+Semua backup source yang dibuat pada pekerjaan ini berada di `backend-laravel/docs/backup/solo-web-cbt-2026-11-23/`; backup workflow berada di `.github/workflows/backup/`. Daftar lengkap file berubah dan backup tercantum pada compare GitHub branch dan dokumen handover terbaru. Tidak ada perubahan DB produksi, deployment, merge, atau ZIP distribusi.
+
+Status akhir: **FULL PHPUnit FAIL — 92 failed / 426 passed — WORK IN PROGRESS**.
