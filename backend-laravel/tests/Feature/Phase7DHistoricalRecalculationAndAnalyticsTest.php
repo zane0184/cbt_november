@@ -479,18 +479,18 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
     }
 
     /**
-     * Test 9: Curriculum analytics API returns valid structure for authorized roles.
+     * Test 9: Students can view only their own achievement summary; Admin
+     * cannot access student grades or Guru curriculum analytics endpoints.
      */
-    public function test_9_curriculum_analytics_api_returns_valid_structure(): void
+    public function test_9_curriculum_analytics_api_enforces_portal_boundaries(): void
     {
         $this->test_1_initial_finalization_calculates_curriculum_achievements();
 
-        // Admin views Student Analytics
-        $respStudent = $this->actingAs($this->adminA, 'sanctum')
+        $studentResponse = $this->actingAs($this->studentA, 'sanctum')
             ->getJson("/api/v1/analytics/curriculum/students/{$this->studentA->id}");
 
-        $respStudent->assertStatus(200);
-        $respStudent->assertJsonStructure([
+        $studentResponse->assertStatus(200);
+        $studentResponse->assertJsonStructure([
             'success',
             'data' => [
                 'student' => ['id', 'name'],
@@ -500,52 +500,21 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             ]
         ]);
 
-        // Admin views Rombel Analytics
-        $respRombel = $this->actingAs($this->adminA, 'sanctum')
-            ->getJson("/api/v1/analytics/curriculum/rombels/{$this->rombel->id}");
+        $this->actingAs($this->adminA, 'sanctum')
+            ->getJson("/api/v1/analytics/curriculum/students/{$this->studentA->id}")
+            ->assertStatus(403);
 
-        $respRombel->assertStatus(200);
-        $respRombel->assertJsonStructure([
-            'success',
-            'data' => [
-                'rombel' => ['id', 'name'],
-                'summary' => [
-                    'total_tp_evaluations',
-                    'tp_tercapai_count',
-                    'tp_belum_tercapai_count',
-                    'tp_belum_dinilai_count',
-                    'average_tp_score',
-                ],
-                'tp_achievements',
-            ]
-        ]);
+        $this->actingAs($this->adminA, 'sanctum')
+            ->getJson("/api/v1/analytics/curriculum/rombels/{$this->rombel->id}")
+            ->assertStatus(403);
 
-        // Admin views Subject Analytics
-        $respSubject = $this->actingAs($this->adminA, 'sanctum')
-            ->getJson("/api/v1/analytics/curriculum/subjects/{$this->subject->id}");
+        $this->actingAs($this->adminA, 'sanctum')
+            ->getJson("/api/v1/analytics/curriculum/subjects/{$this->subject->id}")
+            ->assertStatus(403);
 
-        $respSubject->assertStatus(200);
-        $respSubject->assertJsonStructure([
-            'success',
-            'data' => [
-                'subject' => ['id', 'name'],
-                'summary' => ['total_tp_evaluations', 'tercapai_count', 'belum_tercapai_count', 'average_score']
-            ]
-        ]);
-
-        // Admin views TP Analytics
-        $respTp = $this->actingAs($this->adminA, 'sanctum')
-            ->getJson("/api/v1/analytics/curriculum/tps/{$this->tp->id}");
-
-        $respTp->assertStatus(200);
-        $respTp->assertJsonStructure([
-            'success',
-            'data' => [
-                'tp' => ['id', 'code', 'title'],
-                'summary' => ['total_students', 'tercapai_count', 'belum_tercapai_count', 'average_score'],
-                'achievements'
-            ]
-        ]);
+        $this->actingAs($this->adminA, 'sanctum')
+            ->getJson("/api/v1/analytics/curriculum/tps/{$this->tp->id}")
+            ->assertStatus(403);
     }
 
     /**
