@@ -11,7 +11,7 @@ use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
-use App\Livewire\Admin\ProctorAssignmentManagement;
+use App\Livewire\Admin\CentralExamRoomAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
 
 Route::get('/', function () {
