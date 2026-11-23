@@ -44,6 +44,7 @@ use Tests\TestCase;
 class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private Tenant $tenantA;
     private Tenant $tenantB;
@@ -57,6 +58,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
     private Curriculum $curriculum;
     private Phase $phase;
     private Rombel $rombel;
+    private TeacherSubjectAssignment $assignment;
     private LearningOutcome $outcome;
     private LearningObjective $tp;
     private LearningPath $atp;
@@ -154,7 +156,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'full_name' => 'Guru A',
             'employee_identifier' => 'GURU-A-001',
         ]);
-        TeacherSubjectAssignment::create([
+        $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subject->id,
@@ -236,6 +238,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 2.00,
             'created_by' => $this->teacherA->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($this->assignment, $ass);
         $ass->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         $exam = Exam::create([
@@ -374,6 +377,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 5.00,
             'created_by' => $this->teacherA->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($this->assignment, $ass2);
         $ass2->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         // Step 3: Reopen attempt enforcement
