@@ -289,12 +289,12 @@ class AnswerKeyLeakageTest extends TestCase
 
         $context->setTenantId(null);
 
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
+        $response = $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
@@ -345,12 +345,12 @@ class AnswerKeyLeakageTest extends TestCase
 
         $context->setTenantId(null);
 
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
-        $this->withHeader('X-Device-Binding-ID', 'dev1')
+        $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
+        $response = $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
