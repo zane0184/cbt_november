@@ -159,7 +159,10 @@ class AnswerKeyLeakageTest extends TestCase
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
              ->assertStatus(201);
 
-        $response = $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
+        $response = $this->withToken($this->studentToken)->withHeaders([
+                             'X-Device-Binding-ID' => 'dev1',
+                             'X-CBT-Fence-Generation' => $this->studentFenceGeneration(),
+                         ])
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
@@ -294,7 +297,10 @@ class AnswerKeyLeakageTest extends TestCase
         $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
+        $response = $this->withToken($this->studentToken)->withHeaders([
+                             'X-Device-Binding-ID' => 'dev1',
+                             'X-CBT-Fence-Generation' => $this->studentFenceGeneration(),
+                         ])
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
@@ -350,7 +356,10 @@ class AnswerKeyLeakageTest extends TestCase
         $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
+        $response = $this->withToken($this->studentToken)->withHeaders([
+                             'X-Device-Binding-ID' => 'dev1',
+                             'X-CBT-Fence-Generation' => $this->studentFenceGeneration(),
+                         ])
                          ->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
@@ -375,5 +384,23 @@ class AnswerKeyLeakageTest extends TestCase
             }
         }
     }
+    private function studentFenceGeneration(): string
+    {
+        $participantId = \\App\\Models\\ExamParticipant::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('user_id', $this->student->id)
+            ->value('id');
+
+        $attempt = \\App\\Models\\ExamAttempt::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('exam_id', $this->exam->id)
+            ->where('participant_id', $participantId)
+            ->where('status', 'IN_PROGRESS')
+            ->firstOrFail();
+
+        return (string) $attempt->fence_generation;
+    }
+
 }
 
