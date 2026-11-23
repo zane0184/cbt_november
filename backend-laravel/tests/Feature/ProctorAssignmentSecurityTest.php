@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamProctorAssignment;
+use App\Services\ExamProctorAssignmentService;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -153,10 +154,12 @@ class ProctorAssignmentSecurityTest extends TestCase
             'assignment_reason' => 'Legacy assignment retained for audit',
         ]);
         app(TenantContext::class)->setTenantId($this->tenant->id);
-        Livewire::test(ProctorAssignmentManagement::class)
-            ->set('revokeReason', 'Penugasan selesai lebih awal')
-            ->call('revoke', $assignment->id)
-            ->assertHasNoErrors();
+        app(ExamProctorAssignmentService::class)->revoke(
+            $this->admin,
+            $this->exam,
+            $assignment,
+            'Penugasan selesai lebih awal'
+        );
 
         $this->assertDatabaseHas('exam_proctor_assignments', ['id' => $assignment->id, 'status' => 'REVOKED', 'revoked_by' => $this->admin->id]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'EXAM_PROCTOR_ASSIGNMENT_REVOKE', 'entity_type' => 'ExamProctorAssignment']);
