@@ -34,6 +34,8 @@ class ExamVerificationTest extends TestCase
     private $subjectA;
     private $semesterA;
     private $snapshotA;
+    private string $studentToken;
+    private string $guruToken;
     private $siswaA;
     private $examA;
 
@@ -58,6 +60,8 @@ class ExamVerificationTest extends TestCase
         $this->siswaA->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+        $this->studentToken = $this->siswaA->createToken('exam-verification-student')->plainTextToken;
+        $this->guruToken = $this->guruA->createToken('exam-verification-guru')->plainTextToken;
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenantA->id, 'name' => '2024']);
         $this->semesterA = Semester::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $ay->id, 'term' => 'GANJIL', 'is_active' => true]);
@@ -169,10 +173,10 @@ class ExamVerificationTest extends TestCase
     public function test_token_validation_and_rate_limiting()
     {
         $this->examA->update(['status' => 'PUBLISHED', 'published_at' => now(), 'locked_at' => now()]); // Make it ongoing
-        $this->actingAs($this->siswaA, 'sanctum');
+        $this->withToken($this->studentToken);
 
         // Valid Token
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev-1')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'dev-1', 'X-CBT-Fence-Generation' => '1'])
                          ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'SECRET']);
         $response->assertStatus(201);
 
@@ -194,25 +198,14 @@ class ExamVerificationTest extends TestCase
     /** 3. Attempt Submission Verification **/
     public function test_attempt_submission_integrity()
     {
-        $context = app(\App\Contexts\TenantContext::class);
-        $context->setTenantId($this->tenantA->id);
-        $this->examA->update(['status' => 'PUBLISHED', 'published_at' => now(), 'locked_at' => now()]);
-
-        $participant = ExamParticipant::where('exam_id', $this->examA->id)->where('user_id', $this->siswaA->id)->first();
-
-        $attempt = ExamAttempt::create([
-            'exam_id' => $this->examA->id,
-            'participant_id' => $participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'started_at' => now(),
-            'expires_at' => now()->addMinutes(45),
-            'device_fingerprint' => 'dev-1',
-            'question_order' => [$this->snapshotA->id]
+        $this->withToken($this->studentToken);
+        $this->withHeaders([
+            'X-Device-Binding-ID' => 'dev-1',
+            'X-CBT-Fence-Generation' => '1',
         ]);
-
-        $this->actingAs($this->siswaA, 'sanctum');
-        $this->withHeader('X-Device-Binding-ID', 'dev-1');
+        $startResponse = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'SECRET']);
+        $startResponse->assertStatus(201);
+        $attempt = ExamAttempt::query()->findOrFail($startResponse->json('data.id'));
 
         // Valid Submission
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attempt->id}/submit");
@@ -223,7 +216,7 @@ class ExamVerificationTest extends TestCase
 
         // Double Submission Denied
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attempt->id}/submit");
-        $response->assertStatus(422);
+        $response->assertStatus(200)->assertJsonPath('idempotent', true);
         $this->assertEquals($submittedAt->toDateTimeString(), $attempt->fresh()->submitted_at->toDateTimeString());
     }
 
@@ -280,7 +273,7 @@ class ExamVerificationTest extends TestCase
             'created_by' => $this->guruA->id,
         ]);
 
-        $this->actingAs($this->guruA, 'sanctum');
+        $this->withToken($this->guruToken);
 
         // Assign
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/assign-rombel", ['rombel_id' => $rombel->id]);
