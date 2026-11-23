@@ -151,3 +151,23 @@ Empat failure lama harus ditriase dari response/error detail, bukan diperbaiki d
 3. Reconcile runner PR #13 terbaru ke integrasi (bukan runner lama).
 4. Browser-to-real-Laravel integration dan platform enforcement Android native vs Web.
 5. Lanjutkan inventaris Admin ADM-01–ADM-23 dan integrasi akademik Web Guru.
+
+
+## Addendum CI exact HEAD Agent 4 dan Web Guru — 23 November 2026
+
+Laporan bukti diperbarui di [REPORT_REKONSILIASI_AWAL_KETIGA_PORTAL_2026-11-23.md](REPORT_REKONSILIASI_AWAL_KETIGA_PORTAL_2026-11-23.md).
+
+- PR #13 Web Siswa HEAD `9ef375c407b1faf606c5a268f00b24424d93be9e`: run [#45110617970](https://github.com/zane0184/cbt_november/actions/runs/45110617970) SUCCESS. Static audit PASS, Chromium browser E2E PASS, WebKit engine compatibility E2E PASS. Laravel disposable MySQL tests: StudentResultVisibility 7/22, StudentExamPortal 10/47, StudentWebLogin 12/88; total 29 passed / 157 assertions.
+- Catatan: WebKit engine compatibility bukan UAT iOS Safari perangkat fisik; browser E2E memakai mock API, belum browser-to-real-Laravel integration.
+- PR #19 Web Guru HEAD `71296ca6e7c48b7295455a26d38bda11b901eb1d`: run [#45112459424](https://github.com/zane0184/cbt_november/actions/runs/45112459424) SUCCESS; 118 passed / 520 assertions, PHP lint, route registration, Composer, disposable MySQL 8 dan InnoDB checks PASS.
+- Hasil ini memperbarui bukti lama yang hanya mencatat SHA sebelumnya. Selected suites lulus exact PR HEAD, tetapi tidak berarti portal lengkap/siap produksi.
+
+### Implementasi P0 Agent 2 yang sedang diuji
+Pada branch `work/agent2-p0-auth-session-fencing-20261123`, dibuat backup byte-exact 5/5 sebelum patch dan perubahan:
+1. Inisialisasi fence generation eksplisit sebelum membuat lease.
+2. Token hanya diwajibkan ketika `require_token=true`.
+3. Receipt fresh response dan replay menyertakan `client_request_id`.
+4. Regression tests untuk token opsional, generation/lease awal, dan receipt exact request ID.
+- Backup manifest: `backend-laravel/docs/backup/agent2-p0-auth-session-fencing-2026-11-23/coordinator-p0-fix-2026-11-23/MANIFEST.md`.
+- Patch commits: `d13e8cfd...`, `e99daf0...`, `c9e06b3...`, `3a7fdb5...`, `8aaeb76...`.
+- CI terbaru exact SHA `8aaeb767293cc06350752f7a680b54c40b4e87c7`: run [#45144928769](https://github.com/zane0184/cbt_november/actions/runs/45144928769) masih berjalan pada saat checkpoint ini ditulis. Jangan klaim PASS sebelum seluruh suite dan two-connection concurrency selesai.
