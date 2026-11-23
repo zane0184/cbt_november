@@ -27,10 +27,12 @@ use App\Models\QuestionOption;
 use App\Services\ExamSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 
 class AnswerKeyLeakageTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenant;
     private $student;
@@ -64,7 +66,7 @@ class AnswerKeyLeakageTest extends TestCase
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
         $rombel = Rombel::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'grade_level_id' => $gradeLevel->id, 'name' => '1A', 'status' => 'ACTIVE']);
         $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->guru->id, 'full_name' => 'Guru']);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $subject->id,
@@ -91,6 +93,7 @@ class AnswerKeyLeakageTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->guru->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
