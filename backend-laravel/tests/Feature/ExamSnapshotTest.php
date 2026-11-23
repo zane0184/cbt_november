@@ -27,6 +27,7 @@ use App\Models\MediaAsset;
 use App\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\QueryException;
@@ -36,6 +37,7 @@ use Illuminate\Database\QueryException;
 class ExamSnapshotTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenant;
     private $user;
@@ -110,7 +112,7 @@ class ExamSnapshotTest extends TestCase
             'user_id' => $this->user->id,
             'full_name' => 'Guru',
         ]);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $subject->id,
@@ -130,6 +132,7 @@ class ExamSnapshotTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->user->id
         ]);
+        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
