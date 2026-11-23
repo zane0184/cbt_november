@@ -19,6 +19,15 @@ Admin dilarang membuat/menerbitkan/mengubah/mengatur ujian Guru, mengakses Bank 
 Guru mengelola bank soal, asesmen, ujian, jadwal, publikasi, token, monitoring dalam penugasan, penilaian, dan laporan akademik. Assignment pengawas tidak memberikan hak mengubah soal, token, peserta, jawaban atau nilai.
 Kepala Madrasah adalah metadata/jabatan/penandatangan laporan, bukan role.
 
+## Kategori ujian resmi pada scope saat ini
+Kategori ujian yang disepakati untuk kebutuhan penugasan Guru pengawas sementara adalah:
+1. UTS
+2. UAS
+3. UM
+4. SIMULASI TKA (penambahan terbaru dari owner)
+
+Sebelum penambahan SIMULASI TKA, daftar hanya terdiri dari UTS, UAS, dan UM. Jangan menganggap ASTS, ASAS, ASAT, SIMULASI_AN, atau kategori lain sebagai kategori resmi/terpusat tanpa keputusan owner yang terpisah. Implementasi taxonomy, UI, policy, API, dan test harus menggunakan empat kategori di atas secara konsisten. Penambahan SIMULASI TKA tidak memperluas kewenangan Admin: Admin hanya boleh menetapkan/mencabut Guru pengawas sementara untuk kategori tersebut sesuai ketentuan, bukan mengelola ujian, peserta, ruang, token, Attempt, monitoring, jawaban, atau nilai.
+
 ## Penundaan Super Admin
 Web Super Admin dan Android Super Admin ditunda sampai Juni 2027. Jangan implementasikan portal/dashboard/aplikasi Android Super Admin sebelum Juni 2027 atau instruksi tertulis baru. Ini tidak menunda aplikasi Android native peserta CBT: siswa Android tetap wajib aplikasi native; Web/PWA sementara untuk iOS.
 
