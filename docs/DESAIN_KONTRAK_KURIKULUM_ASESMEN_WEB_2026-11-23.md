@@ -186,3 +186,28 @@ Service harus memeriksa node_type yang diperbolehkan sesuai mapping_role; node f
 9. UAT Admin/Guru/Siswa.
 
 Tidak ada migration produksi, merge, deployment, atau distribusi final tanpa owner approval.
+
+
+## 10. Penegasan owner — satu ekosistem, bukan tiga kurikulum (23 November 2026)
+
+Pemilik proyek menegaskan bahwa Kurikulum Merdeka, Kurikulum Berbasis Cinta/Panca Cinta, dan Pembelajaran Mendalam harus dibangun sebagai **satu kesatuan sistem akademik dan pembelajaran**. Ketiganya bukan kurikulum alternatif, bukan tiga database, dan bukan tiga modul yang berdiri sendiri.
+
+Peran dalam satu ekosistem:
+- Kurikulum Merdeka menjadi kerangka akademik: fase, kelas, mata pelajaran, CP, TP, ATP dan struktur asesmen.
+- Panca Cinta merupakan nilai/topik lintas pembelajaran yang diintegrasikan ke perencanaan, materi, aktivitas, asesmen/soal jika relevan, serta refleksi.
+- Pembelajaran Mendalam merupakan pendekatan pedagogis dan kerangka proses pembelajaran; bukan kurikulum baru, jenis ujian, atau enum fase.
+- Delapan dimensi profil lulusan merupakan dimensi profil/capaian yang dipetakan saat relevan dan terukur; bukan pengganti CP/TP.
+
+Satu jalur data kanonis wajib dipakai lintas portal dan laporan:
+`source/version` → `tenant curriculum registration` → `academic year/semester/phase/grade/subject` → `TeacherSubjectAssignment pinned context` → `official CP` → `teacher TP/ATP` → `material/topic` → `Panca Cinta + PM + graduate dimensions` → `QuestionVersion mappings` → `Assessment context` → `immutable Exam/Question snapshots` → `Attempt/Answer/Score` → `achievement and historical reports`.
+
+Kriteria penerimaan tambahan:
+1. Satu referensi versi kurikulum dan satu konteks assignment menjadi sumber kebenaran; tidak boleh ada duplikasi tiga modul.
+2. Semua mapping divalidasi berdasarkan tenant/instalasi, owner sumber, assignment, subject, phase, effective date, verification status, node type, dan version.
+3. Snapshot ujian menyimpan konteks akademik/framework beserta provenance; perubahan master sesudah publish tidak mengubah histori.
+4. Laporan capaian harus mengonsumsi konteks versi/snapshot yang sama. Implementasi legacy `LearningOutcome/LearningObjective/LearningPath` wajib direkonsiliasi dengan `MultiLearningOutcome/TenantLearningOutcome` melalui rencana read-model/migrasi kompatibel; jangan menciptakan dua sumber kebenaran permanen.
+5. UI boleh memiliki halaman kerja berbeda menurut role, tetapi data dan service contract tetap satu dan terhubung.
+6. Admin mengelola registry/periode/master sesuai kewenangan; Guru mengembangkan TP/ATP dan pemetaan sesuai assignment; Siswa hanya menerima metadata/feedback yang dipublikasikan dan diotorisasi.
+7. Status integrasi baru PASS jika test end-to-end membuktikan assignment sampai laporan historis, termasuk perubahan versi dan preservasi snapshot.
+
+Audit source 23 November menemukan bahwa mapping assignment, QuestionVersion, dan immutable ExamSnapshot sudah menggunakan keluarga model kanonis. Namun `CurriculumAchievementService` dan `CurriculumAnalyticsController` masih memakai model achievement legacy. Karena itu integrasi laporan akhir **belum terverifikasi selesai** dan harus menjadi backlog P3 pada `REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md`.
