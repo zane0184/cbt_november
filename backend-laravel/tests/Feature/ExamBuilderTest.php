@@ -94,7 +94,6 @@ class ExamBuilderTest extends TestCase
             'created_by' => $this->teacher->id,
         ]);
 
-        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
         $this->canonicalContext = $this->createCanonicalCurriculumContext($assignment, $this->teacher, $assessment);
 
         $this->exam = Exam::create([
