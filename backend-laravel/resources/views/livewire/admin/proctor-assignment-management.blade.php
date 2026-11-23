@@ -1,4 +1,9 @@
 <div class="space-y-6">
+    <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <strong>Penugasan sementara ditahan.</strong>
+        {{ $assignmentBlockReason }}
+    </div>
+
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm">
         <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-bold border border-amber-200 mb-3">Kewenangan Admin Madrasah</div>
         <h1 class="text-2xl font-bold text-navy-900">Penugasan Guru Pengawas Sementara</h1>
