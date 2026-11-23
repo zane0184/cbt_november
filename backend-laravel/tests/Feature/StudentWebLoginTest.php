@@ -238,6 +238,19 @@ class StudentWebLoginTest extends TestCase
         $this->assertNotNull($response->getCookie($sessionCookieName));
     }
 
+    public function test_student_can_logout_from_the_web_portal(): void
+    {
+        $this->post('/login', [
+            'identifier' => $this->nisn,
+            'password' => 'SandiUji#2026',
+        ])->assertRedirect('/student/exams');
+        $this->assertAuthenticatedAs($this->student);
+
+        $this->post('/logout')->assertRedirect('/login');
+        $this->assertGuest();
+        $this->get('/student/exams')->assertRedirect('/login');
+    }
+
     public function test_student_can_login_on_web_using_nisn_and_password_without_email(): void
     {
         $response = $this->post('/login', [
