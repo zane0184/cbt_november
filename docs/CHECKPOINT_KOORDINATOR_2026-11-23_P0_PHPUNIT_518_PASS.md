@@ -5,20 +5,21 @@ Repository: `zane0184/cbt_november`
 Branch kerja terisolasi: `work/phpunit-41-root-cause-20261123`  
 Branch sumber/base: `work/solo-web-cbt-completion-20261123-execution`  
 Base SHA: `d6aaeae6f2851bf15272d0cc2bce9e68989d3a4d`  
-Branch HEAD sebelum checkpoint update ini: `7193c97eebbb849173ac1f4e76487da4d6a363ec`  
+Branch HEAD sebelum checkpoint update ini: `2899baf49e3432322643d5fa72b3a08a715852ef`
 SHA source/test yang diuji: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`
 
 ## 1. Status aktual
 
-**PASS** Full PHPUnit pada CI #45215342323, #45217367885, dan CI HEAD PR #22 #45218279043: **518 passed, 0 failed, 2.189 assertions**.
+**PASS** Full PHPUnit pada CI #45215342323, #45217367885, #45218279043, dan CI checkpoint PR #22 #45219173631: **518 passed, 0 failed, 2.189 assertions**.
 
 Link CI: https://github.com/zane0184/cbt_november/actions/runs/45215342323
 Verifikasi ulang branch dokumentasi: https://github.com/zane0184/cbt_november/actions/runs/45217367885
 CI HEAD PR #22: https://github.com/zane0184/cbt_november/actions/runs/45218279043
+CI checkpoint PR #22: https://github.com/zane0184/cbt_november/actions/runs/45219173631
 
 Environment: PHP 8.3, disposable MySQL 8.0.46/InnoDB. MySQL identity, Composer/dependencies, installer E2E, login/tenant smoke, dan full PHPUnit lulus pada SHA 085a20ee.
 
-**Catatan exact SHA:** Source/test code yang lulus pertama kali adalah SHA 085a20ee. Run #45217367885 lulus pada branch dokumentasi 6b5e412e dan run #45218279043 lulus pada HEAD PR #22 e3dd533 (keduanya 518/0). Setelah itu hanya report/entrypoint/checkpoint dokumentasi yang berubah; source/test/workflow code tetap sama. HEAD sebelum checkpoint update ini adalah 7193c97e. CI push yang dipicu checkpoint commit ini harus selesai sebelum PR dapat dinyatakan tervalidasi pada HEAD terbaru.
+**Catatan exact SHA:** Source/test code yang lulus pertama kali adalah SHA 085a20ee. Run #45217367885 lulus pada branch dokumentasi 6b5e412e, run #45218279043 lulus pada HEAD PR #22 e3dd533, dan run #45219173631 lulus pada HEAD PR #22 2899baf (semuanya 518/0). Source/test/workflow code tetap sama sejak SHA 085a20ee. HEAD sebelum checkpoint update ini adalah 2899baf. CI push yang dipicu checkpoint commit ini harus selesai sebelum PR dapat dinyatakan tervalidasi pada HEAD terbaru.
 
 ## 2. Perubahan P0 yang sudah dilakukan
 
@@ -77,7 +78,7 @@ Dokumen backup:
 ## 6. Status backlog GitHub
 
 Open PR:
-- [#22 — Remediasi 41 PHPUnit failures](https://github.com/zane0184/cbt_november/pull/22): Draft, base branch eksekusi d6, HEAD e3dd533, mergeable clean; CI #452182 lulus 518/0. Jangan merge otomatis.
+- [#22 — Remediasi 41 PHPUnit failures](https://github.com/zane0184/cbt_november/pull/22): Draft, base branch eksekusi d6, HEAD 2899baf, mergeable clean; CI #452182 dan #452191 lulus 518/0. Jangan merge otomatis.
 - #21 Solo Web CBT: Draft, stale/divergen, base `work/solo-web-cbt-ci-base-20261123`; bukan source aktif d6.
 - #19 Web Guru remove XLSX: Draft; rekonsiliasi keputusan penghapusan XLSX soal dengan Master Guru §5.8/Issue #16 sebelum integrasi.
 - #18 Web Admin: Draft; ada Room/Proktor/session fields yang tidak boleh digabung apa adanya.

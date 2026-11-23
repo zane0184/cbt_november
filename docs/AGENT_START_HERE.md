@@ -8,14 +8,14 @@
 - Branch remediasi P0: `work/phpunit-41-root-cause-20261123`.
 - SHA source/test yang lulus full CI pertama kali: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`.
 - SHA branch dokumentasi yang lulus verifikasi ulang: `6b5e412e18e5c9230c0b17f18a9d569bdd4d7982`.
-- SHA HEAD PR #22 yang lulus verifikasi ulang: `e3dd533be36121c592eeec19cc9f820c23d51fa4`.
-- CI [#45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323), [#45217367885](https://github.com/zane0184/cbt_november/actions/runs/45217367885), dan [#45218279043](https://github.com/zane0184/cbt_november/actions/runs/45218279043): **518 passed, 0 failed, 2.189 assertions**, PHP 8.3, disposable MySQL 8.0.46/InnoDB.
+- SHA HEAD PR #22 yang lulus verifikasi ulang: `2899baf49e3432322643d5fa72b3a08a715852ef`.
+- CI [#45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323), [#45217367885](https://github.com/zane0184/cbt_november/actions/runs/45217367885), [#45218279043](https://github.com/zane0184/cbt_november/actions/runs/45218279043), dan [#45219173631](https://github.com/zane0184/cbt_november/actions/runs/45219173631): **518 passed, 0 failed, 2.189 assertions**, PHP 8.3, disposable MySQL 8.0.46/InnoDB.
 - PR remediasi: [#22 — Draft, base branch eksekusi, mergeable clean](https://github.com/zane0184/cbt_november/pull/22). Jangan merge otomatis.
 - Current checkpoint: [CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md](CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md).
 - Audit dan backlog: [REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md](REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md).
 - Arahan owner terbaru: [ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md](ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md).
 
-**Perhatian exact SHA:** Source/test code setelah SHA 085a20ee tidak berubah. CI #45218279043 lulus pada HEAD PR #22 e3dd533. Perubahan dokumentasi sesudahnya tetap memicu CI push baru; jangan merge sebelum checks terbaru selesai.
+**Perhatian exact SHA:** Source/test code setelah SHA 085a20ee tidak berubah. CI #45219173631 lulus pada HEAD PR #22 2899baf. Perubahan dokumentasi/checkpoint sesudahnya tetap memicu CI push baru; jangan merge sebelum checks terbaru selesai.
 
 ## Arahan kerja yang mengikat
 
