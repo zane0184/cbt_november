@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contexts\TenantContext;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Tenant;
@@ -22,6 +23,7 @@ class LegacyRoleConsolidationMigrationTest extends TestCase
         $legacyRole = Role::create(['name' => 'OPERATOR', 'label' => 'Legacy Operator']);
         $permission = Permission::create(['name' => 'legacy.operator.manage', 'label' => 'Legacy operator permission']);
         $legacyRole->permissions()->attach($permission->id);
+        app(TenantContext::class)->setTenantId($tenant->id);
 
         $user = User::create([
             'tenant_id' => $tenant->id,
