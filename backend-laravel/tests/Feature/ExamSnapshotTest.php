@@ -747,7 +747,14 @@ class ExamSnapshotTest extends TestCase
                 $connectionB->table('question_version_structure_mappings')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('tenant_learning_outcomes')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('teacher_subject_assignments')->where('tenant_id', $tenantId)->delete();
+                $connectionB->table('tenant_curriculum_registrations')->where('tenant_id', $tenantId)->delete();
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
+
+                // This two-connection test commits the canonical system tenant
+                // registry so the second connection can see it. Remove that
+                // disposable registry after local dependants are cleaned; later
+                // tests seed it again through the canonical helper.
+                $connectionB->table('tenants')->where('id', \\App\\Models\\Tenant::SYSTEM_TENANT_ID)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
                 $connectionB->table('curricula')->where('id', $this->curriculum->id)->delete();
