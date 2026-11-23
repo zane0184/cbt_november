@@ -23,6 +23,8 @@ class MultiLearningOutcome extends Model
         'outcome_type',
         'description',
         'status',
+        'source_id', 'source_locator', 'effective_from', 'effective_until',
+        'verification_status', 'verified_at', 'source_checksum', 'metadata',
     ];
 
     protected static function boot(): void
@@ -59,4 +61,17 @@ class MultiLearningOutcome extends Model
     {
         return $this->belongsTo(Tenant::class, 'tenant_id');
     }
+
+    protected $casts = [
+        'effective_from' => 'date',
+        'effective_until' => 'date',
+        'verified_at' => 'datetime',
+        'metadata' => 'array',
+    ];
+
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumReferenceSource::class, 'source_id');
+    }
+
 }
