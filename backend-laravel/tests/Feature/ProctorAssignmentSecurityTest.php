@@ -15,6 +15,7 @@ use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\ExamProctorAssignmentService;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
