@@ -19,6 +19,7 @@ use App\Support\Security\TeacherAccess;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -124,7 +125,7 @@ class ExamManagement extends Component
     {
         $this->validate([
             'title' => 'required|string|max:255',
-            'category' => ['required', 'string', \\Illuminate\\Validation\\Rule::in(Exam::ALL_CATEGORIES)],
+            'category' => ['required', 'string', Rule::in(Exam::ALL_CATEGORIES)],
             'selectedSubjectId' => 'required|exists:subjects,id',
             'selectedSemesterId' => 'required|exists:semesters,id',
             'selectedRombelId' => $this->editingExamId ? 'nullable|string' : 'required|string',
