@@ -109,3 +109,6 @@ jobs:
       - name: Run Student exam portal feature tests
         run: php artisan test tests/Feature/StudentExamPortalTest.php --display-warnings --display-deprecations
 
+      - name: Run Student web login and logout feature tests
+        run: php artisan test tests/Feature/StudentWebLoginTest.php --display-warnings --display-deprecations
+
