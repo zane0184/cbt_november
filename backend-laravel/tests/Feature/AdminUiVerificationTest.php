@@ -154,6 +154,78 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
+    public function admin_dashboard_counts_only_active_rombel_in_current_year_and_active_subjects(): void
+    {
+        $previousYear = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2023/2024', 'is_active' => false]);
+        $activeRombel = Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->academicYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => '6A Aktif',
+            'status' => 'ACTIVE',
+        ]);
+        Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->academicYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => '6B Nonaktif',
+            'status' => 'INACTIVE',
+        ]);
+        Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $previousYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => '6C Tahun Lalu',
+            'status' => 'ACTIVE',
+        ]);
+        Subject::create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'IPA-ACTIVE',
+            'name' => 'IPA Aktif',
+            'short_name' => 'IPA',
+            'status' => 'ACTIVE',
+        ]);
+        Subject::create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'IPA-ARCHIVED',
+            'name' => 'IPA Nonaktif',
+            'short_name' => 'IPA Lama',
+            'status' => 'INACTIVE',
+        ]);
+
+        $this->actingAs($this->admin);
+        $response = $this->get('/admin/dashboard');
+        $response->assertOk()
+            ->assertSee('2024/2025')
+            ->assertSee('6A Aktif')
+            ->assertSee('6B Nonaktif')
+            ->assertDontSee('6C Tahun Lalu');
+
+        $this->assertSame(1, Subject::query()->where('status', 'ACTIVE')->count());
+        $this->assertSame(1, Rombel::query()->where('academic_year_id', $this->academicYear->id)->where('status', 'ACTIVE')->count());
+    }
+
+    /** @test */
+    public function admin_dashboard_shows_empty_rombel_state_when_no_academic_year_is_active(): void
+    {
+        $activeYear = AcademicYear::findOrFail($this->academicYear->id);
+        $activeYear->update(['is_active' => false]);
+        Rombel::create([
+            'tenant_id' => $this->tenant->id,
+            'academic_year_id' => $this->academicYear->id,
+            'grade_level_id' => $this->gradeLevel->id,
+            'name' => '6A Tahun Tanpa Aktivasi',
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->actingAs($this->admin);
+        $this->get('/admin/dashboard')->assertOk()
+            ->assertSee('Belum ditetapkan')
+            ->assertSee('Tetapkan tahun pelajaran aktif untuk menampilkan rombel.')
+            ->assertDontSee('6A Tahun Tanpa Aktivasi');
+    }
+
+    /** @test */
     public function admin_can_add_student_to_tenant_rombel_and_duplicate_is_rejected()
     {
         $studentRole = Role::where('name', 'SISWA')->firstOrFail();
