@@ -114,7 +114,7 @@ class ExamBuilderTest extends TestCase
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenant->id);
 
-        $q1 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
+        $q1 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->teacher->id]);
         $q1->save();
 
         $v1 = new QuestionVersion([
@@ -124,11 +124,12 @@ class ExamBuilderTest extends TestCase
             'question_type' => 'MC',
             'stem' => 'S1',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->teacher->id
         ]);
         $v1->save();
 
-        $q2 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
+        $q2 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->teacher->id]);
         $q2->save();
 
         $v2 = new QuestionVersion([
@@ -138,6 +139,7 @@ class ExamBuilderTest extends TestCase
             'question_type' => 'MC',
             'stem' => 'S2',
             'is_current' => true,
+            'status' => 'PUBLISHED',
             'created_by' => $this->teacher->id
         ]);
         $v2->save();
