@@ -95,3 +95,15 @@ HEAD saat prompt W2 dibuat: `e894d3f4727e3bfcfdb45a29ce1da5c3abd6b598`; prompt W
 CI #1714: complete PHPUnit **536 passed / 2,231 assertions / 0 failed**; focused login/tenant 30/99, Admin 5/5, Guru 4/8. Workflow overall FAILURE hanya pada post-check InnoDB karena query pemeriksaan salah (`Unknown column 'tenants' in 'where clause'`). Jangan salah menyebut PHPUnit gagal dan jangan mengubah aplikasi untuk memperbaiki query workflow. Perbaiki workflow step dengan backup byte-exact dan pertahankan fail-closed.
 
 **PERINTAH KUNCI:** LANJUTKAN, JANGAN MENGULANG. Jangan mulai ulang, jangan ulangi patch/triage/test yang sudah selesai tanpa pemicu, dan jangan berhenti setelah audit. Lanjutkan backlog yang belum selesai sampai seluruh fitur web dan acceptance gate terpenuhi, baru buat ZIP final.
+
+ 
+## ADDENDUM TERBARU — W2 CI POST-CHECK (24 NOVEMBER 2026)
+
+Laporan terbaru: [REPORT_W2_CI_INNODB_POSTCHECK_FIX_2026-11-24.md](REPORT_W2_CI_INNODB_POSTCHECK_FIX_2026-11-24.md).
+Checkpoint terbaru: [CHECKPOINT_W2_CI_INNODB_POSTCHECK_FIX_2026-11-24.md](CHECKPOINT_W2_CI_INNODB_POSTCHECK_FIX_2026-11-24.md).
+
+Perbaikan query post-check InnoDB pada `.github/workflows/tenant-backend-ci.yml` telah dibuat pada commit `1b25c3bbed07fba6def2dfe869d686a8559be1cc`. Query menggunakan prepared statement dan tetap fail-closed untuk engine selain InnoDB. Backup byte-exact berada di `backend-laravel/docs/backup/admin-madrasah-profile-2026-11-24/tenant-backend-ci.yml.before-postcheck-quote-fix`, blob SHA `c2d824eccf029f69d13a7b5dba3f5baa4adfe986`.
+
+**PENGUJIAN:** source dan backup sudah difetch ulang; blob SHA backup sama dengan source sebelum patch. GitHub Actions pada commit patch belum terverifikasi saat addendum ini dibuat. Jangan menyatakan CI lulus sampai hasil run tersedia.
+
+**LANJUTKAN:** verifikasi Actions pada patch CI, lalu lanjutkan gap W2 profil Admin (metadata, logo/private asset, branding login, kop surat/preview) dan backlog portal sesuai Issue #20. Jangan ulang profil dasar atau W1 reauthorization yang sudah lulus. ZIP final belum dibuat dan belum siap distribusi.
