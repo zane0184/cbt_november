@@ -26,6 +26,7 @@ class ScoringHardeningTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesTeacherExamScope;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenant;
     private $teacher;
@@ -54,6 +55,7 @@ class ScoringHardeningTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($scope['assignment'], $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
