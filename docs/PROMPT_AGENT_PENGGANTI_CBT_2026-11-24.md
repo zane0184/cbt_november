@@ -1,5 +1,16 @@
 # PROMPT AGENT PENGGANTI — CBT MADRASAH (OWNER-DIRECTED)
 
+## AREA TERKUNCI — FULL PHPUNIT SUDAH HIJAU (BACA SEBELUM EKSEKUSI)
+**Status: CLOSED / GREEN BASELINE. Jangan mengulang atau mengubah area ini tanpa pemicu yang sah.**
+- Baseline exact SHA: `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51`.
+- Bukti CI: [#45243430635](https://github.com/zane0184/cbt_november/actions/runs/45243430635) — 518 passed, 2,177 assertions, 0 failed.
+- Instruksi wajib: [LOCKED_BASELINE_FULL_PHPUNIT_GREEN_2026-11-24.md](LOCKED_BASELINE_FULL_PHPUNIT_GREEN_2026-11-24.md).
+- Laporan rinci: [REPORT_PHPUNIT_FAILURE_TAXONOMY_AND_GREEN_2026-11-24.md](REPORT_PHPUNIT_FAILURE_TAXONOMY_AND_GREEN_2026-11-24.md).
+- Jangan jalankan ulang full suite untuk mengecek ulang; jangan ulang triage 42 failure; jangan patch atau refactor helper, fixture, query pivot, assignment boundary, rate limiter, snapshot, atau test terkait yang telah hijau.
+- Buka kembali hanya atas permintaan eksplisit owner, perubahan source baru yang menyentuh lingkup, atau bukti CI baru tentang regresi relevan. Catat pemicu; focused test dulu; full suite hanya bila perlu.
+- Jangan menyatakan CBT siap produksi hanya karena suite ini hijau.
+- Pembekuan ini bersifat dokumenter. Tidak ada klaim bahwa branch telah dikunci secara teknis oleh GitHub branch protection.
+
 Gunakan prompt ini hanya ketika pekerjaan benar-benar dialihkan ke agent baru. GitHub adalah sumber kebenaran tunggal.
 
 ## Instruksi wajib
