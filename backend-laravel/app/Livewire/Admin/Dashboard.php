@@ -11,9 +11,10 @@ use Livewire\Component;
 
 class Dashboard extends Component
 {
-    public function mount(): void
+    private function authorizeDashboard(): void
     {
         $user = auth()->user();
+
         abort_unless(
             $user && $user->tenant_id && $user->hasExactRole('ADMIN_MADRASAH'),
             403,
@@ -21,8 +22,15 @@ class Dashboard extends Component
         );
     }
 
+    public function mount(): void
+    {
+        $this->authorizeDashboard();
+    }
+
     public function render()
     {
+        // Re-check persisted role on every Livewire request, not only initial mount.
+        $this->authorizeDashboard();
         $tenantId = (string) auth()->user()->tenant_id;
 
         $totalUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')->count();
