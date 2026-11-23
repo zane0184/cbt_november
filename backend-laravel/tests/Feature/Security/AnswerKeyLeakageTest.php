@@ -113,7 +113,7 @@ class AnswerKeyLeakageTest extends TestCase
         ]);
 
         // Create a question with correct option
-        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
+        $question = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
         $version = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $question->id,
@@ -251,7 +251,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         // Create a matching question
         $subject = \App\Models\Subject::first();
-        $qMatching = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
+        $qMatching = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
         $vMatching = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $qMatching->id,
@@ -315,7 +315,7 @@ class AnswerKeyLeakageTest extends TestCase
         $context->setTenantId($this->tenant->id);
 
         $subject = \App\Models\Subject::first();
-        $qShort = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'created_by' => $this->guru->id]);
+        $qShort = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
         $vShort = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $qShort->id,
