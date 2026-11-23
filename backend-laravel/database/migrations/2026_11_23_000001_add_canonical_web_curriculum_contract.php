@@ -98,11 +98,15 @@ return new class extends Migration
             Schema::create('tenant_curriculum_subject_mappings', function (Blueprint $table): void {
                 $table->uuid('id')->primary();
                 $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
-                $table->foreignUuid('subject_id')->constrained('subjects')->cascadeOnDelete();
-                $table->foreignUuid('multi_curriculum_version_id')
-                    ->constrained('multi_curriculum_versions')->restrictOnDelete();
-                $table->foreignUuid('multi_curriculum_structure_id')
-                    ->constrained('multi_curriculum_structures')->restrictOnDelete();
+                $table->uuid('subject_id');
+                $table->foreign('subject_id', 'tcsm_subject_fk')
+                    ->references('id')->on('subjects')->cascadeOnDelete();
+                $table->uuid('multi_curriculum_version_id');
+                $table->foreign('multi_curriculum_version_id', 'tcsm_version_fk')
+                    ->references('id')->on('multi_curriculum_versions')->restrictOnDelete();
+                $table->uuid('multi_curriculum_structure_id');
+                $table->foreign('multi_curriculum_structure_id', 'tcsm_structure_fk')
+                    ->references('id')->on('multi_curriculum_structures')->restrictOnDelete();
                 $table->string('status', 30)->default('ACTIVE');
                 $table->date('effective_from')->nullable();
                 $table->date('effective_until')->nullable();
