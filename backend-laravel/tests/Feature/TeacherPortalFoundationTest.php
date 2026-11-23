@@ -959,7 +959,7 @@ class TeacherPortalFoundationTest extends TestCase
             $versions[] = $version;
         }
 
-        $context = app(\\App\\Services\\TeacherPortal\\TeacherCurriculumContextService::class)
+        $context = app(\App\Services\TeacherPortal\TeacherCurriculumContextService::class)
             ->forTenant($this->tenant->id);
 
         $this->assertSame(120, $context['counts']['CP']);
