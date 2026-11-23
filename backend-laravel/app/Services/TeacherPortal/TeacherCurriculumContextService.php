@@ -81,11 +81,16 @@ class TeacherCurriculumContextService
                 $counts[$type] += (int) ($typeCounts[$type] ?? 0);
             }
 
-            $outcomes = (clone $outcomesQuery)
-                ->orderBy('outcome_type')
-                ->orderBy('code')
-                ->limit(100)
-                ->get(['id', 'code', 'outcome_type', 'description']);
+            // The learning page promises a global maximum of 100 displayed rows,
+            // not 100 rows per registered curriculum version.
+            $remainingOutcomeSlots = max(0, 100 - count($outcomeRows));
+            $outcomes = $remainingOutcomeSlots === 0
+                ? collect()
+                : (clone $outcomesQuery)
+                    ->orderBy('outcome_type')
+                    ->orderBy('code')
+                    ->limit($remainingOutcomeSlots)
+                    ->get(['id', 'code', 'outcome_type', 'description']);
 
             foreach ($outcomes as $outcome) {
                 $outcomeRows[] = [
