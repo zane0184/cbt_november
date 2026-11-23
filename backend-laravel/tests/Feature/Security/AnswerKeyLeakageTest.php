@@ -150,7 +150,7 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_student_execution_does_not_leak_answer_key()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         // Start attempt first
         $this->withHeader('X-Device-Binding-ID', 'dev1')
@@ -175,7 +175,7 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_student_preview_is_forbidden()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $this->getJson("/api/v1/exams/{$this->exam->id}/preview")
             ->assertForbidden();
@@ -203,7 +203,7 @@ class AnswerKeyLeakageTest extends TestCase
         }
 
         foreach ($staffUsers ?? [] as $staff) {
-            $this->actingAs($staff);
+            $this->actingAs($staff, 'sanctum');
             $this->getJson("/api/v1/exams/{$this->exam->id}/preview")
                 ->assertForbidden();
         }
@@ -211,7 +211,7 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_student_show_does_not_leak_answer_key()
     {
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}");
         $response->assertStatus(200);
@@ -227,7 +227,7 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_guru_can_see_answer_key_in_preview()
     {
-        $this->actingAs($this->guru);
+        $this->actingAs($this->guru, 'sanctum');
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/preview");
         $response->assertStatus(200);
@@ -279,13 +279,14 @@ class AnswerKeyLeakageTest extends TestCase
             'score_weight' => 0
         ]);
 
+        $this->mapQuestionVersionToCanonicalCurriculum($vMatching, $this->canonicalContext);
         $this->exam->update(['status' => 'DRAFT', 'locked_at' => null]);
         app(ExamSnapshotService::class)->createSnapshots($this->exam, [$vMatching->id]);
         $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
 
         $context->setTenantId(null);
 
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
@@ -309,13 +310,18 @@ class AnswerKeyLeakageTest extends TestCase
         }
     }
 
-    public function test_student_execution_does_not_leak_short_answer_and_essay_metadata_keys()
+    public function test_short_answer_is_fail_closed_and_essay_metadata_is_not_leaked()
     {
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenant->id);
-
         $subject = \App\Models\Subject::first();
-        $qShort = Question::create(['tenant_id' => $this->tenant->id, 'subject_id' => $subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->guru->id]);
+
+        $qShort = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $subject->id,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->guru->id,
+        ]);
         $vShort = QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $qShort->id,
@@ -324,49 +330,85 @@ class AnswerKeyLeakageTest extends TestCase
             'default_points' => 10,
             'version_number' => 1,
             'status' => 'PUBLISHED',
-            'created_by' => $this->guru->id
+            'created_by' => $this->guru->id,
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($vShort, $this->canonicalContext);
 
         $this->exam->update(['status' => 'DRAFT', 'locked_at' => null]);
-        app(ExamSnapshotService::class)->createSnapshots($this->exam, [$vShort->id]);
-        // Manually add accepted_answers metadata
-        $snapshot = $this->exam->snapshots()->first();
-        $meta = $snapshot->metadata;
-        $meta['accepted_answers'] = ['Paris', 'Paris City'];
-        $meta['rubric'] = 'Answer must be Paris';
-        $snapshot->update(['metadata' => $meta, 'snapshot_explanation' => 'Paris is the capital of France.']);
+        $this->actingAs($this->guru, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions", [
+                'question_version_ids' => [$vShort->id],
+            ])
+            ->assertStatus(422);
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_version_id' => $vShort->id,
+        ]);
+
+        // Essay remains supported; sensitive teacher-only metadata must still
+        // be excluded from every student-facing representation.
+        $qEssay = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $subject->id,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->guru->id,
+        ]);
+        $vEssay = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $qEssay->id,
+            'stem' => 'Explain the answer.',
+            'question_type' => 'ESSAY',
+            'default_points' => 10,
+            'version_number' => 1,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->guru->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($vEssay, $this->canonicalContext);
+
+        $this->actingAs($this->guru, 'sanctum')
+            ->postJson("/api/v1/exams/{$this->exam->id}/questions", [
+                'question_version_ids' => [$vEssay->id],
+            ])
+            ->assertStatus(200);
+
+        $snapshot = $this->exam->snapshots()
+            ->where('source_question_version_id', $vEssay->id)
+            ->firstOrFail();
+        $metadata = $snapshot->metadata ?? [];
+        $metadata['accepted_answers'] = ['Paris', 'Paris City'];
+        $metadata['rubric'] = 'Answer must be Paris';
+        $snapshot->update([
+            'metadata' => $metadata,
+            'snapshot_explanation' => 'Paris is the capital of France.',
+        ]);
         $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
 
         $context->setTenantId(null);
-
-        $this->actingAs($this->student);
+        $this->actingAs($this->student, 'sanctum');
 
         $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
+            ->assertStatus(201);
 
         $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
-                         ->getJson("/api/v1/exams/{$this->exam->id}/execution");
-
+            ->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $response->assertStatus(200);
-        $questions = $response->json('data.questions');
 
-        foreach ($questions as $q) {
-            $metadata = $q['metadata'] ?? [];
-            $this->assertArrayNotHasKey('accepted_answers', $metadata, 'accepted_answers leaked in metadata to student');
-            $this->assertArrayNotHasKey('rubric', $metadata, 'rubric leaked in metadata to student');
-            $this->assertArrayNotHasKey('snapshot_explanation', $q, 'snapshot_explanation leaked to student');
+        $questions = $response->json('data.questions');
+        foreach ($questions as $question) {
+            $studentMetadata = $question['metadata'] ?? [];
+            $this->assertArrayNotHasKey('accepted_answers', $studentMetadata);
+            $this->assertArrayNotHasKey('rubric', $studentMetadata);
+            $this->assertArrayNotHasKey('snapshot_explanation', $question);
         }
 
-        // Test GET /api/v1/exams/{exam}
         $showResponse = $this->getJson("/api/v1/exams/{$this->exam->id}");
         $showResponse->assertStatus(200);
-        $showSnapshots = $showResponse->json('data.snapshots');
-        foreach ($showSnapshots as $s) {
-            $this->assertArrayNotHasKey('snapshot_explanation', $s, 'snapshot_explanation leaked in exam show endpoint');
-            if (isset($s['metadata'])) {
-                $this->assertArrayNotHasKey('accepted_answers', $s['metadata'], 'accepted_answers leaked in exam show metadata');
-                $this->assertArrayNotHasKey('rubric', $s['metadata'], 'rubric leaked in exam show metadata');
-            }
+        foreach ($showResponse->json('data.snapshots') as $studentSnapshot) {
+            $this->assertArrayNotHasKey('snapshot_explanation', $studentSnapshot);
+            $studentMetadata = $studentSnapshot['metadata'] ?? [];
+            $this->assertArrayNotHasKey('accepted_answers', $studentMetadata);
+            $this->assertArrayNotHasKey('rubric', $studentMetadata);
         }
     }
 }
