@@ -119,11 +119,11 @@ class RoleDashboardVerificationTest extends TestCase
     public function test_admin_has_read_only_exam_register_access_and_no_teacher_cbt_operations(): void
     {
         $exam = new Exam([
-            'tenant_id' => $this->tenantA->id,
             'status' => 'PUBLISHED',
             'locked_at' => now(),
             'end_at' => now()->addHour(),
         ]);
+        $exam->tenant_id = $this->tenantA->id;
 
         $policy = app(ExamPolicy::class);
 
