@@ -38,6 +38,30 @@ class CurriculumVersioningTest extends TestCase
         $this->assertSame(0, LearningOutcome::query()->count());
     }
 
+    public function test_legacy_academic_master_resources_are_read_only(): void
+    {
+        $routes = collect(app('router')->getRoutes()->getRoutes());
+
+        foreach (['curricula', 'phases', 'grade-levels', 'elements'] as $resource) {
+            $baseUri = 'api/v1/'.$resource;
+            $this->assertSame(1, $routes->filter(
+                fn ($route) => $route->uri() === $baseUri && in_array('GET', $route->methods(), true)
+            )->count(), "{$resource} must retain its read-only index route.");
+            $this->assertSame(0, $routes->filter(
+                fn ($route) => $route->uri() === $baseUri
+                    && array_intersect(['POST', 'PUT', 'PATCH', 'DELETE'], $route->methods()) !== []
+            )->count(), "{$resource} must not expose collection mutation routes.");
+            $this->assertSame(1, $routes->filter(
+                fn ($route) => $route->uri() === $baseUri.'/{'.rtrim($resource, 's').'}'
+                    && in_array('GET', $route->methods(), true)
+            )->count(), "{$resource} must retain its read-only detail route.");
+            $this->assertSame(0, $routes->filter(
+                fn ($route) => str_starts_with($route->uri(), $baseUri.'/{')
+                    && array_intersect(['POST', 'PUT', 'PATCH', 'DELETE'], $route->methods()) !== []
+            )->count(), "{$resource} must not expose item mutation routes.");
+        }
+    }
+
     public function test_legacy_tp_and_atp_write_routes_are_not_registered(): void
     {
         $tenant = Tenant::create(['name' => 'Demo', 'code' => 'DEMO']);
