@@ -1,13 +1,31 @@
-# PEMUTAKHIRAN WAJIB AGENT PENGGANTI — 23 NOVEMBER 2026
+# STATUS TERBARU PROYEK CBT MADRASAH — 23 NOVEMBER 2026
 
-**BACA TERLEBIH DAHULU:** [HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md](HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md). Dokumen tersebut adalah handover operasional terbaru dan mengesampingkan branch/SHA/angka PHPUnit lama yang masih tercantum di bawah.
+**Titik kerja aktif dan bukti terbaru:**
 
-- Repository: zane0184/cbt_november.
-- Branch aktif: work/solo-web-cbt-completion-20261123-execution.
-- Source SHA full PHPUnit terakhir: b31d7a2713383ddcc1282317cdb295d6992d5dce.
-- CI terakhir #45168433247: **92 failed, 426 passed, 1,723 assertions** pada disposable MySQL 8.0.46; focused login smoke 27 passed/90 assertions.
-- Baseline #45156925960: 160 failed, 357 passed, 1,475 assertions. Kegagalan sudah turun 68, tetapi full suite belum PASS.
-- Baca triage dan matriks ADM terbaru; jangan mulai coding sebelum verifikasi HEAD/CI exact SHA.
+- Repository: `zane0184/cbt_november`.
+- Branch sumber eksekusi: `work/solo-web-cbt-completion-20261123-execution`.
+- HEAD source eksekusi: `d6aaeae6f2851bf15272d0cc2bce9e68989d3a4d`.
+- Branch remediasi P0: `work/phpunit-41-root-cause-20261123`.
+- SHA yang telah lulus full CI: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`.
+- CI [#45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323): **518 passed, 0 failed, 2.189 assertions**, PHP 8.3, disposable MySQL 8.0.46/InnoDB.
+- Current checkpoint: [CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md](CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md).
+- Audit dan backlog: [REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md](REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md).
+- Arahan owner terbaru: [ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md](ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md).
+
+**Perhatian exact SHA:** Setelah CI #452153, source/test code tidak berubah; hanya dokumentasi/checkpoint yang diperbarui. CI push terbaru pada HEAD dokumentasi tetap harus selesai sebelum PR perbaikan dibuat.
+
+## Arahan kerja yang mengikat
+
+1. Baca checkpoint, report, addendum, lalu master handover dan seluruh spesifikasi fitur Admin/Guru/Siswa.
+2. Sumber utama hanya GitHub. Jangan membuka ZIP baseline, Project Files, atau Library untuk pekerjaan proyek ini.
+3. Jangan mengulang patch/fitur agent sebelumnya. Periksa HEAD, PR, source, backup, issue, dan CI exact SHA sebelum integrasi.
+4. Role aktif hanya ADMIN_MADRASAH, GURU, SISWA. Operator dilebur ke Admin; Kamad dibekukan; Proktor adalah capability sementara dalam Web Guru.
+5. Satu madrasah = satu instalasi dan database akademik sendiri. Tidak ada shared multi-tenant antar-madrasah.
+6. Android native dan Web Super Admin ditunda sampai Juni 2027.
+7. Kurikulum Merdeka + KBC/Panca Cinta + Pembelajaran Mendalam + delapan dimensi profil lulusan adalah satu kesatuan.
+8. Backup byte-exact sebelum setiap perubahan file existing. Jangan melemahkan RBAC, assignment scope, snapshot, FK, transaction, idempotency, atau fencing.
+9. Jangan migration produksi, deploy VPS, merge PR, atau membuat ZIP final tanpa preflight, acceptance, dan persetujuan owner.
+10. Laporan setiap tahap harus memisahkan AUDIT, DESAIN, IMPLEMENTASI, PENGUJIAN. Klaim PASS harus menunjuk exact SHA dan CI.
 
 ---
 
@@ -56,10 +74,8 @@ Jangan mulai coding, jangan membuat ulang fitur, dan jangan mengasumsikan status
 `Lanjutkan proyek CBT dari GitHub. Baca docs/AGENT_START_HERE.md lalu ikuti seluruh handover dan lanjutkan dari checkpoint aktual. Jangan ulang pekerjaan.`
 
 
-Add current continuation report link
-
-## Laporan lanjutan terbaru
-Baca juga [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md) dan [DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md](DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md) sebelum coding. Laporan terbaru mencatat exact CI failure, patch resolver SYSTEM_GLOBAL dan backup, serta gap integrasi kurikulum sampai laporan historis. Jangan ulang patch yang telah tercatat.
+## Laporan historis sebelumnya
+[REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md) dan [DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md](DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md) tetap menjadi referensi historis. Status aktual dan backlog terbaru ditentukan oleh checkpoint serta laporan koordinator di bagian atas.
 
 
 ## HANDOVER AGENT PENGGANTI — 23 NOVEMBER 2026
