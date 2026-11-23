@@ -11,6 +11,12 @@ use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
+    protected $attributes = [
+        'is_active' => true,
+        'must_change_password' => false,
+        'auth_version' => 1,
+    ];
+
     use HasApiTokens, HasFactory, Notifiable, HasUuids;
 
     protected static function boot()
