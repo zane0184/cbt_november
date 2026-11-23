@@ -25,6 +25,9 @@ class ProctorAssignmentManagement extends Component
 
     public function updatedSelectedExamId(string $examId): void
     {
+        // Livewire property hooks are request entrypoints; do not trust the initial mount.
+        $this->assertCanManage();
+
         $exam = Exam::query()->where('tenant_id', auth()->user()->tenant_id)->whereKey($examId)->first();
         if ($exam?->end_at) $this->expiresAt = $exam->end_at->format('Y-m-d\\TH:i');
     }
