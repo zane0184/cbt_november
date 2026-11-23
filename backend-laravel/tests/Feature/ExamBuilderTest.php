@@ -128,7 +128,7 @@ class ExamBuilderTest extends TestCase
         ]);
         $v1->save();
 
-        $q2 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'created_by' => $this->teacher->id]);
+        $q2 = new Question(['tenant_id' => $this->tenant->id, 'subject_id' => $this->subject->id, 'status' => 'PUBLISHED', 'created_by' => $this->teacher->id]);
         $q2->save();
 
         $v2 = new QuestionVersion([
