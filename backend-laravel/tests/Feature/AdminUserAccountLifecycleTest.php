@@ -336,6 +336,7 @@ class AdminUserAccountLifecycleTest extends TestCase
                 'password_confirmation' => 'new-password-strong-2026',
             ])->assertRedirect('/login');
 
+        $this->assertGuest('web');
         $fresh = $teacher->fresh();
         $this->assertTrue(Hash::check('new-password-strong-2026', $fresh->password));
         $this->assertFalse((bool) $fresh->must_change_password);
@@ -347,6 +348,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertSame('SUCCESS', $audit->new_values['outcome']);
 
         Auth::guard('web')->logout();
+        Auth::forgetGuards();
         $this->withToken($temporaryToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
     }
 
