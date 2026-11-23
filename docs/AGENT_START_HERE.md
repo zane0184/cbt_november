@@ -1,5 +1,13 @@
 # TITIK MASUK WAJIB — CBT MADRASAH (OWNER-DIRECTED EXECUTION)
 
+## 0. CATATAN TERKUNCI — FULL PHPUNIT SUDAH HIJAU (WAJIB BACA SEBELUM TEST)
+- **Area remediasi Full PHPUnit berstatus CLOSED / GREEN BASELINE. Jangan mengulang audit, patch, atau full suite tanpa pemicu yang sah.**
+- Baseline: source SHA `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51`; CI #45243430635; 518 passed, 2,177 assertions, 0 failed (PHP 8.3 + disposable MySQL 8.0).
+- Baca [LOCKED_BASELINE_FULL_PHPUNIT_GREEN_2026-11-24.md](LOCKED_BASELINE_FULL_PHPUNIT_GREEN_2026-11-24.md) dan [laporan taksonomi/remediasi](REPORT_PHPUNIT_FAILURE_TAXONOMY_AND_GREEN_2026-11-24.md).
+- Jangan ulang triage 42 failure, jangan rerun full PHPUnit hanya untuk konfirmasi, jangan patch fixture/source yang sudah hijau, dan jangan membuat patch duplikat.
+- Buka kembali hanya jika owner meminta, ada perubahan source baru yang menyentuh lingkup, atau CI source baru membuktikan regresi relevan. Wajib sebut pemicu dan jalankan focused test terlebih dahulu.
+- Ini pembekuan ruang lingkup secara dokumenter; bukan branch protection/read-only setting GitHub.
+
 **Berlaku mulai 24 November 2026. Dokumen ini menggantikan arahan agent/ownership lama.**
 
 ## 1. Otoritas dan cara kerja
