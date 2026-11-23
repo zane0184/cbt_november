@@ -170,7 +170,7 @@ jobs:
           test ! -e .env
           : > .env
           trap 'rm -f .env' EXIT
-          php artisan test --filter='TeacherPortalFoundationTest|TeacherPracticeWorkflowTest|QuestionBankTest|QuestionImportTest|PortalLoginRoleBoundaryTest|ItemAnalysisTest|CurrentScoreAnalyticsTest|TeacherResultAccessTest|TeacherResultNavigationTest|TeacherQuestionMediaTest' --display-warnings
+          php artisan test --filter='TeacherPortalFoundationTest|TeacherPracticeWorkflowTest|QuestionBankTest|QuestionImportTest|ResultWorkflowTest|PortalLoginRoleBoundaryTest|ItemAnalysisTest|CurrentScoreAnalyticsTest|TeacherResultAccessTest|TeacherResultNavigationTest|TeacherQuestionMediaTest' --display-warnings
 
       - name: Verify migrated tables use InnoDB
         shell: bash
