@@ -21,7 +21,8 @@ assert.ok(runnerStyles.includes('.runner-layout') && runnerStyles.includes('.que
 
 const fixture = [
   '<!doctype html><html lang="id"><head><meta charset="utf-8">',
-  '<meta name="csrf-token" content="test-csrf"><style>.hidden{display:none!important}button{min-height:44px}' + runnerStyles + '</style></head><body>',
+  '<meta name="csrf-token" content="test-csrf"><link rel="stylesheet" href="/css/student-portal.css"><style>.hidden{display:none!important}button{min-height:44px}' + runnerStyles + '</style></head><body>',
+  '<div id="local-css-check" class="bg-slate-100 p-4"></div>',
   '<main id="exam-app" data-exam-id="exam-1" data-student-id="student-1" data-device-binding="11111111-1111-4111-8111-111111111111" data-require-token="0">',
   '<section id="instruction-panel">{{TOKEN_INPUT}}<button id="start-button" type="button">Mulai Ujian</button><span id="start-status"></span></section>',
   '<section id="runner-panel" class="hidden"><div id="question-announcement" class="sr-only" aria-live="polite" aria-atomic="true"></div><div class="runner-layout"><div class="runner-main"><div id="exam-timer"></div><div id="save-status"></div><div id="question-progress"></div>',
@@ -35,6 +36,11 @@ const fixture = [
 ].join('');
 
 const server = createServer((request, response) => {
+  if (new URL(request.url, 'http://127.0.0.1').pathname === '/css/student-portal.css') {
+    response.writeHead(200, { 'content-type': 'text/css; charset=utf-8' });
+    response.end(portalCss);
+    return;
+  }
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
   if (new URL(request.url, 'http://127.0.0.1').pathname === '/seed') {
     response.end('<!doctype html><script>window.__legacySeedDone = false; const request = indexedDB.open("cbt-madrasah-student-v1", 1); request.onupgradeneeded = () => request.result.createObjectStore("pending-answers", { keyPath: "key" }); request.onsuccess = () => { const db = request.result; const tx = db.transaction("pending-answers", "readwrite"); tx.objectStore("pending-answers").put({ key: "attempt-1:snapshot-1", attemptId: "attempt-1", snapshotId: "snapshot-1", payload: { selected_option_id: "opt-b" }, clientRequestId: "legacy-request-1", updatedAt: Date.now() }); tx.oncomplete = () => { db.close(); window.__legacySeedDone = true; }; };</script>');
@@ -239,6 +245,21 @@ async function openQuestionNavigation(page) {
 
 const browser = await chromium.launch({ headless: true });
 try {
+  // The checked-in portal stylesheet is served locally and applies without a CDN.
+  {
+    const scenario = makeScenario();
+    const { context, page } = await newPage(browser, scenario);
+    const style = await page.locator('#local-css-check').evaluate(element => ({
+      background: getComputedStyle(element).backgroundColor,
+      padding: getComputedStyle(element).padding
+    }));
+    assert.equal(style.background, 'rgb(241, 245, 249)');
+    assert.equal(style.padding, '16px');
+    assert.deepEqual(scenario.pageErrors, []);
+    await context.close();
+    console.log('PASS: local Web Siswa stylesheet loads and applies offline-safe utility styles');
+  }
+
   // Mobile and desktop layouts use the intended column structure, touch sizes, and preserve drawer state on resize.
   {
     const scenario = makeScenario();
