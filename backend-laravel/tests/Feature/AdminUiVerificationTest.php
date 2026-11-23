@@ -184,7 +184,7 @@ class AdminUiVerificationTest extends TestCase
             'email' => 'tu@min15.sch.id',
             'status' => 'ACTIVE',
         ]);
-        $audit = \\App\\Models\\AuditLog::query()
+        $audit = \App\Models\AuditLog::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('user_id', $this->admin->id)
             ->where('action', 'UPDATE_MADRASAH_PROFILE')
