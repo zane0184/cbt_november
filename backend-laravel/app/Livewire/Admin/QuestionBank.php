@@ -2,8 +2,13 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\LearningObjective;
-use App\Models\LearningOutcome;
+use App\Models\Material;
+use App\Models\MaterialTopic;
+use App\Models\QuestionVersionCurriculumMapping;
+use App\Models\QuestionVersionStructureMapping;
+use App\Models\QuestionVersionTenantOutcomeMapping;
+use App\Models\TeacherSubjectAssignment;
+use App\Models\TenantLearningOutcome;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
@@ -11,6 +16,8 @@ use App\Models\Subject;
 use App\Support\Security\TeacherAccess;
 use App\Support\Security\TeacherPortalAccess;
 use App\Services\AuditService;
+use App\Services\TeacherPortal\QuestionVersionCurriculumMappingService;
+use App\Services\TeacherPortal\TeacherPortalDataService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Component;
@@ -70,8 +77,11 @@ class QuestionBank extends Component
     public $questionCode = '';
     public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, ESSAY
     public $selectedSubjectId = '';
-    public $selectedOutcomeId = ''; // CP
-    public $selectedObjectiveId = ''; // TP
+    public $selectedAssignmentId = '';
+    public array $selectedCpIds = [];
+    public array $selectedOutcomeIds = [];
+    public $selectedMaterialId = '';
+    public $selectedMaterialTopicId = '';
     public $stem = '';
     public $explanation = ''; // Pedoman Penskoran / Rubrik / Pembahasan
     public $defaultPoints = 10.0;
@@ -95,7 +105,7 @@ class QuestionBank extends Component
     public function openCreateModal()
     {
         Gate::authorize('create', Question::class);
-        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'editingQuestionVersionStatus', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedOutcomeId', 'selectedObjectiveId']);
+        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'editingQuestionVersionStatus', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedAssignmentId', 'selectedCpIds', 'selectedOutcomeIds', 'selectedMaterialId', 'selectedMaterialTopicId']);
         $this->questionType = 'MULTIPLE_CHOICE';
         $this->correctOption = 'A';
         $this->correctOptions = [];
@@ -110,7 +120,7 @@ class QuestionBank extends Component
 
     public function openEditModal($questionId)
     {
-        $question = Question::with(['currentVersion.options'])->findOrFail($questionId);
+        $question = Question::with(['currentVersion.options', 'currentVersion.curriculumMappings.learningOutcome', 'currentVersion.tenantOutcomeMappings.learningOutcome', 'currentVersion.structureMappings.structure'])->findOrFail($questionId);
         Gate::authorize('update', $question);
         $this->authorizeTeacherQuestionAccess($question->subject_id);
         $version = $question->currentVersion;
@@ -126,8 +136,18 @@ class QuestionBank extends Component
             $this->stem = $version->stem ?? '';
             $this->explanation = $version->explanation ?? '';
             $this->defaultPoints = $version->default_points ?? 10.0;
-            $this->selectedOutcomeId = $version->learning_outcome_id ?? '';
-            $this->selectedObjectiveId = $version->learning_objective_id ?? '';
+            $firstAssignmentMapping = $version->curriculumMappings->first() ?? $version->tenantOutcomeMappings->first();
+            $this->selectedAssignmentId = $firstAssignmentMapping?->teacher_subject_assignment_id ?? '';
+            $this->selectedCpIds = $version->curriculumMappings
+                ->where('teacher_subject_assignment_id', $this->selectedAssignmentId)
+                ->pluck('multi_learning_outcome_id')->all();
+            $this->selectedOutcomeIds = $version->tenantOutcomeMappings
+                ->where('teacher_subject_assignment_id', $this->selectedAssignmentId)
+                ->pluck('tenant_learning_outcome_id')->all();
+            $firstMaterialMapping = $version->curriculumMappings
+                ->firstWhere('teacher_subject_assignment_id', $this->selectedAssignmentId);
+            $this->selectedMaterialId = $firstMaterialMapping?->material_id ?? '';
+            $this->selectedMaterialTopicId = $firstMaterialMapping?->material_topic_id ?? '';
 
             if (in_array($this->questionType, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'])) {
                 $opts = $version->options->keyBy('option_key');
@@ -184,15 +204,23 @@ class QuestionBank extends Component
         }
     }
 
-    public function updatedSelectedSubjectId($value)
+    public function updatedSelectedAssignmentId($value): void
     {
-        $this->selectedOutcomeId = '';
-        $this->selectedObjectiveId = '';
-    }
+        $this->selectedCpIds = [];
+        $this->selectedOutcomeIds = [];
+        $this->selectedMaterialId = '';
+        $this->selectedMaterialTopicId = '';
 
-    public function updatedSelectedOutcomeId($value)
-    {
-        $this->selectedObjectiveId = '';
+        $user = auth()->user();
+        $profile = app(TeacherPortalAccess::class)->profile($user);
+        $assignment = TeacherSubjectAssignment::query()
+            ->where('tenant_id', $user->tenant_id)
+            ->where('teacher_profile_id', $profile->id)
+            ->whereKey($value)
+            ->where('status', 'ACTIVE')
+            ->first();
+
+        $this->selectedSubjectId = $assignment?->subject_id ?? '';
     }
 
     public function updatedQuestionType($value)
@@ -229,11 +257,16 @@ class QuestionBank extends Component
         $this->validate([
             'questionCode' => 'required|string|max:50',
             'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,ESSAY',
+            'selectedAssignmentId' => 'required|uuid',
             'selectedSubjectId' => 'required|exists:subjects,id',
+            'selectedCpIds' => 'required|array|min:1',
+            'selectedCpIds.*' => 'required|uuid|distinct',
+            'selectedOutcomeIds' => 'required|array|min:1',
+            'selectedOutcomeIds.*' => 'required|uuid|distinct',
+            'selectedMaterialId' => 'nullable|uuid',
+            'selectedMaterialTopicId' => 'nullable|uuid',
             'stem' => 'required|string',
             'defaultPoints' => 'required|numeric|min:0.5',
-            'selectedOutcomeId' => 'nullable|exists:learning_outcomes,id',
-            'selectedObjectiveId' => 'nullable|exists:learning_objectives,id',
         ]);
 
         $user = auth()->user();
@@ -247,34 +280,6 @@ class QuestionBank extends Component
             Gate::authorize('create', Question::class);
         }
         $this->authorizeTeacherQuestionAccess($this->selectedSubjectId);
-
-        // CP Validation against Subject & Tenant
-        if (!empty($this->selectedOutcomeId)) {
-            $cpValid = LearningOutcome::where('id', $this->selectedOutcomeId)
-                ->where('subject_id', $this->selectedSubjectId)
-                ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-                ->exists();
-            if (!$cpValid) {
-                $this->addError('selectedOutcomeId', 'CP yang dipilih tidak sesuai dengan mata pelajaran atau tenant.');
-                return;
-            }
-        }
-
-        // TP Validation against CP & Tenant
-        if (!empty($this->selectedObjectiveId)) {
-            if (empty($this->selectedOutcomeId)) {
-                $this->addError('selectedObjectiveId', 'Pilih Capaian Pembelajaran (CP) terlebih dahulu.');
-                return;
-            }
-            $tpValid = LearningObjective::where('id', $this->selectedObjectiveId)
-                ->where('learning_outcome_id', $this->selectedOutcomeId)
-                ->when($tenantId, fn($q) => $q->where('tenant_id', $tenantId))
-                ->exists();
-            if (!$tpValid) {
-                $this->addError('selectedObjectiveId', 'TP yang dipilih tidak sesuai dengan CP atau tenant.');
-                return;
-            }
-        }
 
         if ($this->questionType === 'MULTIPLE_CHOICE') {
             $this->validate([
@@ -374,8 +379,8 @@ class QuestionBank extends Component
                         'explanation' => $this->explanation,
                         'default_points' => $this->defaultPoints,
                         'difficulty' => $previousVersion->difficulty,
-                        'learning_outcome_id' => $this->selectedOutcomeId ?: null,
-                        'learning_objective_id' => $this->selectedObjectiveId ?: null,
+                        'learning_outcome_id' => null,
+                        'learning_objective_id' => null,
                         'status' => 'DRAFT',
                         'is_current' => true,
                         'created_by' => auth()->id(),
@@ -387,8 +392,8 @@ class QuestionBank extends Component
                         'stem' => $this->stem,
                         'explanation' => $this->explanation,
                         'default_points' => $this->defaultPoints,
-                        'learning_outcome_id' => $this->selectedOutcomeId ?: null,
-                        'learning_objective_id' => $this->selectedObjectiveId ?: null,
+                        'learning_outcome_id' => null,
+                        'learning_objective_id' => null,
                     ]);
 
                     // Sync Options only for a mutable DRAFT version.
@@ -402,8 +407,8 @@ class QuestionBank extends Component
                         'stem' => $this->stem,
                         'explanation' => $this->explanation,
                         'default_points' => $this->defaultPoints,
-                        'learning_outcome_id' => $this->selectedOutcomeId ?: null,
-                        'learning_objective_id' => $this->selectedObjectiveId ?: null,
+                        'learning_outcome_id' => null,
+                        'learning_objective_id' => null,
                         'is_current' => true,
                         'status' => $question->status,
                         'created_by' => auth()->id(),
@@ -428,8 +433,8 @@ class QuestionBank extends Component
                     'stem' => $this->stem,
                     'explanation' => $this->explanation,
                     'default_points' => $this->defaultPoints,
-                    'learning_outcome_id' => $this->selectedOutcomeId ?: null,
-                    'learning_objective_id' => $this->selectedObjectiveId ?: null,
+                    'learning_outcome_id' => null,
+                    'learning_objective_id' => null,
                     'is_current' => true,
                     'status' => 'DRAFT',
                     'created_by' => auth()->id(),
@@ -509,6 +514,15 @@ class QuestionBank extends Component
                 }
             }
 
+            app(QuestionVersionCurriculumMappingService::class)->sync(
+                $version,
+                $this->selectedAssignmentId,
+                $this->selectedCpIds,
+                $this->selectedOutcomeIds,
+                $this->selectedMaterialId ?: null,
+                $this->selectedMaterialTopicId ?: null
+            );
+
             // Never write answer keys or full question content to the audit trail.
             $question->refresh();
             $version->refresh();
@@ -525,8 +539,9 @@ class QuestionBank extends Component
                     'major_version' => $version->major_version,
                     'minor_version' => $version->minor_version,
                     'question_type' => $version->question_type,
-                    'learning_outcome_id' => $version->learning_outcome_id,
-                    'learning_objective_id' => $version->learning_objective_id,
+                    'teacher_subject_assignment_id' => $this->selectedAssignmentId,
+                    'cp_mapping_count' => count($this->selectedCpIds),
+                    'outcome_mapping_count' => count($this->selectedOutcomeIds),
                     'option_count' => $version->options()->count(),
                 ]
             );
@@ -618,7 +633,7 @@ class QuestionBank extends Component
     private function authorizeTeacherQuestionAccess(string $subjectId): void
     {
         $user = auth()->user();
-        if (!$user || !$user->hasRole('GURU') || !$user->hasPermission('question.manage')
+        if (!$user || $user->roles()->count() !== 1 || !$user->hasRole('GURU') || !$user->hasPermission('question.manage')
             || !$subjectId || !TeacherAccess::canManageSubject($user, $subjectId)) {
             abort(403, 'Hanya Guru dengan permission dan penugasan aktif yang dapat mengelola soal mata pelajaran ini.');
         }
@@ -642,26 +657,71 @@ class QuestionBank extends Component
     public function render()
     {
         $user = auth()->user();
-        $teacherSubjectIds = $user && $user->hasRole('GURU') ? TeacherAccess::assignedSubjectIds($user) : null;
+        app(TeacherPortalAccess::class)->profile($user);
+        $teacherSubjectIds = TeacherAccess::assignedSubjectIds($user);
 
-        $questions = Question::with(['subject', 'currentVersion.options', 'currentVersion.learningOutcome.currentVersion', 'currentVersion.learningObjective'])
-            ->when($user && $user->hasRole('GURU'), function ($q) use ($user, $teacherSubjectIds) {
-                $q->where(function ($scope) use ($user, $teacherSubjectIds) {
-                    $scope->where(function ($personal) use ($user, $teacherSubjectIds) {
-                        $personal->where('owner_type', 'PERSONAL')
-                            ->where('owner_user_id', $user->id)
-                            ->where(function ($subjectScope) use ($teacherSubjectIds) {
-                                $subjectScope->whereNull('subject_id')
-                                    ->orWhereIn('subject_id', $teacherSubjectIds ?? []);
-                            });
-                    })->orWhere(function ($subject) use ($teacherSubjectIds) {
-                        $subject->where('owner_type', 'SUBJECT')->whereIn('subject_id', $teacherSubjectIds ?? []);
-                    });
+        $assignmentRows = app(TeacherPortalDataService::class)->assignmentOptions($user);
+        if ($this->selectedAssignmentId === '' && $this->showModal && $assignmentRows !== []) {
+            $this->selectedAssignmentId = (string) $assignmentRows[0]['assignment']->id;
+            $this->selectedSubjectId = (string) $assignmentRows[0]['assignment']->subject_id;
+        }
+
+        $selectedAssignmentRow = collect($assignmentRows)->first(
+            fn (array $row) => (string) $row['assignment']->id === (string) $this->selectedAssignmentId
+        );
+        $selectedAssignment = $selectedAssignmentRow['assignment'] ?? null;
+        $curriculumContext = $selectedAssignmentRow['curriculum_context'] ?? [];
+
+        $cpOptions = collect($curriculumContext['cp_options'] ?? [])
+            ->filter(fn (array $cp) => ($cp['selectable'] ?? false) === true)
+            ->values();
+
+        $outcomes = collect($curriculumContext['teacher_outcomes'] ?? [])
+            ->filter(fn (array $outcome) => ($outcome['status'] ?? null) === 'PUBLISHED'
+                && ($outcome['is_current'] ?? false) === true
+                && in_array($outcome['outcome_type'] ?? null, ['TP', 'ATP'], true))
+            ->values();
+
+        $materials = $selectedAssignment
+            ? Material::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                ->where('status', 'PUBLISHED')
+                ->orderBy('material_code')
+                ->get()
+            : collect();
+
+        $topics = $this->selectedMaterialId !== ''
+            ? MaterialTopic::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->where('material_id', $this->selectedMaterialId)
+                ->where('status', 'PUBLISHED')
+                ->orderBy('code')
+                ->get()
+            : collect();
+
+        $questions = Question::with([
+                'subject',
+                'currentVersion.options',
+                'currentVersion.curriculumMappings.learningOutcome.source',
+                'currentVersion.tenantOutcomeMappings.learningOutcome',
+                'currentVersion.structureMappings.structure',
+            ])
+            ->where(function ($q) use ($user, $teacherSubjectIds) {
+                $q->where(function ($personal) use ($user, $teacherSubjectIds) {
+                    $personal->where('owner_type', 'PERSONAL')
+                        ->where('owner_user_id', $user->id)
+                        ->where(function ($subjectScope) use ($teacherSubjectIds) {
+                            $subjectScope->whereNull('subject_id')
+                                ->orWhereIn('subject_id', $teacherSubjectIds ?? []);
+                        });
+                })->orWhere(function ($subject) use ($teacherSubjectIds) {
+                    $subject->where('owner_type', 'SUBJECT')
+                        ->whereIn('subject_id', $teacherSubjectIds ?? []);
                 });
             })
-            ->when($user && $user->hasRole('ADMIN_MADRASAH'), fn ($q) => $q->where('owner_type', 'MADRASAH'))
-            ->when($this->subjectFilter, fn($q) => $q->where('subject_id', $this->subjectFilter))
-            ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
+            ->when($this->subjectFilter, fn ($q) => $q->where('subject_id', $this->subjectFilter))
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, function ($q) {
                 $q->where(function ($searchQuery) {
                     $searchQuery->where('question_code', 'like', '%' . $this->search . '%')
@@ -674,21 +734,13 @@ class QuestionBank extends Component
             ->paginate(12);
 
         $subjects = Subject::query()
-            ->when($teacherSubjectIds !== null, fn($q) => $q->whereIn('id', $teacherSubjectIds))
+            ->where('tenant_id', $user->tenant_id)
+            ->whereIn('id', $teacherSubjectIds)
+            ->orderBy('name')
             ->get();
 
-        $outcomes = !empty($this->selectedSubjectId)
-            ? LearningOutcome::with('currentVersion')->where('subject_id', $this->selectedSubjectId)
-                ->when($teacherSubjectIds !== null, fn($q) => $q->whereIn('subject_id', $teacherSubjectIds))->get()
-            : LearningOutcome::with('currentVersion')
-                ->when($teacherSubjectIds !== null, fn($q) => $q->whereIn('subject_id', $teacherSubjectIds))->get();
-
-        $objectives = !empty($this->selectedOutcomeId)
-            ? LearningObjective::where('learning_outcome_id', $this->selectedOutcomeId)->get()
-            : collect();
-
         $editingVersionMedia = collect();
-        if ($this->editingQuestionId && $this->editingQuestionVersionId && $user) {
+        if ($this->editingQuestionId && $this->editingQuestionVersionId) {
             $editingVersion = QuestionVersion::query()
                 ->whereKey($this->editingQuestionVersionId)
                 ->where('question_id', $this->editingQuestionId)
@@ -702,8 +754,13 @@ class QuestionBank extends Component
         return view('livewire.admin.question-bank', [
             'questions' => $questions,
             'subjects' => $subjects,
+            'assignmentRows' => $assignmentRows,
+            'selectedAssignment' => $selectedAssignment,
+            'curriculumContext' => $curriculumContext,
+            'cpOptions' => $cpOptions,
             'outcomes' => $outcomes,
-            'objectives' => $objectives,
+            'materials' => $materials,
+            'topics' => $topics,
             'editingVersionMedia' => $editingVersionMedia,
         ])->layout('layouts.teacher');
     }
