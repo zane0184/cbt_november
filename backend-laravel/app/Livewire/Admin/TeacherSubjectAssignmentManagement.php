@@ -290,7 +290,7 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $subjects = Subject::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->orderBy('name')->get();
         $rombels = Rombel::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->with(['gradeLevel.phase', 'academicYear'])->orderBy('name')->get();
-        $semesters = Semester::query()->where('tenant_id', $tenantId)->orderBy('name')->get();
+        $semesters = Semester::query()->where('tenant_id', $tenantId)->orderBy('term')->get();
         $registrations = TenantCurriculumRegistration::query()
             ->where('tenant_id', $tenantId)
             ->where('status', 'ACTIVE')
