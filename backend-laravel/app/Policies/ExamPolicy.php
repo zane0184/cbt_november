@@ -207,7 +207,7 @@ class ExamPolicy
         }
 
         if ($exam->isCentralized()) {
-            return \\App\\Models\\ExamRoomAssignment::query()
+            return \App\Models\ExamRoomAssignment::query()
                 ->where('tenant_id', $user->tenant_id)
                 ->where('exam_id', $exam->id)
                 ->where('scheduled_start', '<=', now())
@@ -225,7 +225,7 @@ class ExamPolicy
             return false;
         }
 
-        return \\App\\Models\\ExamRoomAssignment::query()
+        return \App\Models\ExamRoomAssignment::query()
             ->where('tenant_id', $user->tenant_id)
             ->where('exam_id', $exam->id)
             ->whereHas('activeProctors', fn ($query) => $query->where('user_id', $user->id))
