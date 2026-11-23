@@ -218,10 +218,11 @@ class WebAdminAuthTest extends TestCase
         $this->assertStringContainsString('Terlalu banyak percobaan login', session('errors')->first('identifier'));
     }
 
-    public function test_authenticated_kamad_visiting_login_is_redirected_to_welcome_landing(): void
+    public function test_authenticated_legacy_kamad_is_logged_out_before_login_form(): void
     {
         $this->actingAs($this->kamad);
-        $this->get('/login')->assertRedirect('/login');
+        $this->get('/login')->assertOk();
+        $this->assertGuest();
     }
 
     public function test_logout_terminates_session_and_redirects_to_login(): void
