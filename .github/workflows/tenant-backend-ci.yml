@@ -9,6 +9,7 @@ on:
       - work/web-admin-implementation-20261123
       - work/solo-web-cbt-completion-20261123
       - work/solo-web-cbt-ci-repair-20261123
+      - work/solo-web-cbt-next-20261123
   pull_request:
     branches:
       - main
