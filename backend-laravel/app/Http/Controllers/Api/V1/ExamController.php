@@ -261,7 +261,7 @@ class ExamController extends Controller
                 ->get();
             $allStudentCount = $rombel->students()->count();
             if ($validStudents->count() !== $allStudentCount || $validStudents->contains(
-                fn ($student) => !$student->user || !$student->user->hasRole('SISWA')
+                fn ($student) => !$student->user || !$student->user->hasExactRole('SISWA')
             )) {
                 abort(409, 'Data keanggotaan rombel mengandung relasi lintas tenant atau profil yang tidak terhubung ke akun Siswa aktif.');
             }
