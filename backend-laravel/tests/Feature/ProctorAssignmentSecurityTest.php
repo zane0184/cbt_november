@@ -193,7 +193,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
         $this->proctor->roles()->attach($studentRole->id);
 
-        $this->expectException(\\LogicException::class);
+        $this->expectException(\LogicException::class);
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
@@ -209,7 +209,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $guruRole = Role::where('name', 'GURU')->firstOrFail();
         $this->admin->roles()->attach($guruRole->id);
 
-        $this->expectException(\\LogicException::class);
+        $this->expectException(\LogicException::class);
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
