@@ -198,4 +198,51 @@ class CentralExamRoomAssignmentTest extends TestCase
         $this->assertFalse(\Illuminate\Support\Facades\Gate::allows('viewAnswerKey', $assignment));
     }
 
+
+    public function test_central_exam_monitoring_api_returns_only_the_assigned_room_students(): void
+    {
+        $this->actingAs($this->admin);
+        $start = now()->addMinutes(10);
+        $end = now()->addHours(2);
+
+        app(ExamRoomAssignmentService::class)->create(
+            $this->admin, $this->examA, $this->roomA,
+            [$this->guruA->id => 'proctor'], 1, $start, $end
+        );
+        app(ExamRoomAssignmentService::class)->create(
+            $this->admin, $this->examA, $this->roomB,
+            [$this->guruB->id => 'supervisor'], 1, $start, $end
+        );
+
+        $studentRole = Role::create(['name' => 'SISWA', 'label' => 'Siswa']);
+        $studentA = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa Ruang A', 'email' => 'siswa-a-central@example.test', 'password' => bcrypt('password')]);
+        $studentA->roles()->attach($studentRole->id);
+        $studentB = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Siswa Ruang B', 'email' => 'siswa-b-central@example.test', 'password' => bcrypt('password')]);
+        $studentB->roles()->attach($studentRole->id);
+
+        $assignmentA = ExamRoomAssignment::query()->where('room_id', $this->roomA->id)->firstOrFail();
+        $assignmentB = ExamRoomAssignment::query()->where('room_id', $this->roomB->id)->firstOrFail();
+
+        \App\Models\ExamParticipant::create([
+            'tenant_id' => $this->tenant->id, 'exam_id' => $this->examA->id,
+            'exam_room_assignment_id' => $assignmentA->id, 'user_id' => $studentA->id,
+        ]);
+        \App\Models\ExamParticipant::create([
+            'tenant_id' => $this->tenant->id, 'exam_id' => $this->examA->id,
+            'exam_room_assignment_id' => $assignmentB->id, 'user_id' => $studentB->id,
+        ]);
+
+        $this->travelTo(now()->addMinutes(15));
+        $this->actingAs($this->guruA);
+
+        $this->getJson('/api/v1/exams/'.$this->examA->id.'/monitoring')
+            ->assertOk()
+            ->assertJsonPath('data.summary.total_participants', 1);
+
+        $this->getJson('/api/v1/exams/'.$this->examA->id.'/monitoring/participants')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.student_name', 'Siswa Ruang A');
+    }
+
 }
