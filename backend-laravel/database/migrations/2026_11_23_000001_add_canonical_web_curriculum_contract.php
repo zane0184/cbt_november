@@ -291,7 +291,7 @@ return new class extends Migration
 
                 $table->unique(['id', 'tenant_id'], 'qvcm_id_tenant_uq');
                 $table->unique(
-                    ['tenant_id', 'question_version_id', 'multi_learning_outcome_id', 'academic_year_id', 'semester_id'],
+                    ['tenant_id', 'question_version_id', 'teacher_subject_assignment_id', 'multi_learning_outcome_id', 'academic_year_id', 'semester_id'],
                     'qvcm_identity_uq'
                 );
                 $table->index(['tenant_id', 'question_version_id'], 'qvcm_question_idx');
@@ -345,7 +345,7 @@ return new class extends Migration
 
                 $table->unique(['id', 'tenant_id'], 'qvtom_id_tenant_uq');
                 $table->unique(
-                    ['tenant_id', 'question_version_id', 'tenant_learning_outcome_id', 'academic_year_id', 'semester_id'],
+                    ['tenant_id', 'question_version_id', 'teacher_subject_assignment_id', 'tenant_learning_outcome_id', 'academic_year_id', 'semester_id'],
                     'qvtom_identity_uq'
                 );
                 $table->index(['tenant_id', 'question_version_id'], 'qvtom_question_idx');
@@ -396,7 +396,7 @@ return new class extends Migration
 
                 $table->unique(['id', 'tenant_id'], 'qvsm_id_tenant_uq');
                 $table->unique(
-                    ['tenant_id', 'question_version_id', 'multi_curriculum_structure_id', 'mapping_role', 'academic_year_id', 'semester_id'],
+                    ['tenant_id', 'question_version_id', 'teacher_subject_assignment_id', 'multi_curriculum_structure_id', 'mapping_role', 'academic_year_id', 'semester_id'],
                     'qvsm_identity_uq'
                 );
                 $table->foreign('tenant_id', 'qvsm_tenant_fk')
