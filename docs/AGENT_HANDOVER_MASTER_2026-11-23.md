@@ -225,3 +225,16 @@ PR #19 mempunyai hasil CI historis 118/520, tetapi source SHA tersebut berbeda d
 - Laporan rekonsiliasi dibuat: commit `8b8fc6fc645779152f36cd53bf3db59ef6490d03`.
 - Checkpoint ditambahkan: commit `0fe5e30b7e0cf9fdff1a4bf092ad510939725358`.
 - Tidak ada source runtime, migration, DB produksi, VPS, merge, atau deployment yang diubah pada tahap audit ini.
+
+
+Addendum current CI and unified curriculum
+
+## Addendum current state — 23 November 2026
+
+Read [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md) before any further source changes.
+
+- Latest documented failing integration run: [#45148868236](https://github.com/zane0184/cbt_november/actions/runs/45148868236), SHA `6fcdc757fa04ca04a1871b1685e0c89d67ccfd13`: focused login smoke 27/90 PASS; full PHPUnit 163 failed/346 passed/1,388 assertions.
+- Login root cause was identified: total Tenant count included reserved SYSTEM_GLOBAL. Resolver fix is committed `2f1becace2e2d0fdb5891f586426b774f3eaea08`; regression test `AuthTest` commit `d70270d55de8b5e0bfd8429ce7b0cae3c4bca1c1`. Both files have byte-exact backups. CI exact final HEAD was queued/cancelled by concurrency at handover; verify current run before claiming.
+- Curriculum owner clarification is appended to `docs/DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md`: Kurmer, Panca Cinta, and Pembelajaran Mendalam are one integrated ecosystem, not three separate curricula. Canonical mapping/snapshot code exists; achievement/report code still uses legacy LearningOutcome/LearningObjective/LearningPath. This is a material P3 gap.
+- Do not repeat the existing auth/lease/receipt integration patches or rebuild the Agent 4 runner. Read the latest source and test evidence first.
+- Keep PR #21 Draft/unmerged. No production migration, deployment, Android build, or distribution ZIP.
