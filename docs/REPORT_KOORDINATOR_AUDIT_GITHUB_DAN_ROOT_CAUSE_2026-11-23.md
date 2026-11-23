@@ -7,7 +7,7 @@ Source baseline: `d6aaeae6f2851bf15272d0cc2bce9e68989d3a4d`
 Branch perbaikan terisolasi: `work/phpunit-41-root-cause-20261123`  
 SHA yang diuji CI sukses: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`
 
-<badge>STATUS: P0 FULL PHPUNIT PASS</badge>
+**STATUS: P0 FULL PHPUNIT PASS**
 
 **P0 PHPUnit lengkap telah lulus 518/518.** Ini bukan bukti seluruh aplikasi siap produksi, siap ujian madrasah, atau siap distribusi ZIP. Portal Admin/Guru/Siswa, Proktor, import, provenance kurikulum, E2E, recovery, VPS, dan paket ZIP masih mempunyai backlog.
 
@@ -26,6 +26,8 @@ Dokumen dan sumber yang dibaca langsung dari GitHub:
 - `docs/REPORT_P0_TRIAGE_FULL_PHPUNIT_2026-11-23.md`
 - `docs/MATRIKS_ADM_01_23_AUDIT_2026-11-23.md`
 - `docs/DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md`
+- [Checkpoint koordinator](CHECKPOINT_KOORDINATOR_2026-11-23_P0_PHPUNIT_518_PASS.md)
+- [Entry point agent](AGENT_START_HERE.md)
 - Master spesifikasi Web Admin, Web Guru, dan Web Siswa yang ditautkan owner.
 - Issue #8, #9, #10, #12, #14, #15, #16, #20 dan keputusan/comment yang relevan.
 - Semua PR terbuka yang relevan, branch, compare, exact commit, workflow, job, dan log CI.
@@ -40,11 +42,13 @@ Tidak digunakan ZIP baseline atau ChatGPT Library. Tidak ada perubahan pada bran
 | Branch eksekusi | `work/solo-web-cbt-completion-20261123-execution` |
 | HEAD branch eksekusi | `d6aaeae6f2851bf15272d0cc2bce9e68989d3a4d` |
 | Branch perbaikan | `work/phpunit-41-root-cause-20261123` |
-| SHA branch perbaikan yang diuji | `085a20eea16ada12e8c055fca6be9bb1d6d6972a` |
+| SHA source/test yang diuji pertama kali | `085a20eea16ada12e8c055fca6be9bb1d6d6972a` |
+| SHA branch HEAD dokumentasi yang diuji ulang | `6b5e412e18e5c9230c0b17f18a9d569bdd4d7982` |
 | CI baseline #45191014821 | FAILURE — 41 failed, 477 passed, 1.867 assertions |
 | CI perbaikan #45215342323 | **SUCCESS — 518 passed, 0 failed, 2.189 assertions** |
+| CI dokumentasi/branch HEAD #45217367885 | **SUCCESS — 518 passed, 0 failed, 2.189 assertions** |
 
-Bukti: [CI #45191014821](https://github.com/zane0184/cbt_november/actions/runs/45191014821) dan [CI #45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323).
+Bukti: [CI #45191014821](https://github.com/zane0184/cbt_november/actions/runs/45191014821), [CI #45215342323](https://github.com/zane0184/cbt_november/actions/runs/45215342323), dan [CI #45217367885](https://github.com/zane0184/cbt_november/actions/runs/45217367885).
 
 Environment CI:
 - PHP 8.3.
@@ -220,7 +224,7 @@ Master Guru §5.8 dan Issues #8/#9/#16 menjelaskan XLSX dan DOCX sebagai parser 
 
 ## G. CHECKPOINT DAN LANGKAH SELANJUTNYA
 
-1. Perbarui `AGENT_START_HERE.md` dan checkpoint agar menunjuk run #452153 dan SHA yang tepat.
+1. `AGENT_START_HERE.md`, report, dan checkpoint telah menunjuk run #452173 dan SHA yang diuji; buat PR draft ke branch eksekusi.
 2. Jalankan CI lagi setelah commit dokumentasi, sehingga exact branch HEAD terbaru juga mempunyai bukti 518/0.
 3. Buat PR draft dari `work/phpunit-41-root-cause-20261123` ke branch eksekusi `work/solo-web-cbt-completion-20261123-execution`; jangan merge otomatis.
 4. Setelah P0 PR tersedia, lanjutkan P1 Proktor dan audit portal tanpa mengulang source yang sudah ada di PR lain.
