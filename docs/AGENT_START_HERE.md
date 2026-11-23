@@ -41,3 +41,9 @@ Jangan mulai coding, jangan membuat ulang fitur, dan jangan mengasumsikan status
 
 **Penting:** GitHub menyimpan handover ini, tetapi agent baru tidak otomatis menerima notifikasi atau membaca repo hanya karena dokumen dibuat. Saat pindah chat/agent, berikan instruksi singkat:  
 `Lanjutkan proyek CBT dari GitHub. Baca docs/AGENT_START_HERE.md lalu ikuti seluruh handover dan lanjutkan dari checkpoint aktual. Jangan ulang pekerjaan.`
+
+
+Add current continuation report link
+
+## Laporan lanjutan terbaru
+Baca juga [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md) dan [DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md](DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md) sebelum coding. Laporan terbaru mencatat exact CI failure, patch resolver SYSTEM_GLOBAL dan backup, serta gap integrasi kurikulum sampai laporan historis. Jangan ulang patch yang telah tercatat.
