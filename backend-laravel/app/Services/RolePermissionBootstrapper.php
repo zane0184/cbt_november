@@ -16,11 +16,11 @@ class RolePermissionBootstrapper
 {
     private const ROLE_GRANTS = [
         'ADMIN_MADRASAH' => [
-            'curriculum.view', 'curriculum.manage', 'academic.manage',
-            'user.manage', 'tenant.manage', 'exam.proctor.assign',
+            'curriculum.view', 'curriculum.registry.manage', 'curriculum.source.manage',
+            'assessment.taxonomy.manage', 'academic.manage', 'user.manage', 'tenant.manage', 'exam.proctor.assign',
         ],
         'GURU' => [
-            'curriculum.view', 'question.view', 'question.manage',
+            'curriculum.view', 'curriculum.manage', 'question.view', 'question.manage',
             'exam.manage', 'exam.assign', 'exam.monitor', 'exam.token',
             'exam.grade', 'exam.reopen', 'report.view',
         ],
@@ -41,8 +41,11 @@ class RolePermissionBootstrapper
 
         DB::transaction(function () use ($roles): void {
             $permissions = [
-                'curriculum.view' => 'Lihat struktur kurikulum',
-                'curriculum.manage' => 'Kelola struktur kurikulum',
+                'curriculum.view' => 'Lihat referensi kurikulum yang diizinkan',
+                'curriculum.manage' => 'Guru mengembangkan TP dan ATP sesuai penugasan tanpa mengubah CP induk',
+                'curriculum.registry.manage' => 'Kelola registrasi versi dan struktur referensi kurikulum lokal',
+                'curriculum.source.manage' => 'Kelola metadata dan provenance sumber referensi kurikulum',
+                'assessment.taxonomy.manage' => 'Kelola opsi fungsi, cakupan, instrumen, dan mode asesmen',
                 'academic.manage' => 'Kelola data akademik dan Rombel',
                 'question.view' => 'Lihat Bank Soal sesuai penugasan Guru',
                 'question.manage' => 'Kelola Bank Soal sesuai penugasan Guru',
