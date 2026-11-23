@@ -7,6 +7,10 @@
             </div>
             <h1 class="text-2xl font-bold text-navy-900">Dashboard Admin Madrasah</h1>
             <p class="text-sm text-textSecondary">Administrasi identitas madrasah, data akademik, pengguna, dan dukungan penugasan Guru pengawas.</p>
+            <p class="mt-2 text-xs font-semibold text-textSecondary">
+                Tahun Pelajaran Aktif:
+                <span class="text-navy-900">{{ $activeAcademicYear?->name ?? 'Belum ditetapkan' }}</span>
+            </p>
         </div>
         <div class="flex items-center gap-3">
             <a href="/admin/users" class="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl transition shadow-sm">
@@ -38,12 +42,12 @@
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Rombel</p>
             <p class="text-2xl font-bold text-navy-900 mt-2">{{ $totalRombels }}</p>
-            <p class="text-[11px] text-gray-500 mt-1">Kelas Aktif</p>
+            <p class="text-[11px] text-gray-500 mt-1">Rombel aktif tahun pelajaran berjalan</p>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Mata Pelajaran</p>
             <p class="text-2xl font-bold text-amber-600 mt-2">{{ $totalSubjects }}</p>
-            <p class="text-[11px] text-gray-500 mt-1">Mapel Terdaftar</p>
+            <p class="text-[11px] text-gray-500 mt-1">Mapel berstatus aktif</p>
         </div>
         <div class="bg-white p-5 rounded-2xl border border-cardBorder shadow-sm">
             <p class="text-xs font-bold text-textSecondary uppercase tracking-wider">Penugasan Pengawas Aktif</p>
@@ -120,14 +124,18 @@
                     <div class="p-4 flex justify-between items-center hover:bg-gray-50/50">
                         <div>
                             <p class="text-sm font-bold text-navy-900">{{ $rombel->name }}</p>
-                            <p class="text-xs text-textSecondary">Kode: {{ $rombel->code ?: '-' }}</p>
+                            <p class="text-xs text-textSecondary">Tahun Pelajaran: {{ $rombel->academicYear?->name ?? '-' }}</p>
                         </div>
-                        <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
-                            Aktif
-                        </span>
+                        @if($rombel->status === 'ACTIVE')
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Aktif</span>
+                        @else
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-lg bg-gray-100 text-gray-700 border border-gray-200">{{ $rombel->status }}</span>
+                        @endif
                     </div>
                 @empty
-                    <div class="p-6 text-center text-xs text-gray-500">Belum ada rombel.</div>
+                    <div class="p-6 text-center text-xs text-gray-500">
+                        {{ $activeAcademicYear ? 'Belum ada rombel pada tahun pelajaran aktif.' : 'Tetapkan tahun pelajaran aktif untuk menampilkan rombel.' }}
+                    </div>
                 @endforelse
             </div>
         </div>
