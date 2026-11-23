@@ -180,3 +180,46 @@ Belum ada bukti hasil workflow pada exact commit patch di sesi ini. PHP lint, PH
 
 ### NEXT
 Ambil run GitHub Actions yang terpicu pada commit terbaru; periksa semua step dan log. Jika test suite lulus, pastikan two-connection concurrency step juga PASS. Jika gagal, triase failure tersisa tanpa melemahkan production license/account checks. Receipt read-only dan media Web masih memerlukan kontrak desain Agent 2–Agent 4 pada Issue #10.
+
+
+## 10. REMEDIASI KOORDINATOR — token opsional, receipt, generation awal, dan fixture identity (23 November 2026)
+
+### AUDIT
+- Run #45144871906 pada SHA `c9e06b3c...`: 81 passed / 1 failed (329 assertions). Sisa failure berada pada foreign-user execution check yang ternyata memakai auth guard cache lintas dua bearer identities dalam satu test application.
+- Setelah diagnosis, test mengganti bearer identity tetapi tidak mengosongkan guard yang sudah menyimpan user request sebelumnya. Ini merupakan fixture/test isolation defect, bukan alasan untuk mengendurkan otorisasi atau menerima 409 untuk user asing.
+- Run #45144928769 pada SHA `8aaeb767...`: 82 passed / 1 failed (339 assertions). Token optional, receipt ID, dan generation awal sudah lulus; failure tersisa tetap di test switching identity.
+
+### BACKUP
+Backup pra-patch dibuat dan diverifikasi byte-exact:
+- Lima file runtime/test pada folder `coordinator-p0-fix-2026-11-23/`, manifest `MANIFEST.md`, 5/5 SHA MATCH.
+- File `ParticipantAuthorizationAndAttemptLimitTest.php` sebelum reset guard disimpan sebagai `ParticipantAuthorizationAndAttemptLimitTest.php.before-auth-guard-reset`, blob SHA `6535a2a2f119cf018abecf44925416caf64fdd4e`; source pra-patch dan backup cocok byte-exact.
+
+### IMPLEMENTASI
+- `AttemptDeviceLeaseService::createForAttempt()`: inisialisasi/persist `fence_generation=1` sebelum lease awal dibuat agar generation Attempt dan DeviceLease konsisten.
+- `ExamAttemptController::store()`: validasi token hanya dijalankan ketika `require_token=true`; token required yang tidak dikonfigurasi tetap fail-closed.
+- `ExamAnswerController::update()`: receipt response memuat `client_request_id`; replay backfills request ID dari ledger untuk receipt lama.
+- `ExamAnswerTest`: assert request ID pada initial dan replay receipt.
+- `ParticipantAuthorizationAndAttemptLimitTest`: regression token optional dan initial fence/lease; ketika beralih dari userA1 ke userA2 dalam satu test, guard di-reset dan response body dicetak bila unexpected.
+
+Commits:
+- `d13e8cfd1586ecf9eb0e7345dfafce332bad6a0d` — lease generation initialization.
+- `e99daf077f4dfb7477325ad7d89d24ddbb5011d7` — token optional semantics.
+- `c9e06b3c5101edc9993fd25a5eeb40bceb2fdaa4` — receipt request ID.
+- `3a7fdb53bfe36ca844147d4e2cd682b09c48a3b7` — receipt regression assertions.
+- `8aaeb767293cc06350752f7a680b54c40b4e87c7` — token/fence regression tests.
+- `97d59fe4ee2de23f75814b45506bd5504959abb1` — exact backup before guard reset.
+- `54868ce5cd6efac697658b7e420c91c356fbf641` — reset cached guard on foreign-user test.
+
+### PENGUJIAN — exact final patch SHA
+Run [#45145411333](https://github.com/zane0184/cbt_november/actions/runs/45145411333), source SHA `54868ce5cd6efac697658b7e420c91c356fbf641`: **SUCCESS**.
+- Disposable MySQL 8 / InnoDB identity check: PASS.
+- Composer validation/install and Laravel package discovery: PASS.
+- Full migration chain: PASS.
+- PHP syntax validation: PASS.
+- Auth/Attempt/Answer/Lease/Media/Expiry suites: **83 passed / 342 assertions**.
+- Two-connection InnoDB race suite: **1 passed / 5 assertions** (not skipped).
+- Disposable DB cleanup verified: PASS.
+- Workflow job completed SUCCESS.
+
+### BATAS
+P0 auth-session/lease/fencing backend now has a passing isolated integration suite on this Agent 2 branch. This does not yet mean PR #21 includes the code, nor does it prove browser-to-real-Laravel integration, production load, physical-device identity, authorized takeover, or UAT. Branch Agent 2 remains divergent; integrate only selected P0 source and migrations into PR #21 after dependency review and byte-exact backup. Preserve PR #21's exact-three-role boundary; do not bring KAMAD/room-session/legacy Proktor portal behavior from this older branch.
