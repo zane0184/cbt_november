@@ -302,6 +302,15 @@ class MonitoringController extends Controller
 
     public function heartbeat(Request $request, Exam $exam, ExamAttempt $attempt)
     {
+        $user = $request->user();
+        if (!$user || !$user->hasExactRole('SISWA')) {
+            return response()->json(['success' => false, 'message' => 'Only an active Student account can send an exam heartbeat.'], 403);
+        }
+
+        if (!app(\App\Services\AttemptAuthSessionBinding::class)->identity($request)) {
+            return response()->json(['success' => false, 'code' => 'AUTH_SESSION_REQUIRED'], 401);
+        }
+
         $deviceId = $request->header('X-Device-Binding-ID');
         if (!$deviceId) {
             return response()->json([
@@ -311,33 +320,89 @@ class MonitoringController extends Controller
             ], 400);
         }
 
-        // Student heartbeat
-        if ($attempt->exam_id !== $exam->id
-            || $attempt->tenant_id !== $exam->tenant_id
-            || $attempt->participant->tenant_id !== $exam->tenant_id
-            || $attempt->participant->user_id !== $request->user()->id) {
-            abort(403);
-        }
+        return DB::transaction(function () use ($user, $exam, $attempt, $deviceId, $request) {
+            // Heartbeat follows the same lock order as execution, answer save and submit.
+            $lockedExam = Exam::query()
+                ->where('tenant_id', $user->tenant_id)
+                ->whereKey($exam->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($attempt->device_fingerprint && $attempt->device_fingerprint !== $deviceId) {
+            $participant = ExamParticipant::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('user_id', $user->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$participant || (string) $participant->id !== (string) $attempt->participant_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized participant.'], 403);
+            }
+
+            $lockedAttempt = ExamAttempt::query()
+                ->where('tenant_id', $lockedExam->tenant_id)
+                ->where('exam_id', $lockedExam->id)
+                ->where('participant_id', $participant->id)
+                ->whereKey($attempt->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$lockedAttempt) {
+                return response()->json(['success' => false, 'message' => 'Attempt not found.'], 404);
+            }
+
+            if (!app(\App\Services\AttemptAuthSessionBinding::class)->matches($lockedAttempt, $request)) {
+                return response()->json(['success' => false, 'code' => 'ATTEMPT_SESSION_MISMATCH', 'message' => 'Attempt terikat pada sesi autentikasi lain.'], 409);
+            }
+
+            if (!$lockedAttempt->device_fingerprint
+                || !hash_equals((string) $lockedAttempt->device_fingerprint, (string) $deviceId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Perangkat belum terikat atau berbeda. Pergantian perangkat memerlukan prosedur pelepasan yang berotorisasi.',
+                    'code' => 'CONCURRENT_DEVICE_DENIED'
+                ], 409);
+            }
+
+            if (!app(\App\Services\AttemptDeviceLeaseService::class)->requestFenceMatches($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_FENCE_MISMATCH',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                ], 409);
+            }
+
+            if ($lockedAttempt->status !== 'IN_PROGRESS'
+                || !$lockedAttempt->expires_at
+                || $lockedAttempt->expires_at->lte(now())) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Attempt is no longer active.',
+                    'code' => 'ATTEMPT_NOT_ACTIVE'
+                ], 409);
+            }
+
+            if (!app(\App\Services\AttemptDeviceLeaseService::class)->assertAndRenew($lockedAttempt, $request)) {
+                return response()->json([
+                    'success' => false,
+                    'code' => 'ATTEMPT_LEASE_INVALID',
+                    'current_fence_generation' => (int) $lockedAttempt->fence_generation,
+                    'message' => 'Lease Attempt tidak aktif atau tidak konsisten.',
+                ], 409);
+            }
+
+            $serverNow = now();
+            $lockedAttempt->update(['last_activity_at' => $serverNow]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Sesi ujian ini sedang aktif di perangkat lain.',
-                'code' => 'CONCURRENT_DEVICE_DENIED'
-            ], 409);
-        }
-
-        if (!$attempt->device_fingerprint) {
-            $attempt->update(['device_fingerprint' => $deviceId]);
-        }
-
-        $attempt->update(['last_activity_at' => now()]);
-
-        return response()->json([
-            'success' => true,
-            'server_now' => now()->toIso8601String(),
-            'expires_at' => $attempt->expires_at->toIso8601String(),
-            'status' => $attempt->status
-        ]);
+                'success' => true,
+                'server_now' => $serverNow->toIso8601String(),
+                'expires_at' => $lockedAttempt->expires_at->toIso8601String(),
+                'status' => $lockedAttempt->status,
+                'fence_generation' => (int) $lockedAttempt->fence_generation,
+                'lease_expires_at' => $lockedAttempt->device_lease_expires_at?->toIso8601String(),
+            ]);
+        });
     }
+
 }
