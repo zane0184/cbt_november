@@ -12,6 +12,7 @@ use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\QuestionOption;
 use App\Models\Role;
+use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,10 +31,21 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     private $examA;
     private $participantA1;
     private $snapshot;
+    private array $apiTokens = [];
+
+    private function apiTokenFor(User $user): string
+    {
+        if (!isset($this->apiTokens[$user->id])) {
+            $this->apiTokens[$user->id] = $user->createToken('attempt-test-session')->plainTextToken;
+        }
+
+        return $this->apiTokens[$user->id];
+    }
 
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withHeader('X-CBT-Fence-Generation', '1');
 
         $this->tenantA = Tenant::create(['name' => 'Madrasah A', 'code' => 'TA']);
         $this->tenantB = Tenant::create(['name' => 'Madrasah B', 'code' => 'TB']);
@@ -51,6 +63,12 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userA1->roles()->attach($siswaRole);
+        StudentProfile::create([
+            'user_id' => $this->userA1->id,
+            'nis' => 'NIS-A1',
+            'nisn' => '1000000001',
+            'full_name' => $this->userA1->name,
+        ]);
 
         $this->userA2 = User::create([
             'tenant_id' => $this->tenantA->id,
@@ -59,6 +77,12 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userA2->roles()->attach($siswaRole);
+        StudentProfile::create([
+            'user_id' => $this->userA2->id,
+            'nis' => 'NIS-A2',
+            'nisn' => '1000000002',
+            'full_name' => $this->userA2->name,
+        ]);
 
         $yearA = AcademicYear::create(['tenant_id' => $this->tenantA->id, 'name' => '2024/2025']);
         $assessmentA = Assessment::create([
@@ -141,6 +165,12 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userB->roles()->attach($siswaRole);
+        StudentProfile::create([
+            'user_id' => $this->userB->id,
+            'nis' => 'NIS-B1',
+            'nisn' => '2000000001',
+            'full_name' => $this->userB->name,
+        ]);
 
         // Clear tenant context for controller requests
         $context->setTenantId(null);
@@ -149,24 +179,52 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_a_authorized_participant_start()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $context = app(\App\Contexts\TenantContext::class);
+        $context->setTenantId($this->tenantA->id);
+        $this->assertTrue($this->userA1->hasExactRole('SISWA'), 'Fixture must satisfy the persisted active Siswa identity contract.');
+        $context->setTenantId(null);
+
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $this->assertEquals(0, $this->participantA1->attempts()->count());
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
+        if ($response->status() !== 201) {
+            fwrite(STDERR, "ATTEMPT_START_RESPONSE=".$response->getContent().PHP_EOL);
+        }
         $response->assertStatus(201);
         $response->assertJson(['success' => true]);
+        $response->assertJsonPath('data.fence_generation', 1);
         $this->assertNotNull($response->json('data.id'));
+        $this->assertDatabaseHas('device_leases', [
+            'exam_attempt_id' => $response->json('data.id'),
+            'fence_generation' => 1,
+            'status' => 'ACTIVE',
+        ]);
 
+        $this->assertEquals(1, $this->participantA1->attempts()->count());
+    }
+
+    public function test_exam_without_required_token_can_start_without_token()
+    {
+        $this->examA->update(['require_token' => false, 'token' => null]);
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
+
+        $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
+            ->postJson("/api/v1/exams/{$this->examA->id}/attempts", []);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.fence_generation', 1);
         $this->assertEquals(1, $this->participantA1->attempts()->count());
     }
 
     public function test_participant_cannot_start_before_eligibility_window()
     {
         $this->participantA1->update(['eligible_from' => now()->addMinutes(5)]);
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
@@ -210,7 +268,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     {
         $eligibleUntil = now()->addMinutes(20)->startOfSecond();
         $this->participantA1->update(['eligible_until' => $eligibleUntil]);
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
@@ -224,7 +282,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_b_non_participant_start()
     {
-        $this->actingAs($this->userA2, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA2));
 
         $response = $this->withHeader('X-Device-Binding-ID', 'device-a2')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
@@ -235,7 +293,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_c_second_attempt_rejected_when_limit_reached()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         // Start first attempt
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -260,7 +318,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_d_replay_start_request_resumes_without_duplicate()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         // Initial start
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -284,17 +342,23 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
     public function test_test_e_foreign_user_attempt_access()
     {
         // First create an attempt for userA1
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $attemptId = $startRes->json('data.id');
 
         // Now switch to userA2 (same tenant, but not owner of attempt)
-        $this->actingAs($this->userA2, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA2));
+        // The same test application issues multiple bearer-token requests. Reset
+        // the cached guard so this request is authenticated as the second user.
+        app('auth')->forgetGuards();
 
         // 1. Execution access
         $execRes = $this->withHeader('X-Device-Binding-ID', 'device-a2')
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
+        if ($execRes->status() !== 404) {
+            fwrite(STDERR, "FOREIGN_EXECUTION_RESPONSE=".$execRes->getContent().PHP_EOL);
+        }
         $execRes->assertStatus(404);
 
         // 2. Direct attempt show access: hide another participant's attempt.
@@ -319,7 +383,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_f_foreign_tenant_attempt_access()
     {
-        $this->actingAs($this->userB, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userB));
 
         // User B from Tenant B trying to start Exam A from Tenant A
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-b')
@@ -331,7 +395,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_g_final_attempt_plus_limit()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         // Start and submit attempt 1
         $res1 = $this->withHeader('X-Device-Binding-ID', 'device-a1')
@@ -354,7 +418,7 @@ class ParticipantAuthorizationAndAttemptLimitTest extends TestCase
 
     public function test_test_h_uuid_parameter_manipulation()
     {
-        $this->actingAs($this->userA1, 'sanctum');
+        $this->withHeader('Authorization', 'Bearer '.$this->apiTokenFor($this->userA1));
 
         $startRes = $this->withHeader('X-Device-Binding-ID', 'device-a1')
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
