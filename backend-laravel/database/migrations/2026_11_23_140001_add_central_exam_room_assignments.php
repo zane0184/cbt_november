@@ -15,6 +15,12 @@ return new class extends Migration
             $table->index(['tenant_id', 'is_centralized', 'category'], 'exams_central_category_idx');
         });
 
+        // Enforce the category domain and category/flag consistency on production MySQL 8+.
+        // SQLite test runs still receive equivalent validation from the Exam model.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement(\"ALTER TABLE exams ADD CONSTRAINT exams_category_centralized_chk CHECK (\n                (category IN ('ASTS', 'ASAS', 'ASAT', 'UM', 'SIMULASI_AN') AND is_centralized = 1)\n                OR (category IN ('REGULAR', 'FORMATIF', 'SUMATIF_LINGKUP', 'SURVEI_KBC', 'REMEDIAL', 'TRYOUT_MANDIRI') AND is_centralized = 0)\n            )\");
+        }
+
         Schema::create('rooms', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('tenant_id')->constrained('tenants')->restrictOnDelete();
@@ -114,6 +120,10 @@ return new class extends Migration
         Schema::dropIfExists('exam_room_proctors');
         Schema::dropIfExists('exam_room_assignments');
         Schema::dropIfExists('rooms');
+
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE exams DROP CHECK exams_category_centralized_chk');
+        }
 
         Schema::table('exams', function (Blueprint $table) {
             $table->dropIndex('exams_central_category_idx');
