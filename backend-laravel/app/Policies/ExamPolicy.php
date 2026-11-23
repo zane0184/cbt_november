@@ -11,8 +11,7 @@ class ExamPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('GURU')
+        return $user->hasRole('GURU')
             || $user->hasRole('SISWA');
     }
 
@@ -24,12 +23,6 @@ class ExamPolicy
 
         if ($user->hasRole('GURU')) {
             return TeacherAccess::canManageExam($user, $exam);
-        }
-
-        // Admin may view only the tenant's exam register; operational actions
-        // remain separately authorized and are never implied by this read access.
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return true;
         }
 
         if ($user->hasRole('SISWA')) {
