@@ -386,13 +386,13 @@ class AnswerKeyLeakageTest extends TestCase
     }
     private function studentFenceGeneration(): string
     {
-        $participantId = \\App\\Models\\ExamParticipant::query()
+        $participantId = \App\Models\\ExamParticipant::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('exam_id', $this->exam->id)
             ->where('user_id', $this->student->id)
             ->value('id');
 
-        $attempt = \\App\\Models\\ExamAttempt::query()
+        $attempt = \App\Models\\ExamAttempt::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('exam_id', $this->exam->id)
             ->where('participant_id', $participantId)
