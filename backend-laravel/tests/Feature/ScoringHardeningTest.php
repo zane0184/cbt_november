@@ -294,10 +294,10 @@ class ScoringHardeningTest extends TestCase
     }
 
 
-    /** Reopening a finalized score is restricted to authorized administrators. */
-    public function test_reopen_score_is_denied_to_operator_teacher_proctor_and_student()
+    /** Reopening a finalized score is restricted to the assigned Guru with exam.reopen. */
+    public function test_reopen_score_is_denied_to_admin_unassigned_guru_and_student()
     {
-        $roles = ['SUPER_ADMIN', 'OPERATOR', 'GURU', 'PROKTOR', 'SISWA'];
+        $roles = ['SUPER_ADMIN', 'ADMIN_MADRASAH', 'GURU', 'SISWA'];
 
         foreach ($roles as $roleName) {
             $user = User::create([
@@ -310,50 +310,39 @@ class ScoringHardeningTest extends TestCase
             $user->roles()->syncWithoutDetaching($role->id);
 
             $this->assertFalse(
-                app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
-                "Role {$roleName} must not reopen a finalized score."
+                app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
+                "Unassigned role/account {$roleName} must not reopen a finalized score."
             );
         }
     }
 
-    public function test_reopen_score_is_allowed_only_for_admin_roles_in_same_tenant()
+    public function test_reopen_score_is_allowed_only_for_assigned_guru_in_same_tenant()
     {
-        foreach (['ADMIN_MADRASAH'] as $roleName) {
-            $user = User::create([
-                'tenant_id' => $this->tenant->id,
-                'name' => $roleName,
-                'email' => 'reopen-' . strtolower($roleName) . '@m.com',
-                'password' => 'p',
-            ]);
-            $role = Role::firstOrCreate(['name' => $roleName], ['label' => $roleName]);
-            $user->roles()->syncWithoutDetaching($role->id);
-
-            $this->assertTrue(
-                app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
-                "Role {$roleName} should be allowed to reopen a finalized score in its tenant."
-            );
-        }
+        $this->assertTrue(
+            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($this->teacher, $this->attempt),
+            'The assigned Guru with exam.reopen may reopen a finalized score in the same tenant.'
+        );
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Lain', 'code' => 'M2']);
         $tenantContext = app(TenantContext::class);
         $previousTenantId = $tenantContext->getTenantId();
         $tenantContext->setTenantId($otherTenant->id);
         try {
-            $foreignAdmin = User::create([
+            $foreignTeacher = User::create([
                 'tenant_id' => $otherTenant->id,
-                'name' => 'Foreign Admin',
-                'email' => 'foreign-admin@m.com',
+                'name' => 'Foreign Guru',
+                'email' => 'foreign-guru@m.com',
                 'password' => 'p',
             ]);
+            $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+            $foreignTeacher->roles()->syncWithoutDetaching($guruRole->id);
         } finally {
             $tenantContext->setTenantId($previousTenantId);
         }
-        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
-        $foreignAdmin->roles()->syncWithoutDetaching($adminRole->id);
 
         $this->assertFalse(
-            app(\App\Policies\ExamAttemptPolicy::class)->reopen($foreignAdmin, $this->attempt),
-            'An administrator from another tenant must not reopen this score.'
+            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($foreignTeacher, $this->attempt),
+            'A Guru from another tenant must not reopen this score.'
         );
     }
 
