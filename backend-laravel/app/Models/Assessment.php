@@ -94,6 +94,11 @@ class Assessment extends Model
         return $this->belongsTo(TeacherSubjectAssignment::class, 'teacher_subject_assignment_id');
     }
 
+    public function curriculumMappings()
+    {
+        return $this->hasMany(AssessmentCurriculumMapping::class, 'assessment_id');
+    }
+
     public function assessmentTaxonomyOwner(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'assessment_taxonomy_owner_id');
