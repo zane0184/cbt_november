@@ -195,3 +195,33 @@ Prioritas aksi pertama bukan coding: verifikasi PR #21 dan PR #13 terbaru, ambil
 ---
 
 **Status akhir pada saat handover:** belum siap produksi, belum siap ujian operasional, belum siap distribusi. Tidak ada izin merge, migration produksi, deployment, atau perubahan database produksi yang diberikan oleh dokumen ini.
+
+
+---
+
+## Addendum rekonsiliasi aktual 23 November 2026
+
+Laporan lintas portal terbaru: [REPORT_REKONSILIASI_AWAL_KETIGA_PORTAL_2026-11-23.md](REPORT_REKONSILIASI_AWAL_KETIGA_PORTAL_2026-11-23.md). Gunakan laporan ini bersama checkpoint utama.
+
+### HEAD yang terakhir diverifikasi
+- PR #21 integrasi: `44c2b7e3f84f5fef4ff749add13a1fd75369fa6d`.
+- PR #13 Web Siswa: `9ef375c407b1faf606c5a268f00b24424d93be9e`.
+- PR #19 Web Guru: `71296ca6e7c48b7295455a26d38bda11b901eb1d`.
+- PR #18 Web Admin legacy room/proctor: `42a0de2c1f86b8e76e34e1b74ab2e8f0` (verifikasi ulang SHA PR via GitHub sebelum bertindak).
+- Agent 2 auth/session/fencing: `b00cf4312b12e1158c609ca91af3dcecec7a2553`.
+
+### Koreksi status Web Siswa
+Audit anti-curang lama di branch integrasi memakai runner lama. PR #13 telah memiliki runner lebih baru yang memuat deterrent copy/paste, mobile-first, IndexedDB, client fencing/heartbeat, media fetch, dan receipt verifier. Jangan mengulang implementasi tersebut. Namun PR #13 HEAD terbaru belum mempunyai bukti CI exact SHA dan browser-to-real-Laravel integration masih belum lulus.
+
+### P0 backend Agent 2
+Run #45066851753 pada exact Agent 2 HEAD: migration fresh MySQL 8 dan PHP lint PASS; suite gagal 4 test (78 passed/293 assertions); concurrency test SKIPPED. Dua mismatch yang dibaca langsung dari source: kondisi token optional terbalik dan receipt response belum mengembalikan `client_request_id`. Empat test failure harus ditriase; jangan mengubah policy menjadi longgar.
+
+### Integrasi branch
+Branch Agent 2 sangat divergen dari base integrasi dan membawa banyak file/fitur historis. Dilarang merge keseluruhan branch secara otomatis. Integrasikan hanya kontrak P0 yang telah diaudit dan disetujui, dengan backup dan regression tests.
+PR #18 room/session/multi-Proktor juga jangan diintegrasikan otomatis karena bertentangan dengan keputusan owner terbaru. Proktor tidak boleh menjadi portal/role permanen atau mendapatkan hak monitoring/Attempt/operasi CBT.
+PR #19 mempunyai hasil CI historis 118/520, tetapi source SHA tersebut berbeda dari PR HEAD yang sekarang; verifikasi exact HEAD terlebih dahulu.
+
+### Status handover setelah rekonsiliasi
+- Laporan rekonsiliasi dibuat: commit `8b8fc6fc645779152f36cd53bf3db59ef6490d03`.
+- Checkpoint ditambahkan: commit `0fe5e30b7e0cf9fdff1a4bf092ad510939725358`.
+- Tidak ada source runtime, migration, DB produksi, VPS, merge, atau deployment yang diubah pada tahap audit ini.
