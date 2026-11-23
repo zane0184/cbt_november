@@ -24,6 +24,8 @@ class AccountResetAttemptConcurrencyTest extends TestCase
     private User $student;
     private \App\Models\Exam $exam;
     private \App\Models\ExamParticipant $participant;
+    private array $createdRoleIds = [];
+    private array $createdPermissionIds = [];
 
     protected function setUp(): void
     {
@@ -34,9 +36,20 @@ class AccountResetAttemptConcurrencyTest extends TestCase
         TenantContext::getInstance()?->setTenantId((string) $this->tenant->id);
 
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        if ($adminRole->wasRecentlyCreated) {
+            $this->createdRoleIds[] = (string) $adminRole->id;
+        }
+
         $permission = Permission::firstOrCreate(['name' => 'user.manage'], ['label' => 'Kelola akun']);
+        if ($permission->wasRecentlyCreated) {
+            $this->createdPermissionIds[] = (string) $permission->id;
+        }
         $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
+
         $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        if ($studentRole->wasRecentlyCreated) {
+            $this->createdRoleIds[] = (string) $studentRole->id;
+        }
 
         $this->admin = User::create([
             'tenant_id' => $this->tenant->id,
@@ -132,6 +145,24 @@ class AccountResetAttemptConcurrencyTest extends TestCase
                 foreach ($modelTables as $row) {
                     $table = str_replace('`', '``', (string) $row->TABLE_NAME);
                     $connection->table($table)->whereIn('model_id', $userIds)->delete();
+                }
+            }
+
+            // Role/permission fixtures are global (no tenant_id). Delete only
+            // rows this test actually created, and detach their pivot records.
+            foreach ($this->createdPermissionIds as $permissionId) {
+                $permission = Permission::withoutGlobalScopes()->find($permissionId);
+                if ($permission) {
+                    $permission->roles()->detach();
+                    $permission->delete();
+                }
+            }
+
+            foreach ($this->createdRoleIds as $roleId) {
+                $role = Role::withoutGlobalScopes()->find($roleId);
+                if ($role) {
+                    $role->permissions()->detach();
+                    $role->delete();
                 }
             }
 
