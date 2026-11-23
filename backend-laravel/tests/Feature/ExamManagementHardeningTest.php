@@ -206,13 +206,41 @@ class ExamManagementHardeningTest extends TestCase
     /** @test */
     public function teacher_cannot_use_an_assignment_outside_their_exact_assignment_scope()
     {
-        $this->actingAs($this->teacher);
+        $foreignTeacher = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Lain',
+            'email' => 'guru-lain@example.test',
+            'password' => bcrypt('password'),
+        ]);
+        $foreignProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $foreignTeacher->id,
+            'full_name' => 'Guru Lain',
+        ]);
+        $foreignAssignment = TeacherSubjectAssignment::create([
+            'tenant_id' => $this->tenant->id,
+            'teacher_profile_id' => $foreignProfile->id,
+            'subject_id' => $this->subject->id,
+            'rombel_id' => $this->rombelB->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYear()->toDateString(),
+            'status' => 'ACTIVE',
+            'created_by' => $foreignTeacher->id,
+        ]);
 
+        $this->assertNotContains(
+            $foreignProfile->id,
+            \App\Support\Security\TeacherAccess::profileIds($this->teacher),
+            'A different Guru profile must never enter the authenticated teacher scope.'
+        );
+
+        $this->actingAs($this->teacher);
         $this->examManagementComponent()
             ->set('title', 'Ujian Penugasan Terlarang')
-            ->set('selectedAssignmentId', (string) \Illuminate\Support\Str::uuid())
-            ->call('saveExam')
-            ->assertStatus(404);
+            ->set('selectedAssignmentId', $foreignAssignment->id)
+            ->call('saveExam');
 
         $this->assertDatabaseMissing('exams', ['title' => 'Ujian Penugasan Terlarang']);
     }
@@ -247,7 +275,7 @@ class ExamManagementHardeningTest extends TestCase
         $exam = Exam::where('title', 'Ujian Biologi 1 Soal')->firstOrFail();
         $this->assertTrue((bool) $exam->fresh()->require_token);
         $this->assertNull($exam->fresh()->token);
-        $this->assertDatabaseHas('audit_logs', ['action' => 'CREATE_EXAM', 'entity_id' => $exam->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'EXAM_CREATED', 'entity_id' => $exam->id]);
 
         $exam->update(['require_token' => false]);
         $this->examManagementComponent()->call('lockExam', $exam->id);
