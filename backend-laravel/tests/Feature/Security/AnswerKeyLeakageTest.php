@@ -27,6 +27,7 @@ use App\Models\QuestionOption;
 use App\Services\ExamSnapshotService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 
 class AnswerKeyLeakageTest extends TestCase
