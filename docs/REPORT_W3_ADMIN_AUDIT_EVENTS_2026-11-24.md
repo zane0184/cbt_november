@@ -71,3 +71,7 @@ Tidak ada migration, perubahan database produksi, akses VPS, deployment, merge P
 2. Jika PASS, lanjut audit event untuk alur administrasi lain dan fitur lifecycle yang memiliki kontrak jelas; jika FAIL, tangani akar masalah dari log.
 3. Lanjutkan fitur Admin dan integrasi Web Guru/Siswa dengan backend kanonis; jangan mengarang schema atau marker.
 4. Jangan membuat ZIP final sebelum seluruh acceptance gates lulus.
+
+
+## PENGUJIAN UPDATE — W3 CI RETRY
+Commit dokumentasi koreksi status run sebelumnya: `d925b7ba41fd623cb621e1c0342d1bbd7e1326eb`. Source aplikasi tidak berubah pada commit dokumentasi ini. CI untuk source aplikasi masih memerlukan run yang menyelesaikan focused Admin/Guru dan full PHPUnit pada PHP 8.3 + disposable MySQL 8/InnoDB. Jangan ubah status test menjadi PASS sebelum hasil tersebut tersedia.
