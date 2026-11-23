@@ -96,3 +96,7 @@ Run #45241315638 menghasilkan **4 failed, 514 passed, 2,162 assertions**. Fase1C
 
 ### Patch akhir AnswerKeyLeakage setelah run #45242146752
 Run #45242146752 menghasilkan **3 failed, 515 passed, 2,163 assertions**. Ketiganya berasal dari test siswa yang memanggil endpoint execution tanpa `X-CBT-Fence-Generation`; server menolak request dengan 409 sesuai kontrak fencing. Fixture kini mengambil fence generation aktif dari Attempt dan mengirimkannya pada setiap GET execution. Rate-limit test dan fixture Fase1C sudah lulus pada run tersebut.
+
+
+### Koreksi sintaks helper fencing test
+Run #45242923647 berhenti pada focused smoke test sebelum PHPUnit dijalankan karena helper `studentFenceGeneration()` memiliki backslash namespace ganda (`\\App\\Models`), sehingga PHP melaporkan `unexpected token \\`. Namespace telah diperbaiki menjadi FQCN PHP yang valid. Tidak ada hasil test yang dihitung dari run ini.
