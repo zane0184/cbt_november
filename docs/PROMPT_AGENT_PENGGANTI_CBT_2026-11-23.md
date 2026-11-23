@@ -1,3 +1,16 @@
+# PEMUTAKHIRAN WAJIB AGENT PENGGANTI — 23 NOVEMBER 2026
+
+**BACA TERLEBIH DAHULU:** [HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md](HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md). Dokumen tersebut adalah handover operasional terbaru dan mengesampingkan branch/SHA/angka PHPUnit lama yang masih tercantum di bawah.
+
+- Repository: zane0184/cbt_november.
+- Branch aktif: work/solo-web-cbt-completion-20261123-execution.
+- Source SHA full PHPUnit terakhir: b31d7a2713383ddcc1282317cdb295d6992d5dce.
+- CI terakhir #45168433247: **92 failed, 426 passed, 1,723 assertions** pada disposable MySQL 8.0.46; focused login smoke 27 passed/90 assertions.
+- Baseline #45156925960: 160 failed, 357 passed, 1,475 assertions. Kegagalan sudah turun 68, tetapi full suite belum PASS.
+- Baca triage dan matriks ADM terbaru; jangan mulai coding sebelum verifikasi HEAD/CI exact SHA.
+
+---
+
 # PROMPT AGENT PENGGANTI — LANJUTKAN CBT MADRASAH DARI GITHUB
 
 Anda adalah agent koordinator sekaligus pelaksana audit/implementasi Web Admin Madrasah, Web Guru, Web Siswa, dan Backend CBT Madrasah.
