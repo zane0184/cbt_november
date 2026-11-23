@@ -19,8 +19,18 @@ class AuthWebController extends Controller
     {
         if (Auth::check()) {
             $user = Auth::user();
-            if ($user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA'])) {
-                return $this->redirectForUser($user);
+            if (!(bool) $user->is_active) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            } elseif ((bool) $user->must_change_password) {
+                return redirect('/account/password/change');
+            } elseif ($user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA'])) {
+                if ((bool) $user->must_change_password) {
+            return redirect('/account/password/change');
+        }
+
+        return $this->redirectForUser($user);
             }
 
             // Legacy, multi-role, and retired local identities must not remain
@@ -47,7 +57,7 @@ class AuthWebController extends Controller
         }
 
         $user = $resolver->resolve($identifier);
-        if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
+        if (!$user || !(bool) $user->is_active || !Hash::check((string) $request->input('password'), (string) $user->password)) {
             RateLimiter::hit($throttleKey, 60);
             return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.'])->withInput($request->only('identifier'));
         }
@@ -67,7 +77,7 @@ class AuthWebController extends Controller
                 ->lockForUpdate()
                 ->first();
 
-            if (!$lockedUser) {
+            if (!$lockedUser || !(bool) $lockedUser->is_active) {
                 return ['status' => 'INVALID'];
             }
 
@@ -112,6 +122,7 @@ class AuthWebController extends Controller
         RateLimiter::clear($throttleKey);
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+        $request->session()->put('account_auth_version', (int) ($user->auth_version ?? 1));
 
         $identity = LocalInstallationIdentity::query()->first();
         if ($identity && $user->tenant_id) {
