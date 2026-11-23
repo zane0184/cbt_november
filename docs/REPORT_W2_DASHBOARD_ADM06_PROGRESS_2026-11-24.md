@@ -58,12 +58,18 @@ No application DB schema, migration, production DB, VPS or ZIP was changed.
 ## PENGUJIAN
 - Last verified stable CI remains #1668 on exact SHA `b726dcb55d5bcba60adb6bc34529df14ffb6dad9`: SUCCESS, 530 passed / 2,199 assertions / 0 failed, PHP 8.3 + MySQL 8/InnoDB disposable.
 - W2-only run #1679 on the documentation HEAD was cancelled before finishing focused steps when subsequent implementation commits were pushed. Its cancellation is not evidence of test failure and not a PASS.
-- Dashboard + ADM-06 tests on the current source have not yet received a completed Actions verdict. A consolidated run is required before calling W2/ADM-06 verified.
+- Consolidated GitHub Actions [#1689](https://github.com/zane0184/cbt_november/actions/runs/45267150287) on exact final SHA `36923a65bcf40119f23c832fda2856cd44cc1ac8`: **SUCCESS**.
+- Focused Web Login/tenant identity: **30 passed / 99 assertions**.
+- Focused Admin Livewire reauthorization: **5 passed / 5 assertions**.
+- Focused Teacher result Livewire reauthorization: **4 passed / 8 assertions**.
+- Full PHPUnit on PHP 8.3 + disposable MySQL 8/InnoDB: **533 passed / 2,213 assertions / 0 failed**.
+- The final `AdminUiVerificationTest` suite is green and log confirms all 3 new regressions (two Dashboard tests + Guru optional identity test) passed.
+- The preceding run #1687 had one test-only assertion error (baseline fixture already included one active Subject); corrected the expected count from 1 to 2, with a byte-exact second backup, and #1689 verifies the corrected source. This was not an application runtime failure.
 
 ## STATUS
 - W1 Web Login installation-context negative tests: DONE / VERIFIED (#1668).
-- W2 Dashboard active-year/status scope: IMPLEMENTED / TEST PENDING.
-- ADM-06 optional Teacher NIP/NIK: IMPLEMENTED / TEST PENDING.
+- W2 Dashboard active-year/status scope: IMPLEMENTED / VERIFIED by #1689.
+- ADM-06 optional Teacher NIP/NIK: IMPLEMENTED / VERIFIED by #1689.
 - ADM-01 remains partial pending broader acceptance, responsiveness/accessibility/browser checks.
 - ADM-20 remains BLOCKED as owner has not approved a canonical central-exam marker.
 
