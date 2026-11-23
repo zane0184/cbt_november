@@ -243,6 +243,8 @@ trait CreatesCanonicalCurriculumContext
                     'curriculum_owner_id' => $systemTenantId,
                     'multi_learning_outcome_id' => $cp->id,
                     'tenant_learning_outcome_id' => $tp->id,
+                    'academic_year_id' => $assignment->academic_year_id,
+                    'semester_id' => $assignment->semester_id,
                     'mapping_role' => 'PRIMARY',
                 ]);
                 $assessmentMapping->forceFill([
