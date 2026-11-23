@@ -15,7 +15,7 @@ class LoginIdentityResolver
     {
         $identifier = trim($identifier);
         if ($identifier === '' || strlen($identifier) > 100) return null;
-        $installations = LocalInstallationIdentity::query()->limit(2)->get();
+        $installations = LocalInstallationIdentity::withoutGlobalScopes()->limit(2)->get();
         if ($installations->count() !== 1 || Tenant::withoutGlobalScopes()->count() !== 1) return null;
         $tenantId = (string) $installations->first()->tenant_id;
         $normalized = strtolower($identifier);
