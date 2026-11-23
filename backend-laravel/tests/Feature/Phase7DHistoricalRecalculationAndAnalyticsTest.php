@@ -77,7 +77,6 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin']);
         $teacherRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
-        Role::firstOrCreate(['name' => 'KAMAD'], ['label' => 'Kepala Madrasah']);
         app(RolePermissionBootstrapper::class)->bootstrap();
 
         $this->adminA = User::create([
@@ -150,7 +149,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'grade_level_id' => $gradeLevel->id,
             'name' => 'Kelas 1A',
         ]);
-        $studentProfile->rombels()->attach($this->rombel->id, ['id' => (string)Str::uuid()]);
+        $studentProfile->rombels()->attach($this->rombel->id, ['id' => (string)Str::uuid(), 'tenant_id' => $this->tenantA->id]);
 
         $teacherProfile = TeacherProfile::create([
             'tenant_id' => $this->tenantA->id,
@@ -166,6 +165,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'academic_year_id' => $this->academicYear->id,
             'semester_id' => $this->semester->id,
             'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYears(5)->toDateString(),
             'status' => 'ACTIVE',
             'created_by' => $this->teacherA->id,
         ]);
