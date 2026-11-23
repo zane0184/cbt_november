@@ -79,10 +79,6 @@ class UserManagement extends Component
     {
         $this->authorizeUserManagement();
         $this->validate();
-        if ($this->selectedRole === 'GURU' && trim($this->nip) === '' && trim($this->nik) === '') {
-            $this->addError('nip', 'Guru wajib memiliki NIP atau NIK untuk identitas login.');
-            return;
-        }
         $tenantId = auth()->user()->tenant_id;
         DB::transaction(function () use ($tenantId): void {
             $user = User::create([
@@ -100,7 +96,9 @@ class UserManagement extends Component
                     'user_id' => $user->id, 'full_name' => trim($this->name),
                     'nip' => trim($this->nip) !== '' ? trim($this->nip) : null,
                     'nik' => trim($this->nik) !== '' ? trim($this->nik) : null,
-                    'employee_identifier' => trim($this->nip) !== '' ? trim($this->nip) : trim($this->nik),
+                    'employee_identifier' => trim($this->nip) !== ''
+                        ? trim($this->nip)
+                        : (trim($this->nik) !== '' ? trim($this->nik) : null),
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
                 StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
