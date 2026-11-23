@@ -5,6 +5,7 @@ namespace App\Livewire\Admin;
 use App\Models\AcademicYear;
 use App\Models\AssessmentTaxonomyOption;
 use App\Models\Assessment;
+use App\Models\Material;
 use App\Models\Exam;
 use App\Models\ExamParticipant;
 use App\Models\Question;
