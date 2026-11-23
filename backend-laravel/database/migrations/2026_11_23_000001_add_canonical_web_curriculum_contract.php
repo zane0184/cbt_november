@@ -611,6 +611,8 @@ return new class extends Migration
                 'effective_until' => fn () => $table->date('effective_until')->nullable(),
                 'is_current' => fn () => $table->boolean('is_current')->default(true),
                 'supersedes_id' => fn () => $table->uuid('supersedes_id')->nullable(),
+                'created_by' => fn () => $table->uuid('created_by')->nullable(),
+                'updated_by' => fn () => $table->uuid('updated_by')->nullable(),
                 'metadata' => fn () => $table->json('metadata')->nullable(),
             ];
 
