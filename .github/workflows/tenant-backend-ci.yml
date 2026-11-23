@@ -146,6 +146,12 @@ jobs:
       - name: Run focused Teacher result Livewire reauthorization regression tests
         run: php artisan test --display-warnings --filter='TeacherResultLivewireReauthorizationTest'
 
+      - name: Run focused account lifecycle and license route security tests
+        run: php artisan test --display-warnings tests/Feature/AdminUserAccountLifecycleTest.php tests/Feature/AccountLifecycleLicenseRouteTest.php tests/Feature/LicenseStatusAccessTest.php
+
+      - name: Run focused Web/API authentication and tenant security tests
+        run: php artisan test --display-warnings tests/Feature/WebAdminAuthTest.php tests/Feature/AuthTest.php tests/Feature/MultiTenantAuthTest.php
+
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
       
