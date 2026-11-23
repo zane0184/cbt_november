@@ -206,6 +206,8 @@ class ExamManagementHardeningTest extends TestCase
     /** @test */
     public function teacher_cannot_use_an_assignment_outside_their_exact_assignment_scope()
     {
+        app(\App\Contexts\TenantContext::class)->setTenantId($this->tenant->id);
+
         $foreignTeacher = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Guru Lain',
