@@ -58,7 +58,7 @@ class ExamListContractTest extends TestCase
         $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru']);
         $this->studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->siswa->id, 'full_name' => 'Siswa']);
         $this->rombel->students()->attach($this->studentProfile->id);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $subject->id,
