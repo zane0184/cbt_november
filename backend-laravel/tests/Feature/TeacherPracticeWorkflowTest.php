@@ -25,10 +25,12 @@ use App\Livewire\Admin\ExamManagement;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 class TeacherPracticeWorkflowTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenant;
     private $teacher;
@@ -40,6 +42,8 @@ class TeacherPracticeWorkflowTest extends TestCase
     private $rombel;
     private $learningOutcome;
     private $learningObjective;
+    private $assignment;
+    private array $canonicalContext = [];
 
     protected function setUp(): void
     {
@@ -79,15 +83,15 @@ class TeacherPracticeWorkflowTest extends TestCase
         $sp2 = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student2->id, 'full_name' => 'Siswa Rombel B']);
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'K-MERDEKA', 'is_active' => true]);
-        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase F', 'code' => 'F']);
+        $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase C', 'code' => 'C']);
         $this->academicYear = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
         $this->semester = Semester::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $this->academicYear->id, 'term' => 'GANJIL', 'is_active' => true]);
-        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas XI', 'code' => 'XI', 'level' => 11]);
+        $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 6', 'code' => '6', 'level' => 6]);
 
         $this->subject = Subject::create([
             'tenant_id' => $this->tenant->id,
-            'code' => 'FIQ-11',
-            'name' => 'Fiqih XI',
+            'code' => 'FIKIH',
+            'name' => 'Fiqih',
             'short_name' => 'FIQ',
             'status' => 'ACTIVE',
         ]);
@@ -96,11 +100,11 @@ class TeacherPracticeWorkflowTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $this->academicYear->id,
             'grade_level_id' => $gradeLevel->id,
-            'name' => 'Kelas XI-IPA 1',
+            'name' => 'Kelas 6-A',
             'status' => 'ACTIVE',
         ]);
         $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru Pengajar Fiqih']);
-        TeacherSubjectAssignment::create([
+        $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subject->id,
@@ -108,6 +112,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             'academic_year_id' => $this->academicYear->id,
             'semester_id' => $this->semester->id,
             'starts_at' => now()->subDay()->toDateString(),
+            'ends_at' => now()->addYears(5)->toDateString(),
             'status' => 'ACTIVE',
             'created_by' => $this->teacher->id,
         ]);
@@ -118,6 +123,8 @@ class TeacherPracticeWorkflowTest extends TestCase
             'rombel_id' => $this->rombel->id,
             'student_id' => $sp1->id,
         ]);
+
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($this->assignment, $this->teacher);
 
         $this->learningOutcome = LearningOutcome::create([
             'curriculum_id' => $curriculum->id,
@@ -144,13 +151,13 @@ class TeacherPracticeWorkflowTest extends TestCase
         $this->actingAs($this->teacher);
 
         // 1. Create MC Question with CP/TP mapping
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'FIQ-MC-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
         // Semester is not a QuestionBank component property; scope comes from teacher assignment.
-            ->set('selectedOutcomeId', $this->learningOutcome->id)
-            ->set('selectedObjectiveId', $this->learningObjective->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id])
             ->set('stem', 'Apakah rukun Islam yang pertama?')
             ->set('defaultPoints', 10)
             ->set('optionA', 'Mengucapkan Dua Kalimat Syahadat')
@@ -166,7 +173,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         ]);
 
         // 2. Create TRUE_FALSE Question
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'FIQ-TF-01')
             ->set('questionType', 'TRUE_FALSE')
             ->set('selectedSubjectId', $this->subject->id)
@@ -182,7 +189,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         ]);
 
         // 3. Create ESSAY Question with Rubric
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'FIQ-ESSAY-01')
             ->set('questionType', 'ESSAY')
             ->set('selectedSubjectId', $this->subject->id)
@@ -204,7 +211,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         $this->actingAs($this->teacher);
 
         // Create initial question
-        $component = Livewire::test(QuestionBank::class)
+        $component = $this->questionBankComponent()
             ->set('questionCode', 'FIQ-EDIT-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
@@ -219,7 +226,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         $this->assertNotNull($question);
 
         // Edit Question
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->call('openEditModal', $question->id)
             ->set('stem', 'Pertanyaan Yang Sudah Direvisi')
             ->set('optionA', 'Revisi 1')
@@ -232,7 +239,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         ]);
 
         // Delete Question
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->call('confirmDeleteQuestion', $question->id)
             ->call('deleteQuestion')
             ->assertHasNoErrors();
@@ -246,7 +253,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         $this->actingAs($this->teacher);
 
         // Create and publish a question in Bank Soal
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'FIQ-EXAM-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
@@ -258,7 +265,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->call('saveQuestion');
 
         $q = Question::where('question_code', 'FIQ-EXAM-01')->first();
-        Livewire::test(QuestionBank::class)->call('publishQuestion', $q->id);
+        $this->questionBankComponent()->call('publishQuestion', $q->id);
 
         $version = $q->currentVersion;
 
@@ -266,7 +273,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         $startAt = now()->addHour()->format('Y-m-d\TH:i');
         $endAt = now()->addDays(2)->format('Y-m-d\TH:i');
 
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Fiqih Rombel IPA 1')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -282,7 +289,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         $this->assertNotNull($exam);
 
         // Lock & Snapshot Exam
-        Livewire::test(ExamManagement::class)->call('lockExam', $exam->id);
+        $this->examManagementComponent()->call('lockExam', $exam->id);
 
         $exam->refresh();
         $this->assertEquals('PUBLISHED', $exam->status);
@@ -313,7 +320,7 @@ class TeacherPracticeWorkflowTest extends TestCase
         $this->actingAs($this->teacher);
 
         // Create question & Exam
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->set('questionCode', 'FIQ-FREEZE-01')
             ->set('questionType', 'MULTIPLE_CHOICE')
             ->set('selectedSubjectId', $this->subject->id)
@@ -325,11 +332,11 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->call('saveQuestion');
 
         $q = Question::where('question_code', 'FIQ-FREEZE-01')->first();
-        Livewire::test(QuestionBank::class)->call('publishQuestion', $q->id);
+        $this->questionBankComponent()->call('publishQuestion', $q->id);
 
         $version = $q->currentVersion;
 
-        Livewire::test(ExamManagement::class)
+        $this->examManagementComponent()
             ->set('title', 'Ujian Terkunci Freeze Test')
             ->set('selectedSubjectId', $this->subject->id)
             ->set('selectedSemesterId', $this->semester->id)
@@ -340,10 +347,10 @@ class TeacherPracticeWorkflowTest extends TestCase
             ->call('saveExam');
 
         $exam = Exam::where('title', 'Ujian Terkunci Freeze Test')->first();
-        Livewire::test(ExamManagement::class)->call('lockExam', $exam->id);
+        $this->examManagementComponent()->call('lockExam', $exam->id);
 
         // Edit Bank Soal AFTER Exam is Locked
-        Livewire::test(QuestionBank::class)
+        $this->questionBankComponent()
             ->call('openEditModal', $q->id)
             ->set('stem', 'Stem Baru Setelah Diedit Guru')
             ->call('saveQuestion');
@@ -354,4 +361,31 @@ class TeacherPracticeWorkflowTest extends TestCase
             'snapshot_stem' => 'Stem Asli Sebelum Diedit',
         ]);
     }
+    private function questionBankComponent()
+    {
+        return Livewire::test(QuestionBank::class)
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id]);
+    }
+
+    private function examManagementComponent()
+    {
+        return Livewire::test(ExamManagement::class)
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->set('selectedSubjectId', $this->subject->id)
+            ->set('selectedSemesterId', $this->semester->id)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('activityName', 'Latihan Fiqih')
+            ->set('assessmentPurpose', 'Asesmen pembelajaran Fiqih kelas 6')
+            ->set('assessmentOrigin', 'INTERNAL')
+            ->set('selectedAssessmentFunctionOptionId', $this->canonicalContext['taxonomy']['function']->id)
+            ->set('selectedAssessmentScopeOptionId', $this->canonicalContext['taxonomy']['scope']->id)
+            ->set('selectedInstrumentTypeOptionId', $this->canonicalContext['taxonomy']['instrument']->id)
+            ->set('selectedDeliveryModeOptionId', $this->canonicalContext['taxonomy']['delivery']->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id]);
+    }
+
 }
