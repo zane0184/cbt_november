@@ -10,6 +10,14 @@ use App\Livewire\Teacher\ResultList;
 use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
+use App\Models\ExamAttemptAnswer;
+use App\Models\ExamAttemptScore;
+use App\Models\ExamAttemptScoreCurrent;
+use App\Models\ExamQuestionScore;
+use App\Models\Question;
+use App\Models\QuestionVersion;
+use App\Services\ScoringService;
+use Illuminate\Support\Str;
 use App\Models\ExamParticipant;
 use App\Models\Permission;
 use App\Models\Role;
@@ -164,4 +172,77 @@ class TeacherResultAccessTest extends TestCase
             ->test(ResultList::class, ['exam' => $this->exam])
             ->assertOk();
     }
+
+    public function test_guru_can_grade_and_finalize_essay_through_result_detail_livewire(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'created_by' => $this->teacher->id,
+        ]);
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Jelaskan proses fotosintesis.',
+            'created_by' => $this->teacher->id,
+        ]);
+        $snapshot = $this->exam->snapshots()->create([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'snapshot_stem' => $version->stem,
+            'snapshot_options' => [],
+            'points' => 20,
+            'metadata' => ['question_type' => 'ESSAY'],
+        ]);
+        $this->attempt->update(['question_order' => [(string) $snapshot->id]]);
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->attempt->participant->user_id,
+            'answer_payload' => ['text' => 'Tumbuhan menggunakan cahaya matahari untuk mengubah air dan karbon dioksida menjadi glukosa dan oksigen.'],
+            'answer_state' => 'ANSWERED',
+        ]);
+
+        app(ScoringService::class)->scoreAttempt($this->attempt->fresh());
+        $questionScore = ExamQuestionScore::query()
+            ->where('attempt_id', $this->attempt->id)
+            ->where('snapshot_id', $snapshot->id)
+            ->firstOrFail();
+        $this->assertSame('MANUAL_REVIEW', $questionScore->scoring_status);
+
+        $component = Livewire::actingAs($this->teacher)
+            ->test(ResultDetail::class, ['exam' => $this->exam, 'attempt' => $this->attempt])
+            ->call('editScore', $questionScore->id)
+            ->assertSet('editingScoreId', $questionScore->id)
+            ->set('manualScore', 16)
+            ->set('feedbackText', 'Penjelasan sudah tepat.')
+            ->call('saveScore');
+
+        $questionScore->refresh();
+        $this->assertSame('GRADED', $questionScore->scoring_status);
+        $this->assertSame(16.0, (float) $questionScore->awarded_score);
+        $this->assertSame('Penjelasan sudah tepat.', $questionScore->feedback);
+
+        $component->call('finalize');
+
+        $pointer = ExamAttemptScoreCurrent::query()
+            ->where('attempt_id', $this->attempt->id)
+            ->firstOrFail();
+        $currentScore = ExamAttemptScore::query()
+            ->whereKey($pointer->current_score_id)
+            ->where('attempt_id', $this->attempt->id)
+            ->where('scoring_version', $pointer->scoring_version)
+            ->firstOrFail();
+
+        $this->assertSame('FINALIZED', $currentScore->grading_status);
+        $this->assertNotNull($currentScore->finalized_at);
+        $this->assertSame($this->teacher->id, $currentScore->finalized_by);
+    }
+
 }
