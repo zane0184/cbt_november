@@ -100,13 +100,15 @@ jobs:
               getenv("DB_PASSWORD"),
               [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
-            $row = $pdo->query("SELECT DATABASE() AS db, VERSION() AS version, @@default_storage_engine AS engine")->fetch(PDO::FETCH_ASSOC);
-            if ($row["db"] !== "cbt_ci_p089" || !str_starts_with($row["version"], "8.") || strtoupper($row["engine"]) !== "INNODB") {
-              fwrite(STDERR, "Disposable MySQL identity check failed.\n");
+            $db = $pdo->query("SELECT DATABASE() AS db, VERSION() AS version")->fetch(PDO::FETCH_ASSOC);
+            $engine = $pdo->query(
+              "SELECT ENGINE FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'tenants'"
+            )->fetchColumn();
+            if ($db["db"] !== "cbt_ci_p089" || !str_starts_with($db["version"], "8.") || strtoupper((string) $engine) !== "INNODB") {
+              fwrite(STDERR, "Disposable MySQL identity/tenant table engine check failed.\\n");
               exit(1);
             }
-            echo "Disposable DB verified: " . $row["db"] . " / MySQL " . $row["version"] . " / " . $row["engine"] . PHP_EOL;
-          '
+            echo "Disposable DB verified: " . $db["db"] . " / MySQL " . $db["version"] . " / tenants ENGINE=" . $engine . PHP_EOL;          '
 
       - name: Validate Composer lock and platform
         run: composer validate --no-check-publish
