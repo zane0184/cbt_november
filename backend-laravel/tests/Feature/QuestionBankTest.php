@@ -452,7 +452,7 @@ class QuestionBankTest extends TestCase
             ->set('optionB', 'B')
             ->set('correctOption', 'A')
             ->call('saveQuestion')
-            ->assertHasErrors(['selectedOutcomeId']);
+            ->assertHasErrors(['selectedCpIds']);
     }
 
     public function test_web_admin_tp_unmatched_cp_rejection()
@@ -473,7 +473,7 @@ class QuestionBankTest extends TestCase
             ->set('optionB', 'B')
             ->set('correctOption', 'A')
             ->call('saveQuestion')
-            ->assertHasErrors(['selectedObjectiveId']);
+            ->assertHasErrors(['selectedOutcomeIds']);
     }
 
     /** REST API Tests **/
