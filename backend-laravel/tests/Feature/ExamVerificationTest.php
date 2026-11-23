@@ -22,6 +22,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Tests\TestCase;
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
 
 class ExamVerificationTest extends TestCase
 {
