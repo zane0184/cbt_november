@@ -23,6 +23,8 @@ class MultiCurriculumVersion extends Model
         'title',
         'effective_year',
         'status',
+        'source_id', 'source_locator', 'effective_from', 'effective_until',
+        'verification_status', 'verified_at', 'source_checksum', 'metadata',
     ];
 
     public function curriculum(): BelongsTo
@@ -44,4 +46,17 @@ class MultiCurriculumVersion extends Model
     {
         return $this->hasMany(TenantCurriculumRegistration::class, 'multi_curriculum_version_id');
     }
+
+    protected $casts = [
+        'effective_from' => 'date',
+        'effective_until' => 'date',
+        'verified_at' => 'datetime',
+        'metadata' => 'array',
+    ];
+
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(CurriculumReferenceSource::class, 'source_id');
+    }
+
 }
