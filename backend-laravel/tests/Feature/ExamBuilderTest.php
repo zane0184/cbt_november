@@ -123,6 +123,7 @@ class ExamBuilderTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'MC',
             'stem' => 'S1',
+            'status' => 'PUBLISHED',
             'is_current' => true,
             'created_by' => $this->teacher->id
         ]);
@@ -137,6 +138,7 @@ class ExamBuilderTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'MC',
             'stem' => 'S2',
+            'status' => 'PUBLISHED',
             'is_current' => true,
             'created_by' => $this->teacher->id
         ]);
