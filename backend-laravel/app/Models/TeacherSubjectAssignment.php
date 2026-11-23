@@ -21,6 +21,8 @@ class TeacherSubjectAssignment extends Model
         'ends_at',
         'status',
         'multi_curriculum_version_id',
+        'curriculum_owner_id',
+        'tenant_curriculum_registration_id',
         'curriculum_context_snapshot',
         'created_by',
     ];
@@ -73,6 +75,11 @@ class TeacherSubjectAssignment extends Model
     public function curriculumVersion(): BelongsTo
     {
         return $this->belongsTo(MultiCurriculumVersion::class, 'multi_curriculum_version_id');
+    }
+
+    public function curriculumRegistration(): BelongsTo
+    {
+        return $this->belongsTo(TenantCurriculumRegistration::class, 'tenant_curriculum_registration_id');
     }
 
 }
