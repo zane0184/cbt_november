@@ -15,7 +15,7 @@ class ExamProctorAssignmentService
 
     public function assign(User $actor, Exam $exam, string $proctorUserId, CarbonInterface $startsAt, CarbonInterface $expiresAt, string $reason): ExamProctorAssignment
     {
-        throw new \\LogicException('Central exam eligibility is not yet canonically defined; proctor assignment is blocked.');
+        throw new \LogicException('Central exam eligibility is not yet canonically defined; proctor assignment is blocked.');
     }
 
     public function revoke(User $actor, Exam $exam, ExamProctorAssignment $assignment, string $reason): ExamProctorAssignment
