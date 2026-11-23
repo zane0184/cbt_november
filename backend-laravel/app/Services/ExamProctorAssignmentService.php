@@ -22,7 +22,7 @@ class ExamProctorAssignmentService
 
             $guru = User::query()->where('tenant_id', $tenantId)->whereKey($proctorUserId)
                 ->whereNull('deleted_at')->lockForUpdate()->first();
-            if (!$guru || !$guru->hasRole('GURU') || !$guru->teacherProfile()->exists()) {
+            if (!$guru || !$guru->hasExactRole('GURU') || !$guru->teacherProfile()->exists()) {
                 throw ValidationException::withMessages(['selectedProctorId' => 'Guru pengawas tidak ditemukan, tidak aktif, atau bukan anggota tenant ini.']);
             }
 
