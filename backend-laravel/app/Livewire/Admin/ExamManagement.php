@@ -14,6 +14,8 @@ use App\Models\Semester;
 use App\Models\Subject;
 use App\Models\User;
 use App\Services\ExamSnapshotService;
+use App\Services\TeacherPortal\AssessmentCurriculumMappingService;
+use App\Services\TeacherPortal\TeacherPortalDataService;
 use App\Services\AuditService;
 use App\Support\Security\TeacherAccess;
 use App\Support\Security\TeacherPortalAccess;
@@ -69,6 +71,19 @@ class ExamManagement extends Component
     public $title = '';
     public $instructions = 'Kerjakan soal dengan jujur dan teliti.';
     public $selectedSubjectId = '';
+    public $selectedAssignmentId = '';
+    public $activityName = '';
+    public $assessmentPurpose = '';
+    public $assessmentOrigin = 'INTERNAL';
+    public $externalProgramName = '';
+    public $selectedAssessmentFunctionOptionId = '';
+    public $selectedAssessmentScopeOptionId = '';
+    public $selectedInstrumentTypeOptionId = '';
+    public $selectedDeliveryModeOptionId = '';
+    public array $selectedCpIds = [];
+    public array $selectedOutcomeIds = [];
+    public $selectedMaterialId = '';
+    public $selectedMaterialTopicId = '';
     public $selectedSemesterId = '';
     public $selectedRombelId = '';
     public $confirmAllStudents = false;
@@ -83,49 +98,71 @@ class ExamManagement extends Component
     // Selected Question Version IDs for Exam
     public $selectedQuestionVersionIds = [];
 
-    public function openCreateModal()
+    public function openCreateModal(): void
     {
-        Gate::authorize('create', Exam::class);
-        $this->reset(['editingExamId', 'title', 'selectedSubjectId', 'selectedRombelId', 'confirmAllStudents', 'selectedQuestionVersionIds']);
-        $activeYear = AcademicYear::where('tenant_id', auth()->user()->tenant_id)->where('is_active', true)->first();
-        $activeSemester = $activeYear ? Semester::where('tenant_id', auth()->user()->tenant_id)->where('academic_year_id', $activeYear->id)->where('is_active', true)->first() : null;
-        $this->selectedSemesterId = $activeSemester?->id ?? '';
-        $this->instructions = 'Kerjakan soal dengan jujur dan teliti.';
+        $this->assertCanAccess();
+        $this->reset([
+            'editingExamId', 'title', 'instructions', 'selectedSubjectId',
+            'selectedAssignmentId', 'selectedSemesterId', 'selectedRombelId',
+            'activityName', 'assessmentPurpose', 'externalProgramName',
+            'selectedAssessmentFunctionOptionId', 'selectedAssessmentScopeOptionId',
+            'selectedInstrumentTypeOptionId', 'selectedDeliveryModeOptionId',
+            'selectedCpIds', 'selectedOutcomeIds', 'selectedMaterialId',
+            'selectedMaterialTopicId', 'selectedQuestionVersionIds',
+        ]);
+        $this->assessmentOrigin = 'INTERNAL';
         $this->durationMinutes = 60;
         $this->attemptLimit = 1;
-        $this->requireToken = true;
-        $this->shuffleQuestions = true;
-        $this->shuffleOptions = true;
-        $this->startAt = now()->format('Y-m-d\TH:i');
-        $this->endAt = now()->addDays(2)->format('Y-m-d\TH:i');
-        $this->resetValidation();
+        $this->startAt = now()->addDay()->startOfHour()->format('Y-m-d\TH:i');
+        $this->endAt = now()->addDay()->addHours(2)->startOfHour()->format('Y-m-d\TH:i');
         $this->showModal = true;
     }
 
-    public function openEditModal($examId)
+    public function openEditModal($examId): void
     {
-        $tenantId = auth()->user()->tenant_id;
-        $exam = Exam::with(['assessment', 'snapshots'])->where('tenant_id', $tenantId)->findOrFail($examId);
+        $this->assertCanAccess();
+        $exam = Exam::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->with([
+                'assessment.curriculumMappings',
+                'assessment.assessmentFunctionOption',
+                'assessment.assessmentScopeOption',
+                'assessment.instrumentTypeOption',
+                'assessment.deliveryModeOption',
+                'snapshots',
+            ])
+            ->findOrFail($examId);
         Gate::authorize('update', $exam);
+        abort_unless($exam->canBeEdited(), 403, 'Ujian yang telah diterbitkan tidak dapat diedit.');
+
+        $assessment = $exam->assessment;
+        abort_unless($assessment && $assessment->teacher_subject_assignment_id, 409, 'Asesmen lama belum terikat ke penugasan Guru. Buat asesmen baru dengan konteks kurikulum yang lengkap.');
+
         $this->editingExamId = $exam->id;
-        $this->selectedRombelId = '';
         $this->title = $exam->title;
-        $this->instructions = $exam->instructions ?? 'Kerjakan soal dengan jujur dan teliti.';
-        $this->selectedSubjectId = $exam->assessment ? $exam->assessment->subject_id : '';
-        $this->selectedSemesterId = $exam->assessment ? (string) $exam->assessment->semester_id : '';
-        $this->durationMinutes = intval($exam->duration_seconds / 60);
-        $this->attemptLimit = $exam->attempt_limit ?? 1;
-        $this->requireToken = true;
-        $this->shuffleQuestions = $exam->shuffle_questions ?? true;
-        $this->shuffleOptions = $exam->shuffle_options ?? true;
-        $this->startAt = $exam->start_at ? date('Y-m-d\TH:i', strtotime($exam->start_at)) : now()->format('Y-m-d\TH:i');
-        $this->endAt = $exam->end_at ? date('Y-m-d\TH:i', strtotime($exam->end_at)) : now()->addDays(2)->format('Y-m-d\TH:i');
-
-        // Load existing snapshot question versions
-        $this->selectedQuestionVersionIds = $exam->snapshots->pluck('source_question_version_id')->toArray();
-        $this->confirmAllStudents = false;
-
-        $this->resetValidation();
+        $this->instructions = $exam->instructions ?? '';
+        $this->selectedAssignmentId = $assessment->teacher_subject_assignment_id;
+        $this->selectedSubjectId = $assessment->subject_id;
+        $this->selectedSemesterId = $assessment->semester_id;
+        $this->selectedRombelId = $assessment->teacherSubjectAssignment?->rombel_id ?? '';
+        $this->activityName = $assessment->activity_name ?? '';
+        $this->assessmentPurpose = $assessment->description ?? '';
+        $this->assessmentOrigin = $assessment->assessment_origin ?? 'INTERNAL';
+        $this->externalProgramName = $assessment->external_program_name ?? '';
+        $this->selectedAssessmentFunctionOptionId = $assessment->assessment_function_option_id ?? '';
+        $this->selectedAssessmentScopeOptionId = $assessment->assessment_scope_option_id ?? '';
+        $this->selectedInstrumentTypeOptionId = $assessment->instrument_type_option_id ?? '';
+        $this->selectedDeliveryModeOptionId = $assessment->delivery_mode_option_id ?? '';
+        $this->selectedCpIds = $assessment->curriculumMappings->pluck('multi_learning_outcome_id')->unique()->values()->all();
+        $this->selectedOutcomeIds = $assessment->curriculumMappings->pluck('tenant_learning_outcome_id')->filter()->unique()->values()->all();
+        $firstMapping = $assessment->curriculumMappings->first();
+        $this->selectedMaterialId = $firstMapping?->material_id ?? '';
+        $this->selectedMaterialTopicId = $firstMapping?->material_topic_id ?? '';
+        $this->durationMinutes = (int) floor($exam->duration_seconds / 60);
+        $this->attemptLimit = $exam->attempt_limit;
+        $this->startAt = $exam->start_at?->format('Y-m-d\TH:i');
+        $this->endAt = $exam->end_at?->format('Y-m-d\TH:i');
+        $this->selectedQuestionVersionIds = $exam->snapshots->pluck('source_question_version_id')->all();
         $this->showModal = true;
     }
 
@@ -143,288 +180,288 @@ class ExamManagement extends Component
         return $this->saveExam();
     }
 
-    public function saveExam()
+    public function saveExam(): void
     {
+        $this->assertCanAccess();
+
         $this->validate([
-            'title' => 'required|string|max:255',
-            'selectedSubjectId' => 'required|exists:subjects,id',
-            'selectedSemesterId' => 'required|exists:semesters,id',
-            'selectedRombelId' => $this->editingExamId ? 'nullable|string' : 'required|string',
-            'durationMinutes' => 'required|integer|min:5|max:360',
-            'attemptLimit' => 'required|integer|min:1|max:10',
-            'startAt' => 'required|date',
-            'endAt' => 'required|date|after:startAt',
-        ], [
-            'selectedRombelId.required' => 'Pemilihan rombel target peserta wajib dilakukan.',
-            'selectedSubjectId.required' => 'Mata pelajaran wajib dipilih.',
+            'title' => ['required', 'string', 'max:255'],
+            'selectedAssignmentId' => ['required', 'uuid'],
+            'activityName' => ['required', 'string', 'max:255'],
+            'assessmentPurpose' => ['required', 'string', 'max:5000'],
+            'assessmentOrigin' => ['required', 'in:INTERNAL,EXTERNAL'],
+            'externalProgramName' => ['nullable', 'string', 'max:255', 'required_if:assessmentOrigin,EXTERNAL'],
+            'selectedAssessmentFunctionOptionId' => ['required', 'uuid'],
+            'selectedAssessmentScopeOptionId' => ['required', 'uuid'],
+            'selectedInstrumentTypeOptionId' => ['required', 'uuid'],
+            'selectedDeliveryModeOptionId' => ['required', 'uuid'],
+            'selectedCpIds' => ['required', 'array', 'min:1'],
+            'selectedCpIds.*' => ['required', 'uuid', 'distinct'],
+            'selectedOutcomeIds' => ['required', 'array', 'min:1'],
+            'selectedOutcomeIds.*' => ['required', 'uuid', 'distinct'],
+            'selectedMaterialId' => ['nullable', 'uuid'],
+            'selectedMaterialTopicId' => ['nullable', 'uuid'],
+            'instructions' => ['nullable', 'string', 'max:10000'],
+            'durationMinutes' => ['required', 'integer', 'min:1', 'max:600'],
+            'attemptLimit' => ['required', 'integer', 'min:1', 'max:10'],
+            'startAt' => ['required', 'date', 'after_or_equal:now'],
+            'endAt' => ['required', 'date', 'after:startAt'],
+            'selectedQuestionVersionIds' => ['required', 'array', 'min:1'],
+            'selectedQuestionVersionIds.*' => ['required', 'uuid', 'distinct'],
         ]);
 
         $user = auth()->user();
+        $profile = app(TeacherPortalAccess::class)->profile($user);
         $tenantId = (string) $user->tenant_id;
-        $activeYear = AcademicYear::where('tenant_id', $tenantId)->where('is_active', true)->first();
-        $semester = Semester::where('tenant_id', $tenantId)->where('id', $this->selectedSemesterId)->first();
-        $subject = Subject::query()->where('tenant_id', $tenantId)->whereKey($this->selectedSubjectId)->first();
-        if (!$subject) {
-            $this->addError('selectedSubjectId', 'Mata pelajaran tidak valid atau bukan milik madrasah ini.');
-            return;
-        }
-        if (!$activeYear || !$semester || (string) $semester->academic_year_id !== (string) $activeYear->id || !$semester->is_active) {
-            $this->addError('selectedSemesterId', 'Pilih semester aktif pada tahun akademik aktif madrasah.');
-            return;
-        }
 
-        if ($user->hasRole('GURU')) {
-            if ($this->editingExamId) {
-                $existingExam = Exam::with('assessment')->where('tenant_id', $tenantId)->findOrFail($this->editingExamId);
-                Gate::authorize('update', $existingExam);
-                if (!$existingExam->assessment
-                    || (string) $existingExam->assessment->subject_id !== (string) $this->selectedSubjectId
-                    || (string) $existingExam->assessment->semester_id !== (string) $semester->id
-                    || (string) $existingExam->assessment->academic_year_id !== (string) $activeYear->id) {
-                    abort(403, 'Guru tidak dapat memindahkan ujian yang sudah dibuat ke lingkup akademik lain.');
-                }
-            }
-            if (!TeacherAccess::canCreateAssessment($user, (string) $this->selectedSubjectId, (string) $activeYear->id, (string) $semester->id)) {
-                abort(403, 'Guru tidak memiliki penugasan aktif untuk mata pelajaran dan semester ini.');
-            }
-            if ($this->selectedRombelId === 'ALL') {
-                abort(403, 'Guru tidak dapat menugaskan ujian kepada seluruh siswa madrasah.');
-            }
-            if ($this->selectedRombelId !== null && $this->selectedRombelId !== '') {
-                $assignedRombels = TeacherAccess::assignedRombelIdsForScope($user, (string) $this->selectedSubjectId, (string) $activeYear->id, (string) $semester->id);
-                if (!in_array((string) $this->selectedRombelId, $assignedRombels, true)) {
-                    abort(403, 'Rombel tidak termasuk penugasan aktif Guru untuk mata pelajaran dan semester ini.');
-                }
-            }
-        }
-
-        // 6A: Participant assignment validation
-        if ($this->selectedRombelId === 'ALL') {
-            if (!$this->confirmAllStudents) {
-                $this->addError('confirmAllStudents', 'Anda wajib mengonfirmasi penugasan seluruh siswa madrasah secara eksplisit.');
-                return;
-            }
-        } elseif ($this->selectedRombelId !== null && $this->selectedRombelId !== '') {
-            $rombelExists = Rombel::where('tenant_id', $tenantId)
-                ->where('academic_year_id', $activeYear->id)
-                ->where('id', $this->selectedRombelId)
-                ->exists();
-            if (!$rombelExists) {
-                $this->addError('selectedRombelId', 'Rombel yang dipilih tidak valid atau tidak terdaftar pada tenant ini.');
-                return;
-            }
-        } elseif (!$this->editingExamId) {
-            $this->addError('selectedRombelId', 'Pemilihan rombel target peserta wajib dilakukan.');
-            return;
-        }
-
-        // 6B: Question selection validation
-        if (empty($this->selectedQuestionVersionIds)) {
-            $hasExistingSnapshots = false;
-            if ($this->editingExamId) {
-                $existingExam = Exam::where('tenant_id', $tenantId)->find($this->editingExamId);
-                if ($existingExam && $existingExam->snapshots()->count() > 0) {
-                    $hasExistingSnapshots = true;
-                }
-            }
-            if (!$hasExistingSnapshots) {
-                $this->addError('selectedQuestionVersionIds', 'Minimal satu soal harus dipilih secara eksplisit dari Bank Soal.');
-                return;
-            }
-        }
-
-        $selectedVersionIds = array_values(array_unique(array_map('strval', $this->selectedQuestionVersionIds)));
-        $validSelectedVersions = QuestionVersion::query()
+        $assignment = TeacherSubjectAssignment::query()
             ->where('tenant_id', $tenantId)
-            ->whereIn('id', $selectedVersionIds)
-            ->whereHas('question', fn ($query) => $query->where('tenant_id', $tenantId)->where('subject_id', $this->selectedSubjectId))
-            ->count();
-        if ($validSelectedVersions !== count($selectedVersionIds)) {
-            abort(403, 'Soal yang dipilih tidak seluruhnya berasal dari mata pelajaran dan tenant yang diizinkan.');
+            ->where('teacher_profile_id', $profile->id)
+            ->whereKey($this->selectedAssignmentId)
+            ->where('status', 'ACTIVE')
+            ->whereDate('starts_at', '<=', now()->toDateString())
+            ->whereDate('ends_at', '>=', now()->toDateString())
+            ->with(['subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumRegistration', 'curriculumVersion.source'])
+            ->firstOrFail();
+
+        if (!$assignment->curriculumRegistration
+            || $assignment->curriculumRegistration->status !== 'ACTIVE'
+            || empty($assignment->curriculum_context_snapshot['subject']['official_structure_id'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'selectedAssignmentId' => 'Penugasan belum memiliki registrasi dan konteks kurikulum resmi yang aktif.',
+            ]);
         }
 
-        // Exam authoring may only consume a published Question and its published
-        // current version. This Livewire guard improves the Guru workflow, while
-        // ExamSnapshotService must enforce the same invariant for every caller.
-        $publishedSelectedVersions = QuestionVersion::query()
+        $startAt = \Illuminate\Support\Carbon::parse($this->startAt);
+        $endAt = \Illuminate\Support\Carbon::parse($this->endAt);
+        if (($assignment->starts_at && $startAt->toDateString() < $assignment->starts_at->toDateString())
+            || ($assignment->ends_at && $endAt->toDateString() > $assignment->ends_at->toDateString())) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'startAt' => 'Jadwal ujian harus berada di dalam masa penugasan Guru.',
+            ]);
+        }
+
+        $taxonomyOwnerId = Tenant::SYSTEM_TENANT_ID;
+        $functionOption = AssessmentTaxonomyOption::query()
+            ->where('tenant_id', $taxonomyOwnerId)->whereKey($this->selectedAssessmentFunctionOptionId)
+            ->where('dimension', 'FUNCTION')->where('status', 'ACTIVE')->where('is_selectable', true)
+            ->where('is_official', true)->where('is_editable', false)->firstOrFail();
+        $scopeOption = AssessmentTaxonomyOption::query()
+            ->where('tenant_id', $taxonomyOwnerId)->whereKey($this->selectedAssessmentScopeOptionId)
+            ->where('dimension', 'SCOPE')->where('status', 'ACTIVE')->where('is_selectable', true)
+            ->where('is_official', true)->where('is_editable', false)->firstOrFail();
+        $instrumentOption = AssessmentTaxonomyOption::query()
+            ->where('tenant_id', $taxonomyOwnerId)->whereKey($this->selectedInstrumentTypeOptionId)
+            ->where('dimension', 'INSTRUMENT')->where('status', 'ACTIVE')->where('is_selectable', true)
+            ->where('is_official', true)->where('is_editable', false)->firstOrFail();
+        $deliveryOption = AssessmentTaxonomyOption::query()
+            ->where('tenant_id', $taxonomyOwnerId)->whereKey($this->selectedDeliveryModeOptionId)
+            ->where('dimension', 'DELIVERY_MODE')->where('status', 'ACTIVE')->where('is_selectable', true)
+            ->where('is_official', true)->where('is_editable', false)->firstOrFail();
+
+        if ($instrumentOption->code !== 'TES_TERTULIS' || $deliveryOption->code !== 'CBT') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'selectedDeliveryModeOptionId' => 'Pembuat ujian CBT hanya menerima instrumen tes tertulis dengan mode CBT. Praktik, proyek, portofolio, dan observasi dicatat sebagai asesmen non-CBT.',
+            ]);
+        }
+
+        $selectedVersionIds = array_values(array_unique($this->selectedQuestionVersionIds));
+        $validQuestionCount = QuestionVersion::query()
             ->where('tenant_id', $tenantId)
             ->whereIn('id', $selectedVersionIds)
             ->where('status', 'PUBLISHED')
             ->whereHas('question', fn ($query) => $query
                 ->where('tenant_id', $tenantId)
-                ->where('subject_id', $this->selectedSubjectId)
+                ->where('subject_id', $assignment->subject_id)
                 ->where('status', 'PUBLISHED'))
+            ->whereHas('curriculumMappings', fn ($query) => $query
+                ->where('teacher_subject_assignment_id', $assignment->id)
+                ->whereIn('multi_learning_outcome_id', $this->selectedCpIds))
+            ->whereHas('tenantOutcomeMappings', fn ($query) => $query
+                ->where('teacher_subject_assignment_id', $assignment->id)
+                ->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds))
             ->count();
-        if ($publishedSelectedVersions !== count($selectedVersionIds)) {
-            $this->addError('selectedQuestionVersionIds', 'Hanya soal yang sudah dipublikasikan dan memiliki versi aktif terpublikasi yang dapat dimasukkan ke ujian.');
-            return;
+
+        if ($validQuestionCount !== count($selectedVersionIds)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'selectedQuestionVersionIds' => 'Semua soal harus sudah terbit dan memiliki pemetaan CP serta TP/ATP yang sesuai dengan asesmen dan penugasan ini.',
+            ]);
         }
 
-        $editingExamId = $this->editingExamId;
-        DB::transaction(function () use ($tenantId, $activeYear, $semester, $user, $editingExamId) {
-            $oldExamValues = null;
-            $exam = null;
+        $exam = null;
+        DB::transaction(function () use (
+            $user, $tenantId, $assignment, $taxonomyOwnerId, $functionOption, $scopeOption,
+            $instrumentOption, $deliveryOption, $selectedVersionIds, $startAt, $endAt, &$exam
+        ): void {
+            $lockedAssignment = TeacherSubjectAssignment::query()
+                ->where('tenant_id', $tenantId)
+                ->where('teacher_profile_id', $assignment->teacher_profile_id)
+                ->whereKey($assignment->id)
+                ->where('status', 'ACTIVE')
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            if ($editingExamId) {
-                $exam = Exam::with('assessment')
+            $assessmentAttributes = [
+                'tenant_id' => $tenantId,
+                'teacher_subject_assignment_id' => $lockedAssignment->id,
+                'subject_id' => $lockedAssignment->subject_id,
+                'academic_year_id' => $lockedAssignment->academic_year_id,
+                'semester_id' => $lockedAssignment->semester_id,
+                'assessment_type' => $functionOption->code,
+                'title' => trim($this->title),
+                'activity_name' => trim($this->activityName),
+                'description' => trim($this->assessmentPurpose),
+                'weight' => 1.0,
+                'status' => 'ACTIVE',
+                'created_by' => $user->id,
+                'assessment_function_option_id' => $functionOption->id,
+                'assessment_scope_option_id' => $scopeOption->id,
+                'instrument_type_option_id' => $instrumentOption->id,
+                'delivery_mode_option_id' => $deliveryOption->id,
+                'assessment_taxonomy_owner_id' => $taxonomyOwnerId,
+                'assessment_origin' => $this->assessmentOrigin,
+                'external_program_name' => $this->assessmentOrigin === 'EXTERNAL' ? trim($this->externalProgramName) : null,
+                'tenant_curriculum_registration_id' => $lockedAssignment->tenant_curriculum_registration_id,
+                'curriculum_version_id' => $lockedAssignment->multi_curriculum_version_id,
+                'curriculum_owner_id' => $lockedAssignment->curriculum_owner_id,
+                'curriculum_context_snapshot' => [
+                    ...($lockedAssignment->curriculum_context_snapshot ?? []),
+                    'assessment' => [
+                        'activity_name' => trim($this->activityName),
+                        'purpose' => trim($this->assessmentPurpose),
+                        'origin' => $this->assessmentOrigin,
+                        'external_program_name' => $this->assessmentOrigin === 'EXTERNAL' ? trim($this->externalProgramName) : null,
+                        'function_option_id' => $functionOption->id,
+                        'scope_option_id' => $scopeOption->id,
+                        'instrument_option_id' => $instrumentOption->id,
+                        'delivery_option_id' => $deliveryOption->id,
+                    ],
+                ],
+            ];
+
+            if ($this->editingExamId) {
+                $exam = Exam::query()
                     ->where('tenant_id', $tenantId)
-                    ->whereKey($editingExamId)
+                    ->whereKey($this->editingExamId)
+                    ->with('assessment')
                     ->lockForUpdate()
                     ->firstOrFail();
                 Gate::authorize('update', $exam);
-                if (!$exam->canBeEdited()) {
-                    abort(403, 'Ujian sudah diterbitkan dan tidak dapat diubah.');
-                }
-                $oldExamValues = $exam->only([
-                    'assessment_id', 'title', 'start_at', 'end_at',
-                    'duration_seconds', 'attempt_limit', 'status', 'require_token',
-                ]);
+                abort_unless($exam->canBeEdited(), 403, 'Ujian yang telah diterbitkan tidak dapat diubah.');
+                abort_unless($exam->assessment?->teacher_subject_assignment_id === $lockedAssignment->id, 409, 'Penugasan ujian tidak dapat diganti setelah dibuat.');
+
+                $assessment = $exam->assessment;
+                $assessment->update($assessmentAttributes);
                 $exam->update([
-                    'title' => $this->title,
-                    'instructions' => $this->instructions,
+                    'title' => trim($this->title),
+                    'instructions' => trim($this->instructions),
+                    'start_at' => $startAt,
+                    'end_at' => $endAt,
                     'duration_seconds' => $this->durationMinutes * 60,
-                    'start_at' => $this->startAt,
-                    'end_at' => $this->endAt,
                     'attempt_limit' => $this->attemptLimit,
                     'shuffle_questions' => $this->shuffleQuestions,
                     'shuffle_options' => $this->shuffleOptions,
-                    'require_token' => true,
                 ]);
-
-                if ($exam->assessment) {
-                    $exam->assessment->update([
-                        'title' => $this->title,
-                        'subject_id' => $this->selectedSubjectId,
-                        'academic_year_id' => $activeYear->id,
-                        'semester_id' => $semester->id,
-                    ]);
-                }
             } else {
                 Gate::authorize('create', Assessment::class);
-                $assessment = Assessment::create([
-                    'tenant_id' => $tenantId,
-                    'title' => $this->title,
-                    'subject_id' => $this->selectedSubjectId,
-                    'academic_year_id' => $activeYear->id,
-                    'semester_id' => $semester->id,
-                    'assessment_type' => 'SUMMATIVE',
-                    'status' => 'ACTIVE',
-                    'weight' => 1.0,
-                    'created_by' => auth()->id(),
-                ]);
-
-                $exam = Exam::create([
+                Gate::authorize('create', Exam::class);
+                $assessment = Assessment::query()->create($assessmentAttributes);
+                $exam = Exam::query()->create([
                     'tenant_id' => $tenantId,
                     'assessment_id' => $assessment->id,
-                    'title' => $this->title,
-                    'instructions' => $this->instructions,
-                    'status' => 'DRAFT',
+                    'title' => trim($this->title),
+                    'instructions' => trim($this->instructions),
+                    'start_at' => $startAt,
+                    'end_at' => $endAt,
                     'duration_seconds' => $this->durationMinutes * 60,
-                    'start_at' => $this->startAt,
-                    'end_at' => $this->endAt,
                     'attempt_limit' => $this->attemptLimit,
+                    'require_token' => true,
                     'shuffle_questions' => $this->shuffleQuestions,
                     'shuffle_options' => $this->shuffleOptions,
-                    'require_token' => true,
+                    'status' => 'DRAFT',
                     'token' => null,
-                    'created_by' => auth()->id(),
+                    'published_at' => null,
+                    'locked_at' => null,
+                    'created_by' => $user->id,
                 ]);
-                $this->editingExamId = $exam->id;
             }
 
-            // Sync Snapshots if questions were selected
-            if (!empty($this->selectedQuestionVersionIds)) {
-                $lockedExam = Exam::query()
-                    ->where('tenant_id', $tenantId)
-                    ->whereKey($exam->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
+            app(AssessmentCurriculumMappingService::class)->sync(
+                $assessment,
+                $lockedAssignment,
+                $this->selectedCpIds,
+                $this->selectedOutcomeIds,
+                $this->selectedMaterialId ?: null,
+                $this->selectedMaterialTopicId ?: null
+            );
 
-                // Re-check teacher assignment/permission against the locked exam
-                // so a concurrent publish or assignment change cannot race snapshot sync.
-                Gate::authorize('manageQuestions', $lockedExam);
+            app(ExamSnapshotService::class)->createSnapshots($exam, $selectedVersionIds, false);
 
-                $snapshotService = app(ExamSnapshotService::class);
-                $snapshotService->createSnapshots($lockedExam, $this->selectedQuestionVersionIds, false);
-            }
+            $studentUserIds = DB::table('rombel_student')
+                ->join('student_profiles', function ($join) use ($tenantId): void {
+                    $join->on('rombel_student.student_id', '=', 'student_profiles.id')
+                        ->where('student_profiles.tenant_id', '=', $tenantId)
+                        ->whereNull('student_profiles.deleted_at');
+                })
+                ->join('users', function ($join) use ($tenantId): void {
+                    $join->on('student_profiles.user_id', '=', 'users.id')
+                        ->where('users.tenant_id', '=', $tenantId);
+                })
+                ->where('rombel_student.tenant_id', $tenantId)
+                ->where('rombel_student.rombel_id', $lockedAssignment->rombel_id)
+                ->whereExists(function ($query) use ($tenantId): void {
+                    $query->selectRaw('1')
+                        ->from('role_user')
+                        ->join('roles', 'role_user.role_id', '=', 'roles.id')
+                        ->whereColumn('role_user.user_id', 'users.id')
+                        ->where('role_user.tenant_id', $tenantId)
+                        ->where('roles.name', 'SISWA');
+                })
+                ->whereNotExists(function ($query) use ($tenantId): void {
+                    $query->selectRaw('1')
+                        ->from('role_user')
+                        ->join('roles', 'role_user.role_id', '=', 'roles.id')
+                        ->whereColumn('role_user.user_id', 'users.id')
+                        ->where('role_user.tenant_id', $tenantId)
+                        ->where('roles.name', '!=', 'SISWA');
+                })
+                ->distinct()
+                ->pluck('users.id');
 
-            // Assign Participants (Target Rombel or All Students)
-            $targetUserIds = [];
-            if ($this->selectedRombelId === 'ALL') {
-                if ($user->hasRole('GURU')) abort(403, 'Guru tidak dapat menugaskan ujian kepada seluruh siswa madrasah.');
-                $targetUserIds = DB::table('users')
-                    ->join('role_user', 'role_user.user_id', '=', 'users.id')
-                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
-                    ->where('users.tenant_id', $tenantId)
-                    ->whereNull('users.deleted_at')
-                    ->groupBy('users.id')
-                    ->havingRaw('COUNT(DISTINCT roles.id) = 1')
-                    ->havingRaw('MAX(roles.name) = ?', ['SISWA'])
-                    ->pluck('users.id')
-                    ->all();
-            } elseif ($this->selectedRombelId) {
-                // Roster admission is based on the official tenant-local room membership,
-                // an active persisted student profile/user, and exactly one persisted SISWA role.
-                // A user with SISWA plus any other role must never become an exam participant.
-                $targetUserIds = DB::table('rombel_student')
-                    ->join('student_profiles', function ($join) use ($tenantId): void {
-                        $join->on('student_profiles.id', '=', 'rombel_student.student_id')
-                            ->where('student_profiles.tenant_id', '=', $tenantId)
-                            ->whereNull('student_profiles.deleted_at');
-                    })
-                    ->join('users', function ($join) use ($tenantId): void {
-                        $join->on('users.id', '=', 'student_profiles.user_id')
-                            ->where('users.tenant_id', '=', $tenantId)
-                            ->whereNull('users.deleted_at');
-                    })
-                    ->join('role_user', 'role_user.user_id', '=', 'users.id')
-                    ->join('roles', 'roles.id', '=', 'role_user.role_id')
-                    ->where('rombel_student.tenant_id', $tenantId)
-                    ->where('rombel_student.rombel_id', $this->selectedRombelId)
-                    ->groupBy('users.id')
-                    ->havingRaw('COUNT(DISTINCT roles.id) = 1')
-                    ->havingRaw('MAX(roles.name) = ?', ['SISWA'])
-                    ->pluck('users.id')
-                    ->all();
-            }
-
-            foreach ($targetUserIds as $uid) {
-                ExamParticipant::firstOrCreate([
-                    'exam_id' => $exam->id,
-                    'user_id' => $uid,
-                ], [
+            foreach ($studentUserIds as $studentUserId) {
+                ExamParticipant::query()->firstOrCreate([
                     'tenant_id' => $tenantId,
-                    'status' => 'ASSIGNED',
+                    'exam_id' => $exam->id,
+                    'user_id' => $studentUserId,
+                ], [
+                    'status' => 'ELIGIBLE',
+                    'assigned_at' => now(),
+                    'assigned_by' => $user->id,
                 ]);
             }
 
-            // Keep the audit record in the same transaction as the exam,
-            // snapshot, and participant changes.
-            $exam->refresh();
             app(AuditService::class)->log(
-                $editingExamId ? 'UPDATE_EXAM' : 'CREATE_EXAM',
-                Exam::class,
-                (string) $exam->id,
-                $oldExamValues,
+                $this->editingExamId ? 'EXAM_UPDATED' : 'EXAM_CREATED',
+                'Exam',
+                $exam->id,
+                null,
                 [
-                    'assessment_id' => $exam->assessment_id,
-                    'title' => $exam->title,
-                    'start_at' => $exam->getAttribute('start_at'),
-                    'end_at' => $exam->getAttribute('end_at'),
-                    'duration_seconds' => $exam->duration_seconds,
-                    'attempt_limit' => $exam->attempt_limit,
-                    'status' => $exam->status,
-                    'require_token' => $exam->require_token,
-                    'snapshot_count' => $exam->snapshots()->count(),
-                    'participant_count' => $exam->participants()->count(),
-                    'target_rombel_id' => $this->selectedRombelId === 'ALL' ? null : ($this->selectedRombelId ?: null),
-                    'target_all_students' => $this->selectedRombelId === 'ALL',
+                    'assessment_id' => $assessment->id,
+                    'teacher_subject_assignment_id' => $lockedAssignment->id,
+                    'subject_id' => $lockedAssignment->subject_id,
+                    'rombel_id' => $lockedAssignment->rombel_id,
+                    'question_version_ids' => $selectedVersionIds,
+                    'participant_count' => $studentUserIds->count(),
+                    'assessment_function' => $functionOption->code,
+                    'assessment_scope' => $scopeOption->code,
+                    'instrument_type' => $instrumentOption->code,
+                    'delivery_mode' => $deliveryOption->code,
                 ]
             );
-        });
+        }, 3);
 
         $this->showModal = false;
-        session()->flash('message', "Ujian {$this->title} berhasil disimpan.");
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Asesmen dan ujian berhasil disimpan sebagai draft. Token dibuat otomatis setelah Guru menerbitkan ujian.']);
     }
 
     public function generateToken($examId)
@@ -525,64 +562,110 @@ class ExamManagement extends Component
     public function render()
     {
         $user = auth()->user();
+        $this->assertCanAccess();
         $tenantId = (string) $user->tenant_id;
-        $activeYear = AcademicYear::where('tenant_id', $tenantId)->where('is_active', true)->first();
-        $activeSemester = $activeYear ? Semester::where('tenant_id', $tenantId)->where('academic_year_id', $activeYear->id)->where('is_active', true)->first() : null;
-        $examsQuery = Exam::with(['assessment.subject', 'participants', 'attempts', 'snapshots']);
-        if ($user->hasRole('GURU')) {
-            TeacherAccess::constrainExamQuery($examsQuery, $user);
-        }
-        $exams = $examsQuery
-            ->when($this->statusFilter, fn($q) => $q->where('status', $this->statusFilter))
-            ->when($this->search, fn($q) => $q->where('title', 'like', '%' . $this->search . '%'))
-            ->latest()
-            ->paginate(12);
 
-        $subjects = Subject::query()->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('id', TeacherAccess::assignedSubjectIds($user)))->get();
-        $rombelsQuery = Rombel::with('gradeLevel')
-            ->where('tenant_id', $tenantId)
-            ->when(
-                $activeYear,
-                fn ($query) => $query->where('academic_year_id', $activeYear->id),
-                fn ($query) => $query->whereRaw('1 = 0')
-            );
-        if ($user->hasRole('GURU') && $activeYear && $activeSemester) {
-            $assignedRombelIds = $this->selectedSubjectId
-                ? TeacherAccess::assignedRombelIdsForScope($user, (string) $this->selectedSubjectId, (string) $activeYear->id, (string) $activeSemester->id)
-                : [];
-            $rombelsQuery->whereIn('id', $assignedRombelIds);
+        $assignmentRows = app(TeacherPortalDataService::class)->assignmentOptions($user);
+        if ($this->selectedAssignmentId === '' && $this->showModal && $assignmentRows !== []) {
+            $preferredRow = collect($assignmentRows)->first(
+                fn (array $row) => (string) $row['assignment']->subject_id === (string) $this->selectedSubjectId
+            ) ?? $assignmentRows[0];
+            $this->selectedAssignmentId = (string) $preferredRow['assignment']->id;
+            $this->selectedSubjectId = (string) $preferredRow['assignment']->subject_id;
+            $this->selectedSemesterId = (string) $preferredRow['assignment']->semester_id;
+            $this->selectedRombelId = (string) $preferredRow['assignment']->rombel_id;
         }
-        $rombels = $rombelsQuery->get();
 
-        // Exam selection must not offer drafts, archived questions, or a draft
-        // current version. Backend snapshot validation remains the authoritative
-        // boundary and must repeat this invariant for non-Livewire callers.
-        $availableQuestionsQuery = Question::with('currentVersion')
+        $selectedAssignmentRow = collect($assignmentRows)->first(
+            fn (array $row) => (string) $row['assignment']->id === (string) $this->selectedAssignmentId
+        );
+        $selectedAssignment = $selectedAssignmentRow['assignment'] ?? null;
+        $curriculumContext = $selectedAssignmentRow['curriculum_context'] ?? [];
+
+        $taxonomyOptions = [
+            'function' => AssessmentTaxonomyOption::query()->where('tenant_id', Tenant::SYSTEM_TENANT_ID)->where('dimension', 'FUNCTION')->where('status', 'ACTIVE')->where('is_selectable', true)->orderBy('sort_order')->get(),
+            'scope' => AssessmentTaxonomyOption::query()->where('tenant_id', Tenant::SYSTEM_TENANT_ID)->where('dimension', 'SCOPE')->where('status', 'ACTIVE')->where('is_selectable', true)->orderBy('sort_order')->get(),
+            'instrument' => AssessmentTaxonomyOption::query()->where('tenant_id', Tenant::SYSTEM_TENANT_ID)->where('dimension', 'INSTRUMENT')->where('status', 'ACTIVE')->where('is_selectable', true)->orderBy('sort_order')->get(),
+            'delivery' => AssessmentTaxonomyOption::query()->where('tenant_id', Tenant::SYSTEM_TENANT_ID)->where('dimension', 'DELIVERY_MODE')->where('status', 'ACTIVE')->where('is_selectable', true)->orderBy('sort_order')->get(),
+        ];
+
+        if ($this->showModal) {
+            $this->selectedAssessmentFunctionOptionId = $this->selectedAssessmentFunctionOptionId
+                ?: (string) ($taxonomyOptions['function']->firstWhere('code', 'SUMATIF')?->id ?? $taxonomyOptions['function']->first()?->id ?? '');
+            $this->selectedAssessmentScopeOptionId = $this->selectedAssessmentScopeOptionId
+                ?: (string) ($taxonomyOptions['scope']->firstWhere('code', 'LINGKUP_MATERI')?->id ?? $taxonomyOptions['scope']->first()?->id ?? '');
+            $this->selectedInstrumentTypeOptionId = $this->selectedInstrumentTypeOptionId
+                ?: (string) ($taxonomyOptions['instrument']->firstWhere('code', 'TES_TERTULIS')?->id ?? $taxonomyOptions['instrument']->first()?->id ?? '');
+            $this->selectedDeliveryModeOptionId = $this->selectedDeliveryModeOptionId
+                ?: (string) ($taxonomyOptions['delivery']->firstWhere('code', 'CBT')?->id ?? $taxonomyOptions['delivery']->first()?->id ?? '');
+        }
+
+        $cpOptions = collect($curriculumContext['cp_options'] ?? [])
+            ->filter(fn (array $cp) => ($cp['selectable'] ?? false) === true)
+            ->values();
+        $outcomes = collect($curriculumContext['teacher_outcomes'] ?? [])
+            ->filter(fn (array $outcome) => ($outcome['status'] ?? null) === 'PUBLISHED'
+                && ($outcome['is_current'] ?? false) === true
+                && in_array($outcome['outcome_type'] ?? null, ['TP', 'ATP'], true))
+            ->values();
+
+        $materials = $selectedAssignment
+            ? Material::query()->where('tenant_id', $tenantId)
+                ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                ->where('status', 'PUBLISHED')->orderBy('material_code')->get()
+            : collect();
+
+        $topics = $this->selectedMaterialId !== ''
+            ? MaterialTopic::query()->where('tenant_id', $tenantId)
+                ->where('material_id', $this->selectedMaterialId)
+                ->where('status', 'PUBLISHED')->orderBy('code')->get()
+            : collect();
+
+        $query = Exam::query()
+            ->with([
+                'assessment.subject',
+                'assessment.assessmentFunctionOption',
+                'assessment.assessmentScopeOption',
+                'assessment.instrumentTypeOption',
+                'assessment.deliveryModeOption',
+                'participants',
+                'attempts',
+                'snapshots',
+            ])
             ->where('tenant_id', $tenantId)
-            ->where('status', 'PUBLISHED')
-            ->whereHas('currentVersion', fn ($query) => $query
+            ->latest();
+        TeacherAccess::constrainExamQuery($query);
+        $exams = $query->paginate(10);
+
+        $availableQuestions = $selectedAssignment
+            ? Question::query()
                 ->where('tenant_id', $tenantId)
-                ->where('status', 'PUBLISHED'))
-            ->when($user->hasRole('GURU'), fn ($q) => $q->whereIn('subject_id', TeacherAccess::assignedSubjectIds($user)));
-
-        if ($this->selectedSubjectId) {
-            $availableQuestions = $availableQuestionsQuery
-                ->where('subject_id', $this->selectedSubjectId)
-                ->latest()
-                ->get();
-        } else {
-            $availableQuestions = $availableQuestionsQuery
-                ->latest()
-                ->take(30)
-                ->get();
-        }
+                ->where('subject_id', $selectedAssignment->subject_id)
+                ->where('status', 'PUBLISHED')
+                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
+                    ->where('status', 'PUBLISHED')
+                    ->whereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery
+                        ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                        ->when($this->selectedCpIds !== [], fn ($q) => $q->whereIn('multi_learning_outcome_id', $this->selectedCpIds)))
+                    ->whereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery
+                        ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                        ->when($this->selectedOutcomeIds !== [], fn ($q) => $q->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds))))
+                ->with(['currentVersion.options', 'currentVersion.curriculumMappings.learningOutcome', 'currentVersion.tenantOutcomeMappings.learningOutcome'])
+                ->orderBy('question_code')
+                ->get()
+            : collect();
 
         return view('livewire.admin.exam-management', [
             'exams' => $exams,
-            'subjects' => $subjects,
-            'rombels' => $rombels,
+            'assignmentRows' => $assignmentRows,
+            'selectedAssignment' => $selectedAssignment,
+            'curriculumContext' => $curriculumContext,
+            'taxonomyOptions' => $taxonomyOptions,
+            'cpOptions' => $cpOptions,
+            'outcomes' => $outcomes,
+            'materials' => $materials,
+            'topics' => $topics,
             'availableQuestions' => $availableQuestions,
-            'activeSemester' => $activeSemester,
         ])->layout('layouts.teacher');
     }
 }
