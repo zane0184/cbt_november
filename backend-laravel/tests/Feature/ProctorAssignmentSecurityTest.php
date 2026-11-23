@@ -152,6 +152,7 @@ class ProctorAssignmentSecurityTest extends TestCase
             'status' => 'ACTIVE',
             'assignment_reason' => 'Legacy assignment retained for audit',
         ]);
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         Livewire::test(ProctorAssignmentManagement::class)
             ->set('revokeReason', 'Penugasan selesai lebih awal')
             ->call('revoke', $assignment->id)
