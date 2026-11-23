@@ -1,71 +1,68 @@
-# PEMUTAKHIRAN WAJIB AGENT PENGGANTI — 23 NOVEMBER 2026
+# TITIK MASUK WAJIB — CBT MADRASAH (OWNER-DIRECTED EXECUTION)
 
-**BACA TERLEBIH DAHULU:** [HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md](HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md). Dokumen tersebut adalah handover operasional terbaru dan mengesampingkan branch/SHA/angka PHPUnit lama yang masih tercantum di bawah.
+**Berlaku mulai 24 November 2026. Dokumen ini menggantikan arahan agent/ownership lama.**
 
-- Repository: zane0184/cbt_november.
-- Branch aktif: work/solo-web-cbt-completion-20261123-execution.
-- Source SHA full PHPUnit terakhir: b31d7a2713383ddcc1282317cdb295d6992d5dce.
-- CI terakhir #45168433247: **92 failed, 426 passed, 1,723 assertions** pada disposable MySQL 8.0.46; focused login smoke 27 passed/90 assertions.
-- Baseline #45156925960: 160 failed, 357 passed, 1,475 assertions. Kegagalan sudah turun 68, tetapi full suite belum PASS.
-- Baca triage dan matriks ADM terbaru; jangan mulai coding sebelum verifikasi HEAD/CI exact SHA.
+## 1. Otoritas dan cara kerja
+- Owner proyek adalah satu-satunya pengambil keputusan produk. ChatGPT bertindak sebagai satu-satunya koordinator sekaligus eksekutor Backend, Web Admin, Web Guru, dan Web Siswa.
+- Tidak ada agent implementasi lain yang sedang bekerja. Jangan membagi tugas ke agent lain atau menunggu hasil agent lain.
+- GitHub repository zane0184/cbt_november adalah satu-satunya sumber kebenaran pekerjaan proyek. Jangan memakai ZIP baseline, Project Files, Library/Pustaka, atau rangkuman percakapan sebagai sumber source/keputusan terbaru.
+- Setiap sesi wajib memverifikasi branch/HEAD, PR, Issues dan komentar owner, commit, Actions exact SHA, source aktual, serta catatan/checkpoint terbaru di GitHub.
+- Lanjutkan pekerjaan yang benar-benar tersisa. Jangan mengulang patch/fitur yang sudah ada. Jika laporan berbeda dengan source, source aktual dan hasil test exact SHA yang menjadi dasar.
+- Untuk perubahan source: backup byte-exact terlebih dahulu, verifikasi backup, implementasikan perubahan sekecil mungkin, jalankan test yang relevan, kemudian buat laporan dan checkpoint di GitHub.
+- Pengguna tidak memerlukan laporan rutin di chat. Tetap buat laporan/checkpoint dan prompt handover agent berikutnya di GitHub.
+- Tanyakan owner terlebih dahulu hanya untuk keputusan produk/keamanan/data yang belum ditetapkan atau perubahan berisiko yang membutuhkan persetujuan. Jangan menanyakan ulang keputusan yang sudah eksplisit.
 
----
+## 2. Keputusan owner yang wajib dipatuhi
+- Fokus sampai Juni 2027: Backend Laravel + Web Admin Madrasah + Web Guru + Web Siswa.
+- Android native dan Web Super Admin ditunda sampai Juni 2027. Jangan mengimplementasikan atau menguji fitur tersebut sekarang.
+- **Tidak ada multi-tenant akademik.** Satu paket ZIP generik dipakai semua madrasah, tetapi setiap madrasah memiliki instalasi dan database sendiri. Data akademik antar-madrasah tidak saling terhubung atau terbagi.
+- Integrasi pusat masa depan hanya untuk lisensi, entitlement dan pembayaran; Web Super Admin ditunda sampai Juni 2027.
+- Role lokal resmi hanya ADMIN_MADRASAH, GURU, SISWA. Portal/role KAMAD dan OPERATOR dibekukan/dihapus; seluruh pekerjaan Operator berada pada Admin Madrasah.
+- Tidak ada portal/role PROKTOR permanen. Proktor hanya menu/penugasan operasional sementara di portal Guru. Penugasan tidak otomatis memberi akses monitoring, room/session, roster, Attempt, jawaban, atau operasi CBT.
+- Guru mengelola bank soal, asesmen, ujian, jadwal, token dan penerbitan sesuai assignment tanpa persetujuan Admin.
+- Admin mengelola administrasi, master data, akun, akademik, sinkronisasi, dukungan teknis, audit dan pengaturan; tidak mengelola authoring soal/ujian, token, peserta ujian, Attempt, monitoring, jawaban atau nilai.
+- Kurikulum Merdeka dan Kurikulum Berbasis Cinta (KBC/Panca Cinta) adalah satu kesatuan dalam konteks pembelajaran dan asesmen, bersama Pembelajaran Mendalam dan delapan dimensi profil lulusan. Jangan membangun kurikulum/modul terpisah atau membuat data resmi sintetis.
+- CP resmi induk read-only dan harus memiliki provenance/versi terverifikasi. Guru mengembangkan TP/ATP sesuai assignment.
+- Nomenklatur asesmen harus selaras Kurikulum Merdeka + KBC; jangan hardcode UTS/UAS/UM/TKA sebagai enum tertutup. Pisahkan fungsi, cakupan, nama kegiatan, instrumen dan mode CBT.
+- DOCX adalah format utama import soal. Jangan aktifkan kembali XLSX question import. SHORT_ANSWER tetap fail-closed sampai accepted answer privat, snapshot dan scoring teruji.
+- Waktu server adalah acuan resmi. Attempt/Answer/Score/lease/fencing/idempotency/recovery harus konsisten. Kamera bukan syarat CBT standar.
+- Laravel 13, PHP 8.3, MySQL 8+, Blade/Livewire. Build Android hanya via Android Studio, tetapi Android sedang ditunda.
 
-# WAJIB DIBACA — TITIK MASUK AGENT CBT MADRASAH
+## 3. Batas perubahan dan keselamatan
+- Jangan menjalankan migration pada database produksi, deploy VPS, merge PR, atau mengubah DB produksi tanpa persetujuan eksplisit owner dan preflight yang terdokumentasi.
+- Jangan melemahkan policy/validasi untuk membuat test lama lulus. Audit apakah test usang atau source salah.
+- Jangan memetakan akun Operator/Kamad otomatis menjadi Admin tanpa keputusan/mekanisme mapping owner yang aman. Pertahankan data historis dan lakukan fail-closed.
+- Jangan menganggap assessment_origin=EXTERNAL sebagai penanda ujian pusat. Jika eligibility penugasan proktor belum memiliki marker/otoritas kanonis, tetap fail-closed dan ajukan pertanyaan spesifik ke owner.
+- Jangan menyebut Device Lease/fencing siap produksi sebelum integrasi, multi-device, concurrency dan recovery tests lulus.
+- Jangan menyebut ZIP final/siap VPS sebelum semua acceptance gates yang relevan lulus.
 
-**Tanggal handover:** 23 November 2026  
-**Repository:** https://github.com/zane0184/cbt_november  
-**Branch kerja yang ditetapkan:** `work/solo-web-cbt-completion-20261123`  
-**PR terpadu:** [#21 — Solo Web CBT](https://github.com/zane0184/cbt_november/pull/21) — jangan merge tanpa persetujuan owner dan seluruh gate lulus.
+## 4. Urutan eksekusi
+1. Verifikasi backlog dan status CI exact SHA pada branch eksekusi aktif.
+2. Selesaikan P0 backend/full PHPUnit berdasarkan akar masalah aktual; jangan mengubah test secara artifisial.
+3. Integrasikan dan uji Web Siswa dengan backend Laravel nyata.
+4. Selesaikan alur Web Guru end-to-end.
+5. Selesaikan ADM-01 sampai ADM-23 pada Web Admin.
+6. Tutup kontrak kurikulum Merdeka + KBC end-to-end dan redaction payload Siswa.
+7. Uji fresh install, upgrade, backup/restore, keamanan, stabilitas dan browser E2E.
+8. Siapkan satu ZIP generik, lalu verifikasi struktur, konfigurasi, checksum dan ekstraksi bersih.
+9. Deployment staging/VPS hanya setelah owner memberi akses dan persetujuan; produksi tetap memerlukan persetujuan terpisah.
 
-## Instruksi pertama untuk agent baru
+## 5. Wajib membuat jejak GitHub
+Setiap tahap harus menghasilkan:
+- laporan AUDIT, DESAIN, IMPLEMENTASI, PENGUJIAN;
+- daftar file berubah dan path backup + hash/blob;
+- commit SHA dan exact CI run/result;
+- blocker/risiko dan langkah berikutnya;
+- checkpoint yang menunjuk pekerjaan belum selesai;
+- pembaruan prompt agent pengganti agar agent berikutnya membaca dokumen ini dan tidak mengulang pekerjaan.
 
-Jangan mulai coding, jangan membuat ulang fitur, dan jangan mengasumsikan status dari dokumen ini saja.
+## 6. Entry point saat melanjutkan
+Baca:
+- [Prompt eksekusi dan handover agent berikutnya](PROMPT_AGENT_PENGGANTI_CBT_2026-11-24.md)
+- [Checkpoint owner-directed 24 November 2026](CHECKPOINT_OWNER_DIRECTED_EXECUTION_2026-11-24.md)
+- [Laporan audit GitHub terbaru](REPORT_OWNER_DIRECTED_GITHUB_AUDIT_2026-11-24.md)
+- [Handover pemulihan PHPUnit](HANDOVER_AGENT_BARU_PHPUNIT_2026-11-23.md)
+- [Triage PHPUnit](REPORT_P0_TRIAGE_FULL_PHPUNIT_2026-11-23.md)
+- [Keputusan owner](https://github.com/zane0184/cbt_november/issues/20)
 
-1. Baca dokumen ini sampai selesai.
-2. Baca [AGENT_HANDOVER_MASTER_2026-11-23.md](AGENT_HANDOVER_MASTER_2026-11-23.md).
-3. Verifikasi HEAD aktual branch kerja, PR #21, status CI terkini, dan perubahan setelah checkpoint.
-4. Baca laporan audit/implementasi terbaru untuk Admin, Guru, Siswa, backend, serta backup yang terkait. Gunakan source aktual sebagai kebenaran; jika berbeda dari laporan, catat perbedaannya.
-5. Buat ringkasan AUDIT → DESAIN → IMPLEMENTASI → PENGUJIAN dan lanjutkan dari pekerjaan yang benar-benar belum selesai. Jangan mengulang patch yang sudah ada.
-6. Sebelum menyentuh file existing, buat backup byte-exact, verifikasi hash/isi, lalu patch hanya di branch kerja.
-7. Perbarui checkpoint dan laporan GitHub setelah setiap tahap.
-
-## Dokumen kanonis dan bukti
-
-- [Master handover dan backlog](AGENT_HANDOVER_MASTER_2026-11-23.md)
-- [Checkpoint Web CBT](CHECKPOINT_LANJUTAN_WEB_CBT_2026-11-23.md)
-- [Audit Anti-Curang dan Mobile-First Web Siswa](REPORT_AUDIT_ANTI_CHEAT_WEB_SISWA_MOBILE_FIRST_2026-11-23.md)
-- [Laporan CI/remediasi backend](REPORT_CI_FULL_PHPUNIT_REMEDIATION_2026-11-23.md)
-- [PR #21](https://github.com/zane0184/cbt_november/pull/21)
-- [PR #13 Web Siswa Agent 4](https://github.com/zane0184/cbt_november/pull/13)
-- [PR #19 Web Guru](https://github.com/zane0184/cbt_november/pull/19)
-- [PR #18 Web Admin](https://github.com/zane0184/cbt_november/pull/18)
-- [Issue #20 keputusan owner](https://github.com/zane0184/cbt_november/issues/20)
-
-## Batas keselamatan yang tidak boleh dilanggar
-
-- Tidak merge PR, deploy VPS, menjalankan migration produksi, atau mengubah DB produksi tanpa persetujuan eksplisit owner.
-- Tidak menyentuh ZIP baseline, Project Files, Library, atau sumber di luar GitHub untuk pekerjaan proyek ini.
-- Tidak menjalankan Gradle via terminal. Android native dan Web Super Admin ditunda sampai Juni 2027.
-- Jangan menghidupkan kembali role/portal Operator, Kamad, Proktor, atau Super Admin lokal. Portal aktif: Admin Madrasah, Guru, Siswa.
-- Tidak ada database akademik multi-tenant lintas madrasah. Setiap madrasah punya instalasi dan database terpisah.
-- Jangan melemahkan authorization/policy hanya untuk meluluskan test lama.
-- Jangan menyatakan siap produksi, siap ujian operasional, atau siap distribusi tanpa bukti acceptance yang relevan.
-
-**Penting:** GitHub menyimpan handover ini, tetapi agent baru tidak otomatis menerima notifikasi atau membaca repo hanya karena dokumen dibuat. Saat pindah chat/agent, berikan instruksi singkat:  
-`Lanjutkan proyek CBT dari GitHub. Baca docs/AGENT_START_HERE.md lalu ikuti seluruh handover dan lanjutkan dari checkpoint aktual. Jangan ulang pekerjaan.`
-
-
-Add current continuation report link
-
-## Laporan lanjutan terbaru
-Baca juga [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md) dan [DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md](DESAIN_KONTRAK_KURIKULUM_ASESMEN_WEB_2026-11-23.md) sebelum coding. Laporan terbaru mencatat exact CI failure, patch resolver SYSTEM_GLOBAL dan backup, serta gap integrasi kurikulum sampai laporan historis. Jangan ulang patch yang telah tercatat.
-
-
-## HANDOVER AGENT PENGGANTI — 23 NOVEMBER 2026
-- [Laporan handover lengkap, kondisi source/CI, perubahan terbaru, backlog dan kriteria selesai](REPORT_HANDOVER_AGENT_PENGGANTI_2026-11-23.md)
-- [Prompt operasional agent pengganti — siap salin](PROMPT_AGENT_PENGGANTI_CBT_2026-11-23.md)
-
-HEAD saat handover dibuat: `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4` pada `work/solo-web-cbt-completion-20261123`. **Wajib verifikasi ulang** karena branch/CI dapat berubah.
-Backend CI #45156925960: focused login/tenant PASS, full PHPUnit FAILURE. Web Siswa #45156926014: job Agent 4 yang disebut di laporan PASS, tetapi belum real-Laravel E2E.
-Jangan ulang patch `dbebbd5`; audit kompatibilitas MaterialController read-only terlebih dahulu. PR #21 tetap OPEN/DRAFT/UNMERGED.
+**Instruksi ringkas untuk agent berikutnya:** baca dokumen ini dan seluruh referensi di atas, verifikasi source/HEAD/CI terbaru, lalu lanjutkan hanya pekerjaan yang belum selesai. Jangan mulai ulang, jangan memakai sumber di luar GitHub, dan jangan mengubah keputusan owner.
