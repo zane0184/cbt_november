@@ -34,7 +34,7 @@ class CurriculumIntegrityTest extends TestCase
             'description' => 'Official CP is read-only.',
         ]);
 
-        $response->assertStatus(405);
+        $response->assertStatus(404);
         $this->assertSame($before, LearningOutcome::query()->count());
     }
 }
