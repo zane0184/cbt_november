@@ -80,3 +80,17 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 ### Status pengujian
 - Patch tahap ini belum boleh dinyatakan lulus sampai satu run PHPUnit lengkap pada HEAD terbaru selesai. Run lama #45238343063 berasal dari SHA sebelum patch lengkap dan tidak boleh dipakai sebagai bukti final.
 - Langkah berikut: validasi full suite pada HEAD terbaru, ambil semua stack trace baru, kelompokkan ulang, lalu perbaiki akar masalah sampai run penuh hijau.
+
+
+## Fokus PHPUnit — hasil akhir terverifikasi (24 November 2026)
+
+- Permintaan fokus: kelompokkan seluruh failure baseline, pisahkan bug aplikasi dari fixture/test, dan perbaiki sampai full PHPUnit hijau.
+- Baseline yang dihitung dari job log #45228426438: **42 failed, 476 passed (1,863 assertions)**. Log berisi 42 baris FAILED, bukan 41.
+- Taksonomi rinci, kategori akar masalah, pemisahan bug aplikasi/test fixture, daftar file, backup dan commit tercatat pada `docs/REPORT_PHPUNIT_FAILURE_TAXONOMY_AND_GREEN_2026-11-24.md`.
+- Final validation: [GitHub Actions #45243430635](https://github.com/zane0184/cbt_november/actions/runs/45243430635), exact SHA `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51`.
+- Environment: PHP 8.3 + disposable MySQL 8.0/InnoDB.
+- Focused Web login/tenant smoke: **27 passed (90 assertions)**.
+- Full PHPUnit: **518 passed (2,177 assertions), 0 failed**.
+- Perbaikan kode aplikasi terbatas pada query pivot `role_user`, validasi batas Rombel Guru, dan isolasi rate limit heartbeat per user/credential. Penyesuaian selebihnya berupa fixture/helper/test sesuai kontrak akademik, snapshot, jadwal, auth token dan fencing.
+- Tidak ada perubahan production DB/migration, deployment VPS, merge PR atau pekerjaan di luar remediasi PHPUnit.
+- Status fokus: **SELESAI — FULL PHPUNIT HIJAU pada SHA di atas**. Revalidasi wajib jika source berubah setelah SHA tersebut.
