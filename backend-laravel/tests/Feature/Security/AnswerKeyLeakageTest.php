@@ -40,6 +40,7 @@ class AnswerKeyLeakageTest extends TestCase
     private $student;
     private $guru;
     private $exam;
+    private string $studentToken;
     private array $canonicalContext = [];
 
     protected function setUp(): void
@@ -52,6 +53,7 @@ class AnswerKeyLeakageTest extends TestCase
 
         $this->student = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Student', 'email' => 'student@test.com', 'password' => bcrypt('password')]);
         $this->student->roles()->attach(\App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']));
+        $this->studentToken = $this->student->createToken('answer-key-leakage')->plainTextToken;
 
         $this->guru = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru', 'email' => 'guru@test.com', 'password' => bcrypt('password')]);
         $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
@@ -150,15 +152,19 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_student_execution_does_not_leak_answer_key()
     {
-        $this->actingAs($this->student, 'sanctum');
+        // Use a persisted Sanctum token so the server can bind the Attempt
+        // to an immutable token identity rather than a transient test guard.
+        $attemptResponse = $this->withToken($this->studentToken)
+            ->withHeader('X-Device-Binding-ID', 'dev1')
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
+        $attemptResponse->assertStatus(201);
+        $fenceGeneration = (string) $attemptResponse->json('data.fence_generation');
+        $this->assertGreaterThan(0, (int) $fenceGeneration);
 
-        // Start attempt first
-        $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
-             ->assertStatus(201);
-
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
-                         ->getJson("/api/v1/exams/{$this->exam->id}/execution");
+        $response = $this->withToken($this->studentToken)->withHeaders([
+            'X-Device-Binding-ID' => 'dev1',
+            'X-CBT-Fence-Generation' => $fenceGeneration,
+        ])->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
 
@@ -286,13 +292,16 @@ class AnswerKeyLeakageTest extends TestCase
 
         $context->setTenantId(null);
 
-        $this->actingAs($this->student, 'sanctum');
+        $attemptResponse = $this->withToken($this->studentToken)
+            ->withHeader('X-Device-Binding-ID', 'dev1')
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
+        $attemptResponse->assertStatus(201);
+        $fenceGeneration = (string) $attemptResponse->json('data.fence_generation');
 
-        $this->withHeader('X-Device-Binding-ID', 'dev1')
-             ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
-
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
-                         ->getJson("/api/v1/exams/{$this->exam->id}/execution");
+        $response = $this->withToken($this->studentToken)->withHeaders([
+            'X-Device-Binding-ID' => 'dev1',
+            'X-CBT-Fence-Generation' => $fenceGeneration,
+        ])->getJson("/api/v1/exams/{$this->exam->id}/execution");
 
         $response->assertStatus(200);
         $questions = $response->json('data.questions');
@@ -384,14 +393,17 @@ class AnswerKeyLeakageTest extends TestCase
         $this->exam->update(['locked_at' => now(), 'status' => 'SCHEDULED']);
 
         $context->setTenantId(null);
-        $this->actingAs($this->student, 'sanctum');
 
-        $this->withHeader('X-Device-Binding-ID', 'dev1')
-            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
-            ->assertStatus(201);
+        $attemptResponse = $this->withToken($this->studentToken)
+            ->withHeader('X-Device-Binding-ID', 'dev1')
+            ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
+        $attemptResponse->assertStatus(201);
+        $fenceGeneration = (string) $attemptResponse->json('data.fence_generation');
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'dev1')
-            ->getJson("/api/v1/exams/{$this->exam->id}/execution");
+        $response = $this->withToken($this->studentToken)->withHeaders([
+            'X-Device-Binding-ID' => 'dev1',
+            'X-CBT-Fence-Generation' => $fenceGeneration,
+        ])->getJson("/api/v1/exams/{$this->exam->id}/execution");
         $response->assertStatus(200);
 
         $questions = $response->json('data.questions');
