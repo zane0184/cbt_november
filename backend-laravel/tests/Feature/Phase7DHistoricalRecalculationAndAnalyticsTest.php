@@ -7,6 +7,7 @@ use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 use App\Models\AcademicYear;
 use App\Models\Assessment;
+use App\Models\AssessmentCurriculumMapping;
 use App\Models\AtpAchievement;
 use App\Models\AuditLog;
 use App\Models\CpAchievement;
@@ -226,6 +227,49 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
     }
 
     /**
+     * Bind a historical assessment to the canonical context already assigned
+     * in setUp(). Never replace the assignment's registration/version here:
+     * existing TP/structure mappings have composite FKs to that exact scope.
+     */
+    private function bindAssessmentToExistingAssignmentContext(Assessment $assessment): void
+    {
+        $context = $this->canonicalContext;
+        $assignment = $this->assignment->fresh();
+
+        $assessment->forceFill([
+            'teacher_subject_assignment_id' => $assignment->id,
+            'tenant_curriculum_registration_id' => $context['registration']->id,
+            'curriculum_version_id' => $context['version']->id,
+            'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+            'curriculum_context_snapshot' => $assignment->curriculum_context_snapshot,
+            'assessment_taxonomy_owner_id' => Tenant::SYSTEM_TENANT_ID,
+            'assessment_function_option_id' => $context['taxonomy']['function']->id,
+            'assessment_scope_option_id' => $context['taxonomy']['scope']->id,
+            'instrument_type_option_id' => $context['taxonomy']['instrument']->id,
+            'delivery_mode_option_id' => $context['taxonomy']['delivery']->id,
+            'assessment_origin' => 'INTERNAL',
+            'activity_name' => 'Kegiatan Asesmen PHPUnit',
+        ])->save();
+
+        AssessmentCurriculumMapping::query()->create([
+            'tenant_id' => $this->tenantA->id,
+            'assessment_id' => $assessment->id,
+            'teacher_subject_assignment_id' => $assignment->id,
+            'tenant_curriculum_registration_id' => $context['registration']->id,
+            'multi_curriculum_version_id' => $context['version']->id,
+            'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+            'multi_learning_outcome_id' => $context['cp']->id,
+            'tenant_learning_outcome_id' => $context['tp']->id,
+            'academic_year_id' => $this->academicYear->id,
+            'semester_id' => $this->semester->id,
+            'mapping_role' => 'PRIMARY',
+            'weight' => 1,
+            'is_primary' => true,
+            'created_by' => $this->teacherA->id,
+        ]);
+    }
+
+    /**
      * Test 1: Initial finalization calculates curriculum achievements for TP, ATP, and CP.
      */
     public function test_1_initial_finalization_calculates_curriculum_achievements(): array
@@ -244,7 +288,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 2.00,
             'created_by' => $this->teacherA->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($this->assignment, $ass);
+        $this->bindAssessmentToExistingAssignmentContext($ass);
         $ass->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         $exam = Exam::create([
@@ -383,7 +427,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 5.00,
             'created_by' => $this->teacherA->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($this->assignment, $ass2);
+        $this->bindAssessmentToExistingAssignmentContext($ass2);
         $ass2->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         // Step 3: Reopen attempt enforcement
