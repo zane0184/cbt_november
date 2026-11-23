@@ -84,3 +84,7 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 
 ### Final focused PHPUnit validation branch
 Branch sementara `work/solo-web-cbt-phpunit-final-20261124` berisi source eksekusi terkini termasuk patch setelah hasil 7 gagal; digunakan hanya untuk menjalankan workflow PHPUnit penuh.
+
+
+### Patch lanjutan pasca-run #45240443836
+Run #45240443836 menghasilkan **8 failed, 510 passed, 2,148 assertions**. Kelompok baru: 4 test Fase1C memakai fixture bentrok dengan System Tenant yang memang telah dibuat DatabaseSeeder; limiter heartbeat masih mengambil identitas user stale sebelum bearer token; 3 alur AnswerKeyLeakage tidak mengirim token pada setiap request sehingga binding sesi tidak cocok. Fixture dan limiter telah disesuaikan, menunggu validasi ulang.
