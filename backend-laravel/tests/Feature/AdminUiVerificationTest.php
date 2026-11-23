@@ -469,7 +469,7 @@ class AdminUiVerificationTest extends TestCase
         try {
             Livewire::test(ExamManagement::class);
             $this->fail('Admin Madrasah must not mount Guru exam management.');
-        } catch (\\Symfony\\Component\\HttpKernel\\Exception\\HttpException $exception) {
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
             $this->assertSame(403, $exception->getStatusCode());
         }
 
