@@ -12,6 +12,7 @@ on:
       - work/solo-web-cbt-next-20261123
       - work/solo-web-cbt-completion-20261123-execution
       - work/solo-web-cbt-role-rbac-20261123
+      - work/phpunit-41-root-cause-20261123
   pull_request:
     branches:
       - main
