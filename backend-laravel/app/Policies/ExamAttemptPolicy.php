@@ -67,7 +67,7 @@ class ExamAttemptPolicy
 
     public function finalize(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) return false;
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasExactRole('GURU')) return false;
 
         $exam = $attempt->exam;
         $assessment = $exam?->assessment;
@@ -84,7 +84,7 @@ class ExamAttemptPolicy
      */
     public function reopen(User $user, ExamAttempt $attempt): bool
     {
-        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasRole('GURU')) {
+        if ($user->tenant_id !== $attempt->tenant_id || !$user->hasExactRole('GURU')) {
             return false;
         }
 
