@@ -103,7 +103,7 @@ class WebAdminAuthTest extends TestCase
         $response->assertOk();
         $response->assertSee('CBT MADRASAH');
         $response->assertSee('Masuk ke CBT Madrasah');
-        $response->assertSee('Username / NIP / NIK / NISN');
+        $response->assertSee('Username Admin / NIP / NIK / NISN');
         $response->assertSee('Siswa: NISN');
         $response->assertSee('name="identifier"', false);
         $response->assertSee('name="password"', false);
@@ -180,7 +180,9 @@ class WebAdminAuthTest extends TestCase
     public function test_honorer_teacher_can_login_using_nik_only(): void
     {
         $honorerRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $honorer = $this->makeUser('guru.honorer', 'Guru Honorer', $honorerRole);
+        app(TenantContext::class)->setTenantId(null);
         TeacherProfile::create([
             'user_id' => $honorer->id,
             'employment_status' => 'HONORER',
