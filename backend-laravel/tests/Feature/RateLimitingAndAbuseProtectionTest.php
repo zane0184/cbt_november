@@ -247,7 +247,9 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
             ->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attemptA->id}/heartbeat");
         $resA->assertStatus(429);
 
-        // 2. Switch to User B (different authenticated user)
+        // 2. Switch to User B (different authenticated user).
+        // Reset the cached guard between simulated HTTP requests in this in-process test.
+        \Illuminate\Support\Facades\Auth::forgetGuards();
 
         // User B's heartbeat should succeed with 200 OK because keying is isolated per user
         $resB = $this->withToken($this->tokenB)->withHeaders(['X-Device-Binding-ID' => 'device-user-b', 'X-CBT-Fence-Generation' => (string) $this->attemptB->fence_generation])
