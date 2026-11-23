@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\Rombel;
 use App\Models\Subject;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -69,13 +70,26 @@ class AcademicManagement extends Component
         ]);
 
         DB::transaction(function (): void {
-            Rombel::create([
-                'name' => $this->rombelName,
+            $rombel = Rombel::create([
+                'name' => trim($this->rombelName),
                 'academic_year_id' => $this->selectedAcademicYearId,
                 'grade_level_id' => $this->selectedGradeLevelId,
                 'status' => 'ACTIVE',
             ]);
-        });
+
+            app(AuditService::class)->log(
+                'CREATE_ACADEMIC_ROMBEL',
+                'Rombel',
+                (string) $rombel->id,
+                null,
+                [
+                    'name' => $rombel->name,
+                    'academic_year_id' => $rombel->academic_year_id,
+                    'grade_level_id' => $rombel->grade_level_id,
+                    'status' => $rombel->status,
+                ]
+            );
+        }, 3);
 
         $this->showCreateRombelModal = false;
         session()->flash('message', "Rombel {$this->rombelName} berhasil dibuat.");
@@ -98,12 +112,29 @@ class AcademicManagement extends Component
             'subjectShortName' => 'nullable|string|max:30',
         ]);
 
-        Subject::create([
-            'code' => strtoupper($this->subjectCode),
-            'name' => $this->subjectName,
-            'short_name' => $this->subjectShortName ?: $this->subjectName,
-            'status' => 'ACTIVE',
-        ]);
+        DB::transaction(function (): void {
+            $subject = Subject::create([
+                'code' => strtoupper(trim($this->subjectCode)),
+                'name' => trim($this->subjectName),
+                'short_name' => trim($this->subjectShortName) !== ''
+                    ? trim($this->subjectShortName)
+                    : trim($this->subjectName),
+                'status' => 'ACTIVE',
+            ]);
+
+            app(AuditService::class)->log(
+                'CREATE_ACADEMIC_SUBJECT',
+                'Subject',
+                (string) $subject->id,
+                null,
+                [
+                    'code' => $subject->code,
+                    'name' => $subject->name,
+                    'short_name' => $subject->short_name,
+                    'status' => $subject->status,
+                ]
+            );
+        }, 3);
 
         $this->showCreateSubjectModal = false;
         session()->flash('message', "Mata Pelajaran {$this->subjectName} berhasil ditambahkan.");
