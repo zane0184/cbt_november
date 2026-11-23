@@ -79,7 +79,7 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/admin/curriculum', CurriculumManagement::class);
     Route::get('/admin/questions', QuestionBank::class);
     Route::get('/admin/exams', ExamManagement::class);
-    Route::get('/admin/proctor-assignments', ProctorAssignmentManagement::class)->name('admin.proctor-assignments');
+    Route::get('/admin/proctor-assignments', CentralExamRoomAssignmentManagement::class)->name('admin.proctor-assignments');
 
     // Teacher & Results Routes
     Route::get('/exams/{exam}/results', ResultList::class);
