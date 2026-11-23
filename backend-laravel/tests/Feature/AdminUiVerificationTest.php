@@ -331,6 +331,37 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
+    public function admin_can_create_teacher_without_optional_nip_or_nik_using_username_login(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Guru Tanpa Identitas Kedinasan')
+            ->set('username', 'guru.tanpa.nip')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('nip', '')
+            ->set('nik', '')
+            ->call('createUser')
+            ->assertHasNoErrors();
+
+        $teacher = User::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('username', 'guru.tanpa.nip')
+            ->firstOrFail();
+
+        $this->assertTrue($teacher->hasExactRole('GURU'));
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $teacher->id,
+            'nip' => null,
+            'nik' => null,
+            'employee_identifier' => null,
+            'full_name' => 'Guru Tanpa Identitas Kedinasan',
+        ]);
+    }
+
+    /** @test */
     public function admin_can_create_student_with_tenant_scoped_profile()
     {
         $this->actingAs($this->admin);
