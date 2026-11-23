@@ -14,7 +14,7 @@ class LearningOutcomeStructureMapping extends Model
     protected $table = 'tenant_learning_outcome_structure_mappings';
 
     protected $fillable = [
-        'tenant_id', 'tenant_learning_outcome_id', 'tenant_curriculum_registration_id',
+        'tenant_id', 'tenant_learning_outcome_id', 'teacher_subject_assignment_id', 'tenant_curriculum_registration_id',
         'multi_curriculum_version_id', 'curriculum_owner_id',
         'multi_curriculum_structure_id', 'mapping_role', 'weight',
         'created_by', 'metadata',
@@ -33,6 +33,11 @@ class LearningOutcomeStructureMapping extends Model
     public function curriculumRegistration(): BelongsTo
     {
         return $this->belongsTo(TenantCurriculumRegistration::class, 'tenant_curriculum_registration_id');
+    }
+
+    public function assignment(): BelongsTo
+    {
+        return $this->belongsTo(TeacherSubjectAssignment::class, 'teacher_subject_assignment_id');
     }
 
     public function structure(): BelongsTo
