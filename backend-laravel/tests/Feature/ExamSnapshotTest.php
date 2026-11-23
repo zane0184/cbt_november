@@ -751,10 +751,40 @@ class ExamSnapshotTest extends TestCase
                 $connectionB->table('tenants')->where('id', $tenantId)->delete();
 
                 // This two-connection test commits the canonical system tenant
-                // registry so the second connection can see it. Remove that
-                // disposable registry after local dependants are cleaned; later
-                // tests seed it again through the canonical helper.
-                $connectionB->table('tenants')->where('id', \App\Models\Tenant::SYSTEM_TENANT_ID)->delete();
+                // registry so the second connection can see it. Remove its
+                // disposable FK dependants in child-first order; later tests seed
+                // the registry again through the canonical helper.
+                $systemTenantId = \App\Models\Tenant::SYSTEM_TENANT_ID;
+                $connectionB->table('assessment_taxonomy_options')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('multi_learning_outcomes')->where('tenant_id', $systemTenantId)->delete();
+
+                // multi_curriculum_structures has a composite RESTRICT self-FK.
+                // Delete leaf nodes first until no parent/child rows remain.
+                do {
+                    $leafStructureIds = $connectionB->table('multi_curriculum_structures as parent')
+                        ->where('parent.tenant_id', $systemTenantId)
+                        ->whereNotExists(function ($query) use ($systemTenantId): void {
+                            $query->selectRaw('1')
+                                ->from('multi_curriculum_structures as child')
+                                ->whereColumn('child.parent_id', 'parent.id')
+                                ->where('child.tenant_id', $systemTenantId);
+                        })
+                        ->pluck('parent.id')
+                        ->all();
+
+                    if ($leafStructureIds === []) {
+                        break;
+                    }
+
+                    $connectionB->table('multi_curriculum_structures')
+                        ->whereIn('id', $leafStructureIds)
+                        ->delete();
+                } while (true);
+
+                $connectionB->table('multi_curriculum_versions')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('multi_curriculums')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('curriculum_reference_sources')->where('tenant_id', $systemTenantId)->delete();
+                $connectionB->table('tenants')->where('id', $systemTenantId)->delete();
                 $connectionB->table('grade_levels')->where('id', $this->gradeLevel->id)->delete();
                 $connectionB->table('phases')->where('id', $this->phase->id)->delete();
                 $connectionB->table('curricula')->where('id', $this->curriculum->id)->delete();
