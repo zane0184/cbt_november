@@ -383,7 +383,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 5.00,
             'created_by' => $this->teacherA->id,
         ]);
-        $this->bindCanonicalTeacherAssignment($this->assignment, $ass2);
+        $this->createCanonicalCurriculumContext($this->assignment, $this->teacherA, $ass2);
         $ass2->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         // Step 3: Reopen attempt enforcement
