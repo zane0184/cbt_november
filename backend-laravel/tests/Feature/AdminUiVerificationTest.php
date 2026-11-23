@@ -466,12 +466,7 @@ class AdminUiVerificationTest extends TestCase
     {
         $this->actingAs($this->admin);
 
-        try {
-            Livewire::test(ExamManagement::class);
-            $this->fail('Admin Madrasah must not mount Guru exam management.');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
-            $this->assertSame(403, $exception->getStatusCode());
-        }
+        Livewire::test(ExamManagement::class)->assertForbidden();
 
         $this->assertDatabaseMissing('exams', [
             'tenant_id' => $this->tenant->id,
