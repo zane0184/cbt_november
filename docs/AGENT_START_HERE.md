@@ -69,3 +69,12 @@ Baca juga [REPORT_TAHAP_LANJUTAN_TERARAH_2026-11-23.md](REPORT_TAHAP_LANJUTAN_TE
 HEAD saat handover dibuat: `dbebbd5b50ecb7a0a872272c3aa5bdd0642b27f4` pada `work/solo-web-cbt-completion-20261123`. **Wajib verifikasi ulang** karena branch/CI dapat berubah.
 Backend CI #45156925960: focused login/tenant PASS, full PHPUnit FAILURE. Web Siswa #45156926014: job Agent 4 yang disebut di laporan PASS, tetapi belum real-Laravel E2E.
 Jangan ulang patch `dbebbd5`; audit kompatibilitas MaterialController read-only terlebih dahulu. PR #21 tetap OPEN/DRAFT/UNMERGED.
+
+
+## ADDENDUM KOORDINATOR — 23 NOVEMBER 2026
+
+Baca juga dokumen terbaru berikut sebelum melakukan perubahan:
+- `docs/ADDENDUM_ARAHAN_OWNER_INSTALASI_ROLE_PROKTOR_2026-11-23.md` — arahan owner terbaru tentang instalasi per madrasah, role, menu Proktor di Web Guru, penundaan Android/Web Super Admin, dan integrasi Kurmer+KBC. Dokumen ini mengesampingkan catatan GitHub lama yang bertentangan.
+- `docs/REPORT_KOORDINATOR_AUDIT_GITHUB_DAN_ROOT_CAUSE_2026-11-23.md` — audit exact source SHA d6aaeae6, CI #45191014821, kelompok 41 kegagalan, backup, patch terisolasi, dan status CI perbaikan.
+
+Branch perbaikan terisolasi saat ini: `work/phpunit-41-root-cause-20261123`. Jangan menganggap patch lulus sebelum CI exact SHA pada branch tersebut selesai dan log dibaca. Jangan mengulang perubahan yang tercatat dalam laporan.
