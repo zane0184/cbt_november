@@ -591,6 +591,46 @@ class AdminUiVerificationTest extends TestCase
             'code' => 'BIO-10',
             'name' => 'Biologi',
         ]);
+
+        $rombel = Rombel::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('name', 'X IPA 1')
+            ->firstOrFail();
+        $subject = Subject::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('code', 'BIO-10')
+            ->firstOrFail();
+
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->admin->id,
+            'action' => 'CREATE_ACADEMIC_ROMBEL',
+            'entity_type' => 'Rombel',
+            'entity_id' => $rombel->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->admin->id,
+            'action' => 'CREATE_ACADEMIC_SUBJECT',
+            'entity_type' => 'Subject',
+            'entity_id' => $subject->id,
+        ]);
+
+        $rombelAudit = \\App\\Models\\AuditLog::query()
+            ->where('action', 'CREATE_ACADEMIC_ROMBEL')
+            ->where('entity_id', $rombel->id)
+            ->firstOrFail();
+        $this->assertSame('X IPA 1', $rombelAudit->new_values['name']);
+        $this->assertSame($this->academicYear->id, $rombelAudit->new_values['academic_year_id']);
+        $this->assertSame($this->gradeLevel->id, $rombelAudit->new_values['grade_level_id']);
+
+        $subjectAudit = \\App\\Models\\AuditLog::query()
+            ->where('action', 'CREATE_ACADEMIC_SUBJECT')
+            ->where('entity_id', $subject->id)
+            ->firstOrFail();
+        $this->assertSame('BIO-10', $subjectAudit->new_values['code']);
+        $this->assertSame('Biologi', $subjectAudit->new_values['name']);
+        $this->assertSame('BIO', $subjectAudit->new_values['short_name']);
     }
 
     /** @test */
