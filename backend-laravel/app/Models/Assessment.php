@@ -89,4 +89,9 @@ class Assessment extends Model
         return $this->belongsTo(TenantCurriculumRegistration::class, 'tenant_curriculum_registration_id');
     }
 
+    public function assessmentTaxonomyOwner(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'assessment_taxonomy_owner_id');
+    }
+
 }
