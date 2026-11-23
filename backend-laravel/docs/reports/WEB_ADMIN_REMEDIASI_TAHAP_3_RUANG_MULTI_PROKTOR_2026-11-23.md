@@ -109,3 +109,24 @@ Termasuk backup Exam, ExamParticipant, ExamPolicy, migration (termasuk revisi ca
 7. Legacy class/model/table assignment lama masih dipertahankan; perlu tahap deprecation dan migrasi histori yang terencana, bukan penghapusan langsung.
 
 Tidak ada klaim siap produksi, tidak ada merge, tidak ada deployment, dan tidak ada migration produksi.
+
+
+## Addendum — hardening batas waktu ujian (23 November 2026)
+
+### AUDIT
+Pemeriksaan lanjutan pada `ExamRoomAssignmentService::create()` menemukan pemeriksaan batas jadwal ujian sebelumnya bersifat kondisional: jika `start_at` atau `end_at` kosong, pemeriksaan batas yang bersangkutan dilewati. Padahal penugasan ruang/sesi harus selalu berada di dalam rentang waktu ujian yang sudah ditetapkan.
+
+### IMPLEMENTASI
+- Service sekarang menolak penugasan bila `start_at` atau `end_at` ujian kosong.
+- Service memastikan waktu mulai dan selesai ruang/sesi seluruhnya berada di dalam rentang waktu ujian.
+- Menambahkan regression test untuk ujian tanpa batas waktu mulai.
+- Backup byte-identical sebelum perubahan:
+  - `ExamRoomAssignmentService.php.before-schedule-boundary-hardening`
+  - `CentralExamRoomAssignmentTest.php.before-schedule-boundary-hardening`
+  - `WEB_ADMIN_REMEDIASI_TAHAP_3.before-schedule-boundary-update.md`
+
+### PENGUJIAN
+- Regression test ditambahkan, tetapi belum dijalankan oleh PHPUnit pada lingkungan ini.
+- `fetch_commit_workflow_runs` tidak mengembalikan run untuk commit branch ini karena endpoint connector hanya mengambil workflow yang dipicu pull request; hasil CI untuk commit baru belum dapat diverifikasi dari respons tersebut.
+- Tidak ada klaim PASS. Perlu verifikasi status GitHub Actions langsung pada PR/branch setelah push.
+- Tidak ada migration produksi, deployment, atau merge.
