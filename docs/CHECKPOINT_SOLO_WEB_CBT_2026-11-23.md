@@ -116,3 +116,29 @@ Perubahan source yang telah ditulis pada branch ini:
 5. Integrasikan UI Web Admin, Guru, dan Siswa ke kontrak yang sama; lanjutkan ADM-01 s.d. ADM-23.
 6. Audit seluruh route, Livewire, API, export/download, policy dan akses langsung. Guard parsial yang sudah ditambahkan tidak cukup untuk menutup W1.
 7. Buat PR hanya setelah rentang branch dan changed files ditinjau; PR tetap Draft sampai semua gate lulus.
+
+
+## FOLLOW-UP IMPLEMENTASI DAN AUDIT — 23 NOVEMBER 2026
+
+HEAD saat checkpoint follow-up: `121addf5a4cb1814b71e5dd1abc372a699f35eb9`.
+
+### AUDIT
+- Review service TP/ATP menemukan field assignment ikut dikirim ke model mapping, padahal tidak ada di schema mapping. Payload mapping telah diselaraskan dengan kolom migration yang sebenarnya.
+- UI Guru sudah menampilkan empat unsur olah Pembelajaran Mendalam, tetapi form authoring TP sebelumnya belum memetakannya. Ini telah diperbaiki agar empat unsur olah dapat dipilih dan divalidasi server-side.
+- Seeder belum mengimpor konten CP. Halaman Guru tetap mengunci pembuatan TP/ATP sampai CP per mapel/fase memiliki artefak resmi dan checksum terverifikasi.
+- Registry metadata fase, kelas, mapel, Panca Cinta, prinsip PM, empat unsur olah, kerangka PM, dan delapan dimensi tersedia sebagai metadata awal. Ini tidak membuktikan CP per elemen atau rincian seluruh mata pelajaran sudah lengkap.
+
+### IMPLEMENTASI
+- `TeacherLearningOutcomeService`, komponen Livewire Guru, dan view Guru diperbarui agar pemetaan TP mencakup Panca Cinta, prinsip PM, unsur olah pikir/hati/rasa/raga, kerangka PM, dan dimensi profil lulusan.
+- Field yang tidak ada pada tabel mapping dihapus dari payload create mapping.
+- `CurriculumReferenceContractTest` ditambah pemeriksaan tabel TP/ATP tenant-owned, mapping QuestionVersion, kolom assignment, dan jumlah node registry (5 Panca Cinta, 4 prinsip PM, 4 unsur olah, 4 kerangka PM, 8 dimensi).
+- Backup tambahan tersedia pada `backend-laravel/docs/backup/solo-web-cbt-2026-11-23/`; backup checkpoint follow-up pada `docs/backup/CHECKPOINT_SOLO_WEB_CBT_2026-11-23.md.before-pm-olah-followup`.
+- Backup checkpoint commit: `2383445032837363154c7ac47698f299ae045c54`.
+
+### PENGUJIAN
+- Fetch ulang file service, Livewire, Blade, migration, model, seeder, dan test melalui GitHub API: dilakukan.
+- Exact HEAD `121addf5a4cb1814b71e5dd1abc372a699f35eb9`: wrapper workflow PR tidak mengembalikan run dan combined status kosong. CI tetap BELUM TERVERIFIKASI; tidak boleh ditafsirkan sebagai PASS.
+- PHP lint, PHPUnit, MySQL 8 migration/seeder integration, browser E2E dan UAT: BELUM DIJALANKAN.
+
+### STATUS
+Fondasi metadata dan authoring TP/ATP diperluas; belum diuji. Konten CP penuh, mapping materi/topik pada UI Guru, integrasi snapshot/report/Siswa, dan audit menyeluruh Admin masih terbuka.
