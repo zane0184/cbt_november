@@ -221,9 +221,8 @@ class AdminUserProfileLifecycleTest extends TestCase
         TenantContext::getInstance()?->setTenantId($this->tenant->id);
         $this->actingAs($this->admin);
 
-        Livewire::test(UserManagement::class)
-            ->call('openEditModal', $foreign->id)
-            ->assertStatus(404);
+        $this->expectException(\\Illuminate\\Database\\Eloquent\\ModelNotFoundException::class);
+        Livewire::test(UserManagement::class)->call('openEditModal', $foreign->id);
     }
 
     public function test_user_management_rejects_non_admin_and_multi_role_admin(): void
