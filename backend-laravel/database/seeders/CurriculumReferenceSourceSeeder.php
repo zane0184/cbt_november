@@ -12,14 +12,7 @@ class CurriculumReferenceSourceSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function (): void {
-            Tenant::query()->firstOrCreate(
-                ['id' => Tenant::SYSTEM_TENANT_ID],
-                [
-                    'name' => 'Registry Referensi Nasional',
-                    'code' => Tenant::SYSTEM_TENANT_CODE,
-                    'status' => 'ACTIVE',
-                ]
-            );
+            SystemTenantSeeder::seed();
 
             $sources = [
                 [
