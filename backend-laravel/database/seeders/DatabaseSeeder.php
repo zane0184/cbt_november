@@ -48,5 +48,7 @@ class DatabaseSeeder extends Seeder
 
             app(RolePermissionBootstrapper::class)->bootstrap();
         });
+
+        $this->call(CurriculumReferenceSourceSeeder::class);
     }
 }
