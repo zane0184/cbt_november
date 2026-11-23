@@ -18,6 +18,7 @@ use App\Models\Curriculum;
 use App\Models\Phase;
 use App\Models\Subject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\ExcelQuestionImporter;
 use Tests\TestCase;
 
 class QuestionImportTest extends TestCase
@@ -81,6 +82,41 @@ class QuestionImportTest extends TestCase
         $response->assertJsonPath('imported', 1);
         $this->assertEquals(1, Question::count());
         $this->assertEquals('What is 1+1?', QuestionVersion::first()->stem);
+    }
+
+    public function test_short_answer_import_is_rejected_until_accepted_answers_are_fully_supported()
+    {
+        $this->actingAs($this->teacher);
+
+        $response = $this->postJson('/api/v1/questions/import', [
+            'rows' => [[
+                'stem' => 'Jawaban singkat belum siap',
+                'type' => 'SHORT_ANSWER',
+                'subject_id' => $this->subject->id,
+                'accepted_answers' => ['jawaban'],
+            ]],
+        ]);
+
+        $response->assertStatus(422);
+        $this->assertSame(0, Question::query()->count());
+    }
+
+    public function test_row_import_service_rejects_short_answer_directly()
+    {
+        $this->actingAs($this->teacher);
+
+        $result = app(ExcelQuestionImporter::class)->import('', [
+            'rows' => [[
+                'stem' => 'Jawaban singkat belum siap',
+                'type' => 'SHORT_ANSWER',
+                'subject_id' => $this->subject->id,
+                'accepted_answers' => ['jawaban'],
+            ]],
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(0, $result['imported']);
+        $this->assertSame(0, Question::query()->count());
     }
 
     public function test_import_validation_required_fields()
