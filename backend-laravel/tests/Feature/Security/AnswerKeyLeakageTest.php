@@ -155,7 +155,7 @@ class AnswerKeyLeakageTest extends TestCase
         $this->withToken($this->studentToken);
 
         // Start attempt first
-        $this->withHeader('X-Device-Binding-ID', 'dev1')
+        $this->withToken($this->studentToken)->withHeader('X-Device-Binding-ID', 'dev1')
              ->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123'])
              ->assertStatus(201);
 
@@ -177,7 +177,7 @@ class AnswerKeyLeakageTest extends TestCase
 
     public function test_student_preview_is_forbidden()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         $this->getJson("/api/v1/exams/{$this->exam->id}/preview")
             ->assertForbidden();
