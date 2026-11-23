@@ -35,7 +35,7 @@
                     <div><label class="block text-xs font-bold mb-1">Jenis Kelamin</label><select wire:model="editGender" class="w-full border rounded-xl px-3.5 py-2 text-sm"><option value="">Belum diisi</option><option value="M">Laki-laki</option><option value="F">Perempuan</option></select>@error('editGender')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                     <div><label class="block text-xs font-bold mb-1">Telepon</label><input wire:model="editPhone" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('editPhone')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                 </div>
-                @if($editingUserId && \App\Models\User::query()->whereKey($editingUserId)->whereHas('roles', fn ($q) => $q->where('name', 'GURU'))->exists())
+                @if($editingRole === 'GURU')
                     <div class="border-t pt-4 space-y-3"><h4 class="text-sm font-bold">Identitas Guru</h4><div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                         <div><label class="block text-xs font-bold mb-1">NIP</label><input wire:model="editNip" maxlength="18" class="w-full border rounded-xl px-3 py-2 text-sm">@error('editNip')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
                         <div><label class="block text-xs font-bold mb-1">NIK (16 digit)</label><input wire:model="editNik" maxlength="16" class="w-full border rounded-xl px-3 py-2 text-sm">@error('editNik')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
