@@ -19,6 +19,14 @@ class AttemptDeviceLeaseService
             return false;
         }
 
+        // The database migration defaults fence_generation to 1, but an Eloquent
+        // model created before INSERT does not necessarily hydrate database defaults.
+        // Persist the initial generation before creating the matching lease so the
+        // Attempt and DeviceLease cannot start with different generations.
+        if ((int) $attempt->fence_generation < 1) {
+            $attempt->forceFill(['fence_generation' => 1])->save();
+        }
+
         $now = now();
         $lease = DeviceLease::create([
             'tenant_id' => $attempt->tenant_id,
