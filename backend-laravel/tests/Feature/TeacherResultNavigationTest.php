@@ -46,7 +46,9 @@ final class TeacherResultNavigationTest extends TestCase
         $this->assertSame('exams/{exam}/analytics/items', $routes->getByName('teacher.exams.analytics.items')?->uri());
         $this->assertSame('exams/{exam}/export/excel', $routes->getByName('teacher.exams.export.excel')?->uri());
         $this->assertSame('exams/{exam}/export/pdf', $routes->getByName('teacher.exams.export.pdf')?->uri());
-        $this->assertSame('guru/bank-soal/import', $routes->getByName('teacher.questions.import')?->uri());
+        $this->assertSame('guru/bank-soal', $routes->getByName('teacher.questions.index')?->uri());
+        $this->assertNull($routes->getByName('teacher.questions.import'));
+        $this->assertNull($routes->getByName('teacher.questions.template'));
     }
 
     public function test_teacher_sidebar_links_results_and_analytics_to_exam_selection(): void
