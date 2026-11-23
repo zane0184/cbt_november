@@ -41,10 +41,12 @@ jobs:
         run: npm install --no-save playwright@1.56.1
 
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Run Web Siswa browser E2E
         run: node tests/runner-browser-e2e.mjs
+      - name: Run WebKit engine compatibility E2E (Safari-engine proxy)
+        run: BROWSER=webkit node tests/runner-browser-e2e.mjs
   student-results-feature:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
