@@ -25,6 +25,8 @@ class AssessmentTaxonomyOption extends Model
         'is_selectable' => 'boolean',
         'is_official' => 'boolean',
         'is_editable' => 'boolean',
+        'is_official' => 'boolean',
+        'is_editable' => 'boolean',
         'metadata' => 'array',
     ];
 
