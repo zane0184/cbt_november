@@ -28,6 +28,8 @@ class ExamSessionHardeningTest extends TestCase
     private $userB;
     private $examA;
     private $participantA;
+    private string $tokenA;
+    private string $tokenB;
 
     protected function setUp(): void
     {
@@ -50,6 +52,7 @@ class ExamSessionHardeningTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userA->roles()->attach($siswaRole);
+        $this->tokenA = $this->userA->createToken('exam-session-user-a')->plainTextToken;
 
         $year = AcademicYear::create(['name' => '2024/2025', 'is_active' => true]);
 
@@ -91,6 +94,7 @@ class ExamSessionHardeningTest extends TestCase
             'password' => bcrypt('password')
         ]);
         $this->userB->roles()->attach($siswaRole);
+        $this->tokenB = $this->userB->createToken('exam-session-user-b')->plainTextToken;
 
         // Clear context for the actual test runs to ensure middleware handles it
         $context->setTenantId(null);
@@ -143,9 +147,9 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_student_attempt_show_returns_only_public_attempt_fields(): void
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $start = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $start = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $start->assertStatus(201);
         $attemptId = $start->json('data.id');
@@ -179,7 +183,7 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_missing_device_binding_header_is_rejected()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
         $response = $this->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
         $response->assertStatus(400);
@@ -191,9 +195,9 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_first_device_binds_and_creates_attempt()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(201);
@@ -206,12 +210,12 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_same_device_can_resume_attempt()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(200);
@@ -221,12 +225,12 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_different_device_resume_is_denied()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-B', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $response->assertStatus(409);
@@ -238,12 +242,12 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_same_device_execution_is_allowed()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
 
         $response->assertStatus(200);
@@ -251,12 +255,12 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_different_device_execution_is_denied()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-B', 'X-CBT-Fence-Generation' => '1'])
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
 
         $response->assertStatus(409);
@@ -268,14 +272,14 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_same_device_heartbeat_is_allowed()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $res = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/heartbeat");
 
         $response->assertStatus(200);
@@ -283,14 +287,14 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_different_device_heartbeat_is_denied()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $res = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-B', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/heartbeat");
 
         $response->assertStatus(409);
@@ -302,9 +306,9 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_answer_from_different_device_is_denied()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $res = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
@@ -312,7 +316,7 @@ class ExamSessionHardeningTest extends TestCase
         $snapshot = $this->createSnapshot();
         ExamAttempt::whereKey($attemptId)->update(['question_order' => [(string) $snapshot->id]]);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-B', 'X-CBT-Fence-Generation' => '1'])
             ->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/answers/{$snapshot->id}", [
                 'client_request_id' => 'req-1',
                 'answer_state' => 'ANSWERED',
@@ -328,14 +332,14 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_submit_from_different_device_is_denied()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $res = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-B', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/submit");
 
         $response->assertStatus(409);
@@ -347,12 +351,12 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_server_authoritative_timer()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
 
         $response->assertStatus(200);
@@ -367,9 +371,9 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_expired_attempt_returns_appropriate_error()
     {
-        $this->actingAs($this->userA, 'sanctum');
+        $this->withToken($this->tokenA);
 
-        $res = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $res = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->postJson("/api/v1/exams/{$this->examA->id}/attempts", ['token' => 'ABC123']);
 
         $attemptId = $res->json('data.id');
@@ -380,7 +384,7 @@ class ExamSessionHardeningTest extends TestCase
         $snapshot = $this->createSnapshot();
         ExamAttempt::whereKey($attemptId)->update(['question_order' => [(string) $snapshot->id]]);
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-A')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-A', 'X-CBT-Fence-Generation' => '1'])
             ->putJson("/api/v1/exams/{$this->examA->id}/attempts/{$attemptId}/answers/{$snapshot->id}", [
                 'client_request_id' => 'req-2',
                 'answer_state' => 'ANSWERED',
@@ -393,9 +397,9 @@ class ExamSessionHardeningTest extends TestCase
 
     public function test_cross_tenant_attempt_access_remains_denied()
     {
-        $this->actingAs($this->userB, 'sanctum'); // User B belongs to Tenant B
+        $this->withToken($this->tokenB); // User B belongs to Tenant B
 
-        $response = $this->withHeader('X-Device-Binding-ID', 'device-B')
+        $response = $this->withHeaders(['X-Device-Binding-ID' => 'device-B', 'X-CBT-Fence-Generation' => '1'])
             ->getJson("/api/v1/exams/{$this->examA->id}/execution");
 
         $response->assertStatus(404);
