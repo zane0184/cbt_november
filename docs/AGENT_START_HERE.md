@@ -1,3 +1,16 @@
+# PENTING — HANDOVER KANONIS TERBARU (23 NOVEMBER 2026)
+
+**Abaikan angka/branch/status historis di bagian bawah jika bertentangan dengan handover ini.**
+
+- [HANDOVER AGENT BARU — P0 PHPUnit 518/0 PASS](HANDOVER_AGENT_BARU_2026-11-23_P0_518_PASS.md)
+- [PROMPT EKSEKUSI AGENT BARU — mulai dari P1-A](PROMPT_AGENT_BARU_LANJUTAN_2026-11-23.md)
+- Exact tested HEAD: `856294037312c186f03422071368bcaa2987516a` pada `work/phpunit-41-root-cause-20261123`.
+- CI terbaru #45220055382: smoke 27/90 dan full PHPUnit **518 passed, 0 failed, 2,189 assertions** pada disposable MySQL 8.0.46/PHP 8.3.
+- PR #22 OPEN/DRAFT/UNMERGED, head branch remediasi, base branch eksekusi. Jangan merge tanpa review dan persetujuan owner.
+- **Agent baru tidak boleh mengulang remediasi 41 failure**. Lanjutkan P1-A (review PR #22 dan integrasi atas izin owner), lalu backlog Proktor/Admin/Guru/Siswa/Kurikulum sesuai handover.
+
+---
+
 # STATUS TERBARU PROYEK CBT MADRASAH — 23 NOVEMBER 2026
 
 **Titik kerja aktif dan bukti terbaru:**
