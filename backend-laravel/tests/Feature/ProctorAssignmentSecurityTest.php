@@ -163,7 +163,7 @@ class ProctorAssignmentSecurityTest extends TestCase
     {
         $this->actingAs($this->proctor);
         $this->get('/admin/proctor-assignments')->assertForbidden();
-        $this->get('/admin/exams')->assertOk();
+        $this->get('/admin/exams')->assertForbidden();
     }
 
     public function test_database_rejects_cross_tenant_proctor_reference(): void
