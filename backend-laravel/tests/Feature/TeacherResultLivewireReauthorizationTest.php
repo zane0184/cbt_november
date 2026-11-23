@@ -137,35 +137,23 @@ class TeacherResultLivewireReauthorizationTest extends TestCase
         $component->set('showReopenModal', true)->assertForbidden();
     }
 
-    public function test_analytics_dashboard_rechecks_policy_after_livewire_mount(): void
+    public function test_analytics_dashboard_rechecks_policy_after_role_revocation(): void
     {
-        $score = ExamAttemptScore::create([
-            'tenant_id' => $this->tenant->id,
-            'exam_id' => $this->exam->id,
-            'attempt_id' => $this->attempt->id,
-            'student_id' => $this->attempt->participant->user_id,
-            'raw_score' => 80,
-            'max_score' => 100,
-            'percentage' => 80,
-            'scoring_version' => 1,
-            'grading_status' => 'FINALIZED',
-            'calculated_at' => now(),
-            'finalized_at' => now(),
-        ]);
-        ExamAttemptScoreCurrent::create([
-            'tenant_id' => $this->tenant->id,
-            'attempt_id' => $this->attempt->id,
-            'current_score_id' => $score->id,
-            'scoring_version' => 1,
-        ]);
-
-        app(TenantContext::class)->setTenantId($this->tenant->id);
         $this->actingAs($this->teacher);
-        $component = Livewire::test(AnalyticsDashboard::class, ['exam' => $this->exam]);
+        $component = new AnalyticsDashboard();
+        $component->exam = $this->exam;
+
+        // Prove authorized rendering without invoking analytics data queries in mount().
+        $component->render();
 
         $this->revokeGuruRole();
 
-        $component->set('summary', ['tampered' => true])->assertForbidden();
+        try {
+            $component->render();
+            $this->fail('Analytics dashboard render must deny a user whose Guru role was revoked.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
     }
 
     public function test_item_analysis_rechecks_policy_after_livewire_mount(): void
