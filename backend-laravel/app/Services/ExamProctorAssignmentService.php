@@ -15,71 +15,7 @@ class ExamProctorAssignmentService
 
     public function assign(User $actor, Exam $exam, string $proctorUserId, CarbonInterface $startsAt, CarbonInterface $expiresAt, string $reason): ExamProctorAssignment
     {
-        throw new \LogicException('Central exam eligibility is not yet canonically defined; proctor assignment is blocked.');
-        return DB::transaction(function () use ($actor, $exam, $proctorUserId, $startsAt, $expiresAt, $reason) {
-            $tenantId = (string) $actor->tenant_id;
-            $lockedExam = Exam::query()->where('tenant_id', $tenantId)->whereKey($exam->id)->lockForUpdate()->firstOrFail();
-            Gate::forUser($actor)->authorize('assignProctor', $lockedExam);
-
-            $guru = User::query()->where('tenant_id', $tenantId)->whereKey($proctorUserId)
-                ->whereNull('deleted_at')->lockForUpdate()->first();
-            if (!$guru || !$guru->hasExactRole('GURU') || !$guru->teacherProfile()->exists()) {
-                throw ValidationException::withMessages(['selectedProctorId' => 'Guru pengawas tidak ditemukan, tidak aktif, atau bukan anggota tenant ini.']);
-            }
-
-            $reason = trim($reason);
-            if (mb_strlen($reason) < 10 || mb_strlen($reason) > 1000) {
-                throw ValidationException::withMessages(['reason' => 'Alasan penugasan wajib berisi 10–1.000 karakter.']);
-            }
-
-            $start = \Illuminate\Support\Carbon::parse($startsAt);
-            $expiry = \Illuminate\Support\Carbon::parse($expiresAt);
-            $examEnd = $lockedExam->end_at;
-            if (!$examEnd || $start->greaterThanOrEqualTo($expiry) || $expiry->lessThanOrEqualTo(now())
-                || $start->greaterThanOrEqualTo($examEnd) || $expiry->greaterThan($examEnd)) {
-                throw ValidationException::withMessages(['expiresAt' => 'Masa penugasan harus berada sebelum batas akhir ujian dan masih berlaku.']);
-            }
-
-            // The Guru row is locked above, serializing assignment creation for this person.
-            // Reject overlapping duties across different exams; a renewal for this same exam remains allowed.
-            $hasScheduleConflict = ExamProctorAssignment::query()
-                ->where('tenant_id', $tenantId)
-                ->where('proctor_user_id', $guru->id)
-                ->where('exam_id', '<>', $lockedExam->id)
-                ->where('status', 'ACTIVE')
-                ->whereNull('revoked_at')
-                ->where('starts_at', '<', $expiry)
-                ->where('expires_at', '>', $start)
-                ->exists();
-
-            if ($hasScheduleConflict) {
-                throw ValidationException::withMessages([
-                    'selectedProctorId' => 'Guru tersebut sudah memiliki penugasan pengawasan lain yang waktunya bertumpang tindih.',
-                ]);
-            }
-
-            $assignment = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
-                ->where('exam_id', $lockedExam->id)->where('proctor_user_id', $guru->id)
-                ->lockForUpdate()->first();
-            $isNew = !$assignment;
-            $oldValues = $assignment?->only(['status', 'starts_at', 'expires_at', 'assignment_reason', 'assigned_by', 'revoked_at', 'revoked_by', 'revoke_reason']);
-
-            $assignment ??= new ExamProctorAssignment();
-            $assignment->fill([
-                'tenant_id' => $tenantId, 'exam_id' => $lockedExam->id, 'proctor_user_id' => $guru->id,
-                'assigned_by' => $actor->id, 'starts_at' => $start, 'expires_at' => $expiry,
-                'status' => 'ACTIVE', 'assignment_reason' => $reason,
-                'revoked_at' => null, 'revoked_by' => null, 'revoke_reason' => null,
-            ]);
-            $assignment->save();
-
-            $this->auditService->log(
-                $isNew ? 'EXAM_PROCTOR_ASSIGNMENT_CREATE' : 'EXAM_PROCTOR_ASSIGNMENT_RENEW',
-                'ExamProctorAssignment', $assignment->id, $oldValues,
-                $assignment->only(['tenant_id', 'exam_id', 'proctor_user_id', 'assigned_by', 'starts_at', 'expires_at', 'status', 'assignment_reason'])
-            );
-            return $assignment->fresh()->load(['exam', 'proctor', 'assigner']);
-        });
+        throw new \\LogicException('Central exam eligibility is not yet canonically defined; proctor assignment is blocked.');
     }
 
     public function revoke(User $actor, Exam $exam, ExamProctorAssignment $assignment, string $reason): ExamProctorAssignment
