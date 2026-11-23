@@ -161,3 +161,32 @@ Mulai dengan membaca seluruh dokumen wajib dan memverifikasi GitHub. Kemudian la
 - blocker/keputusan owner yang benar-benar diperlukan.
 
 Setelah itu **langsung kerjakan item backlog berikutnya yang tidak terblokir**. Jangan berhenti setelah membuat audit ulang. Jangan meminta owner mengulangi keputusan. Jangan mengulang pekerjaan hijau. Misi kamu adalah meneruskan proyek sampai acceptance gates terpenuhi.
+
+
+---
+
+# ADDENDUM TERBARU — W1 FINAL / STATUS 24 NOVEMBER 2026
+
+**Dokumen ini sebelumnya merekam status pada SHA dan CI yang lebih lama. Addendum ini menggantikan angka dan status lama untuk pekerjaan selanjutnya.** Prompt operasional lengkap terbaru: [PROMPT_AGENT_PENGGANTI_CBT_W1_FINAL_2026-11-24.md](PROMPT_AGENT_PENGGANTI_CBT_W1_FINAL_2026-11-24.md).
+
+- Branch: `work/solo-web-cbt-completion-20261123-execution`.
+- HEAD terbaru: `66801d3afdef925e79b0478870b1f51d6c363d1a`.
+- Exact source SHA W1 yang diuji: `b5e97564a4875c6b9f809adbb61b65469897d79b`.
+- Actions #1662 SUCCESS: 27/90 login-tenant smoke; Admin 5/5; Guru 4/4; Full PHPUnit 527 passed, 2,190 assertions, 0 failed; PHP 8.3 + MySQL 8.0.46/InnoDB disposable. https://github.com/zane0184/cbt_november/actions/runs/45257698090
+- Actions #1663 SUCCESS pada HEAD dokumentasi terbaru; focused login/tenant, Admin, Guru, full suite dan cleanup sukses. https://github.com/zane0184/cbt_november/actions/runs/45258556051
+- Commit source/test terakhir yang menjadi dasar W1: https://github.com/zane0184/cbt_november/commit/b5e97564a4875c6b9f809adbb61b65469897d79b
+- Commit laporan/checkpoint: https://github.com/zane0184/cbt_november/commit/66801d3afdef925e79b0478870b1f51d6c363d1a
+
+W1 reauthorization Admin dan Guru sudah VERIFIED pada cakupan patch. Komponen Admin: Dashboard, UserManagement, AcademicManagement, CurriculumManagement, ProctorAssignmentManagement selector callback. Komponen Guru: ResultList, ResultDetail, AnalyticsDashboard, ItemAnalysis. Fix Blade ResultDetail dan penghapusan duplicate policy check pada ResultList/AnalyticsDashboard juga masuk source teruji. Test Analytics memakai mock ExamAnalyticsService untuk isolasi authorization; bukan acceptance analytics statistik.
+
+Backup byte-exact tersedia pada:
+- `backend-laravel/docs/backup/livewire-admin-render-reauth-2026-11-24/`
+- `backend-laravel/docs/backup/teacher-result-render-reauth-2026-11-24/`
+
+**Jangan ulang patch, triage 42 baseline failures, atau full PHPUnit hanya karena pergantian agent.** Lakukan focused tests untuk perubahan baru; full suite hanya bila dampaknya luas atau acceptance memerlukan.
+
+Keputusan owner tetap: instalasi/database mandiri per madrasah; tidak ada shared multi-tenant akademik; role lokal hanya ADMIN_MADRASAH/GURU/SISWA; Kamad/Operator bukan role/portal; Proktor hanya assignment/menu sementara pada Guru; Admin tidak mengelola ujian; Kurmer+KBC satu kesatuan; DOCX utama, XLSX question import disabled; SHORT_ANSWER fail-closed; Android dan Web Super Admin ditunda sampai Juni 2027.
+
+Issue #20 tetap OPEN. W1 reauthorization subset selesai, tetapi acceptance W1 lainnya dapat masih terbuka. Lanjutkan gap W1 yang benar-benar belum terpenuhi, lalu W2–W9. ADM-01..ADM-23 belum verified end-to-end. ADM-20 tetap BLOCKED sampai canonical central exam eligibility marker disetujui owner. PR #18, #19, #13 terakhir diperiksa OPEN/DRAFT; jangan merge tanpa approval.
+
+**Status proyek: IN PROGRESS — NOT READY FOR DISTRIBUTION / NOT READY FOR PRODUCTION.**

@@ -1,3 +1,17 @@
+> **STATUS TERBARU 24 NOVEMBER 2026 — WAJIB BACA SEBELUM MEMAKAI BAGIAN LAMA DI BAWAH.**
+>
+> Prompt ini memiliki bagian historis yang status/angka CI-nya sudah kedaluwarsa. Acuan operasional terbaru adalah [PROMPT AGENT PENGGANTI W1 FINAL](PROMPT_AGENT_PENGGANTI_CBT_W1_FINAL_2026-11-24.md). Jangan menggunakan HEAD/angka lama dari teks di bawah sebagai status saat ini.
+>
+> Branch kerja: `work/solo-web-cbt-completion-20261123-execution`; HEAD dokumentasi: `66801d3afdef925e79b0478870b1f51d6c363d1a`; source W1 diuji pada `b5e97564a4875c6b9f809adbb61b65469897d79b`.
+>
+> CI #1662 dan #1663 SUCCESS; full PHPUnit 527 passed, 2,190 assertions, 0 failed. Focused login/tenant 27/90, Admin 5/5, Guru 4/4. Jangan mengulang triage atau full suite tanpa pemicu yang sah.
+>
+> Mandat tidak berubah: **LANJUTKAN, JANGAN MENGULANG.** W1 reauthorization patch sudah verified pada scope-nya; ADM-01..23 belum verified end-to-end; ADM-20 tetap blocked sampai canonical central exam eligibility marker diputuskan owner. Issue #20 masih open. Tidak ada merge/deploy/production migration tanpa approval. Android dan Web Super Admin ditunda sampai Juni 2027.
+>
+> Baca dokumen baru di atas sebagai sumber instruksi utama. Bagian historis setelah banner hanya konteks, bukan status terkini.
+
+---
+
 # PROMPT AGENT PENGGANTI — CBT MADRASAH (OWNER-DIRECTED)
 
 ## AREA TERKUNCI — FULL PHPUNIT SUDAH HIJAU (BACA SEBELUM EKSEKUSI)
