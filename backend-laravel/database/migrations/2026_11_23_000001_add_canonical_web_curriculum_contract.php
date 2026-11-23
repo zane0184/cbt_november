@@ -151,7 +151,7 @@ return new class extends Migration
                 )->references(['id', 'multi_curriculum_version_id', 'tenant_id'])
                     ->on('multi_curriculum_structures')->onDelete('RESTRICT');
                 $table->foreign(['created_by', 'tenant_id'], 'tcsm_creator_owner_fk')
-                    ->references(['id', 'tenant_id'])->on('users')->onDelete('SET NULL');
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
 
@@ -259,7 +259,7 @@ return new class extends Migration
                     ->references(['id', 'multi_curriculum_version_id', 'tenant_id'])
                     ->on('multi_curriculum_structures')->onDelete('RESTRICT');
                 $table->foreign(['created_by', 'tenant_id'], 'tlosm_creator_owner_fk')
-                    ->references(['id', 'tenant_id'])->on('users')->onDelete('SET NULL');
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
 
@@ -310,7 +310,7 @@ return new class extends Migration
                 $table->foreign(['semester_id', 'tenant_id'], 'qvcm_semester_owner_fk')
                     ->references(['id', 'tenant_id'])->on('semesters')->onDelete('RESTRICT');
                 $table->foreign(['created_by', 'tenant_id'], 'qvcm_creator_owner_fk')
-                    ->references(['id', 'tenant_id'])->on('users')->onDelete('SET NULL');
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
 
@@ -361,7 +361,7 @@ return new class extends Migration
                 $table->foreign(['semester_id', 'tenant_id'], 'qvtom_semester_owner_fk')
                     ->references(['id', 'tenant_id'])->on('semesters')->onDelete('RESTRICT');
                 $table->foreign(['created_by', 'tenant_id'], 'qvtom_creator_owner_fk')
-                    ->references(['id', 'tenant_id'])->on('users')->onDelete('SET NULL');
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
 
@@ -404,7 +404,7 @@ return new class extends Migration
                 $table->foreign(['semester_id', 'tenant_id'], 'qvsm_semester_owner_fk')
                     ->references(['id', 'tenant_id'])->on('semesters')->onDelete('RESTRICT');
                 $table->foreign(['created_by', 'tenant_id'], 'qvsm_creator_owner_fk')
-                    ->references(['id', 'tenant_id'])->on('users')->onDelete('SET NULL');
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
 
