@@ -80,30 +80,56 @@ class CurriculumRegistryBootstrapSeeder extends Seeder
                 string $sourceLocator,
                 array $metadata = []
             ) use ($tenantId, $version): MultiCurriculumStructure {
-                return MultiCurriculumStructure::query()->updateOrCreate(
-                    [
-                        'tenant_id' => $tenantId,
-                        'multi_curriculum_version_id' => $version->id,
-                        'node_type' => $nodeType,
-                        'code' => $code,
-                    ],
-                    [
-                        'parent_id' => $parentId,
-                        'title' => $title,
-                        'sort_order' => $metadata['sort_order'] ?? 0,
-                        'status' => 'ACTIVE',
-                        'is_official' => true,
-                        'is_editable' => false,
-                        'source_id' => $source->id,
-                        'source_locator' => $sourceLocator,
-                        'effective_from' => $source->effective_from,
-                        'effective_until' => $source->effective_until,
-                        'verification_status' => $source->verification_status,
-                        'verified_at' => $source->verified_at ?? now(),
-                        'source_checksum' => $source->checksum_sha256,
-                        'metadata' => $metadata,
-                    ]
-                );
+                // The MySQL unique identity is (version_id, code), not tenant_id.
+                // Keep lookup aligned with that database constraint, then verify
+                // that the existing row has the expected tenant and node type.
+                $identity = [
+                    'multi_curriculum_version_id' => $version->id,
+                    'code' => $code,
+                ];
+
+                $node = MultiCurriculumStructure::query()
+                    ->where($identity)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($node && (
+                    $node->tenant_id !== $tenantId
+                    || $node->node_type !== $nodeType
+                )) {
+                    throw new \\RuntimeException(
+                        "Curriculum registry identity conflict for version {$version->id} and code {$code}."
+                    );
+                }
+
+                $attributes = [
+                    'tenant_id' => $tenantId,
+                    'multi_curriculum_version_id' => $version->id,
+                    'parent_id' => $parentId,
+                    'node_type' => $nodeType,
+                    'code' => $code,
+                    'title' => $title,
+                    'sort_order' => $metadata['sort_order'] ?? 0,
+                    'status' => 'ACTIVE',
+                    'is_official' => true,
+                    'is_editable' => false,
+                    'source_id' => $source->id,
+                    'source_locator' => $sourceLocator,
+                    'effective_from' => $source->effective_from,
+                    'effective_until' => $source->effective_until,
+                    'verification_status' => $source->verification_status,
+                    'verified_at' => $source->verified_at ?? now(),
+                    'source_checksum' => $source->checksum_sha256,
+                    'metadata' => $metadata,
+                ];
+
+                if ($node) {
+                    $node->fill($attributes);
+                    $node->save();
+                    return $node;
+                }
+
+                return MultiCurriculumStructure::query()->create($attributes);
             };
 
             $phases = [
