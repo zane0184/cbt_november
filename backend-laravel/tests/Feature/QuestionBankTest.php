@@ -171,7 +171,7 @@ class QuestionBankTest extends TestCase
             'tenant_id' => $this->tenantA->id,
             'major_version' => 1,
             'minor_version' => 0,
-            'question_type' => 'SHORT_ANSWER',
+            'question_type' => 'ESSAY',
             'stem' => 'Stem lama',
             'status' => 'PUBLISHED',
             'is_current' => true,
@@ -324,8 +324,18 @@ class QuestionBankTest extends TestCase
 
         $version = $question->currentVersion;
         $this->assertEquals('MULTIPLE_RESPONSE', $version->question_type);
-        $this->assertEquals($this->cpA->id, $version->learning_outcome_id);
-        $this->assertEquals($this->tpA->id, $version->learning_objective_id);
+        $this->assertDatabaseHas('question_version_curriculum_mappings', [
+            'tenant_id' => $this->tenantA->id,
+            'question_version_id' => $version->id,
+            'multi_learning_outcome_id' => $this->canonicalContext['cp']->id,
+            'mapping_role' => 'CP',
+        ]);
+        $this->assertDatabaseHas('question_version_tenant_outcome_mappings', [
+            'tenant_id' => $this->tenantA->id,
+            'question_version_id' => $version->id,
+            'tenant_learning_outcome_id' => $this->canonicalContext['tp']->id,
+            'mapping_role' => 'TP',
+        ]);
 
         $correctKeys = $version->options->where('is_correct', true)->pluck('option_key')->toArray();
         $this->assertEquals(['A', 'C'], $correctKeys);
