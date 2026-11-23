@@ -24,6 +24,7 @@ class UserManagement extends Component
     public $email = '';
     public $password = '';
     public $selectedRole = '';
+    public $employmentStatus = '';
     public $nip = '';
     public $nik = '';
     public $nisn = '';
@@ -54,14 +55,15 @@ class UserManagement extends Component
             'email' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))],
             'password' => ['required','string','min:14'],
             'selectedRole' => ['required','string',Rule::in($manageableRoles)],
-            'nip' => ['nullable','string','max:18'],
-            'nik' => ['nullable','digits:16'],
+            'employmentStatus' => ['required_if:selectedRole,GURU', Rule::in(['PNS', 'PPPK', 'HONORER'])],
+            'nip' => ['exclude_unless:employmentStatus,PNS,PPPK', 'required_if:employmentStatus,PNS,PPPK', 'digits:18'],
+            'nik' => ['exclude_unless:employmentStatus,HONORER', 'required_if:employmentStatus,HONORER', 'digits:16'],
             'nisn' => ['nullable','digits:10'],
         ];
         
         if ($this->selectedRole === 'GURU') {
-            $rules['nip'][] = Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId));
-            $rules['nik'][] = Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId));
+            if (in_array($this->employmentStatus, ['PNS', 'PPPK'], true)) $rules['nip'][] = Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId));
+            if ($this->employmentStatus === 'HONORER') $rules['nik'][] = Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId));
         }
         if ($this->selectedRole === 'SISWA') $rules['nisn'] = ['required','digits:10',Rule::unique('student_profiles','nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
         return $rules;
@@ -70,7 +72,7 @@ class UserManagement extends Component
     public function openCreateModal(): void
     {
         $this->authorizeUserManagement();
-        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn']);
+        $this->reset(['name','username','email','password','selectedRole','employmentStatus','nip','nik','nisn']);
         $this->resetValidation();
         $this->showCreateModal = true;
     }
@@ -94,9 +96,10 @@ class UserManagement extends Component
             if ($this->selectedRole === 'GURU') {
                 TeacherProfile::query()->create([
                     'user_id' => $user->id, 'full_name' => trim($this->name),
-                    'nip' => trim($this->nip) !== '' ? trim($this->nip) : null,
-                    'nik' => trim($this->nik) !== '' ? trim($this->nik) : null,
-                    'employee_identifier' => trim($this->nip) !== '' ? trim($this->nip) : trim($this->nik),
+                    'employment_status' => $this->employmentStatus,
+                    'nip' => in_array($this->employmentStatus, ['PNS', 'PPPK'], true) ? trim($this->nip) : null,
+                    'nik' => $this->employmentStatus === 'HONORER' ? trim($this->nik) : null,
+                    'employee_identifier' => in_array($this->employmentStatus, ['PNS', 'PPPK'], true) ? trim($this->nip) : trim($this->nik),
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
                 StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
