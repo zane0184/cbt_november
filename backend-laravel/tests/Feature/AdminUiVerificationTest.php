@@ -233,31 +233,57 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_create_teacher_without_optional_nip_or_nik()
+    public function admin_cannot_create_teacher_without_employment_status_and_required_identity()
     {
         $this->actingAs($this->admin);
 
         Livewire::test(UserManagement::class)
-            ->set('name', 'Guru Tanpa Nomor Identitas')
-            ->set('username', 'guru.tanpa.identitas')
-            ->set('email', 'guru.tanpa.identitas@man1.sch.id')
+            ->set('name', 'Guru Tanpa Identitas')
             ->set('password', 'secret123456789')
             ->set('selectedRole', 'GURU')
             ->call('createUser')
+            ->assertHasErrors(['employmentStatus']);
+
+        $this->assertDatabaseMissing('users', ['tenant_id' => $this->tenant->id, 'name' => 'Guru Tanpa Identitas']);
+    }
+
+    /** @test */
+    public function admin_can_create_pns_teacher_only_with_18_digit_nip()
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Guru PNS')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'PNS')
+            ->set('nip', '198001012006041001')
+            ->call('createUser')
             ->assertHasNoErrors();
 
-        $created = User::query()
-            ->where('tenant_id', $this->tenant->id)
-            ->where('username', 'guru.tanpa.identitas')
-            ->firstOrFail();
-
-        $this->assertTrue($created->hasExactRole('GURU'));
         $this->assertDatabaseHas('teacher_profiles', [
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $created->id,
-            'nip' => null,
-            'nik' => null,
-            'employee_identifier' => null,
+            'tenant_id' => $this->tenant->id, 'employment_status' => 'PNS',
+            'nip' => '198001012006041001', 'nik' => null,
+        ]);
+    }
+
+    /** @test */
+    public function admin_can_create_honorer_teacher_only_with_16_digit_nik()
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Guru Honorer')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'HONORER')
+            ->set('nik', '3171000000000001')
+            ->call('createUser')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id, 'employment_status' => 'HONORER',
+            'nip' => null, 'nik' => '3171000000000001',
         ]);
     }
 
@@ -272,7 +298,8 @@ class AdminUiVerificationTest extends TestCase
             ->set('email', 'gurubaru@man1.sch.id')
             ->set('password', 'secret123456789')
             ->set('selectedRole', 'GURU')
-            ->set('nip', '1987654321')
+            ->set('employmentStatus', 'PNS')
+            ->set('nip', '198765432100000001')
             ->call('createUser')
             ->assertHasNoErrors();
 
