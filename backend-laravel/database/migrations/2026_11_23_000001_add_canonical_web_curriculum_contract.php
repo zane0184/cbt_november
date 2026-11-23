@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\\Database\\Migrations\\Migration;
-use Illuminate\\Database\\Schema\\Blueprint;
-use Illuminate\\Support\\Facades\\Schema;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -97,19 +97,26 @@ return new class extends Migration
             Schema::create('question_version_curriculum_mappings', function (Blueprint $table): void {
                 $table->uuid('id')->primary();
                 $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
-                $table->foreignUuid('question_version_id')->constrained('question_versions')->cascadeOnDelete();
-                $table->foreignUuid('multi_curriculum_version_id')
-                    ->constrained('multi_curriculum_versions')->restrictOnDelete();
-                $table->foreignUuid('multi_learning_outcome_id')
-                    ->constrained('multi_learning_outcomes')->restrictOnDelete();
+                $table->uuid('question_version_id');
+                $table->foreign('question_version_id', 'qv_curr_map_question_fk')
+                    ->references('id')->on('question_versions')->cascadeOnDelete();
+                $table->uuid('multi_curriculum_version_id');
+                $table->foreign('multi_curriculum_version_id', 'qv_curr_map_version_fk')
+                    ->references('id')->on('multi_curriculum_versions')->restrictOnDelete();
+                $table->uuid('multi_learning_outcome_id');
+                $table->foreign('multi_learning_outcome_id', 'qv_curr_map_outcome_fk')
+                    ->references('id')->on('multi_learning_outcomes')->restrictOnDelete();
                 $table->foreignUuid('material_id')->nullable()
                     ->constrained('materials')->nullOnDelete();
-                $table->foreignUuid('material_topic_id')->nullable()
-                    ->constrained('material_topics')->nullOnDelete();
-                $table->foreignUuid('academic_year_id')->nullable()
-                    ->constrained('academic_years')->nullOnDelete();
-                $table->foreignUuid('semester_id')->nullable()
-                    ->constrained('semesters')->nullOnDelete();
+                $table->uuid('material_topic_id')->nullable();
+                $table->foreign('material_topic_id', 'qv_curr_map_topic_fk')
+                    ->references('id')->on('material_topics')->nullOnDelete();
+                $table->uuid('academic_year_id')->nullable();
+                $table->foreign('academic_year_id', 'qv_curr_map_year_fk')
+                    ->references('id')->on('academic_years')->nullOnDelete();
+                $table->uuid('semester_id')->nullable();
+                $table->foreign('semester_id', 'qv_curr_map_semester_fk')
+                    ->references('id')->on('semesters')->nullOnDelete();
                 $table->string('mapping_role', 40)->default('LEARNING_OUTCOME');
                 $table->decimal('weight', 6, 3)->default(1);
                 $table->boolean('is_primary')->default(false);
@@ -137,15 +144,21 @@ return new class extends Migration
             Schema::create('question_version_structure_mappings', function (Blueprint $table): void {
                 $table->uuid('id')->primary();
                 $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
-                $table->foreignUuid('question_version_id')->constrained('question_versions')->cascadeOnDelete();
-                $table->foreignUuid('multi_curriculum_version_id')
-                    ->constrained('multi_curriculum_versions')->restrictOnDelete();
-                $table->foreignUuid('multi_curriculum_structure_id')
-                    ->constrained('multi_curriculum_structures')->restrictOnDelete();
-                $table->foreignUuid('academic_year_id')->nullable()
-                    ->constrained('academic_years')->nullOnDelete();
-                $table->foreignUuid('semester_id')->nullable()
-                    ->constrained('semesters')->nullOnDelete();
+                $table->uuid('question_version_id');
+                $table->foreign('question_version_id', 'qv_struct_map_question_fk')
+                    ->references('id')->on('question_versions')->cascadeOnDelete();
+                $table->uuid('multi_curriculum_version_id');
+                $table->foreign('multi_curriculum_version_id', 'qv_struct_map_version_fk')
+                    ->references('id')->on('multi_curriculum_versions')->restrictOnDelete();
+                $table->uuid('multi_curriculum_structure_id');
+                $table->foreign('multi_curriculum_structure_id', 'qv_struct_map_structure_fk')
+                    ->references('id')->on('multi_curriculum_structures')->restrictOnDelete();
+                $table->uuid('academic_year_id')->nullable();
+                $table->foreign('academic_year_id', 'qv_struct_map_year_fk')
+                    ->references('id')->on('academic_years')->nullOnDelete();
+                $table->uuid('semester_id')->nullable();
+                $table->foreign('semester_id', 'qv_struct_map_semester_fk')
+                    ->references('id')->on('semesters')->nullOnDelete();
                 $table->string('mapping_role', 40);
                 $table->decimal('weight', 6, 3)->default(1);
                 $table->uuid('created_by')->nullable();
