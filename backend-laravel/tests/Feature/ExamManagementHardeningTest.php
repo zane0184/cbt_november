@@ -355,7 +355,6 @@ class ExamManagementHardeningTest extends TestCase
             ->set('selectedSemesterId', $this->semester->id)
             ->set('activityName', 'Asesmen IPAS Kelas 6')
             ->set('assessmentPurpose', 'Asesmen pembelajaran IPAS')
-            ->set('assessmentOrigin', 'INTERNAL')
             ->set('selectedAssessmentFunctionOptionId', $this->canonicalContext['taxonomy']['function']->id)
             ->set('selectedAssessmentScopeOptionId', $this->canonicalContext['taxonomy']['scope']->id)
             ->set('selectedInstrumentTypeOptionId', $this->canonicalContext['taxonomy']['instrument']->id)
