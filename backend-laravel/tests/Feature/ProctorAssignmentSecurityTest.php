@@ -15,7 +15,6 @@ use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\ExamProctorAssignmentService;
 use Illuminate\Database\QueryException;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -142,6 +141,7 @@ class ProctorAssignmentSecurityTest extends TestCase
 
         public function test_revoked_assignment_removes_monitoring_access_and_is_audited(): void
     {
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         $assignment = ExamProctorAssignment::query()->create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
@@ -164,6 +164,7 @@ class ProctorAssignmentSecurityTest extends TestCase
 
     public function test_expired_historic_assignment_does_not_grant_monitoring_or_dashboard_access(): void
     {
+        app(TenantContext::class)->setTenantId($this->tenant->id);
         ExamProctorAssignment::query()->create([
             'tenant_id' => $this->tenant->id,
             'exam_id' => $this->exam->id,
@@ -187,12 +188,12 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->get('/admin/exams')->assertNotFound();
     }
 
-    public function test_multi_role_guru_cannot_be_assigned_as_temporary_proctor(): void
+    public function test_multi_role_guru_assignment_remains_blocked_until_central_exam_marker_exists(): void
     {
-        $legacyRole = Role::create(['name' => 'KAMAD', 'label' => 'Legacy Kamad']);
-        $this->proctor->roles()->attach($legacyRole->id);
+        $studentRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+        $this->proctor->roles()->attach($studentRole->id);
 
-        $this->expectException(ValidationException::class);
+        $this->expectException(\\LogicException::class);
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
@@ -203,12 +204,12 @@ class ProctorAssignmentSecurityTest extends TestCase
         );
     }
 
-    public function test_multi_role_admin_cannot_assign_temporary_proctor(): void
+    public function test_multi_role_admin_assignment_remains_blocked_until_central_exam_marker_exists(): void
     {
         $guruRole = Role::where('name', 'GURU')->firstOrFail();
         $this->admin->roles()->attach($guruRole->id);
 
-        $this->expectException(\Illuminate\Auth\Access\AuthorizationException::class);
+        $this->expectException(\\LogicException::class);
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
             $this->exam,
