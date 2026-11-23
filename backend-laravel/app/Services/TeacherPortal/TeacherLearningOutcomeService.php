@@ -295,7 +295,11 @@ class TeacherLearningOutcomeService
         return DB::transaction(function () use ($user, $profile, $tenantId, $outcomeId): TenantLearningOutcome {
             $outcome = TenantLearningOutcome::query()
                 ->where('tenant_id', $tenantId)
-                ->whereHas('assignment', fn ($query) => $query->where('teacher_profile_id', $profile->id))
+                ->whereHas('assignment', fn ($query) => $query
+                    ->where('teacher_profile_id', $profile->id)
+                    ->where('status', 'ACTIVE')
+                    ->whereDate('starts_at', '<=', now()->toDateString())
+                    ->whereDate('ends_at', '>=', now()->toDateString()))
                 ->whereKey($outcomeId)
                 ->with('parentCp.source', 'structureMappings.structure.source')
                 ->lockForUpdate()
