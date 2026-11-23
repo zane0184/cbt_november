@@ -14,8 +14,8 @@ class TenantCurriculumSubjectMapping extends Model
     protected $table = 'tenant_curriculum_subject_mappings';
 
     protected $fillable = [
-        'tenant_id', 'subject_id', 'multi_curriculum_version_id',
-        'multi_curriculum_structure_id', 'status', 'effective_from',
+        'tenant_id', 'subject_id', 'tenant_curriculum_registration_id', 'multi_curriculum_version_id',
+        'curriculum_owner_id', 'multi_curriculum_structure_id', 'status', 'effective_from',
         'effective_until', 'created_by', 'metadata',
     ];
 
@@ -38,6 +38,11 @@ class TenantCurriculumSubjectMapping extends Model
     public function curriculumStructure(): BelongsTo
     {
         return $this->belongsTo(MultiCurriculumStructure::class, 'multi_curriculum_structure_id');
+    }
+
+    public function curriculumRegistration(): BelongsTo
+    {
+        return $this->belongsTo(TenantCurriculumRegistration::class, 'tenant_curriculum_registration_id');
     }
 
     public function creator(): BelongsTo
