@@ -128,18 +128,18 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->admin);
     }
 
-    public function test_legacy_operator_login_redirects_to_same_admin_dashboard(): void
+    public function test_legacy_operator_login_is_rejected(): void
     {
         $response = $this->post('/login', ['identifier' => 'operator.uji', 'password' => $this->password]);
-        $response->assertRedirect('/admin/dashboard');
-        $this->assertAuthenticatedAs($this->operator);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
-    public function test_kamad_login_redirects_to_welcome_landing(): void
+    public function test_legacy_kamad_login_is_rejected(): void
     {
         $response = $this->post('/login', ['identifier' => 'kamad.uji', 'password' => $this->password]);
-        $response->assertRedirect('/');
-        $this->assertAuthenticatedAs($this->kamad);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
     public function test_kamad_cannot_open_the_admin_dashboard(): void
@@ -157,10 +157,23 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_admin_account_with_legacy_second_role_is_rejected(): void
+    {
+        $this->admin->roles()->attach(Role::where('name', 'OPERATOR')->firstOrFail());
+
+        $response = $this->post('/login', [
+            'identifier' => 'admin.uji',
+            'password' => $this->password,
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
     public function test_teacher_can_login_using_nip(): void
     {
         $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => $this->password]);
-        $response->assertRedirect('/admin/exams');
+        $response->assertRedirect('/guru/dashboard');
         $this->assertAuthenticatedAs($this->guru);
     }
 
@@ -208,7 +221,7 @@ class WebAdminAuthTest extends TestCase
     public function test_authenticated_kamad_visiting_login_is_redirected_to_welcome_landing(): void
     {
         $this->actingAs($this->kamad);
-        $this->get('/login')->assertRedirect('/');
+        $this->get('/login')->assertRedirect('/login');
     }
 
     public function test_logout_terminates_session_and_redirects_to_login(): void
