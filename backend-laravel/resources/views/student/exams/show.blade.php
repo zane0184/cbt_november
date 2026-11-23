@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ $exam->title }} - CBT Madrasah</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
     <style>
         :root { color-scheme: light; }
         * { box-sizing: border-box; }
