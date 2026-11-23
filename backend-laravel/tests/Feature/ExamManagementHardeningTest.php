@@ -231,9 +231,9 @@ class ExamManagementHardeningTest extends TestCase
             'status' => 'ACTIVE',
             'created_by' => $foreignTeacher->id,
         ]);
-        $foreignTeacher->roles()->attach(\App\Models\${model}::where('name', 'GURU')->firstOrFail());
+        $foreignTeacher->roles()->attach(\App\Models\Role::where('name', 'GURU')->firstOrFail());
 
-        $foreignAssessment = \App\Models\${model}::create([
+        $foreignAssessment = \App\Models\Assessment::create([
             'tenant_id' => $this->tenant->id,
             'title' => 'Asesmen Guru Lain',
             'subject_id' => $this->subject->id,
@@ -245,13 +245,13 @@ class ExamManagementHardeningTest extends TestCase
             'created_by' => $foreignTeacher->id,
         ]);
         $foreignContext = $this->createCanonicalCurriculumContext($foreignAssignment, $foreignTeacher, $foreignAssessment);
-        $foreignQuestion = \App\Models\${model}::create([
+        $foreignQuestion = \App\Models\Question::create([
             'tenant_id' => $this->tenant->id,
             'subject_id' => $this->subject->id,
             'status' => 'PUBLISHED',
             'created_by' => $foreignTeacher->id,
         ]);
-        $foreignVersion = \App\Models\${model}::create([
+        $foreignVersion = \App\Models\QuestionVersion::create([
             'tenant_id' => $this->tenant->id,
             'question_id' => $foreignQuestion->id,
             'question_type' => 'MC',
