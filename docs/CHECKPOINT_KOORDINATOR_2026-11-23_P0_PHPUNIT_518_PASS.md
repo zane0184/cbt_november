@@ -5,18 +5,19 @@ Repository: `zane0184/cbt_november`
 Branch kerja terisolasi: `work/phpunit-41-root-cause-20261123`  
 Branch sumber/base: `work/solo-web-cbt-completion-20261123-execution`  
 Base SHA: `d6aaeae6f2851bf15272d0cc2bce9e68989d3a4d`  
-Current branch HEAD saat checkpoint: `b6801d44bb4a65c05146b91349e02c32854dc8ae`  
+Branch HEAD sebelum checkpoint update ini: `7923d7a0d29d0f05be6c62da7a7c423409a0b5e9`  
 SHA source/test yang diuji: `085a20eea16ada12e8c055fca6be9bb1d6d6972a`
 
 ## 1. Status aktual
 
-<badge>PASS</badge> Full PHPUnit pada CI #45215342323: **518 passed, 0 failed, 2.189 assertions**.
+**PASS** Full PHPUnit pada CI #45215342323 dan verifikasi ulang CI #45217367885: **518 passed, 0 failed, 2.189 assertions**.
 
 Link CI: https://github.com/zane0184/cbt_november/actions/runs/45215342323
+Verifikasi ulang branch dokumentasi: https://github.com/zane0184/cbt_november/actions/runs/45217367885
 
 Environment: PHP 8.3, disposable MySQL 8.0.46/InnoDB. MySQL identity, Composer/dependencies, installer E2E, login/tenant smoke, dan full PHPUnit lulus pada SHA 085a20ee.
 
-**Catatan exact SHA:** Setelah run #45215342323, hanya dokumentasi/addendum/checkpoint yang diperbarui. Tidak ada source/test/workflow code diubah setelah SHA uji 085a20ee. Branch HEAD sekarang b6801d44; tunggu CI push terbaru agar exact HEAD dokumentasi juga mempunyai run PASS sebelum PR dibuat.
+**Catatan exact SHA:** Source/test code yang lulus pertama kali adalah SHA 085a20ee. Run #45217367885 kemudian lulus pada branch HEAD dokumentasi 6b5e412e (518/0). Setelah itu hanya report dan entrypoint dokumentasi yang berubah; source/test/workflow code tetap sama. HEAD sebelum checkpoint update ini adalah 7923d7a0. CI push yang dipicu checkpoint commit ini harus selesai sebelum PR dibuat.
 
 ## 2. Perubahan P0 yang sudah dilakukan
 
@@ -94,7 +95,7 @@ Open issue:
 
 ## 7. Langkah berikutnya
 
-1. Tunggu CI push terbaru pada branch HEAD b6801d44 selesai. Bila PASS, buat Draft PR dari `work/phpunit-41-root-cause-20261123` ke `work/solo-web-cbt-completion-20261123-execution`. Jangan merge otomatis.
+1. Tunggu CI push terbaru pada branch HEAD setelah checkpoint update selesai. Bila PASS, buat Draft PR dari `work/phpunit-41-root-cause-20261123` ke `work/solo-web-cbt-completion-20261123-execution`. Jangan merge otomatis.
 2. Lanjutkan P1 Proktor Mode B: explicit marker UTS/UAS/UM, Exam+Room assignment, overlap/revoke/audit, menu Guru, strict Room scope, negative tests. Jangan bypass guard saat ini.
 3. Audit ADM-01–23 satu per satu dan lengkapi gap Admin tanpa menghidupkan portal Operator/Kamad.
 4. Lanjutkan Web Guru: import contract (XLSX/DOCX conflict harus direkonsiliasi), grading/history/analytics, curriculum provenance.
