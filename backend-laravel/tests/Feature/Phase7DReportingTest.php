@@ -346,6 +346,8 @@ class Phase7DReportingTest extends TestCase
 
     public function test_admin_madrasah_cannot_export_exam_or_student_results(): void
     {
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
+
         $adminRole = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
         $admin = User::create([
             'tenant_id' => $this->tenantA->id,
