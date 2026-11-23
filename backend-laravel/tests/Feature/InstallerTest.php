@@ -211,7 +211,18 @@ class InstallerTest extends TestCase
         $this->assertFalse($admin->hasRole('SUPER_ADMIN'));
         $this->assertSame(['ADMIN_MADRASAH'], $admin->roles->pluck('name')->sort()->values()->all());
         $this->assertTrue($admin->hasPermission('curriculum.view'));
-        $this->assertTrue($admin->hasPermission('curriculum.manage'));
+        $this->assertTrue($admin->hasPermission('curriculum.registry.manage'));
+        $this->assertTrue($admin->hasPermission('curriculum.source.manage'));
+        $this->assertTrue($admin->hasPermission('academic.manage'));
+        $this->assertTrue($admin->hasPermission('user.manage'));
+        $this->assertFalse($admin->hasPermission('curriculum.manage'));
+
+        $guruRole = Role::with('permissions')->where('name', 'GURU')->firstOrFail();
+        $siswaRole = Role::with('permissions')->where('name', 'SISWA')->firstOrFail();
+        $this->assertTrue($guruRole->permissions->contains('name', 'curriculum.manage'));
+        $this->assertFalse($guruRole->permissions->contains('name', 'curriculum.registry.manage'));
+        $this->assertFalse($guruRole->permissions->contains('name', 'academic.manage'));
+        $this->assertCount(0, $siswaRole->permissions);
     }
 
     public function test_admin_creation_recovers_a_committed_pair_when_state_checkpoint_was_lost(): void
