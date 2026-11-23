@@ -1,12 +1,12 @@
 <?php
 
-namespace Database\\Seeders;
+namespace Database\Seeders;
 
-use App\\Models\\AssessmentTaxonomyOption;
-use App\\Models\\CurriculumReferenceSource;
-use App\\Models\\Tenant;
-use Illuminate\\Database\\Seeder;
-use Illuminate\\Support\\Facades\\DB;
+use App\Models\AssessmentTaxonomyOption;
+use App\Models\CurriculumReferenceSource;
+use App\Models\Tenant;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class AssessmentTaxonomySeeder extends Seeder
 {
