@@ -49,15 +49,22 @@
                         <span class="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
                             {{ $q->subject->name ?? '-' }}
                         </span>
-                        @if($q->currentVersion && $q->currentVersion->learningOutcome)
-                            <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200" title="Capaian Pembelajaran">
-                                CP: {{ $q->currentVersion->learningOutcome->code }}
-                            </span>
-                        @endif
-                        @if($q->currentVersion && $q->currentVersion->learningObjective)
-                            <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200" title="Tujuan Pembelajaran">
-                                TP: {{ $q->currentVersion->learningObjective->code }}
-                            </span>
+                        @if($q->currentVersion)
+                            @foreach($q->currentVersion->curriculumMappings->unique('multi_learning_outcome_id') as $mapping)
+                                <span class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200" title="CP resmi">
+                                    CP: {{ $mapping->learningOutcome?->code ?? 'CP' }}
+                                </span>
+                            @endforeach
+                            @foreach($q->currentVersion->tenantOutcomeMappings->unique('tenant_learning_outcome_id') as $mapping)
+                                <span class="text-xs font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200" title="Tujuan Pembelajaran">
+                                    {{ $mapping->mapping_role }}: {{ $mapping->learningOutcome?->code ?? '-' }}
+                                </span>
+                            @endforeach
+                            @foreach($q->currentVersion->structureMappings->unique('multi_curriculum_structure_id') as $mapping)
+                                <span class="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200" title="Integrasi KBC/PM/Profil Lulusan">
+                                    {{ $mapping->mapping_role }}
+                                </span>
+                            @endforeach
                         @endif
                     </div>
 
@@ -165,37 +172,84 @@
                             @error('questionCode') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Mata Pelajaran</label>
-                            <select wire:model.live="selectedSubjectId" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                                <option value="">Pilih Mapel...</option>
-                                @foreach($subjects as $sub)
-                                    <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Penugasan Mengajar</label>
+                            <select wire:model.live="selectedAssignmentId" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                                <option value="">Pilih penugasan...</option>
+                                @foreach($assignmentRows as $row)
+                                    <option value="{{ $row['assignment']->id }}">{{ $row['assignment']->subject?->name }} · {{ $row['assignment']->rombel?->name }} · {{ $row['assignment']->semester?->name }}</option>
                                 @endforeach
                             </select>
+                            @error('selectedAssignmentId') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                            <p class="mt-1 text-[11px] text-textSecondary">Mata pelajaran: {{ $selectedAssignment?->subject?->name ?? 'Pilih penugasan terlebih dahulu' }}</p>
                             @error('selectedSubjectId') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
-                    <!-- CP & TP Mapping -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl border border-cardBorder">
+                    <!-- Canonical curriculum mapping -->
+                    <div class="space-y-4 rounded-xl border border-cardBorder bg-gray-50 p-4">
                         <div>
-                            <label class="block text-xs font-bold text-indigo-900 uppercase mb-1">Pemetaan CP (Capaian Pembelajaran)</label>
-                            <select wire:model.live="selectedOutcomeId" class="w-full border border-cardBorder rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-600 focus:outline-none">
-                                <option value="">Tanpa CP (Opsional)</option>
-                                @foreach($outcomes as $outcome)
-                                    <option value="{{ $outcome->id }}">{{ $outcome->code }} - {{ $outcome->currentVersion->title ?? '' }}</option>
-                                @endforeach
-                            </select>
+                            <h4 class="text-xs font-bold uppercase text-navy-900">Pemetaan kurikulum per versi soal</h4>
+                            <p class="mt-1 text-[11px] text-textSecondary">Wajib pilih CP resmi yang checksum-nya telah diverifikasi dan TP/ATP yang telah dipublikasikan untuk penugasan yang dipilih. Versi soal akan menyimpan snapshot mapping secara terpisah per penugasan.</p>
                         </div>
-                        <div>
-                            <label class="block text-xs font-bold text-amber-900 uppercase mb-1">Pemetaan TP (Tujuan Pembelajaran)</label>
-                            <select wire:model="selectedObjectiveId" class="w-full border border-cardBorder rounded-xl px-3 py-1.5 text-xs focus:ring-2 focus:ring-amber-600 focus:outline-none">
-                                <option value="">Tanpa TP (Opsional)</option>
-                                @foreach($objectives as $objective)
-                                    <option value="{{ $objective->id }}">{{ $objective->code }} - {{ $objective->title }}</option>
-                                @endforeach
-                            </select>
-                        </div>
+                        @if($selectedAssignment)
+                            <div class="rounded-lg border border-cardBorder bg-white p-3">
+                                <p class="text-xs font-semibold text-navy-900">{{ $curriculumContext['assignment']['version_title'] ?? 'Versi kurikulum' }}</p>
+                                <p class="mt-1 text-[11px] text-textSecondary">{{ $curriculumContext['assignment']['phase'] ?? '-' }} · {{ $curriculumContext['assignment']['grade'] ?? '-' }} · {{ $curriculumContext['assignment']['official_subject'] ?? 'Mapel belum dipetakan' }}</p>
+                            </div>
+                            <div>
+                                <p class="mb-2 text-xs font-bold text-indigo-900">CP resmi (pilih minimal satu)</p>
+                                <div class="grid gap-2 md:grid-cols-2">
+                                    @forelse($cpOptions as $cp)
+                                        <label class="flex items-start gap-2 rounded-lg border border-indigo-100 bg-white p-3 text-xs">
+                                            <input type="checkbox" wire:model="selectedCpIds" value="{{ $cp['id'] }}" class="mt-0.5 rounded border-cardBorder text-indigo-700 focus:ring-indigo-600">
+                                            <span><strong>{{ $cp['code'] }} — {{ $cp['title'] }}</strong><span class="mt-1 block text-[11px] text-textSecondary">{{ $cp['source_document'] ?? 'Sumber resmi' }}</span></span>
+                                        </label>
+                                    @empty
+                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi yang artefak dan checksum-nya terverifikasi untuk penugasan ini. Pemetaan soal belum dapat disimpan.</p>
+                                    @endforelse
+                                </div>
+                                @error('selectedCpIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <p class="mb-2 text-xs font-bold text-amber-900">TP/ATP terpublikasi (pilih minimal satu)</p>
+                                <div class="grid gap-2 md:grid-cols-2">
+                                    @forelse($outcomes as $outcome)
+                                        <label class="flex items-start gap-2 rounded-lg border border-amber-100 bg-white p-3 text-xs">
+                                            <input type="checkbox" wire:model="selectedOutcomeIds" value="{{ $outcome['id'] }}" class="mt-0.5 rounded border-cardBorder text-amber-700 focus:ring-amber-600">
+                                            <span><strong>{{ $outcome['outcome_type'] }} · {{ $outcome['code'] }} — {{ $outcome['title'] }}</strong><span class="mt-1 block text-[11px] text-textSecondary">CP induk: {{ $outcome['parent_cp'] ?? '-' }}</span></span>
+                                        </label>
+                                    @empty
+                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada TP/ATP terpublikasi pada penugasan ini. Buat dan publikasikan TP/ATP terlebih dahulu di menu Pembelajaran & Kurikulum.</p>
+                                    @endforelse
+                                </div>
+                                @error('selectedOutcomeIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="grid gap-3 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-1 block text-xs font-bold text-navy-900">Materi (opsional)</label>
+                                    <select wire:model.live="selectedMaterialId" class="w-full rounded-lg border border-cardBorder bg-white px-3 py-2 text-xs">
+                                        <option value="">Tanpa materi</option>
+                                        @foreach($materials as $material)
+                                            <option value="{{ $material->id }}">{{ $material->material_code }} — {{ $material->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('selectedMaterialId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-bold text-navy-900">Topik (opsional)</label>
+                                    <select wire:model="selectedMaterialTopicId" class="w-full rounded-lg border border-cardBorder bg-white px-3 py-2 text-xs" {{ $selectedMaterialId === '' ? 'disabled' : '' }}>
+                                        <option value="">Tanpa topik</option>
+                                        @foreach($topics as $topic)
+                                            <option value="{{ $topic->id }}">{{ $topic->code }} — {{ $topic->title }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('selectedMaterialTopicId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                            </div>
+                        @else
+                            <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Pilih penugasan Guru untuk menampilkan CP, TP/ATP, materi, dan topik yang sah.</p>
+                        @endif
+                        @error('curriculumMapping') <p class="text-xs font-semibold text-red-600">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
