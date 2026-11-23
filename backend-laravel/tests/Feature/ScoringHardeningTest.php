@@ -310,7 +310,7 @@ class ScoringHardeningTest extends TestCase
             $user->roles()->syncWithoutDetaching($role->id);
 
             $this->assertFalse(
-                app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
+                app(\App\Policies\ExamAttemptPolicy::class)->reopen($user, $this->attempt),
                 "Unassigned role/account {$roleName} must not reopen a finalized score."
             );
         }
@@ -319,7 +319,7 @@ class ScoringHardeningTest extends TestCase
     public function test_reopen_score_is_allowed_only_for_assigned_guru_in_same_tenant()
     {
         $this->assertTrue(
-            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($this->teacher, $this->attempt),
+            app(\App\Policies\ExamAttemptPolicy::class)->reopen($this->teacher, $this->attempt),
             'The assigned Guru with exam.reopen may reopen a finalized score in the same tenant.'
         );
 
@@ -341,7 +341,7 @@ class ScoringHardeningTest extends TestCase
         }
 
         $this->assertFalse(
-            app(\\App\\Policies\\ExamAttemptPolicy::class)->reopen($foreignTeacher, $this->attempt),
+            app(\App\Policies\ExamAttemptPolicy::class)->reopen($foreignTeacher, $this->attempt),
             'A Guru from another tenant must not reopen this score.'
         );
     }
