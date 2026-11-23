@@ -52,22 +52,22 @@ class ExamSnapshotService
                 'assessment_function' => [
                     'id' => $assessment->assessmentFunctionOption?->id,
                     'code' => $assessment->assessmentFunctionOption?->code,
-                    'title' => $assessment->assessmentFunctionOption?->name,
+                    'title' => $assessment->assessmentFunctionOption?->label,
                 ],
                 'assessment_scope' => [
                     'id' => $assessment->assessmentScopeOption?->id,
                     'code' => $assessment->assessmentScopeOption?->code,
-                    'title' => $assessment->assessmentScopeOption?->name,
+                    'title' => $assessment->assessmentScopeOption?->label,
                 ],
                 'instrument_type' => [
                     'id' => $assessment->instrumentTypeOption?->id,
                     'code' => $assessment->instrumentTypeOption?->code,
-                    'title' => $assessment->instrumentTypeOption?->name,
+                    'title' => $assessment->instrumentTypeOption?->label,
                 ],
                 'delivery_mode' => [
                     'id' => $assessment->deliveryModeOption?->id,
                     'code' => $assessment->deliveryModeOption?->code,
-                    'title' => $assessment->deliveryModeOption?->name,
+                    'title' => $assessment->deliveryModeOption?->label,
                 ],
                 'origin' => $assessment->assessment_origin,
                 'external_program_name' => $assessment->external_program_name,
@@ -77,16 +77,16 @@ class ExamSnapshotService
                 'id' => $assignment->id,
                 'subject_id' => $assignment->subject_id,
                 'subject_code' => $assignment->subject?->code,
-                'subject_name' => $assignment->subject?->name,
+                'subject_name' => $assignment->subject?->label,
                 'rombel_id' => $assignment->rombel_id,
-                'rombel_name' => $assignment->rombel?->name,
+                'rombel_name' => $assignment->rombel?->label,
                 'phase' => $assignment->curriculum_context_snapshot['phase'] ?? null,
                 'grade' => $assignment->curriculum_context_snapshot['grade'] ?? null,
                 'official_subject' => $assignment->curriculum_context_snapshot['subject'] ?? null,
                 'academic_year_id' => $assignment->academic_year_id,
-                'academic_year_name' => $assignment->academicYear?->name,
+                'academic_year_name' => $assignment->academicYear?->label,
                 'semester_id' => $assignment->semester_id,
-                'semester_name' => $assignment->semester?->name,
+                'semester_name' => $assignment->semester?->label,
             ],
             'curriculum' => [
                 'registration_id' => $assignment->tenant_curriculum_registration_id,
@@ -119,7 +119,7 @@ class ExamSnapshotService
                 ])->all(),
                 'material_id' => $firstMapping?->material_id,
                 'material_code' => $firstMapping?->material?->material_code,
-                'material_name' => $firstMapping?->material?->name,
+                'material_name' => $firstMapping?->material?->label,
                 'material_topic_id' => $firstMapping?->material_topic_id,
                 'material_topic_code' => $firstMapping?->materialTopic?->code,
                 'material_topic_title' => $firstMapping?->materialTopic?->title,
@@ -140,9 +140,9 @@ class ExamSnapshotService
         return [
             'assignment_id' => $assignment->id,
             'academic_year_id' => $assignment->academic_year_id,
-            'academic_year_name' => $assignment->academicYear?->name,
+            'academic_year_name' => $assignment->academicYear?->label,
             'semester_id' => $assignment->semester_id,
-            'semester_name' => $assignment->semester?->name,
+            'semester_name' => $assignment->semester?->label,
             'curriculum_registration_id' => $assignment->tenant_curriculum_registration_id,
             'curriculum_owner_id' => $assignment->curriculum_owner_id,
             'curriculum_version_id' => $assignment->multi_curriculum_version_id,
@@ -179,7 +179,7 @@ class ExamSnapshotService
             ])->values()->all(),
             'material_id' => $firstMapping?->material_id,
             'material_code' => $firstMapping?->material?->material_code,
-            'material_name' => $firstMapping?->material?->name,
+            'material_name' => $firstMapping?->material?->label,
             'material_topic_id' => $firstMapping?->material_topic_id,
             'material_topic_code' => $firstMapping?->materialTopic?->code,
             'material_topic_title' => $firstMapping?->materialTopic?->title,
@@ -273,6 +273,7 @@ class ExamSnapshotService
                     || $option->tenant_id !== Tenant::SYSTEM_TENANT_ID
                     || $option->dimension !== $dimension
                     || $option->status !== 'ACTIVE'
+                    || !$option->is_selectable
                     || !$option->is_official
                     || $option->is_editable) {
                     abort(422, 'Opsi taksonomi asesmen harus berasal dari registry resmi dan aktif.');
