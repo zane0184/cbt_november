@@ -7,7 +7,7 @@
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm">
         <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-800 rounded-full text-xs font-bold border border-amber-200 mb-3">Kewenangan Admin Madrasah</div>
         <h1 class="text-2xl font-bold text-navy-900">Penugasan Guru Pengawas Sementara</h1>
-        <p class="text-sm text-textSecondary mt-2">Penugasan dibatasi pada ujian tertentu, tenant aktif, dan rentang waktu yang ditentukan. Guru Pengawas hanya memperoleh akses monitoring selama penugasan aktif; tidak memperoleh hak mengelola token, soal, peserta, atau nilai.</p>
+        <p class="text-sm text-textSecondary mt-2">Penugasan adalah catatan administratif sementara pada Guru untuk ujian terpusat yang kelayakannya telah ditetapkan secara kanonis. Penugasan tidak membuka ruang, roster, monitoring, Attempt, token, soal, jawaban, atau nilai.</p>
     </div>
 
     @if (session()->has('proctorAssignmentMessage'))
@@ -15,9 +15,6 @@
     @endif
 
     @if ($assignmentCreationBlocked)
-        <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            Penugasan baru belum dapat dilakukan. Kelayakan ujian terpusat belum memiliki penanda kanonis yang ditetapkan dan diaudit oleh owner.
-        </div>
     @else
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
         <h2 class="text-lg font-bold text-navy-900">Buat atau perbarui penugasan</h2>
