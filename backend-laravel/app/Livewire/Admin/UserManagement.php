@@ -55,7 +55,7 @@ class UserManagement extends Component
             'email' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))],
             'password' => ['required','string','min:14'],
             'selectedRole' => ['required','string',Rule::in($manageableRoles)],
-            'employmentStatus' => ['required_if:selectedRole,GURU', Rule::in(['PNS', 'PPPK', 'HONORER'])],
+            'employmentStatus' => ['nullable', 'required_if:selectedRole,GURU', Rule::in(['PNS', 'PPPK', 'HONORER'])],
             'nip' => ['exclude_unless:employmentStatus,PNS,PPPK', 'required_if:employmentStatus,PNS,PPPK', 'digits:18'],
             'nik' => ['exclude_unless:employmentStatus,HONORER', 'required_if:employmentStatus,HONORER', 'digits:16'],
             'nisn' => ['nullable','digits:10'],
