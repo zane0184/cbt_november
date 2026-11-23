@@ -135,7 +135,6 @@ class ExamSnapshotTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->user->id
         ]);
-        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
         $this->canonicalContext = $this->createCanonicalCurriculumContext($assignment, $this->user, $assessment);
 
         $this->exam = Exam::create([
