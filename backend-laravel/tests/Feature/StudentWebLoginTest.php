@@ -121,7 +121,7 @@ class StudentWebLoginTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertOk();
-        $response->assertSee('Username / NIP / NIK / NISN');
+        $response->assertSee('Username Admin / NIP / NIK / NISN');
         $response->assertSee('Siswa: NISN');
         $response->assertSee('name="identifier"', false);
     }
