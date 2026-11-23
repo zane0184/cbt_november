@@ -1,83 +1,51 @@
 <?php
 
-namespace App\Livewire\Admin;
+namespace App\\Livewire\\Admin;
 
-use App\Models\LearningOutcome;
-use App\Models\Subject;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
-use Livewire\Component;
-use Livewire\WithPagination;
+use App\\Models\\LearningOutcome;
+use App\\Models\\Subject;
+use Livewire\\Component;
+use Livewire\\WithPagination;
 
 class CurriculumManagement extends Component
 {
     use WithPagination;
 
-    public $search = '';
-    public $subjectFilter = '';
+    public string $search = '';
+    public string $subjectFilter = '';
 
-    public function mount()
+    public function mount(): void
     {
         $user = auth()->user();
-        abort_unless($user && $user->hasPermission('curriculum.view'), 403, 'Akses ditolak. Permission curriculum.view diperlukan.');
-    }
 
-    // Modal Form State for TP (LearningObjective)
-    public $showCreateTpModal = false;
-    public $selectedOutcomeId = '';
-    public $tpCode = '';
-    public $tpTitle = '';
-    public $tpDescription = '';
-
-    private function authorizeCurriculumManagement(): void
-    {
-        $user = auth()->user();
         abort_unless(
             $user
-            && $user->roles()->whereIn('name', ['ADMIN_MADRASAH', 'ADMIN', 'OPERATOR'])->exists()
-            && $user->hasPermission('curriculum.manage'),
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            && $user->hasPermission('curriculum.view'),
             403,
-            'Akses ditolak. Hanya Admin Madrasah dengan permission curriculum.manage yang dapat mengubah struktur kurikulum.'
+            'Akses ditolak. Halaman referensi kurikulum hanya tersedia bagi Admin Madrasah dengan permission curriculum.view.'
         );
     }
 
-    public function openCreateTpModal()
+    /**
+     * CP induk adalah referensi terlindungi. TP/ATP dikembangkan Guru
+     * melalui konteks penugasan, bukan melalui portal administrasi.
+     *
+     * Method lama dipertahankan sebagai compatibility guard agar request
+     * Livewire langsung dari client lama selalu ditolak secara eksplisit.
+     */
+    public function openCreateTpModal(): void
     {
-        $this->authorizeCurriculumManagement();
-        $this->reset(['selectedOutcomeId', 'tpCode', 'tpTitle', 'tpDescription']);
-        $this->resetValidation();
-        $this->showCreateTpModal = true;
+        abort(403, 'Admin Madrasah tidak berwenang membuat TP. Gunakan Portal Guru sesuai penugasan.');
     }
 
-    public function createTp()
+    public function createTp(): void
     {
-        $this->authorizeCurriculumManagement();
-        $tenantId = auth()->user()->tenant_id;
-        $this->validate([
-            'selectedOutcomeId' => ['required', Rule::exists('learning_outcomes', 'id')->where('tenant_id', $tenantId)],
-            'tpCode' => 'required|string|max:50',
-            'tpTitle' => 'required|string|max:255',
-            'tpDescription' => 'nullable|string',
-        ]);
-
-        DB::transaction(function (): void {
-            $outcome = LearningOutcome::query()->lockForUpdate()->findOrFail($this->selectedOutcomeId);
-            abort_unless($outcome->tenant_id === auth()->user()->tenant_id, 403);
-
-            $outcome->objectives()->create([
-                'code' => $this->tpCode,
-                'title' => $this->tpTitle,
-                'description' => $this->tpDescription,
-                'status' => 'ACTIVE',
-                'created_by' => auth()->id(),
-            ]);
-        });
-
-        $this->showCreateTpModal = false;
-        session()->flash('message', "Tujuan Pembelajaran (TP) {$this->tpCode} berhasil ditambahkan.");
+        abort(403, 'Admin Madrasah tidak berwenang membuat TP. Gunakan Portal Guru sesuai penugasan.');
     }
 
-    public function updatingSearch()
+    public function updatingSearch(): void
     {
         $this->resetPage();
     }
@@ -90,14 +58,12 @@ class CurriculumManagement extends Component
     public function render()
     {
         $outcomes = LearningOutcome::with(['subject', 'phase', 'currentVersion', 'objectives'])
-            ->when($this->subjectFilter, fn($q) => $q->where('subject_id', $this->subjectFilter))
-            ->when($this->search, function ($q) {
-                // Keep all search alternatives grouped so they cannot bypass
-                // the selected subject filter or other outer query constraints.
-                $q->where(function ($searchQuery) {
+            ->when($this->subjectFilter, fn ($query) => $query->where('subject_id', $this->subjectFilter))
+            ->when($this->search, function ($query): void {
+                $query->where(function ($searchQuery): void {
                     $searchQuery->where('code', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('objectives', function ($objectiveQuery) {
-                            $objectiveQuery->where(function ($termQuery) {
+                        ->orWhereHas('objectives', function ($objectiveQuery): void {
+                            $objectiveQuery->where(function ($termQuery): void {
                                 $termQuery->where('title', 'like', '%' . $this->search . '%')
                                     ->orWhere('code', 'like', '%' . $this->search . '%');
                             });
@@ -108,12 +74,11 @@ class CurriculumManagement extends Component
             ->paginate(10);
 
         $subjects = Subject::query()->orderBy('name')->get();
-        $canManageCurriculum = auth()->user()?->hasPermission('curriculum.manage') ?? false;
 
         return view('livewire.admin.curriculum-management', [
             'outcomes' => $outcomes,
             'subjects' => $subjects,
-            'canManageCurriculum' => $canManageCurriculum,
+            'legacyReferenceOnly' => true,
         ])->layout('layouts.app');
     }
 }
