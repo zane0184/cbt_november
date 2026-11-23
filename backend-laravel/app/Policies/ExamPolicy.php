@@ -3,7 +3,6 @@
 namespace App\Policies;
 
 use App\Models\Exam;
-use App\Models\ExamProctorAssignment;
 use App\Models\User;
 use App\Support\Security\TeacherAccess;
 
@@ -11,9 +10,7 @@ class ExamPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('ADMIN_MADRASAH')
-            || $user->hasRole('GURU')
-            || $user->hasRole('SISWA');
+        return $user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA']);
     }
 
     public function view(User $user, Exam $exam): bool
@@ -22,17 +19,17 @@ class ExamPolicy
             return false;
         }
 
-        if ($user->hasRole('GURU')) {
+        if ($user->hasExactRole('GURU')) {
             return TeacherAccess::canManageExam($user, $exam);
         }
 
         // Admin may view only the tenant's exam register; operational actions
         // remain separately authorized and are never implied by this read access.
-        if ($user->hasRole('ADMIN_MADRASAH')) {
+        if ($user->hasExactRole('ADMIN_MADRASAH')) {
             return true;
         }
 
-        if ($user->hasRole('SISWA')) {
+        if ($user->hasExactRole('SISWA')) {
             return $exam->participants()->where('user_id', $user->id)->exists();
         }
 
@@ -41,7 +38,7 @@ class ExamPolicy
 
     public function preview(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('GURU')) {
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasExactRole('GURU')) {
             return false;
         }
 
@@ -59,7 +56,7 @@ class ExamPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('GURU') && $user->hasPermission('exam.manage');
+        return $user->hasExactRole('GURU') && $user->hasPermission('exam.manage');
     }
 
     public function update(User $user, Exam $exam): bool
@@ -68,7 +65,7 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -81,7 +78,7 @@ class ExamPolicy
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.manage')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
@@ -136,7 +133,7 @@ class ExamPolicy
 
     public function startAttempt(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id || !$user->hasRole('SISWA')) {
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasExactRole('SISWA')) {
             return false;
         }
 
@@ -165,7 +162,7 @@ class ExamPolicy
     public function assignProctor(User $user, Exam $exam): bool
     {
         if ($user->tenant_id !== $exam->tenant_id
-            || !$user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            || !$user->hasExactRole('ADMIN_MADRASAH')
             || !$user->hasPermission('exam.proctor.assign')
             || $exam->status !== 'PUBLISHED'
             || !$exam->locked_at
@@ -179,29 +176,20 @@ class ExamPolicy
     public function revokeProctor(User $user, Exam $exam): bool
     {
         return $user->tenant_id === $exam->tenant_id
-            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            && $user->hasExactRole('ADMIN_MADRASAH')
             && $user->hasPermission('exam.proctor.assign');
     }
 
     public function monitor(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id) {
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasExactRole('GURU')) {
             return false;
         }
 
-        if (!$user->hasRole('GURU')) {
-            return false;
-        }
-
-        $hasTemporaryProctorAssignment = ExamProctorAssignment::query()
-            ->activeNow()
-            ->where('tenant_id', $user->tenant_id)
-            ->where('exam_id', $exam->id)
-            ->where('proctor_user_id', $user->id)
-            ->exists();
-
-        return $hasTemporaryProctorAssignment
-            || ($user->hasPermission('exam.monitor') && TeacherAccess::canViewExam($user, $exam));
+        // A temporary administrative proctor assignment is not an access grant.
+        // Monitoring remains restricted to the Guru's own teaching assignment.
+        return $user->hasPermission('exam.monitor')
+            && TeacherAccess::canViewExam($user, $exam);
     }
 
     public function viewExamResults(User $user, Exam $exam): bool
@@ -211,14 +199,11 @@ class ExamPolicy
 
     public function publishResults(User $user, Exam $exam): bool
     {
-        if ($user->tenant_id !== $exam->tenant_id
-            || $user->hasRole('PROKTOR')
-            || $user->hasRole('SISWA')
-            || $user->hasRole('ADMIN_MADRASAH')) {
+        if ($user->tenant_id !== $exam->tenant_id || !$user->hasExactRole('GURU')) {
             return false;
         }
 
-        return $user->hasRole('GURU')
+        return $user->hasExactRole('GURU')
             && $user->hasPermission('exam.grade')
             && $exam->assessment
             && (string) $exam->assessment->created_by === (string) $user->id
