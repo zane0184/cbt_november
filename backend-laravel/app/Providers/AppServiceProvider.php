@@ -35,10 +35,13 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('exam-heartbeat', function ($request) {
             $user = $request->user();
             $bearerToken = $request->bearerToken();
-            $key = $user && $user->tenant_id
-                ? 'tenant:' . $user->tenant_id . ':user:' . $user->id
-                : ($bearerToken
-                    ? 'sanctum-token:' . hash('sha256', $bearerToken)
+            // Prefer the authenticated credential fingerprint because some
+            // middleware stacks evaluate the limiter before the guard resolves User.
+            // Stateful sessions still fall back to the resolved tenant/user identity.
+            $key = $bearerToken
+                ? 'sanctum-token:' . hash('sha256', $bearerToken)
+                : ($user && $user->tenant_id
+                    ? 'tenant:' . $user->tenant_id . ':user:' . $user->id
                     : 'ip:' . $request->ip());
 
             return Limit::perMinute(30)->by($key);
