@@ -15,17 +15,20 @@ use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
 
 Route::get('/', function () {
-    if (auth()->check()) {
-        $user = auth()->user();
-        if ($user->hasRole('ADMIN_MADRASAH')) {
-            return redirect('/admin/dashboard');
-        } elseif ($user->hasRole('GURU')) {
-            return redirect('/admin/exams');
-        } elseif ($user->hasRole('SISWA')) {
-            return redirect('/student/exams');
-        }
+    if (!auth()->check()) {
+        return view('welcome');
     }
-    return view('welcome');
+
+    $roles = auth()->user()->roles()->pluck('name')->all();
+
+    abort_unless(count($roles) === 1, 403, 'Akun harus memiliki tepat satu role portal aktif.');
+
+    return match ($roles[0]) {
+        'ADMIN_MADRASAH' => redirect('/admin/dashboard'),
+        'GURU' => redirect('/guru/dashboard'),
+        'SISWA' => redirect('/student/exams'),
+        default => abort(403, 'Role akun tidak memiliki portal lokal.'),
+    };
 });
 
 Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login');
@@ -77,8 +80,6 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
     Route::get('/admin/curriculum', CurriculumManagement::class);
-    Route::get('/admin/questions', QuestionBank::class);
-    Route::get('/admin/exams', ExamManagement::class);
     Route::get('/admin/proctor-assignments', ProctorAssignmentManagement::class)->name('admin.proctor-assignments');
 
     // Teacher & Results Routes
@@ -94,3 +95,5 @@ Route::middleware(['auth', 'tenant', 'license'])->group(function () {
     Route::get('/exams/{exam}/analytics', \App\Livewire\Teacher\AnalyticsDashboard::class);
     Route::get('/exams/{exam}/analytics/items', \App\Livewire\Teacher\ItemAnalysis::class);
 });
+
+require __DIR__.'/teacher.php';
