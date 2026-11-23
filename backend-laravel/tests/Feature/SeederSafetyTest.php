@@ -18,13 +18,19 @@ class SeederSafetyTest extends TestCase
     {
         app(DatabaseSeeder::class)->run();
 
-        $this->assertSame(0, Tenant::withoutGlobalScopes()->count());
+        $this->assertSame(1, Tenant::withoutGlobalScopes()->count());
+        $this->assertDatabaseHas('tenants', [
+            'id' => Tenant::SYSTEM_TENANT_ID,
+            'code' => Tenant::SYSTEM_TENANT_CODE,
+            'status' => 'ACTIVE',
+        ]);
         $this->assertSame(0, User::withoutGlobalScopes()->count());
         $this->assertDatabaseMissing('roles', ['name' => 'SUPER_ADMIN']);
         $this->assertDatabaseMissing('roles', ['name' => 'PROKTOR']);
         $this->assertDatabaseHas('roles', ['name' => 'ADMIN_MADRASAH']);
         $this->assertDatabaseHas('roles', ['name' => 'GURU']);
-        $this->assertDatabaseHas('roles', ['name' => 'KAMAD']);
+        $this->assertDatabaseMissing('roles', ['name' => 'KAMAD']);
+        $this->assertDatabaseMissing('roles', ['name' => 'OPERATOR']);
         $this->assertDatabaseHas('permissions', ['name' => 'curriculum.view']);
         $this->assertDatabaseHas('permissions', ['name' => 'curriculum.manage']);
         $this->assertDatabaseHas('permissions', ['name' => 'academic.manage']);
