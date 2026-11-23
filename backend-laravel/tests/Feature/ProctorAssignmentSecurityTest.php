@@ -114,7 +114,7 @@ class ProctorAssignmentSecurityTest extends TestCase
 
     public function test_direct_service_call_cannot_bypass_missing_central_exam_marker(): void
     {
-        $this->expectException(\\LogicException::class);
+        $this->expectException(\LogicException::class);
 
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
@@ -128,7 +128,7 @@ class ProctorAssignmentSecurityTest extends TestCase
 
     public function test_guru_cannot_receive_overlapping_proctor_assignments_until_central_marker_exists(): void
     {
-        $this->expectException(\\LogicException::class);
+        $this->expectException(\LogicException::class);
 
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
