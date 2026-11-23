@@ -173,6 +173,7 @@ class ExamExecutionHardeningTest extends TestCase
         $this->withHeaders(['X-Device-Binding-ID' => 'device-1', 'X-CBT-Fence-Generation' => '1']);
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
 
+        app('auth')->forgetGuards();
         $this->withToken($otherStudentToken);
         $this->withHeaders(['X-Device-Binding-ID' => 'device-2', 'X-CBT-Fence-Generation' => '1']);
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
@@ -190,7 +191,9 @@ class ExamExecutionHardeningTest extends TestCase
         $otherStudent->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+        $otherStudentToken = $otherStudent->createToken('execution-hardening-cross-tenant')->plainTextToken;
 
+        app('auth')->forgetGuards();
         $this->withToken($otherStudentToken);
         $this->withHeaders(['X-Device-Binding-ID' => 'device-2', 'X-CBT-Fence-Generation' => '1']);
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
