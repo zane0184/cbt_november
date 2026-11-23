@@ -16,13 +16,15 @@ class AssessmentTaxonomyOption extends Model
     protected $fillable = [
         'tenant_id', 'dimension', 'code', 'label', 'description', 'version_code',
         'source_id', 'effective_from', 'effective_until', 'status',
-        'is_selectable', 'sort_order', 'supersedes_id', 'metadata',
+        'is_selectable', 'is_official', 'is_editable', 'sort_order', 'supersedes_id', 'metadata',
     ];
 
     protected $casts = [
         'effective_from' => 'date',
         'effective_until' => 'date',
         'is_selectable' => 'boolean',
+        'is_official' => 'boolean',
+        'is_editable' => 'boolean',
         'metadata' => 'array',
     ];
 
