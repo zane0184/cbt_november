@@ -57,6 +57,8 @@ class AuthTest extends TestCase
 
     public function test_login_successful()
     {
+        fwrite(STDERR, 'AUTH_TEST_TENANTS='.json_encode(Tenant::withoutGlobalScopes()->get(['id', 'code', 'deleted_at'])->toArray()).PHP_EOL);
+        fwrite(STDERR, 'AUTH_TEST_INSTALLATIONS='.json_encode(LocalInstallationIdentity::withoutGlobalScopes()->get(['tenant_id', 'installation_id'])->toArray()).PHP_EOL);
         $this->assertSame(1, LocalInstallationIdentity::withoutGlobalScopes()->count());
         $this->assertSame(
             1,
