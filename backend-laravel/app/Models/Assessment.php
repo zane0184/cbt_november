@@ -20,7 +20,8 @@ class Assessment extends Model
         'assessment_type', 'status', 'weight', 'created_by',
         'assessment_function_option_id', 'assessment_scope_option_id',
         'instrument_type_option_id', 'delivery_mode_option_id',
-        'activity_name', 'assessment_origin', 'external_program_name', 'curriculum_version_id', 'curriculum_context_snapshot'
+        'activity_name', 'assessment_origin', 'external_program_name', 'assessment_taxonomy_owner_id',
+        'curriculum_version_id', 'curriculum_owner_id', 'tenant_curriculum_registration_id', 'curriculum_context_snapshot'
     ];
 
     protected $casts = [
@@ -81,6 +82,11 @@ class Assessment extends Model
     public function curriculumVersion(): BelongsTo
     {
         return $this->belongsTo(MultiCurriculumVersion::class, 'curriculum_version_id');
+    }
+
+    public function curriculumRegistration(): BelongsTo
+    {
+        return $this->belongsTo(TenantCurriculumRegistration::class, 'tenant_curriculum_registration_id');
     }
 
 }
