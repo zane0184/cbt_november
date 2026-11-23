@@ -38,6 +38,7 @@ class ExamSnapshotTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesCanonicalTeacherAssignment;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenant;
     private $user;
@@ -51,6 +52,7 @@ class ExamSnapshotTest extends TestCase
     private $exam;
     private $subject;
     private $context;
+    private array $canonicalContext = [];
 
     protected function setUp(): void
     {
@@ -133,6 +135,7 @@ class ExamSnapshotTest extends TestCase
             'created_by' => $this->user->id
         ]);
         $this->bindCanonicalTeacherAssignment($assignment, $assessment);
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($assignment, $this->user, $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -168,6 +171,8 @@ class ExamSnapshotTest extends TestCase
             'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'is_current' => true,
             'created_by' => $this->user->id
         ]);
+
+        $this->mapQuestionVersionToCanonicalCurriculum($v1, $this->canonicalContext);
 
         // 2. Snapshot into Exam
         $response = $this->actingAs($this->user, 'sanctum')->postJson("/api/v1/exams/{$this->exam->id}/questions", [
@@ -298,6 +303,7 @@ class ExamSnapshotTest extends TestCase
             'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'created_by' => $this->user->id
         ]);
 
+        $this->mapQuestionVersionToCanonicalCurriculum($v, $this->canonicalContext);
         $v->media()->attach($media->id, [
             'id' => (string) Str::uuid(),
             'tenant_id' => $this->tenant->id,
