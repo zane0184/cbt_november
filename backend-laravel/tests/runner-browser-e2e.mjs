@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright';
+import { chromium, webkit } from 'playwright';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const backendRoot = resolve(here, '..');
@@ -245,7 +245,8 @@ async function openQuestionNavigation(page) {
   }
 }
 
-const browser = await chromium.launch({ headless: true });
+const browserEngine = process.env.BROWSER === 'webkit' ? webkit : chromium;
+const browser = await browserEngine.launch({ headless: true });
 try {
   // The checked-in portal stylesheet is served locally and applies without a CDN.
   {
