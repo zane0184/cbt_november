@@ -69,6 +69,9 @@
                         <a href="/admin/academic" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/academic*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span aria-hidden="true">▤</span><span>Data Akademik & Rombel</span>
                         </a>
+                        <a href="/admin/teacher-assignments" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/teacher-assignments*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span aria-hidden="true">♧</span><span>Penugasan Guru</span>
+                        </a>
                         <a href="/admin/rombel-students" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/rombel-students*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span aria-hidden="true">♧</span><span>Keanggotaan Rombel</span>
                         </a>
@@ -141,6 +144,7 @@
                     <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/dashboard">Dashboard Admin</a>
                     @if($u->hasPermission('academic.manage'))
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/academic">Data Akademik & Rombel</a>
+                        <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/teacher-assignments">Penugasan Guru</a>
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/rombel-students">Keanggotaan Rombel</a>
                     @endif
                     @if($u->hasPermission('user.manage'))
