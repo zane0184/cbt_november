@@ -112,3 +112,42 @@ Verifikasi baca ulang:
 Catatan penting: dokumen GitHub tidak otomatis mengirimkan konteks ke agent/chat baru. Saat pindah agent, pengguna cukup memberi instruksi: **"Lanjutkan proyek CBT dari GitHub. Baca docs/AGENT_START_HERE.md lalu ikuti seluruh handover dan lanjutkan dari checkpoint aktual. Jangan ulang pekerjaan."** Agent tetap wajib memverifikasi HEAD, PR, source, dan CI terbaru sebelum coding.
 
 Tidak ada source runtime, migration, DB produksi, VPS, PR merge, atau deployment yang diubah pada langkah handover ini. PR #21 tetap tidak boleh di-merge tanpa approval dan seluruh acceptance gate.
+
+
+## Addendum rekonsiliasi keseluruhan portal — 23 November 2026
+
+Laporan terbaru: [REPORT_REKONSILIASI_AWAL_KETIGA_PORTAL_2026-11-23.md](REPORT_REKONSILIASI_AWAL_KETIGA_PORTAL_2026-11-23.md).
+
+### HEAD PR/branch yang diverifikasi ulang
+- PR #21 integrasi: `44c2b7e3f84f5fef4ff749add13a1fd75369fa6d` — OPEN/DRAFT/UNMERGED.
+- PR #13 Web Siswa: `9ef375c407b1faf606c5a268f00b24424d93be9e` — OPEN/DRAFT/UNMERGED.
+- PR #19 Web Guru: `71296ca6e7c48b7295455a26d38bda11b901eb1d` — OPEN/DRAFT/UNMERGED.
+- PR #18 Web Admin legacy room/proctor: `42a0de2c1f86b8e76e34e1b74ab0feaca90def3a` — OPEN/DRAFT/UNMERGED.
+- Agent 2 auth/session/fencing branch: `b00cf4312b12e1158c609ca91af3dcecec7a2553`.
+
+### Koreksi status Web Siswa
+Audit anti-curang lama di branch integrasi memeriksa runner lama (blob `7283ca...`). Runner Agent 4 terbaru pada PR #13 adalah blob `0c539c...` dan sudah berisi mobile-first, browser deterrent, IndexedDB, fence/heartbeat client, receipt verifier. Jangan mengulang patch tersebut. Namun bukti E2E/CI terbaru yang tercatat pada checkpoint Agent 4 masih untuk SHA lebih lama; verifikasi exact HEAD PR #13 dan browser-to-real-Laravel integration masih terbuka.
+
+### Backend Agent 2 — P0 belum lulus
+Run #45066851753 pada exact SHA `b00cf4312b12e1158c609ca91af3dcecec7a2553`: MySQL 8 fresh migration + PHP lint PASS, integration suite FAILURE (4 failed, 78 passed, 293 assertions), two-connection concurrency SKIPPED. Log: https://github.com/zane0184/cbt_november/actions/runs/45066851753.
+Dua mismatch kontrak telah dibaca langsung dari source:
+- `require_token=false` saat ini salah ditolak oleh kondisi `!require_token || !token`.
+- Receipt response menyimpan client_request_id pada ledger, tetapi objek receipt belum mengembalikannya; Agent 4 strict verifier membutuhkan field itu.
+Empat failure lama harus ditriase dari response/error detail, bukan diperbaiki dengan melonggarkan security.
+
+### Konflik integrasi
+- Jangan merge seluruh branch Agent 2 ke PR #21: branch sangat divergen dan berisi sejumlah fitur historis yang tidak sesuai keputusan owner.
+- Jangan merge PR #18 room/session/multi-Proktor otomatis. Cocokkan dengan keputusan terbaru Issue #20: tidak ada ExamSession/wave/session_number lifecycle; Proktor bukan portal/role permanen dan tidak memperoleh monitoring/Attempt/operasi CBT.
+- PR #19 memiliki CI historis 118/520 PASS pada SHA `91d8f698...`; PR head aktual berbeda, jadi cek ulang CI exact SHA sebelum menyatakan fitur Guru teruji pada HEAD terkini.
+
+### Implementasi tahap ini
+- Ditambahkan laporan rekonsiliasi awal lintas portal dan backlog P0–P4.
+- Tidak ada source runtime, migration, database produksi, VPS, merge, atau deployment yang diubah.
+- Commit laporan: `8b8fc6fc645779152f36cd53bf3db59ef6490d03`.
+
+### NEXT
+1. Perbaiki kontrak backend token optional dan receipt request ID dengan backup byte-exact + regression tests.
+2. Diagnosis 4 failure Agent 2 dan jalankan concurrency test sampai PASS.
+3. Reconcile runner PR #13 terbaru ke integrasi (bukan runner lama).
+4. Browser-to-real-Laravel integration dan platform enforcement Android native vs Web.
+5. Lanjutkan inventaris Admin ADM-01–ADM-23 dan integrasi akademik Web Guru.
