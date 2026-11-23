@@ -44,7 +44,7 @@ class Exam extends Model
                 $exam->category = self::CATEGORY_REGULAR;
             }
             if (!in_array($exam->category, self::ALL_CATEGORIES, true)) {
-                throw new \\InvalidArgumentException('Kategori ujian tidak dikenal: '.$exam->category);
+                throw new \InvalidArgumentException('Kategori ujian tidak dikenal: '.$exam->category);
             }
             // Category is the source of truth; clients cannot forge the centralized flag.
             $exam->is_centralized = self::isCentralizedCategory($exam->category);
