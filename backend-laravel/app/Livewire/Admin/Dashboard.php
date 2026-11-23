@@ -33,6 +33,11 @@ class Dashboard extends Component
         $this->authorizeDashboard();
         $tenantId = (string) auth()->user()->tenant_id;
 
+        $activeAcademicYear = AcademicYear::query()
+            ->where('tenant_id', $tenantId)
+            ->where('is_active', true)
+            ->first();
+
         $totalUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')->count();
         $totalStudents = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereHas('roles', fn ($query) => $query->where('name', 'SISWA'))
@@ -41,14 +46,34 @@ class Dashboard extends Component
             ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
             ->whereDoesntHave('roles', fn ($query) => $query->where('name', '!=', 'GURU'))
             ->whereHas('teacherProfile')->count();
-        $totalRombels = Rombel::query()->where('tenant_id', $tenantId)->count();
-        $totalSubjects = Subject::query()->where('tenant_id', $tenantId)->count();
+
+        // Dashboard operational totals describe the active academic year only.
+        $activeRombelsQuery = Rombel::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'ACTIVE');
+        if ($activeAcademicYear) {
+            $activeRombelsQuery->where('academic_year_id', $activeAcademicYear->id);
+        } else {
+            $activeRombelsQuery->whereRaw('1 = 0');
+        }
+        $totalRombels = $activeRombelsQuery->count();
+
+        $totalSubjects = Subject::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'ACTIVE')
+            ->count();
         $totalProctorAssignments = ExamProctorAssignment::query()->where('tenant_id', $tenantId)->activeNow()->count();
-        $activeAcademicYear = AcademicYear::query()->where('tenant_id', $tenantId)->where('is_active', true)->first();
 
         $recentUsers = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->with('roles')->orderByDesc('created_at')->orderByDesc('id')->take(5)->get();
-        $recentRombels = Rombel::query()->where('tenant_id', $tenantId)->latest()->take(5)->get();
+        $recentRombelsQuery = Rombel::query()
+            ->where('tenant_id', $tenantId)
+            ->when($activeAcademicYear, fn ($query) => $query->where('academic_year_id', $activeAcademicYear->id))
+            ->when(!$activeAcademicYear, fn ($query) => $query->whereRaw('1 = 0'))
+            ->with('academicYear')
+            ->latest()
+            ->take(5);
+        $recentRombels = $recentRombelsQuery->get();
 
         return view('livewire.admin.dashboard', [
             'totalUsers' => $totalUsers,
