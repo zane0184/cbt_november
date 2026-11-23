@@ -26,6 +26,7 @@ class ExamHardeningTest extends TestCase
     private $siswa;
     private $exam;
     private $snapshot;
+    private string $siswaToken;
 
     protected function setUp(): void
     {
@@ -44,6 +45,7 @@ class ExamHardeningTest extends TestCase
         $this->siswa->roles()->attach(
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
+        $this->siswaToken = $this->siswa->createToken('exam-hardening-student')->plainTextToken;
 
         $ay = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2024']);
         $subject = Subject::create(['tenant_id' => $this->tenant->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
@@ -147,25 +149,14 @@ class ExamHardeningTest extends TestCase
 
     public function test_duplicate_submission_prevention()
     {
-        $context = app(\App\Contexts\TenantContext::class);
-        $context->setTenantId($this->tenant->id);
-
-        $participant = ExamParticipant::where('exam_id', $this->exam->id)->where('user_id', $this->siswa->id)->first();
-        $attempt = new ExamAttempt([
-            'exam_id' => $this->exam->id,
-            'participant_id' => $participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'started_at' => now(),
-            'expires_at' => now()->addMinutes(45),
-            'device_fingerprint' => 'device-1',
-            'question_order' => [$this->snapshot->id],
+        $this->withToken($this->siswaToken);
+        $this->withHeaders([
+            'X-Device-Binding-ID' => 'device-1',
+            'X-CBT-Fence-Generation' => '1',
         ]);
-        $attempt->save();
-
-        $context->setTenantId(null);
-        $this->actingAs($this->siswa);
-        $this->withHeader('X-Device-Binding-ID', 'device-1');
+        $startResponse = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", ['token' => 'ABC123']);
+        $startResponse->assertStatus(201);
+        $attempt = ExamAttempt::query()->findOrFail($startResponse->json('data.id'));
 
         // First submission
         $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/submit");
@@ -173,8 +164,9 @@ class ExamHardeningTest extends TestCase
 
         // Second submission
         $response = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$attempt->id}/submit");
-        $response->assertStatus(422);
-        $response->assertJson(['message' => 'Attempt is not in progress.']);
+        $response->assertStatus(200)
+            ->assertJsonPath('idempotent', true)
+            ->assertJsonPath('message', 'Attempt already closed.');
     }
 
     public function test_cross_tenant_attempt_submission_denied()
