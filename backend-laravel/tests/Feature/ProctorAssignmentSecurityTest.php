@@ -90,13 +90,22 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->assertDatabaseCount('exam_proctor_assignments', 0);
     }
 
-    public function test_proctor_assignment_does_not_grant_monitoring_or_permanent_portal_access(): void
+    public function test_no_canonical_central_marker_means_no_assignment_and_no_monitoring_access(): void
     {
         $this->actingAs($this->proctor);
         $this->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
 
-        $this->assignThroughUi();
+        $this->actingAs($this->admin);
+        Livewire::test(ProctorAssignmentManagement::class)
+            ->set('selectedExamId', $this->exam->id)
+            ->set('selectedProctorId', $this->proctor->id)
+            ->set('startsAt', now()->subMinute()->format('Y-m-d\\\\TH:i'))
+            ->set('expiresAt', now()->addHour()->format('Y-m-d\\\\TH:i'))
+            ->set('reason', 'Pengawasan ujian kelas enam')
+            ->call('assign')
+            ->assertForbidden();
 
+        $this->assertDatabaseCount('exam_proctor_assignments', 0);
         $this->actingAs($this->proctor);
         $this->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
         $this->get('/proktor/dashboard')->assertNotFound();
@@ -180,11 +189,21 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->actingAs($this->proctor)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
     }
 
-    public function test_expired_assignment_still_does_not_grant_monitoring_or_dashboard_access(): void
+    public function test_expired_historic_assignment_does_not_grant_monitoring_or_dashboard_access(): void
     {
-        $this->assignThroughUi();
-        DB::table('exam_proctor_assignments')->where('exam_id', $this->exam->id)->update(['expires_at' => now()->subSecond()]);
+        ExamProctorAssignment::query()->create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'proctor_user_id' => $this->proctor->id,
+            'assigned_by' => $this->admin->id,
+            'starts_at' => now()->subHour(),
+            'expires_at' => now()->subSecond(),
+            'status' => 'ACTIVE',
+            'assignment_reason' => 'Legacy assignment expired',
+        ]);
+
         $this->actingAs($this->proctor)->get("/exams/{$this->exam->id}/monitoring")->assertForbidden();
+        $this->get('/proktor/dashboard')->assertNotFound();
         Livewire::test(ProktorDashboard::class)->assertForbidden();
     }
 
