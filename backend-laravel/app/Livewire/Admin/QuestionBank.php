@@ -561,6 +561,51 @@ class QuestionBank extends Component
             Gate::authorize('publish', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+
+            $cpMappings = QuestionVersionCurriculumMapping::query()
+                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('question_version_id', $version->id)
+                ->get();
+            $outcomeMappings = QuestionVersionTenantOutcomeMapping::query()
+                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('question_version_id', $version->id)
+                ->get();
+            $structureMappings = QuestionVersionStructureMapping::query()
+                ->where('tenant_id', auth()->user()->tenant_id)
+                ->where('question_version_id', $version->id)
+                ->get();
+
+            $assignmentIds = $cpMappings->pluck('teacher_subject_assignment_id')->unique()->values();
+            abort_unless($assignmentIds->isNotEmpty(), 409, 'Versi soal belum dipetakan ke CP resmi dan penugasan Guru.');
+            $profile = app(TeacherPortalAccess::class)->profile(auth()->user());
+
+            foreach ($assignmentIds as $assignmentId) {
+                $assignment = TeacherSubjectAssignment::query()
+                    ->where('tenant_id', auth()->user()->tenant_id)
+                    ->where('teacher_profile_id', $profile->id)
+                    ->whereKey($assignmentId)
+                    ->where('status', 'ACTIVE')
+                    ->whereDate('starts_at', '<=', now()->toDateString())
+                    ->whereDate('ends_at', '>=', now()->toDateString())
+                    ->first();
+                abort_unless($assignment, 403, 'Pemetaan versi soal memuat penugasan yang tidak lagi menjadi kewenangan Guru ini.');
+
+                abort_unless(
+                    $outcomeMappings->where('teacher_subject_assignment_id', $assignmentId)->isNotEmpty(),
+                    409,
+                    'Setiap penugasan soal wajib memiliki pemetaan TP/ATP terpublikasi.'
+                );
+
+                $roles = $structureMappings
+                    ->where('teacher_subject_assignment_id', $assignmentId)
+                    ->pluck('mapping_role')
+                    ->unique()
+                    ->all();
+                foreach (['PANCA_CINTA', 'PM_PRINCIPLE', 'DIMENSI_PROFIL_LULUSAN'] as $requiredRole) {
+                    abort_unless(in_array($requiredRole, $roles, true), 409, 'Pemetaan Panca Cinta, Pembelajaran Mendalam, dan dimensi profil lulusan wajib lengkap sebelum publikasi soal.');
+                }
+            }
+
             $oldValues = [
                 'question_status' => $lockedQuestion->status,
                 'version_status' => $version->status,
