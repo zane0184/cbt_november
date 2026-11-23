@@ -501,12 +501,6 @@ return new class extends Migration
             if (!Schema::hasColumn($tableName, 'is_editable')) {
                 $table->boolean('is_editable')->default(true);
             }
-            if (!Schema::hasColumn($tableName, 'is_official')) {
-                $table->boolean('is_official')->default(false);
-            }
-            if (!Schema::hasColumn($tableName, 'is_editable')) {
-                $table->boolean('is_editable')->default(true);
-            }
         });
 
         if (DB::getDriverName() !== 'sqlite') {
