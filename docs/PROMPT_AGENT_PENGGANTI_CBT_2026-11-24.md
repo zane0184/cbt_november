@@ -56,3 +56,12 @@ Mulai dari branch eksekusi aktif yang tercantum di checkpoint GitHub terbaru. Ha
 Urutan kerja: P0 backend/full PHPUnit → Web Siswa real Laravel E2E → Web Guru E2E → Web Admin ADM-01..23 → kurikulum Merdeka+KBC end-to-end → install/upgrade/backup/restore/security/UAT → ZIP generik final → staging/VPS setelah approval.
 
 Jika keputusan owner yang diperlukan belum ada, jangan menebak. Ajukan satu pertanyaan paling spesifik dan lanjutkan pekerjaan lain yang tidak terblokir.
+
+## HANDOVER TERBARU — PRIORITAS MUTLAK: LANJUTKAN, JANGAN MENGULANG
+Baca dokumen lengkap: [HANDOVER_AGENT_BARU_LANJUTKAN_BUKAN_MENGULANG_2026-11-24.md](HANDOVER_AGENT_BARU_LANJUTKAN_BUKAN_MENGULANG_2026-11-24.md).
+
+Instruksi ini mengikat: pekerjaan utama agent pengganti adalah meneruskan backlog yang belum selesai, bukan mengulang audit/patch/test/keputusan yang sudah ditutup. Full PHPUnit sudah CLOSED/GREEN pada exact SHA `9e5a2697ad29e2aaa15d2b7522b7b44a59c5eb51` dengan 518 passed, 2,177 assertions, 0 failed (CI #45243430635). Jangan ulang triage 42 failure, jangan rerun full suite hanya untuk konfirmasi, dan jangan mengubah area itu tanpa pemicu sah sebagaimana dijelaskan dalam lock note.
+
+Branch kerja saat handover: `work/solo-web-cbt-completion-20261123-execution`; HEAD saat dokumen handover dibuat: `a8ad92d9a4319f87827291b6cc02419aab964db9`. Snapshot baseline terpisah: `baseline/phpunit-green-20261124`; jangan digeser/dipakai untuk coding. Selalu verifikasi HEAD/CI terbaru sebelum bertindak karena branch dapat maju setelah handover.
+
+Backlog utama berikutnya adalah meneruskan Issue #20 (ADM-01..ADM-23) dengan membandingkan checklist terhadap source dan bukti terbaru, lalu Web Siswa E2E, Web Guru E2E, integrasi kurikulum, hardening dan acceptance. Item yang sudah selesai harus ditandai berdasarkan bukti; jangan mengulang item yang sudah selesai. Tidak ada Android native/Web Super Admin sampai Juni 2027. Semua keputusan owner, larangan production migration/deploy/merge tanpa approval, backup byte-exact sebelum edit, dan pelaporan AUDIT/DESAIN/IMPLEMENTASI/PENGUJIAN tetap berlaku.
