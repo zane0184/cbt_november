@@ -31,6 +31,7 @@ class SubmitLockingTest extends TestCase
     private $snapshot1;
     private $snapshot2;
     private $option1;
+    private string $studentToken;
 
     protected function setUp(): void
     {
@@ -64,7 +65,8 @@ class SubmitLockingTest extends TestCase
             'title' => 'Exam Phase 6G7',
             'duration_seconds' => 3600,
             'created_by' => $this->student->id,
-            'status' => 'DRAFT',
+            'status' => 'PUBLISHED',
+            'published_at' => now(),
             'start_at' => now()->subMinutes(10),
             'end_at' => now()->addMinutes(50),
             'locked_at' => now(),
@@ -73,23 +75,11 @@ class SubmitLockingTest extends TestCase
 
         $this->participant = new ExamParticipant([
             'user_id' => $this->student->id,
-            'status' => 'STARTED'
+            'status' => 'ASSIGNED'
         ]);
         $this->participant->tenant_id = $this->tenant->id;
         $this->participant->exam_id = $this->exam->id;
         $this->participant->save();
-
-        $this->attempt = new ExamAttempt([
-            'exam_id' => $this->exam->id,
-            'participant_id' => $this->participant->id,
-            'attempt_number' => 1,
-            'status' => 'IN_PROGRESS',
-            'started_at' => now(),
-            'expires_at' => now()->addHour(),
-            'device_fingerprint' => 'device-6g7'
-        ]);
-        $this->attempt->tenant_id = $this->tenant->id;
-        $this->attempt->save();
 
         // Question 1
         $q1 = new Question(['created_by' => $this->student->id]);
@@ -168,9 +158,16 @@ class SubmitLockingTest extends TestCase
         $this->snapshot2->tenant_id = $this->tenant->id;
         $this->snapshot2->exam_id = $this->exam->id;
         $this->snapshot2->save();
-        $this->attempt->update(['question_order' => [(string) $this->snapshot1->id, (string) $this->snapshot2->id]]);
-
-        $this->withHeader('X-Device-Binding-ID', 'device-6g7');
+        // Create the Attempt through the official endpoint so auth-session
+        // binding, DeviceLease, and initial fence generation are persisted.
+        $this->studentToken = $this->student->createToken('submit-locking-tests')->plainTextToken;
+        $this->withToken($this->studentToken)->withHeaders([
+            'X-Device-Binding-ID' => 'device-6g7',
+            'X-CBT-Fence-Generation' => '1',
+        ]);
+        $startResponse = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts", []);
+        $startResponse->assertStatus(201);
+        $this->attempt = ExamAttempt::query()->findOrFail($startResponse->json('data.id'));
     }
 
     /**
@@ -178,7 +175,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_A_normal_submit()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Pre-fill answer for snapshot 1
         $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot1->id}", [
@@ -206,7 +203,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_B_answer_mutation_after_submit_rejected()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Save initial answer
         $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot1->id}", [
@@ -245,7 +242,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_C_new_answer_after_submit_rejected()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Submit attempt without answering question 2
         $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit")->assertStatus(200);
@@ -271,7 +268,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_D_duplicate_submit_handling()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Pre-fill answer
         $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot1->id}", [
@@ -301,10 +298,10 @@ class SubmitLockingTest extends TestCase
 
     public function test_expired_attempt_submit_closes_as_expired_and_is_idempotent_for_same_device()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
         $this->attempt->update(['expires_at' => now()->subSecond()]);
 
-        $this->withHeader('X-Device-Binding-ID', 'device-6g7');
+        $this->withHeaders(['X-Device-Binding-ID' => 'device-6g7', 'X-CBT-Fence-Generation' => '1']);
         $first = $this->postJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/submit");
         $first->assertStatus(200)
             ->assertJsonPath('success', true)
@@ -322,7 +319,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_E_old_offline_request_after_submit_rejected()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Save answer pre-submit
         $oldReqId = (string) Str::uuid();
@@ -352,7 +349,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_F_atomic_locking_verification()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Verify that when attempt status is updated to SUBMITTED inside transaction,
         // any subsequent or concurrent check fails.
@@ -372,7 +369,7 @@ class SubmitLockingTest extends TestCase
      */
     public function test_G_final_data_integrity()
     {
-        $this->actingAs($this->student);
+        $this->withToken($this->studentToken);
 
         // Answer Q1
         $this->putJson("/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot1->id}", [
