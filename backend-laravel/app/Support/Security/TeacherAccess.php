@@ -14,6 +14,10 @@ class TeacherAccess
 {
     public static function profileIds(User $user): array
     {
+        if (!$user->hasExactRole('GURU')) {
+            return [];
+        }
+
         return TeacherProfile::query()
             ->where('tenant_id', $user->tenant_id)
             ->where('user_id', $user->id)
@@ -375,7 +379,7 @@ class TeacherAccess
         string $academicYearId,
         string $semesterId
     ): bool {
-        if ($teacher->tenant_id !== $student->tenant_id || !$student->hasRole('SISWA')) {
+        if ($teacher->tenant_id !== $student->tenant_id || !$student->hasExactRole('SISWA')) {
             return false;
         }
 
