@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+use Tests\Concerns\CreatesCanonicalCurriculumContext;
 
 use App\Models\AcademicYear;
 use App\Models\Assessment;
@@ -47,6 +48,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesCanonicalTeacherAssignment;
+    use CreatesCanonicalCurriculumContext;
 
     private Tenant $tenantA;
     private Tenant $tenantB;
@@ -61,6 +63,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
     private Phase $phase;
     private Rombel $rombel;
     private TeacherSubjectAssignment $assignment;
+    private array $canonicalContext = [];
     private LearningOutcome $outcome;
     private LearningObjective $tp;
     private LearningPath $atp;
@@ -169,6 +172,7 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'status' => 'ACTIVE',
             'created_by' => $this->teacherA->id,
         ]);
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($this->assignment, $this->teacherA);
 
         $this->studentB = User::create([
             'tenant_id' => $this->tenantB->id,
@@ -536,14 +540,17 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'semester_id' => $this->semester->id,
             'curriculum_id' => $this->curriculum->id,
             'subject_id' => $this->subject->id,
+            'teacher_subject_assignment_id' => $this->assignment->id,
+            'tenant_curriculum_registration_id' => $this->assignment->tenant_curriculum_registration_id,
+            'curriculum_version_id' => $this->assignment->multi_curriculum_version_id,
+            'curriculum_owner_id' => $this->assignment->curriculum_owner_id,
+            'curriculum_context_snapshot' => $this->assignment->curriculum_context_snapshot,
             'title' => 'Assesmen Bobot Kosong',
             'assessment_type' => 'FORMATIVE',
             'status' => 'PUBLISHED',
             'weight' => 0.00, // Invalid / unconfigured weight <= 0
             'created_by' => $this->teacherA->id,
         ]);
-        // Keep the assessment invalid (zero weight) but authorize the assigned Guru scope.
-        $this->bindCanonicalTeacherAssignment($this->assignment, $unconfigAss);
         $unconfigAss->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         $exam = Exam::create([
