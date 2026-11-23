@@ -98,7 +98,7 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
         ]);
 
         $context->setTenantId(null);
-        \\App\\Contexts\\TenantContext::resetInstance();
+        \App\Contexts\TenantContext::resetInstance();
 
         $this->tokenA = $this->userA->createToken('rate-limit-user-a')->plainTextToken;
         $this->tokenB = $this->userB->createToken('rate-limit-user-b')->plainTextToken;
@@ -165,7 +165,7 @@ class RateLimitingAndAbuseProtectionTest extends TestCase
 
         // Test custom controller RateLimiter on Exam Token (limit = 5 hits)
         // Reset participant attempt count so store() gets to token check
-        \\Illuminate\\Support\\Facades\\DB::table('device_leases')->where('tenant_id', $this->tenant->id)->where('exam_attempt_id', $this->attemptA->id)->delete();
+        \Illuminate\Support\Facades\DB::table('device_leases')->where('tenant_id', $this->tenant->id)->where('exam_attempt_id', $this->attemptA->id)->delete();
         $this->attemptA->delete();
         $this->exam->participants()->where('user_id', $this->userA->id)->update(['status' => 'ASSIGNED']);
 
