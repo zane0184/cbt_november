@@ -39,8 +39,6 @@ return new class extends Migration
                 $table->index(['tenant_id', 'verification_status'], 'crs_status_idx');
                 $table->foreign('tenant_id', 'crs_tenant_fk')
                     ->references('id')->on('tenants')->onDelete('RESTRICT');
-                $table->foreign('verified_by', 'crs_verifier_fk')
-                    ->references('id')->on('users')->onDelete('SET NULL');
             });
         }
 
@@ -105,7 +103,7 @@ return new class extends Migration
                 $table->foreign(['parent_id', 'material_id', 'tenant_id'], 'mt_parent_material_owner_fk')
                     ->references(['id', 'material_id', 'tenant_id'])->on('material_topics')->onDelete('RESTRICT');
                 $table->foreign(['created_by', 'tenant_id'], 'mt_creator_owner_fk')
-                    ->references(['id', 'tenant_id'])->on('users')->onDelete('SET NULL');
+                    ->references(['id', 'tenant_id'])->on('users')->onDelete('RESTRICT');
             });
         }
 
@@ -463,6 +461,12 @@ return new class extends Migration
             }
             if (!Schema::hasColumn($tableName, 'metadata')) {
                 $table->json('metadata')->nullable();
+            }
+            if (!Schema::hasColumn($tableName, 'is_official')) {
+                $table->boolean('is_official')->default(false);
+            }
+            if (!Schema::hasColumn($tableName, 'is_editable')) {
+                $table->boolean('is_editable')->default(true);
             }
             if (!Schema::hasColumn($tableName, 'is_official')) {
                 $table->boolean('is_official')->default(false);
