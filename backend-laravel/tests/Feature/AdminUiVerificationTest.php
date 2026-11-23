@@ -184,19 +184,34 @@ class AdminUiVerificationTest extends TestCase
             'email' => 'tu@min15.sch.id',
             'status' => 'ACTIVE',
         ]);
-        $this->assertDatabaseHas('audit_logs', [
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $this->admin->id,
-            'action' => 'UPDATE_MADRASAH_PROFILE',
-            'entity_type' => 'Tenant',
-            'entity_id' => $this->tenant->id,
-        ]);
+        $audit = \\App\\Models\\AuditLog::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('user_id', $this->admin->id)
+            ->where('action', 'UPDATE_MADRASAH_PROFILE')
+            ->where('entity_type', 'Tenant')
+            ->where('entity_id', $this->tenant->id)
+            ->firstOrFail();
+        $this->assertSame('Madrasah Aliyah Negeri', $audit->old_values['name']);
+        $this->assertSame('MIN 15 Jakarta Selatan', $audit->new_values['name']);
+        $this->assertSame('MAN1', $this->tenant->fresh()->code);
     }
 
     /** @test */
     public function admin_madrasah_profile_requires_exact_admin_role_and_tenant_manage_permission(): void
     {
         $this->actingAs($this->student);
+        $this->get('/admin/profile')->assertForbidden();
+        Livewire::test(MadrasahProfile::class)->assertForbidden();
+
+        $teacherRole = Role::query()->where('name', 'GURU')->firstOrFail();
+        $teacher = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Tanpa Akses Profil',
+            'email' => 'guru-profil@man1.sch.id',
+            'password' => bcrypt('password123'),
+        ]);
+        $teacher->roles()->attach($teacherRole);
+        $this->actingAs($teacher);
         $this->get('/admin/profile')->assertForbidden();
         Livewire::test(MadrasahProfile::class)->assertForbidden();
 
