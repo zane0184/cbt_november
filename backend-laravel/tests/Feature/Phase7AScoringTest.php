@@ -26,6 +26,7 @@ class Phase7AScoringTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesTeacherExamScope;
+    use CreatesCanonicalTeacherAssignment;
 
     private Tenant $tenant;
     private User $teacher;
@@ -70,6 +71,7 @@ class Phase7AScoringTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($scope['assignment'], $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
