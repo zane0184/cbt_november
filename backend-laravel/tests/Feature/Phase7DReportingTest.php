@@ -75,7 +75,7 @@ class Phase7DReportingTest extends TestCase
             'email' => 'admin@alhidayah.sch.id',
             'password' => bcrypt('password'),
         ]);
-        $this->adminA->roles()->attach($reportRoleA);
+        $this->adminA->roles()->attach($adminRoleA);
         $this->adminA->load('roles');
 
         $this->guruA = User::create([
@@ -202,7 +202,7 @@ class Phase7DReportingTest extends TestCase
         return $this->actingAs($user, 'sanctum');
     }
 
-    public function test_pdf_report_export_returns_200_and_pdf_headers()
+    public function test_admin_madrasah_cannot_export_exam_results_pdf()
     {
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/exams/{$this->examA->id}/export/pdf");
@@ -302,7 +302,7 @@ class Phase7DReportingTest extends TestCase
         $response->assertHeader('content-type', 'application/pdf');
     }
 
-    public function test_student_pdf_report_renders_tenant_identity()
+    public function test_admin_madrasah_cannot_export_student_results_pdf()
     {
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/students/{$this->studentA->id}/export/pdf");
@@ -325,7 +325,7 @@ class Phase7DReportingTest extends TestCase
         $this->assertStringContainsString('Ahmad Student', $view);
     }
 
-    public function test_exam_summary_pdf_report_renders_tenant_identity()
+    public function test_admin_madrasah_cannot_export_exam_summary_pdf()
     {
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/exams/{$this->examA->id}/summary/export/pdf");
