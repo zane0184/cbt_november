@@ -60,8 +60,8 @@ class WebAdminAuthTest extends TestCase
 
         TeacherProfile::create([
             'user_id' => $this->guru->id,
+            'employment_status' => 'PNS',
             'nip' => '198001012006041001',
-            'nik' => '3171000000000001',
             'full_name' => 'Guru Uji',
         ]);
         StudentProfile::create([
@@ -175,6 +175,29 @@ class WebAdminAuthTest extends TestCase
         $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => $this->password]);
         $response->assertRedirect('/guru/dashboard');
         $this->assertAuthenticatedAs($this->guru);
+    }
+
+    public function test_honorer_teacher_can_login_using_nik_only(): void
+    {
+        $honorerRole = Role::where('name', 'GURU')->firstOrFail();
+        $honorer = $this->makeUser('guru.honorer', 'Guru Honorer', $honorerRole);
+        TeacherProfile::create([
+            'user_id' => $honorer->id,
+            'employment_status' => 'HONORER',
+            'nik' => '3171000000000002',
+            'full_name' => 'Guru Honorer',
+        ]);
+
+        $response = $this->post('/login', ['identifier' => '3171000000000002', 'password' => $this->password]);
+        $response->assertRedirect('/guru/dashboard');
+        $this->assertAuthenticatedAs($honorer);
+    }
+
+    public function test_teacher_username_is_not_accepted_as_login_identity(): void
+    {
+        $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => $this->password]);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
     }
 
     public function test_student_can_login_using_nisn_without_email(): void
