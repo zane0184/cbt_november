@@ -24,6 +24,7 @@ use Laravel\Sanctum\Sanctum;
 class CacheTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     /** @test */
     public function finalization_invalidates_exam_and_rombel_analytics_cache()
@@ -71,7 +72,7 @@ class CacheTest extends TestCase
             'user_id' => $teacher->id,
             'full_name' => $teacher->name,
         ]);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $subject->id,
@@ -82,6 +83,7 @@ class CacheTest extends TestCase
             'status' => 'ACTIVE',
             'created_by' => $teacher->id,
         ]);
+        $this->bindCanonicalTeacherAssignment($assignment, $exam->assessment);
         $this->bootstrapCbtRolePermissions();
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) \Illuminate\Support\Str::uuid(),
