@@ -14,8 +14,8 @@ class QuestionVersionCurriculumMapping extends Model
     protected $table = 'question_version_curriculum_mappings';
 
     protected $fillable = [
-        'tenant_id', 'question_version_id', 'multi_curriculum_version_id',
-        'multi_learning_outcome_id', 'material_id', 'material_topic_id',
+        'tenant_id', 'question_version_id', 'tenant_curriculum_registration_id',
+        'multi_curriculum_version_id', 'curriculum_owner_id', 'multi_learning_outcome_id', 'material_id', 'material_topic_id',
         'academic_year_id', 'semester_id', 'mapping_role', 'weight',
         'is_primary', 'created_by', 'metadata',
     ];
@@ -39,6 +39,11 @@ class QuestionVersionCurriculumMapping extends Model
     public function learningOutcome(): BelongsTo
     {
         return $this->belongsTo(MultiLearningOutcome::class, 'multi_learning_outcome_id');
+    }
+
+    public function curriculumRegistration(): BelongsTo
+    {
+        return $this->belongsTo(TenantCurriculumRegistration::class, 'tenant_curriculum_registration_id');
     }
 
     public function material(): BelongsTo
