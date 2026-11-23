@@ -33,11 +33,13 @@ class AnswerKeyLeakageTest extends TestCase
 {
     use RefreshDatabase;
     use CreatesCanonicalTeacherAssignment;
+    use CreatesCanonicalCurriculumContext;
 
     private $tenant;
     private $student;
     private $guru;
     private $exam;
+    private array $canonicalContext = [];
 
     protected function setUp(): void
     {
@@ -94,6 +96,7 @@ class AnswerKeyLeakageTest extends TestCase
             'created_by' => $this->guru->id,
         ]);
         $this->bindCanonicalTeacherAssignment($assignment, $assessment);
+        $this->canonicalContext = $this->createCanonicalCurriculumContext($assignment, $this->guru, $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
@@ -121,6 +124,7 @@ class AnswerKeyLeakageTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->guru->id
         ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
         QuestionOption::create([
             'tenant_id' => $this->tenant->id,
             'question_version_id' => $version->id,
