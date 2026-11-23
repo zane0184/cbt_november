@@ -169,7 +169,7 @@ class ExamSnapshotTest extends TestCase
         $v1 = QuestionVersion::create([
             'question_id' => $q->id,
             'major_version' => 1, 'minor_version' => 0,
-            'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'is_current' => true,
+            'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'status' => 'PUBLISHED', 'is_current' => true,
             'created_by' => $this->user->id
         ]);
 
@@ -191,7 +191,7 @@ class ExamSnapshotTest extends TestCase
         $v2 = QuestionVersion::create([
             'question_id' => $q->id,
             'major_version' => 2, 'minor_version' => 0,
-            'question_type' => 'ESSAY', 'stem' => 'New Stem', 'is_current' => true,
+            'question_type' => 'ESSAY', 'stem' => 'New Stem', 'status' => 'PUBLISHED', 'is_current' => true,
             'created_by' => $this->user->id
         ]);
 
@@ -227,6 +227,7 @@ class ExamSnapshotTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'ESSAY',
             'stem' => 'Soal dari mapel yang berbeda',
+            'status' => 'PUBLISHED',
             'is_current' => true,
             'created_by' => $this->user->id,
         ]);
@@ -303,7 +304,7 @@ class ExamSnapshotTest extends TestCase
 
         $v = QuestionVersion::create([
             'question_id' => $q->id,
-            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'created_by' => $this->user->id
+            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'status' => 'PUBLISHED', 'is_current' => true, 'created_by' => $this->user->id
         ]);
 
         $this->mapQuestionVersionToCanonicalCurriculum($v, $this->canonicalContext);
@@ -514,6 +515,7 @@ class ExamSnapshotTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'ESSAY',
             'stem' => 'Other tenant snapshot',
+            'status' => 'PUBLISHED',
             'is_current' => true,
             'created_by' => $otherUser->id,
         ]);
@@ -727,6 +729,7 @@ class ExamSnapshotTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'ESSAY',
             'stem' => 'Snapshot mutation guard',
+            'status' => 'PUBLISHED',
             'is_current' => true,
             'created_by' => $this->user->id,
         ]);
