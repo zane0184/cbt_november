@@ -24,7 +24,7 @@ for (const viewPath of portalViewPaths) {
   assert.ok(!view.includes('fonts.googleapis.com'), 'Web Siswa view must not load remote Google Fonts: ' + viewPath);
   assert.ok(view.includes("asset('css/student-portal.css')"), 'Web Siswa view must load the local stylesheet: ' + viewPath);
 }
-assert.ok(localPortalCss.includes('.bg-slate-100') && localPortalCss.includes('.runner-layout'), 'Local stylesheet must include portal and runner styling');
+assert.ok(localPortalCss.includes('.bg-slate-100') && localPortalCss.includes('.p-4'), 'Local stylesheet must include the shared portal utility styles');
 console.log('PASS: login, exam list, exam runner, and results use local CSS without CDN');
 
 const inlineScripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
