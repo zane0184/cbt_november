@@ -18,6 +18,7 @@ use App\Models\TeacherSubjectAssignment;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Livewire\Admin\UserManagement;
+use App\Livewire\Admin\MadrasahProfile;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\CurriculumManagement;
@@ -51,7 +52,7 @@ class AdminUiVerificationTest extends TestCase
         $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         $studentRole = Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
         Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
-        $permissions = collect(['academic.manage', 'curriculum.view', 'curriculum.manage', 'user.manage'])
+        $permissions = collect(['academic.manage', 'curriculum.view', 'curriculum.manage', 'user.manage', 'tenant.manage'])
             ->mapWithKeys(fn (string $name) => [$name => Permission::firstOrCreate(['name' => $name, 'label' => $name])]);
         $adminRole->permissions()->attach($permissions->pluck('id')->all());
 
@@ -151,6 +152,82 @@ class AdminUiVerificationTest extends TestCase
 
         $this->get('/admin/questions')->assertNotFound();
         $this->get('/admin/exams')->assertNotFound();
+    }
+
+    /** @test */
+    public function admin_can_view_and_update_own_madrasah_profile_with_audit_log(): void
+    {
+        $this->actingAs($this->admin);
+
+        $this->get('/admin/profile')->assertOk()->assertSee('Profil Madrasah');
+
+        Livewire::test(MadrasahProfile::class)
+            ->assertSet('name', 'Madrasah Aliyah Negeri')
+            ->set('name', 'MIN 15 Jakarta Selatan')
+            ->set('nsm', '111111111111')
+            ->set('npsn', '20123456')
+            ->set('address', 'Jakarta Selatan')
+            ->set('phone', '021123456')
+            ->set('email', 'TU@MIN15.SCH.ID')
+            ->call('save')
+            ->assertHasNoErrors()
+            ->assertSee('Profil dasar madrasah berhasil disimpan.');
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $this->tenant->id,
+            'name' => 'MIN 15 Jakarta Selatan',
+            'code' => 'MAN1',
+            'nsm' => '111111111111',
+            'npsn' => '20123456',
+            'address' => 'Jakarta Selatan',
+            'phone' => '021123456',
+            'email' => 'tu@min15.sch.id',
+            'status' => 'ACTIVE',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->admin->id,
+            'action' => 'UPDATE_MADRASAH_PROFILE',
+            'entity_type' => 'Tenant',
+            'entity_id' => $this->tenant->id,
+        ]);
+    }
+
+    /** @test */
+    public function admin_madrasah_profile_requires_exact_admin_role_and_tenant_manage_permission(): void
+    {
+        $this->actingAs($this->student);
+        $this->get('/admin/profile')->assertForbidden();
+        Livewire::test(MadrasahProfile::class)->assertForbidden();
+
+        $role = Role::query()->where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $role->permissions()->detach();
+        $this->actingAs($this->admin);
+        $this->get('/admin/profile')->assertForbidden();
+        Livewire::test(MadrasahProfile::class)->assertForbidden();
+    }
+
+    /** @test */
+    public function madrasah_profile_uses_only_authenticated_admin_tenant_and_never_updates_installation_code(): void
+    {
+        $otherTenant = Tenant::create(['name' => 'Madrasah Lain', 'code' => 'LAIN']);
+        $this->actingAs($this->admin);
+
+        Livewire::test(MadrasahProfile::class)
+            ->set('name', 'MIN 15 Jakarta Selatan')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $this->tenant->id,
+            'name' => 'MIN 15 Jakarta Selatan',
+            'code' => 'MAN1',
+        ]);
+        $this->assertDatabaseHas('tenants', [
+            'id' => $otherTenant->id,
+            'name' => 'Madrasah Lain',
+            'code' => 'LAIN',
+        ]);
     }
 
     /** @test */
