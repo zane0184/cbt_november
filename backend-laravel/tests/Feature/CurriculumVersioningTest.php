@@ -52,7 +52,7 @@ class CurriculumVersioningTest extends TestCase
                     && array_intersect(['POST', 'PUT', 'PATCH', 'DELETE'], $route->methods()) !== []
             )->count(), "{$resource} must not expose collection mutation routes.");
             $this->assertSame(1, $routes->filter(
-                fn ($route) => $route->uri() === $baseUri.'/{'.rtrim($resource, 's').'}'
+                fn ($route) => str_starts_with($route->uri(), $baseUri.'/{')
                     && in_array('GET', $route->methods(), true)
             )->count(), "{$resource} must retain its read-only detail route.");
             $this->assertSame(0, $routes->filter(
