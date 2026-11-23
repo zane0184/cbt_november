@@ -144,3 +144,37 @@ Status: IN PROGRESS — NOT READY FOR DISTRIBUTION.
 5. Deployment aaPanel/VPS hanya setelah staging gate dan persetujuan owner.
 
 Status proyek tetap **IN PROGRESS — NOT READY FOR DISTRIBUTION / NOT READY FOR PRODUCTION**.
+
+
+## UPDATE FINAL W1 — CI SUCCESS 24 NOVEMBER 2026
+
+### Revision dan hasil pengujian
+- Exact tested SHA: \`b5e97564a4875c6b9f809adbb61b65469897d79b\`
+- Run #45257698090: **SUCCESS** — https://github.com/zane0184/cbt_november/actions/runs/45257698090
+- Environment: PHP 8.3 + MySQL 8.0.46/InnoDB disposable.
+- Login/tenant smoke: 27 passed (90 assertions).
+- Admin reauthorization: 5 passed (5 assertions).
+- Teacher result/analytics reauthorization: 4 passed (8 assertions).
+- Full PHPUnit: **527 passed (2,190 assertions), 0 failed**.
+- Job cleanup: SUCCESS.
+
+### Verified implementation
+- Admin reauthorization: Dashboard, UserManagement, AcademicManagement, CurriculumManagement, dan ProctorAssignmentManagement selector callback.
+- Teacher result/analytics reauthorization: ResultList, ResultDetail, AnalyticsDashboard, ItemAnalysis.
+- Analytics regression menggunakan mock ExamAnalyticsService untuk authorization boundary; ini bukan sertifikasi perhitungan statistik atau acceptance data analytics.
+- ResultDetail Blade directive diperbaiki dari penutup @error yang salah menjadi @enderror.
+- Duplikasi same-policy check pada ResultList dan AnalyticsDashboard render dihapus; tetap satu policy check masing-masing per render.
+- Backup source pra-patch diverifikasi byte-exact; backup test/component tambahan tersedia di backend-laravel/docs/backup/teacher-result-render-reauth-2026-11-24/.
+
+### Remaining work / gates
+1. ADM-01..23 tetap NOT VERIFIED end-to-end. Patch reauthorization bukan penyelesaian seluruh fitur Admin.
+2. ADM-20 Proktor assignment tetap BLOCKED sampai canonical central exam marker disetujui owner; jangan infer dari EXTERNAL.
+3. Lanjut W2-W8/Admin master spec; pertahankan batas kewenangan Admin.
+4. Lengkapi capability Proktor pada Guru/monitoring hanya dalam scope yang disetujui; jangan membuat role PROKTOR permanen atau memberikan akses room/roster/attempt prematur.
+5. Lengkapi provenance resmi KM + KBC/Panca Cinta/PM/8 dimensi dan snapshot immutable; jangan membuat dataset fiktif.
+6. Lengkapi DOCX import; XLSX question import tetap disabled; SHORT_ANSWER tetap blocked sampai accepted-answer persistence/scoring E2E.
+7. Lengkapi Student browser E2E untuk IndexedDB, offline/reconnect, receipt, stale conflict, expiry, submit barrier dan media.
+8. Jalankan fresh install, upgrade, backup/restore, security/load/concurrency, dan UAT.
+9. Staging VPS/aaPanel hanya setelah preflight evidence yang disanitasi dan approval owner. Belum ada production migration/deployment/ZIP distribution.
+
+Status proyek tetap **IN PROGRESS — NOT READY FOR DISTRIBUTION / NOT READY FOR PRODUCTION**.

@@ -175,3 +175,31 @@ Run #45254047440 pada SHA `1c0b72260eb0c19d36fb48fddd092bc58a649e53`:
 6. DOCX question import hanya setelah kontrak backend batch/DTO selesai; jangan mengaktifkan XLSX question import.
 7. Fresh install, upgrade, backup/restore, security, stability, UAT madrasah sebelum distribusi ZIP generik.
 8. Tidak ada migration produksi, deployment VPS, PR merge, atau distribusi ZIP tanpa approval dan bukti acceptance lengkap.
+
+
+## ADDENDUM FINAL VERIFIKASI — 24 NOVEMBER 2026
+
+### Source revision dan CI final
+- Branch: \`work/solo-web-cbt-completion-20261123-execution\`
+- Exact source revision diuji: \`b5e97564a4875c6b9f809adbb61b65469897d79b\`
+- GitHub Actions run #45257698090: **SUCCESS**
+- Link: https://github.com/zane0184/cbt_november/actions/runs/45257698090
+- Environment: PHP 8.3; MySQL 8.0.46 InnoDB disposable; Composer lock/platform divalidasi.
+- Focused login/tenant smoke: **27 passed / 90 assertions**.
+- Focused Admin reauthorization: **5 passed / 5 assertions**.
+- Focused Teacher reauthorization: **4 passed / 8 assertions**.
+- Full PHPUnit: **527 passed / 2,190 assertions / 0 failed**.
+- CI cleanup/complete job: SUCCESS.
+
+### Koreksi status setelah iterasi test
+- Reauthorization Guru **VERIFIED pada scope patch ini** di SHA b5e97564…: 4/4 regression tests.
+- Test AnalyticsDashboard menggunakan mock ExamAnalyticsService untuk mengisolasi Livewire mount/render authorization daripada query statistik MySQL. Ini memverifikasi gate authorization; bukan pengganti acceptance fungsional analytics.
+- Duplikasi authorization identik pada ResultList::render() dan AnalyticsDashboard::render() telah dihapus; masing-masing tetap memeriksa policy sekali pada tiap render.
+- ResultDetail Blade directive salah telah diperbaiki dan halaman detail lulus focused regression.
+- Full suite pada exact SHA final membuktikan regresi patch tidak mematahkan suite backend MySQL disposable.
+
+### Status proyek keseluruhan
+- ADM-01..ADM-23 masih **NOT VERIFIED end-to-end**; patch ini hanya reauthorization request, bukan penyelesaian seluruh spesifikasi Admin.
+- ADM-20 Proktor central assignment tetap **BLOCKED** sampai canonical central exam eligibility marker diputuskan owner.
+- Browser E2E lintas browser, UAT Admin/Guru/Siswa, DOCX import acceptance, kurikulum-KBC-Deep Learning data provenance, fresh-install/upgrade, backup/restore, security/load/concurrency serta staging VPS belum selesai.
+- Proyek tetap **IN PROGRESS — NOT READY FOR DISTRIBUTION / NOT READY FOR PRODUCTION**.
