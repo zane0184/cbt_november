@@ -65,3 +65,54 @@ PR lama #18/#19/#13 tetap OPEN/DRAFT/UNMERGED dan diperlakukan sebagai sumber au
 5. Jalankan CI pada exact HEAD dan browser E2E nyata yang terhubung Laravel.
 6. Lengkapi ADM-01 s.d. ADM-23, DOCX import, administrasi import/export, backup/restore, audit, dan health checks.
 7. Tidak merge/deploy/migrate produksi/distribusi final tanpa persetujuan eksplisit owner.
+
+
+---
+
+## UPDATE EKSEKUSI BACKEND — 23 NOVEMBER 2026
+
+HEAD yang diperiksa setelah perubahan: `a750cfc5e530b5d5c9daba133aebb1560a38fa0a`.
+
+### AUDIT
+
+- Branch kerja tunggal masih tersedia. Perbandingan terhadap `work/web-admin-implementation-20261123` menunjukkan branch kerja ahead 310 commit; rentang ini terlalu besar untuk diperlakukan sebagai perubahan kecil dan perlu ditinjau sebelum PR/merge.
+- `fetch_commit_workflow_runs` pada HEAD tidak mengembalikan run PR; combined commit status juga kosong. Karena wrapper workflow hanya mengambil run pemicu pull_request, status CI keseluruhan belum dapat dipastikan dari hasil ini. CI exact HEAD dinyatakan BELUM TERVERIFIKASI.
+- Migration Fase 1C yang sudah ada menyediakan registrasi owner kurikulum dan unique key komposit yang dipakai kontrak baru. CP resmi tetap berada di `multi_learning_outcomes`; authoring TP/ATP dipisah ke tabel tenant-local.
+- Artefak CP MI lengkap, checksum PDF sumber, dan isi resmi lengkap untuk seluruh mapel/elemen belum diimpor. Tidak boleh mengisi CP dengan data sintetis.
+
+### DESAIN
+
+- CP resmi diperlakukan sebagai referensi read-only; TP/ATP Guru berada di `tenant_learning_outcomes` dan terkait assignment, tahun/semester, registrasi kurikulum, versi, owner, dan CP induk.
+- Mapping CP ke QuestionVersion dan mapping TP/ATP ke QuestionVersion dipisahkan agar CP global tidak tertukar dengan authoring lokal.
+- Mapping materi/topik, fase/struktur, owner, tenant, dan registrasi kurikulum menggunakan foreign key komposit yang merujuk parent key Fase 1C.
+- Taksonomi asesmen memisahkan FUNCTION, SCOPE, INSTRUMENT, dan DELIVERY_MODE; nama kegiatan tetap bebas. Asesmen eksternal dipisahkan melalui `assessment_origin` dan `external_program_name`.
+- Admin hanya boleh memiliki role tunggal ADMIN_MADRASAH pada komponen yang sudah disentuh; penugasan pengawas sementara hanya untuk akun Guru tunggal. Guard ini belum mewakili audit seluruh route, API, export, Livewire, dan direct request.
+
+### IMPLEMENTASI
+
+Perubahan source yang telah ditulis pada branch ini:
+- Migration additive `2026_11_23_000001_add_canonical_web_curriculum_contract.php` untuk provenance sumber, registry taksonomi, topik materi, mapping subjek-kurikulum, TP/ATP tenant-owned, mapping QuestionVersion, konteks asesmen, dan snapshot.
+- Model baru: `TenantCurriculumSubjectMapping`, `TenantLearningOutcome`, `LearningOutcomeStructureMapping`, `QuestionVersionTenantOutcomeMapping`.
+- Perluasan model Assessment, TeacherSubjectAssignment, QuestionVersion, MultiCurriculumVersion, MultiCurriculumStructure, MultiLearningOutcome, QuestionVersionCurriculumMapping, QuestionVersionStructureMapping, AssessmentTaxonomyOption.
+- Seeder registry kurikulum dan taksonomi asesmen didaftarkan pada DatabaseSeeder dan memakai SystemTenantSeeder.
+- Role guard diperketat pada AcademicManagement, StudentRombelManagement, UserManagement, ProctorAssignmentManagement.
+- Backup file sebelum perubahan disimpan di `backend-laravel/docs/backup/solo-web-cbt-2026-11-23/`; backup checkpoint ini disimpan di `docs/backup/CHECKPOINT_SOLO_WEB_CBT_2026-11-23.md.before-backend-foundation-update`.
+- Commit backup checkpoint: `9b40c057dcf133b917cdbf4ed198be31a6ac712a`.
+- Catatan: beberapa file backup dibuat per iterasi karena file yang sama mengalami perubahan bertahap. Source asli di branch tidak dihapus.
+
+### PENGUJIAN
+
+- Fetch ulang source/backup melalui GitHub API: dilakukan untuk file yang disentuh.
+- PHP lint, PHPUnit, fresh install, migration, seeder, MySQL 8 disposable, browser E2E, security/IDOR, multi-tenant, concurrency, dan redaction: BELUM DIJALANKAN pada HEAD ini.
+- Tidak ada migration produksi, deployment, merge, atau distribusi ZIP.
+- Status keseluruhan: FONDASI SOURCE DITULIS; BELUM TERUJI; BELUM SIAP PRODUKSI.
+
+### BLOCKER DAN LANGKAH BERIKUTNYA
+
+1. Jalankan CI/PHPUnit pada exact HEAD dan perbaiki seluruh kegagalan sebelum melanjutkan integrasi UI.
+2. Audit migration secara menyeluruh terhadap seluruh parent schema, constraint MySQL 8, urutan migrasi fresh install/upgrade, rollback/recovery, dan data lama. Jangan menjalankan pada DB produksi.
+3. Uji seeder pada fresh install dan pastikan sumber dengan status PENDING tidak ditampilkan sebagai konten resmi terverifikasi.
+4. Implementasikan layanan/API validasi untuk TP/ATP, mapping materi/topik, KBC/Panca Cinta, Pembelajaran Mendalam, delapan dimensi, QuestionVersion, snapshot, serta redaction Siswa.
+5. Integrasikan UI Web Admin, Guru, dan Siswa ke kontrak yang sama; lanjutkan ADM-01 s.d. ADM-23.
+6. Audit seluruh route, Livewire, API, export/download, policy dan akses langsung. Guard parsial yang sudah ditambahkan tidak cukup untuk menutup W1.
+7. Buat PR hanya setelah rentang branch dan changed files ditinjau; PR tetap Draft sampai semua gate lulus.
