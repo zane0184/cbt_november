@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureTeacherPortalAccess;
 use App\Livewire\Teacher\TeacherDashboard;
 use App\Livewire\Teacher\TeacherAssignmentsPage;
 use App\Livewire\Teacher\TeacherLearning;
+use App\Livewire\Teacher\TeacherMaterialManagement;
 use App\Livewire\Teacher\TeacherProfilePage;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
@@ -18,6 +19,7 @@ Route::middleware(['auth', 'tenant', 'license', EnsureTeacherPortalAccess::class
         Route::get('/dashboard', TeacherDashboard::class)->name('dashboard');
         Route::get('/penugasan', TeacherAssignmentsPage::class)->name('assignments');
         Route::get('/pembelajaran', TeacherLearning::class)->name('learning');
+        Route::get('/materi', TeacherMaterialManagement::class)->name('materials');
         Route::get('/kurikulum', TeacherLearning::class)->name('curriculum');
         Route::get('/profil', TeacherProfilePage::class)->name('profile');
         Route::get('/bank-soal', QuestionBank::class)->name('questions.index');
