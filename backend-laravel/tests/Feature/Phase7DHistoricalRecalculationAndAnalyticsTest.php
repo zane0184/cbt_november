@@ -542,6 +542,8 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
             'weight' => 0.00, // Invalid / unconfigured weight <= 0
             'created_by' => $this->teacherA->id,
         ]);
+        // Keep the assessment invalid (zero weight) but authorize the assigned Guru scope.
+        $this->bindCanonicalTeacherAssignment($this->assignment, $unconfigAss);
         $unconfigAss->learningObjectives()->attach($this->tp->id, ['tenant_id' => $this->tenantA->id, 'id' => (string)Str::uuid()]);
 
         $exam = Exam::create([
