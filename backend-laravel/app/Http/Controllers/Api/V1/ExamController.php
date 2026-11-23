@@ -65,6 +65,7 @@ class ExamController extends Controller
         $validated = $request->validate([
             'assessment_id' => ['required', 'uuid', Rule::exists('assessments', 'id')->where('tenant_id', $tenantId)],
             'title' => 'required|string|max:255',
+            'category' => ['sometimes', 'required', 'string', Rule::in(Exam::ALL_CATEGORIES)],
             'instructions' => 'nullable|string',
             'duration_seconds' => 'required|integer|min:60',
             'start_at' => 'required|date',
@@ -83,6 +84,7 @@ class ExamController extends Controller
             }
         }
 
+        $validated['category'] = $validated['category'] ?? Exam::CATEGORY_FORMATIF;
         $exam = Exam::create(array_merge($validated, [
             'tenant_id' => $tenantId, // Explicitly set for safety
             'created_by' => $request->user()->id,
@@ -163,6 +165,7 @@ class ExamController extends Controller
 
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
+            'category' => ['sometimes', 'required', 'string', Rule::in(Exam::ALL_CATEGORIES)],
             'instructions' => 'nullable|string',
             'duration_seconds' => 'sometimes|required|integer|min:60',
             'start_at' => 'sometimes|required|date',
