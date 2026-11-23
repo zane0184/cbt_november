@@ -124,6 +124,7 @@ class TeacherPortalDataService
                 'assignment' => $assignment,
                 'status_label' => $this->assignmentStatus($assignment),
                 'students_count' => (int) ($studentCounts[$assignment->rombel_id] ?? 0),
+                'curriculum_context' => $this->curriculumContext->forAssignment($assignment),
             ];
         })->all();
     }
