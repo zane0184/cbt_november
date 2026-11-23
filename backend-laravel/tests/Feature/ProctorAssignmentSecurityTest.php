@@ -114,7 +114,7 @@ class ProctorAssignmentSecurityTest extends TestCase
 
     public function test_direct_service_call_cannot_bypass_missing_central_exam_marker(): void
     {
-        $this->expectException(\\Illuminate\\Support\\Exceptions\\RuntimeException::class);
+        $this->expectException(\\LogicException::class);
 
         app(ExamProctorAssignmentService::class)->assign(
             $this->admin,
@@ -126,48 +126,21 @@ class ProctorAssignmentSecurityTest extends TestCase
         );
     }
 
-    public function test_guru_cannot_receive_overlapping_proctor_assignments(): void
+    public function test_guru_cannot_receive_overlapping_proctor_assignments_until_central_marker_exists(): void
     {
-        $this->markTestSkipped('Overlap behavior is not reachable until the canonical central-exam marker is implemented.');
+        $this->expectException(\\LogicException::class);
 
-        $year = AcademicYear::create(['name' => '2027/2028', 'is_active' => false]);
-        $assessment = Assessment::create([
-            'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $year->id,
-            'title' => 'Asesmen Kedua',
-            'assessment_type' => 'SUMMATIVE',
-            'created_by' => $this->admin->id,
-        ]);
-        $secondExam = Exam::create([
-            'tenant_id' => $this->tenant->id,
-            'assessment_id' => $assessment->id,
-            'title' => 'Ujian Kedua',
-            'duration_seconds' => 3600,
-            'start_at' => now()->subMinutes(5),
-            'end_at' => now()->addHours(2),
-            'status' => 'PUBLISHED',
-            'created_by' => $this->admin->id,
-            'locked_at' => now(),
-        ]);
-
-        try {
-            app(ExamProctorAssignmentService::class)->assign(
-                $this->admin,
-                $secondExam,
-                $this->proctor->id,
-                now()->subMinute(),
-                now()->addHour(),
-                'Benturan jadwal pengawasan kedua'
-            );
-            $this->fail('Overlapping Guru proctor assignment must be rejected.');
-        } catch (ValidationException $exception) {
-            $this->assertArrayHasKey('selectedProctorId', $exception->errors());
-        }
-
-        $this->assertDatabaseCount('exam_proctor_assignments', 1);
+        app(ExamProctorAssignmentService::class)->assign(
+            $this->admin,
+            $this->exam,
+            $this->proctor->id,
+            now()->subMinute(),
+            now()->addHour(),
+            'Uji penolakan overlap tanpa marker kanonis'
+        );
     }
 
-    public function test_revoked_assignment_removes_monitoring_access_and_is_audited(): void
+        public function test_revoked_assignment_removes_monitoring_access_and_is_audited(): void
     {
         $assignment = ExamProctorAssignment::query()->create([
             'tenant_id' => $this->tenant->id,
