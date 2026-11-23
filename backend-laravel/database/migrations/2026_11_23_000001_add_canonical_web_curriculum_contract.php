@@ -184,6 +184,7 @@ return new class extends Migration
         $this->addProvenanceColumns('multi_curriculum_versions');
         $this->addProvenanceColumns('multi_curriculum_structures');
         $this->addProvenanceColumns('multi_learning_outcomes');
+        $this->addLearningOutcomeAuthoringColumns();
 
         if (Schema::hasTable('assessments')) {
             Schema::table('assessments', function (Blueprint $table): void {
@@ -264,6 +265,68 @@ return new class extends Migration
         });
     }
 
+
+    private function addLearningOutcomeAuthoringColumns(): void
+    {
+        if (!Schema::hasTable('multi_learning_outcomes')) {
+            return;
+        }
+
+        Schema::table('multi_learning_outcomes', function (Blueprint $table): void {
+            if (!Schema::hasColumn('multi_learning_outcomes', 'title')) {
+                $table->string('title', 255)->nullable();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'version_code')) {
+                $table->string('version_code', 80)->default('1');
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'sequence_number')) {
+                $table->unsignedInteger('sequence_number')->nullable();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'is_official')) {
+                $table->boolean('is_official')->default(false);
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'is_editable')) {
+                $table->boolean('is_editable')->default(true);
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'parent_outcome_id')) {
+                $table->uuid('parent_outcome_id')->nullable();
+                $table->foreign('parent_outcome_id', 'ml_outcome_parent_fk')
+                    ->references('id')->on('multi_learning_outcomes')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'teacher_subject_assignment_id')) {
+                $table->uuid('teacher_subject_assignment_id')->nullable();
+                $table->foreign('teacher_subject_assignment_id', 'ml_outcome_assignment_fk')
+                    ->references('id')->on('teacher_subject_assignments')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'academic_year_id')) {
+                $table->uuid('academic_year_id')->nullable();
+                $table->foreign('academic_year_id', 'ml_outcome_year_fk')
+                    ->references('id')->on('academic_years')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'semester_id')) {
+                $table->uuid('semester_id')->nullable();
+                $table->foreign('semester_id', 'ml_outcome_semester_fk')
+                    ->references('id')->on('semesters')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'author_user_id')) {
+                $table->uuid('author_user_id')->nullable();
+                $table->foreign('author_user_id', 'ml_outcome_author_fk')
+                    ->references('id')->on('users')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('multi_learning_outcomes', 'supersedes_id')) {
+                $table->uuid('supersedes_id')->nullable();
+                $table->foreign('supersedes_id', 'ml_outcome_supersedes_fk')
+                    ->references('id')->on('multi_learning_outcomes')->nullOnDelete();
+            }
+
+            $table->index(
+                ['tenant_id', 'teacher_subject_assignment_id', 'outcome_type', 'status'],
+                'ml_outcome_assignment_idx'
+            );
+            $table->index(['tenant_id', 'parent_outcome_id'], 'ml_outcome_parent_idx');
+        });
+    }
+
     public function down(): void
     {
         foreach (['assessments', 'exams', 'exam_question_snapshots'] as $tableName) {
@@ -293,6 +356,33 @@ return new class extends Migration
                     $table->dropColumn('assessment_context_snapshot');
                 } elseif ($tableName === 'exam_question_snapshots' && Schema::hasColumn($tableName, 'curriculum_context_snapshot')) {
                     $table->dropColumn('curriculum_context_snapshot');
+                }
+            });
+        }
+
+
+        if (Schema::hasTable('multi_learning_outcomes')) {
+            Schema::table('multi_learning_outcomes', function (Blueprint $table): void {
+                foreach ([
+                    'ml_outcome_parent_fk',
+                    'ml_outcome_assignment_fk',
+                    'ml_outcome_year_fk',
+                    'ml_outcome_semester_fk',
+                    'ml_outcome_author_fk',
+                    'ml_outcome_supersedes_fk',
+                ] as $foreign) {
+                    $table->dropForeign($foreign);
+                }
+                $table->dropIndex('ml_outcome_assignment_idx');
+                $table->dropIndex('ml_outcome_parent_idx');
+                foreach ([
+                    'title', 'version_code', 'sequence_number', 'is_official', 'is_editable',
+                    'parent_outcome_id', 'teacher_subject_assignment_id', 'academic_year_id',
+                    'semester_id', 'author_user_id', 'supersedes_id',
+                ] as $column) {
+                    if (Schema::hasColumn('multi_learning_outcomes', $column)) {
+                        $table->dropColumn($column);
+                    }
                 }
             });
         }
