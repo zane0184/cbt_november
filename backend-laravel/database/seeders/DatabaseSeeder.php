@@ -13,6 +13,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(SystemTenantSeeder::class);
+
         DB::transaction(function (): void {
             $roles = [
                 'ADMIN_MADRASAH' => 'Admin Madrasah',
