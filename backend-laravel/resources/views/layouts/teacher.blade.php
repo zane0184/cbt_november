@@ -93,7 +93,7 @@
 <body>
     @php
         $currentUser = auth()->user();
-        $hasTemporaryProctorDuty = $currentUser && \\App\\Models\\ExamProctorAssignment::query()
+        $hasTemporaryProctorDuty = $currentUser && \App\Models\ExamProctorAssignment::query()
             ->activeNow()->where('tenant_id', $currentUser->tenant_id)->where('proctor_user_id', $currentUser->id)->exists();
     @endphp
     <div class="min-h-screen md:flex">
