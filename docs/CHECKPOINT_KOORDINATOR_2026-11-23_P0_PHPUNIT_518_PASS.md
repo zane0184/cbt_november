@@ -1,3 +1,17 @@
+
+
+## Verifikasi CI terbaru pada exact HEAD PR #22 — run #45220055382
+
+- Workflow: Tenant Backend CI; job `laravel-mysql`, job ID `137851568268` — SUCCESS.
+- Exact HEAD yang diuji: `856294037312c186f03422071368bcaa2987516a` pada branch `work/phpunit-41-root-cause-20261123`.
+- PHP 8.3; disposable MySQL 8.0.46/InnoDB; isolated MySQL identity check, Composer lock/platform, dependencies, package discovery, installer E2E database dan cleanup sukses.
+- Focused Web login + tenant identity smoke: **27 passed (90 assertions)**.
+- Full PHPUnit: **518 passed (0 failed, 2,189 assertions)**.
+- Log job: https://github.com/zane0184/cbt_november/actions/runs/45220055382
+- PR #22 masih OPEN/DRAFT/UNMERGED, head SHA 8562940..., base `work/solo-web-cbt-completion-20261123-execution`. Tidak ada review. Jangan merge otomatis.
+- Source/test P0 tidak perlu diulang. Handover kanonis: [HANDOVER_AGENT_BARU_2026-11-23_P0_518_PASS.md](HANDOVER_AGENT_BARU_2026-11-23_P0_518_PASS.md); prompt agent: [PROMPT_AGENT_BARU_LANJUTAN_2026-11-23.md](PROMPT_AGENT_BARU_LANJUTAN_2026-11-23.md).
+
+**Catatan status:** 518/0 hanya menutup automated PHPUnit pada exact HEAD ini. E2E portal, Proktor Mode B, offline recovery/multi-device, acceptance VPS/ZIP, dan UAT tetap belum selesai.
 # CHECKPOINT KOORDINATOR — 23 NOVEMBER 2026
 ## P0 PHPUnit 518/0 PASS; handover ke P1 Web Admin/Guru/Siswa
 
