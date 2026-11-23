@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Analytics;
 
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Exam;
