@@ -1,12 +1,12 @@
 <?php
 
-namespace App\\Livewire\\Admin;
+namespace App\Livewire\Admin;
 
-use App\\Models\\Tenant;
-use App\\Services\\AuditService;
-use Illuminate\\Support\\Facades\\DB;
-use Illuminate\\Validation\\Rule;
-use Livewire\\Component;
+use App\Models\Tenant;
+use App\Services\AuditService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Livewire\Component;
 
 class MadrasahProfile extends Component
 {
