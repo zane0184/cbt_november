@@ -157,7 +157,7 @@ class AdminUiVerificationTest extends TestCase
     public function admin_dashboard_counts_only_active_rombel_in_current_year_and_active_subjects(): void
     {
         $previousYear = AcademicYear::create(['tenant_id' => $this->tenant->id, 'name' => '2023/2024', 'is_active' => false]);
-        $activeRombel = Rombel::create([
+        Rombel::create([
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $this->academicYear->id,
             'grade_level_id' => $this->gradeLevel->id,
