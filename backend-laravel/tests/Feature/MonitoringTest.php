@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use Tests\Concerns\CreatesCanonicalTeacherAssignment;
+
 use App\Models\Tenant;
 use App\Models\User;
 use App\Models\Role;
@@ -28,6 +30,7 @@ use Tests\TestCase;
 class MonitoringTest extends TestCase
 {
     use RefreshDatabase;
+    use CreatesCanonicalTeacherAssignment;
 
     private $tenant;
     private $teacher;
@@ -75,7 +78,7 @@ class MonitoringTest extends TestCase
         $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru']);
         $studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id, 'full_name' => 'Siswa']);
         $this->rombel->students()->attach($studentProfile->id);
-        TeacherSubjectAssignment::create([
+        $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
             'subject_id' => $this->subject->id,
@@ -95,6 +98,8 @@ class MonitoringTest extends TestCase
             'assessment_type' => 'DAILY',
             'created_by' => $this->teacher->id,
         ]);
+
+        $this->bindCanonicalTeacherAssignment($assignment, $assessment);
 
         $this->exam = Exam::create([
             'tenant_id' => $this->tenant->id,
