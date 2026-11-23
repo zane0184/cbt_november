@@ -16,8 +16,18 @@ class LoginIdentityResolver
         $identifier = trim($identifier);
         if ($identifier === '' || strlen($identifier) > 100) return null;
         $installations = LocalInstallationIdentity::withoutGlobalScopes()->limit(2)->get();
-        if ($installations->count() !== 1 || Tenant::withoutGlobalScopes()->count() !== 1) return null;
+        if ($installations->count() !== 1) return null;
+
         $tenantId = (string) $installations->first()->tenant_id;
+        // The System Global Tenant is intentionally present in seeded
+        // installations for shared, read-only curriculum references. It is
+        // not a second school tenant and must not make local login ambiguous.
+        $localTenantExists = Tenant::withoutGlobalScopes()
+            ->whereKey($tenantId)
+            ->where('id', '<>', Tenant::SYSTEM_TENANT_ID)
+            ->whereNull('deleted_at')
+            ->exists();
+        if (!$localTenantExists) return null;
         $normalized = strtolower($identifier);
 
         $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
