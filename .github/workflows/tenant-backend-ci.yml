@@ -7,6 +7,7 @@ on:
       - work/schema-dump-export-20261119
       - fix/web-portal-usability-rbac-20261120
       - work/web-admin-implementation-20261123
+      - work/solo-web-cbt-completion-20261123
   pull_request:
     branches:
       - main
