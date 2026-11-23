@@ -1,11 +1,11 @@
 <?php
 
-namespace App\\Livewire\\Admin;
+namespace App\Livewire\Admin;
 
-use App\\Models\\LearningOutcome;
-use App\\Models\\Subject;
-use Livewire\\Component;
-use Livewire\\WithPagination;
+use App\Models\LearningOutcome;
+use App\Models\Subject;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class CurriculumManagement extends Component
 {
