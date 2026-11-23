@@ -77,6 +77,30 @@ class MediaAuthorizationTest extends TestCase
             ->assertNotFound(); // Exact-one-role guard hides protected media library.
     }
 
+    public function test_multi_role_identity_cannot_upload_question_media(): void
+    {
+        Storage::fake('local');
+        $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
+        $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
+        $admin = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Admin Multi Upload',
+            'email' => 'admin-upload-multi@media.test',
+            'password' => bcrypt('password'),
+        ]);
+        $admin->roles()->attach([$adminRole->id, $guruRole->id]);
+
+        $this->actingAs($admin, 'sanctum')
+            ->postJson('/api/v1/media', [
+                'file' => UploadedFile::fake()->create('question.pdf', 20, 'application/pdf'),
+                'owner_type' => 'QUESTION',
+                'owner_id' => (string) \Illuminate\Support\Str::uuid(),
+            ])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount('media_assets', 0);
+    }
+
     public function test_user_media_owner_is_forced_to_authenticated_user(): void
     {
         Storage::fake('local');
