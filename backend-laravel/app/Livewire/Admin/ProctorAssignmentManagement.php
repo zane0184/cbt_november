@@ -32,6 +32,7 @@ class ProctorAssignmentManagement extends Component
     public function assign(ExamProctorAssignmentService $service): void
     {
         $this->assertCanManage();
+        abort(403, 'Penugasan pengawas dinonaktifkan sampai kelayakan ujian terpusat memiliki penanda kanonis yang ditetapkan dan diaudit.');
         $data = $this->validate([
             'selectedExamId' => ['required', 'uuid', 'exists:exams,id'],
             'selectedProctorId' => ['required', 'uuid', 'exists:users,id'],
@@ -74,18 +75,28 @@ class ProctorAssignmentManagement extends Component
 
     public function render()
     {
+        $this->assertCanManage();
         $tenantId = auth()->user()->tenant_id;
-        $exams = Exam::query()->where('tenant_id', $tenantId)->where('status', 'PUBLISHED')
-            ->whereNotNull('locked_at')->whereNotNull('end_at')->where('end_at', '>', now())
-            ->orderBy('start_at')->get(['id', 'title', 'start_at', 'end_at']);
-        $proctors = User::query()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereHas('roles', fn ($query) => $query->where('name', 'GURU'))
-            ->whereHas('teacherProfile')
-            ->orderBy('name')->get(['id', 'name', 'email']);
-        $assignments = ExamProctorAssignment::query()->where('tenant_id', $tenantId)
-            ->with(['exam:id,title,status,start_at,end_at', 'proctor:id,name,email', 'assigner:id,name', 'revoker:id,name'])
-            ->orderByDesc('updated_at')->limit(100)->get();
 
-        return view('livewire.admin.proctor-assignment-management', compact('exams', 'proctors', 'assignments'))->layout('layouts.app');
-    }
+        // Central-exam eligibility has no owner-approved canonical marker yet.
+        // Do not expose every published Exam or allow assignment creation.
+        $exams = collect();
+        $proctors = collect();
+        $assignments = ExamProctorAssignment::query()
+            ->where('tenant_id', $tenantId)
+            ->with(['exam:id,title,status,start_at,end_at', 'proctor:id,name,email', 'assigner:id,name', 'revoker:id,name'])
+            ->orderByDesc('updated_at')
+            ->limit(100)
+            ->get();
+
+        $assignmentCreationBlocked = true;
+        $assignmentBlockReason = 'Penugasan baru ditahan. Kelayakan ujian terpusat belum memiliki penanda kanonis yang ditetapkan owner. Riwayat penugasan tetap ditampilkan.';
+
+        return view('livewire.admin.proctor-assignment-management', compact(
+            'exams',
+            'proctors',
+            'assignments',
+            'assignmentCreationBlocked',
+            'assignmentBlockReason'
+        ))->layout('layouts.app');
 }
