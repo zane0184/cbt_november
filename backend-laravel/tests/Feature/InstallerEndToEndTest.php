@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Contexts\TenantContext;
+use App\Livewire\Admin\AcademicManagement;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Services\InstallerService;
 use App\Services\InstallerStateStore;
 use App\Services\Licensing\InstallationIdentityService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -97,7 +102,7 @@ class InstallerEndToEndTest extends TestCase
 
             // The installer must run the production-safe base seeder and provision
             // the tenant-owned MI FK catalog without fabricating any CP records.
-            $systemTenantId = \\App\\Models\\Tenant::SYSTEM_TENANT_ID;
+            $systemTenantId = Tenant::SYSTEM_TENANT_ID;
             $this->assertDatabaseHas('tenants', ['id' => $systemTenantId]);
             $version = DB::table('multi_curriculum_versions')
                 ->where('tenant_id', $systemTenantId)
@@ -114,10 +119,10 @@ class InstallerEndToEndTest extends TestCase
                 ->first();
             $this->assertNotNull($curriculum);
             $gradeRows = DB::table('grade_levels')
-                ->join('phases', function ($join) use ($created): void {
+                ->join('phases', function ($join) use ($created, $curriculum): void {
                     $join->on('phases.id', '=', 'grade_levels.phase_id')
                         ->where('phases.tenant_id', '=', $created['tenant_id'])
-                        ->where('phases.curriculum_id', '=', DB::raw('grade_levels.tenant_id') ? null : null);
+                        ->where('phases.curriculum_id', '=', $curriculum->id);
                 })
                 ->where('grade_levels.tenant_id', $created['tenant_id'])
                 ->select('grade_levels.code', 'grade_levels.level', 'phases.code as phase_code')
