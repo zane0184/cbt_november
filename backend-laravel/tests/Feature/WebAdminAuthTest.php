@@ -103,7 +103,7 @@ class WebAdminAuthTest extends TestCase
         $response->assertOk();
         $response->assertSee('CBT MADRASAH');
         $response->assertSee('Masuk ke CBT Madrasah');
-        $response->assertSee('Username Admin / NIP / NIK / NISN');
+        $response->assertSee('Username Admin / Guru / NISN');
         $response->assertSee('Siswa: NISN');
         $response->assertSee('name="identifier"', false);
         $response->assertSee('name="password"', false);

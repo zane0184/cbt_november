@@ -26,6 +26,7 @@ class UserManagement extends Component
     public $selectedRole = '';
     public $employmentStatus = '';
     public $nip = '';
+    public $nuptk = '';
     public $nik = '';
     public $nisn = '';
 
@@ -125,7 +126,7 @@ class UserManagement extends Component
 
         $createdName = $this->name;
         $this->showCreateModal = false;
-        $this->reset(['name','username','email','password','selectedRole','nip','nik','nisn']);
+        $this->reset(['name','username','email','password','selectedRole','employmentStatus','nip','nuptk','nik','nisn']);
         $this->dispatch('notify', ['type' => 'success', 'message' => "Pengguna {$createdName} berhasil ditambahkan."]);
         session()->flash('message', "Pengguna {$createdName} berhasil ditambahkan.");
     }
