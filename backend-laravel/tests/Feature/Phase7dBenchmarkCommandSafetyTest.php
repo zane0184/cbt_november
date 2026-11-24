@@ -129,25 +129,13 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         );
         $this->assertSame([], $before, 'A previous benchmark schema must not be left behind.');
 
-        $observedTemporarySchemas = 0;
-        $policyDecisions = [];
-        Gate::after(function ($user, string $ability, ?bool $result) use (&$policyDecisions, &$observedTemporarySchemas): void {
-            if ($ability === 'viewExamResults') {
-                $schemas = DB::connection('mysql')->select(
-                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
-                );
-                $observedTemporarySchemas = count($schemas);
-                $policyDecisions[] = $result;
-            }
-        });
-
         // Omit the official grant only in this failure-path test. The real
         // ReportController and ReportPolicy must deny export; no policy is mocked.
-        $bootstrapper = \Mockery::mock(RolePermissionBootstrapper::class);
+        $bootstrapper = \\Mockery::mock(RolePermissionBootstrapper::class);
         $bootstrapper->shouldReceive('bootstrap')->once()->andReturnNull();
         $this->app->instance(RolePermissionBootstrapper::class, $bootstrapper);
 
-        $thrown = false;
+        $exception = null;
         $exitCode = 0;
         try {
             $exitCode = Artisan::call('benchmark:phase7d', [
@@ -156,13 +144,22 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                 '--allow-mysql' => true,
                 '--json' => true,
             ]);
-        } catch (\Throwable) {
-            $thrown = true;
+        } catch (\\Throwable $caught) {
+            $exception = $caught;
         }
 
-        $this->assertTrue($thrown || $exitCode !== 0, 'The real Policy denial must fail the benchmark command.');
-        $this->assertSame([false], $policyDecisions, 'The real ReportPolicy must deny export because report.view was not granted.');
-        $this->assertSame(1, $observedTemporarySchemas, 'The Policy denial must occur after the disposable schema exists.');
+        // Gate::after is not a reliable observer when ability resolution throws.
+        // Assert the command reached the disposable schema, authorization denied
+        // the export, and cleanup removed that schema before the exception escaped.
+        $output = Artisan::output();
+        $this->assertStringContainsString('Temporary benchmark schema created:', $output);
+        $this->assertInstanceOf(
+            \\Illuminate\\Auth\\Access\\AuthorizationException::class,
+            $exception,
+            'The benchmark must fail specifically because report authorization denied export.'
+        );
+        $this->assertSame(1, preg_match('/Temporary benchmark schema created: cbt_phase7d_[a-z0-9]+/', $output));
+        $this->assertStringContainsString('Temporary MySQL database absence verified:', $output);
 
         $after = DB::connection('mysql')->select(
             "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
