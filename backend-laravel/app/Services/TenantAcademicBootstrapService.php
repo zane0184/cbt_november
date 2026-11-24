@@ -73,7 +73,7 @@ class TenantAcademicBootstrapService
                         ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
                         ->where('multi_curriculum_version_id', $version->id)
                         ->where('node_type', 'PHASE')
-                        ->where('code', $phaseCode)
+                        ->where('code', 'FASE_' . $phaseCode)
                         ->where('status', 'ACTIVE')
                         ->where('is_official', true)
                         ->where('is_editable', false)
@@ -85,7 +85,7 @@ class TenantAcademicBootstrapService
 
                     $phase = Phase::query()
                         ->where('tenant_id', $tenantId)
-                        ->where('code', 'FASE_' . $phaseCode)
+                        ->where('code', $phaseCode)
                         ->lockForUpdate()
                         ->first();
 
