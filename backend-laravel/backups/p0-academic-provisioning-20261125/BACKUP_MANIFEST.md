@@ -17,5 +17,6 @@
 | `backend-laravel/app/Services/Licensing/InstallationIdentityService.php` | `66115b340189581b34bcf027f73c1049281560e5` | `86d72d1e5af210855000ede57b8f046d39d4c0f06632e75ba04721e2fc1ab449` | `backend-laravel/backups/p0-academic-provisioning-20261125/InstallationIdentityService.php.before` |
 | `.github/workflows/build-web-deployment.yml` | `c2ea4c907001ce7f12aa347f354f8099dffa07e3` | `d452fe5c2b77740205a6729079a83a6b58d10f9b8b0282203c96bb0ca96bc353` | `backend-laravel/backups/p0-academic-provisioning-20261125/build-web-deployment.yml.before` |
 | `backend-laravel/DISTRIBUTION_EXCLUSIONS.md` | `8ef98c10ed61ee7927aaa25252656918f4b4cc3a` | `dd4f6295cb31d01f534584dfea640621f14bc6821d6ff62330f4b47ab659b314` | `backend-laravel/backups/p0-academic-provisioning-20261125/DISTRIBUTION_EXCLUSIONS.md.before` |
+| `backend-laravel/app/Livewire/Admin/TeacherSubjectAssignmentManagement.php` | `9d076387c1e81a4b229b0358911a4f9133085a86` | `3e235060877be8da572c70e71c706595b37ebbf79cdcb8a60af5a729b5640651` | `backend-laravel/backups/p0-academic-provisioning-20261125/TeacherSubjectAssignmentManagement.php.before` |
 
 Backups are retained in the controlled repository and must be excluded from distribution ZIPs.
