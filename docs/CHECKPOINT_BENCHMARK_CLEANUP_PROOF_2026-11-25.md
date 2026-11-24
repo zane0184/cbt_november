@@ -10,7 +10,7 @@ Laporan lengkap: [REPORT_BENCHMARK_CLEANUP_PROOF_2026-11-25.md](REPORT_BENCHMARK
 ## Posisi terakhir yang benar-benar terbukti
 
 ### 1. Benchmark cleanup denial-path
-<badge>PASS</badge>
+**PASS**
 
 CI run [45476011304](https://github.com/zane0184/cbt_november/actions/runs/45476011304) pada exact source SHA `b6148507bd77116dfc8a5f5697cf4cff226a4b87`:
 - PHP 8.3 + MySQL 8.0.46/InnoDB: SUCCESS.
@@ -22,7 +22,7 @@ CI run [45476011304](https://github.com/zane0184/cbt_november/actions/runs/45476
 Branch HEAD setelah source test hanya menerima perubahan dokumentasi/backup manifest; source aplikasi tidak berubah setelah SHA teruji.
 
 ### 2. Import Siswa
-<badge>PARTIAL</badge>
+**PARTIAL**
 
 Fitur XLSX/CSV, preview, NISN string, duplikasi, idempotency, transaksi, rollback, audit, dan tenant scope sudah ada. Belum approval-ready karena:
 - XLSX package preflight belum berjalan sebelum `IOFactory::load()`.
@@ -34,7 +34,7 @@ Fitur XLSX/CSV, preview, NISN string, duplikasi, idempotency, transaksi, rollbac
 Jangan mulai DOCX sebelum Import Siswa memenuhi gate ini.
 
 ### 3. DOCX
-<badge>NOT STARTED</badge>
+**NOT STARTED**
 
 - Owner addendum menetapkan shared stimulus first-class dan TRUE_FALSE_GROUP tiga pernyataan dengan scoring proporsional.
 - Current branch belum memiliki QuestionDraftDTO, ImportBatch/ImportBatchRow, shared stimulus schema, atau TRUE_FALSE_GROUP end-to-end.
@@ -43,7 +43,7 @@ Jangan mulai DOCX sebelum Import Siswa memenuhi gate ini.
 - Binary fixture belum berada di GitHub; raw bytes belum tersedia di current runtime. Jangan membuat fixture dari asumsi/hash.
 
 ### 4. Import Guru
-<badge>NOT STARTED ON ACTIVE BRANCH</badge>
+**NOT STARTED ON ACTIVE BRANCH**
 
 Branch lama `work/import-guru-siswa-implementation-20261122` mempunyai implementasi referensi yang teruji pada SHA `f38ceec7b0653fcf3363eec40f3d4577c323cca8`, tetapi branch tersebut divergen. Gunakan hanya komponen/pola yang sudah diaudit; jangan merge/cherry-pick keseluruhan branch.
 
