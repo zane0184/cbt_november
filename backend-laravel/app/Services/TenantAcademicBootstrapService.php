@@ -111,11 +111,12 @@ class TenantAcademicBootstrapService
 
                     foreach ($grades as $gradeNumber) {
                         $gradeCode = (string) $gradeNumber;
+                        $canonicalGradeCode = 'MI_' . $gradeNumber;
                         $canonicalGrade = MultiCurriculumStructure::query()
                             ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
                             ->where('multi_curriculum_version_id', $version->id)
                             ->where('node_type', 'GRADE_LEVEL')
-                            ->where('code', $gradeCode)
+                            ->where('code', $canonicalGradeCode)
                             ->where('parent_id', $canonicalPhase->id)
                             ->where('status', 'ACTIVE')
                             ->where('is_official', true)
@@ -242,7 +243,7 @@ class TenantAcademicBootstrapService
         if (!$curriculum) {
             return Curriculum::create([
                 'name' => 'Kurikulum Merdeka',
-                'code' => 'KURIKULUM_MERDEKA',
+                'code' => 'K-MERDEKA',
                 'description' => 'Katalog akademik lokal untuk menghubungkan kelas MI dengan registry kurikulum resmi sistem.',
                 'status' => 'ACTIVE',
                 'is_active' => true,
