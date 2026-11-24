@@ -36,7 +36,8 @@ Regression tests ditambahkan untuk pembuatan Guru tanpa status/NIP/NIK, login Gu
 Migration unique index tidak boleh dijalankan pada database produksi tanpa preflight read-only, backup, pengujian disposable MySQL 8/InnoDB, rencana konflik data legacy, dan persetujuan owner. Jika duplikat atau blank ditemukan, migration berhenti sebelum DDL. Tidak ada auto-backfill atau tebakan status Guru lama.
 
 ## SISA PEKERJAAN
-- Audit jalur update/import/recovery lain. Bila belum ada, tandai NOT IMPLEMENTED; jangan klaim validasi menyeluruh.
-- Tambahkan read-only preflight command untuk menampilkan jumlah konflik identitas tanpa menampilkan nilai mentah.
-- Verifikasi masking halaman profil Guru dan seluruh output audit/log.
+- Read-only command `php artisan login-identity:preflight` sudah ditambahkan dan didaftarkan. Command hanya menghitung anomali, tidak menampilkan nilai mentah, dan tidak mengubah data. Command belum dijalankan pada database nyata/disposable.
+- Model TeacherProfile menyembunyikan NIP/NIK/NUPTK/employee_identifier dari serialisasi otomatis; StudentProfile menyembunyikan NISN. Akses properti langsung untuk alur berizin tetap tersedia.
+- Tampilan Admin dan profil Guru mem-mask identifier; login tidak mengembalikan identifier ke old input/session, dan throttle key memakai SHA-256.
+- Audit jalur update/import/recovery lain masih perlu. Bila belum ada, tandai NOT IMPLEMENTED; jangan klaim validasi menyeluruh.
 - Jalankan focused + full PHPUnit pada exact P1 HEAD dengan MySQL 8/InnoDB disposable.
