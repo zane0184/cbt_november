@@ -645,7 +645,7 @@ class AdminUserAccountLifecycleTest extends TestCase
 
     private function createTeacherProfileForSession(User $teacher): void
     {
-        \\App\\Models\\TeacherProfile::create([
+        \App\Models\TeacherProfile::create([
             'tenant_id' => $this->tenant->id,
             'user_id' => $teacher->id,
             'full_name' => $teacher->name,
