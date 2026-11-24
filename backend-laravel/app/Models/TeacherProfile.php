@@ -16,6 +16,10 @@ class TeacherProfile extends Model
         'user_id', 'employee_identifier', 'employment_status', 'nip', 'nik', 'nuptk', 'full_name', 'gender', 'phone'
     ];
 
+    protected $hidden = [
+        'employee_identifier', 'nip', 'nik', 'nuptk',
+    ];
+
     public function subjectAssignments(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(TeacherSubjectAssignment::class, 'teacher_profile_id');
