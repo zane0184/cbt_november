@@ -100,9 +100,9 @@ class IdentifyTenant
             && auth('web')->check()
             && config('session.driver') === 'database') {
             $sessionTable = (string) config('session.table', 'sessions');
-            if (\\Illuminate\\Support\\Facades\\Schema::hasTable($sessionTable)
-                && \\Illuminate\\Support\\Facades\\Schema::hasColumn($sessionTable, 'user_id')) {
-                \\Illuminate\\Support\\Facades\\DB::table($sessionTable)
+            if (\Illuminate\Support\Facades\Schema::hasTable($sessionTable)
+                && \Illuminate\Support\Facades\Schema::hasColumn($sessionTable, 'user_id')) {
+                \Illuminate\Support\Facades\DB::table($sessionTable)
                     ->where('id', $request->session()->getId())
                     ->where(function ($query) use ($user) {
                         $query->whereNull('user_id')->orWhere('user_id', '!=', $user->getAuthIdentifier());
