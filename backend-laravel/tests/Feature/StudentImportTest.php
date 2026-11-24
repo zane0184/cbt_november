@@ -145,6 +145,38 @@ class StudentImportTest extends TestCase
         $this->assertDatabaseCount('student_import_batches', 0);
     }
 
+
+    public function test_nisn_already_registered_in_the_database_is_reported_before_import(): void
+    {
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $studentRole = Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
+        $existingUser = User::create([
+            'name' => 'Siswa Existing',
+            'password' => bcrypt('ExistingStudent#2026'),
+        ]);
+        $existingUser->roles()->sync([$studentRole->id]);
+        StudentProfile::create([
+            'user_id' => $existingUser->id,
+            'nisn' => '0003333333',
+            'full_name' => 'Siswa Existing',
+        ]);
+
+        $this->actingAs($this->admin);
+        $file = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn\nSiswa Duplikat DB,0003333333\n"
+        );
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('NISN sudah terdaftar pada instalasi/madrasah ini.');
+
+        $this->assertDatabaseCount('student_profiles', 1);
+    }
+
     public function test_duplicate_nisn_inside_one_file_is_reported_by_row(): void
     {
         $this->actingAs($this->admin);
