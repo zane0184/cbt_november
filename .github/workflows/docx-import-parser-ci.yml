@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - work/docx-import-parser-20261125
+      - work/benchmark-cleanup-proof-20261125
   workflow_dispatch:
 
 permissions:
@@ -114,6 +115,9 @@ jobs:
 
       - name: Run student import acceptance tests on disposable MySQL 8
         run: php artisan test tests/Feature/StudentImportTest.php --display-warnings
+
+      - name: Run benchmark cleanup denial-path test on disposable MySQL 8
+        run: php artisan test tests/Feature/Phase7dBenchmarkCommandSafetyTest.php --filter=test_temporary_mysql_schema_is_removed_when_pdf_export_fails --display-warnings
 
       - name: Run complete PHPUnit suite on disposable MySQL 8
         run: php artisan test --display-warnings
