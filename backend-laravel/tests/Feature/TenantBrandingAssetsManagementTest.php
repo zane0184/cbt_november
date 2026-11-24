@@ -279,6 +279,32 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertNull($branding->localPath($brokenLinkPath));
             $branding->deleteManaged($brokenLinkPath, $tenantId);
             $this->assertFalse(is_link($brokenLink), 'A dangling symlink entry should be removable without touching its target.');
+
+            // The tenant branding directory itself must never be a symlink,
+            // even when its target is still somewhere under public storage.
+            $brandingRoot = $tenantBrandingDirectory;
+            $detachedBrandingRoot = dirname($brandingRoot) . '/branding-real-' . strtolower(Str::random(8));
+            $redirectDirectory = storage_path('app/public/shared-branding-target-' . strtolower(Str::random(8)));
+            File::ensureDirectoryExists($redirectDirectory);
+            $redirectTarget = $redirectDirectory . '/root-link-target.png';
+            File::put($redirectTarget, 'do-not-delete-through-directory-symlink');
+            $this->assertTrue(rename($brandingRoot, $detachedBrandingRoot));
+
+            try {
+                $this->assertTrue(symlink($redirectDirectory, $brandingRoot));
+                $rootSymlinkPath = 'tenants/' . $tenantId . '/branding/root-link-target.png';
+                $this->assertNull($branding->localPath($rootSymlinkPath));
+                $branding->deleteManaged($rootSymlinkPath, $tenantId);
+                $this->assertFileExists($redirectTarget);
+            } finally {
+                if (is_link($brandingRoot)) {
+                    @unlink($brandingRoot);
+                }
+                if (is_dir($detachedBrandingRoot)) {
+                    rename($detachedBrandingRoot, $brandingRoot);
+                }
+                File::deleteDirectory($redirectDirectory);
+            }
         } finally {
             File::deleteDirectory(storage_path('app/public/tenants/' . $otherTenantId));
             File::deleteDirectory($outsideDirectory);
@@ -706,6 +732,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             Auth::logout();
             Auth::forgetGuards();
             config(['database.default' => 'installation_a']);
+            DB::setDefaultConnection('installation_a');
 
             $branding = app(TenantBrandingService::class);
             $header = app(ReportHeaderService::class);
@@ -719,6 +746,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertNotNull($header->getLogoDataUri($tenantA));
 
             config(['database.default' => 'installation_b']);
+            DB::setDefaultConnection('installation_b');
             $this->setTenantContext($tenantBId);
             $tenantB = $branding->currentTenant();
 
@@ -730,6 +758,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertNull($header->getLogoDataUri($tenantA));
             $this->assertNotNull($header->getLogoDataUri($tenantB));
         } finally {
+            DB::setDefaultConnection('mysql');
             config(['database.default' => 'mysql']);
             DB::purge('installation_a');
             DB::purge('installation_b');
