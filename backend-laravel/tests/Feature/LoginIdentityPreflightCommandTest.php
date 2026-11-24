@@ -107,6 +107,25 @@ class LoginIdentityPreflightCommandTest extends TestCase
         $this->assertStringNotContainsString('guru.legacy', $output);
     }
 
+    public function test_preflight_detects_missing_employee_identifier_without_echoing_nip(): void
+    {
+        $teacher = $this->createUserWithRole('Guru Tanpa Employee Identifier', 'guru.no.employee.identifier', 'GURU');
+        TeacherProfile::create([
+            'user_id' => $teacher->id,
+            'full_name' => 'Guru Tanpa Employee Identifier',
+            'employment_status' => 'PNS',
+            'nip' => '199001012026041009',
+            'employee_identifier' => null,
+        ]);
+
+        $exitCode = Artisan::call('login-identity:preflight');
+        $output = Artisan::output();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('employee_identifier tidak sesuai identitas login', $output);
+        $this->assertStringNotContainsString('199001012026041009', $output);
+    }
+
     public function test_preflight_detects_wrong_identity_category_and_invalid_nuptk_read_only(): void
     {
         $pns = $this->createUserWithRole('Guru PNS Salah Kategori', 'guru.pns.kategori', 'GURU');

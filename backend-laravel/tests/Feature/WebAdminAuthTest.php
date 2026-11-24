@@ -62,6 +62,7 @@ class WebAdminAuthTest extends TestCase
             'user_id' => $this->guru->id,
             'employment_status' => 'PNS',
             'nip' => '198001012006041001',
+            'employee_identifier' => '198001012006041001',
             'full_name' => 'Guru Uji',
         ]);
         StudentProfile::create([
@@ -186,6 +187,7 @@ class WebAdminAuthTest extends TestCase
             'user_id' => $pppk->id,
             'employment_status' => 'PPPK',
             'nip' => '199001012021041001',
+            'employee_identifier' => '199001012021041001',
             'full_name' => 'Guru PPPK',
         ]);
         app(TenantContext::class)->setTenantId(null);
@@ -214,6 +216,7 @@ class WebAdminAuthTest extends TestCase
             'user_id' => $honorer->id,
             'employment_status' => 'HONORER',
             'nik' => '3171000000000001',
+            'employee_identifier' => '3171000000000001',
             'full_name' => 'Guru Honorer',
         ]);
         app(TenantContext::class)->setTenantId(null);
@@ -232,11 +235,36 @@ class WebAdminAuthTest extends TestCase
             'user_id' => $honorer->id,
             'employment_status' => 'HONORER',
             'nik' => '3171000000000002',
+            'employee_identifier' => '3171000000000002',
             'full_name' => 'Guru Honorer',
         ]);
         app(TenantContext::class)->setTenantId(null);
 
         $response = $this->post('/login', ['identifier' => 'guru.honorer.no.login', 'password' => $this->password]);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_nuptk_is_not_an_authentication_fallback(): void
+    {
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $teacher = $this->makeUser('guru.nuptk', 'Guru NUPTK', $guruRole);
+        TeacherProfile::create([
+            'user_id' => $teacher->id,
+            'employment_status' => 'PNS',
+            'nip' => '198001012006041002',
+            'employee_identifier' => '198001012006041002',
+            'nuptk' => '1234567890123456',
+            'full_name' => 'Guru NUPTK',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->post('/login', [
+            'identifier' => '1234567890123456',
+            'password' => $this->password,
+        ]);
+
         $response->assertSessionHasErrors('identifier');
         $this->assertGuest();
     }
@@ -263,6 +291,7 @@ class WebAdminAuthTest extends TestCase
             'user_id' => $honorer->id,
             'employment_status' => 'HONORER',
             'nik' => '3171000000000005',
+            'employee_identifier' => '3171000000000005',
             'full_name' => 'Guru Honorer API',
         ]);
         app(TenantContext::class)->setTenantId(null);

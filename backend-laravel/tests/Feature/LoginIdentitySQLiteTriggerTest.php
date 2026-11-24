@@ -74,8 +74,31 @@ class LoginIdentitySQLiteTriggerTest extends TestCase
             DB::table('teacher_profiles')->where('id', 'legacy-invalid')->delete();
             $migration->up();
 
+            $employeeIdentifierMigration = require database_path('migrations/2026_11_24_190001_enforce_teacher_employee_identifier_required.php');
+            DB::table('teacher_profiles')->insert($this->teacherRow(
+                'legacy-null-employee-identifier',
+                'PNS',
+                '199001012026041007',
+                null,
+                null,
+                null
+            ));
+
+            $employeeIdentifierPreflightException = null;
+            try {
+                $employeeIdentifierMigration->up();
+            } catch (RuntimeException $exception) {
+                $employeeIdentifierPreflightException = $exception;
+            }
+
+            $this->assertInstanceOf(RuntimeException::class, $employeeIdentifierPreflightException);
+            $this->assertStringContainsString('existing teacher profile', $employeeIdentifierPreflightException->getMessage());
+            $this->assertCount(4, DB::select("SELECT name FROM sqlite_master WHERE type = 'trigger'"));
+            DB::table('teacher_profiles')->where('id', 'legacy-null-employee-identifier')->delete();
+
+            $employeeIdentifierMigration->up();
             $triggerCount = DB::select("SELECT name FROM sqlite_master WHERE type = 'trigger'");
-            $this->assertCount(4, $triggerCount);
+            $this->assertCount(6, $triggerCount);
 
             DB::table('teacher_profiles')->insert($this->teacherRow(
                 'teacher-valid',
@@ -94,6 +117,19 @@ class LoginIdentitySQLiteTriggerTest extends TestCase
                 null,
                 str_repeat('2', 17)
             )));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+                'teacher-missing-employee-identifier',
+                'PNS',
+                '199001012026041008',
+                null,
+                null,
+                null
+            )));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')
+                ->where('id', 'teacher-valid')
+                ->update(['employee_identifier' => null]));
 
             $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
                 'teacher-wrong-category',

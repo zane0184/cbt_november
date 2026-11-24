@@ -40,6 +40,17 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
             $validNip
         ));
 
+        $missingEmployeeIdentifierUser = $this->makeUser('teacher.missingemployeeidentifier');
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+            $missingEmployeeIdentifierUser,
+            (string) Str::uuid(),
+            'PNS',
+            '199001012026041006',
+            null,
+            null,
+            null
+        )));
+
         $validHonorer = $this->makeUser('teacher.honorer');
         DB::table('teacher_profiles')->insert($this->teacherRow(
             $validHonorer,
@@ -289,6 +300,58 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
             $this->assertDatabaseHas('teacher_profiles', ['id' => $id, 'nip' => str_repeat('7', 17)]);
         } finally {
             DB::statement('DROP TEMPORARY TABLE IF EXISTS student_profiles');
+            DB::statement('DROP TEMPORARY TABLE IF EXISTS teacher_profiles');
+        }
+    }
+
+    public function test_employee_identifier_required_migration_fails_closed_for_legacy_null_values(): void
+    {
+        DB::statement(
+            'CREATE TEMPORARY TABLE teacher_profiles (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                tenant_id CHAR(36) NOT NULL,
+                user_id CHAR(36) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                employment_status VARCHAR(16) NULL,
+                employee_identifier VARCHAR(255) NULL,
+                nip VARCHAR(32) NULL,
+                nik VARCHAR(32) NULL,
+                nuptk VARCHAR(32) NULL,
+                deleted_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB'
+        );
+
+        $id = (string) Str::uuid();
+
+        try {
+            DB::table('teacher_profiles')->insert([
+                'id' => $id,
+                'tenant_id' => $this->tenant->id,
+                'user_id' => (string) Str::uuid(),
+                'full_name' => 'Guru Legacy Tanpa Employee Identifier',
+                'employment_status' => 'PNS',
+                'employee_identifier' => null,
+                'nip' => '199001012026041007',
+                'nik' => null,
+                'nuptk' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $migration = require database_path('migrations/2026_11_24_190001_enforce_teacher_employee_identifier_required.php');
+            $exception = null;
+            try {
+                $migration->up();
+            } catch (RuntimeException $caught) {
+                $exception = $caught;
+            }
+
+            $this->assertInstanceOf(RuntimeException::class, $exception);
+            $this->assertStringContainsString('existing teacher profile', $exception->getMessage());
+            $this->assertDatabaseHas('teacher_profiles', ['id' => $id, 'employee_identifier' => null]);
+        } finally {
             DB::statement('DROP TEMPORARY TABLE IF EXISTS teacher_profiles');
         }
     }
