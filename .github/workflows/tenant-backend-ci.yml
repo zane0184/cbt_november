@@ -143,8 +143,14 @@ jobs:
           mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USERNAME" --password="$DB_PASSWORD" \
             --execute="CREATE DATABASE IF NOT EXISTS cbt_installer_test_pilot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-      - name: Run focused Web login and tenant identity smoke tests
-        run: php artisan test --display-warnings --filter='WebAdminAuthTest|StudentWebLoginTest|AdminUiVerificationTest'
+      - name: Run focused Web Admin authentication smoke tests
+        run: timeout 180s php artisan test --display-warnings --filter='WebAdminAuthTest'
+
+      - name: Run focused Web Student login smoke tests
+        run: timeout 180s php artisan test --display-warnings --filter='StudentWebLoginTest'
+
+      - name: Run focused Admin UI and identity smoke tests
+        run: timeout 180s php artisan test --display-warnings --filter='AdminUiVerificationTest'
 
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
