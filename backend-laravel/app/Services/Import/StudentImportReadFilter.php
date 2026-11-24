@@ -13,8 +13,13 @@ final class StudentImportReadFilter implements IReadFilter
     ) {
     }
 
-    public function readCell(string $columnAddress, int $row, string $worksheetName = ''): bool
+    public function readCell($columnAddress, $row, $worksheetName = '')
     {
+        if (!is_string($columnAddress) || !is_numeric($row)) {
+            return false;
+        }
+
+        $row = (int) $row;
         if ($row < 1 || $row > $this->maxRow) {
             return false;
         }
