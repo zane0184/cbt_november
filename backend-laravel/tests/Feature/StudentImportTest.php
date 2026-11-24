@@ -15,8 +15,8 @@ use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
-use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Tests\TestCase;
 
 class StudentImportTest extends TestCase
@@ -61,7 +61,7 @@ class StudentImportTest extends TestCase
     public function test_admin_can_preview_and_import_csv_preserving_leading_zero_nisn_and_audit_batch(): void
     {
         $this->actingAs($this->admin);
-        $file = TemporaryUploadedFile::fake()->createWithContent(
+        $file = UploadedFile::fake()->createWithContent(
             'siswa.csv',
             "nama,nisn,jenis_kelamin,tanggal_lahir\nSiswa Uji,0001234567,L,2019-01-02\n"
         );
@@ -78,7 +78,7 @@ class StudentImportTest extends TestCase
 
         $profile = StudentProfile::query()->where('nisn', '0001234567')->firstOrFail();
         $this->assertSame('0001234567', $profile->nisn);
-        $this->assertSame('2019-01-02', $profile->birth_date->format('Y-m-d'));
+        $this->assertSame('2019-01-02', $profile->birth_date);
         $this->assertTrue($profile->user->hasExactRole('SISWA'));
         $this->assertCount(1, $profile->rombels);
         $this->assertDatabaseHas('student_import_batches', [
