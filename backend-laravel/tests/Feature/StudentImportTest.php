@@ -159,6 +159,61 @@ class StudentImportTest extends TestCase
         $this->assertDatabaseCount('student_profiles', 0);
     }
 
+
+    public function test_xlsx_import_preserves_nisn_when_the_cell_is_explicitly_text(): void
+    {
+        $this->actingAs($this->admin);
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(['nama', 'nisn'], null, 'A1');
+        $sheet->setCellValue('A2', 'Siswa XLSX');
+        $sheet->setCellValueExplicit('B2', '0000000123', DataType::TYPE_STRING);
+        $path = tempnam(sys_get_temp_dir(), 'student-import-') . '.xlsx';
+        (new Xlsx($spreadsheet))->save($path);
+        $content = file_get_contents($path);
+        @unlink($path);
+        $spreadsheet->disconnectWorksheets();
+
+        $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('0000000123')
+            ->call('import')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('student_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'nisn' => '0000000123',
+        ]);
+    }
+
+    public function test_xlsx_numeric_nisn_cell_is_rejected_instead_of_silently_losing_leading_zeroes(): void
+    {
+        $this->actingAs($this->admin);
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(['nama', 'nisn'], null, 'A1');
+        $sheet->setCellValue('A2', 'Siswa Numeric');
+        $sheet->setCellValue('B2', 1234567890);
+        $path = tempnam(sys_get_temp_dir(), 'student-import-') . '.xlsx';
+        (new Xlsx($spreadsheet))->save($path);
+        $content = file_get_contents($path);
+        @unlink($path);
+        $spreadsheet->disconnectWorksheets();
+
+        $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('NISN harus disimpan sebagai teks');
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
     public function test_non_admin_cannot_open_student_import_page(): void
     {
         $studentRole = Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
