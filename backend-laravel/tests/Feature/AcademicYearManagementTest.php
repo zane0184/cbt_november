@@ -69,7 +69,7 @@ class AcademicYearManagementTest extends TestCase
             ->where('name', '2032/2033')
             ->firstOrFail();
 
-        $this->assertFalse($createdYear->is_active);
+        $this->assertFalse((bool) $createdYear->is_active);
         $this->assertSame(2, $createdYear->semesters()->count());
         $this->assertSame(0, $createdYear->semesters()->where('is_active', true)->count());
 
@@ -107,7 +107,7 @@ class AcademicYearManagementTest extends TestCase
             'term' => 'GENAP',
             'is_active' => true,
         ]);
-        $this->assertFalse($historicalYear->fresh()->is_active);
+        $this->assertFalse((bool) $historicalYear->fresh()->is_active);
         $this->assertDatabaseHas('rombels', [
             'id' => $rombel->id,
             'tenant_id' => $this->tenant->id,
