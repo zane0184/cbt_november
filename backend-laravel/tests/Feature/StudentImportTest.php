@@ -127,29 +127,37 @@ class StudentImportTest extends TestCase
         }
     }
 
-    private function assertXlsxPreviewRejected(string $content): void
+    private function assertXlsxPreviewRejected(string $content, ?string $expectedMessage = null): void
     {
         $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
 
-        Livewire::test(StudentImport::class)
+        $component = Livewire::test(StudentImport::class)
             ->set('selectedRombelId', $this->rombel->id)
             ->set('file', $file)
             ->call('preview')
             ->assertHasErrors('file');
+
+        if ($expectedMessage !== null) {
+            $component->assertSee($expectedMessage);
+        }
 
         $this->assertDatabaseCount('student_profiles', 0);
         $this->assertDatabaseCount('student_import_batches', 0);
     }
 
-    private function assertCsvPreviewRejected(string $content): void
+    private function assertCsvPreviewRejected(string $content, ?string $expectedMessage = null): void
     {
         $file = UploadedFile::fake()->createWithContent('siswa.csv', $content);
 
-        Livewire::test(StudentImport::class)
+        $component = Livewire::test(StudentImport::class)
             ->set('selectedRombelId', $this->rombel->id)
             ->set('file', $file)
             ->call('preview')
             ->assertHasErrors('file');
+
+        if ($expectedMessage !== null) {
+            $component->assertSee($expectedMessage);
+        }
 
         $this->assertDatabaseCount('student_profiles', 0);
         $this->assertDatabaseCount('student_import_batches', 0);
@@ -378,7 +386,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->addFromString('../outside.xml', '<root/>'));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Path traversal pada entri XLSX ditolak.');
     }
 
     public function test_xlsx_preflight_rejects_external_relationships(): void
@@ -389,7 +397,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->addFromString('xl/worksheets/_rels/sheet2.xml.rels', $rels));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'External relationship pada XLSX tidak diizinkan.');
     }
 
     public function test_xlsx_preflight_rejects_dtd_and_entity_declarations(): void
@@ -400,7 +408,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->addFromString('xl/worksheets/sheet2.xml', $xml));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'DTD atau XML entity pada XLSX tidak diizinkan.');
     }
 
     public function test_xlsx_preflight_rejects_oversized_worksheet_dimensions(): void
@@ -411,7 +419,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->addFromString('xl/worksheets/sheet2.xml', $xml));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Maksimal 5.000 baris data per proses import.');
     }
 
     public function test_xlsx_preflight_checks_cell_references_even_when_dimension_is_forged_small(): void
@@ -422,7 +430,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->addFromString('xl/worksheets/sheet2.xml', $xml));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Maksimal 5.000 baris data per proses import.');
     }
 
     public function test_xlsx_preflight_rejects_excessive_zip_entry_count(): void
@@ -434,7 +442,7 @@ class StudentImportTest extends TestCase
             }
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Struktur XLSX memiliki jumlah entri ZIP yang tidak didukung.');
     }
 
     public function test_xlsx_preflight_rejects_excessive_compression_ratio(): void
@@ -446,7 +454,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->setCompressionName($entry, \ZipArchive::CM_DEFLATE));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Compression ratio XLSX melebihi batas keamanan.');
     }
 
     public function test_xlsx_preflight_rejects_single_oversized_zip_entry(): void
@@ -458,7 +466,7 @@ class StudentImportTest extends TestCase
             $this->assertTrue($zip->setCompressionName($entry, \ZipArchive::CM_DEFLATE));
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Ukuran atau metode kompresi entri XLSX tidak didukung.');
     }
 
     public function test_xlsx_preflight_rejects_total_expanded_size_over_limit(): void
@@ -475,7 +483,7 @@ class StudentImportTest extends TestCase
             }
         });
 
-        $this->assertXlsxPreviewRejected($content);
+        $this->assertXlsxPreviewRejected($content, 'Ukuran hasil ekstraksi XLSX melebihi batas keamanan.');
     }
 
     public function test_csv_import_rejects_more_than_32_columns(): void
@@ -486,7 +494,7 @@ class StudentImportTest extends TestCase
             range(1, 31)
         ));
 
-        $this->assertCsvPreviewRejected(implode(',', $headers) . "\n");
+        $this->assertCsvPreviewRejected(implode(',', $headers) . "\n", 'Jumlah kolom CSV pada header tidak konsisten atau melebihi batas.');
     }
 
     public function test_csv_import_rejects_oversized_records(): void
