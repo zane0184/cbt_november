@@ -111,6 +111,15 @@ Migration `2026_11_16_230001_protect_exam_snapshot_source_history.php` sudah men
 
 **Catatan tentang creator identity:** CASCADE dari user pembuat ke Assessment/Exam tidak boleh menghapus objek akademik. Pilihan desain: RESTRICT untuk user yang menjadi identitas peserta/riwayat, dan RESTRICT atau SET NULL dengan snapshot identitas untuk kolom creator/updater. Keputusan akhir harus mengikuti kebutuhan audit, bukan menghapus riwayat.
 
+**SET NULL yang ditemukan dan dampaknya:**
+
+- `audit_logs.tenant_id` dan `audit_logs.user_id`: log tetap ada, tetapi identitas tenant/actor dapat hilang saat parent hard-delete.
+- `rombels.teacher_id`: penghapusan Teacher Profile dapat mengosongkan wali/teacher Rombel.
+- Migration awal Assessment: `semester_id` SET NULL, tetapi FK ini telah diganti oleh composite RESTRICT di migration 210002; `curriculum_id` dan `subject_id` masih SET NULL; `updated_by` SET NULL; `created_by` CASCADE.
+- Curriculum detail mappings mempunyai beberapa SET NULL ke phase/grade/element/learning outcome/objective/path; perlu dipastikan tidak menjadi satu-satunya provenance akademik.
+- Registered Device `revoked_by` dan Device Lease `released_by` semula SET NULL, lalu migration 2026-11-20-100002 mengganti FK runtime device menjadi RESTRICT pada jalur up.
+- SET NULL pada kolom periode/tenant/attempt/snapshot/score tidak boleh digunakan karena akan memutus histori. Untuk kolom actor, SET NULL hanya boleh dipertahankan bila audit log menyimpan actor snapshot immutable.
+
 ### 1.3 Transaksi dan urutan lock yang benar-benar ditemukan
 
 | Jalur | Source | Urutan lock saat ini |
@@ -645,7 +654,7 @@ Hitung jumlah Rombel, membership, assignment, Assessment, Exam, Snapshot, Partic
 53. Test SQL query builder Laravel `sharedLock()` dan `lockForUpdate()` menghasilkan syntax yang diterima MySQL target.
 54. Test tidak hanya SQLite; concurrency harus memakai dua koneksi MySQL terpisah.
 
-## 5. RISIKO YANG BELUM TERSelesaikan
+## 5. RISIKO YANG BELUM TERSELESAIKAN
 
 1. **Database representatif belum tersedia.** Belum diketahui jumlah tenant tanpa periode aktif, duplikasi, orphan, mismatch, soft-deleted periods, maupun jumlah histori per tahun.
 2. **Schema aktual belum diverifikasi.** Migration repository tidak membuktikan migration sudah diterapkan pada setiap instalasi. FK aktual harus dibaca dari INFORMATION_SCHEMA clone.
