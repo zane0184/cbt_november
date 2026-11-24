@@ -170,6 +170,12 @@ class TenantBrandingAssetsManagementTest extends TestCase
     public function test_branding_migration_rollback_is_fail_closed_and_preserves_columns(): void
     {
         $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
+        $documentPath = 'tenants/' . $this->tenant->id . '/branding/preexisting-document.png';
+        $faviconPath = 'tenants/' . $this->tenant->id . '/branding/preexisting-favicon.png';
+        $this->tenant->forceFill([
+            'document_logo_path' => $documentPath,
+            'favicon_path' => $faviconPath,
+        ])->save();
 
         try {
             $migration->down();
@@ -178,8 +184,11 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertStringContainsString('forward-only', $exception->getMessage());
         }
 
+        $fresh = $this->tenant->fresh();
         $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
         $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+        $this->assertSame($documentPath, $fresh->document_logo_path);
+        $this->assertSame($faviconPath, $fresh->favicon_path);
     }
 
 
@@ -349,16 +358,43 @@ class TenantBrandingAssetsManagementTest extends TestCase
     public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
     {
         $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
+        $documentPath = 'tenants/' . $this->tenant->id . '/branding/legacy-document.png';
+        $faviconPath = 'tenants/' . $this->tenant->id . '/branding/legacy-favicon.png';
+        $this->tenant->forceFill([
+            'document_logo_path' => $documentPath,
+            'favicon_path' => $faviconPath,
+        ])->save();
 
+        // Target schema: both columns already exist; migration must be a no-op.
         $migration->up();
         $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
         $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+        $this->assertSame($documentPath, $this->tenant->fresh()->document_logo_path);
+        $this->assertSame($faviconPath, $this->tenant->fresh()->favicon_path);
 
+        // Legacy schema with only document_logo_path.
         Schema::table('tenants', function ($table): void {
             $table->dropColumn('favicon_path');
         });
         $migration->up();
+        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
+        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+        $this->assertSame($documentPath, $this->tenant->fresh()->document_logo_path);
 
+        // Legacy schema with only favicon_path.
+        Schema::table('tenants', function ($table): void {
+            $table->dropColumn('document_logo_path');
+        });
+        $migration->up();
+        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
+        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+        $this->assertSame($faviconPath, $this->tenant->fresh()->favicon_path);
+
+        // Empty pre-branding schema: neither column exists.
+        Schema::table('tenants', function ($table): void {
+            $table->dropColumn(['document_logo_path', 'favicon_path']);
+        });
+        $migration->up();
         $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
         $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
     }
