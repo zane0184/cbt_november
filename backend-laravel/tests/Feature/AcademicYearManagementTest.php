@@ -30,6 +30,7 @@ class AcademicYearManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(DatabaseSeeder::class);
         $this->tenant = Tenant::create(['name' => 'MIN Academic Test', 'code' => 'MINACADEMIC']);
         $context = app(TenantContext::class);
         $context->setTenantId((string) $this->tenant->id);
