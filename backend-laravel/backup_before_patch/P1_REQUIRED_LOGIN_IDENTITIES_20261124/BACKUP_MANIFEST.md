@@ -93,3 +93,8 @@
   - Source blob SHA: `7ae499ca3a4e10bd473105571f42743f4724d9bf`
   - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/WebAdminAuthTest.php.before_api_honorer`
   - Backup commit: `fd0d00cf7c792db3ca8582798c2b0324ae2ea192`
+
+- Source: `backend-laravel/tests/Feature/WebAdminAuthTest.php`
+  - Source blob SHA: `f70f6d1ab25e3851cff7c86b523f284cc35b1584`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/WebAdminAuthTest.php.before_pppk_case`
+  - Backup commit: `8180f8df9785228b4e553d3a6dd76ca765e09a24`
