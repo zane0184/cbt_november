@@ -131,9 +131,10 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 ->assertOk()
                 ->assertSee('type="image/webp"', false);
 
+            // The selected-file temporary preview branch is exercised above;
+            // this asserts that a stored WebP favicon remains previewable in the UI.
             Livewire::test(TenantBrandingAssetsManagement::class)
-                ->set('faviconUpload', new UploadedFile($webpPath, 'favicon-preview.webp', 'image/webp', UPLOAD_ERR_OK, true))
-                ->assertSee('Pratinjau favicon');
+                ->assertSee($webpAttributes['url']);
         } finally {
             imagedestroy($webpImage);
             @unlink($temporaryPath);
