@@ -4,6 +4,7 @@ The following root-level files are intentionally retained in the controlled reco
 
 | File | Reason |
 |---|---|
+| `backups/` | Internal byte-exact pre-patch backups, manifests, and audit snapshots; never distribute. |
 | `check_latest.php` | Ad-hoc script that mutates an exam score to `FINALIZED`. |
 | `debug_auth.php` | Debug script reads demo identity and exam data using tenant-bypassing query scope removal. |
 | `debug_scores.php` | Debug output exposes question snapshot metadata and score details. |
