@@ -605,7 +605,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $unrelatedTeacher = $this->makeLocalUser('GURU', 'session-unrelated-'.$driver);
 
         foreach ([$resetTeacher, $deactivatedTeacher, $unrelatedTeacher] as $teacher) {
-            \\App\\Models\\TeacherProfile::create([
+            \App\Models\TeacherProfile::create([
                 'tenant_id' => $this->tenant->id,
                 'user_id' => $teacher->id,
                 'full_name' => $teacher->name,
