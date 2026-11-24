@@ -124,7 +124,7 @@ return new class extends Migration
     private function addMysqlCheck(string $table, string $name, string $expression): void
     {
         $existing = DB::selectOne(
-            'SELECT cc.CHECK_CLAUSE, cc.ENFORCED
+            'SELECT cc.CHECK_CLAUSE, tc.ENFORCED
              FROM information_schema.TABLE_CONSTRAINTS tc
              INNER JOIN information_schema.CHECK_CONSTRAINTS cc
                 ON cc.CONSTRAINT_SCHEMA = tc.CONSTRAINT_SCHEMA
