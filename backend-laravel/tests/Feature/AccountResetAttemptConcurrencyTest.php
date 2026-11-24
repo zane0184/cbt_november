@@ -479,8 +479,8 @@ PHP;
             $childError = stream_get_contents($pipes[2]);
             $exitCode = proc_close($process);
         } finally {
-            fclose($pipes[1]);
-            fclose($pipes[2]);
+            if (is_resource($pipes[1])) fclose($pipes[1]);
+            if (is_resource($pipes[2])) fclose($pipes[2]);
             @unlink($scriptPath);
         }
 
@@ -533,8 +533,8 @@ PHP;
             $childError = stream_get_contents($pipes[2]);
             $exitCode = proc_close($process);
         } finally {
-            fclose($pipes[1]);
-            fclose($pipes[2]);
+            if (is_resource($pipes[1])) fclose($pipes[1]);
+            if (is_resource($pipes[2])) fclose($pipes[2]);
             @unlink($scriptPath);
         }
 
@@ -543,7 +543,11 @@ PHP;
         $this->assertTrue(Hash::check($temporaryPassword, $this->student->fresh()->password));
         $this->assertTrue((bool) $this->student->fresh()->must_change_password);
         $this->assertSame(2, (int) $this->student->fresh()->auth_version);
-        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
+        $this->assertSame('IN_PROGRESS', $primary->table('exam_attempts')->where('id', $attemptId)->value('status'));
+        $this->assertSame(0, $primary->table('exam_attempt_answers')->where('exam_attempt_id', $attemptId)->count());
+        $this->assertSame(0, $primary->table('exam_attempt_scores')->where('attempt_id', $attemptId)->count());
+        $this->assertSame(0, $primary->table('device_leases')->where('exam_attempt_id', $attemptId)->count());
+        $this->assertSame(1, (int) $primary->table('exam_attempts')->where('id', $attemptId)->value('fence_generation'));
     }
 
     public function test_deactivation_wins_exam_parent_locks_and_concurrent_attempt_start_is_rejected_for_inactive_account(): void
@@ -573,8 +577,8 @@ PHP;
             $childError = stream_get_contents($pipes[2]);
             $exitCode = proc_close($process);
         } finally {
-            fclose($pipes[1]);
-            fclose($pipes[2]);
+            if (is_resource($pipes[1])) fclose($pipes[1]);
+            if (is_resource($pipes[2])) fclose($pipes[2]);
             @unlink($scriptPath);
         }
 
@@ -598,6 +602,7 @@ PHP;
         $beforeExam = (array) $primary->table('exams')->where('id', $this->exam->id)->first();
         $beforeParticipant = (array) $primary->table('exam_participants')->where('id', $this->participant->id)->first();
 
+        $attemptId = (string) Str::uuid();
         $script = <<<'PHP'
 <?php
 $payload = json_decode(base64_decode($argv[1]), true, 512, JSON_THROW_ON_ERROR);
@@ -607,23 +612,48 @@ $pdo = new PDO(
     $payload['password'],
     [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]
 );
+$pdo->exec('SET SESSION innodb_lock_wait_timeout = 12');
 $pdo->beginTransaction();
-$user = $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE');
-$user->execute([$payload['student_id']]);
+
+$exam = $pdo->prepare('SELECT id FROM exams WHERE id = ? AND tenant_id = ? FOR UPDATE');
+$exam->execute([$payload['exam_id'], $payload['tenant_id']]);
+$exam->fetch(PDO::FETCH_ASSOC);
+$participant = $pdo->prepare('SELECT id FROM exam_participants WHERE id = ? AND exam_id = ? AND user_id = ? AND tenant_id = ? FOR UPDATE');
+$participant->execute([$payload['participant_id'], $payload['exam_id'], $payload['student_id'], $payload['tenant_id']]);
+$participant->fetch(PDO::FETCH_ASSOC);
+$expiry = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND (expires_at IS NULL OR expires_at <= NOW()) FOR UPDATE");
+$expiry->execute([$payload['participant_id']]);
+$expiry->fetchAll(PDO::FETCH_ASSOC);
+$active = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND expires_at > NOW() ORDER BY id FOR UPDATE");
+$active->execute([$payload['participant_id']]);
+$active->fetchAll(PDO::FETCH_ASSOC);
+$user = $pdo->prepare('SELECT id FROM users WHERE id = ? AND tenant_id = ? FOR UPDATE');
+$user->execute([$payload['student_id'], $payload['tenant_id']]);
 $user->fetch(PDO::FETCH_ASSOC);
-echo "USER_ROW_LOCKED\n";
+
+$now = date('Y-m-d H:i:s');
+$insert = $pdo->prepare("INSERT INTO exam_attempts (id, tenant_id, exam_id, participant_id, attempt_number, status, started_at, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 'IN_PROGRESS', ?, DATE_ADD(?, INTERVAL 1 HOUR), ?, ?)");
+$insert->execute([
+    $payload['attempt_id'], $payload['tenant_id'], $payload['exam_id'],
+    $payload['participant_id'], $now, $now, $now, $now,
+]);
+echo "ATTEMPT_START_LOCKED\n";
 flush();
-usleep(4500000);
+usleep(6500000);
 $pdo->commit();
-echo "USER_ROW_RELEASED\n";
+echo "ATTEMPT_START_COMMITTED\n";
 flush();
 PHP;
         [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
+            'tenant_id' => (string) $this->tenant->id,
+            'exam_id' => (string) $this->exam->id,
+            'participant_id' => (string) $this->participant->id,
             'student_id' => (string) $this->student->id,
+            'attempt_id' => $attemptId,
         ]);
 
         try {
-            $this->assertSame('USER_ROW_LOCKED', trim((string) fgets($pipes[1])));
+            $this->assertSame('ATTEMPT_START_LOCKED', trim((string) fgets($pipes[1])));
             $this->actingAs($this->admin);
             $caught = false;
             try {
@@ -634,12 +664,12 @@ PHP;
             }
             $this->assertTrue($caught, 'A sustained InnoDB lock wait must surface as a lock-timeout QueryException.');
             $this->assertSame(0, $primary->transactionLevel(), 'Failed account transaction must roll back completely.');
-            $this->assertSame('USER_ROW_RELEASED', trim((string) fgets($pipes[1])));
+            $this->assertSame('ATTEMPT_START_COMMITTED', trim((string) fgets($pipes[1])));
             $childError = stream_get_contents($pipes[2]);
             $exitCode = proc_close($process);
         } finally {
-            fclose($pipes[1]);
-            fclose($pipes[2]);
+            if (is_resource($pipes[1])) fclose($pipes[1]);
+            if (is_resource($pipes[2])) fclose($pipes[2]);
             @unlink($scriptPath);
         }
 
@@ -717,8 +747,8 @@ PHP;
             $childError = stream_get_contents($pipes[2]);
             $exitCode = proc_close($process);
         } finally {
-            fclose($pipes[1]);
-            fclose($pipes[2]);
+            if (is_resource($pipes[1])) fclose($pipes[1]);
+            if (is_resource($pipes[2])) fclose($pipes[2]);
             @unlink($scriptPath);
         }
 
