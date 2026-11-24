@@ -1,9 +1,16 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    @php
+        $loginBrandingService = app(\App\Services\TenantBrandingService::class);
+        $loginTenant = $loginBrandingService->currentTenant();
+        $loginLogoUrl = $loginBrandingService->publicUrl($loginTenant?->logo_path);
+        $loginFaviconUrl = $loginBrandingService->publicUrl($loginTenant?->favicon_path);
+    @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login CBT Madrasah</title>
+    <title>{{ $loginTenant?->short_name ?: ($loginTenant?->name ?: 'Login CBT Madrasah') }}</title>
+    @if($loginFaviconUrl)<link rel="icon" type="image/png" href="{{ $loginFaviconUrl }}">@endif
     <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
     <style>
         body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -14,11 +21,13 @@
 
         <!-- Branding Header -->
         <div class="text-center space-y-2">
-            <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-3xl mx-auto shadow-lg shadow-emerald-600/30">
-                C
-            </div>
+            @if($loginLogoUrl)
+                <img src="{{ $loginLogoUrl }}" alt="Logo {{ $loginTenant?->name ?: 'Madrasah' }}" class="w-16 h-16 rounded-2xl bg-white object-contain p-1 mx-auto shadow-lg">
+            @else
+                <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-3xl mx-auto shadow-lg shadow-emerald-600/30">C</div>
+            @endif
             <h1 class="text-2xl font-bold text-navy-900 tracking-tight">CBT MADRASAH</h1>
-            <p class="text-xs font-semibold text-textSecondary uppercase tracking-wider">Portal Ujian & Administrasi Madrasah</p>
+            <p class="text-xs font-semibold text-textSecondary uppercase tracking-wider">{{ $loginTenant?->name ?: 'Portal Ujian & Administrasi Madrasah' }}</p>
             <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
                 <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span> Platform Asesmen Digital Modern
             </div>

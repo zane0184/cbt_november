@@ -35,6 +35,8 @@ class Tenant extends Model
         'phone',
         'email',
         'logo_path',
+        'document_logo_path',
+        'favicon_path',
         'status',
     ];
 }
