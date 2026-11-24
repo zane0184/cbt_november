@@ -122,11 +122,14 @@ class TenantBrandingService
 
         // Managed branding paths are installation-scoped. A valid file under
         // another installation's tenant namespace must never be resolved.
+        $managedBrandingRoot = null;
         if (($segments[0] ?? null) === 'tenants' && ($segments[2] ?? null) === 'branding') {
             $scopeTenantId = $this->resolveInstallationTenantId($tenantId);
             if (!$scopeTenantId || ($segments[1] ?? null) !== $scopeTenantId) {
                 return null;
             }
+
+            $managedBrandingRoot = 'tenants' . DIRECTORY_SEPARATOR . $scopeTenantId . DIRECTORY_SEPARATOR . 'branding';
         }
 
         $root = realpath(storage_path('app/public'));
@@ -137,6 +140,15 @@ class TenantBrandingService
         $candidate = $root . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
         $target = realpath($candidate);
         if (!$target || !str_starts_with($target, $root . DIRECTORY_SEPARATOR) || !is_file($target)) {
+            return null;
+        }
+
+        // realpath() follows symlinks. Keep the resolved target inside this
+        // installation's own branding directory, not merely inside public storage.
+        if (
+            $managedBrandingRoot !== null
+            && !str_starts_with($target, $root . DIRECTORY_SEPARATOR . $managedBrandingRoot . DIRECTORY_SEPARATOR)
+        ) {
             return null;
         }
 
