@@ -460,3 +460,135 @@ Pencarian source app/, migrations, seeders, dan factories dalam paket menghasilk
 - P1-ID-03B: BLOCKED / NOT STARTED.
 - PR #23: OPEN / DRAFT / NOT MERGED.
 - Production database: NOT TOUCHED.
+
+
+---
+
+## ADDENDUM — Audit source lanjutan P1-ID-03A dan refresh exact HEAD (24 November 2026)
+
+### AUDIT
+
+#### Repository, PR, dan HEAD
+- Repository: `zane0184/cbt_november`.
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- Branch: `work/p1-seven-targets-20261124`.
+- HEAD saat refresh: `3106172e28aacccbc18019eed71374595c97e816`.
+- Base branch: `work/phpunit-41-root-cause-20261123`; base SHA: `1c33e5d422175f9bd85d206230271a9fe5a4eecd`.
+- Perbandingan `c6861410df8483d6cfb0c6e5aae8636244cb013b` ke HEAD `3106172e...`: 2 commit ahead, 0 behind; hanya report dan checkpoint P1 yang bertambah. Tidak ada perubahan source aplikasi pada rentang tersebut.
+- Source aplikasi terakhir yang menjadi basis audit: `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050`. Deployment snapshot dibuat dari commit `2f13517217bcdb8ffb591f4df7751bcc4b7354ab`; perbandingan source ke snapshot sebelumnya menunjukkan perubahan hanya dokumentasi. Snapshot bukan pengganti checkout Git.
+
+#### Pemulihan workspace dan validasi snapshot
+- Workspace kanonis `/mnt/data/CBT_MADRASAH_RECONSTRUCTION/` tetap belum tersedia.
+- Snapshot yang tersedia: `/mnt/data/CBT_AUDIT_SNAPSHOT_2f135172/CBT_MADRASAH_WEB_DEPLOYMENT/`.
+- Snapshot memiliki `backend-laravel`, `composer.json`, `composer.lock`, dan `vendor/`; tidak memiliki direktori `.git`. Paket distribusi mengecualikan `tests/`, beberapa backup, dan file workspace non-distribusi. Karena itu snapshot hanya digunakan untuk audit statis, bukan sebagai checkout asli atau basis patch.
+- Seluruh checksum dalam `SHA256SUMS.txt` lulus. Git blob SHA dari tujuh file inti yang dibandingkan cocok dengan tree GitHub: LoginIdentityPreflightCommand, AuditService, TeacherProfile, StudentProfile, UserManagement, TeacherProfilePage, dan Phase7dBenchmarkCommand.
+- PHP lint lokal pada snapshot: 282 file PHP di app/database/routes/config/bootstrap, PHP 8.4.24, exit 0. Ini hanya lint sintaks pada snapshot; bukan PHPUnit dan bukan validasi PHP 8.3 lokal.
+- Toolchain lokal tetap belum siap: PHP lokal 8.4.24 (bukan PHP 8.3), PDO drivers kosong, Composer tidak tersedia, MySQL client/server tidak tersedia, Docker/Podman tidak tersedia, DNS/HTTPS GitHub dari terminal gagal. Vendor di snapshot tidak menggantikan kebutuhan PHP 8.3 dan driver database.
+- Tidak ada checkout Git asli yang berhasil dipulihkan. Tidak ada source edit lokal atau remote.
+
+#### AUDIT — seluruh jalur writer profil dan identitas
+1. `backend-laravel/app/Livewire/Admin/UserManagement.php` — `createUser()`
+   - Satu writer aplikasi utama untuk pembuatan akun Guru dan Siswa: `TeacherProfile::query()->create()` dan `StudentProfile::query()->create()`.
+   - Otorisasi diperiksa ulang pada mount dan setiap mutation: akun harus memiliki tenant, tepat satu role `ADMIN_MADRASAH`, serta permission `user.manage`.
+   - Role yang dapat dibuat dibatasi ke `GURU` dan `SISWA`; akun privileged tidak dibuat lewat komponen ini.
+   - Validasi Guru: PNS/PPPK wajib NIP 18 digit dan NIK dilarang; Honorer wajib NIK 16 digit dan NIP dilarang; NUPTK opsional 16 digit. Validasi Siswa: NISN wajib 10 digit.
+   - Rule unique NIP/NIK/NUPTK/NISN dibatasi tenant. User dan profil dibuat dalam transaksi. `TenantScoped::bootTenantScoped()` mengisi tenant dari TenantContext/auth dan menimpa tenant_id yang dikirim; pembuatan gagal jika konteks tenant tidak ada.
+   - Identitas disimpan sebagai string; validasi digit dan trim tidak mengubah leading zero.
+2. `backend-laravel/app/Console/Commands/Phase7dBenchmarkCommand.php` — `seedWorkload()`
+   - Writer fixture benchmark: `TeacherProfile::create()` membuat profil tanpa employment_status, NIP/NIK, dan employee_identifier.
+   - `StudentProfile::create()` membuat NISN sintetis `NISN_%03d`, bukan 10 digit numerik. Field `nis` sintetis `NIS_%03d` adalah nomor internal, bukan login identifier.
+   - `handle()` mengalihkan koneksi ke SQLite `database/benchmark.sqlite`, menjalankan migrate:fresh pada koneksi SQLite tersebut, lalu membangun workload dan menghapus file setelah operasi normal. Pembersihan belum berada di finally; exception dapat meninggalkan file benchmark. Ini bukan writer produksi, tetapi fixture harus dinormalisasi.
+3. `backend-laravel/app/Livewire/Teacher/TeacherProfilePage.php` — `savePhone()`
+   - Memakai `forceFill(['phone' => $phone])` saja; bukan perubahan NIP/NIK/NUPTK/employee_identifier.
+   - `TeacherPortalAccess::profile()` memeriksa tenant akun, konsistensi TenantContext, user masih aktif pada tenant, tepat satu role GURU, dan tepat satu TeacherProfile untuk user/tenant.
+   - Nomor telepon divalidasi, profil dikunci dalam transaksi, dan audit hanya mengirim field phone.
+4. Jalur baca yang bukan writer:
+   - `LoginIdentityResolver` membaca NIP untuk PNS/PPPK, NIK untuk Honorer, dan NISN untuk Siswa.
+   - `TeacherAccess`, `TeacherPortalAccess`, `TeacherSubjectAssignmentManagement`, `StudentRombelManagement`, `ExamManagement`, `TeacherSubjectAssignmentController`, dan `TeacherPortalDataService` membaca profil/relasi untuk scope tenant dan penugasan.
+5. Mass assignment:
+   - `TeacherProfile::$fillable` mencakup user_id, employee_identifier, employment_status, nip, nik, nuptk, full_name, gender, phone; `$hidden` mencakup employee_identifier, nip, nik, nuptk.
+   - `StudentProfile::$fillable` mencakup user_id, nis, nisn, full_name, gender dan data profil lain; `$hidden` mencakup nisn.
+   - Pada app source yang diperiksa, tidak ditemukan pemanggilan `fill()`, `forceFill()`, `updateOrCreate()`, `firstOrCreate()`, `upsert()`, `insert()`, query-builder update, atau raw SQL yang menulis field identitas profil. Satu-satunya `forceFill()` pada profil adalah phone-only di atas. `DB::table('teacher_profiles')` dan `DB::table('student_profiles')` pada preflight hanya SELECT/chunk; migrasi yang ditemukan menyentuh skema/index/FK, bukan memperbarui nilai identitas.
+   - Ini adalah audit writer pada app/database source dan fixture yang tersedia; tidak mengubah status P1-ID-03A menjadi selesai.
+
+#### AUDIT — factories, seeders, dan test fixtures
+- Tree repository memiliki 13 factory aktif; tidak ditemukan `TeacherProfileFactory` atau `StudentProfileFactory`, dan tidak ada factory yang mengisi NIP/NIK/NISN/NUPTK.
+- Lima seeder aktif yang ditemukan: AssessmentTaxonomySeeder, CurriculumReferenceSourceSeeder, CurriculumRegistryBootstrapSeeder, DatabaseSeeder, SystemTenantSeeder. Tidak ditemukan pembuatan TeacherProfile/StudentProfile atau field identitas di lima seeder tersebut.
+- `DemoDataSeeder.php` dan `RuntimeTestSeeder.php` disebut dalam catatan pengecualian paket distribusi, tetapi tidak ditemukan sebagai file pada tree branch yang diperiksa; isi keduanya tidak dinyatakan telah diaudit.
+- Tree repository berisi 77 file PHP di bawah tests. Pemeriksaan referensi profil/identitas menemukan fixture valid/kontrak pada:
+  - `LoginIdentityPreflightCommandTest`: tiga metode untuk identitas valid, NIP ber-spasi, dan Guru legacy tanpa status/identitas.
+  - `AdminUiVerificationTest`: validasi PNS NIP, Honorer NIK, siswa NISN, kategori yang salah, tenant-scoped uniqueness, dan serialization hiding. Test hiding membuat satu Guru PNS dengan NIP sekaligus NIK; fixture campuran ini harus dipisah/diubah agar tetap sesuai kategori identitas.
+  - `WebAdminAuthTest::setUp()`, `StudentWebLoginTest::setUp()`, `StudentExamPortalTest::setUp()`, `ParticipantAuthorizationAndAttemptLimitTest`, dan `RombelStudentPivotTest` memakai NISN numerik 10 digit atau identitas Guru sesuai skenario.
+- Fixture test yang membuat profil tanpa identitas wajib dan perlu dinormalisasi/ditandai sebagai legacy secara eksplisit:
+  - `ExamAnswerTest::setUp()`.
+  - `ExamBuilderTest::setUp()`, `test_assign_rombel_api_does_not_reset_existing_participant_status()`, `test_add_individual_participant_api_does_not_reset_existing_status()`.
+  - `ExamIntegrityTest::test_tenant_a_cannot_assign_student_from_tenant_b()`.
+  - `ExamManagementHardeningTest::setUp()`, `teacher_cannot_use_an_assignment_outside_their_exact_assignment_scope()`.
+  - `TeacherPracticeWorkflowTest::setUp()`; `Phase7BManualReviewTest::setUp()`; `Phase7CReopenTest::setUp()`.
+  - `ExamSnapshotTest::setUp()`, `test_snapshot_from_another_tenant_cannot_be_mutated()`; `ExamVerificationTest::test_rombel_assignment_isolation_and_snapshot()`.
+  - `MonitoringDuplicationTest::setUp()`; `MonitoringTest::setUp()`, `test_student_cannot_read_another_students_attempt_through_monitoring_endpoint()`, `test_student_cannot_read_another_students_attempt_through_nested_show()`.
+  - `Analytics/CacheTest::finalization_invalidates_exam_and_rombel_analytics_cache()`; `ExamListContractTest::setUp()`; `Security/AnswerKeyLeakageTest::setUp()`; `RoleDashboardVerificationTest`.
+  - `ProctorAssignmentSecurityTest::setUp()`, `test_database_rejects_cross_tenant_proctor_reference()`; helper `CreatesTeacherExamScope::createTeacherExamScope()` dan `attachStudentToRombel()`.
+- Fixture identitas yang formatnya tidak sesuai:
+  - `Phase7DHistoricalRecalculationAndAnalyticsTest::setUp()` memakai employee_identifier `GURU-A-001`, bukan NIP/NIK kategori yang valid.
+  - `MediaAuthorizationTest::setUp()` memakai employee_identifier `GURU-MEDIA-1` dan `GURU-MEDIA-2`, bukan identitas login resmi.
+  - `AdminUiVerificationTest::teacher_and_student_login_identifiers_are_hidden_from_automatic_model_serialization()` menggabungkan NIP dan NIK pada Guru PNS demi pengujian hidden serialization; fixture perlu dipecah menjadi data kategori valid.
+- Fixture yang tidak memakai login identifier dapat tetap diperlukan untuk pengujian domain lain, tetapi harus diberi strategi eksplisit: factory/helper identitas valid, atau fixture legacy terisolasi yang tidak dicampur ke preflight acceptance dataset.
+
+#### AUDIT — AuditService dan AuditLog
+- Terinventarisasi 107 pemanggilan `AuditService::log()` pada 33 caller files:
+  - API: AnalyticsController (examSummary, examDistribution, examItems, rombelExamAnalytics, studentAnalytics, subjectAnalytics); AssessmentController (destroy); CurriculumAnalyticsController (studentAnalytics, rombelAnalytics, subjectAnalytics, tpAnalytics); CurriculumController (store, update, destroy); ElementController (store, update, destroy); ExamAnswerController (update); ExamAttemptController (store, submit); ExamController (store, update, addQuestions, assignRombel, generateToken, lock, removeQuestion, reorderQuestions, bulkRemoveQuestions, close, archive, publishResults, destroy); ExamParticipantController (store, destroy); GradeLevelController (store, update, destroy); LearningObjectiveController (store, update, destroy); LearningOutcomeController (store, update, destroy); LearningPathController (store, update, destroy); MediaController (store, attachToQuestionVersion, detachFromQuestionVersion, destroy); PhaseController (store, update, destroy); QuestionController (store, update, publish, import, destroy); QuestionPublicationController (store, destroy); ReportController (examResults, examSummary, studentResults, exportExcel, exportPdf, exportStudentPdf, exportSummaryPdf, rombelReport, subjectReport, questionReport); ScoringController (score, updateManualScore, finalize, recalculate); TeacherSubjectAssignmentController (store, update, destroy).
+  - Livewire: CurriculumRegistryManagement (registerVersion, mapSubject, retireMapping); ExamManagement (saveExam, generateToken, lockExam); QuestionBank (saveQuestion, publishQuestion, deleteQuestion); StudentRombelManagement (addStudentToRombel); TeacherSubjectAssignmentManagement (createAssignment); ResultList (toggleResultPublication); TeacherMaterialManagement (createMaterial, createTopic, publishMaterial, publishTopic); TeacherProfilePage (savePhone).
+  - Services: ExamProctorAssignmentService (revoke); ScoringService (scoreAttempt, reopenAttempt); AssessmentCurriculumMappingService (sync); QuestionVersionCurriculumMappingService (sync); TeacherLearningOutcomeService (createTp, createAtp, publish).
+- `AuditService::log()` saat ini meneruskan `oldValues` dan `newValues` langsung ke `AuditLog::create()`; redaksi PII recursive terpusat belum ada. Caller yang mengirim `toArray()` tidak boleh hanya mengandalkan `$hidden` model.
+- Dua bypass runtime `AuditLog::create()`:
+  - `ExpireExamAttemptsCommand::expireOne()`: audit EXPIRE_ATTEMPT; payload saat ini berisi status, expiry, score_id, dan skip reason.
+  - `InstallerService::lockInstaller()`: audit PRE_ACTIVATION_FINALIZED; payload berisi status, license mode, schema fingerprint, masa berlaku pre-activation, migration count.
+- Satu insert audit pada migration historis `2026_11_23_130001_consolidate_legacy_local_roles::up()` menggunakan `DB::table('audit_logs')->insert()`; payload role-retirement statis. Jangan mengubah histori/migration lama sebagai bagian dari redaksi audit baru.
+- Redactor perlu recursive, case-insensitive, mengenali alias identitas (NIP/NIK/NISN/NUPTK/employee_identifier), bekerja pada nested arrays/JSON, dan semua runtime writer harus melewati sanitizer yang sama. Data audit historis tidak diubah.
+
+#### AUDIT — preflight dan cakupan test saat ini
+- `LoginIdentityPreflightCommand::handle()` bersifat read-only pada implementasi saat ini: SELECT/chunk dan query agregasi duplikasi; tidak ada statement mutasi.
+- Pemeriksaan yang sudah ada: status Guru; NIP 18 digit PNS/PPPK; NIK 16 digit Honorer; format NIP/NIK/NUPTK; kesesuaian employee_identifier; nilai kosong/spasi tepi; NISN 10 digit; duplicate NIP/NIK/NUPTK/NISN per tenant.
+- Gap: schema guard hanya memeriksa keberadaan tabel, bukan seluruh kolom sebelum SELECT; query tidak mengambil tenant_id/user_id sehingga tidak memverifikasi relasi User/Profile; belum memeriksa role/profile cardinality, profil silang, kategori identitas eksklusif, collision lintas kategori/username, serta anomali tenant_id null. Duplicate group memakai nilai mentah exact per kolom dan tidak memeriksa collision lintas kolom/tabel.
+- `LoginIdentityPreflightCommandTest` hanya memiliki tiga metode: valid identities/no echo, whitespace padded identity, dan legacy Guru tanpa status/identity. Belum ada test per kategori anomali, missing table/column, duplicate group, role/cardinality, tenant relation, cross-category conflict, atau bukti snapshot DB sebelum/sesudah command untuk membuktikan immutability.
+- `AdminUiVerificationTest` menguji validasi form dan unique constraint, tetapi bukan pengganti test kategori preflight dan bukti read-only.
+
+### DESAIN — penyelesaian P1-ID-03A
+1. Perkuat preflight schema guard untuk tabel dan seluruh kolom wajib sebelum SELECT; keluaran hanya kategori dan hitungan.
+2. Tambahkan audit tenant-user-profile, tepat satu profil per role, tidak ada profil silang, kategori NIP/NIK eksklusif, format raw dan trimmed, duplicate per tenant, serta collision lintas kategori/username sesuai kontrak.
+3. Tambahkan test per anomali, valid cases, cross-tenant allowance, missing schema, no-PII output, dan database snapshot before/after.
+4. Normalisasi benchmark dan test fixtures; buat helper/factory khusus identitas valid dan fixture legacy terisolasi. Pastikan cleanup benchmark memakai finally.
+5. Terapkan redactor recursive terpusat pada audit baru; alihkan dua bypass runtime ke sanitizer yang sama. Jangan mengubah histori audit.
+6. Tutup review seluruh mass assignment/authorization, termasuk tenant context, role, permission, validated payload, dan cardinality.
+7. Backup byte-exact per file sebelum setiap source edit. Catat source blob SHA, path backup, backup SHA-256, dan hasil verifikasi.
+8. Jalankan focused dan full PHPUnit; verifikasi CI pada exact SHA. STOP sebelum P1-ID-03B untuk review koordinator.
+
+### IMPLEMENTASI
+- Tidak ada source aplikasi, migration, workflow, dependency, konfigurasi, atau database yang diubah.
+- Tidak ada patch source melalui GitHub Contents API.
+- Tidak ada checkout Git asli yang pulih; snapshot distribusi dipakai hanya untuk audit statis.
+- Tidak ada source backup baru karena tidak ada source yang diedit.
+- Laporan ini diperbarui append-only sebagai dokumentasi audit. P1-ID-03A belum diimplementasikan.
+- Tidak ada migration baru, deployment, merge, atau akses database produksi.
+
+### PENGUJIAN
+- Local PHP lint pada snapshot: 282 file, PHP 8.4.24, PASS (exit 0). Ini bukan PHPUnit dan bukan PHP 8.3.
+- GitHub Actions exact HEAD `3106172e28aacccbc18019eed71374595c97e816`:
+  - Tenant Backend CI run #45367821198: SUCCESS; PHP 8.3, disposable MySQL 8, Composer lock/platform validation, PHP lint app/migrations/tests, focused login/tenant smoke 56 passed / 225 assertions, full PHPUnit 534 passed / 2,265 assertions.
+  - ZIP workflow run #45367821057: SUCCESS untuk checkout, Composer validation, assembly dan upload archive saja. Artifact #14906229821, 19,768,211 bytes, SHA-256 `344ef163ab435c25915ce88fc93722f503dde586bee4ebb9bff9cd6ce1304169`. ZIP final tetap NOT ACCEPTED.
+- CI PASS memvalidasi source tree yang diuji; tidak membuktikan P1-ID-03A selesai karena tidak ada patch P1-ID-03A pada source.
+- Preflight lokal, PHPUnit lokal, Composer lokal, benchmark, migration, staging, UAT, dan production DB: NOT RUN / NOT TOUCHED.
+
+### STATUS
+- Git checkout asli + workspace kanonis: BLOCKED.
+- Snapshot paket distribusi: checksum verified; source audit snapshot only.
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- ZIP final: NOT ACCEPTED.
+- Staging: NOT VERIFIED.
+- Production: NOT TOUCHED.
+
+### NEXT ACTION
+Pulihkan checkout Git asli dan workspace writable lengkap beserta tests/backups, PHP 8.3, Composer locked dependencies, PDO MySQL, dan MySQL 8/InnoDB disposable. Setelah itu backup byte-exact setiap file, implementasikan P1-ID-03A saja, jalankan focused/full PHPUnit dan CI exact SHA. STOP sebelum P1-ID-03B untuk review koordinator.
