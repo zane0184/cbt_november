@@ -98,7 +98,6 @@ class LoginIdentityPreflightCommand extends Command
                             $counts['employee_identifier tidak sesuai identitas login']++;
                         }
                     }
-                }
             });
 
         DB::table('student_profiles')
