@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contexts\TenantContext;
 use App\Models\LocalInstallationIdentity;
 use App\Models\Tenant;
 use Illuminate\Http\UploadedFile;
@@ -17,17 +18,7 @@ class TenantBrandingService
 {
     public function currentTenant(): ?Tenant
     {
-        $user = Auth::user() ?? Auth::guard('sanctum')->user();
-        $tenantId = $user?->tenant_id;
-
-        // The unauthenticated login page resolves only the sole local
-        // installation identity; it never trusts stale static tenant context.
-        if (!$tenantId && Schema::hasTable('local_installation_identities')) {
-            $identities = LocalInstallationIdentity::withoutGlobalScopes()->limit(2)->get(['tenant_id']);
-            if ($identities->count() === 1) {
-                $tenantId = $identities->first()->tenant_id;
-            }
-        }
+        $tenantId = $this->resolveInstallationTenantId();
 
         return $tenantId ? Tenant::query()->whereKey($tenantId)->first() : null;
     }
@@ -120,16 +111,20 @@ class TenantBrandingService
             return null;
         }
 
-        // Managed branding paths are installation-scoped. A valid file under
-        // another installation's tenant namespace must never be resolved.
-        $managedBrandingRoot = null;
-        if (($segments[0] ?? null) === 'tenants' && ($segments[2] ?? null) === 'branding') {
+        $isTenantBrandingPath = ($segments[0] ?? null) === 'tenants';
+        if ($isTenantBrandingPath) {
+            if (
+                count($segments) !== 4
+                || ($segments[2] ?? null) !== 'branding'
+                || !Str::isUuid((string) ($segments[1] ?? ''))
+            ) {
+                return null;
+            }
+
             $scopeTenantId = $this->resolveInstallationTenantId($tenantId);
             if (!$scopeTenantId || ($segments[1] ?? null) !== $scopeTenantId) {
                 return null;
             }
-
-            $managedBrandingRoot = 'tenants' . DIRECTORY_SEPARATOR . $scopeTenantId . DIRECTORY_SEPARATOR . 'branding';
         }
 
         $root = realpath(storage_path('app/public'));
@@ -143,13 +138,29 @@ class TenantBrandingService
             return null;
         }
 
-        // realpath() follows symlinks. Keep the resolved target inside this
-        // installation's own branding directory, not merely inside public storage.
-        if (
-            $managedBrandingRoot !== null
-            && !str_starts_with($target, $root . DIRECTORY_SEPARATOR . $managedBrandingRoot . DIRECTORY_SEPARATOR)
-        ) {
-            return null;
+        // Check the resolved namespace too: a legacy path must not become a
+        // symlink-based route into another installation's managed branding.
+        $resolvedRelative = substr($target, strlen($root) + 1);
+        $resolvedSegments = explode(DIRECTORY_SEPARATOR, $resolvedRelative);
+        if (($resolvedSegments[0] ?? null) === 'tenants') {
+            if (
+                count($resolvedSegments) !== 4
+                || ($resolvedSegments[2] ?? null) !== 'branding'
+                || !Str::isUuid((string) ($resolvedSegments[1] ?? ''))
+            ) {
+                return null;
+            }
+
+            $scopeTenantId = $this->resolveInstallationTenantId($tenantId);
+            if (!$scopeTenantId || ($resolvedSegments[1] ?? null) !== $scopeTenantId) {
+                return null;
+            }
+
+            $managedRoot = $root . DIRECTORY_SEPARATOR . 'tenants' . DIRECTORY_SEPARATOR
+                . $scopeTenantId . DIRECTORY_SEPARATOR . 'branding';
+            if (!str_starts_with($target, $managedRoot . DIRECTORY_SEPARATOR)) {
+                return null;
+            }
         }
 
         return $target;
@@ -172,18 +183,46 @@ class TenantBrandingService
     {
         if (
             !$relativePath
-            || str_contains($relativePath, '..')
+            || !Str::isUuid($tenantId)
             || $this->resolveInstallationTenantId($tenantId) !== $tenantId
         ) {
             return;
         }
 
-        $prefix = 'tenants/' . $tenantId . '/branding/';
-        if (!str_starts_with($relativePath, $prefix)) {
+        $segments = explode('/', $relativePath);
+        if (
+            count($segments) !== 4
+            || ($segments[0] ?? null) !== 'tenants'
+            || ($segments[1] ?? null) !== $tenantId
+            || ($segments[2] ?? null) !== 'branding'
+            || in_array('..', $segments, true)
+            || in_array('.', $segments, true)
+            || str_contains($relativePath, '\\')
+            || str_contains($relativePath, "\0")
+        ) {
             return;
         }
 
-        DB::transaction(function () use ($relativePath, $tenantId): void {
+        $root = realpath(storage_path('app/public'));
+        if (!$root) {
+            return;
+        }
+
+        $brandingRoot = realpath(
+            $root . DIRECTORY_SEPARATOR . 'tenants' . DIRECTORY_SEPARATOR . $tenantId . DIRECTORY_SEPARATOR . 'branding'
+        );
+        $entryPath = $root . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
+        $parent = realpath(dirname($entryPath));
+
+        if (
+            !$brandingRoot
+            || !$parent
+            || ($parent !== $brandingRoot && !str_starts_with($parent, $brandingRoot . DIRECTORY_SEPARATOR))
+        ) {
+            return;
+        }
+
+        DB::transaction(function () use ($relativePath, $tenantId, $entryPath): void {
             $tenant = Tenant::withTrashed()
                 ->withoutGlobalScopes()
                 ->whereKey($tenantId)
@@ -209,12 +248,20 @@ class TenantBrandingService
                 return;
             }
 
+            // unlink() removes a symlink entry, never the file it targets.
+            // This also safely removes dangling links after validating the parent.
+            if (is_link($entryPath)) {
+                @unlink($entryPath);
+                return;
+            }
+
             $target = $this->localPath($relativePath, $tenantId);
             if ($target) {
                 File::delete($target);
             }
         }, 3);
     }
+
     /**
      * Resolve the active installation boundary from the authenticated account
      * or the single local installation identity. Explicit IDs never override
@@ -222,14 +269,30 @@ class TenantBrandingService
      */
     private function resolveInstallationTenantId(?string $requestedTenantId = null): ?string
     {
-        $user = Auth::user() ?? Auth::guard('sanctum')->user();
-        if ($user?->tenant_id) {
-            $authenticatedTenantId = (string) $user->tenant_id;
+        $request = request();
+        $user = $request->user()
+            ?? $request->user('sanctum')
+            ?? Auth::user()
+            ?? Auth::guard('sanctum')->user();
+        $contextTenantId = app(TenantContext::class)->getTenantId();
+
+        if ($user) {
+            $authenticatedTenantId = (string) ($user->tenant_id ?? '');
+            if (
+                $authenticatedTenantId === ''
+                || !$contextTenantId
+                || (string) $contextTenantId !== $authenticatedTenantId
+            ) {
+                return null;
+            }
+
             return !$requestedTenantId || $requestedTenantId === $authenticatedTenantId
                 ? $authenticatedTenantId
                 : null;
         }
 
+        // Public/login rendering may resolve the sole installation identity,
+        // but it cannot override a non-empty context from another request.
         if (!Schema::hasTable('local_installation_identities')) {
             return null;
         }
@@ -240,6 +303,10 @@ class TenantBrandingService
         }
 
         $installationTenantId = (string) $identities->first()->tenant_id;
+        if ($contextTenantId !== null && (string) $contextTenantId !== $installationTenantId) {
+            return null;
+        }
+
         return !$requestedTenantId || $requestedTenantId === $installationTenantId
             ? $installationTenantId
             : null;
