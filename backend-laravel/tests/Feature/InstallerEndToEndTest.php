@@ -145,7 +145,7 @@ class InstallerEndToEndTest extends TestCase
                 $this->actingAs($admin);
                 Livewire::test(AcademicManagement::class)
                     ->call('setTab', 'academic_year')
-                    ->set('academicYearName', '2026/2027')
+                    ->set('academicYearName', '2032/2033')
                     ->call('createAcademicYear')
                     ->assertHasNoErrors();
             } finally {
@@ -154,11 +154,32 @@ class InstallerEndToEndTest extends TestCase
 
             $createdYear = DB::table('academic_years')
                 ->where('tenant_id', $created['tenant_id'])
-                ->where('name', '2026/2027')
+                ->where('name', '2032/2033')
                 ->first();
             $this->assertNotNull($createdYear);
+            $this->assertFalse((bool) $createdYear->is_active);
             $this->assertSame(2, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('academic_year_id', $createdYear->id)->count());
-            $this->assertSame(1, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('academic_year_id', $createdYear->id)->where('term', 'GANJIL')->where('is_active', true)->count());
+            $this->assertSame(0, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('is_active', true)->count());
+            $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $created['tenant_id'])->whereIn('name', ['2026/2027', '2027/2028', '2028/2029', '2029/2030', '2030/2031', '2031/2032'])->count());
+            $this->assertSame(12, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->whereIn('academic_year_id', DB::table('academic_years')->select('id')->where('tenant_id', $created['tenant_id']))->count());
+
+            $ganjilId = DB::table('semesters')
+                ->where('tenant_id', $created['tenant_id'])
+                ->where('academic_year_id', $createdYear->id)
+                ->where('term', 'GANJIL')
+                ->value('id');
+
+            $tenantContext->setTenantId((string) $created['tenant_id']);
+            try {
+                Livewire::test(AcademicManagement::class)
+                    ->call('activateSemester', $ganjilId)
+                    ->assertHasNoErrors();
+            } finally {
+                $tenantContext->setTenantId($previousTenantId);
+            }
+
+            $this->assertSame(1, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('is_active', true)->count());
+            $this->assertSame(1, DB::table('academic_years')->where('tenant_id', $created['tenant_id'])->where('is_active', true)->count());
 
             $identity = app(InstallationIdentityService::class)->getOrCreate((string) $created['tenant_id']);
             $issuedAt = Carbon::now('UTC');
