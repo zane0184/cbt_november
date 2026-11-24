@@ -26,7 +26,7 @@ Hardening dilakukan sebelum parser:
 ## 3. IMPLEMENTASI
 Branch kerja: work/p0-student-import-security-20261125
 Baseline parent: b6148507bd77116dfc8a5f5697cf4cff226a4b87
-Head saat laporan: 77e464 (lihat branch untuk full SHA).
+Head saat laporan: 77e46497d4341078b9310c6454c42fdbe774542b.
 
 File aplikasi diubah:
 - backend-laravel/app/Services/StudentImportService.php
