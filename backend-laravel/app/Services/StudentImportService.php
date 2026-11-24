@@ -319,6 +319,15 @@ class StudentImportService
             $sheet = $spreadsheet->getSheet(0);
             $lastColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             $lastRow = $sheet->getHighestDataRow();
+
+            // Reject oversized worksheet dimensions before allocating a row array.
+            if ($lastRow > self::MAX_ROWS + 1) {
+                throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
+            }
+            if ($lastColumn > 32) {
+                throw ValidationException::withMessages(['file' => 'Maksimal 32 kolom per proses import.']);
+            }
+
             $headers = [];
 
             for ($column = 1; $column <= $lastColumn; $column++) {
