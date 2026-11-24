@@ -110,3 +110,70 @@ class TenantBrandingAssetsManagementTest extends TestCase
         Livewire::test(TenantBrandingAssetsManagement::class)->assertForbidden();
     }
 }
+
+    public function test_replacing_app_logo_keeps_old_file_when_document_logo_still_references_it(): void
+    {
+        $oldPath = 'tenants/' . $this->tenant->id . '/branding/shared-logo.png';
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $oldPath)));
+        File::put(storage_path('app/public/' . $oldPath), 'shared-logo-bytes');
+
+        $this->tenant->forceFill([
+            'logo_path' => $oldPath,
+            'document_logo_path' => $oldPath,
+        ])->save();
+
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('appLogoUpload', UploadedFile::fake()->image('replacement.png', 300, 200))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $fresh = $this->tenant->fresh();
+        $this->assertNotSame($oldPath, $fresh->logo_path);
+        $this->assertSame($oldPath, $fresh->document_logo_path);
+        $this->assertFileExists(storage_path('app/public/' . $oldPath));
+    }
+
+    public function test_pdf_report_header_prefers_dedicated_document_logo(): void
+    {
+        $branding = app(TenantBrandingService::class);
+        $appLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('app-logo.png', 120, 120),
+            (string) $this->tenant->id,
+            'app-logo'
+        );
+        $documentLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('document-logo.png', 180, 90),
+            (string) $this->tenant->id,
+            'document-logo'
+        );
+
+        $this->tenant->forceFill([
+            'logo_path' => $appLogoPath,
+            'document_logo_path' => $documentLogoPath,
+        ])->save();
+
+        $dataUri = app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh());
+        $this->assertIsString($dataUri);
+        $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
+        $encoded = substr($dataUri, strlen('data:image/png;base64,'));
+        $this->assertSame(
+            File::get(storage_path('app/public/' . $documentLogoPath)),
+            base64_decode($encoded, true)
+        );
+    }
+
+    public function test_branding_migration_rollback_is_fail_closed_and_preserves_columns(): void
+    {
+        $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
+
+        try {
+            $migration->down();
+            $this->fail('Branding migration rollback must not drop columns without ownership metadata.');
+        } catch (\\LogicException $exception) {
+            $this->assertStringContainsString('forward-only', $exception->getMessage());
+        }
+
+        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
+        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+    }
+
