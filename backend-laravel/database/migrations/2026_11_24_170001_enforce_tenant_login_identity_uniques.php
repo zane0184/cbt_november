@@ -34,6 +34,15 @@ return new class extends Migration
                 throw new RuntimeException("Login identity migration blocked: blank {$table}.{$column} values must be reconciled to NULL.");
             }
 
+            $nonCanonical = DB::table($table)
+                ->whereNotNull($column)
+                ->whereRaw("{$column} <> TRIM({$column})")
+                ->exists();
+
+            if ($nonCanonical) {
+                throw new RuntimeException("Login identity migration blocked: whitespace-padded {$table}.{$column} values must be reconciled before uniqueness can be enforced.");
+            }
+
             $duplicate = DB::table($table)
                 ->select('tenant_id', $column)
                 ->whereNotNull($column)
@@ -48,8 +57,12 @@ return new class extends Migration
             $existing = collect(Schema::getIndexes($table))
                 ->firstWhere('name', $identity['name']);
 
-            if ($existing && !($existing['unique'] ?? false)) {
-                throw new RuntimeException("Login identity migration blocked: index {$identity['name']} exists but is not unique.");
+            $expectedColumns = ['tenant_id', $column];
+            if ($existing && (
+                !($existing['unique'] ?? false)
+                || ($existing['columns'] ?? []) !== $expectedColumns
+            )) {
+                throw new RuntimeException("Login identity migration blocked: index {$identity['name']} exists but does not enforce the expected unique tenant/identifier columns.");
             }
         }
 
