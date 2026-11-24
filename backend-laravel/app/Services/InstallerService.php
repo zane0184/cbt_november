@@ -851,8 +851,9 @@ class InstallerService
             : json_decode((string) $version->metadata, true);
 
         if (!is_array($metadata)
-            || (bool) ($metadata['cp_content_imported'] ?? false) !== (bool) ($metadata['artifact_checksum_verified'] ?? false)) {
-            throw new RuntimeException('CP_REGISTRY_VERIFICATION_STATE_INCONSISTENT');
+            || ($metadata['cp_content_imported'] ?? null) !== false
+            || ($metadata['artifact_checksum_verified'] ?? null) !== false) {
+            throw new RuntimeException('CP_ARTIFACT_MUST_REMAIN_UNVERIFIED_UNTIL_IMPORTED');
         }
     }
 
