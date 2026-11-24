@@ -23,6 +23,7 @@ use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Admin\ExamManagement;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -233,29 +234,39 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_can_create_teacher_without_optional_nip_nuptk_or_nik()
+    public function admin_cannot_create_teacher_without_required_employment_identity()
     {
         $this->actingAs($this->admin);
 
         Livewire::test(UserManagement::class)
-            ->set('name', 'Guru Tanpa Nomor Identitas')
-            ->set('username', 'guru.tanpa.nomor')
+            ->set('name', 'Guru Tanpa Status')
+            ->set('username', 'guru.tanpa.status')
             ->set('password', 'secret123456789')
             ->set('selectedRole', 'GURU')
             ->call('createUser')
-            ->assertHasNoErrors();
+            ->assertHasErrors(['employmentStatus']);
 
-        $created = User::query()->where('tenant_id', $this->tenant->id)
-            ->where('username', 'guru.tanpa.nomor')->firstOrFail();
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Guru PNS Tanpa NIP')
+            ->set('username', 'guru.pns.tanpa.nip')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'PNS')
+            ->call('createUser')
+            ->assertHasErrors(['nip']);
 
-        $this->assertDatabaseHas('teacher_profiles', [
-            'tenant_id' => $this->tenant->id,
-            'user_id' => $created->id,
-            'employment_status' => null,
-            'nip' => null,
-            'nik' => null,
-            'nuptk' => null,
-        ]);
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Guru Honorer Tanpa NIK')
+            ->set('username', 'guru.honorer.tanpa.nik')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'HONORER')
+            ->call('createUser')
+            ->assertHasErrors(['nik']);
+
+        $this->assertDatabaseMissing('users', ['username' => 'guru.tanpa.status']);
+        $this->assertDatabaseMissing('users', ['username' => 'guru.pns.tanpa.nip']);
+        $this->assertDatabaseMissing('users', ['username' => 'guru.honorer.tanpa.nik']);
     }
 
     /** @test */
@@ -323,6 +334,56 @@ class AdminUiVerificationTest extends TestCase
         $created = User::query()->where('tenant_id', $this->tenant->id)->where('email', 'gurubaru@man1.sch.id')->firstOrFail();
         $this->assertTrue($created->hasRole('GURU'));
         $this->assertNotNull($created->teacherProfile);
+    }
+
+    /** @test */
+    public function tenant_scoped_database_unique_constraints_protect_teacher_and_student_login_ids()
+    {
+        $teacherOne = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Guru Unik 1',
+            'username' => 'guru.unik.1', 'password' => bcrypt('password123456'),
+        ]);
+        $teacherTwo = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Guru Unik 2',
+            'username' => 'guru.unik.2', 'password' => bcrypt('password123456'),
+        ]);
+        TeacherProfile::create([
+            'user_id' => $teacherOne->id, 'full_name' => 'Guru Unik 1',
+            'employment_status' => 'PNS', 'nip' => '198001012006041001',
+        ]);
+
+        $nipDuplicateRejected = false;
+        try {
+            TeacherProfile::create([
+                'user_id' => $teacherTwo->id, 'full_name' => 'Guru Unik 2',
+                'employment_status' => 'PNS', 'nip' => '198001012006041001',
+            ]);
+        } catch (QueryException) {
+            $nipDuplicateRejected = true;
+        }
+        $this->assertTrue($nipDuplicateRejected, 'Database must reject duplicate tenant-scoped NIP.');
+
+        $studentOne = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Siswa Unik 1',
+            'username' => 'siswa.unik.1', 'password' => bcrypt('password123456'),
+        ]);
+        $studentTwo = User::create([
+            'tenant_id' => $this->tenant->id, 'name' => 'Siswa Unik 2',
+            'username' => 'siswa.unik.2', 'password' => bcrypt('password123456'),
+        ]);
+        StudentProfile::create([
+            'user_id' => $studentOne->id, 'full_name' => 'Siswa Unik 1', 'nisn' => '0000000123',
+        ]);
+
+        $nisnDuplicateRejected = false;
+        try {
+            StudentProfile::create([
+                'user_id' => $studentTwo->id, 'full_name' => 'Siswa Unik 2', 'nisn' => '0000000123',
+            ]);
+        } catch (QueryException) {
+            $nisnDuplicateRejected = true;
+        }
+        $this->assertTrue($nisnDuplicateRejected, 'Database must reject duplicate tenant-scoped NISN.');
     }
 
     /** @test */
