@@ -73,7 +73,7 @@ class TenantAcademicBootstrapService
                         ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
                         ->where('multi_curriculum_version_id', $version->id)
                         ->where('node_type', 'PHASE')
-                        ->where('code', 'FASE_' . $phaseCode)
+                        ->where('code', $phaseCode)
                         ->where('status', 'ACTIVE')
                         ->where('is_official', true)
                         ->where('is_editable', false)
@@ -93,7 +93,7 @@ class TenantAcademicBootstrapService
                         $phase = Phase::create([
                             'curriculum_id' => $curriculum->id,
                             'name' => 'Fase ' . $phaseCode,
-                            'code' => 'FASE_' . $phaseCode,
+                            'code' => $phaseCode,
                             'description' => 'Pemetaan fase MI sesuai KMA 1503 Tahun 2025.',
                             'status' => 'ACTIVE',
                         ]);
@@ -101,7 +101,7 @@ class TenantAcademicBootstrapService
 
                     if ((string) $phase->tenant_id !== $tenantId
                         || (string) $phase->curriculum_id !== (string) $curriculum->id
-                        || $phase->code !== 'FASE_' . $phaseCode
+                        || $phase->code !== $phaseCode
                         || $phase->name !== 'Fase ' . $phaseCode
                         || $phase->status !== 'ACTIVE') {
                         throw new RuntimeException('Existing tenant phase conflicts with the canonical MI phase mapping.');
@@ -110,7 +110,7 @@ class TenantAcademicBootstrapService
                     $phaseIds[$phaseCode] = $phase->id;
 
                     foreach ($grades as $gradeNumber) {
-                        $gradeCode = 'MI_' . $gradeNumber;
+                        $gradeCode = (string) $gradeNumber;
                         $canonicalGrade = MultiCurriculumStructure::query()
                             ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
                             ->where('multi_curriculum_version_id', $version->id)
@@ -135,7 +135,7 @@ class TenantAcademicBootstrapService
                         if (!$gradeLevel) {
                             $gradeLevel = GradeLevel::create([
                                 'phase_id' => $phase->id,
-                                'name' => 'Kelas ' . $gradeNumber . ' MI',
+                                'name' => 'Kelas ' . $gradeNumber,
                                 'code' => $gradeCode,
                                 'level' => $gradeNumber,
                                 'status' => 'ACTIVE',
@@ -146,7 +146,7 @@ class TenantAcademicBootstrapService
                             || (string) $gradeLevel->phase_id !== (string) $phase->id
                             || $gradeLevel->code !== $gradeCode
                             || (int) $gradeLevel->level !== $gradeNumber
-                            || $gradeLevel->name !== 'Kelas ' . $gradeNumber . ' MI'
+                            || $gradeLevel->name !== 'Kelas ' . $gradeNumber
                             || $gradeLevel->status !== 'ACTIVE') {
                             throw new RuntimeException('Existing tenant grade level conflicts with the canonical MI grade/phase mapping.');
                         }
@@ -235,7 +235,7 @@ class TenantAcademicBootstrapService
     {
         $curriculum = Curriculum::withTrashed()
             ->where('tenant_id', $tenantId)
-            ->where('code', 'KURIKULUM_MERDEKA')
+            ->where('code', 'K-MERDEKA')
             ->lockForUpdate()
             ->first();
 
