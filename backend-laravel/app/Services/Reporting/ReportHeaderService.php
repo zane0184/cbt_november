@@ -20,7 +20,7 @@ class ReportHeaderService
         $branding = app(TenantBrandingService::class);
 
         foreach (array_unique([$tenant->document_logo_path, $tenant->logo_path]) as $relativePath) {
-            $filePath = $branding->localPath($relativePath);
+            $filePath = $branding->localPath($relativePath, (string) $tenant->id);
             if (!$filePath || !is_readable($filePath) || filesize($filePath) <= 0) {
                 continue;
             }
