@@ -60,30 +60,45 @@ class UserManagement extends Component
             'nip' => ['nullable', 'digits:18'],
             'nuptk' => ['nullable', 'digits:16'],
             'nik' => ['nullable', 'digits:16'],
-            'nisn' => ['nullable','digits:10'],
+            'nisn' => ['nullable', 'digits:10'],
         ];
 
         if ($this->selectedRole === 'GURU') {
             $rules['employmentStatus'] = ['required', Rule::in(['PNS', 'PPPK', 'HONORER'])];
+            $rules['nisn'] = ['prohibited'];
+
             if (in_array($this->employmentStatus, ['PNS', 'PPPK'], true)) {
-                array_unshift($rules['nip'], 'required');
+                $rules['nip'] = [
+                    'required',
+                    'digits:18',
+                    Rule::unique('teacher_profiles', 'nip')->where(fn ($q) => $q->where('tenant_id', $tenantId)),
+                ];
+                $rules['nik'] = ['prohibited'];
+            } elseif ($this->employmentStatus === 'HONORER') {
+                $rules['nip'] = ['prohibited'];
+                $rules['nik'] = [
+                    'required',
+                    'digits:16',
+                    Rule::unique('teacher_profiles', 'nik')->where(fn ($q) => $q->where('tenant_id', $tenantId)),
+                ];
             }
-            if ($this->employmentStatus === 'HONORER') {
-                array_unshift($rules['nik'], 'required');
-            }
-            if (trim((string) $this->nip) !== '') {
-                $rules['nip'][] = Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId));
-            }
+
+            $rules['nuptk'] = ['nullable', 'digits:16'];
             if (trim((string) $this->nuptk) !== '') {
-                $rules['nuptk'][] = Rule::unique('teacher_profiles','nuptk')->where(fn ($q) => $q->where('tenant_id', $tenantId));
-            }
-            if (trim((string) $this->nik) !== '') {
-                $rules['nik'][] = Rule::unique('teacher_profiles','nik')->where(fn ($q) => $q->where('tenant_id', $tenantId));
+                $rules['nuptk'][] = Rule::unique('teacher_profiles', 'nuptk')->where(fn ($q) => $q->where('tenant_id', $tenantId));
             }
         }
 
         if ($this->selectedRole === 'SISWA') {
-            $rules['nisn'] = ['required','digits:10',Rule::unique('student_profiles','nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId))];
+            $rules['nip'] = ['prohibited'];
+            $rules['nik'] = ['prohibited'];
+            $rules['nuptk'] = ['prohibited'];
+            $rules['employmentStatus'] = ['prohibited'];
+            $rules['nisn'] = [
+                'required',
+                'digits:10',
+                Rule::unique('student_profiles', 'nisn')->where(fn ($q) => $q->where('tenant_id', $tenantId)),
+            ];
         }
 
         return $rules;
