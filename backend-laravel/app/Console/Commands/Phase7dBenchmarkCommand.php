@@ -39,7 +39,6 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class Phase7dBenchmarkCommand extends Command
@@ -714,10 +713,9 @@ class Phase7dBenchmarkCommand extends Command
 
         app('auth')->setUser($teacherUser);
 
-        // Preflight the real registered ReportPolicy. ReportController below calls
-        // the same policy again internally through $this->authorize().
-        Gate::forUser($teacherUser)->authorize('viewExamResults', $exam);
-        $this->line('ReportPolicy preflight PASS: exact Guru role, report.view grant, active assignment and all participants covered.');
+        // ReportController::exportPdf() is the authoritative authorization boundary.
+        // Keep this benchmark on the real controller path so denial tests exercise
+        // the same policy check used by the application.
 
         // Warm-up run for Dompdf (class loading, CSS/font engine initialization) - excluded from official stats
         $this->line("  [Warm-up] Initializing Dompdf & rendering warm-up PDF...");
