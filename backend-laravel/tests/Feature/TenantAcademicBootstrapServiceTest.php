@@ -7,7 +7,7 @@ use App\Models\Curriculum;
 use App\Models\Phase;
 use App\Models\Tenant;
 use App\Services\TenantAcademicBootstrapService;
-use App\Services\TenantCurriculumRegistryBootstrapper;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -20,12 +20,12 @@ class TenantAcademicBootstrapServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(DatabaseSeeder::class);
     }
 
     public function test_provisions_the_existing_mi_phase_and_grade_catalog_for_one_tenant(): void
     {
         $tenant = Tenant::create(['name' => 'MIN Test A', 'code' => 'MINTESTA']);
-        app(TenantCurriculumRegistryBootstrapper::class)->seedForTenant((string) $tenant->id);
 
         $result = app(TenantAcademicBootstrapService::class)->provisionForTenant((string) $tenant->id);
 
@@ -81,8 +81,6 @@ class TenantAcademicBootstrapServiceTest extends TestCase
     {
         $tenantA = Tenant::create(['name' => 'MIN Isolasi A', 'code' => 'MINISOA']);
         $tenantB = Tenant::create(['name' => 'MIN Isolasi B', 'code' => 'MINISOB']);
-        app(TenantCurriculumRegistryBootstrapper::class)->seedForTenant((string) $tenantA->id);
-        app(TenantCurriculumRegistryBootstrapper::class)->seedForTenant((string) $tenantB->id);
         $service = app(TenantAcademicBootstrapService::class);
 
         $catalogA = $service->provisionForTenant((string) $tenantA->id);
