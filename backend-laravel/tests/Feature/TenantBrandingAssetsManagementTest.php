@@ -343,7 +343,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->actingAs($otherAdmin);
         // actingAs() swaps the guard user without dispatching the Authenticated
         // event used by the real request lifecycle to synchronize TenantContext.
-        app(\\App\\Contexts\\TenantContext::class)->setTenantId($otherTenant->id);
+        app(\App\Contexts\TenantContext::class)->setTenantId($otherTenant->id);
 
         $branding = app(TenantBrandingService::class);
         $this->assertNull($branding->localPath($appLogoPath));
@@ -357,7 +357,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             $this->fail('A tenant B account must not write branding under tenant A.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('tidak sesuai', $exception->getMessage());
         }
 
