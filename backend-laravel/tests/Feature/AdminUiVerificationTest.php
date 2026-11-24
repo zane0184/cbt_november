@@ -270,6 +270,53 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
+    public function admin_cannot_create_teacher_with_identity_for_the_wrong_employment_category_or_format()
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'PNS NIP Salah Panjang')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'PNS')
+            ->set('nip', '19800101200604100')
+            ->call('createUser')
+            ->assertHasErrors(['nip']);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'PNS Memakai NIK')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'PNS')
+            ->set('nip', '198001012006041002')
+            ->set('nik', '3171000000000001')
+            ->call('createUser')
+            ->assertHasErrors(['nik']);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Honorer Memakai NIP')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'HONORER')
+            ->set('nip', '198001012006041003')
+            ->set('nik', '3171000000000002')
+            ->call('createUser')
+            ->assertHasErrors(['nip']);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Honorer NIK Salah Panjang')
+            ->set('password', 'secret123456789')
+            ->set('selectedRole', 'GURU')
+            ->set('employmentStatus', 'HONORER')
+            ->set('nik', '317100000000000')
+            ->call('createUser')
+            ->assertHasErrors(['nik']);
+
+        $this->assertDatabaseMissing('teacher_profiles', ['full_name' => 'PNS Memakai NIK']);
+        $this->assertDatabaseMissing('teacher_profiles', ['full_name' => 'Honorer Memakai NIP']);
+    }
+
+    /** @test */
     public function admin_can_create_pns_teacher_only_with_18_digit_nip()
     {
         $this->actingAs($this->admin);
