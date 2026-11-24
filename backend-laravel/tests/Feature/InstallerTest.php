@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\InstallerService;
 use App\Services\InstallerStateStore;
+use Database\Seeders\SystemTenantSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Tests\TestCase;
@@ -180,6 +181,7 @@ class InstallerTest extends TestCase
 
     public function test_admin_creation_assigns_only_admin_madrasah_role(): void
     {
+        SystemTenantSeeder::seed();
         $mysql = config('database.connections.mysql');
         $fingerprint = hash('sha256', json_encode([
             'host' => trim((string) ($mysql['host'] ?? '127.0.0.1')),
@@ -227,6 +229,7 @@ class InstallerTest extends TestCase
 
     public function test_admin_creation_recovers_a_committed_pair_when_state_checkpoint_was_lost(): void
     {
+        SystemTenantSeeder::seed();
         $tenant = Tenant::create(['name' => 'MIN Recovery', 'code' => 'MINRECOVERY']);
         $role = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         app(TenantContext::class)->setTenantId($tenant->id);
@@ -276,6 +279,7 @@ class InstallerTest extends TestCase
 
     public function test_legacy_tenant_created_checkpoint_reconciles_exact_committed_admin_pair(): void
     {
+        SystemTenantSeeder::seed();
         $tenant = Tenant::create(['name' => 'MIN Legacy Pair', 'code' => 'MINLEGACYPAIR']);
         $role = Role::create(['name' => 'ADMIN_MADRASAH', 'label' => 'Admin Madrasah']);
         app(TenantContext::class)->setTenantId($tenant->id);
