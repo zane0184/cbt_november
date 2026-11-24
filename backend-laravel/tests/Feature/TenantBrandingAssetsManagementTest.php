@@ -761,11 +761,12 @@ class TenantBrandingAssetsManagementTest extends TestCase
             DB::setDefaultConnection($fixtureConnection);
 
             $fixtures = [
-                ['name' => 'empty', 'document' => false, 'favicon' => false, 'document_index' => false],
-                ['name' => 'document_only', 'document' => true, 'favicon' => false, 'document_index' => false],
-                ['name' => 'favicon_only', 'document' => false, 'favicon' => true, 'document_index' => false],
-                ['name' => 'target_schema', 'document' => true, 'favicon' => true, 'document_index' => false],
-                ['name' => 'target_schema_with_index', 'document' => true, 'favicon' => true, 'document_index' => true],
+                ['name' => 'empty', 'document' => false, 'favicon' => false, 'document_index' => false, 'favicon_index' => false],
+                ['name' => 'document_only', 'document' => true, 'favicon' => false, 'document_index' => false, 'favicon_index' => false],
+                ['name' => 'favicon_only', 'document' => false, 'favicon' => true, 'document_index' => false, 'favicon_index' => false],
+                ['name' => 'target_schema', 'document' => true, 'favicon' => true, 'document_index' => false, 'favicon_index' => false],
+                ['name' => 'target_schema_with_document_index', 'document' => true, 'favicon' => true, 'document_index' => true, 'favicon_index' => false],
+                ['name' => 'target_schema_with_favicon_index', 'document' => true, 'favicon' => true, 'document_index' => false, 'favicon_index' => true],
             ];
 
             foreach ($fixtures as $fixture) {
@@ -785,6 +786,9 @@ class TenantBrandingAssetsManagementTest extends TestCase
                     $table->index('name', 'tenants_name_idx');
                     if ($fixture['document_index']) {
                         $table->index('document_logo_path', 'tenants_document_logo_path_idx');
+                    }
+                    if ($fixture['favicon_index']) {
+                        $table->index('favicon_path', 'tenants_favicon_path_idx');
                     }
                 });
 
@@ -820,15 +824,49 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 $migration->up();
                 $second = (array) DB::table('tenants')->where('id', $tenantId)->first();
                 $this->assertSame($first, $second, $fixture['name'] . ' migration up must be idempotent');
-
-                $indexNames = collect(DB::select('SHOW INDEX FROM tenants'))
-                    ->pluck('Key_name')
-                    ->unique()
+                $secondIndexState = collect(DB::select('SHOW INDEX FROM tenants'))
+                    ->map(fn ($index): array => [
+                        $index->Key_name,
+                        $index->Column_name,
+                        (int) $index->Seq_in_index,
+                        (int) $index->Non_unique,
+                    ])
+                    ->sortBy(fn (array $index): string => implode('|', $index))
+                    ->values()
                     ->all();
+                $this->assertSame($firstIndexState, $secondIndexState, $fixture['name'] . ' migration up must not duplicate indexes');
+
+                $indexRows = collect(DB::select('SHOW INDEX FROM tenants'));
+                $indexNames = $indexRows->pluck('Key_name')->unique()->all();
                 $this->assertContains('tenants_name_idx', $indexNames);
                 if ($fixture['document_index']) {
                     $this->assertContains('tenants_document_logo_path_idx', $indexNames);
                 }
+                if ($fixture['favicon_index']) {
+                    $this->assertContains('tenants_favicon_path_idx', $indexNames);
+                }
+                foreach (['logo_path', 'document_logo_path', 'favicon_path'] as $column) {
+                    $matchingIndexes = $indexRows->filter(
+                        fn ($index): bool => $index->Column_name === $column
+                            && (int) $index->Seq_in_index === 1
+                    );
+                    $this->assertCount(1, $matchingIndexes, $fixture['name'] . ' must have one leading index on ' . $column);
+                    $this->assertSame(
+                        1,
+                        (int) $matchingIndexes->first()->Non_unique,
+                        $fixture['name'] . ' branding reference index must remain non-unique'
+                    );
+                }
+                $firstIndexState = $indexRows
+                    ->map(fn ($index): array => [
+                        $index->Key_name,
+                        $index->Column_name,
+                        (int) $index->Seq_in_index,
+                        (int) $index->Non_unique,
+                    ])
+                    ->sortBy(fn (array $index): string => implode('|', $index))
+                    ->values()
+                    ->all();
 
                 try {
                     $migration->down();
@@ -841,6 +879,17 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
                 $afterRollbackAttempt = (array) DB::table('tenants')->where('id', $tenantId)->first();
                 $this->assertSame($second, $afterRollbackAttempt, $fixture['name'] . ' rollback must preserve all data');
+                $afterRollbackIndexes = collect(DB::select('SHOW INDEX FROM tenants'))
+                    ->map(fn ($index): array => [
+                        $index->Key_name,
+                        $index->Column_name,
+                        (int) $index->Seq_in_index,
+                        (int) $index->Non_unique,
+                    ])
+                    ->sortBy(fn (array $index): string => implode('|', $index))
+                    ->values()
+                    ->all();
+                $this->assertSame($secondIndexState, $afterRollbackIndexes, $fixture['name'] . ' rollback must preserve indexes');
             }
         } finally {
             DB::setDefaultConnection($originalDefault);
@@ -1087,6 +1136,17 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertFileExists(storage_path('app/public/' . $pathBOld));
             $this->assertNotNull($branding->localPath($pathBOld));
             $this->assertIsString($header->getLogoDataUri($tenantB));
+
+            // A file symlink inside B's branding directory must not expose or
+            // delete the target stored under installation A's separate root.
+            $crossInstallationLinkPath = 'tenants/' . $tenantBId . '/branding/cross-installation-link.png';
+            $crossInstallationLinkAbsolute = storage_path('app/public/' . $crossInstallationLinkPath);
+            File::ensureDirectoryExists(dirname($crossInstallationLinkAbsolute));
+            $this->assertTrue(symlink($storageA . '/app/public/' . $pathANew, $crossInstallationLinkAbsolute));
+            $this->assertNull($branding->localPath($crossInstallationLinkPath, $tenantBId));
+            $branding->deleteManaged($crossInstallationLinkPath, $tenantBId);
+            $this->assertFileDoesNotExist($crossInstallationLinkAbsolute);
+            $this->assertFileExists($storageA . '/app/public/' . $pathANew);
 
             // B cannot read, replace, or delete A's asset, even if given A's UUID.
             $this->assertNull($branding->localPath($pathANew, $tenantAId));
