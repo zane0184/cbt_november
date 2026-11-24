@@ -102,9 +102,11 @@ class InstallerEndToEndTest extends TestCase
 
             // The installer must run the production-safe base seeder and provision
             // the tenant-owned MI FK catalog without fabricating any CP records.
-            $this->assertSame(1, DB::table('tenants')->whereNull('deleted_at')->count(), 'Standalone install must contain exactly one madrasah tenant and no local System Tenant.');
+            $systemTenantId = Tenant::SYSTEM_TENANT_ID;
+            $this->assertDatabaseHas('tenants', ['id' => $systemTenantId]);
+            $this->assertSame(1, DB::table('tenants')->whereNull('deleted_at')->where('id', '!=', $systemTenantId)->count(), 'Standalone install must contain exactly one madrasah tenant.');
             $version = DB::table('multi_curriculum_versions')
-                ->where('tenant_id', $created['tenant_id'])
+                ->where('tenant_id', $systemTenantId)
                 ->where('version_code', 'KMA-1503-2025')
                 ->first();
             $this->assertNotNull($version, 'The official system curriculum structure must exist after clean install.');
