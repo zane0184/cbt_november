@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Services\Reporting;
+namespace App\\Services\\Reporting;
 
-use App\Models\Tenant;
-use App\Services\TenantBrandingService;
+use App\\Models\\Tenant;
+use App\\Services\\TenantBrandingService;
 
 class ReportHeaderService
 {
@@ -17,26 +17,35 @@ class ReportHeaderService
             return null;
         }
 
-        $relativePath = $tenant->document_logo_path ?: $tenant->logo_path;
-        $filePath = app(TenantBrandingService::class)->localPath($relativePath);
-        if (!$filePath || !is_readable($filePath) || filesize($filePath) <= 0) {
-            return null;
-        }
+        $branding = app(TenantBrandingService::class);
 
-        try {
-            $content = file_get_contents($filePath);
-            if ($content === false || $content === '') {
-                return null;
+        foreach (array_unique([$tenant->document_logo_path, $tenant->logo_path]) as $relativePath) {
+            $filePath = $branding->localPath($relativePath);
+            if (!$filePath || !is_readable($filePath) || filesize($filePath) <= 0) {
+                continue;
             }
 
-            $mime = mime_content_type($filePath);
-            if (!in_array($mime, ['image/png', 'image/jpeg', 'image/webp', 'image/gif'], true)) {
-                return null;
-            }
+            try {
+                $content = file_get_contents($filePath);
+                if ($content === false || $content === '') {
+                    continue;
+                }
 
-            return 'data:' . $mime . ';base64,' . base64_encode($content);
-        } catch (\Throwable) {
-            return null;
+                $mime = mime_content_type($filePath);
+                if (!in_array($mime, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+                    continue;
+                }
+
+                if (@getimagesize($filePath) === false) {
+                    continue;
+                }
+
+                return 'data:' . $mime . ';base64,' . base64_encode($content);
+            } catch (\\Throwable) {
+                continue;
+            }
         }
+
+        return null;
     }
 }
