@@ -78,3 +78,8 @@
   - Source blob SHA: `f6b8f1729b20394ed9b67720c343ac7c30e23b66`
   - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/LoginIdentityPreflightCommandTest.php.before_refinement`
   - Backup commit: `undefined`
+
+- Source: `backend-laravel/database/migrations/2026_11_24_170001_enforce_tenant_login_identity_uniques.php`
+  - Source blob SHA: `9dec8add2936be9d1f54fa3f4fb6e251422cc08c`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/2026_11_24_170001_enforce_tenant_login_identity_uniques.php.before_length_compare`
+  - Backup commit: `2f564e7336b29214d5626872327164fa961ab3f8`
