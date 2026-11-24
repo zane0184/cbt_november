@@ -6,6 +6,7 @@ use App\Models\LocalInstallationIdentity;
 use App\Models\Tenant;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -33,6 +34,14 @@ class TenantBrandingService
 
     public function storeUpload(TemporaryUploadedFile|UploadedFile $file, string $tenantId, string $kind): string
     {
+        if (!$file->isValid()) {
+            throw new RuntimeException('File branding tidak valid atau gagal diunggah.');
+        }
+
+        if (!in_array($kind, ['app-logo', 'document-logo', 'favicon'], true)) {
+            throw new RuntimeException('Jenis aset branding tidak didukung.');
+        }
+
         $extension = strtolower((string) $file->guessExtension());
         if (!in_array($extension, ['png', 'jpg', 'jpeg', 'webp'], true)) {
             throw new RuntimeException('Format file branding tidak didukung.');
@@ -51,9 +60,23 @@ class TenantBrandingService
         return $relativePath;
     }
 
-    public function publicUrl(?string $relativePath): ?string
+    /**
+     * Resolve only an existing regular file contained inside the public storage root.
+     * Reject absolute paths, traversal segments, backslashes and null bytes.
+     */
+    public function localPath(?string $relativePath): ?string
     {
-        if (!$relativePath || str_contains($relativePath, '..') || str_starts_with($relativePath, '/')) {
+        if (
+            !$relativePath
+            || str_starts_with($relativePath, '/')
+            || str_contains($relativePath, '\\')
+            || str_contains($relativePath, "\0")
+        ) {
+            return null;
+        }
+
+        $segments = explode('/', $relativePath);
+        if (in_array('..', $segments, true) || in_array('.', $segments, true)) {
             return null;
         }
 
@@ -62,14 +85,28 @@ class TenantBrandingService
             return null;
         }
 
-        $target = realpath($root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
+        $candidate = $root . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
+        $target = realpath($candidate);
         if (!$target || !str_starts_with($target, $root . DIRECTORY_SEPARATOR) || !is_file($target)) {
             return null;
         }
 
-        return asset('storage/' . ltrim($relativePath, '/'));
+        return $target;
     }
 
+    public function publicUrl(?string $relativePath): ?string
+    {
+        if (!$this->localPath($relativePath)) {
+            return null;
+        }
+
+        return asset('storage/' . ltrim((string) $relativePath, '/'));
+    }
+
+    /**
+     * Delete only managed assets that are no longer referenced by any branding
+     * column. The tenant row lock serializes this check with branding updates.
+     */
     public function deleteManaged(?string $relativePath, string $tenantId): void
     {
         if (!$relativePath || str_contains($relativePath, '..')) {
@@ -81,14 +118,36 @@ class TenantBrandingService
             return;
         }
 
-        $root = realpath(storage_path('app/public'));
-        if (!$root) {
-            return;
-        }
+        DB::transaction(function () use ($relativePath, $tenantId): void {
+            $tenant = Tenant::withTrashed()
+                ->withoutGlobalScopes()
+                ->whereKey($tenantId)
+                ->lockForUpdate()
+                ->first();
 
-        $target = realpath($root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath));
-        if ($target && str_starts_with($target, $root . DIRECTORY_SEPARATOR) && is_file($target)) {
-            File::delete($target);
-        }
+            if (!$tenant) {
+                return;
+            }
+
+            $referenced = Tenant::withTrashed()
+                ->withoutGlobalScopes()
+                ->where(function ($query) use ($relativePath): void {
+                    foreach (['logo_path', 'document_logo_path', 'favicon_path'] as $column) {
+                        if (Schema::hasColumn('tenants', $column)) {
+                            $query->orWhere($column, $relativePath);
+                        }
+                    }
+                })
+                ->exists();
+
+            if ($referenced) {
+                return;
+            }
+
+            $target = $this->localPath($relativePath);
+            if ($target) {
+                File::delete($target);
+            }
+        }, 3);
     }
 }
