@@ -314,7 +314,7 @@ class StudentImportTest extends TestCase
     }
 
 
-    public function test_xlsx_worksheet_dimensions_are_rejected_before_import_preview_allocation(): void
+    public function test_xlsx_worksheet_dimensions_are_rejected_before_php_spreadsheet_load(): void
     {
         $this->actingAs($this->admin);
         $spreadsheet = new Spreadsheet();
@@ -333,7 +333,7 @@ class StudentImportTest extends TestCase
             ->set('file', $file)
             ->call('preview')
             ->assertHasErrors('file')
-            ->assertSee('Maksimal 5.000 baris data');
+            ->assertSee('Worksheet dimension XLSX melewati batas sebelum workbook dimuat.');
 
         $this->assertDatabaseCount('student_profiles', 0);
         $this->assertDatabaseCount('student_import_batches', 0);
