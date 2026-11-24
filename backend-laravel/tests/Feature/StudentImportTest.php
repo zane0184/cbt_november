@@ -339,6 +339,150 @@ class StudentImportTest extends TestCase
         $this->assertDatabaseCount('student_import_batches', 0);
     }
 
+    public function test_csv_import_skips_blank_records_and_imports_valid_rows(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\nSiswa Satu,0001234567\n\nSiswa Dua,0007654321\n";
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('Siswa Satu')
+            ->assertSee('Siswa Dua')
+            ->call('import')
+            ->assertHasNoErrors()
+            ->assertSee('2 akun Siswa berhasil diimpor');
+
+        $this->assertDatabaseCount('student_profiles', 2);
+        $this->assertDatabaseHas('student_profiles', ['nisn' => '0001234567']);
+        $this->assertDatabaseHas('student_profiles', ['nisn' => '0007654321']);
+    }
+
+    public function test_csv_duplicate_row_number_preserves_blank_physical_records(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\nSiswa Satu,0001234567\n\nSiswa Duplikat,0001234567\n";
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('NISN duplikat di dalam file (baris 4)');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+    public function test_csv_import_rejects_more_than_32_columns(): void
+    {
+        $this->actingAs($this->admin);
+        $headers = array_merge(
+            ['nama', 'nisn'],
+            array_map(static fn (int $index): string => 'extra_' . $index, range(1, 31))
+        );
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', implode(',', $headers) . "\n");
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('CSV maksimal 32 kolom per record.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+    }
+
+    public function test_csv_import_rejects_record_over_256_kib(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\n" . str_repeat('A', (256 * 1024) + 1) . ",0001234567\n";
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('Satu record CSV melewati batas 256 KiB.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+    }
+
+    public function test_csv_import_rejects_cell_over_4_kib(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\n" . str_repeat('A', 4097) . ",0001234567\n";
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('Isi satu cell CSV melewati batas 4 KiB.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+    }
+
+    public function test_csv_import_rejects_invalid_utf8(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\nSiswa \xFF,0001234567\n";
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('CSV harus berisi teks UTF-8 valid tanpa NUL byte.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+    public function test_csv_import_rejects_nul_bytes(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\nSiswa\0TidakValid,0001234567\n";
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('CSV harus berisi teks UTF-8 valid tanpa NUL byte.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+    public function test_csv_import_rejects_more_than_5000_nonblank_data_rows(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\n";
+        for ($index = 1; $index <= 5001; $index++) {
+            $csv .= 'Siswa ' . $index . ',' . sprintf('%010d', $index) . "\n";
+        }
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('Maksimal 5.000 baris data per proses import.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+    }
+
     public function test_non_admin_cannot_open_student_import_page(): void
     {
         $studentRole = Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
