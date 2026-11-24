@@ -313,6 +313,32 @@ class StudentImportTest extends TestCase
         $this->assertDatabaseCount('users', 1);
     }
 
+
+    public function test_xlsx_worksheet_dimensions_are_rejected_before_import_preview_allocation(): void
+    {
+        $this->actingAs($this->admin);
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(['nama', 'nisn'], null, 'A1');
+        $sheet->setCellValue('A5002', 'out of bounds');
+        $path = tempnam(sys_get_temp_dir(), 'student-import-') . '.xlsx';
+        (new Xlsx($spreadsheet))->save($path);
+        $content = file_get_contents($path);
+        @unlink($path);
+        $spreadsheet->disconnectWorksheets();
+
+        $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('Maksimal 5.000 baris data');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+    }
+
     public function test_non_admin_cannot_open_student_import_page(): void
     {
         $studentRole = Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
