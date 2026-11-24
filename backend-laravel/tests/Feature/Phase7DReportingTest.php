@@ -9,6 +9,9 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
 use App\Models\Role;
+use App\Models\Rombel;
+use App\Models\StudentProfile;
+use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\Reporting\ExamResultReportService;
@@ -299,7 +302,7 @@ class Phase7DReportingTest extends TestCase
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/students/{$this->studentA->id}/export/pdf");
 
-        $response->assertForbidden();
+        $response->assertForbidden();
         $service = new ReportHeaderService();
         $dataUri = $service->getLogoDataUri($this->tenantA);
 
@@ -320,7 +323,7 @@ class Phase7DReportingTest extends TestCase
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/exams/{$this->examA->id}/summary/export/pdf");
 
-        $response->assertForbidden();
+        $response->assertForbidden();
         $view = view('reports.pdf.exam-summary', [
             'summary' => [
                 'exam_title' => 'Ujian Matematika Bab 1',
@@ -365,7 +368,51 @@ class Phase7DReportingTest extends TestCase
         $this->authAs($admin)
             ->get("/api/v1/reports/students/{$this->studentA->id}/export/pdf")
             ->assertForbidden();
-        public function test_rombel_filter_is_applied_to_result_queries_and_export(): void
+    }
+
+    public function test_multi_tenant_isolation_prevents_exporting_other_tenant_pdf()
+    {
+        $response = $this->authAs($this->adminA)
+            ->get("/api/v1/reports/exams/{$this->examB->id}/export/pdf");
+
+        $this->assertTrue(in_array($response->status(), [403, 404]));
+
+        $responseSummary = $this->authAs($this->adminA)
+            ->get("/api/v1/reports/exams/{$this->examB->id}/summary/export/pdf");
+
+        $this->assertTrue(in_array($responseSummary->status(), [403, 404]));
+    }
+
+    public function test_unauthenticated_and_unauthorized_pdf_export_blocked()
+    {
+        app(TenantContext::class)->setTenantId(null);
+        $this->getJson("/api/v1/reports/exams/{$this->examA->id}/export/pdf")
+            ->assertStatus(401);
+
+        $this->authAs($this->studentA)
+            ->getJson("/api/v1/reports/exams/{$this->examA->id}/summary/export/pdf")
+            ->assertStatus(403);
+    }
+
+    public function test_pdf_generation_does_not_mutate_academic_data()
+    {
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
+        $scoreBefore = ExamAttemptScore::where('attempt_id', $this->attemptA->id)->first();
+
+        $this->authAs($this->adminA)
+            ->get("/api/v1/reports/exams/{$this->examA->id}/export/pdf")
+            ->assertForbidden();
+
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
+        $scoreAfter = ExamAttemptScore::where('attempt_id', $this->attemptA->id)->first();
+
+        $this->assertEquals($scoreBefore->raw_score, $scoreAfter->raw_score);
+        $this->assertEquals($scoreBefore->percentage, $scoreAfter->percentage);
+        $this->assertEquals($scoreBefore->grading_status, $scoreAfter->grading_status);
+        $this->assertEquals($this->attemptA->status, $this->attemptA->fresh()->status);
+    }
+
+    public function test_rombel_filter_is_applied_to_result_queries_and_export(): void
     {
         app(TenantContext::class)->setTenantId($this->tenantA->id);
 
@@ -409,47 +456,5 @@ class Phase7DReportingTest extends TestCase
         $this->assertSame($this->attemptA->id, $results->first()->id);
     }
 
-}
 
-    public function test_multi_tenant_isolation_prevents_exporting_other_tenant_pdf()
-    {
-        $response = $this->authAs($this->adminA)
-            ->get("/api/v1/reports/exams/{$this->examB->id}/export/pdf");
-
-        $this->assertTrue(in_array($response->status(), [403, 404]));
-
-        $responseSummary = $this->authAs($this->adminA)
-            ->get("/api/v1/reports/exams/{$this->examB->id}/summary/export/pdf");
-
-        $this->assertTrue(in_array($responseSummary->status(), [403, 404]));
-    }
-
-    public function test_unauthenticated_and_unauthorized_pdf_export_blocked()
-    {
-        app(TenantContext::class)->setTenantId(null);
-        $this->getJson("/api/v1/reports/exams/{$this->examA->id}/export/pdf")
-            ->assertStatus(401);
-
-        $this->authAs($this->studentA)
-            ->getJson("/api/v1/reports/exams/{$this->examA->id}/summary/export/pdf")
-            ->assertStatus(403);
-    }
-
-    public function test_pdf_generation_does_not_mutate_academic_data()
-    {
-        app(TenantContext::class)->setTenantId($this->tenantA->id);
-        $scoreBefore = ExamAttemptScore::where('attempt_id', $this->attemptA->id)->first();
-
-        $this->authAs($this->adminA)
-            ->get("/api/v1/reports/exams/{$this->examA->id}/export/pdf")
-            ->assertForbidden();
-
-        app(TenantContext::class)->setTenantId($this->tenantA->id);
-        $scoreAfter = ExamAttemptScore::where('attempt_id', $this->attemptA->id)->first();
-
-        $this->assertEquals($scoreBefore->raw_score, $scoreAfter->raw_score);
-        $this->assertEquals($scoreBefore->percentage, $scoreAfter->percentage);
-        $this->assertEquals($scoreBefore->grading_status, $scoreAfter->grading_status);
-        $this->assertEquals($this->attemptA->status, $this->attemptA->fresh()->status);
-    }
 }
