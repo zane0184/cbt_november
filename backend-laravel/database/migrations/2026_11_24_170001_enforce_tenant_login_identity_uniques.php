@@ -36,7 +36,7 @@ return new class extends Migration
 
             $nonCanonical = DB::table($table)
                 ->whereNotNull($column)
-                ->whereRaw("{$column} <> TRIM({$column})")
+                ->whereRaw("LENGTH({$column}) <> LENGTH(TRIM({$column}))")
                 ->exists();
 
             if ($nonCanonical) {
