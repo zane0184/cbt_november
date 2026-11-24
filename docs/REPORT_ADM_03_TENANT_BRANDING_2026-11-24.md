@@ -4,7 +4,7 @@ Repository: `zane0184/cbt_november`
 PR: #23 — OPEN / DRAFT / NOT MERGED  
 Branch: `work/p1-seven-targets-20261124`  
 Base: `work/phpunit-41-root-cause-20261123`  
-Exact source HEAD yang diuji: `87ba3a8042d0e75822b0b04349957075b6a1edb0`
+Exact source HEAD yang diuji: `41038aa303ed728c777a32b3254d2ec672ff1860`
 
 ## AUDIT
 
@@ -86,25 +86,27 @@ Semua backup dibuat sebelum patch yang bersangkutan dan dibandingkan dengan blob
 | `ADM_03_INDEX_SNAPSHOT_ORDER_FIX_20261124/TenantBrandingAssetsManagementTest.php.before` | `8c70c589b1fc0669a7a05de16df50113b9110644` |
 | `ADM_03_PRODUCTION_IDENTITY_FAIL_CLOSED_TEST_20261124/TenantBrandingAssetsManagementTest.php.before` | `a4391a16675d798768c8fda160fd2bc78b2a4396` |
 | `ADM_03_PRODUCTION_ENV_FIX_20261124/TenantBrandingAssetsManagementTest.php.before` | `3a19943b2ed56e5f356de56ffb6471597219b50a` |
+| `ADM_03_PDF_TEXT_FALLBACK_ASSERTION_20261124/TenantBrandingAssetsManagementTest.php.before` | `2055b5d9e0a81424b2eacd32d18b0b5c5c0805e1` |
 
 Backup historis sebelumnya—termasuk blocker reconciliation, context guard, upload symlink, migration matrix, PDF fixture, dan guard switch—tetap dipertahankan di `backend-laravel/backup_before_patch/`; tidak ada backup yang dihapus atau ditimpa.
 
 ### Commit implementasi utama
+- `41038aa303ed728c777a32b3254d2ec672ff1860` — render assertion PDF text fallback ketika seluruh logo tidak tersedia.
 - `dd5617f43d2851236b5095f01e5fa0712d30271d` — favicon fallback dan PDF unreadable test.
 - `996d7745dffb6f795ee2e438dee00f89f1204016` — identity binding.
 - `758ad9d8078c1afa7eb2f331e266249b5997d32f` — migration indexes dan cross-install symlink.
 - `8980a24e47c4c473f613a3071de25a3b78a1c6c1` — urutan snapshot index diperbaiki.
 - `2bb51ab52e34c2305b84c642809293ccf72e373a` — production identity fail-closed test.
-- `87ba3a8042d0e75822b0b04349957075b6a1edb0` — fixture environment detector diperbaiki.
+- `41038aa303ed728c777a32b3254d2ec672ff1860` — fixture environment detector diperbaiki.
 
 ## PENGUJIAN
 
 ### Gerbang CI terbaru
-<https://github.com/zane0184/cbt_november/actions/runs/45436535839>
+<https://github.com/zane0184/cbt_november/actions/runs/45438946455>
 
-- Exact SHA: `87ba3a8042d0e75822b0b04349957075b6a1edb0`
+- Exact SHA: `41038aa303ed728c777a32b3254d2ec672ff1860`
 - MySQL: 8.0.46, InnoDB disposable.
-- PHPUnit: **586 passed, 0 failed, 2.772 assertions**.
+- PHPUnit: **586 passed, 0 failed, 2.775 assertions**.
 - PHP lint aplikasi, migration, test: PASS.
 - Composer validation dan platform check: PASS.
 - Login identity migration pada MySQL disposable: PASS.
@@ -115,7 +117,7 @@ Backup historis sebelumnya—termasuk blocker reconciliation, context guard, upl
 - Tidak ada migration production.
 
 ### Build ZIP
-[Build Standalone Web CBT Deployment ZIP #45436535921](https://github.com/zane0184/cbt_november/actions/runs/45436535921) — SUCCESS pada exact SHA yang sama. Ini hanya membuktikan archive workflow berhasil; bukan acceptance ZIP generik, fresh install, upgrade, backup/restore, atau status siap distribusi.
+[Build Standalone Web CBT Deployment ZIP #45438946955](https://github.com/zane0184/cbt_november/actions/runs/45438946955) — SUCCESS pada exact SHA yang sama. Ini hanya membuktikan archive workflow berhasil; bukan acceptance ZIP generik, fresh install, upgrade, backup/restore, atau status siap distribusi.
 
 ### Kegagalan historis yang telah diperbaiki
 - #45429567235: satu kegagalan fixture Livewire WebP; diganti dengan verifikasi stored WebP preview tanpa melemahkan validasi konten.

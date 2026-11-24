@@ -2,8 +2,8 @@
 Tanggal: 24 November 2026  
 Repository: `zane0184/cbt_november`  
 Branch: `work/p1-seven-targets-20261124`  
-Source SHA yang diuji: `87ba3a8042d0e75822b0b04349957075b6a1edb0`  
-CI: [Tenant Backend CI #45436535839](https://github.com/zane0184/cbt_november/actions/runs/45436535839)
+Source SHA yang diuji: `41038aa303ed728c777a32b3254d2ec672ff1860`  
+CI: [Tenant Backend CI #45438946455](https://github.com/zane0184/cbt_november/actions/runs/45438946455)
 
 > ID ADM03-01 s.d. ADM03-41 di bawah adalah ID pelacakan yang ditetapkan dalam matriks ini agar 41 acceptance dapat diaudit satu per satu. ID tersebut bukan ID bawaan Laravel atau database.
 
@@ -42,7 +42,7 @@ CI: [Tenant Backend CI #45436535839](https://github.com/zane0184/cbt_november/ac
 | ADM03-31 | Aset lama yang tidak lagi direferensikan dapat dihapus | `test_admin_can_remove_only_managed_asset_path`; replace/delete tests | PASS |
 | ADM03-32 | Aset yang masih direferensikan tidak ikut terhapus | `test_replacing_app_logo_keeps_old_file_when_document_logo_still_references_it` | PASS |
 | ADM03-33 | PDF memakai document logo jika tersedia dan valid | `test_pdf_report_header_prefers_dedicated_document_logo` | PASS |
-| ADM03-34 | PDF fallback ke app logo ketika document logo hilang atau rusak | `test_pdf_header_falls_back_when_document_logo_is_missing_or_corrupt_and_returns_null_without_app_logo`; invalid-logo fallback test | PASS |
+| ADM03-34 | PDF fallback ke app logo ketika document logo hilang atau rusak | `test_pdf_header_falls_back_when_document_logo_is_missing_or_corrupt_and_returns_null_without_app_logo` (service fallback + rendered Blade header assertions); invalid-logo fallback test | PASS |
 | ADM03-35 | PDF fallback ke app logo ketika document logo ada tetapi tidak dapat dibaca | `test_pdf_report_header_falls_back_to_app_logo_when_document_logo_is_unreadable` | PASS |
 | ADM03-36 | PDF menggunakan text fallback ketika semua logo tidak tersedia | `test_pdf_header_falls_back_when_document_logo_is_missing_or_corrupt_and_returns_null_without_app_logo` | PASS |
 | ADM03-37 | Favicon PNG: preview, MIME konten, dan HTML link type | `test_favicon_png_and_webp_preview_use_content_mime_and_fallback_when_unavailable` | PARTIAL — konten dan HTML terbukti; HTTP Content-Type dari Nginx staging belum diuji |

@@ -3,20 +3,20 @@ Tanggal checkpoint: 24 November 2026
 Repository: `zane0184/cbt_november`  
 PR #23: OPEN / DRAFT / NOT MERGED  
 Branch: `work/p1-seven-targets-20261124`  
-Source SHA teruji: `87ba3a8042d0e75822b0b04349957075b6a1edb0`
+Source SHA teruji: `41038aa303ed728c777a32b3254d2ec672ff1860`
 
 ## Posisi terakhir yang benar-benar terbukti
-- Full Tenant Backend CI #45436535839: PASS.
-- PHPUnit: 586 passed, 0 failed, 2.772 assertions.
+- Full Tenant Backend CI #45438946455: PASS.
+- PHPUnit: 586 passed, 0 failed, 2.775 assertions.
 - MySQL 8.0.46/InnoDB disposable.
 - PHP lint, Composer/platform, identity migration, migration matrix, two-installation branding/storage, benchmark, dan ReportPolicy: PASS.
-- ZIP build #45436535921: SUCCESS, tetapi bukan bukti ZIP final diterima.
+- ZIP build #45438946955: SUCCESS, tetapi bukan bukti ZIP final diterima.
 - Source kerja adalah GitHub branch aktif. Workspace lokal tidak tersedia pada runtime; baseline ZIP asli tidak dimodifikasi.
 
 ## Status ADM-03
 **PARTIAL / NOT ACCEPTED.**
 
-Matriks 41 item: 38 PASS, 1 PASS legacy regression only, 2 PARTIAL.
+Matriks 41 item: 38 PASS, 1 PASS legacy regression only, 2 PARTIAL. PDF text fallback kini dibuktikan melalui render Blade.
 Dua PARTIAL adalah verifikasi header HTTP Content-Type PNG/WebP dari Nginx/aaPanel. Content MIME dari bytes, preview, dan deklarasi HTML type telah diuji di CI; header HTTP aktual belum dibuktikan pada staging.
 
 Rujuk:
