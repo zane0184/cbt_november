@@ -233,6 +233,30 @@ class WebAdminAuthTest extends TestCase
         $rejected->assertUnprocessable();
     }
 
+    public function test_api_login_uses_nik_for_honorer_and_rejects_honorer_username(): void
+    {
+        $honorerRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $honorer = $this->makeUser('guru.honorer.api', 'Guru Honorer API', $honorerRole);
+        TeacherProfile::create([
+            'user_id' => $honorer->id,
+            'employment_status' => 'HONORER',
+            'nik' => '3171000000000005',
+            'full_name' => 'Guru Honorer API',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $success = $this->postJson('/api/v1/auth/login', [
+            'identifier' => '3171000000000005', 'password' => $this->password,
+        ]);
+        $success->assertOk()->assertJsonPath('data.user.id', $honorer->id);
+
+        $rejected = $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'guru.honorer.api', 'password' => $this->password,
+        ]);
+        $rejected->assertUnprocessable();
+    }
+
     public function test_student_can_login_using_nisn_without_email(): void
     {
         $response = $this->post('/login', ['identifier' => $this->nisn, 'password' => $this->password]);
