@@ -738,7 +738,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
         $branding = app(TenantBrandingService::class);
         $originalEnvironment = app()->environment();
-        app()->detectEnvironment(fn ($environmentFile): string => 'production');
+        app()->detectEnvironment(fn (): string => 'production');
 
         try {
             // Production must not fall back to the legacy user/context-only path.
@@ -767,7 +767,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
             $this->assertSame($tenantId, (string) $branding->currentTenant()?->id);
         } finally {
-            app()->detectEnvironment(fn ($environmentFile): string => $originalEnvironment);
+            app()->detectEnvironment(fn (): string => $originalEnvironment);
         }
     }
 
