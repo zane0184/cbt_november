@@ -49,3 +49,16 @@ Perubahan lanjutan:
 Source identity patch terakhir yang diperiksa: `84745e2f34df3e6248e3b1dd9fdc662e5d1d9798`.
 
 PR #23 masih DRAFT. Tidak ada merge, deployment, atau ZIP final. Langkah berikutnya tetap exact-HEAD CI dan pengujian disposable MySQL 8/InnoDB, kemudian audit jalur update/import dan seluruh output API/log/audit.
+
+
+## Batasan integritas database yang wajib dicatat
+
+Migration saat ini hanya menegakkan unique index tenant-scoped dan fail-closed preflight duplicate/blank/whitespace/index-shape. Migration ini **belum** menambahkan DB CHECK constraint atau trigger yang menolak raw SQL INSERT/UPDATE dengan:
+- status kepegawaian kosong/tidak dikenal;
+- PNS/PPPK tanpa NIP tepat 18 digit;
+- Honorer tanpa NIK tepat 16 digit;
+- Siswa tanpa NISN tepat 10 digit.
+
+Read-only preflight hanya mendeteksi dan melaporkan; ia tidak menghalangi penulisan berikutnya. Karena itu, validasi kategori/format saat ini baru diterapkan pada jalur create UserManagement dan login resolver; **database-level conditional enforcement masih BLOCKED**. Jangan menyebut seluruh jalur penulisan aman sampai DB constraint/trigger lintas MySQL 8 dan SQLite dirancang, diuji, dan dipasang melalui migration yang fail-closed.
+
+Jalur update, import, recovery, serta seluruh endpoint lain yang dapat menulis TeacherProfile/StudentProfile juga belum dinyatakan tervalidasi.
