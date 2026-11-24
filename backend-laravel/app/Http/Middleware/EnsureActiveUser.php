@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,13 +16,26 @@ class EnsureActiveUser
             return $next($request);
         }
 
-        $user = $request->user() ?? Auth::guard('sanctum')->user() ?? Auth::user();
-        if (!$user || (bool) $user->is_active) {
+        $authenticatedUser = $request->user() ?? Auth::guard('sanctum')->user() ?? Auth::user();
+        if (!$authenticatedUser) {
+            return $next($request);
+        }
+
+        // Re-read the canonical status from the database. The authenticated
+        // model may be a newly-created, not-yet-refreshed instance whose
+        // database defaults are not present in its in-memory attributes.
+        $activeUser = User::withoutGlobalScopes()
+            ->whereKey($authenticatedUser->getKey())
+            ->where('tenant_id', $authenticatedUser->tenant_id)
+            ->whereNull('deleted_at')
+            ->first(['id', 'is_active']);
+
+        if ($activeUser && (bool) $activeUser->is_active) {
             return $next($request);
         }
 
         if ($request->is('api/*') || $request->expectsJson()) {
-            $token = $user->currentAccessToken();
+            $token = $authenticatedUser->currentAccessToken();
             if ($token && method_exists($token, 'delete')) {
                 $token->delete();
             }
