@@ -91,7 +91,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
     public function test_benchmark_rejects_production_environment_even_with_opt_in(): void
     {
         $this->setOptIn('1');
-        config(['app.env' => 'production']);
+        $this->app['env'] = 'production';
 
         $exitCode = Artisan::call('benchmark:phase7d', [
             '--driver' => 'mysql',
