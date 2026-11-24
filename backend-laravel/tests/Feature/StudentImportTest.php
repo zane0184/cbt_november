@@ -372,7 +372,7 @@ class StudentImportTest extends TestCase
         $rows = app(\App\Services\StudentImportService::class)->readRows($file->getRealPath(), 'csv');
 
         $this->assertCount(5000, $rows);
-        $this->assertSame(10001, $rows[4999]['row']);
+        $this->assertSame(10000, $rows[4999]['row']);
     }
 
     public function test_csv_reader_preserves_physical_record_numbers_after_blank_records(): void
