@@ -125,7 +125,7 @@ class StudentImportTest extends TestCase
     public function test_invalid_nisn_is_rejected_before_any_student_account_is_created(): void
     {
         $this->actingAs($this->admin);
-        $file = TemporaryUploadedFile::fake()->createWithContent(
+        $file = UploadedFile::fake()->createWithContent(
             'siswa.csv',
             "nama,nisn\nSiswa Salah,123456789\n"
         );
@@ -146,7 +146,7 @@ class StudentImportTest extends TestCase
     public function test_duplicate_nisn_inside_one_file_is_reported_by_row(): void
     {
         $this->actingAs($this->admin);
-        $file = TemporaryUploadedFile::fake()->createWithContent(
+        $file = UploadedFile::fake()->createWithContent(
             'siswa.csv',
             "nama,nisn\nSiswa Satu,0001234567\nSiswa Dua,0001234567\n"
         );
@@ -176,7 +176,7 @@ class StudentImportTest extends TestCase
 
         app(TenantContext::class)->setTenantId($this->tenant->id);
         $this->actingAs($this->admin);
-        $file = TemporaryUploadedFile::fake()->createWithContent('siswa.csv', "nama,nisn\nSiswa,0001234567\n");
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', "nama,nisn\nSiswa,0001234567\n");
 
         Livewire::test(StudentImport::class)
             ->set('selectedRombelId', $otherRombel->id)
