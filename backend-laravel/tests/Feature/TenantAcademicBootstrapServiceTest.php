@@ -61,7 +61,6 @@ class TenantAcademicBootstrapServiceTest extends TestCase
     public function test_provisioning_is_idempotent_and_does_not_rewrite_existing_catalog_rows(): void
     {
         $tenant = Tenant::create(['name' => 'MIN Test B', 'code' => 'MINTESTB']);
-        app(TenantCurriculumRegistryBootstrapper::class)->seedForTenant((string) $tenant->id);
         $service = app(TenantAcademicBootstrapService::class);
 
         $first = $service->provisionForTenant((string) $tenant->id);
@@ -97,7 +96,6 @@ class TenantAcademicBootstrapServiceTest extends TestCase
     public function test_conflicting_existing_phase_is_rejected_without_overwriting_it(): void
     {
         $tenant = Tenant::create(['name' => 'MIN Conflict', 'code' => 'MINCONFLICT']);
-        app(TenantCurriculumRegistryBootstrapper::class)->seedForTenant((string) $tenant->id);
         $context = app(TenantContext::class);
         $previous = $context->getTenantId();
         $context->setTenantId((string) $tenant->id);
