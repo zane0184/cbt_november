@@ -18,5 +18,6 @@
 | `.github/workflows/build-web-deployment.yml` | `c2ea4c907001ce7f12aa347f354f8099dffa07e3` | `9bb3b4cee00493407fa2f8537ebaff7f736ee6bf6a1922258794b7b3b710f44c` | `backend-laravel/backups/p0-academic-provisioning-20261125/build-web-deployment.yml.before` |
 | `backend-laravel/DISTRIBUTION_EXCLUSIONS.md` | `8ef98c10ed61ee7927aaa25252656918f4b4cc3a` | `dd4f6295cb31d01f534584dfea640621f14bc6821d6ff62330f4b47ab659b314` | `backend-laravel/backups/p0-academic-provisioning-20261125/DISTRIBUTION_EXCLUSIONS.md.before` |
 | `backend-laravel/app/Livewire/Admin/TeacherSubjectAssignmentManagement.php` | `9d076387c1e81a4b229b0358911a4f9133085a86` | `cb19390aedfc4685b18c9b8fe29c812ebabd4f480a7b6fec7a6245d2280d52b6` | `backend-laravel/backups/p0-academic-provisioning-20261125/TeacherSubjectAssignmentManagement.php.before` |
+| `backend-laravel/resources/views/livewire/admin/teacher-subject-assignment-management.blade.php` | `91d7f3cfa021c9a77baa84963a062cdf4d319c42` | `7235a584a8ea7ae1a89c5007d16973a2210f4c3f32ccf6b368903b9f98af7e06` | `backend-laravel/backups/p0-academic-provisioning-20261125/teacher-subject-assignment-management.blade.php.before` |
 
 Backups are retained in the controlled repository and must be excluded from distribution ZIPs.
