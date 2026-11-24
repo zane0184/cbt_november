@@ -31,9 +31,10 @@
   - `.github/workflows/docx-import-parser-ci.yml`: adds dedicated disposable MySQL database and opt-in clean-install E2E step for this branch.
 - Implementation commit before test assertions: `7380167dd26c8fb7774a253310193537b22c7ebf`.
 - E2E assertion commit: `fb265f7f98774a1cfffc06f448d0f20ce7ee279c`.
+- CI lint caught an over-escaped fully-qualified class name in the E2E assertions; a byte-exact backup was made and the test was corrected in `8962487240ec5becd1fb018f75e85889dafc1ebf`.
 
 ## PENGUJIAN
-- Not yet run on this new head. The workflow is configured to run PHP lint, clean-install E2E on a separate `cbt_installer_test_*` MySQL database, Student Import acceptance, benchmark denial-path, and full PHPUnit.
+- The first CI attempt on the pre-correction test commit failed PHP lint at `InstallerEndToEndTest.php:106` due to the over-escaped namespace. The source was backed up and corrected; rerun on the corrected exact head is still pending. The workflow is configured to run PHP lint, clean-install E2E on a separate `cbt_installer_test_*` MySQL database, Student Import acceptance, benchmark denial-path, and full PHPUnit.
 - Status: **NOT VERIFIED pending exact-head CI**.
 - Installer E2E is isolated from the main CI database; no production DB is targeted.
 
