@@ -727,6 +727,50 @@ class TenantBrandingAssetsManagementTest extends TestCase
         }
     }
 
+    public function test_production_branding_resolution_fails_closed_without_a_valid_local_installation_identity(): void
+    {
+        $tenantId = (string) $this->tenant->id;
+        $this->actingAs($this->admin, 'web');
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($this->admin);
+        Auth::guard('sanctum')->forgetUser();
+        $this->setTenantContext($tenantId);
+
+        $branding = app(TenantBrandingService::class);
+        $originalEnvironment = app()->environment();
+        app()->detectEnvironment(fn ($environmentFile): string => 'production');
+
+        try {
+            // Production must not fall back to the legacy user/context-only path.
+            $this->assertNull($branding->currentTenant());
+            $this->assertNull($branding->localPath('tenants/' . $tenantId . '/branding/missing.png'));
+
+            DB::table('local_installation_identities')->insert([
+                'tenant_id' => $tenantId,
+                'installation_id' => (string) Str::uuid(),
+                'key_id' => 'branding-production-' . strtolower(Str::random(8)),
+                'public_key' => 'test-public-key',
+                'encrypted_private_key' => 'test-encrypted-private-key',
+                'key_fingerprint' => hash('sha256', Str::random(32)),
+                'registered_domain' => 'branding-production.example.test',
+                'product_code' => 'WRONG-PRODUCT',
+                'product_version' => 'test',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $this->assertNull($branding->currentTenant());
+
+            DB::table('local_installation_identities')
+                ->where('tenant_id', $tenantId)
+                ->update(['product_code' => (string) config('license.product_code', 'CBT-MI')]);
+
+            $this->assertSame($tenantId, (string) $branding->currentTenant()?->id);
+        } finally {
+            app()->detectEnvironment(fn ($environmentFile): string => $originalEnvironment);
+        }
+    }
+
     public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
     {
         if (
