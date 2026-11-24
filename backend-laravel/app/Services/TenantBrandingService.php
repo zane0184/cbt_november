@@ -333,6 +333,46 @@ class TenantBrandingService
         return $target;
     }
 
+    /**
+     * Return a favicon URL only when the stored bytes, detected MIME, and
+     * extension agree on a supported PNG or WebP image.
+     *
+     * @return array{url: string, mime: string}|null
+     */
+    public function faviconAttributes(?string $relativePath, ?string $tenantId = null): ?array
+    {
+        $absolutePath = $this->localPath($relativePath, $tenantId);
+        if (!$absolutePath || !is_readable($absolutePath)) {
+            return null;
+        }
+
+        $image = @getimagesize($absolutePath);
+        if ($image === false) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo((string) $relativePath, PATHINFO_EXTENSION));
+        $expected = match ($extension) {
+            'png' => ['type' => IMAGETYPE_PNG, 'mime' => 'image/png'],
+            'webp' => ['type' => IMAGETYPE_WEBP, 'mime' => 'image/webp'],
+            default => null,
+        };
+
+        if (!$expected || ($image[2] ?? null) !== $expected['type']) {
+            return null;
+        }
+
+        $detectedMime = (new \finfo(FILEINFO_MIME_TYPE))->file($absolutePath);
+        if ($detectedMime !== $expected['mime']) {
+            return null;
+        }
+
+        return [
+            'url' => asset('storage/' . ltrim((string) $relativePath, '/')),
+            'mime' => $expected['mime'],
+        ];
+    }
+
     public function publicUrl(?string $relativePath, ?string $tenantId = null): ?string
     {
         if (!$this->localPath($relativePath, $tenantId)) {

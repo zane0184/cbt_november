@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="rounded-2xl border border-cardBorder bg-white p-6 shadow-sm">
         <h1 class="text-2xl font-bold text-navy-900">Logo & Favicon Madrasah</h1>
-        <p class="mt-1 text-sm text-textSecondary">Unggah aset identitas visual untuk instalasi madrasah ini. File logo dan favicon bersifat publik sebagai aset branding; file disimpan terpisah berdasarkan ID tenant.</p>
+        <p class="mt-1 text-sm text-textSecondary">Unggah aset identitas visual untuk instalasi madrasah ini. File logo dan favicon tersedia sebagai aset branding publik; penyimpanan tetap terpisah pada storage instalasi madrasah ini.</p>
     </div>
 
     @if(session()->has('message'))
@@ -37,7 +37,7 @@
                 <div><h2 class="font-bold text-navy-900">Favicon browser</h2><p class="mt-1 text-xs text-textSecondary">PNG atau WebP persegi · 32–256 px · maksimal 512 KB.</p></div>
                 <div class="flex items-center gap-4">
                     <div class="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-cardBorder bg-contentBg p-2">
-                        @if($faviconUrl)<img src="{{ $faviconUrl }}" alt="Favicon {{ $tenant->name }}" class="h-14 w-14 object-contain">@else<span class="text-xs text-textSecondary">Belum ada</span>@endif
+                        @if($faviconUpload)<img src="{{ $faviconUpload->temporaryUrl() }}" alt="Pratinjau favicon {{ $tenant->name }}" class="h-14 w-14 object-contain"><span class="sr-only">Pratinjau favicon</span>@elseif($faviconUrl)<img src="{{ $faviconUrl }}" alt="Favicon {{ $tenant->name }}" class="h-14 w-14 object-contain">@else<span class="text-xs text-textSecondary">Belum ada</span>@endif
                     </div>
                     <div class="min-w-0 flex-1">
                         <input type="file" wire:model="faviconUpload" accept="image/png,image/webp" class="block w-full text-sm">

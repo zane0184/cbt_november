@@ -5,13 +5,16 @@
         $loginBrandingService = app(\App\Services\TenantBrandingService::class);
         $loginTenant = $loginBrandingService->currentTenant();
         $loginLogoUrl = $loginBrandingService->publicUrl($loginTenant?->logo_path);
-        $loginFaviconUrl = $loginBrandingService->publicUrl($loginTenant?->favicon_path);
-        $loginFaviconMime = strtolower(pathinfo((string) ($loginTenant?->favicon_path ?? ''), PATHINFO_EXTENSION)) === 'webp' ? 'image/webp' : 'image/png';
+        $loginFavicon = $loginBrandingService->faviconAttributes($loginTenant?->favicon_path);
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $loginTenant?->short_name ?: ($loginTenant?->name ?: 'Login CBT Madrasah') }}</title>
-    @if($loginFaviconUrl)<link rel="icon" type="{{ $loginFaviconMime }}" href="{{ $loginFaviconUrl }}">@endif
+    @if($loginFavicon)
+        <link rel="icon" type="{{ $loginFavicon['mime'] }}" href="{{ $loginFavicon['url'] }}">
+    @else
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    @endif
     <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
     <style>
         body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -128,7 +131,7 @@
                 </svg>
                 Lihat Landing Page & Status API Sistem
             </a>
-            <p class="text-[11px] text-textSecondary">© {{ date('Y') }} CBT Madrasah — Platform Asesmen Digital Multi-tenant</p>
+            <p class="text-[11px] text-textSecondary">© {{ date('Y') }} CBT Madrasah — Platform Asesmen Digital untuk Madrasah</p>
         </div>
     </div>
 

@@ -83,6 +83,88 @@ class TenantBrandingAssetsManagementTest extends TestCase
             ->assertHasErrors(['faviconUpload']);
     }
 
+    public function test_favicon_png_and_webp_preview_use_content_mime_and_fallback_when_unavailable(): void
+    {
+        $branding = app(TenantBrandingService::class);
+        $tenantId = (string) $this->tenant->id;
+
+        $pngPath = $branding->storeUpload(
+            UploadedFile::fake()->image('favicon.png', 64, 64),
+            $tenantId,
+            'favicon'
+        );
+        $pngAttributes = $branding->faviconAttributes($pngPath, $tenantId);
+        $this->assertSame('image/png', $pngAttributes['mime'] ?? null);
+        $this->assertSame(
+            'image/png',
+            (new \finfo(FILEINFO_MIME_TYPE))->file(storage_path('app/public/' . $pngPath))
+        );
+        $this->tenant->forceFill(['favicon_path' => $pngPath])->save();
+        $this->get('/admin/branding-assets')
+            ->assertOk()
+            ->assertSee('type="image/png"', false);
+
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('faviconUpload', UploadedFile::fake()->image('favicon-preview.png', 64, 64))
+            ->assertSee('Pratinjau favicon');
+
+        $this->assertTrue(function_exists('imagewebp'), 'GD WebP support is required by the branding CI environment.');
+        $webpImage = imagecreatetruecolor(64, 64);
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'cbt-favicon-');
+        $this->assertNotFalse($temporaryPath);
+        $webpPath = $temporaryPath . '.webp';
+        $this->assertTrue(rename($temporaryPath, $webpPath));
+
+        try {
+            $this->assertTrue(imagewebp($webpImage, $webpPath, 80));
+            $webpUpload = new UploadedFile($webpPath, 'favicon.webp', 'image/webp', UPLOAD_ERR_OK, true);
+            $storedWebpPath = $branding->storeUpload($webpUpload, $tenantId, 'favicon');
+            $webpAttributes = $branding->faviconAttributes($storedWebpPath, $tenantId);
+            $this->assertSame('image/webp', $webpAttributes['mime'] ?? null);
+            $this->assertSame(
+                'image/webp',
+                (new \finfo(FILEINFO_MIME_TYPE))->file(storage_path('app/public/' . $storedWebpPath))
+            );
+
+            $this->tenant->forceFill(['favicon_path' => $storedWebpPath])->save();
+            $this->get('/admin/branding-assets')
+                ->assertOk()
+                ->assertSee('type="image/webp"', false);
+
+            Livewire::test(TenantBrandingAssetsManagement::class)
+                ->set('faviconUpload', new UploadedFile($webpPath, 'favicon-preview.webp', 'image/webp', UPLOAD_ERR_OK, true))
+                ->assertSee('Pratinjau favicon');
+        } finally {
+            imagedestroy($webpImage);
+            @unlink($temporaryPath);
+            @unlink($webpPath);
+        }
+
+        $this->tenant->forceFill(['favicon_path' => null])->save();
+        $this->get('/admin/branding-assets')
+            ->assertOk()
+            ->assertSee('favicon.svg');
+        $this->assertFileExists(public_path('favicon.svg'));
+
+        $corruptPath = 'tenants/' . $tenantId . '/branding/favicon-corrupt.png';
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $corruptPath)));
+        File::put(storage_path('app/public/' . $corruptPath), 'not-an-image');
+        $this->tenant->forceFill(['favicon_path' => $corruptPath])->save();
+        $this->assertNull($branding->faviconAttributes($corruptPath, $tenantId));
+        $this->get('/admin/branding-assets')
+            ->assertOk()
+            ->assertSee('favicon.svg');
+
+        Auth::guard('web')->forgetUser();
+        Auth::guard('sanctum')->forgetUser();
+        Auth::shouldUse('web');
+        app(\App\Contexts\TenantContext::class)->setTenantId(null);
+        $this->get('/login')
+            ->assertOk()
+            ->assertSee('favicon.svg');
+    }
+
+
     public function test_admin_can_remove_only_managed_asset_path(): void
     {
         $managedPath = 'tenants/' . $this->tenant->id . '/branding/app-logo-existing.png';
@@ -212,6 +294,47 @@ class TenantBrandingAssetsManagementTest extends TestCase
             File::get(storage_path('app/public/' . $appLogoPath)),
             base64_decode(substr($dataUri, strlen('data:image/png;base64,')), true)
         );
+    }
+
+    public function test_pdf_report_header_falls_back_to_app_logo_when_document_logo_is_unreadable(): void
+    {
+        $branding = app(TenantBrandingService::class);
+        $tenantId = (string) $this->tenant->id;
+        $appLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('unreadable-fallback-app.png', 120, 120),
+            $tenantId,
+            'app-logo'
+        );
+        $documentLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('unreadable-document.png', 180, 90),
+            $tenantId,
+            'document-logo'
+        );
+
+        $this->tenant->forceFill([
+            'logo_path' => $appLogoPath,
+            'document_logo_path' => $documentLogoPath,
+        ])->save();
+
+        $documentAbsolutePath = storage_path('app/public/' . $documentLogoPath);
+        $originalPermissions = fileperms($documentAbsolutePath) & 0777;
+        $this->assertTrue(chmod($documentAbsolutePath, 0000));
+
+        try {
+            if (is_readable($documentAbsolutePath)) {
+                $this->markTestSkipped('The test runner can still read mode-0000 files; unreadable-file fallback cannot be simulated here.');
+            }
+
+            $dataUri = app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh());
+            $this->assertIsString($dataUri);
+            $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
+            $this->assertSame(
+                File::get(storage_path('app/public/' . $appLogoPath)),
+                base64_decode(substr($dataUri, strlen('data:image/png;base64,')), true)
+            );
+        } finally {
+            chmod($documentAbsolutePath, $originalPermissions);
+        }
     }
 
     public function test_branding_local_path_rejects_traversal_absolute_backslash_and_missing_paths(): void

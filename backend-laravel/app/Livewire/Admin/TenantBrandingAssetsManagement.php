@@ -150,11 +150,13 @@ class TenantBrandingAssetsManagement extends Component
         $tenant = $this->currentTenant();
         $branding = app(TenantBrandingService::class);
 
+        $favicon = $branding->faviconAttributes($tenant->favicon_path);
+
         return view('livewire.admin.tenant-branding-assets-management', [
             'tenant' => $tenant,
             'appLogoUrl' => $branding->publicUrl($tenant->logo_path),
             'documentLogoUrl' => $branding->publicUrl($tenant->document_logo_path),
-            'faviconUrl' => $branding->publicUrl($tenant->favicon_path),
+            'faviconUrl' => $favicon['url'] ?? null,
         ])->layout('layouts.app');
     }
 }

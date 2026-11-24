@@ -7,11 +7,14 @@
         $tenantBrandingService = app(\App\Services\TenantBrandingService::class);
         $tenantBranding = $tenantBrandingService->currentTenant();
         $tenantLogoUrl = $tenantBrandingService->publicUrl($tenantBranding?->logo_path);
-        $tenantFaviconUrl = $tenantBrandingService->publicUrl($tenantBranding?->favicon_path);
-        $tenantFaviconMime = strtolower(pathinfo((string) ($tenantBranding?->favicon_path ?? ''), PATHINFO_EXTENSION)) === 'webp' ? 'image/webp' : 'image/png';
+        $tenantFavicon = $tenantBrandingService->faviconAttributes($tenantBranding?->favicon_path);
     @endphp
     <title>{{ $tenantBranding?->short_name ?: ($tenantBranding?->name ?: config('app.name', 'CBT Madrasah')) }} - CBT Madrasah</title>
-    @if($tenantFaviconUrl)<link rel="icon" type="{{ $tenantFaviconMime }}" href="{{ $tenantFaviconUrl }}">@endif
+    @if($tenantFavicon)
+        <link rel="icon" type="{{ $tenantFavicon['mime'] }}" href="{{ $tenantFavicon['url'] }}">
+    @else
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    @endif
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
