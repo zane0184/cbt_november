@@ -30,8 +30,10 @@ class LoginIdentityPreflightCommand extends Command
             'NUPTK terisi dengan format tidak valid' => 0,
             'employee_identifier tidak sesuai identitas login' => 0,
             'Field identitas Guru berisi string kosong' => 0,
+            'Field identitas Guru memiliki spasi di tepi' => 0,
             'Siswa tanpa NISN valid 10 digit' => 0,
             'NISN berisi string kosong' => 0,
+            'NISN memiliki spasi di tepi' => 0,
             'Kelompok NIP duplikat per tenant' => 0,
             'Kelompok NIK duplikat per tenant' => 0,
             'Kelompok NUPTK duplikat per tenant' => 0,
@@ -44,10 +46,13 @@ class LoginIdentityPreflightCommand extends Command
             ->chunk(500, function ($rows) use (&$counts): void {
                 foreach ($rows as $row) {
                     $status = (string) ($row->employment_status ?? '');
-                    $nip = trim((string) ($row->nip ?? ''));
-                    $nik = trim((string) ($row->nik ?? ''));
-                    $nuptk = trim((string) ($row->nuptk ?? ''));
-                    $employeeIdentifier = trim((string) ($row->employee_identifier ?? ''));
+                    $nipRaw = (string) ($row->nip ?? '');
+                    $nikRaw = (string) ($row->nik ?? '');
+                    $nuptkRaw = (string) ($row->nuptk ?? '');
+                    $nip = trim($nipRaw);
+                    $nik = trim($nikRaw);
+                    $nuptk = trim($nuptkRaw);
+                    $employeeIdentifier = (string) ($row->employee_identifier ?? '');
 
                     if (!in_array($status, ['PNS', 'PPPK', 'HONORER'], true)) {
                         $counts['Status kepegawaian Guru kosong/tidak dikenal']++;
@@ -62,29 +67,34 @@ class LoginIdentityPreflightCommand extends Command
                     if ($row->nuptk !== null && $nuptk === '') {
                         $counts['Field identitas Guru berisi string kosong']++;
                     }
+                    if (($nipRaw !== '' && $nipRaw !== $nip)
+                        || ($nikRaw !== '' && $nikRaw !== $nik)
+                        || ($nuptkRaw !== '' && $nuptkRaw !== $nuptk)) {
+                        $counts['Field identitas Guru memiliki spasi di tepi']++;
+                    }
 
-                    if ($nip !== '' && preg_match('/^\d{18}$/D', $nip) !== 1) {
+                    if ($nipRaw !== '' && preg_match('/^\d{18}$/D', $nipRaw) !== 1) {
                         $counts['NIP terisi dengan format tidak valid']++;
                     }
-                    if ($nik !== '' && preg_match('/^\d{16}$/D', $nik) !== 1) {
+                    if ($nikRaw !== '' && preg_match('/^\d{16}$/D', $nikRaw) !== 1) {
                         $counts['NIK terisi dengan format tidak valid']++;
                     }
-                    if ($nuptk !== '' && preg_match('/^\d{16}$/D', $nuptk) !== 1) {
+                    if ($nuptkRaw !== '' && preg_match('/^\d{16}$/D', $nuptkRaw) !== 1) {
                         $counts['NUPTK terisi dengan format tidak valid']++;
                     }
 
                     if (in_array($status, ['PNS', 'PPPK'], true)) {
-                        if (preg_match('/^\d{18}$/D', $nip) !== 1) {
+                        if (preg_match('/^\d{18}$/D', $nipRaw) !== 1) {
                             $counts['Guru PNS/PPPK tanpa NIP valid 18 digit']++;
                         }
-                        if ($employeeIdentifier !== $nip) {
+                        if ($employeeIdentifier !== $nipRaw) {
                             $counts['employee_identifier tidak sesuai identitas login']++;
                         }
                     } elseif ($status === 'HONORER') {
-                        if (preg_match('/^\d{16}$/D', $nik) !== 1) {
+                        if (preg_match('/^\d{16}$/D', $nikRaw) !== 1) {
                             $counts['Guru Honorer tanpa NIK valid 16 digit']++;
                         }
-                        if ($employeeIdentifier !== $nik) {
+                        if ($employeeIdentifier !== $nikRaw) {
                             $counts['employee_identifier tidak sesuai identitas login']++;
                         }
                     }
@@ -96,13 +106,18 @@ class LoginIdentityPreflightCommand extends Command
             ->orderBy('id')
             ->chunk(500, function ($rows) use (&$counts): void {
                 foreach ($rows as $row) {
-                    $nisn = trim((string) ($row->nisn ?? ''));
+                    $nisnRaw = (string) ($row->nisn ?? '');
+                    $nisn = trim($nisnRaw);
                     if ($row->nisn !== null && $nisn === '') {
                         $counts['NISN berisi string kosong']++;
                     }
-                    if (preg_match('/^\d{10}$/D', $nisn) !== 1) {
+                    if ($nisnRaw !== '' && $nisnRaw !== $nisn) {
+                        $counts['NISN memiliki spasi di tepi']++;
+                    }
+                    if (preg_match('/^\d{10}$/D', $nisnRaw) !== 1) {
                         $counts['Siswa tanpa NISN valid 10 digit']++;
                     }
+                }
                 }
             });
 
