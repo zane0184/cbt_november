@@ -11,6 +11,7 @@ use App\Models\ExamAttemptScore;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Reporting\ExamResultReportService;
 use App\Services\Reporting\ReportHeaderService;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -364,7 +365,51 @@ class Phase7DReportingTest extends TestCase
         $this->authAs($admin)
             ->get("/api/v1/reports/students/{$this->studentA->id}/export/pdf")
             ->assertForbidden();
+        public function test_rombel_filter_is_applied_to_result_queries_and_export(): void
+    {
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
+
+        $assessment = Assessment::findOrFail($this->examA->assessment_id);
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->guruA->id,
+            'full_name' => $this->guruA->name,
+            'employment_status' => 'PNS',
+            'nip' => '198001012006041001',
+            'employee_identifier' => '198001012006041001',
+        ]);
+
+        $rombel = Rombel::create([
+            'tenant_id' => $this->tenantA->id,
+            'academic_year_id' => $assessment->academic_year_id,
+            'name' => 'Kelas 6A',
+            'level' => 6,
+            'teacher_id' => $teacherProfile->id,
+            'capacity' => 35,
+            'status' => 'ACTIVE',
+        ]);
+
+        $studentProfile = StudentProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->studentA->id,
+            'nisn' => '1234567890',
+            'full_name' => $this->studentA->name,
+            'status' => 'ACTIVE',
+        ]);
+        $studentProfile->rombels()->attach($rombel->id);
+
+        $service = app(ExamResultReportService::class);
+        $filters = ['rombel_id' => $rombel->id];
+
+        $results = $service->getResults($this->examA, $filters);
+        $exportResults = $service->getAllResultsForExport($this->examA, $filters);
+
+        $this->assertCount(1, $results);
+        $this->assertCount(1, $exportResults);
+        $this->assertSame($this->attemptA->id, $results->first()->id);
     }
+
+}
 
     public function test_multi_tenant_isolation_prevents_exporting_other_tenant_pdf()
     {
