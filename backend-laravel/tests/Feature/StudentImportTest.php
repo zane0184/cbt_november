@@ -260,7 +260,7 @@ class StudentImportTest extends TestCase
         );
 
         $this->mock(AuditService::class, function ($mock): void {
-            $mock->shouldReceive('log')->once()->andThrow(new RuntimeException('Simulated audit storage failure.'));
+            $mock->shouldReceive('log')->once()->andThrow(new \RuntimeException('Simulated audit storage failure.'));
         });
 
         try {
