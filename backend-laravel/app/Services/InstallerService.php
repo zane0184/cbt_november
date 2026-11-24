@@ -890,12 +890,13 @@ class InstallerService
         ];
 
         $rows = DB::table('grade_levels')
-            ->join('phases', function ($join) use ($tenantId): void {
+            ->join('phases', function ($join) use ($tenantId, $curriculum): void {
                 $join->on('phases.id', '=', 'grade_levels.phase_id')
                     ->where('phases.tenant_id', '=', $tenantId)
                     ->where('phases.curriculum_id', '=', $curriculum->id);
             })
             ->where('grade_levels.tenant_id', $tenantId)
+            ->where('grade_levels.status', 'ACTIVE')
             ->select('grade_levels.code', 'grade_levels.level', 'phases.code as phase_code')
             ->get()
             ->keyBy('code');
