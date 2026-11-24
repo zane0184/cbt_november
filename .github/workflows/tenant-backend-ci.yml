@@ -351,6 +351,20 @@ jobs:
             tests/Feature/AcademicYearManagementTest.php \
             tests/Feature/InstallerEndToEndTest.php \
             tests/Feature/AdminUiVerificationTest.php \
+            tests/Feature/TeacherPracticeWorkflowTest.php \
+            tests/Feature/StudentExamPortalTest.php \
+            tests/Feature/StudentWebLoginTest.php \
+            tests/Feature/ExamExecutionHardeningTest.php \
+            tests/Feature/ExamAnswerTest.php \
+            tests/Feature/ExamSnapshotTest.php \
+            tests/Feature/SubmitLockingTest.php \
+            tests/Feature/ServerTimeAndClockTamperingTest.php \
+            tests/Feature/ScoringHardeningTest.php \
+            tests/Feature/AttemptTransactionConcurrencyTest.php \
+            tests/Feature/TenantIsolationTest.php \
+            tests/Feature/RBACEnforcementTest.php \
+            tests/Feature/StudentResultVisibilityTest.php \
+            tests/Feature/ResultWorkflowTest.php \
             --display-warnings
 
       - name: Verify no production or shared database was targeted
