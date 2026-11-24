@@ -160,9 +160,9 @@ class Phase7dBenchmarkCommand extends Command
                 // Preserve original application connection configuration.
             }
 
-            // Always attempt DROP, even if CREATE DATABASE reported an error after server-side creation.
-            try {
-                DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
+            if ($databaseCreated) {
+                try {
+                    DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
                 $remaining = DB::connection('mysql')->select(
                     'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
                     [$temporaryDatabaseName]
@@ -170,9 +170,10 @@ class Phase7dBenchmarkCommand extends Command
                 if ($remaining !== []) {
                     throw new \RuntimeException('Temporary benchmark database still exists after cleanup.');
                 }
-                $this->info('Temporary MySQL database removed; absence verified.');
-            } catch (\Throwable $exception) {
-                $cleanupFailure = $exception;
+                    $this->info('Temporary MySQL database removed; absence verified.');
+                } catch (\Throwable $exception) {
+                    $cleanupFailure = $exception;
+                }
             }
 
             try {
