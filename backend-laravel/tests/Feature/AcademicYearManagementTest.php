@@ -81,7 +81,7 @@ class AcademicYearManagementTest extends TestCase
             ->firstOrFail();
         $historicalGradeLevelId = DB::table('grade_levels')
             ->where('tenant_id', $this->tenant->id)
-            ->where('code', 'MI_1')
+            ->where('code', '1')
             ->value('id');
 
         $rombel = Rombel::create([
