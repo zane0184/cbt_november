@@ -12,7 +12,7 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AcademicYearManagementService;
 use App\Services\TenantAcademicBootstrapService;
-use Database\Seeders\DatabaseSeeder;
+use App\Services\TenantCurriculumRegistryBootstrapper;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -30,9 +30,8 @@ class AcademicYearManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(DatabaseSeeder::class);
-
         $this->tenant = Tenant::create(['name' => 'MIN Academic Test', 'code' => 'MINACADEMIC']);
+        app(TenantCurriculumRegistryBootstrapper::class)->seedForTenant((string) $this->tenant->id);
         $context = app(TenantContext::class);
         $context->setTenantId((string) $this->tenant->id);
 
