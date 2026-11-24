@@ -15,6 +15,10 @@
                 <button wire:click="openCreateSubjectModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
                     <span>+</span> Tambah Mata Pelajaran
                 </button>
+            @elseif($activeTab === 'academic_year')
+                <button wire:click="openCreateAcademicYearModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                    <span>+</span> Tambah Tahun Pelajaran
+                </button>
             @endif
             @endif
         </div>
@@ -37,10 +41,13 @@
         <button wire:click="setTab('grade_level')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'grade_level' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
             Tingkat Kelas & Fase
         </button>
+        <button wire:click="setTab('academic_year')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'academic_year' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
+            Tahun Pelajaran & Semester
+        </button>
     </div>
 
     <!-- Search Input -->
-    @if($activeTab !== 'grade_level')
+    @if(in_array($activeTab, ['rombel', 'subject'], true))
         <div class="bg-white border border-cardBorder rounded-2xl p-4 shadow-sm">
             <input wire:model.live="search" type="text" placeholder="Cari nama..." class="w-full border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
         </div>
@@ -116,14 +123,88 @@
     @elseif($activeTab === 'grade_level')
         <div class="bg-white border border-cardBorder rounded-2xl shadow-sm p-6 space-y-4">
             <h3 class="text-base font-bold text-navy-900">Daftar Tingkat Kelas & Fase Kurikulum</h3>
+            <p class="text-xs text-textSecondary">Tingkat kelas MI 1–6 disediakan dari registry fase resmi dan menjadi referensi rombel. Pemetaan: Fase A (1–2), Fase B (3–4), Fase C (5–6).</p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 @foreach($gradeLevels as $gl)
                     <div class="border border-cardBorder p-4 rounded-xl bg-contentBg shadow-sm">
-                        <div class="text-xs font-bold text-emerald-700 uppercase">Fase {{ $gl->phase->name ?? '-' }}</div>
+                        <div class="text-xs font-bold text-emerald-700 uppercase">{{ $gl->phase->name ?? '-' }}</div>
                         <div class="text-lg font-bold text-navy-900 mt-1">{{ $gl->name }}</div>
                         <div class="text-xs text-textSecondary mt-1">Level: {{ $gl->level }} | Kode: {{ $gl->code }}</div>
                     </div>
                 @endforeach
+            </div>
+        </div>
+
+    @elseif($activeTab === 'academic_year')
+        <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-cardBorder">
+                <h3 class="text-base font-bold text-navy-900">Tahun Pelajaran dan Semester</h3>
+                <p class="text-xs text-textSecondary mt-1">Setiap tahun pelajaran otomatis memiliki Semester Ganjil dan Genap. Mengganti periode aktif tidak menghapus rombel, penugasan, ujian, atau histori sebelumnya.</p>
+            </div>
+            <div class="divide-y divide-cardBorder">
+                @forelse($academicYears as $academicYear)
+                    <div class="p-5 space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-base font-bold text-navy-900">{{ $academicYear->name }}</span>
+                                    @if($academicYear->is_active)
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Tahun Aktif</span>
+                                    @else
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 border border-gray-200">Arsip / Tidak Aktif</span>
+                                    @endif
+                                </div>
+                            </div>
+                            @if(!$academicYear->is_active)
+                                <button wire:click="activateAcademicYear('{{ $academicYear->id }}')" class="px-3 py-2 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+                                    Jadikan Tahun Aktif
+                                </button>
+                            @endif
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach($academicYear->semesters as $semester)
+                                <div class="rounded-xl border border-cardBorder p-4 flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-navy-900">Semester {{ ucfirst(strtolower($semester->term)) }}</div>
+                                        @if($semester->is_active)
+                                            <div class="text-xs text-emerald-700 mt-1">Semester aktif</div>
+                                        @else
+                                            <div class="text-xs text-textSecondary mt-1">Tidak aktif</div>
+                                        @endif
+                                    </div>
+                                    @if(!$semester->is_active)
+                                        <button wire:click="activateSemester('{{ $semester->id }}')" class="px-3 py-2 text-xs font-bold rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                                            Aktifkan
+                                        </button>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <div class="p-10 text-center text-sm text-textSecondary">Belum ada tahun pelajaran. Tambahkan tahun pelajaran untuk mulai membuat rombel dan penugasan Guru.</div>
+                @endforelse
+            </div>
+        </div>
+    @endif
+
+    <!-- Create Academic Year Modal -->
+    @if($showCreateAcademicYearModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-cardBorder">
+                <h3 class="text-lg font-bold text-navy-900">Tambah Tahun Pelajaran</h3>
+                <p class="text-xs text-textSecondary">Sistem akan membuat Semester Ganjil dan Genap. Tahun aktif sebelumnya dan seluruh histori tetap dipertahankan.</p>
+                <form wire:submit.prevent="createAcademicYear" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tahun Pelajaran</label>
+                        <input wire:model="academicYearName" type="text" maxlength="9" placeholder="2026/2027" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                        @error('academicYearName') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
+                        <button type="button" wire:click="$set('showCreateAcademicYearModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">Simpan Tahun Pelajaran</button>
+                    </div>
+                </form>
             </div>
         </div>
     @endif
