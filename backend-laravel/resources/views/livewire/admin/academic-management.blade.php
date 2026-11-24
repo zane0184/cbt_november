@@ -160,7 +160,7 @@
                                     @if($academicYear->is_active)
                                         <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Tahun Aktif</span>
                                     @else
-                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 border border-gray-200">Arsip / Tidak Aktif</span>
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 border border-gray-200">Belum Aktif</span>
                                     @endif
                                 </div>
                             </div>
