@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\Rombel;
 use App\Models\Subject;
+use App\Models\Semester;
 use App\Services\AcademicYearManagementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -109,16 +110,6 @@ class AcademicManagement extends Component
         session()->flash('message', "Tahun pelajaran {$createdName} berhasil dibuat beserta Semester Ganjil dan Genap.");
     }
 
-    public function activateAcademicYear(string $academicYearId): void
-    {
-        $this->authorizeAcademicManagement();
-
-        $year = app(AcademicYearManagementService::class)
-            ->activateYearForTenant((string) auth()->user()->tenant_id, $academicYearId);
-
-        session()->flash('message', "Tahun pelajaran {$year->name} diaktifkan. Semester Ganjil dipilih jika belum ada semester aktif pada tahun tersebut.");
-    }
-
     public function activateSemester(string $semesterId): void
     {
         $this->authorizeAcademicManagement();
@@ -190,12 +181,14 @@ class AcademicManagement extends Component
 
         $gradeLevels = GradeLevel::with('phase')->get();
         $academicYears = AcademicYear::with('semesters')->orderByDesc('name')->get();
+        $activeSemester = Semester::with('academicYear')->where('is_active', true)->first();
 
         return view('livewire.admin.academic-management', [
             'rombels' => $rombels,
             'subjects' => $subjects,
             'gradeLevels' => $gradeLevels,
             'academicYears' => $academicYears,
+            'activeSemester' => $activeSemester,
         ])->layout('layouts.app');
     }
 }
