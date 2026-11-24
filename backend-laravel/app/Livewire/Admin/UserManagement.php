@@ -56,14 +56,21 @@ class UserManagement extends Component
             'email' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))],
             'password' => ['required','string','min:14'],
             'selectedRole' => ['required','string',Rule::in($manageableRoles)],
-            'employmentStatus' => ['nullable', 'sometimes', Rule::in(['PNS', 'PPPK', 'HONORER'])],
-            'nip' => ['nullable','sometimes','digits:18'],
-            'nuptk' => ['nullable','sometimes','digits:16'],
-            'nik' => ['nullable','sometimes','digits:16'],
+            'employmentStatus' => ['nullable', Rule::in(['PNS', 'PPPK', 'HONORER'])],
+            'nip' => ['nullable', 'digits:18'],
+            'nuptk' => ['nullable', 'digits:16'],
+            'nik' => ['nullable', 'digits:16'],
             'nisn' => ['nullable','digits:10'],
         ];
 
         if ($this->selectedRole === 'GURU') {
+            $rules['employmentStatus'] = ['required', Rule::in(['PNS', 'PPPK', 'HONORER'])];
+            if (in_array($this->employmentStatus, ['PNS', 'PPPK'], true)) {
+                array_unshift($rules['nip'], 'required');
+            }
+            if ($this->employmentStatus === 'HONORER') {
+                array_unshift($rules['nik'], 'required');
+            }
             if (trim((string) $this->nip) !== '') {
                 $rules['nip'][] = Rule::unique('teacher_profiles','nip')->where(fn ($q) => $q->where('tenant_id', $tenantId));
             }
@@ -110,6 +117,7 @@ class UserManagement extends Component
                 $nip = trim((string) $this->nip);
                 $nuptk = trim((string) $this->nuptk);
                 $nik = trim((string) $this->nik);
+                $employeeIdentifier = in_array($this->employmentStatus, ['PNS', 'PPPK'], true) ? $nip : $nik;
                 TeacherProfile::query()->create([
                     'user_id' => $user->id,
                     'full_name' => trim($this->name),
@@ -117,7 +125,7 @@ class UserManagement extends Component
                     'nip' => $nip !== '' ? $nip : null,
                     'nuptk' => $nuptk !== '' ? $nuptk : null,
                     'nik' => $nik !== '' ? $nik : null,
-                    'employee_identifier' => $nip !== '' ? $nip : ($nuptk !== '' ? $nuptk : ($nik !== '' ? $nik : null)),
+                    'employee_identifier' => $employeeIdentifier !== '' ? $employeeIdentifier : null,
                 ]);
             } elseif ($this->selectedRole === 'SISWA') {
                 StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
