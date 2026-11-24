@@ -40,3 +40,10 @@ Setiap temuan memakai dua dimensi dampak: ZIP uji operasional terbatas dan kelen
 - Tidak ada klaim kesiapan operasional/produksi.
 - Data CP resmi harus tetap diblokir sampai ada artefak resmi dan checksum/provenance terverifikasi.
 - ZIP readiness belum dinilai final.
+
+## Pembaruan checkpoint — route inventory
+- Route/access inventory ditambahkan: `docs/INDEPENDENT_QA_ROUTE_ACCESS_INVENTORY_2026-11-25.md`.
+- Route source diperiksa: `routes/web.php`, `routes/teacher.php`, `routes/api.php`.
+- Temuan route-level masih NOT VERIFIED sampai seluruh controller/action/policy dipetakan dan negative authorization tests dijalankan.
+- Head Agent 1 tetap `a65b4604495e8bcc153bf0e09df12a9efb11543a` saat pemeriksaan ulang; branch audit berada pada `7c3f7798b5b31cd5e3b4ff0e9696f4e2bf25a3ae`.
+- Tidak ada perubahan source aplikasi.
