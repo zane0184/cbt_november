@@ -106,6 +106,9 @@ jobs:
           touch .env
           php artisan package:discover --ansi
 
+      - name: Check patch whitespace against audited baseline
+        run: git -C "$GITHUB_WORKSPACE" diff --check b6148507bd77116dfc8a5f5697cf4cff226a4b87...$GITHUB_SHA
+
       - name: PHP lint application, migrations, and tests
         shell: bash
         run: |
