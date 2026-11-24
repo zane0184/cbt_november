@@ -361,6 +361,20 @@ class StudentImportTest extends TestCase
         $this->assertDatabaseHas('student_profiles', ['nisn' => '0007654321']);
     }
 
+    public function test_csv_blank_records_do_not_consume_the_5000_data_row_limit(): void
+    {
+        $csv = "nama,nisn\n";
+        for ($index = 1; $index <= 5000; $index++) {
+            $csv .= 'Siswa ' . $index . ',' . sprintf('%010d', $index) . "\n\n";
+        }
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        $rows = app(\App\Services\StudentImportService::class)->readRows($file->getRealPath(), 'csv');
+
+        $this->assertCount(5000, $rows);
+        $this->assertSame(10001, $rows[4999]['row']);
+    }
+
     public function test_csv_reader_preserves_physical_record_numbers_after_blank_records(): void
     {
         $csv = "nama,nisn\nSiswa Satu,0001234567\n\nSiswa Duplikat,0001234567\n";
