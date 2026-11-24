@@ -223,6 +223,17 @@ class AcademicYearManagementService
             throw new RuntimeException('Academic year operation requires an explicit tenant.');
         }
 
+        $user = auth()->user();
+        abort_unless(
+            $user
+            && (string) $user->tenant_id === $tenantId
+            && $user->roles()->count() === 1
+            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
+            && $user->hasPermission('academic.manage'),
+            403,
+            'Hanya Admin Madrasah pada instalasi ini yang dapat mengelola tahun pelajaran dan semester.'
+        );
+
         $context = app(TenantContext::class);
         $previousTenantId = $context->getTenantId();
         $context->setTenantId($tenantId);
