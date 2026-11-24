@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -311,7 +312,7 @@ class InstallerService
                     // A clean installation must bootstrap the production-safe system catalog.
                     // DatabaseSeeder is idempotent and seeds global reference data only.
                     $seedExitCode = Artisan::call('db:seed', [
-                        '--class' => \\Database\\Seeders\\DatabaseSeeder::class,
+                        '--class' => DatabaseSeeder::class,
                         '--force' => true,
                     ]);
                     if ($seedExitCode !== 0) {
