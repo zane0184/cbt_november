@@ -55,7 +55,7 @@ class Phase7dBenchmarkCommand extends Command
 
     public function handle(): int
     {
-        $runs = (int)$this->option('runs');
+        $runs = (int) $this->option('runs');
         if ($runs < 1) {
             $runs = 5;
         }
@@ -65,43 +65,91 @@ class Phase7dBenchmarkCommand extends Command
         $this->info("Runs per operation: {$runs}");
         $this->info("=================================================");
 
-        // Configure isolated SQLite database for benchmark
-        $dbPath = database_path('benchmark.sqlite');
-        if (!file_exists($dbPath)) {
-            touch($dbPath);
+        // Always use a unique temporary SQLite file; never reuse a project file with migrate:fresh.
+        $databasePath = tempnam(sys_get_temp_dir(), 'cbt-phase7d-');
+        if ($databasePath === false) {
+            $this->error('Tidak dapat membuat database benchmark sementara.');
+            return self::FAILURE;
         }
 
-        config([
-            'database.default' => 'sqlite',
-            'database.connections.sqlite.database' => $dbPath,
-        ]);
+        $originalDefaultConnection = config('database.default');
+        $originalSqliteConnection = config('database.connections.sqlite', []);
+        $tenantContext = app(TenantContext::class);
+        $previousTenantId = $tenantContext->getTenantId();
+        $authGuard = auth();
+        $previousAuthUser = $authGuard->user();
 
-        DB::purge('sqlite');
+        try {
+            config([
+                'database.default' => 'sqlite',
+                'database.connections.sqlite.database' => $databasePath,
+            ]);
 
-        $this->info("Running migrations on isolated benchmark database...");
-        Artisan::call('migrate:fresh', ['--database' => 'sqlite', '--force' => true]);
+            DB::purge('sqlite');
 
-        $this->info("Seeding representative workload...");
-        $startTime = microtime(true);
-        $workload = $this->seedWorkload();
-        $seedDuration = round((microtime(true) - $startTime) * 1000, 2);
-        $this->info("Workload seeded in {$seedDuration} ms.");
+            $this->info("Running migrations on isolated benchmark database...");
+            $migrationExitCode = Artisan::call('migrate:fresh', [
+                '--database' => 'sqlite',
+                '--force' => true,
+            ]);
+            if ($migrationExitCode !== 0) {
+                throw new \RuntimeException('Benchmark SQLite migration failed.');
+            }
 
-        // Operation 1: Batch Achievement Calculation
-        $this->info("\n--- Operation 1: Batch Achievement Calculation (100 Students) ---");
-        $op1Results = $this->runBatchAchievementBenchmark($workload, $runs);
+            $this->info("Seeding representative workload...");
+            $startTime = microtime(true);
+            $workload = $this->seedWorkload();
+            $seedDuration = round((microtime(true) - $startTime) * 1000, 2);
+            $this->info("Workload seeded in {$seedDuration} ms.");
 
-        // Operation 2: Combined 100-student PDF Report Export
-        $this->info("\n--- Operation 2: Combined 100-student PDF Report Export ---");
-        $op2Results = $this->runPdfExportBenchmark($workload, $runs);
+            $this->info("\n--- Operation 1: Batch Achievement Calculation (100 Students) ---");
+            $op1Results = $this->runBatchAchievementBenchmark($workload, $runs);
 
-        // Cleanup isolated DB file
-        DB::disconnect('sqlite');
-        if (file_exists($dbPath)) {
-            @unlink($dbPath);
+            $this->info("\n--- Operation 2: Combined 100-student PDF Report Export ---");
+            $op2Results = $this->runPdfExportBenchmark($workload, $runs);
+        } finally {
+            try {
+                DB::disconnect('sqlite');
+            } catch (\Throwable) {
+                // Cleanup continues even if a partially initialized connection cannot disconnect.
+            }
+
+            try {
+                DB::purge('sqlite');
+            } catch (\Throwable) {
+                // The temporary file is still removed below.
+            }
+
+            config([
+                'database.default' => $originalDefaultConnection,
+                'database.connections.sqlite' => $originalSqliteConnection,
+            ]);
+
+            try {
+                DB::purge('sqlite');
+            } catch (\Throwable) {
+                // Preserve the original application connection configuration.
+            }
+
+            try {
+                $tenantContext->setTenantId($previousTenantId);
+            } catch (\Throwable) {
+                // Do not prevent temporary database cleanup.
+            }
+
+            try {
+                $authGuard->setUser($previousAuthUser);
+            } catch (\Throwable) {
+                // Do not prevent temporary database cleanup.
+            }
+
+            foreach ([$databasePath, $databasePath . '-journal', $databasePath . '-wal', $databasePath . '-shm'] as $temporaryFile) {
+                if (is_file($temporaryFile)) {
+                    @unlink($temporaryFile);
+                }
+            }
         }
 
-        // Summary report & governance threshold evaluation
         $summary = $this->buildSummaryReport($op1Results, $op2Results, $runs);
 
         if ($this->option('json')) {
@@ -110,7 +158,6 @@ class Phase7dBenchmarkCommand extends Command
             $this->printSummaryTable($summary);
         }
 
-        // Save report to storage
         $reportDir = storage_path('reports');
         if (!file_exists($reportDir)) {
             mkdir($reportDir, 0755, true);
@@ -207,6 +254,9 @@ class Phase7dBenchmarkCommand extends Command
                 'tenant_id' => $tenant->id,
                 'user_id' => $teacherUser->id,
                 'full_name' => $teacherUser->name,
+                'employment_status' => 'PNS',
+                'nip' => '199001012026041001',
+                'employee_identifier' => '199001012026041001',
             ]);
 
             $rombel = Rombel::create([
@@ -396,7 +446,8 @@ class Phase7dBenchmarkCommand extends Command
                     'tenant_id' => $tenant->id,
                     'user_id' => $student->id,
                     'nis' => sprintf('NIS_%03d', $s),
-                    'nisn' => sprintf('NISN_%03d', $s),
+                    // Synthetic 10-digit NISN-format fixture; not a real student identity.
+                    'nisn' => sprintf('%010d', 9000000000 + $s),
                     'full_name' => $student->name,
                 ]);
                 $profile->rombels()->attach($rombel->id, ['id' => (string)Str::uuid(), 'tenant_id' => $tenant->id]);

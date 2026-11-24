@@ -602,6 +602,16 @@ class AdminUiVerificationTest extends TestCase
             'user_id' => $student->id,
             'nisn' => '0098765432',
         ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'USER_CREATED',
+            'entity_type' => 'User',
+            'entity_id' => $student->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'STUDENT_PROFILE_CREATED',
+            'entity_type' => 'StudentProfile',
+            'entity_id' => $student->studentProfile->id,
+        ]);
     }
 
     /** @test */
