@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
@@ -120,7 +121,7 @@ class LoginIdentityPreflightCommandTest extends TestCase
         StudentProfile::create([
             'user_id' => $student->id,
             'full_name' => 'Siswa NISN Invalid',
-            'nisn' => 'NISN-INVALID',
+            'nisn' => 'BAD',
         ]);
 
         $before = $this->snapshotIdentityTables();
@@ -134,14 +135,12 @@ class LoginIdentityPreflightCommandTest extends TestCase
         $this->assertStringContainsString('Siswa tanpa NISN valid 10 digit', $output);
         $this->assertStringNotContainsString('198001012006041001', $output);
         $this->assertStringNotContainsString('3171000000000002', $output);
-        $this->assertStringNotContainsString('NISN-INVALID', $output);
+        $this->assertStringNotContainsString('BAD', $output);
         $this->assertSame($before, $this->snapshotIdentityTables());
     }
 
-    public function test_preflight_detects_profile_role_tenant_and_cardinality_anomalies_read_only(): void
+    public function test_preflight_detects_profile_role_and_cardinality_anomalies_read_only(): void
     {
-        $secondTenant = Tenant::create(['name' => 'Madrasah Kedua', 'code' => 'PREFLIGHT2']);
-
         $teacher = $this->createUserWithRole('Guru Relasi', 'guru.relasi', 'GURU');
         $student = $this->createUserWithRole('Siswa Relasi', 'siswa.relasi', 'SISWA');
         $missingTeacher = $this->createUserWithRole('Guru Tanpa Profil', 'guru.tanpa.profil', 'GURU');
@@ -152,7 +151,7 @@ class LoginIdentityPreflightCommandTest extends TestCase
         DB::table('teacher_profiles')->insert([
             'id' => (string) Str::uuid(),
             'user_id' => $teacher->id,
-            'tenant_id' => $secondTenant->id,
+            'tenant_id' => $this->tenant->id,
             'full_name' => 'Guru Relasi Tenant Salah',
             'employment_status' => 'PNS',
             'nip' => '198001012006041001',
@@ -176,7 +175,6 @@ class LoginIdentityPreflightCommandTest extends TestCase
         $output = Artisan::output();
 
         $this->assertSame(1, $exitCode);
-        $this->assertStringContainsString('Tenant profil Guru tidak sama dengan tenant user', $output);
         $this->assertStringContainsString('Profil Siswa tidak memiliki tepat satu role SISWA', $output);
         $this->assertStringContainsString('User memiliki profil Guru dan Siswa sekaligus', $output);
         $this->assertStringContainsString('Akun memiliki jumlah role bukan satu', $output);
@@ -204,6 +202,26 @@ class LoginIdentityPreflightCommandTest extends TestCase
         $this->assertStringContainsString('Username Admin memiliki spasi di tepi', $output);
         $this->assertStringNotContainsString('admin.padded', $output);
         $this->assertSame($before, $this->snapshotIdentityTables());
+    }
+
+    public function test_database_rejects_cross_tenant_teacher_profile_relation(): void
+    {
+        $secondTenant = Tenant::create(['name' => 'Madrasah Kedua', 'code' => 'PREFLIGHT2']);
+        $teacher = $this->createUserWithRole('Guru Tenant', 'guru.tenant', 'GURU');
+
+        $this->expectException(QueryException::class);
+
+        DB::table('teacher_profiles')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $teacher->id,
+            'tenant_id' => $secondTenant->id,
+            'full_name' => 'Guru Tenant Mismatch',
+            'employment_status' => 'PNS',
+            'nip' => '198001012006041001',
+            'employee_identifier' => '198001012006041001',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function test_preflight_fails_closed_when_required_schema_column_is_missing(): void

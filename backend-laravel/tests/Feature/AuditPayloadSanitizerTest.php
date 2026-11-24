@@ -20,7 +20,7 @@ class AuditPayloadSanitizerTest extends TestCase
                 'answer_payload' => ['answer' => 'jawaban privat'],
                 'evaluated_answer_snapshot' => ['value' => 'jawaban penilaian'],
                 'feedback' => 'Catatan privat',
-                'reason' => 'Alasan yang mungkin memuat PII',
+                'reason' => 'Alasan terkait NISN 0001234567, telepon 0812-3456-7890, email wali@example.test',
                 'original_name' => 'dokumen-identitas.pdf',
                 'exception_message' => 'exception yang mungkin memuat rahasia',
                 'ip_address' => '192.0.2.123',
@@ -40,7 +40,7 @@ class AuditPayloadSanitizerTest extends TestCase
         $this->assertSame('[REDACTED]', $sanitized['nested']['answer_payload']);
         $this->assertSame('[REDACTED]', $sanitized['nested']['evaluated_answer_snapshot']);
         $this->assertSame('[REDACTED]', $sanitized['nested']['feedback']);
-        $this->assertSame('[REDACTED]', $sanitized['nested']['reason']);
+        $this->assertSame('Alasan terkait NISN [REDACTED], telepon [REDACTED], email [REDACTED]', $sanitized['nested']['reason']);
         $this->assertSame('[REDACTED]', $sanitized['nested']['original_name']);
         $this->assertSame('[REDACTED]', $sanitized['nested']['exception_message']);
         $this->assertSame('[REDACTED]', $sanitized['nested']['ip_address']);

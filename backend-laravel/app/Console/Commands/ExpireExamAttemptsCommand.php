@@ -170,7 +170,7 @@ class ExpireExamAttemptsCommand extends Command
                         'status' => 'EXPIRED',
                         'processed_at' => $closedAt->toIso8601String(),
                         'score_id' => $score?->id,
-                        'scoring_skipped_code' => $skipReason,
+                        'scoring_skipped_reason' => $skipReason,
                     ]),
                     'ip_address' => null,
                     'user_agent' => 'cbt:expire-attempts',

@@ -16,7 +16,7 @@ class AuditPayloadSanitizer
         'studentid', 'graderid', 'devicefingerprint', 'devicebindingid',
         'installationuuid', 'installationid',
         'answerpayload', 'answersnapshot', 'evaluatedanswersnapshot', 'feedback',
-        'reason', 'originalname', 'filename', 'ipaddress', 'useragent',
+        'originalname', 'filename', 'ipaddress', 'useragent',
         'exception', 'error',
     ];
 
@@ -62,6 +62,15 @@ class AuditPayloadSanitizer
         return 'ua:' . substr(hash_hmac('sha256', $userAgent, $applicationKey), 0, 20);
     }
 
+    private function sanitizeFreeTextReason(string $reason): string
+    {
+        $reason = preg_replace('/(?<!\\d)(?:\\+?62|0)[\\d\\s().-]{7,17}(?!\\d)/', '[REDACTED]', $reason) ?? $reason;
+        $reason = preg_replace('/(?<!\\d)\\d{10,18}(?!\\d)/', '[REDACTED]', $reason) ?? $reason;
+        $reason = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i', '[REDACTED]', $reason) ?? $reason;
+
+        return $reason;
+    }
+
     private function sanitizeArray(array $values): array
     {
         $sanitized = [];
@@ -71,6 +80,11 @@ class AuditPayloadSanitizer
                 $camelCaseSeparated = (string) preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', $key);
                 $normalizedKey = strtolower((string) preg_replace('/[^a-z0-9]/i', '', $key));
                 $keyTokens = preg_split('/[^a-z0-9]+/i', $camelCaseSeparated, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+                if (str_contains($normalizedKey, 'reason') && is_string($value)) {
+                    $sanitized[$key] = $this->sanitizeFreeTextReason($value);
+                    continue;
+                }
 
                 if (in_array($normalizedKey, self::SHORT_IDENTIFIER_KEYS, true)
                     || array_intersect(array_map('strtolower', $keyTokens), self::SHORT_IDENTIFIER_KEYS) !== []) {
