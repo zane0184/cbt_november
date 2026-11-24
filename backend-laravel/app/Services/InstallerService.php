@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Contexts\TenantContext;
 use App\Models\AuditLog;
+use App\Models\AcademicYear;
+use App\Models\GradeLevel;
+use App\Models\Semester;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
@@ -20,7 +23,8 @@ class InstallerService
 {
     public function __construct(
         protected InstallerStateStore $stateStore,
-        protected RolePermissionBootstrapper $permissionBootstrapper
+        protected RolePermissionBootstrapper $permissionBootstrapper,
+        protected TenantAcademicBootstrapper $tenantAcademicBootstrapper
     ) {
     }
 
@@ -303,6 +307,14 @@ class InstallerService
                         throw new RuntimeException('MIGRATION_EXIT_' . $exitCode);
                     }
 
+                    // Bootstrap only the production-safe reference catalogs. DatabaseSeeder
+                    // creates the reserved System Tenant and official metadata registries;
+                    // it does not create demo madrasahs, users, or CP content.
+                    $seedExitCode = Artisan::call('db:seed', ['--force' => true]);
+                    if ($seedExitCode !== 0) {
+                        throw new RuntimeException('REFERENCE_CATALOG_SEED_EXIT_' . $seedExitCode);
+                    }
+
                     $migrationCheck = $this->verifyMigrationLedger();
                     if (!$migrationCheck['success']) {
                         throw new RuntimeException('MIGRATION_LEDGER_INCOMPLETE');
@@ -441,6 +453,7 @@ class InstallerService
                         $tenant = Tenant::create(['name' => $madrasahName, 'code' => $madrasahCode]);
                         $tenantId = $tenant->id;
                         app(TenantContext::class)->setTenantId($tenant->id);
+                        $this->tenantAcademicBootstrapper->bootstrap($tenant->id);
                         $roleDefinitions = [
                             'ADMIN_MADRASAH' => 'Admin Madrasah', 'OPERATOR' => 'Operator Madrasah',
                             'KAMAD' => 'Kepala Madrasah', 'GURU' => 'Guru / Pengajar', 'SISWA' => 'Siswa / Peserta Ujian',

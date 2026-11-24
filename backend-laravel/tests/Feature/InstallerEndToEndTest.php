@@ -95,7 +95,17 @@ class InstallerEndToEndTest extends TestCase
             ]);
             $this->assertTrue($created['success'], $created['message']);
 
-            $identity = app(InstallationIdentityService::class)->getOrCreate((string) $created['tenant_id']);
+            $tenantId = (string) $created['tenant_id'];
+            $this->assertSame(1, DB::table('academic_years')->where('tenant_id', $tenantId)->count());
+            $this->assertSame(2, DB::table('semesters')->where('tenant_id', $tenantId)->count());
+            $this->assertSame(1, DB::table('semesters')->where('tenant_id', $tenantId)->where('is_active', true)->count());
+            $this->assertSame(1, DB::table('curricula')->where('tenant_id', $tenantId)->where('code', 'KURIKULUM_MERDEKA')->count());
+            $this->assertSame(3, DB::table('phases')->where('tenant_id', $tenantId)->count());
+            $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenantId)->count());
+            $this->assertDatabaseHas('grade_levels', ['tenant_id' => $tenantId, 'code' => 'MI_1', 'level' => 1]);
+            $this->assertDatabaseHas('grade_levels', ['tenant_id' => $tenantId, 'code' => 'MI_6', 'level' => 6]);
+
+            $identity = app(InstallationIdentityService::class)->getOrCreate($tenantId);
             $issuedAt = Carbon::now('UTC');
             $expiresAt = $issuedAt->copy()->addDays(180);
             $pilotState = array_merge($store->read(), [
