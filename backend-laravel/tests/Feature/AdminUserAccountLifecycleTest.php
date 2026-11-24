@@ -597,7 +597,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         // Browser Set-Cookie values are encrypted. Recover the real session ID,
         // then replay it with withCookie(), which encrypts it for the next request.
         $decrypted = app('encrypter')->decrypt($cookie->getValue(), false);
-        $sessionId = \\Illuminate\\Cookie\\CookieValuePrefix::remove(
+        $sessionId = \Illuminate\Cookie\CookieValuePrefix::remove(
             $cookieName,
             $decrypted,
             app('encrypter')->getKey()
@@ -647,6 +647,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
         Auth::forgetGuards();
 
+        $this->flushHeaders();
         $this->withCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
 
         // Resetting one account must not invalidate another account's persisted session.
@@ -658,6 +659,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
 
+        $this->flushHeaders();
         $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
 
         // A different account's persisted session must survive deactivation too.
