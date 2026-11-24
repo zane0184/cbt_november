@@ -13,9 +13,15 @@ class AssessmentTaxonomySeeder extends Seeder
     public function run(): void
     {
         SystemTenantSeeder::seed();
+        $this->seedForTenant(Tenant::SYSTEM_TENANT_ID);
+    }
 
-        DB::transaction(function (): void {
-            $tenantId = Tenant::SYSTEM_TENANT_ID;
+    /**
+     * Seed assessment taxonomy options for one standalone installation tenant.
+     */
+    public function seedForTenant(string $tenantId): void
+    {
+        DB::transaction(function () use ($tenantId): void {
             $kma = CurriculumReferenceSource::query()
                 ->where('tenant_id', $tenantId)
                 ->where('document_number', 'KMA 1503 Tahun 2025')
