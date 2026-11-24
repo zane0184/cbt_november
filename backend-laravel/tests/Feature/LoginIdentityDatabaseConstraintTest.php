@@ -134,22 +134,51 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
 
     public function test_migration_preflight_refuses_legacy_invalid_rows_without_mutating_them(): void
     {
-        DB::statement('SET SESSION check_constraint_checks = OFF');
-
-        $user = $this->makeUser('teacher.legacy');
-        $id = (string) Str::uuid();
-        $invalidRow = $this->teacherRow(
-            $user,
-            $id,
-            'PNS',
-            str_repeat('7', 17),
-            null,
-            null,
-            str_repeat('7', 17)
+        DB::statement(
+            'CREATE TEMPORARY TABLE teacher_profiles (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                tenant_id CHAR(36) NOT NULL,
+                user_id CHAR(36) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                employment_status VARCHAR(16) NULL,
+                employee_identifier VARCHAR(255) NULL,
+                nip VARCHAR(32) NULL,
+                nik VARCHAR(32) NULL,
+                nuptk VARCHAR(32) NULL,
+                deleted_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB'
+        );
+        DB::statement(
+            'CREATE TEMPORARY TABLE student_profiles (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                tenant_id CHAR(36) NOT NULL,
+                user_id CHAR(36) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                nisn VARCHAR(32) NULL,
+                deleted_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB'
         );
 
+        $id = (string) Str::uuid();
+
         try {
-            DB::table('teacher_profiles')->insert($invalidRow);
+            DB::table('teacher_profiles')->insert([
+                'id' => $id,
+                'tenant_id' => $this->tenant->id,
+                'user_id' => (string) Str::uuid(),
+                'full_name' => 'Guru Legacy',
+                'employment_status' => 'PNS',
+                'nip' => str_repeat('7', 17),
+                'nik' => null,
+                'nuptk' => null,
+                'employee_identifier' => str_repeat('7', 17),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             $migration = require database_path('migrations/2026_11_24_180001_enforce_login_identity_format.php');
             $exception = null;
@@ -163,8 +192,8 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
             $this->assertStringContainsString('existing teacher profile', $exception->getMessage());
             $this->assertDatabaseHas('teacher_profiles', ['id' => $id, 'nip' => str_repeat('7', 17)]);
         } finally {
-            DB::table('teacher_profiles')->where('id', $id)->delete();
-            DB::statement('SET SESSION check_constraint_checks = ON');
+            DB::statement('DROP TEMPORARY TABLE IF EXISTS student_profiles');
+            DB::statement('DROP TEMPORARY TABLE IF EXISTS teacher_profiles');
         }
     }
 

@@ -22,16 +22,24 @@ class LoginIdentityPreflightCommandTest extends TestCase
 
     private Tenant $tenant;
 
+    private bool $legacyProfileTablesCreated = false;
+
     protected function setUp(): void
     {
         parent::setUp();
         if (DB::connection()->getDriverName() !== 'mysql') {
-            $this->markTestSkipped('Legacy malformed identity fixtures require disposable MySQL CHECK-constraint control.');
+            $this->markTestSkipped('Legacy malformed identity fixtures use disposable MySQL temporary tables.');
         }
-        // Test-only: simulate imported legacy rows that predate the new CHECK constraints.
-        DB::statement('SET SESSION check_constraint_checks = OFF');
+
         $this->tenant = Tenant::create(['name' => 'Madrasah Preflight', 'code' => 'PREFLIGHT']);
         app(TenantContext::class)->setTenantId($this->tenant->id);
+
+        // Temporary tables shadow only the profile tables for this test connection.
+        // They intentionally have no CHECK constraints so the read-only preflight
+        // can inspect malformed legacy rows without disabling database enforcement.
+        if ($this->name() !== 'test_database_rejects_cross_tenant_teacher_profile_relation') {
+            $this->createLegacyProfileTables();
+        }
     }
 
     public function test_preflight_passes_for_valid_required_login_identities_without_printing_values(): void
@@ -253,12 +261,47 @@ class LoginIdentityPreflightCommandTest extends TestCase
     protected function tearDown(): void
     {
         try {
-            if (DB::connection()->getDriverName() === 'mysql') {
-                DB::statement('SET SESSION check_constraint_checks = ON');
+            if ($this->legacyProfileTablesCreated && DB::connection()->getDriverName() === 'mysql') {
+                DB::statement('DROP TEMPORARY TABLE IF EXISTS student_profiles');
+                DB::statement('DROP TEMPORARY TABLE IF EXISTS teacher_profiles');
             }
         } finally {
             parent::tearDown();
         }
+    }
+
+    private function createLegacyProfileTables(): void
+    {
+        DB::statement(
+            'CREATE TEMPORARY TABLE teacher_profiles (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                tenant_id CHAR(36) NOT NULL,
+                user_id CHAR(36) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                employment_status VARCHAR(16) NULL,
+                employee_identifier VARCHAR(255) NULL,
+                nip VARCHAR(32) NULL,
+                nik VARCHAR(32) NULL,
+                nuptk VARCHAR(32) NULL,
+                deleted_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB'
+        );
+        DB::statement(
+            'CREATE TEMPORARY TABLE student_profiles (
+                id CHAR(36) NOT NULL PRIMARY KEY,
+                tenant_id CHAR(36) NOT NULL,
+                user_id CHAR(36) NOT NULL,
+                full_name VARCHAR(255) NOT NULL,
+                nisn VARCHAR(32) NULL,
+                deleted_at DATETIME NULL,
+                created_at DATETIME NULL,
+                updated_at DATETIME NULL
+            ) ENGINE=InnoDB'
+        );
+
+        $this->legacyProfileTablesCreated = true;
     }
 
     private function createUserWithRole(string $name, string $username, string $roleName): User
