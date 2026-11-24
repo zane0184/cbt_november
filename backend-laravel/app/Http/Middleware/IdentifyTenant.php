@@ -92,6 +92,25 @@ class IdentifyTenant
             }
         }
 
+        // DatabaseSessionHandler may create the login session before the login
+        // controller has an authenticated Guard ID. Bind it on the first protected
+        // Web request so reset/deactivation can revoke this exact account's sessions.
+        if (!$request->bearerToken()
+            && $request->hasSession()
+            && auth('web')->check()
+            && config('session.driver') === 'database') {
+            $sessionTable = (string) config('session.table', 'sessions');
+            if (\\Illuminate\\Support\\Facades\\Schema::hasTable($sessionTable)
+                && \\Illuminate\\Support\\Facades\\Schema::hasColumn($sessionTable, 'user_id')) {
+                \\Illuminate\\Support\\Facades\\DB::table($sessionTable)
+                    ->where('id', $request->session()->getId())
+                    ->where(function ($query) use ($user) {
+                        $query->whereNull('user_id')->orWhere('user_id', '!=', $user->getAuthIdentifier());
+                    })
+                    ->update(['user_id' => $user->getAuthIdentifier()]);
+            }
+        }
+
         if ((bool) $user->must_change_password && !$isPasswordChangeRequest && !$isLogoutRequest) {
             if ($apiRequest) {
                 return response()->json([
