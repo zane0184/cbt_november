@@ -33,3 +33,8 @@
   - Source blob SHA: `1762d3972f956f6387287e8f22e491bae9cfde5d`
   - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/WebAdminAuthTest.php.before`
   - Backup commit: `79267bbd2a23c5fd60ccae9e5648f8c13f6e6a3d`
+
+- Source: `backend-laravel/tests/Feature/StudentWebLoginTest.php`
+  - Source blob SHA: `d3a24650db9dfb7466ab230300084c9277579d13`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/StudentWebLoginTest.php.before`
+  - Backup commit: `26301cf2faa2851285a2adc464cf3008dff57742`
