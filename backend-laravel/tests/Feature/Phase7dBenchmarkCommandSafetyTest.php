@@ -131,7 +131,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
 
         // Omit the official grant only in this failure-path test. The real
         // ReportController and ReportPolicy must deny export; no policy is mocked.
-        $bootstrapper = \\Mockery::mock(RolePermissionBootstrapper::class);
+        $bootstrapper = \Mockery::mock(RolePermissionBootstrapper::class);
         $bootstrapper->shouldReceive('bootstrap')->once()->andReturnNull();
         $this->app->instance(RolePermissionBootstrapper::class, $bootstrapper);
 
@@ -144,7 +144,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                 '--allow-mysql' => true,
                 '--json' => true,
             ]);
-        } catch (\\Throwable $caught) {
+        } catch (\Throwable $caught) {
             $exception = $caught;
         }
 
@@ -154,7 +154,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $output = Artisan::output();
         $this->assertStringContainsString('Temporary benchmark schema created:', $output);
         $this->assertInstanceOf(
-            \\Illuminate\\Auth\\Access\\AuthorizationException::class,
+            \Illuminate\Auth\Access\AuthorizationException::class,
             $exception,
             'The benchmark must fail specifically because report authorization denied export.'
         );
