@@ -26,7 +26,7 @@ class StudentImportXlsxPreflightTest extends TestCase
     {
         $path = $this->makeWorkbook();
         $this->mutateEntry($path, 'xl/worksheets/sheet1.xml', function (string $xml): string {
-            $updated = preg_replace('/<dimension\\b[^>]*\\bref=["\\'][^"\\']+["\\'][^>]*\\/>/i', '<dimension ref="A1:XFD1048576"/>', $xml, 1);
+            $updated = preg_replace('/<dimension\b[^>]*\bref="[^"]+"[^>]*\/>/i', '<dimension ref="A1:XFD1048576"/>', $xml, 1);
             $this->assertIsString($updated);
             $this->assertNotSame($xml, $updated);
             return $updated;
