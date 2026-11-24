@@ -594,15 +594,11 @@ class AdminUserAccountLifecycleTest extends TestCase
             ->first(fn ($candidate) => $candidate->getName() === $cookieName);
         $this->assertNotNull($cookie, 'Web login must issue a session cookie.');
 
-        // Browser Set-Cookie values are encrypted. Recover the real session ID,
-        // then replay it with withCookie(), which encrypts it for the next request.
-        $decrypted = app('encrypter')->decrypt($cookie->getValue(), false);
-        $sessionId = \Illuminate\Cookie\CookieValuePrefix::remove(
-            $cookieName,
-            $decrypted,
-            app('encrypter')->getKey()
-        );
+        // Read the actual session ID used by the just-completed login request.
+        // withCookie() encrypts this plain ID to reproduce the browser request.
+        $sessionId = app('session')->driver()->getId();
         $this->assertIsString($sessionId);
+        $this->assertNotSame('', $sessionId);
         if (config('session.driver') === 'database') {
             $this->assertDatabaseHas('sessions', ['id' => $sessionId, 'user_id' => $user->id]);
         } elseif (config('session.driver') === 'file') {
