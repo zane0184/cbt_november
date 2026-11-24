@@ -77,3 +77,66 @@ Catatan: commit dokumentasi di atas hanya menambahkan laporan unblock. Tidak ada
 
 ### Next
 Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implementasikan P1-ID-03A dengan backup byte-exact dan pengujian. Jangan membuat migration enforcement atau memulai P1-ID-03B sebelum P1-ID-03A selesai dan disetujui.
+
+
+---
+
+## ADDENDUM CHECKPOINT KOREKSI — 24 November 2026
+
+### AUDIT
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- Branch: `work/p1-seven-targets-20261124`.
+- HEAD saat audit recovery: `2f13517217bcdb8ffb591f4df7751bcc4b7354ab`.
+- Base: `work/phpunit-41-root-cause-20261123` / `1c33e5d422175f9bd85d206230271a9fe5a4eecd`.
+- Source aplikasi yang diperiksa: `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050`.
+- Compare source ke HEAD recovery: 4 commit ahead, 0 behind; hanya report dan checkpoint unblock berubah. Tidak ada source aplikasi, migration, workflow, atau dependency berubah.
+- Catatan `afd9efd4...` pada addendum sebelumnya adalah HEAD historis pada 09:15 UTC. Run #45363315036 akhirnya CANCELLED; ZIP run #45363315217 SUCCESS hanya build/archive.
+- Workspace `/mnt/data/CBT_MADRASAH_RECONSTRUCTION/` tidak ada. Git 2.47.3 tersedia; PHP 8.4.24 (bukan PHP 8.3), Composer tidak ada, PDO driver kosong, MySQL/Docker/Podman tidak tersedia, DNS/HTTPS GitHub gagal. TLS tetap aktif.
+- Remote GitHub Actions dapat menjalankan PHP 8.3 dan disposable MySQL, tetapi tidak menyediakan checkout lokal writable.
+
+### DESAIN
+- Lanjutkan P1-ID-03A setelah pemulihan workspace; kontrak identitas tetap: Admin username; Guru PNS/PPPK NIP 18 digit; Guru Honorer NIK 16 digit; Siswa NISN 10 digit.
+- Tutup gap preflight: schema columns, tenant/profile relation, role/cardinality, kategori silang, test setiap anomali, cross-tenant allowance, dan bukti DB tidak berubah.
+- Normalisasi benchmark: TeacherProfile wajib memiliki employment_status dan identifier sesuai kategori; NISN harus 10 digit numerik.
+- Selesaikan inventaris seluruh writer identitas, AuditService/AuditLog callsites, mass assignment, dan otorisasi.
+- Redaksi PII terpusat berlaku untuk audit baru; histori AuditLog lama tidak diubah.
+- Jangan membuat atau menjalankan migration P1-ID-03B.
+
+### IMPLEMENTASI
+- Tidak ada source aplikasi berubah pada recovery ini.
+- Tidak ada patch source melalui GitHub Contents API.
+- Dokumen report diperbarui pada commit `6ad8eddbec115b8e05c35c66ec25400f90bd2303`; checkpoint ini diperbarui pada commit yang tercatat di akhir sesi.
+- Tidak ada backup source baru karena tidak ada source yang diedit.
+- Backup historis identitas tersedia di `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/`; manifest mencatat source blob SHA dan path backup. Bukti terdahulu: 13/13 snapshot awal dan 21/21 snapshot refinement cocok pada saat verifikasi. Itu baseline pra-patch, bukan SHA source saat ini.
+
+### PENGUJIAN
+- Run #45363315036, SHA `afd9efd4...`: CANCELLED. PHP lint dan focused smoke PASS; focused 56 passed / 225 assertions; full suite terhenti karena log `The operation was canceled`.
+- Run #45363315217, SHA `afd9efd4...`: SUCCESS untuk build/archive saja; artifact #14906315115, 19,768,203 bytes; ZIP final NOT ACCEPTED.
+- Run exact HEAD recovery `2f135172...`: Tenant Backend CI #45363631214 SUCCESS; PHP 8.3 + disposable MySQL; focused 56 passed / 225 assertions; full PHPUnit 534 passed / 2,265 assertions; PHP lint PASS.
+- ZIP workflow #45363631190 SUCCESS pada exact SHA `2f135172...`; artifact #14906520236, 19,768,215 bytes. Build/upload PASS saja, bukan acceptance final.
+- CI exact HEAD membuktikan source tree yang diuji; compare menunjukkan source aplikasi sama dengan `cd2b6ee8...`. P1-ID-03A tetap PARTIAL karena preflight/test/writer/redaction/mass-assignment belum lengkap.
+- PHPUnit lokal, Composer lokal, migration, staging, produksi, dan UAT: NOT RUN.
+
+### STATUS
+| Gate | Status |
+|---|---|
+| Checkout/toolchain lokal | BLOCKED |
+| Remote CI PHP 8.3 + disposable MySQL | VERIFIED AVAILABLE |
+| Backend full suite exact HEAD recovery | PASS 534 / 2,265 |
+| P1-ID-03A | PARTIAL / NOT COMPLETE |
+| P1-ID-03B | BLOCKED / NOT STARTED |
+| Import Guru/Siswa | NOT IMPLEMENTED / NOT VERIFIED |
+| Web Admin | PARTIAL |
+| Web Guru | PARTIAL |
+| Web Siswa | PARTIAL |
+| Proktor Mode B | BLOCKED |
+| Staging | NOT VERIFIED |
+| ZIP final | NOT ACCEPTED |
+| Production | NOT TOUCHED |
+
+### NEXT ACTION
+1. Pulihkan checkout Git asli dan workspace writable dengan PHP 8.3, Composer locked dependencies, PHPUnit, PDO MySQL, dan MySQL 8/InnoDB disposable.
+2. Selesaikan audit source P1-ID-03A sebelum patch; backup byte-exact setiap file yang diedit.
+3. Implementasikan preflight, test anomali, fixture/benchmark, AuditService PII redaction, writer inventory, dan mass-assignment/authorization.
+4. Jalankan focused/full PHPUnit dan CI pada exact source commit hasil patch.
+5. STOP untuk review koordinator; jangan mulai P1-ID-03B sebelum P1-ID-03A selesai dan disetujui.
