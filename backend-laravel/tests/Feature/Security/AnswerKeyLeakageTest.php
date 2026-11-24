@@ -71,7 +71,20 @@ class AnswerKeyLeakageTest extends TestCase
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A']);
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
         $rombel = Rombel::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'grade_level_id' => $gradeLevel->id, 'name' => '1A', 'status' => 'ACTIVE']);
-        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->guru->id, 'full_name' => 'Guru']);
+        $teacherNip = '9' . str_pad(
+            (string) random_int(0, 99999999999999999),
+            17,
+            '0',
+            STR_PAD_LEFT
+        );
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->guru->id,
+            'full_name' => 'Guru',
+            'employment_status' => 'PNS',
+            'nip' => $teacherNip,
+            'employee_identifier' => $teacherNip,
+        ]);
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
@@ -83,7 +96,18 @@ class AnswerKeyLeakageTest extends TestCase
             'status' => 'ACTIVE',
             'created_by' => $this->guru->id,
         ]);
-        $studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id, 'full_name' => 'Student']);
+        $studentNisn = '9' . str_pad(
+            (string) random_int(0, 999999999),
+            9,
+            '0',
+            STR_PAD_LEFT
+        );
+        $studentProfile = StudentProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $this->student->id,
+            'full_name' => 'Student',
+            'nisn' => $studentNisn,
+        ]);
         DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),
             'tenant_id' => $this->tenant->id,

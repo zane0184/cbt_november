@@ -286,7 +286,7 @@ class LoginIdentityPreflightCommandTest extends TestCase
                 deleted_at DATETIME NULL,
                 created_at DATETIME NULL,
                 updated_at DATETIME NULL
-            ) ENGINE=InnoDB'
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE=InnoDB'
         );
         DB::statement(
             'CREATE TEMPORARY TABLE student_profiles (
@@ -298,7 +298,7 @@ class LoginIdentityPreflightCommandTest extends TestCase
                 deleted_at DATETIME NULL,
                 created_at DATETIME NULL,
                 updated_at DATETIME NULL
-            ) ENGINE=InnoDB'
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE=InnoDB'
         );
 
         $this->legacyProfileTablesCreated = true;
