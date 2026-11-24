@@ -115,7 +115,7 @@ class InstallerEndToEndTest extends TestCase
 
             $curriculum = DB::table('curricula')
                 ->where('tenant_id', $created['tenant_id'])
-                ->where('code', 'KURIKULUM_MERDEKA')
+                ->where('code', 'K-MERDEKA')
                 ->first();
             $this->assertNotNull($curriculum);
             $gradeRows = DB::table('grade_levels')
