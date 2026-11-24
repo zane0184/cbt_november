@@ -630,18 +630,18 @@ class AdminUserAccountLifecycleTest extends TestCase
         Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
         Auth::forgetGuards();
 
-        $this->withCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withUnencryptedCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
 
         // Resetting one account must not invalidate another account's persisted session.
         Auth::forgetGuards();
-        $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
+        $this->withUnencryptedCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
 
         Auth::forgetGuards();
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
 
-        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withUnencryptedCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
 
         Auth::forgetGuards();
         $this->actingAs($this->admin);
@@ -649,7 +649,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Auth::forgetGuards();
 
         // Reactivation advances auth_version again; it never resurrects the old cookie.
-        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withUnencryptedCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
         $this->assertTrue((bool) $deactivatedTeacher->fresh()->is_active);
         $this->assertSame(3, (int) $deactivatedTeacher->fresh()->auth_version);
     }
