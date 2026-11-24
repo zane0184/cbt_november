@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Admin\UserManagement;
+use App\Models\LocalInstallationIdentity;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\StudentProfile;
@@ -13,6 +14,7 @@ use App\Services\LoginIdentityResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -34,6 +36,18 @@ class UserAccountLifecycleTest extends TestCase
         $adminRole->permissions()->syncWithoutDetaching([$permission->id]);
         Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
         Role::firstOrCreate(['name' => 'SISWA', 'label' => 'Siswa']);
+
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => (string) Str::uuid(),
+            'key_id' => 'test-installation-key',
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => str_repeat('b', 64),
+            'registered_domain' => 'cbt.test',
+            'product_code' => 'CBT_MADRASAH',
+            'product_version' => 'test',
+        ]);
 
         $this->admin = User::create([
             'tenant_id' => $this->tenant->id,
@@ -142,6 +156,9 @@ class UserAccountLifecycleTest extends TestCase
 
     public function test_inactive_user_cannot_resolve_login_identity_or_use_existing_api_token(): void
     {
+        $activeTeacher = $this->createTeacher('active');
+        $this->assertNotNull(app(LoginIdentityResolver::class)->resolve($activeTeacher->teacherProfile->nip));
+
         $teacher = $this->createTeacher('inactive');
         $token = $teacher->createToken('stale-token');
         $teacher->is_active = false;
