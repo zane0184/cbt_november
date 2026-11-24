@@ -104,7 +104,7 @@ class TenantBrandingService
      * Resolve only an existing regular file contained inside the public storage root.
      * Reject absolute paths, traversal segments, backslashes and null bytes.
      */
-    public function localPath(?string $relativePath): ?string
+    public function localPath(?string $relativePath, ?string $tenantId = null): ?string
     {
         if (
             !$relativePath
@@ -118,6 +118,15 @@ class TenantBrandingService
         $segments = explode('/', $relativePath);
         if (in_array('..', $segments, true) || in_array('.', $segments, true)) {
             return null;
+        }
+
+        // Managed branding paths are installation-scoped. A valid file under
+        // another installation's tenant namespace must never be resolved.
+        if (($segments[0] ?? null) === 'tenants' && ($segments[2] ?? null) === 'branding') {
+            $scopeTenantId = $this->resolveInstallationTenantId($tenantId);
+            if (!$scopeTenantId || ($segments[1] ?? null) !== $scopeTenantId) {
+                return null;
+            }
         }
 
         $root = realpath(storage_path('app/public'));
@@ -134,9 +143,9 @@ class TenantBrandingService
         return $target;
     }
 
-    public function publicUrl(?string $relativePath): ?string
+    public function publicUrl(?string $relativePath, ?string $tenantId = null): ?string
     {
-        if (!$this->localPath($relativePath)) {
+        if (!$this->localPath($relativePath, $tenantId)) {
             return null;
         }
 
@@ -184,10 +193,40 @@ class TenantBrandingService
                 return;
             }
 
-            $target = $this->localPath($relativePath);
+            $target = $this->localPath($relativePath, $tenantId);
             if ($target) {
                 File::delete($target);
             }
         }, 3);
     }
+    /**
+     * Resolve the active installation boundary from the authenticated account
+     * or the single local installation identity. Explicit IDs never override
+     * an authenticated account or a conflicting installation identity.
+     */
+    private function resolveInstallationTenantId(?string $requestedTenantId = null): ?string
+    {
+        $user = Auth::user() ?? Auth::guard('sanctum')->user();
+        if ($user?->tenant_id) {
+            $authenticatedTenantId = (string) $user->tenant_id;
+            return !$requestedTenantId || $requestedTenantId === $authenticatedTenantId
+                ? $authenticatedTenantId
+                : null;
+        }
+
+        if (!Schema::hasTable('local_installation_identities')) {
+            return null;
+        }
+
+        $identities = LocalInstallationIdentity::withoutGlobalScopes()->limit(2)->get(['tenant_id']);
+        if ($identities->count() !== 1) {
+            return null;
+        }
+
+        $installationTenantId = (string) $identities->first()->tenant_id;
+        return !$requestedTenantId || $requestedTenantId === $installationTenantId
+            ? $installationTenantId
+            : null;
+    }
+
 }
