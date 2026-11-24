@@ -28,20 +28,30 @@ class AcademicYearManagementService
                 ]);
             }
 
-            $hasActiveYear = AcademicYear::query()
+            $activeYearCount = AcademicYear::query()
                 ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
-                ->exists();
+                ->count();
+            $activeSemesterCount = Semester::query()
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->count();
 
+            if ($activeYearCount > 1 || $activeSemesterCount > 1 || $activeYearCount !== $activeSemesterCount) {
+                throw new RuntimeException('Active academic period state is inconsistent; audit it before creating another year.');
+            }
+
+            // No academic year or semester is activated by default.
+            // Admin explicitly chooses the active semester after reviewing the catalog.
             $year = AcademicYear::create([
                 'name' => $name,
-                'is_active' => !$hasActiveYear,
+                'is_active' => false,
             ]);
 
             $ganjil = Semester::create([
                 'academic_year_id' => $year->id,
                 'term' => 'GANJIL',
-                'is_active' => !$hasActiveYear,
+                'is_active' => false,
             ]);
 
             $genap = Semester::create([
@@ -59,59 +69,12 @@ class AcademicYearManagementService
                     'name' => $name,
                     'start_year' => $start,
                     'end_year' => $end,
-                    'is_active' => !$hasActiveYear,
+                    'is_active' => false,
                     'semester_ids' => [$ganjil->id, $genap->id],
                 ]
             );
 
             return $year->load('semesters');
-        });
-    }
-
-    public function activateYearForTenant(string $tenantId, string $academicYearId): AcademicYear
-    {
-        return $this->withinTenantLock($tenantId, function () use ($tenantId, $academicYearId): AcademicYear {
-            $year = AcademicYear::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($academicYearId)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $semesters = $this->ensureSemesters($tenantId, $year);
-            $activeTerms = $semesters->where('is_active', true);
-
-            if ($activeTerms->count() > 1) {
-                throw new RuntimeException('Academic year contains multiple active semesters; manual audit is required.');
-            }
-
-            $selectedSemester = $activeTerms->first()
-                ?? $semesters->firstWhere('term', 'GANJIL');
-
-            AcademicYear::query()
-                ->where('tenant_id', $tenantId)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
-
-            Semester::query()
-                ->where('tenant_id', $tenantId)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
-
-            $year->update(['is_active' => true]);
-            $selectedSemester->update(['is_active' => true]);
-
-            app(AuditService::class)->log(
-                'ACADEMIC_YEAR_ACTIVATED',
-                'AcademicYear',
-                $year->id,
-                null,
-                [
-                    'name' => $year->name,
-                    'active_semester' => $selectedSemester->term,
-                ]
-            );
-
-            return $year->fresh('semesters');
         });
     }
 
@@ -132,6 +95,19 @@ class AcademicYearManagementService
 
             $this->ensureSemesters($tenantId, $year);
 
+            $previousActiveYearIds = AcademicYear::query()
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->pluck('id')
+                ->all();
+            $previousActiveSemesterIds = Semester::query()
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->pluck('id')
+                ->all();
+
             AcademicYear::query()
                 ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
@@ -149,11 +125,16 @@ class AcademicYearManagementService
                 'ACADEMIC_SEMESTER_ACTIVATED',
                 'Semester',
                 $semester->id,
-                null,
+                [
+                    'active_academic_year_ids' => $previousActiveYearIds,
+                    'active_semester_ids' => $previousActiveSemesterIds,
+                ],
                 [
                     'academic_year_id' => $year->id,
                     'academic_year' => $year->name,
                     'term' => $semester->term,
+                    'active_academic_year_id' => $year->id,
+                    'active_semester_id' => $semester->id,
                 ]
             );
 
