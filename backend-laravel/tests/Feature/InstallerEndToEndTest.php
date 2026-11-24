@@ -95,6 +95,66 @@ class InstallerEndToEndTest extends TestCase
             ]);
             $this->assertTrue($created['success'], $created['message']);
 
+            // The installer must run the production-safe base seeder and provision
+            // the tenant-owned MI FK catalog without fabricating any CP records.
+            $systemTenantId = \\App\\Models\\Tenant::SYSTEM_TENANT_ID;
+            $this->assertDatabaseHas('tenants', ['id' => $systemTenantId]);
+            $version = DB::table('multi_curriculum_versions')
+                ->where('tenant_id', $systemTenantId)
+                ->where('version_code', 'KMA-1503-2025')
+                ->first();
+            $this->assertNotNull($version, 'The official system curriculum structure must exist after clean install.');
+            $metadata = json_decode((string) $version->metadata, true, 512, JSON_THROW_ON_ERROR);
+            $this->assertFalse($metadata['cp_content_imported'] ?? true);
+            $this->assertFalse($metadata['artifact_checksum_verified'] ?? true);
+
+            $curriculum = DB::table('curricula')
+                ->where('tenant_id', $created['tenant_id'])
+                ->where('code', 'KURIKULUM_MERDEKA')
+                ->first();
+            $this->assertNotNull($curriculum);
+            $gradeRows = DB::table('grade_levels')
+                ->join('phases', function ($join) use ($created): void {
+                    $join->on('phases.id', '=', 'grade_levels.phase_id')
+                        ->where('phases.tenant_id', '=', $created['tenant_id'])
+                        ->where('phases.curriculum_id', '=', DB::raw('grade_levels.tenant_id') ? null : null);
+                })
+                ->where('grade_levels.tenant_id', $created['tenant_id'])
+                ->select('grade_levels.code', 'grade_levels.level', 'phases.code as phase_code')
+                ->get();
+            $this->assertCount(6, $gradeRows);
+            $expectedPhase = [
+                'MI_1' => 'FASE_A', 'MI_2' => 'FASE_A',
+                'MI_3' => 'FASE_B', 'MI_4' => 'FASE_B',
+                'MI_5' => 'FASE_C', 'MI_6' => 'FASE_C',
+            ];
+            foreach ($gradeRows as $gradeRow) {
+                $this->assertSame($expectedPhase[$gradeRow->code] ?? null, $gradeRow->phase_code);
+            }
+
+            $tenantContext = app(TenantContext::class);
+            $previousTenantId = $tenantContext->getTenantId();
+            $tenantContext->setTenantId((string) $created['tenant_id']);
+            try {
+                $admin = User::withoutGlobalScopes()->whereKey($created['admin_id'])->firstOrFail();
+                $this->actingAs($admin);
+                Livewire::test(AcademicManagement::class)
+                    ->call('setTab', 'academic_year')
+                    ->set('academicYearName', '2026/2027')
+                    ->call('createAcademicYear')
+                    ->assertHasNoErrors();
+            } finally {
+                $tenantContext->setTenantId($previousTenantId);
+            }
+
+            $createdYear = DB::table('academic_years')
+                ->where('tenant_id', $created['tenant_id'])
+                ->where('name', '2026/2027')
+                ->first();
+            $this->assertNotNull($createdYear);
+            $this->assertSame(2, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('academic_year_id', $createdYear->id)->count());
+            $this->assertSame(1, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('academic_year_id', $createdYear->id)->where('term', 'GANJIL')->where('is_active', true)->count());
+
             $identity = app(InstallationIdentityService::class)->getOrCreate((string) $created['tenant_id']);
             $issuedAt = Carbon::now('UTC');
             $expiresAt = $issuedAt->copy()->addDays(180);
