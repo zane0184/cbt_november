@@ -383,7 +383,7 @@ class StudentImportService
             return [$headers, $rows];
         } catch (ValidationException $exception) {
             throw $exception;
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             throw ValidationException::withMessages([
                 'file' => 'File XLSX tidak dapat dibaca. Pastikan file tidak rusak dan bukan hasil ekspor yang dilindungi.',
             ]);
@@ -499,7 +499,7 @@ class StudentImportService
         }
 
         if (in_array($extension, ['csv', 'txt'], true)) {
-            $mime = (new \\finfo(FILEINFO_MIME_TYPE))->file($path);
+            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($path);
             $allowed = ['text/plain', 'text/csv', 'application/csv', 'application/vnd.ms-excel', 'application/octet-stream'];
             if (!is_string($mime) || !in_array($mime, $allowed, true)) {
                 throw ValidationException::withMessages(['file' => 'Konten file tidak dikenali sebagai CSV/text.']);
