@@ -227,7 +227,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             $this->fail('A non-image payload must be rejected.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('gambar raster', $exception->getMessage());
         }
 
@@ -238,17 +238,15 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             $this->fail('An oversized logo must be rejected by the service boundary.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('Ukuran', $exception->getMessage());
         }
     }
 
     public function test_branding_service_rejects_mismatched_file_extension_and_image_type(): void
     {
-        $file = UploadedFile::fake()->createWithContent('fake.jpg', base64_decode(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p1sAAAAASUVORK5CYII=',
-            true
-        ));
+        $validPng = UploadedFile::fake()->image('valid-payload.png', 120, 120);
+        $file = new UploadedFile($validPng->getRealPath(), 'fake.jpg', 'image/jpeg', null, true);
 
         try {
             app(TenantBrandingService::class)->storeUpload(
@@ -257,7 +255,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             $this->fail('A PNG payload with a JPG extension must be rejected.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('Ekstensi dan MIME', $exception->getMessage());
         }
     }
