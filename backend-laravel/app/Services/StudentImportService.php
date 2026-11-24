@@ -352,6 +352,8 @@ class StudentImportService
             $spreadsheet->disconnectWorksheets();
 
             return [$headers, $rows];
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
             throw ValidationException::withMessages([
                 'file' => 'File XLSX tidak dapat dibaca. Pastikan file tidak rusak dan bukan hasil ekspor yang dilindungi.',
