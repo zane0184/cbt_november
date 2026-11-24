@@ -188,7 +188,7 @@ Waktu refresh: 24 November 2026, 09:15 UTC (berdasarkan metadata GitHub Actions)
 ### AUDIT TERBARU
 - PR #23 masih OPEN / DRAFT / NOT MERGED.
 - Branch PR: `work/p1-seven-targets-20261124`.
-- Branch HEAD saat refresh: `afd9efd4e03680e063e066f7456f9f7e32c7e614`.
+- Branch HEAD pada refresh historis 09:15 UTC: `afd9efd4e03680e063e066f7456f9f7e32c7e614` (bukan HEAD terkini; lihat addendum koreksi 09:20 UTC).
 - Commit `afd9efd4` hanya mengubah `docs/CHECKPOINT_P1_IMPLEMENTATION_UNBLOCK_2026-11-24.md`; parent-nya `3e851357bc673643674398cb4406b971c46fd337`.
 - Commit `3e851357` hanya menambahkan laporan unblock dan parent-nya adalah source HEAD `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050`.
 - Dengan demikian, source aplikasi yang terakhir diperiksa tetap `cd2b6ee8...`; dua commit setelahnya merupakan dokumentasi saja. Tidak ada source aplikasi yang berubah dalam dua commit tersebut.
@@ -198,9 +198,9 @@ Waktu refresh: 24 November 2026, 09:15 UTC (berdasarkan metadata GitHub Actions)
 - Tidak ada perubahan lokal yang dapat hilang karena tidak ada checkout/worktree ditemukan.
 
 ### CI EXACT CURRENT BRANCH HEAD
-- Run Tenant Backend CI: `45363315036`, exact SHA `afd9efd4...`, status `IN_PROGRESS` pada saat addendum disusun.
+- Run Tenant Backend CI: `45363315036`, exact SHA `afd9efd4...`, berakhir `CANCELLED` pada 09:16:45 UTC. Log menyatakan operasi dibatalkan; focused smoke sebelumnya selesai PASS, full PHPUnit dimulai tetapi terhenti. Ini bukan hasil full-suite PASS dan tidak ada bukti assertion gagal dari run ini.
 - Step yang sudah PASS: checkout, PHP 8.3 setup, disposable MySQL identity check, Composer lock/platform validation, locked dependency install, Laravel package discovery, PHP lint, disposable installer database setup, dan focused Web login/tenant identity smoke test.
-- Full PHPUnit terhadap disposable MySQL 8 masih RUNNING; belum ada hasil passed/failed final untuk run ini.
+- Full PHPUnit terhadap disposable MySQL 8 tidak selesai karena job dibatalkan; hasil penuh run ini NOT VERIFIED.
 - Run ZIP: `45363315217`, exact SHA `afd9efd4...`, conclusion SUCCESS. Artifact ID `14906315115`, nama `cbt-madrasah-web-deployment-afd9efd4e03680e063e066f7456f9f7e32c7e614`, ukuran 19.768.203 bytes.
 - ZIP build success bukan acceptance ZIP final. Fresh install, upgrade, restore, aaPanel install, security review, dan portal E2E tetap belum dibuktikan.
 - CI lama pada source SHA `cd2b6ee8...` tetap PASS 534 tests / 2.265 assertions; hasil itu tidak diganti atau dianggap hasil run baru pada `afd9efd4...`.
@@ -238,3 +238,130 @@ Waktu refresh: 24 November 2026, 09:15 UTC (berdasarkan metadata GitHub Actions)
 3. Tunggu hasil akhir CI `45363315036` dan catat hasil exact SHA.
 4. Lanjutkan P1-ID-03A saja dengan backup byte-exact sebelum setiap source edit.
 5. STOP sebelum P1-ID-03B sampai P1-ID-03A lulus dan mendapat persetujuan eksplisit.
+
+
+---
+
+## ADDENDUM KOREKSI — P1 IMPLEMENTATION RECOVERY (24 November 2026)
+
+### AUDIT — repository, dokumentasi, dan toolchain
+
+- PR #23 diverifikasi ulang: OPEN / DRAFT / NOT MERGED.
+- Branch PR: `work/p1-seven-targets-20261124`.
+- HEAD branch saat audit ini: `2f13517217bcdb8ffb591f4df7751bcc4b7354ab`.
+- Base ref: `work/phpunit-41-root-cause-20261123`; base SHA: `1c33e5d422175f9bd85d206230271a9fe5a4eecd`.
+- Source aplikasi terakhir yang diaudit: `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050`.
+- Perbandingan `cd2b6ee8...` ke `2f135172...`: 4 commit di depan, 0 di belakang; hanya dua file dokumentasi berubah: report dan checkpoint unblock. Tidak ada source aplikasi/migration/workflow berubah pada rentang ini.
+- Pernyataan HEAD `afd9efd4...` di addendum sebelumnya adalah catatan historis pada 09:15 UTC, bukan posisi branch terkini. Run #45363315036 yang dahulu dicatat IN_PROGRESS kemudian berakhir CANCELLED; koreksi rinci ada di bawah.
+- Workspace lokal `/mnt/data/CBT_MADRASAH_RECONSTRUCTION/` tidak ditemukan. Tidak ada `.git`, composer.json/lock, vendor, atau checkout CBT di /mnt/data.
+- Git 2.47.3 tersedia. PHP 8.4.24 tersedia, tetapi bukan runtime PHP 8.3 yang diminta. Modul yang terdeteksi hanya core terbatas (ctype, fileinfo, json, libxml, openssl, PDO, tokenizer); PDO driver kosong. Composer, MySQL client/server, Docker/Podman tidak tersedia.
+- DNS `github.com` gagal di-resolve dan HTTPS curl berakhir `Could not resolve host: github.com`. TLS verification tidak dimatikan. Workspace/toolchain lokal tetap BLOCKED.
+- GitHub Actions remote berhasil menyediakan PHP 8.3 dan disposable MySQL untuk CI, tetapi itu tidak memulihkan checkout lokal atau menyediakan workspace writable untuk patch source.
+
+### AUDIT — P1-ID-03A pada exact source SHA
+
+Source aplikasi yang diperiksa tetap `cd2b6ee8...`; blob SHA sumber utama:
+- `LoginIdentityPreflightCommand.php`: `4fa441f98cd58b8be011537a54e20f24fa64648b`.
+- `LoginIdentityPreflightCommandTest.php`: `0ef9ec3b79e74ebc7fa50874376d0386460fc604`.
+- `AuditService.php`: `e968cc401cdd8b04ab1322171d5f475332a55372`.
+- `Phase7dBenchmarkCommand.php`: `335e126e9fef534094eb737c69165e60cbac8e6a`.
+- `UserManagement.php`: `fb18b91c5f534e774ccf5462e195875d7cb4e1b4`.
+- `TeacherProfile.php`: `192d9804d4e926e7827d6a379542825da3fc80d0`.
+- `StudentProfile.php`: `95ce4b3033b6cc4406a42e2e4a6045cff01218b8`.
+
+Temuan preflight:
+- Sudah read-only dan menghitung status Guru, format mentah NIP/NIK/NUPTK/NISN, employee_identifier equality, blank/edge whitespace, dan duplikasi per tenant per kolom.
+- Belum memvalidasi relasi `tenant_id` antara User dan profile; query saat ini tidak memilih `tenant_id`/`user_id` untuk pemeriksaan tersebut.
+- Belum menguji cardinality/kecocokan role User dengan profile, konflik silang kategori (misalnya kategori PNS dengan NIK terisi atau Honorer dengan NIP terisi), dan collision lintas tabel antara username Admin dengan identifier Guru/Siswa.
+- Guard struktur baru memeriksa keberadaan tabel; belum memeriksa seluruh kolom yang diperlukan sebelum SELECT. Kegagalan kolom hilang dapat menghasilkan exception DB, bukan diagnostic fail-closed tersanitasi yang dirancang.
+- Preflight menghitung duplikasi per tabel/kolom, bukan seluruh konflik kategori lintas identitas.
+- Test preflight saat ini hanya tiga metode: data valid, whitespace-padded Guru, dan legacy Guru tanpa status/identifier. Belum ada test terpisah untuk setiap anomali, missing table/column, tenant/profile mismatch, role/cardinality, konflik silang kategori, duplicate tenant yang berbeda, setiap blank/null/format, dan bukti snapshot DB tidak berubah.
+- Karena itu preflight dan test-nya tetap IMPLEMENTASI PARSIAL.
+
+Temuan fixture/benchmark:
+- `Phase7dBenchmarkCommand` membuat TeacherProfile tanpa kontrak status/identifier login final yang lengkap.
+- Benchmark membuat NISN sintetis dengan pola `NISN_%03d`, bukan 10 digit numerik.
+- Fixture benchmark belum dinormalisasi; jangan jalankan benchmark ini sebagai bukti kompatibilitas identity enforcement sebelum diperbaiki dan diuji.
+
+Temuan jalur penulisan identitas dan mass assignment:
+- Jalur UI create yang teridentifikasi adalah `UserManagement::createUser()`, dalam transaksi, dengan validasi role-specific; jalur ini membuat TeacherProfile atau StudentProfile.
+- `TeacherProfilePage::savePhone()` hanya mengubah phone; tidak menyediakan update NIP/NIK/NUPTK.
+- Benchmark melakukan direct profile create untuk fixture.
+- Import Guru/Siswa dan recovery/update identitas belum terbukti tersedia: tetap NOT IMPLEMENTED / NOT VERIFIED.
+- Model `TeacherProfile::$fillable` mencakup employee_identifier, employment_status, nip, nik, nuptk; `StudentProfile::$fillable` mencakup nisn. `$hidden` hanya mengatur serialisasi, bukan otorisasi mass assignment.
+- Audit seluruh callsite fill/create/update/forceFill/upsert/query builder/raw SQL untuk kedua profile dan pemeriksaan otorisasi setiap jalur belum lengkap. Mass-assignment/authorization gate tetap PARTIAL.
+
+Temuan AuditService/PII:
+- `AuditService::log()` langsung meneruskan `oldValues` dan `newValues` ke `AuditLog::create()`; sanitizer/redactor terpusat belum terlihat pada implementasi.
+- Inventaris callsite yang ditemukan pada pemeriksaan source mencakup Livewire StudentRombelManagement, TeacherSubjectAssignmentManagement, QuestionBank, ExamManagement, TeacherProfilePage, TeacherMaterialManagement, CurriculumRegistryManagement, ResultList; API AssessmentController, ExamAttemptController, ExamController, ExamParticipantController, QuestionController, QuestionPublicationController, ScoringController, ReportController, AnalyticsController, CurriculumController, ElementController, LearningObjectiveController, LearningOutcomeController, LearningPathController, PhaseController, TeacherSubjectAssignmentController, dan MediaController.
+- InstallerService juga memanggil `AuditLog::create()` langsung sehingga melewati AuditService.
+- Daftar di atas adalah hasil inventory source terarah, belum diklaim sebagai pencarian repository-wide yang lengkap. Semua payload old/new, nested keys, request payload, toArray(), dan bypass AuditLog langsung masih harus ditelusuri.
+- Tidak ada redaksi terpusat yang boleh mengubah histori audit lama; desain implementasi harus menyaring data saat penulisan baru dan mempertahankan histori existing.
+
+Temuan migration:
+- Migration `2026_11_24_170001_enforce_tenant_login_identity_uniques.php` sudah ada dari pekerjaan P1 terdahulu untuk unique index tenant-scoped dan preflight sebelum DDL.
+- Migration itu belum dijalankan. Tidak dibuat migration baru pada recovery ini. Conditional enforcement format/status untuk raw SQL masih belum dibuktikan; P1-ID-03B tetap tidak dimulai.
+
+### DESAIN — langkah P1-ID-03A berikutnya
+
+1. Lengkapi kontrak schema preflight: validasi kolom yang diperlukan, tenant/profile relation, role/profile cardinality, kategori yang saling eksklusif, format mentah, dan duplicate scope; tetap read-only dan tidak menampilkan PII.
+2. Tambahkan test per kategori anomali serta pasangan data valid, cross-tenant allowance, DB immutability, dan missing schema fail-closed.
+3. Normalisasi fixture/benchmark dengan identitas sintetis valid sesuai format final, unik per tenant, tanpa klaim bahwa identitas tersebut nyata.
+4. Selesaikan inventory seluruh writer profile dan seluruh AuditService/AuditLog callsite; audit policy, permission, tenant scope, validated payload, dan bypass mass assignment.
+5. Rancang sanitizer recursive terpusat untuk NIP/NIK/NISN/NUPTK/employee_identifier dan alias/nested payload yang sensitif. Hanya data audit baru yang disanitasi; jangan rewrite histori.
+6. Backup byte-exact setiap source file sebelum edit; catat path backup, source blob SHA, backup blob SHA, dan SHA-256 hasil workspace.
+7. Jalankan focused, full PHPUnit, dan CI pada exact source commit hasil patch. Jangan mulai P1-ID-03B sebelum review dan persetujuan koordinator.
+
+### IMPLEMENTASI
+
+- Pada recovery ini tidak ada source aplikasi, migration, dependency, workflow, atau konfigurasi yang diubah.
+- Tidak ada patch source melalui GitHub Contents API.
+- Hanya dokumen laporan/checkpoint yang dikoreksi secara dokumentasi.
+- Tidak ada backup source baru karena tidak ada source yang diubah.
+- Backup terdahulu tetap tersedia di `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/`; manifest menyimpan blob SHA source dan path backup. Laporan identitas menyebut 13/13 pasangan awal dan addendum refinement menyebut 21/21 snapshot cocok pada saat verifikasi historis. Nilai SHA tersebut adalah baseline sebelum patch terkait, bukan hash source saat ini.
+- Tidak ada merge, migration, deployment, atau perubahan DB produksi/staging.
+
+### PENGUJIAN — exact SHA dan hasil
+
+Run #45363315036:
+- Exact SHA `afd9efd4...`; final conclusion CANCELLED (updated 09:16:45 UTC).
+- PHP 8.3, MySQL disposable, Composer validation/install, package discovery, PHP lint, installer DB, dan focused smoke selesai PASS.
+- Log menunjukkan focused suite 56 passed / 225 assertions.
+- Full PHPUnit mulai berjalan, lalu log menyatakan `The operation was canceled`; tidak ada hasil akhir full suite untuk run ini. Ini bukan bukti test failure dan bukan PASS.
+
+Run #45363315217:
+- Exact SHA `afd9efd4...`; conclusion SUCCESS untuk build/archive workflow.
+- Artifact ID `14906315115`, ukuran 19,768,203 bytes.
+- Build success bukan ZIP acceptance/final distribution.
+
+Run terbaru pada exact branch HEAD saat audit ini, `2f13517217bcdb8ffb591f4df7751bcc4b7354ab`:
+- Tenant Backend CI #45363631214: SUCCESS.
+- PHP 8.3, disposable MySQL identity check, Composer lock/platform validation, locked dependency install, Laravel package discovery, PHP lint, installer disposable DB, focused login/tenant smoke PASS, dan full PHPUnit PASS.
+- Focused: 56 passed / 225 assertions.
+- Full: 534 passed / 2,265 assertions.
+- ZIP workflow #45363631190: SUCCESS untuk checkout exact SHA, PHP 8.3 setup, locked Composer validation, clean archive assembly, dan upload.
+- Artifact terbaru ID `14906520236`, nama `cbt-madrasah-web-deployment-2f13517217bcdb8ffb591f4df7751bcc4b7354ab`, ukuran 19,768,215 bytes.
+- CI ini berjalan pada exact HEAD dokumentasi `2f135172...`; compare membuktikan source aplikasi sama dengan `cd2b6ee8...`. Hasil 534/2,265 adalah bukti backend suite untuk tree source yang sama pada commit exact tersebut, tetapi tidak membuktikan P1-ID-03A selesai.
+- ZIP workflow SUCCESS hanya membuktikan proses build/upload. Fresh install aaPanel, upgrade, backup/restore, security/load, browser E2E dan UAT belum membuktikan acceptance ZIP final.
+
+### STATUS DAN KEPUTUSAN
+
+- Workspace/toolchain lokal: BLOCKED.
+- Remote CI PHP 8.3 + disposable MySQL: VERIFIED tersedia untuk workflow.
+- Backend suite pada exact HEAD `2f135172...`: PASS 534 / 2,265.
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- Admin Guru/Siswa import: NOT IMPLEMENTED / NOT VERIFIED.
+- Web Admin: PARTIAL; Web Guru: PARTIAL; Web Siswa: PARTIAL.
+- Proktor Mode B: BLOCKED.
+- Staging: NOT VERIFIED.
+- ZIP: BUILD SUCCESS / FINAL ZIP NOT ACCEPTED.
+- Produksi: NOT TOUCHED.
+
+### NEXT ACTION
+
+1. Pulihkan runner/workspace writable dengan Git checkout asli dan PHP 8.3/Composer/MySQL disposable; CI remote yang PASS tidak menggantikan kemampuan edit source lokal.
+2. Selesaikan audit writer, AuditService, mass assignment, dan seluruh test preflight sebelum patch.
+3. Lanjutkan P1-ID-03A saja setelah environment tersedia; backup byte-exact per file sebelum patch.
+4. Jalankan focused/full test setelah patch pada exact commit.
+5. STOP untuk review koordinator sebelum P1-ID-03B.
