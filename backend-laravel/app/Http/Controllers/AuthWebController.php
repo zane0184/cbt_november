@@ -7,6 +7,7 @@ use App\Models\LocalInstallationIdentity;
 use App\Models\User;
 use App\Services\LoginIdentityResolver;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
