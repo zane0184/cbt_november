@@ -112,6 +112,7 @@ class TenantBrandingService
         }
 
         $isTenantBrandingPath = ($segments[0] ?? null) === 'tenants';
+        $managedTenantId = null;
         if ($isTenantBrandingPath) {
             if (
                 count($segments) !== 4
@@ -125,6 +126,7 @@ class TenantBrandingService
             if (!$scopeTenantId || ($segments[1] ?? null) !== $scopeTenantId) {
                 return null;
             }
+            $managedTenantId = $scopeTenantId;
         }
 
         $root = realpath(storage_path('app/public'));
@@ -136,6 +138,15 @@ class TenantBrandingService
         $target = realpath($candidate);
         if (!$target || !str_starts_with($target, $root . DIRECTORY_SEPARATOR) || !is_file($target)) {
             return null;
+        }
+
+        // A managed path must remain inside its own canonical branding directory,
+        // even when its final file entry is a symlink to a path elsewhere in public storage.
+        if ($managedTenantId !== null) {
+            $managedRoot = $this->resolveManagedBrandingRoot($root, $managedTenantId);
+            if (!$managedRoot || !str_starts_with($target, $managedRoot . DIRECTORY_SEPARATOR)) {
+                return null;
+            }
         }
 
         // Check the resolved namespace too: a legacy path must not become a
@@ -156,9 +167,8 @@ class TenantBrandingService
                 return null;
             }
 
-            $managedRoot = $root . DIRECTORY_SEPARATOR . 'tenants' . DIRECTORY_SEPARATOR
-                . $scopeTenantId . DIRECTORY_SEPARATOR . 'branding';
-            if (!str_starts_with($target, $managedRoot . DIRECTORY_SEPARATOR)) {
+            $managedRoot = $this->resolveManagedBrandingRoot($root, $scopeTenantId);
+            if (!$managedRoot || !str_starts_with($target, $managedRoot . DIRECTORY_SEPARATOR)) {
                 return null;
             }
         }
@@ -208,9 +218,7 @@ class TenantBrandingService
             return;
         }
 
-        $brandingRoot = realpath(
-            $root . DIRECTORY_SEPARATOR . 'tenants' . DIRECTORY_SEPARATOR . $tenantId . DIRECTORY_SEPARATOR . 'branding'
-        );
+        $brandingRoot = $this->resolveManagedBrandingRoot($root, $tenantId);
         $entryPath = $root . DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $segments);
         $parent = realpath(dirname($entryPath));
 
@@ -267,13 +275,31 @@ class TenantBrandingService
      * or the single local installation identity. Explicit IDs never override
      * an authenticated account or a conflicting installation identity.
      */
+    private function resolveManagedBrandingRoot(string $storageRoot, string $tenantId): ?string
+    {
+        $tenantsDirectory = $storageRoot . DIRECTORY_SEPARATOR . 'tenants';
+        $tenantDirectory = $tenantsDirectory . DIRECTORY_SEPARATOR . $tenantId;
+        $brandingDirectory = $tenantDirectory . DIRECTORY_SEPARATOR . 'branding';
+
+        // Never follow symlinked namespace directories. Only a final asset file
+        // symlink may be resolved, and localPath still confines its target here.
+        if (is_link($tenantsDirectory) || is_link($tenantDirectory) || is_link($brandingDirectory)) {
+            return null;
+        }
+
+        $resolved = realpath($brandingDirectory);
+        if (!$resolved || $resolved !== $brandingDirectory || !is_dir($resolved)) {
+            return null;
+        }
+
+        return $resolved;
+    }
+
     private function resolveInstallationTenantId(?string $requestedTenantId = null): ?string
     {
-        $request = request();
-        $user = $request->user()
-            ?? $request->user('sanctum')
-            ?? Auth::user()
-            ?? Auth::guard('sanctum')->user();
+        // Read the currently selected authentication guard first. The Request
+        // user resolver may be cached across test/request lifecycle switches.
+        $user = Auth::user() ?? Auth::guard('sanctum')->user();
         $contextTenantId = app(TenantContext::class)->getTenantId();
 
         if ($user) {
