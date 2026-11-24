@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Http\Controllers\Api\V1\ReportController;
+use App\Services\RolePermissionBootstrapper;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 class Phase7dBenchmarkCommandSafetyTest extends TestCase
@@ -129,18 +130,18 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $this->assertSame([], $before, 'A previous benchmark schema must not be left behind.');
 
         $observedTemporarySchemas = 0;
-        $controller = \Mockery::mock(ReportController::class);
-        $controller->shouldReceive('exportPdf')
-            ->once()
-            ->andReturnUsing(function () use (&$observedTemporarySchemas): never {
-                $schemas = DB::connection('mysql')->select(
-                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
-                );
-                $observedTemporarySchemas = count($schemas);
+        $policyDecisions = [];
+        Gate::after(function ($user, string $ability, ?bool $result) use (&$policyDecisions): void {
+            if ($ability === 'viewExamResults') {
+                $policyDecisions[] = $result;
+            }
+        });
 
-                throw new \RuntimeException('Deliberate PDF failure for cleanup regression test.');
-            });
-        $this->app->instance(ReportController::class, $controller);
+        // Omit the official grant only in this failure-path test. The real
+        // ReportController and ReportPolicy must deny export; no policy is mocked.
+        $bootstrapper = \Mockery::mock(RolePermissionBootstrapper::class);
+        $bootstrapper->shouldReceive('bootstrap')->once()->andReturnNull();
+        $this->app->instance(RolePermissionBootstrapper::class, $bootstrapper);
 
         $thrown = false;
         $exitCode = 0;
@@ -155,9 +156,9 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
             $thrown = true;
         }
 
-        $controller->shouldHaveReceived('exportPdf')->once();
-        $this->assertTrue($thrown || $exitCode !== 0, 'The deliberate PDF failure must fail the benchmark command.');
-        $this->assertSame(1, $observedTemporarySchemas, 'The injected failure must occur after the disposable schema exists.');
+        $this->assertTrue($thrown || $exitCode !== 0, 'The real Policy denial must fail the benchmark command.');
+        $this->assertSame([false], $policyDecisions, 'The real ReportPolicy must deny export because report.view was not granted.');
+        $this->assertSame(1, $observedTemporarySchemas, 'The Policy denial must occur after the disposable schema exists.');
 
         $after = DB::connection('mysql')->select(
             "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
