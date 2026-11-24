@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\AcademicYear;
+use App\Models\AuditLog;
+use App\Services\AuditService;
 use App\Models\Curriculum;
 use App\Models\GradeLevel;
 use App\Models\LearningOutcome;
@@ -381,6 +383,67 @@ class AdminUiVerificationTest extends TestCase
         $created = User::query()->where('tenant_id', $this->tenant->id)->where('email', 'gurubaru@man1.sch.id')->firstOrFail();
         $this->assertTrue($created->hasRole('GURU'));
         $this->assertNotNull($created->teacherProfile);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'USER_CREATED',
+            'entity_type' => 'User',
+            'entity_id' => $created->id,
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'TEACHER_PROFILE_CREATED',
+            'entity_type' => 'TeacherProfile',
+            'entity_id' => $created->teacherProfile->id,
+        ]);
+    }
+
+    /** @test */
+    public function audit_service_recursively_redacts_contact_and_identity_values()
+    {
+        $this->actingAs($this->admin);
+
+        app(AuditService::class)->log(
+            'AUDIT_REDACTION_REGRESSION',
+            'User',
+            $this->admin->id,
+            [
+                'contact_email' => 'old@example.test',
+                'profile' => [
+                    'phone_number' => '081234567890',
+                    'NIP' => '198001012006041001',
+                ],
+            ],
+            [
+                'EMAIL' => 'new@example.test',
+                'contact' => [
+                    'mobile' => '082233344455',
+                    'nisn' => '0001234567',
+                    'status' => 'ACTIVE',
+                ],
+            ]
+        );
+
+        $audit = AuditLog::query()
+            ->where('action', 'AUDIT_REDACTION_REGRESSION')
+            ->firstOrFail();
+
+        $serialized = json_encode([$audit->old_values, $audit->new_values], JSON_THROW_ON_ERROR);
+        foreach ([
+            'old@example.test',
+            'new@example.test',
+            '081234567890',
+            '082233344455',
+            '198001012006041001',
+            '0001234567',
+        ] as $sensitiveValue) {
+            $this->assertStringNotContainsString($sensitiveValue, $serialized);
+        }
+
+        $this->assertSame('[REDACTED]', $audit->old_values['contact_email']);
+        $this->assertSame('[REDACTED]', $audit->old_values['profile']['phone_number']);
+        $this->assertSame('[REDACTED]', $audit->old_values['profile']['NIP']);
+        $this->assertSame('[REDACTED]', $audit->new_values['EMAIL']);
+        $this->assertSame('[REDACTED]', $audit->new_values['contact']['mobile']);
+        $this->assertSame('[REDACTED]', $audit->new_values['contact']['nisn']);
+        $this->assertSame('ACTIVE', $audit->new_values['contact']['status']);
     }
 
     /** @test */
