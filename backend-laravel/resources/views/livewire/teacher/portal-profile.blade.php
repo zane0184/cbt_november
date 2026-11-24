@@ -36,10 +36,10 @@
             <p class="mt-1 text-sm portal-muted">Identitas inti dan relasi penugasan dikelola oleh Admin Madrasah.</p>
             <dl class="mt-5 grid gap-4 sm:grid-cols-2">
                 <div><dt class="text-xs portal-muted">Nama Guru</dt><dd class="mt-1 font-semibold">{{ $profile->full_name ?: $user->name }}</dd></div>
-                <div><dt class="text-xs portal-muted">Employee Identifier</dt><dd class="mt-1 font-semibold">{{ $profile->employee_identifier ?: 'Belum tersedia' }}</dd></div>
-                <div><dt class="text-xs portal-muted">NIP</dt><dd class="mt-1 font-semibold">{{ $profile->nip ?: 'Belum tersedia' }}</dd></div>
-                <div><dt class="text-xs portal-muted">NIK</dt><dd class="mt-1 font-semibold">{{ $profile->nik ?: 'Belum tersedia' }}</dd></div>
-                <div><dt class="text-xs portal-muted">NUPTK</dt><dd class="mt-1 font-semibold">{{ $profile->nuptk ?: 'Belum tersedia' }}</dd></div>
+                <div><dt class="text-xs portal-muted">Employee Identifier</dt><dd class="mt-1 font-semibold">{{ $profile->employee_identifier ? str_repeat('•', max(0, strlen($profile->employee_identifier) - 4)).substr($profile->employee_identifier, -4) : 'Belum tersedia' }}</dd></div>
+                <div><dt class="text-xs portal-muted">NIP</dt><dd class="mt-1 font-semibold">{{ $profile->nip ? str_repeat('•', max(0, strlen($profile->nip) - 4)).substr($profile->nip, -4) : 'Belum tersedia' }}</dd></div>
+                <div><dt class="text-xs portal-muted">NIK</dt><dd class="mt-1 font-semibold">{{ $profile->nik ? str_repeat('•', max(0, strlen($profile->nik) - 4)).substr($profile->nik, -4) : 'Belum tersedia' }}</dd></div>
+                <div><dt class="text-xs portal-muted">NUPTK</dt><dd class="mt-1 font-semibold">{{ $profile->nuptk ? str_repeat('•', max(0, strlen($profile->nuptk) - 4)).substr($profile->nuptk, -4) : 'Belum tersedia' }}</dd></div>
                 <div><dt class="text-xs portal-muted">Jenis Kelamin</dt><dd class="mt-1 font-semibold">{{ $profile->gender ?: 'Belum tersedia' }}</dd></div>
             </dl>
         </div>
