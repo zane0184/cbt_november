@@ -17,9 +17,19 @@
         <div><label class="block text-xs font-bold mb-1">Username (opsional)</label><input wire:model="username" type="text" autocomplete="off" class="w-full border rounded-xl px-3.5 py-2 text-sm" placeholder="adminmadrasah">@error('username')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
         @if($selectedRole === 'GURU')
         <div><label class="block text-xs font-bold mb-1">Status Kepegawaian (wajib)</label><select wire:model.live="employmentStatus" required class="w-full border rounded-xl px-3.5 py-2 text-sm"><option value="">Pilih status kepegawaian</option><option value="PNS">PNS</option><option value="PPPK">PPPK</option><option value="HONORER">Honorer / Non-ASN</option></select>@error('employmentStatus')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
-        <div><label class="block text-xs font-bold mb-1">NIP ({{ in_array($employmentStatus, ['PNS', 'PPPK'], true) ? 'wajib' : 'opsional' }}, 18 digit)</label><input wire:model="nip" type="text" inputmode="numeric" maxlength="18" @if(in_array($employmentStatus, ['PNS', 'PPPK'], true)) required @endif class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nip')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+        @if(in_array($employmentStatus, ['PNS', 'PPPK'], true))
+        <div><label class="block text-xs font-bold mb-1">NIP (wajib, tepat 18 digit)</label><input wire:model="nip" type="text" inputmode="numeric" maxlength="18" required class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nip')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+        @elseif($employmentStatus === 'HONORER')
+        <p class="text-xs text-textSecondary">NIP tidak digunakan untuk Guru Honorer. Identitas login menggunakan NIK.</p>
+        @else
+        <p class="text-xs text-textSecondary">Pilih status kepegawaian untuk menentukan identitas login Guru.</p>
+        @endif
         <div><label class="block text-xs font-bold mb-1">NUPTK (opsional, 16 digit bila dimiliki)</label><input wire:model="nuptk" type="text" inputmode="numeric" maxlength="16" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nuptk')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
-        <div><label class="block text-xs font-bold mb-1">NIK ({{ $employmentStatus === 'HONORER' ? 'wajib' : 'opsional bila diperlukan' }}, 16 digit)</label><input wire:model="nik" type="text" inputmode="numeric" maxlength="16" @if($employmentStatus === 'HONORER') required @endif class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nik')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+        @if($employmentStatus === 'HONORER')
+        <div><label class="block text-xs font-bold mb-1">NIK (wajib, tepat 16 digit)</label><input wire:model="nik" type="text" inputmode="numeric" maxlength="16" required class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nik')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+        @elseif(in_array($employmentStatus, ['PNS', 'PPPK'], true))
+        <p class="text-xs text-textSecondary">NIK tidak digunakan untuk Guru PNS/PPPK. Identitas login menggunakan NIP.</p>
+        @endif
         <p class="text-xs text-textSecondary">Guru PNS/PPPK wajib login dengan NIP 18 digit. Guru Honorer wajib login dengan NIK 16 digit. NUPTK bersifat tambahan dan bukan pengganti identitas login.</p>
         @endif
         @if($selectedRole === 'SISWA')<div><label class="block text-xs font-bold mb-1">NISN (10 digit)</label><input wire:model="nisn" type="text" maxlength="10" required class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nisn')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>@endif

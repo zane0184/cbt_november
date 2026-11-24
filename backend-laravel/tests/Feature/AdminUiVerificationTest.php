@@ -319,6 +319,23 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
+    public function changing_teacher_employment_status_clears_non_applicable_identity_fields(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(UserManagement::class)
+            ->set('selectedRole', 'GURU')
+            ->set('nip', '198001012006041001')
+            ->set('nik', '3171000000000001')
+            ->set('employmentStatus', 'PNS')
+            ->assertSet('nik', '')
+            ->assertSee('NIK tidak digunakan untuk Guru PNS/PPPK')
+            ->set('employmentStatus', 'HONORER')
+            ->assertSet('nip', '')
+            ->assertSee('NIP tidak digunakan untuk Guru Honorer');
+    }
+
+    /** @test */
     public function admin_can_create_pns_teacher_only_with_18_digit_nip()
     {
         $this->actingAs($this->admin);

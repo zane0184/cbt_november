@@ -36,6 +36,18 @@ class UserManagement extends Component
         $this->authorizeUserManagement();
     }
 
+    public function updatedEmploymentStatus($value): void
+    {
+        if (in_array($value, ['PNS', 'PPPK'], true)) {
+            $this->nik = '';
+        } elseif ($value === 'HONORER') {
+            $this->nip = '';
+        } else {
+            $this->nip = '';
+            $this->nik = '';
+        }
+    }
+
     /** Re-check authorization on every Livewire mutation; mount is not a mutation boundary. */
     private function authorizeUserManagement(): void
     {
