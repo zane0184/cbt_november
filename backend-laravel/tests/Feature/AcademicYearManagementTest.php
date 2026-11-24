@@ -10,11 +10,14 @@ use App\Models\Role;
 use App\Models\Rombel;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\AcademicYearManagementService;
 use App\Services\TenantAcademicBootstrapService;
 use Database\Seeders\DatabaseSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class AcademicYearManagementTest extends TestCase
@@ -50,92 +53,81 @@ class AcademicYearManagementTest extends TestCase
         $context->setTenantId((string) $this->tenant->id);
     }
 
-    public function test_admin_can_create_academic_year_with_both_semesters_and_switch_active_period_without_losing_history(): void
+    public function test_admin_can_create_year_and_explicitly_activate_one_semester_without_losing_history(): void
     {
+        $this->assertSame(6, AcademicYear::query()->where('tenant_id', $this->tenant->id)->count());
+        $this->assertSame(12, DB::table('semesters')->where('tenant_id', $this->tenant->id)->count());
+        $this->assertSame(0, DB::table('academic_years')->where('tenant_id', $this->tenant->id)->where('is_active', true)->count());
+        $this->assertSame(0, DB::table('semesters')->where('tenant_id', $this->tenant->id)->where('is_active', true)->count());
+
         Livewire::test(AcademicManagement::class)
             ->call('setTab', 'academic_year')
-            ->set('academicYearName', '2026/2027')
+            ->set('academicYearName', '2032/2033')
             ->call('createAcademicYear')
             ->assertHasNoErrors();
 
-        $firstYear = AcademicYear::query()->where('tenant_id', $this->tenant->id)->where('name', '2026/2027')->firstOrFail();
-        $this->assertTrue($firstYear->is_active);
-        $this->assertDatabaseHas('semesters', [
-            'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $firstYear->id,
-            'term' => 'GANJIL',
-            'is_active' => true,
-        ]);
-        $this->assertDatabaseHas('semesters', [
-            'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $firstYear->id,
-            'term' => 'GENAP',
-            'is_active' => false,
-        ]);
+        $createdYear = AcademicYear::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('name', '2032/2033')
+            ->firstOrFail();
 
-        $gradeLevelId = \Illuminate\Support\Facades\DB::table('grade_levels')
+        $this->assertFalse($createdYear->is_active);
+        $this->assertSame(2, $createdYear->semesters()->count());
+        $this->assertSame(0, $createdYear->semesters()->where('is_active', true)->count());
+
+        $historicalYear = AcademicYear::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('name', '2026/2027')
+            ->firstOrFail();
+        $historicalGradeLevelId = DB::table('grade_levels')
             ->where('tenant_id', $this->tenant->id)
             ->where('code', 'MI_1')
             ->value('id');
+
         $rombel = Rombel::create([
-            'academic_year_id' => $firstYear->id,
-            'grade_level_id' => $gradeLevelId,
+            'academic_year_id' => $historicalYear->id,
+            'grade_level_id' => $historicalGradeLevelId,
             'name' => 'Kelas 1A',
             'status' => 'ACTIVE',
         ]);
 
-        Livewire::test(AcademicManagement::class)
-            ->call('setTab', 'academic_year')
-            ->set('academicYearName', '2027/2028')
-            ->call('createAcademicYear')
-            ->assertHasNoErrors();
-
-        $secondYear = AcademicYear::query()->where('tenant_id', $this->tenant->id)->where('name', '2027/2028')->firstOrFail();
-        $this->assertFalse($secondYear->is_active);
-        $this->assertTrue($firstYear->fresh()->is_active);
-
-        Livewire::test(AcademicManagement::class)
-            ->call('activateAcademicYear', $secondYear->id)
-            ->assertHasNoErrors();
-
-        $this->assertFalse($firstYear->fresh()->is_active);
-        $this->assertTrue($secondYear->fresh()->is_active);
-        $this->assertDatabaseHas('semesters', [
-            'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $secondYear->id,
-            'term' => 'GANJIL',
-            'is_active' => true,
-        ]);
-
-        $genapId = \Illuminate\Support\Facades\DB::table('semesters')
+        $targetSemesterId = DB::table('semesters')
             ->where('tenant_id', $this->tenant->id)
-            ->where('academic_year_id', $secondYear->id)
+            ->where('academic_year_id', $createdYear->id)
             ->where('term', 'GENAP')
             ->value('id');
 
         Livewire::test(AcademicManagement::class)
-            ->call('activateSemester', $genapId)
+            ->call('activateSemester', $targetSemesterId)
             ->assertHasNoErrors();
 
+        $this->assertSame(1, DB::table('semesters')->where('tenant_id', $this->tenant->id)->where('is_active', true)->count());
+        $this->assertSame(1, DB::table('academic_years')->where('tenant_id', $this->tenant->id)->where('is_active', true)->count());
         $this->assertDatabaseHas('semesters', [
-            'id' => $genapId,
+            'id' => $targetSemesterId,
             'tenant_id' => $this->tenant->id,
+            'term' => 'GENAP',
             'is_active' => true,
         ]);
+        $this->assertFalse($historicalYear->fresh()->is_active);
         $this->assertDatabaseHas('rombels', [
             'id' => $rombel->id,
             'tenant_id' => $this->tenant->id,
-            'academic_year_id' => $firstYear->id,
+            'academic_year_id' => $historicalYear->id,
         ]);
-        $this->assertSame(2, AcademicYear::query()->where('tenant_id', $this->tenant->id)->count());
+        $this->assertDatabaseHas('academic_years', [
+            'id' => $historicalYear->id,
+            'tenant_id' => $this->tenant->id,
+            'name' => '2026/2027',
+        ]);
     }
 
-    public function test_admin_cannot_manage_another_tenants_academic_year(): void
+    public function test_admin_cannot_activate_another_tenants_semester(): void
     {
         $otherTenant = Tenant::create(['name' => 'MIN Other Tenant', 'code' => 'MINOTHER']);
-        $otherContext = app(TenantContext::class);
-        $previous = $otherContext->getTenantId();
-        $otherContext->setTenantId((string) $otherTenant->id);
+        $context = app(TenantContext::class);
+        $previousTenantId = $context->getTenantId();
+        $context->setTenantId((string) $otherTenant->id);
 
         try {
             $otherRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
@@ -149,28 +141,34 @@ class AcademicYearManagementTest extends TestCase
             ]);
             $otherAdmin->roles()->sync([$otherRole->id]);
             $this->actingAs($otherAdmin);
-            $otherYear = app(\App\Services\AcademicYearManagementService::class)
-                ->createForTenant((string) $otherTenant->id, '2028/2029');
+
+            $otherYear = app(AcademicYearManagementService::class)
+                ->createForTenant((string) $otherTenant->id, '2032/2033');
+            $otherSemesterId = DB::table('semesters')
+                ->where('tenant_id', $otherTenant->id)
+                ->where('academic_year_id', $otherYear->id)
+                ->where('term', 'GANJIL')
+                ->value('id');
         } finally {
-            $otherContext->setTenantId($previous);
+            $context->setTenantId($previousTenantId);
             $this->actingAs($this->admin);
-            app(TenantContext::class)->setTenantId((string) $this->tenant->id);
+            $context->setTenantId((string) $this->tenant->id);
         }
 
         try {
-            app(\App\Services\AcademicYearManagementService::class)
-                ->activateYearForTenant((string) $this->tenant->id, (string) $otherYear->id);
-            $this->fail('Cross-tenant academic-year activation must be rejected.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
-            $this->assertDatabaseHas('academic_years', [
-                'id' => $otherYear->id,
+            app(AcademicYearManagementService::class)
+                ->activateSemesterForTenant((string) $this->tenant->id, (string) $otherSemesterId);
+            $this->fail('Cross-tenant semester activation must be rejected.');
+        } catch (ModelNotFoundException $exception) {
+            $this->assertDatabaseHas('semesters', [
+                'id' => $otherSemesterId,
                 'tenant_id' => $otherTenant->id,
-                'is_active' => true,
+                'is_active' => false,
             ]);
         }
     }
 
-    public function test_non_admin_cannot_open_academic_management_component(): void
+    public function test_non_admin_cannot_manage_academic_periods(): void
     {
         $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
         $guru = User::create([
@@ -180,9 +178,14 @@ class AcademicYearManagementTest extends TestCase
             'password' => bcrypt('StrongTestPassword123!'),
         ]);
         $guru->roles()->sync([$guruRole->id]);
-
         $this->actingAs($guru);
 
-        $this->get('/admin/academic')->assertForbidden();
+        try {
+            app(AcademicYearManagementService::class)
+                ->createForTenant((string) $this->tenant->id, '2032/2033');
+            $this->fail('A Guru must not manage Admin academic periods.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+        }
     }
 }
