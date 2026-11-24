@@ -314,6 +314,8 @@ class StudentImportService
 
     private function readRows(string $path, string $extension): array
     {
+        $this->assertUploadFileIsBounded($path);
+
         if (in_array($extension, ['csv', 'txt'], true)) {
             return $this->readCsv($path);
         }
@@ -322,22 +324,23 @@ class StudentImportService
             throw ValidationException::withMessages(['file' => 'Format file harus XLSX atau CSV.']);
         }
 
+        // ZIP/OOXML resource and XML checks must run before PhpSpreadsheet opens the workbook.
+        $this->preflightXlsx($path);
+
         try {
             $spreadsheet = IOFactory::load($path);
             $sheet = $spreadsheet->getSheet(0);
             $lastColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             $lastRow = $sheet->getHighestDataRow();
 
-            // Reject oversized worksheet dimensions before allocating a row array.
             if ($lastRow > self::MAX_ROWS + 1) {
                 throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
             }
-            if ($lastColumn > 32) {
+            if ($lastColumn > self::MAX_CSV_COLUMNS) {
                 throw ValidationException::withMessages(['file' => 'Maksimal 32 kolom per proses import.']);
             }
 
             $headers = [];
-
             for ($column = 1; $column <= $lastColumn; $column++) {
                 $cell = $sheet->getCell(Coordinate::stringFromColumnIndex($column) . '1');
                 $headers[] = $this->normalizeHeader((string) $cell->getValue());
@@ -369,6 +372,181 @@ class StudentImportService
         }
     }
 
+    private function assertUploadFileIsBounded(string $path): void
+    {
+        if (!is_file($path) || !is_readable($path)) {
+            throw ValidationException::withMessages(['file' => 'File import tidak tersedia atau tidak dapat dibaca.']);
+        }
+
+        $size = filesize($path);
+        if ($size === false || $size < 1 || $size > self::MAX_UPLOAD_BYTES) {
+            throw ValidationException::withMessages(['file' => 'Ukuran file import harus lebih dari 0 dan maksimal 10 MB.']);
+        }
+    }
+
+    private function preflightXlsx(string $path): void
+    {
+        if (!class_exists(\ZipArchive::class)) {
+            throw ValidationException::withMessages(['file' => 'Pemeriksaan keamanan XLSX tidak tersedia pada server.']);
+        }
+
+        $zip = new \ZipArchive();
+        $opened = $zip->open($path, \ZipArchive::CHECKCONS);
+        if ($opened !== true) {
+            throw ValidationException::withMessages(['file' => 'File XLSX bukan paket OOXML yang valid atau arsipnya rusak.']);
+        }
+
+        try {
+            if ($zip->numFiles < 3 || $zip->numFiles > self::MAX_ZIP_ENTRIES) {
+                throw ValidationException::withMessages(['file' => 'Struktur XLSX memiliki jumlah entri ZIP yang tidak didukung.']);
+            }
+
+            $seenNames = [];
+            $totalExpandedBytes = 0;
+            $hasContentTypes = false;
+            $hasWorkbook = false;
+            $hasWorksheet = false;
+
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $stat = $zip->statIndex($index);
+                if (!is_array($stat)
+                    || !isset($stat['name'], $stat['size'], $stat['comp_size'], $stat['comp_method'])) {
+                    throw ValidationException::withMessages(['file' => 'Metadata entri XLSX tidak valid.']);
+                }
+
+                $name = (string) $stat['name'];
+                if ($name === ''
+                    || str_contains($name, "\0")
+                    || str_contains($name, '\\')
+                    || str_starts_with($name, '/')
+                    || preg_match('/^[A-Za-z]:/', $name) === 1) {
+                    throw ValidationException::withMessages(['file' => 'Path entri XLSX tidak aman.']);
+                }
+
+                $segments = explode('/', rtrim($name, '/'));
+                foreach ($segments as $segment) {
+                    if ($segment === '' || $segment === '.' || $segment === '..') {
+                        throw ValidationException::withMessages(['file' => 'Path traversal pada entri XLSX ditolak.']);
+                    }
+                }
+
+                $normalizedName = strtolower($name);
+                if (isset($seenNames[$normalizedName])) {
+                    throw ValidationException::withMessages(['file' => 'Nama entri XLSX duplikat tidak diizinkan.']);
+                }
+                $seenNames[$normalizedName] = true;
+
+                if (preg_match('#^xl/(externalLinks|embeddings|activeX)/#i', $name) === 1
+                    || preg_match('#^xl/vbaProject\.bin$#i', $name) === 1) {
+                    throw ValidationException::withMessages(['file' => 'External link, macro, atau embedded object pada XLSX tidak diizinkan.']);
+                }
+
+                $size = (int) $stat['size'];
+                $compressedSize = (int) $stat['comp_size'];
+                $compressionMethod = (int) $stat['comp_method'];
+
+                if ($size < 0
+                    || $compressedSize < 0
+                    || $size > self::MAX_ZIP_ENTRY_BYTES
+                    || !in_array($compressionMethod, [\ZipArchive::CM_STORE, \ZipArchive::CM_DEFLATE], true)) {
+                    throw ValidationException::withMessages(['file' => 'Ukuran atau metode kompresi entri XLSX tidak didukung.']);
+                }
+
+                $totalExpandedBytes += $size;
+                if ($totalExpandedBytes > self::MAX_ZIP_TOTAL_EXPANDED_BYTES) {
+                    throw ValidationException::withMessages(['file' => 'Ukuran hasil ekstraksi XLSX melebihi batas keamanan.']);
+                }
+
+                if ($size > 0
+                    && ($compressedSize < 1 || ($size / max(1, $compressedSize)) > self::MAX_ZIP_COMPRESSION_RATIO)) {
+                    throw ValidationException::withMessages(['file' => 'Compression ratio XLSX melebihi batas keamanan.']);
+                }
+
+                $lowerName = strtolower($name);
+                if ($lowerName === '[content_types].xml') {
+                    $hasContentTypes = true;
+                }
+                if ($lowerName === 'xl/workbook.xml') {
+                    $hasWorkbook = true;
+                }
+                if (preg_match('#^xl/worksheets/[^/]+\.xml$#i', $name) === 1) {
+                    $hasWorksheet = true;
+                }
+
+                if (preg_match('/\.(xml|rels)$/i', $name) === 1) {
+                    if ($size > self::MAX_XML_ENTRY_BYTES) {
+                        throw ValidationException::withMessages(['file' => 'Ukuran XML XLSX melebihi batas keamanan.']);
+                    }
+
+                    $xml = $zip->getFromIndex($index);
+                    if (!is_string($xml) || strlen($xml) !== $size) {
+                        throw ValidationException::withMessages(['file' => 'Entri XML XLSX tidak dapat dibaca secara utuh.']);
+                    }
+
+                    if (preg_match('/<!\s*(DOCTYPE|ENTITY)\b/i', $xml) === 1) {
+                        throw ValidationException::withMessages(['file' => 'DTD atau XML entity pada XLSX tidak diizinkan.']);
+                    }
+
+                    if (str_ends_with($lowerName, '.rels')
+                        && preg_match('/\bTargetMode\s*=\s*["\']External["\']/i', $xml) === 1) {
+                        throw ValidationException::withMessages(['file' => 'External relationship pada XLSX tidak diizinkan.']);
+                    }
+
+                    if (preg_match('#^xl/worksheets/[^/]+\.xml$#i', $name) === 1) {
+                        $this->assertWorksheetDimensions($xml);
+                    }
+
+                    unset($xml);
+                }
+            }
+
+            if (!$hasContentTypes || !$hasWorkbook || !$hasWorksheet) {
+                throw ValidationException::withMessages(['file' => 'Paket XLSX tidak memiliki bagian OOXML wajib.']);
+            }
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            throw ValidationException::withMessages(['file' => 'Pemeriksaan keamanan XLSX gagal.']);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    private function assertWorksheetDimensions(string $xml): void
+    {
+        $maxColumn = 0;
+        $maxRow = 0;
+
+        if (preg_match('/<dimension\b[^>]*\bref\s*=\s*["\']([^"\']+)["\']/i', $xml, $dimension) === 1) {
+            $referenceParts = explode(':', trim($dimension[1]));
+            $lastCell = trim($referenceParts[count($referenceParts) - 1]);
+
+            if (preg_match('/^\$?([A-Z]{1,3})\$?(\d+)$/i', $lastCell, $coordinate) !== 1) {
+                throw ValidationException::withMessages(['file' => 'Worksheet XLSX memiliki dimension reference tidak valid.']);
+            }
+
+            $maxColumn = Coordinate::columnIndexFromString(strtoupper($coordinate[1]));
+            $maxRow = (int) $coordinate[2];
+        } else {
+            preg_match_all('/<c\b[^>]*\br\s*=\s*["\']\$?([A-Z]{1,3})\$?(\d+)["\']/i', $xml, $cells, PREG_SET_ORDER);
+            if (count($cells) > self::MAX_ROWS * self::MAX_CSV_COLUMNS) {
+                throw ValidationException::withMessages(['file' => 'Worksheet XLSX memiliki terlalu banyak cell.']);
+            }
+
+            foreach ($cells as $cell) {
+                $maxColumn = max($maxColumn, Coordinate::columnIndexFromString(strtoupper($cell[1])));
+                $maxRow = max($maxRow, (int) $cell[2]);
+            }
+        }
+
+        if ($maxRow > self::MAX_ROWS + 1) {
+            throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
+        }
+        if ($maxColumn > self::MAX_CSV_COLUMNS) {
+            throw ValidationException::withMessages(['file' => 'Maksimal 32 kolom per proses import.']);
+        }
+    }
+
     private function readCsv(string $path): array
     {
         $handle = fopen($path, 'rb');
@@ -377,9 +555,12 @@ class StudentImportService
         }
 
         try {
-            $firstLine = fgets($handle);
+            $firstLine = fgets($handle, self::MAX_CSV_RECORD_BYTES + 2);
             if ($firstLine === false) {
                 throw ValidationException::withMessages(['file' => 'File CSV kosong.']);
+            }
+            if (strlen($firstLine) > self::MAX_CSV_RECORD_BYTES) {
+                throw ValidationException::withMessages(['file' => 'Panjang record CSV melebihi batas keamanan.']);
             }
 
             $delimiters = [',', ';', "\t"];
@@ -394,7 +575,7 @@ class StudentImportService
             }
 
             rewind($handle);
-            $headerRow = fgetcsv($handle, 0, $delimiter, '"', '');
+            $headerRow = fgetcsv($handle, self::MAX_CSV_RECORD_BYTES + 1, $delimiter, '"', '');
             if (!is_array($headerRow)) {
                 throw ValidationException::withMessages(['file' => 'Header CSV tidak dapat dibaca.']);
             }
@@ -403,12 +584,22 @@ class StudentImportService
                 $headerRow[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headerRow[0]) ?? $headerRow[0];
             }
 
+            $this->assertCsvRecordBounds($headerRow, null, 'header');
+            if (count($headerRow) > self::MAX_CSV_COLUMNS) {
+                throw ValidationException::withMessages(['file' => 'Maksimal 32 kolom per proses import.']);
+            }
+
             $headers = array_map(fn ($value) => $this->normalizeHeader((string) $value), $headerRow);
             $rows = [];
             $line = 1;
 
-            while (($values = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
+            while (($values = fgetcsv($handle, self::MAX_CSV_RECORD_BYTES + 1, $delimiter, '"', '')) !== false) {
                 $line++;
+                if ($this->isBlankRow($values)) {
+                    continue;
+                }
+
+                $this->assertCsvRecordBounds($values, count($headers), "baris {$line}");
                 $rows[] = ['row' => $line, 'values' => $values];
                 if (count($rows) > self::MAX_ROWS) {
                     throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
@@ -418,6 +609,25 @@ class StudentImportService
             return [$headers, $rows];
         } finally {
             fclose($handle);
+        }
+    }
+
+    private function assertCsvRecordBounds(array $values, ?int $expectedColumns, string $recordLabel): void
+    {
+        if (count($values) > self::MAX_CSV_COLUMNS
+            || ($expectedColumns !== null && count($values) !== $expectedColumns)) {
+            throw ValidationException::withMessages(['file' => "Jumlah kolom CSV pada {$recordLabel} tidak konsisten atau melebihi batas."]);
+        }
+
+        $recordBytes = max(0, count($values) - 1);
+        foreach ($values as $value) {
+            if ($value !== null && !is_scalar($value)) {
+                throw ValidationException::withMessages(['file' => "Record CSV pada {$recordLabel} tidak valid."]);
+            }
+            $recordBytes += strlen((string) ($value ?? ''));
+            if ($recordBytes > self::MAX_CSV_RECORD_BYTES) {
+                throw ValidationException::withMessages(['file' => "Panjang record CSV pada {$recordLabel} melebihi batas keamanan."]);
+            }
         }
     }
 
