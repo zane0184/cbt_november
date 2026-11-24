@@ -511,13 +511,14 @@ PHP;
         $primary->statement('SET SESSION innodb_lock_wait_timeout = 12');
         $primary->beginTransaction();
         $this->lockExamParentsOnPrimaryConnection();
+        $attemptId = (string) Str::uuid();
 
         [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($this->attemptStartWaitingScript(), [
             'tenant_id' => (string) $this->tenant->id,
             'exam_id' => (string) $this->exam->id,
             'participant_id' => (string) $this->participant->id,
             'student_id' => (string) $this->student->id,
-            'attempt_id' => (string) Str::uuid(),
+            'attempt_id' => $attemptId,
         ]);
 
         try {
@@ -543,11 +544,7 @@ PHP;
         $this->assertTrue(Hash::check($temporaryPassword, $this->student->fresh()->password));
         $this->assertTrue((bool) $this->student->fresh()->must_change_password);
         $this->assertSame(2, (int) $this->student->fresh()->auth_version);
-        $this->assertSame('IN_PROGRESS', $primary->table('exam_attempts')->where('id', $attemptId)->value('status'));
-        $this->assertSame(0, $primary->table('exam_attempt_answers')->where('exam_attempt_id', $attemptId)->count());
-        $this->assertSame(0, $primary->table('exam_attempt_scores')->where('attempt_id', $attemptId)->count());
-        $this->assertSame(0, $primary->table('device_leases')->where('exam_attempt_id', $attemptId)->count());
-        $this->assertSame(1, (int) $primary->table('exam_attempts')->where('id', $attemptId)->value('fence_generation'));
+        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
     }
 
     public function test_deactivation_wins_exam_parent_locks_and_concurrent_attempt_start_is_rejected_for_inactive_account(): void
@@ -679,7 +676,11 @@ PHP;
         $this->assertSame($beforeParticipant, (array) $primary->table('exam_participants')->where('id', $this->participant->id)->first());
         $this->assertSame(1, $primary->table('personal_access_tokens')->where('tokenable_id', $this->student->id)->count());
         $this->assertSame(0, \App\Models\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')->where('entity_id', $this->student->id)->count());
-        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
+        $this->assertSame('IN_PROGRESS', $primary->table('exam_attempts')->where('id', $attemptId)->value('status'));
+        $this->assertSame(0, $primary->table('exam_attempt_answers')->where('exam_attempt_id', $attemptId)->count());
+        $this->assertSame(0, $primary->table('exam_attempt_scores')->where('attempt_id', $attemptId)->count());
+        $this->assertSame(0, $primary->table('device_leases')->where('exam_attempt_id', $attemptId)->count());
+        $this->assertSame(1, (int) $primary->table('exam_attempts')->where('id', $attemptId)->value('fence_generation'));
     }
 
     public function test_reset_transaction_rolls_back_cleanly_when_innodb_detects_reverse_lock_order_deadlock(): void
@@ -691,7 +692,7 @@ PHP;
         $primary->beginTransaction();
         $this->lockExamParentsOnPrimaryConnection();
 
-        $deadlocksBefore = (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0);
+        $attemptId = (string) Str::uuid();
         $script = <<<'PHP'
 <?php
 $payload = json_decode(base64_decode($argv[1]), true, 512, JSON_THROW_ON_ERROR);
@@ -718,7 +719,7 @@ try {
     echo "UNEXPECTED_NO_DEADLOCK\n";
 } catch (PDOException $exception) {
     $driverCode = (int) ($exception->errorInfo[1] ?? 0);
-    if ($driverCode !== 1213 && $exception->getCode() !== '40001') {
+    if ($driverCode !== 1213) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         fwrite(STDERR, $exception->getMessage()."\n");
         exit(2);
@@ -731,7 +732,9 @@ PHP;
         [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
             'student_id' => (string) $this->student->id,
             'exam_id' => (string) $this->exam->id,
+            'participant_id' => (string) $this->participant->id,
             'tenant_id' => (string) $this->tenant->id,
+            'attempt_id' => $attemptId,
         ]);
 
         try {
@@ -752,9 +755,8 @@ PHP;
             @unlink($scriptPath);
         }
 
-        $this->assertSame('DEADLOCK_ROLLBACK', $childResult, 'MySQL must detect and roll back the reverse-order competing transaction.');
+        $this->assertSame('DEADLOCK_ROLLBACK_1213', $childResult, 'The competing Attempt-start transaction must be the InnoDB deadlock victim and roll back.');
         $this->assertSame(0, $exitCode, 'Deadlock competitor failed: '.$childError);
-        $this->assertGreaterThan($deadlocksBefore, (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0));
         $this->assertTrue(Hash::check($temporaryPassword, $this->student->fresh()->password));
         $this->assertTrue((bool) $this->student->fresh()->must_change_password);
         $this->assertSame(2, (int) $this->student->fresh()->auth_version);
