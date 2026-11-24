@@ -293,6 +293,13 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
     public function test_branding_upload_is_scoped_to_the_authenticated_installation_tenant(): void
     {
+        $appLogoPath = app(TenantBrandingService::class)->storeUpload(
+            UploadedFile::fake()->image('tenant-a-logo.png', 120, 120),
+            (string) $this->tenant->id,
+            'app-logo'
+        );
+        $this->tenant->forceFill(['logo_path' => $appLogoPath])->save();
+
         $otherTenant = Tenant::create(['name' => 'Madrasah Other', 'code' => 'BRAND-B']);
         $role = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
         $otherAdmin = User::create([
@@ -308,13 +315,31 @@ class TenantBrandingAssetsManagementTest extends TestCase
         // event used by the real request lifecycle to synchronize TenantContext.
         app(\\App\\Contexts\\TenantContext::class)->setTenantId($otherTenant->id);
 
+        $branding = app(TenantBrandingService::class);
+        $this->assertNull($branding->localPath($appLogoPath));
+        $this->assertNull($branding->publicUrl($appLogoPath));
+        $this->assertNull(app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh()));
+
+        try {
+            $branding->storeUpload(
+                UploadedFile::fake()->image('cross-install.png', 120, 120),
+                (string) $this->tenant->id,
+                'app-logo'
+            );
+            $this->fail('A tenant B account must not write branding under tenant A.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('tidak sesuai', $exception->getMessage());
+        }
+
         Livewire::test(TenantBrandingAssetsManagement::class)
             ->set('appLogoUpload', UploadedFile::fake()->image('other-logo.png', 120, 120))
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertNull($this->tenant->fresh()->logo_path);
+        $this->assertSame($appLogoPath, $this->tenant->fresh()->logo_path);
+        $this->assertFileExists(storage_path('app/public/' . $appLogoPath));
         $this->assertStringStartsWith('tenants/' . $otherTenant->id . '/branding/app-logo-', $otherTenant->fresh()->logo_path);
+        $this->assertFileExists(storage_path('app/public/' . $otherTenant->fresh()->logo_path));
     }
 
     public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
@@ -332,6 +357,60 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
         $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
         $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+    }
+
+
+    public function test_pdf_header_falls_back_when_document_logo_is_missing_or_corrupt_and_returns_null_without_app_logo(): void
+    {
+        $branding = app(TenantBrandingService::class);
+        $appLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('fallback-app.png', 120, 120),
+            (string) $this->tenant->id,
+            'app-logo'
+        );
+        $missingPath = 'tenants/' . $this->tenant->id . '/branding/document-missing.png';
+        $this->tenant->forceFill(['logo_path' => $appLogoPath, 'document_logo_path' => $missingPath])->save();
+
+        $dataUri = app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh());
+        $this->assertIsString($dataUri);
+        $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
+
+        $corruptPath = 'tenants/' . $this->tenant->id . '/branding/document-corrupt.png';
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $corruptPath)));
+        File::put(storage_path('app/public/' . $corruptPath), 'not-a-valid-image');
+        $this->tenant->forceFill(['document_logo_path' => $corruptPath])->save();
+
+        $dataUri = app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh());
+        $this->assertIsString($dataUri);
+        $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
+
+        $this->tenant->forceFill(['logo_path' => null, 'document_logo_path' => $missingPath])->save();
+        $this->assertNull(app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh()));
+    }
+
+    public function test_admin_can_replace_and_remove_app_logo_through_branding_management(): void
+    {
+        $branding = app(TenantBrandingService::class);
+        $oldPath = $branding->storeUpload(
+            UploadedFile::fake()->image('old-app.png', 120, 120),
+            (string) $this->tenant->id,
+            'app-logo'
+        );
+        $this->tenant->forceFill(['logo_path' => $oldPath])->save();
+
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('appLogoUpload', UploadedFile::fake()->image('new-app.png', 140, 140))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $newPath = $this->tenant->fresh()->logo_path;
+        $this->assertNotSame($oldPath, $newPath);
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $oldPath));
+        $this->assertFileExists(storage_path('app/public/' . $newPath));
+
+        Livewire::test(TenantBrandingAssetsManagement::class)->call('removeAppLogo')->assertHasNoErrors();
+        $this->assertNull($this->tenant->fresh()->logo_path);
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $newPath));
     }
 
 }
