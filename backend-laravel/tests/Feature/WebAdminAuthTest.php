@@ -177,6 +177,27 @@ class WebAdminAuthTest extends TestCase
         $this->assertAuthenticatedAs($this->guru);
     }
 
+    public function test_pppk_teacher_can_login_using_18_digit_nip(): void
+    {
+        $pppkRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $pppk = $this->makeUser('guru.pppk', 'Guru PPPK', $pppkRole);
+        TeacherProfile::create([
+            'user_id' => $pppk->id,
+            'employment_status' => 'PPPK',
+            'nip' => '199001012021041001',
+            'full_name' => 'Guru PPPK',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->post('/login', [
+            'identifier' => '199001012021041001',
+            'password' => $this->password,
+        ]);
+        $response->assertRedirect('/guru/dashboard');
+        $this->assertAuthenticatedAs($pppk);
+    }
+
     public function test_guru_username_is_not_an_authentication_fallback(): void
     {
         $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => $this->password]);
