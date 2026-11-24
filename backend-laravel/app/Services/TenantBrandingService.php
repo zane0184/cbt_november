@@ -494,45 +494,84 @@ class TenantBrandingService
 
     private function resolveInstallationTenantId(?string $requestedTenantId = null): ?string
     {
-        // Read the currently selected authentication guard first. The Request
-        // user resolver may be cached across test/request lifecycle switches.
         $user = Auth::user() ?? Auth::guard('sanctum')->user();
         $contextTenantId = app(TenantContext::class)->getTenantId();
+        $identity = null;
 
-        if ($user) {
-            $authenticatedTenantId = (string) ($user->tenant_id ?? '');
-            if (
-                $authenticatedTenantId === ''
-                || !$contextTenantId
-                || (string) $contextTenantId !== $authenticatedTenantId
-            ) {
+        if (Schema::hasTable('local_installation_identities')) {
+            $identities = LocalInstallationIdentity::withoutGlobalScopes()
+                ->limit(2)
+                ->get(['tenant_id', 'installation_id', 'product_code']);
+
+            // Multiple identities in one local database are an invalid
+            // installation state, not a reason to select one arbitrarily.
+            if ($identities->count() > 1) {
                 return null;
             }
 
-            return !$requestedTenantId || $requestedTenantId === $authenticatedTenantId
-                ? $authenticatedTenantId
-                : null;
+            $identity = $identities->first();
         }
 
-        // Public/login rendering may resolve the sole installation identity,
-        // but it cannot override a non-empty context from another request.
-        if (!Schema::hasTable('local_installation_identities')) {
+        $expectedProductCode = (string) config('license.product_code', 'CBT-MI');
+
+        if ($user) {
+            $authenticatedTenantId = (string) ($user->tenant_id ?? '');
+            if ($authenticatedTenantId === '' || !$contextTenantId || $contextTenantId !== $authenticatedTenantId) {
+                return null;
+            }
+
+            // Once an installation identity exists, it is authoritative for
+            // the local madrasah. An authenticated account cannot select a
+            // different legacy tenant row inside the same database.
+            if ($identity) {
+                $identityTenantId = (string) ($identity->tenant_id ?? '');
+                $installationId = (string) ($identity->installation_id ?? '');
+
+                if (
+                    !Str::isUuid($identityTenantId)
+                    || !Str::isUuid($installationId)
+                    || $identityTenantId !== $authenticatedTenantId
+                    || (string) ($identity->product_code ?? '') !== $expectedProductCode
+                ) {
+                    return null;
+                }
+            } elseif (app()->environment('production')) {
+                // A production installation without its own identity must
+                // fail closed. Non-production retains the legacy fixture path.
+                return null;
+            }
+
+            if ($requestedTenantId !== null && $requestedTenantId !== $authenticatedTenantId) {
+                return null;
+            }
+
+            return $authenticatedTenantId;
+        }
+
+        // Public/login rendering and supported non-request calls may resolve
+        // only the single local installation identity. A null context is
+        // acceptable here; a conflicting non-empty context is not.
+        if (!$identity) {
             return null;
         }
 
-        $identities = LocalInstallationIdentity::withoutGlobalScopes()->limit(2)->get(['tenant_id']);
-        if ($identities->count() !== 1) {
+        $installationTenantId = (string) ($identity->tenant_id ?? '');
+        $installationId = (string) ($identity->installation_id ?? '');
+
+        if (
+            !Str::isUuid($installationTenantId)
+            || !Str::isUuid($installationId)
+            || (string) ($identity->product_code ?? '') !== $expectedProductCode
+            || ($contextTenantId !== null && $contextTenantId !== $installationTenantId)
+        ) {
             return null;
         }
 
-        $installationTenantId = (string) $identities->first()->tenant_id;
-        if ($contextTenantId !== null && (string) $contextTenantId !== $installationTenantId) {
+        if ($requestedTenantId !== null && $requestedTenantId !== $installationTenantId) {
             return null;
         }
 
-        return !$requestedTenantId || $requestedTenantId === $installationTenantId
-            ? $installationTenantId
-            : null;
+        return $installationTenantId;
     }
 
 }

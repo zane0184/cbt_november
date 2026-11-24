@@ -559,7 +559,11 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->assertFileDoesNotExist(storage_path('app/public/' . $oldFavicon));
     }
 
-    public function test_branding_upload_is_scoped_to_the_authenticated_installation_tenant(): void
+    /**
+     * Legacy shared-database regression only. This is not the acceptance proof
+     * for isolation between separate madrasah installations.
+     */
+    public function test_legacy_shared_database_tenant_context_switch_remains_scoped_for_compatibility(): void
     {
         $branding = app(TenantBrandingService::class);
         $appLogoPath = $branding->storeUpload(
@@ -656,6 +660,71 @@ class TenantBrandingAssetsManagementTest extends TestCase
         }
         $this->assertNull($branding->localPath($appLogoPath));
         $this->assertNull($branding->localPath($otherLogoPath));
+    }
+
+    public function test_authenticated_branding_user_must_match_local_installation_identity(): void
+    {
+        $tenantId = (string) $this->tenant->id;
+        DB::table('local_installation_identities')->insert([
+            'tenant_id' => $tenantId,
+            'installation_id' => (string) Str::uuid(),
+            'key_id' => 'branding-' . strtolower(Str::random(10)),
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => hash('sha256', Str::random(32)),
+            'registered_domain' => 'branding.example.test',
+            'product_code' => (string) config('license.product_code', 'CBT-MI'),
+            'product_version' => 'test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin, 'web');
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($this->admin);
+        Auth::guard('sanctum')->forgetUser();
+        $this->setTenantContext($tenantId);
+
+        $branding = app(TenantBrandingService::class);
+        $appLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('installation-identity-a.png', 120, 120),
+            $tenantId,
+            'app-logo'
+        );
+        $this->tenant->forceFill(['logo_path' => $appLogoPath])->save();
+
+        $otherTenant = Tenant::create(['name' => 'Legacy Tenant B', 'code' => 'BRAND-IDENTITY-B']);
+        $this->setTenantContext((string) $otherTenant->id);
+        $role = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $otherAdmin = User::create([
+            'name' => 'Admin Outside Installation',
+            'email' => 'admin.outside-installation@example.test',
+            'password' => 'password-outside-installation',
+        ]);
+        $otherAdmin->roles()->sync([$role->id]);
+
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($otherAdmin);
+        $this->assertSame($otherAdmin->id, Auth::user()?->id);
+        $this->assertSame((string) $otherTenant->id, (string) $otherAdmin->tenant_id);
+
+        // User B + Context B still cannot escape the single local installation
+        // identity that is bound to tenant A.
+        $this->assertNull($branding->currentTenant());
+        $this->assertNull($branding->localPath($appLogoPath));
+        $branding->deleteManaged($appLogoPath, $tenantId);
+        $this->assertFileExists(storage_path('app/public/' . $appLogoPath));
+
+        try {
+            $branding->storeUpload(
+                UploadedFile::fake()->image('installation-identity-cross.png', 120, 120),
+                (string) $otherTenant->id,
+                'app-logo'
+            );
+            $this->fail('A user outside the local installation identity must not upload branding.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('tidak sesuai', $exception->getMessage());
+        }
     }
 
     public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
@@ -918,7 +987,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'encrypted_private_key' => 'encrypted-private-key-a',
                 'key_fingerprint' => str_repeat('a', 64),
                 'registered_domain' => 'a.example.test',
-                'product_code' => 'CBT-MADRASAH',
+                'product_code' => (string) config('license.product_code', 'CBT-MI'),
                 'product_version' => 'test',
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -931,7 +1000,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'encrypted_private_key' => 'encrypted-private-key-b',
                 'key_fingerprint' => str_repeat('b', 64),
                 'registered_domain' => 'b.example.test',
-                'product_code' => 'CBT-MADRASAH',
+                'product_code' => (string) config('license.product_code', 'CBT-MI'),
                 'product_version' => 'test',
                 'created_at' => now(),
                 'updated_at' => now(),
