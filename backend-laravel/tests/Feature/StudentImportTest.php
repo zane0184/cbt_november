@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
+use App\Services\AuditService;
+use App\Services\StudentImportService;
 use App\Livewire\Admin\StudentImport;
 use App\Models\AcademicYear;
 use App\Models\Curriculum;
@@ -240,6 +242,43 @@ class StudentImportTest extends TestCase
             ->assertHasNoErrors()
             ->assertSee('NISN harus disimpan sebagai teks');
         $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+
+    public function test_audit_failure_rolls_back_the_entire_student_import_batch(): void
+    {
+        $this->actingAs($this->admin);
+        $file = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn\nSiswa Rollback,0008888888\n"
+        );
+        $preview = app(StudentImportService::class)->preview(
+            $file->getRealPath(),
+            'csv',
+            $this->tenant->id,
+            $this->rombel->id
+        );
+
+        $this->mock(AuditService::class, function ($mock): void {
+            $mock->shouldReceive('log')->once()->andThrow(new RuntimeException('Simulated audit storage failure.'));
+        });
+
+        try {
+            app(StudentImportService::class)->import(
+                $preview,
+                $this->tenant->id,
+                $this->admin->id,
+                $this->rombel->id
+            );
+            $this->fail('The simulated audit failure must abort the import transaction.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Simulated audit storage failure.', $exception->getMessage());
+        }
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('rombel_student', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+        $this->assertDatabaseCount('users', 1);
     }
 
     public function test_non_admin_cannot_open_student_import_page(): void
