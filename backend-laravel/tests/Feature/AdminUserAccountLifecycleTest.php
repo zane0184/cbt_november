@@ -676,7 +676,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Auth::forgetGuards();
 
         // Reactivation advances auth_version again; it never resurrects the old cookie.
-        $this->withUnencryptedCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
         $this->assertTrue((bool) $deactivatedTeacher->fresh()->is_active);
         $this->assertSame(3, (int) $deactivatedTeacher->fresh()->auth_version);
     }
