@@ -365,3 +365,98 @@ Run terbaru pada exact branch HEAD saat audit ini, `2f13517217bcdb8ffb591f4df775
 3. Lanjutkan P1-ID-03A saja setelah environment tersedia; backup byte-exact per file sebelum patch.
 4. Jalankan focused/full test setelah patch pada exact commit.
 5. STOP untuk review koordinator sebelum P1-ID-03B.
+
+
+---
+
+## ADDENDUM — Audit source jarak jauh P1-ID-03A (24 November 2026)
+
+### AUDIT — posisi branch dan sumber yang diperiksa
+
+- Branch work/p1-seven-targets-20261124 diverifikasi melalui compare ref: HEAD saat refresh c6861410df8483d6cfb0c6e5aae8636244cb013b; compare dengan nama branch menghasilkan 0 ahead / 0 behind.
+- PR #23 ditemukan pada pencarian PR open-only dengan judul [DRAFT]; tidak ada merge yang dilakukan. Base branch/SHA tetap work/phpunit-41-root-cause-20261123 / 1c33e5d422175f9bd85d206230271a9fe5a4eecd.
+- Source aplikasi terakhir yang diaudit cd2b6ee8ed9d57604a06860e1dee399fb4b2b050. Compare cd2b6ee8 ke source commit paket 2f13517217bcdb8ffb591f4df7751bcc4b7354ab menunjukkan 4 commit ahead, 0 behind, hanya dua dokumen report/checkpoint berubah. Compare cd2b6ee8 ke HEAD branch c6861410 menunjukkan 7 commit ahead, 0 behind, juga hanya dua dokumen tersebut. Source aplikasi tidak berubah.
+- Artifact workflow #45363631190 (artifact ID 14906520236) diunduh untuk audit source. SHA-256 artifact luar: be569407edfac045ac5194b85f29a3f776e6c1a350a45cf5a31bdb402465afcd. SHA-256 ZIP deployment di dalamnya: 3d5211059a5543cf2b05bc73c5fd4f12151eb1f28fc9b44fd7e526dfe1658194. Paket berisi 10.026 entry; manifest menunjuk source commit 2f135172..., PHP 8.3.37, Composer 2.11.2, Laravel 13.42.0. Manifest menyebut paket sebagai staging/deployment candidate, bukan persetujuan produksi.
+- Snapshot audit diekstrak di /mnt/data/CBT_AUDIT_SNAPSHOT_2f135172/. Ini BUKAN checkout Git, tidak memiliki metadata .git, dan tidak dipindahkan menjadi workspace proyek. Snapshot dipakai read-only untuk pencarian source app/, migrations, seeders, dan factories. Folder tests tidak termasuk paket distribusi. Test preflight diambil terpisah dari GitHub pada source SHA yang diaudit.
+- Pencarian Project/Library untuk nama baseline CBT REVISI 6 NOPEMBER 2026.zip tidak menemukan ZIP baseline; yang tersedia pada konteks file adalah dokumen laporan/checkpoint. ZIP baseline tidak diubah.
+- Workspace /mnt/data/CBT_MADRASAH_RECONSTRUCTION/ tetap tidak ada. Git 2.47.3 tersedia; PHP 8.4.24 (bukan PHP 8.3); PDO driver kosong; Composer, MySQL client/server, Docker/Podman tidak tersedia; DNS/HTTPS terminal ke GitHub gagal karena Could not resolve host: github.com. Tidak ada checkout asli yang dapat dipulihkan melalui terminal.
+- Fetch workflow runs dan combined status untuk HEAD dokumentasi c6861410 tidak mengembalikan run/status. Tidak ada klaim CI exact-HEAD c6861410. Bukti CI historis pada source tree yang sama tetap run #45363631214 (534 passed / 2.265 assertions) pada 2f135172; hasil itu tidak membuktikan P1-ID-03A selesai.
+
+### AUDIT — writer profil, fixture, tenant, dan mass assignment
+
+Pencarian source app/, migrations, seeders, dan factories dalam paket menghasilkan writer profil berikut:
+
+1. app/Livewire/Admin/UserManagement.php::createUser() — writer aplikasi untuk akun baru. Dalam transaksi, membuat User lalu satu role GURU/SISWA dan membuat TeacherProfile atau StudentProfile. authorizeUserManagement() dipanggil pada mount dan setiap mutasi; mensyaratkan user terautentikasi, tenant, tepat satu role ADMIN_MADRASAH, dan permission user.manage. Validasi membatasi role ke GURU/SISWA; status Guru wajib PNS/PPPK/HONORER; PNS/PPPK wajib NIP 18 digit dan melarang NIK; Honorer wajib NIK 16 digit dan melarang NIP; Siswa wajib NISN 10 digit. Tenant diambil dari konteks/user server-side dan TenantScoped memaksa tenant dari konteks, bukan dari input browser.
+   - Batas: unique validation dilakukan per kolom/tabel; collision lintas kategori belum diperiksa dan belum ada test preflight yang membuktikan role/profile untuk seluruh data lama.
+2. app/Console/Commands/Phase7dBenchmarkCommand.php::seedWorkload() — writer fixture benchmark. Membuat TeacherProfile tanpa employment_status, NIP/NIK, dan employee_identifier; membuat StudentProfile dengan NISN pola NISN_%03d, bukan 10 digit numerik. Fixture belum sesuai kontrak identitas.
+   - Command memakai SQLite benchmark terpisah dan migrate:fresh pada koneksi benchmark. Command tidak dijalankan pada audit ini; jangan gunakan sebagai bukti kompatibilitas identitas sebelum fixture dan cleanup saat exception diperbaiki/diuji.
+3. app/Livewire/Teacher/TeacherProfilePage.php::savePhone() — memakai forceFill(['phone' => ...]) setelah validasi nomor telepon, otorisasi melalui TeacherPortalComponent/TeacherPortalAccess, tenant+user+profile query, dan row lock. Ini bukan writer identitas; hanya phone yang diubah.
+4. Tidak ditemukan writer profil lain dalam source aplikasi yang dipaketkan. Pemakaian TeacherProfile/StudentProfile di TeacherSubjectAssignmentManagement, StudentRombelManagement, TeacherAccess, TeacherPortalAccess, TeacherPortalDataService, TeacherSubjectAssignmentController, dan LoginIdentityResolver yang diperiksa adalah pembacaan/validasi/penugasan, bukan update NIP/NIK/NUPTK/NISN.
+5. Tidak ditemukan fill, forceFill, updateOrCreate, firstOrCreate, upsert, insert, query-builder update, atau raw SQL runtime yang menulis kolom identitas/tabel profil selain dua create di atas. forceFill pada TeacherProfilePage hanya menyentuh phone. Query preflight adalah SELECT/chunk/group count.
+6. Database factories berisi 13 factory; tidak ada TeacherProfileFactory/StudentProfileFactory dan pencarian identitas pada seluruh factory tidak menemukan NIP/NIK/NUPTK/NISN. Lima seeder tidak membuat data identitas Guru/Siswa. Tests tidak ada dalam deployment package; hasil ini bukan klaim bahwa seluruh test fixtures repository-wide telah diaudit.
+7. TeacherProfile fillable mencakup user_id, employee_identifier, employment_status, nip, nik, nuptk; StudentProfile fillable mencakup user_id dan nisn. Hidden hanya mengatur serialisasi, bukan otorisasi mass assignment.
+8. Migration tenant integrity mendefinisikan composite FK profile-user tenant untuk TeacherProfile dan StudentProfile. Namun migration profil tidak menambahkan unique constraint pada user_id; relasi Eloquent hasOne saja tidak mencegah lebih dari satu profil untuk user yang sama. Preflight perlu memeriksa cardinality, kecocokan role, dan relasi user/profile. Keadaan DB aktual belum diperiksa.
+
+### AUDIT — LoginIdentityPreflightCommand dan test
+
+- LoginIdentityPreflightCommand::handle() memeriksa status Guru, format NIP/NIK/NUPTK/NISN, kesesuaian employee_identifier, string kosong, spasi tepi, dan duplikasi tenant per kolom. Secara statis jalur perintah hanya SELECT/chunk/group count dan tidak memanggil operasi tulis; belum ada test snapshot sebelum/sesudah yang membuktikan DB tidak berubah.
+- Guard awal hanya memeriksa keberadaan tabel. Kolom yang dipakai SELECT tidak diperiksa satu per satu sebelum query. Kolom hilang dapat menghasilkan exception DB yang belum ditangani sebagai diagnostic fail-closed tersanitasi.
+- Query profil tidak mengambil tenant_id dan user_id untuk memeriksa relasi dengan users. Belum ada pemeriksaan satu User memiliki tepat satu profil sesuai role, tidak ada profil silang, kategori PNS/PPPK tidak memiliki NIK login, Honorer tidak memiliki NIP login, dan collision lintas tabel/kategori.
+- Duplikasi diperiksa terpisah untuk NIP, NIK, NUPTK, dan NISN. Tidak ada collision audit lintas jenis identitas dan username Admin.
+- LoginIdentityPreflightCommandTest.php hanya memiliki tiga test: data valid, whitespace-padded Guru, dan Guru legacy tanpa status/identifier. Belum ada test per kategori anomali, schema missing table/column, role/profile cardinality, tenant mismatch, cross-category collision, cross-tenant duplicate allowance, null/blank/format lengkap, maupun DB immutability.
+- Status preflight/test: PARTIAL / NOT COMPLETE.
+
+### AUDIT — AuditService, AuditLog, dan PII
+
+- Ditemukan 107 pemanggilan AuditService::log() di 33 file caller dalam source aplikasi yang dipaketkan. Fungsi yang memanggil:
+  - API AnalyticsController: examSummary, examDistribution, examItems, rombelExamAnalytics, studentAnalytics, subjectAnalytics.
+  - API AssessmentController: destroy.
+  - API CurriculumAnalyticsController: studentAnalytics, rombelAnalytics, subjectAnalytics, tpAnalytics.
+  - API CurriculumController: store, update, destroy; ElementController: store, update, destroy; ExamAnswerController: update.
+  - API ExamAttemptController: store (dua event), submit (dua event); ExamController: store, update, addQuestions, assignRombel, generateToken, lock, removeQuestion, reorderQuestions, bulkRemoveQuestions, close, archive, publishResults, destroy.
+  - API ExamParticipantController: store, destroy; GradeLevelController: store, update, destroy; LearningObjectiveController: store, update, destroy; LearningOutcomeController: store, update, destroy; LearningPathController: store, update, destroy.
+  - API MediaController: store, attachToQuestionVersion, detachFromQuestionVersion, destroy; PhaseController: store, update, destroy; QuestionController: store, update (dua event), publish, import, destroy; QuestionPublicationController: store, destroy.
+  - API ReportController: examResults, examSummary, studentResults, exportExcel, exportPdf, exportStudentPdf, exportSummaryPdf, rombelReport, subjectReport, questionReport; ScoringController: score, updateManualScore, finalize, recalculate; TeacherSubjectAssignmentController: store, update, destroy.
+  - Livewire CurriculumRegistryManagement: registerVersion (dua event), mapSubject, retireMapping; ExamManagement: saveExam, generateToken, lockExam; QuestionBank: saveQuestion, publishQuestion, deleteQuestion; StudentRombelManagement: addStudentToRombel; TeacherSubjectAssignmentManagement: createAssignment; ResultList: toggleResultPublication; TeacherMaterialManagement: createMaterial, createTopic, publishMaterial, publishTopic; TeacherProfilePage: savePhone.
+  - Service ExamProctorAssignmentService: revoke; ScoringService: scoreAttempt, reopenAttempt; TeacherPortal AssessmentCurriculumMappingService: sync; QuestionVersionCurriculumMappingService: sync; TeacherLearningOutcomeService: createTp, createAtp, publish.
+- AuditService::log() meneruskan oldValues/newValues langsung ke AuditLog::create(); redactor recursive terpusat belum ada. Sebagian caller memasok toArray() model, sehingga redactor tidak boleh bergantung hanya pada atribut hidden model.
+- Dua bypass runtime langsung ke AuditLog::create(): InstallerService (finalisasi PRE_ACTIVATION) dan ExpireExamAttemptsCommand (expire attempt). Migration 2026_11_23_130001_consolidate_legacy_local_roles melakukan insert audit historis melalui DB table; migration historis tidak boleh ditulis ulang sembarangan.
+- Redaksi PII perlu terpusat untuk data audit baru, recursive atas nested arrays dan alias identitas, serta diterapkan juga pada dua bypass runtime. Histori audit lama tidak diubah.
+
+### DESAIN — urutan penutupan P1-ID-03A
+
+1. Perkuat schema guard preflight untuk semua tabel/kolom sebelum SELECT; diagnostic fail-closed tanpa nilai PII.
+2. Tambahkan pemeriksaan tenant-user/profile relation, tepat satu profil sesuai role, tidak ada profil silang, kategori identitas saling eksklusif, format mentah, dan collision per tenant lintas username/identitas. Pertahankan semua identifier sebagai string agar leading zero tidak hilang.
+3. Buat test terpisah untuk setiap anomali, pasangan valid, cross-tenant duplicate allowance, schema missing, no-PII output, dan snapshot DB sebelum/sesudah untuk bukti read-only.
+4. Normalisasi fixture benchmark: status Guru eksplisit dan NIP/NIK sintetis sesuai kategori; NISN 10 digit numerik, unik per tenant. Pastikan cleanup benchmark aman saat exception.
+5. Terapkan redactor recursive terpusat pada AuditService dan arahkan dua direct runtime AuditLog writer melalui sanitizer yang sama. Jangan mengubah data audit historis.
+6. Tutup audit otorisasi/mass assignment pada writer, termasuk role, permission, tenant scope, validated payload, dan cardinality. Jangan menghapus fillable secara membabi buta.
+7. Backup byte-exact per file sebelum source edit; catat source blob SHA, path backup, backup SHA-256, dan verifikasi cocok.
+8. Jalankan focused dan full PHPUnit serta CI pada exact SHA hasil patch. STOP sebelum P1-ID-03B untuk review koordinator.
+
+### IMPLEMENTASI
+
+- Tidak ada source aplikasi, migration, workflow, dependency, konfigurasi, atau database yang diubah.
+- Tidak ada patch source melalui GitHub Contents API.
+- Tidak ada checkout Git asli yang pulih. Deployment artifact hanya menjadi snapshot audit terpisah.
+- Tidak ada source backup baru karena tidak ada source yang diedit.
+- Report ini diperbarui append-only sebagai dokumentasi audit; P1-ID-03A belum diimplementasikan.
+
+### PENGUJIAN
+
+- Audit statis dilakukan pada source snapshot paket yang manifest-nya menunjuk commit 2f135172; compare membuktikan perubahan dari source cd2b6ee8 ke snapshot hanya dua file dokumentasi.
+- Inventory: dua writer profil identitas, satu phone-only forceFill, 13 factory tanpa identitas, lima seeder tanpa data identitas, 107 AuditService::log call di 33 caller files, dua direct runtime AuditLog::create bypass, satu migration historical insert.
+- Tidak menjalankan PHP lint, Composer, PHPUnit, preflight, benchmark, migration, atau DB. Tidak ada bukti DB immutability runtime.
+- CI exact source tree historis #45363631214: SUCCESS, focused 56 passed / 225 assertions, full 534 passed / 2.265 assertions. Tidak ada workflow/status baru pada HEAD dokumentasi c6861410.
+- Produksi/staging tidak disentuh; tidak ada merge/deployment/migration.
+
+### STATUS
+
+- Git checkout/workspace writable: BLOCKED.
+- Source audit dari deployment snapshot: PARTIAL-TO-EXTENDED; tests repository-wide belum tersedia dalam artifact.
+- Identity writers app source: inventoried for packaged app.
+- AuditService caller inventory: 107 calls / 33 files in packaged app.
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- Production database: NOT TOUCHED.
