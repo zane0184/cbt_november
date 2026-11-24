@@ -1,4 +1,4 @@
-# Audit QA Independen — Inventaris Kelengkapan Sistem CBT Madrasah
+> **CATATAN PRIORITAS TERBARU (2026-11-25):** Dokumen ini adalah inventaris awal untuk kelengkapan CBT final dan bukan scope kerja aktif. Atas instruksi pengguna, audit Agent 2 saat ini dipersempit ke P0 ZIP SIAP UJI OPERASIONAL TERBATAS. Gunakan `docs/ZIP_LIMITED_P0_AUDIT_2026-11-25.md` sebagai laporan aktif dan checkpoint terbaru sebagai posisi kerja. Fitur nonkritis pada dokumen ini tidak boleh dianggap blocker ZIP terbatas tanpa bukti ketergantungan langsung.\n\n# Audit QA Independen — Inventaris Kelengkapan Sistem CBT Madrasah
 
 - Tanggal audit: 2026-11-25
 - Repository: `zane0184/cbt_november`
