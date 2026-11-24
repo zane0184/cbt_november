@@ -44,7 +44,7 @@ class ExamResultReportService
                 });
             })
             ->when($filters['rombel_id'] ?? null, function (Builder $q, $rombelId) use ($exam) {
-                $q->whereHas('participant.user.studentProfile.rombels', function ($sq) use ($rombelId) {
+                $q->whereHas('participant.user.studentProfile.rombels', function ($sq) use ($rombelId, $exam) {
                     $sq->where('rombels.id', $rombelId)
                         ->where('rombels.tenant_id', $exam->tenant_id)
                         ->where('rombels.academic_year_id', $exam->assessment?->academic_year_id);
@@ -85,7 +85,7 @@ class ExamResultReportService
                 });
             })
             ->when($filters['rombel_id'] ?? null, function (Builder $q, $rombelId) use ($exam) {
-                $q->whereHas('participant.user.studentProfile.rombels', function ($sq) use ($rombelId) {
+                $q->whereHas('participant.user.studentProfile.rombels', function ($sq) use ($rombelId, $exam) {
                     $sq->where('rombels.id', $rombelId)
                     ->where('rombels.tenant_id', $exam->tenant_id)
                     ->where('rombels.academic_year_id', $exam->assessment?->academic_year_id);

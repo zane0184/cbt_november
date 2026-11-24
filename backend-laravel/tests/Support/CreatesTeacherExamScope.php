@@ -74,10 +74,19 @@ trait CreatesTeacherExamScope
             'status' => 'ACTIVE',
         ]);
 
+        $teacherNip = '9' . str_pad(
+            (string) random_int(0, 99999999999999999),
+            17,
+            '0',
+            STR_PAD_LEFT
+        );
         $teacherProfile = TeacherProfile::create([
             'tenant_id' => $tenant->id,
             'user_id' => $teacher->id,
             'full_name' => $teacher->name,
+            'employment_status' => 'PNS',
+            'nip' => $teacherNip,
+            'employee_identifier' => $teacherNip,
         ]);
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $tenant->id,
@@ -109,10 +118,17 @@ trait CreatesTeacherExamScope
         User $student,
         Rombel $rombel
     ): StudentProfile {
+        $studentNisn = '9' . str_pad(
+            (string) random_int(0, 999999999),
+            9,
+            '0',
+            STR_PAD_LEFT
+        );
         $profile = StudentProfile::create([
             'tenant_id' => $tenant->id,
             'user_id' => $student->id,
             'full_name' => $student->name,
+            'nisn' => $studentNisn,
         ]);
 
         DB::table('rombel_student')->insert([

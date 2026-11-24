@@ -1,9 +1,20 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    @php
+        $loginBrandingService = app(\App\Services\TenantBrandingService::class);
+        $loginTenant = $loginBrandingService->currentTenant();
+        $loginLogoUrl = $loginBrandingService->publicUrl($loginTenant?->logo_path);
+        $loginFavicon = $loginBrandingService->faviconAttributes($loginTenant?->favicon_path);
+    @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login CBT Madrasah</title>
+    <title>{{ $loginTenant?->short_name ?: ($loginTenant?->name ?: 'Login CBT Madrasah') }}</title>
+    @if($loginFavicon)
+        <link rel="icon" type="{{ $loginFavicon['mime'] }}" href="{{ $loginFavicon['url'] }}">
+    @else
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    @endif
     <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
     <style>
         body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
@@ -14,11 +25,13 @@
 
         <!-- Branding Header -->
         <div class="text-center space-y-2">
-            <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-3xl mx-auto shadow-lg shadow-emerald-600/30">
-                C
-            </div>
+            @if($loginLogoUrl)
+                <img src="{{ $loginLogoUrl }}" alt="Logo {{ $loginTenant?->name ?: 'Madrasah' }}" class="w-16 h-16 rounded-2xl bg-white object-contain p-1 mx-auto shadow-lg">
+            @else
+                <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-3xl mx-auto shadow-lg shadow-emerald-600/30">C</div>
+            @endif
             <h1 class="text-2xl font-bold text-navy-900 tracking-tight">CBT MADRASAH</h1>
-            <p class="text-xs font-semibold text-textSecondary uppercase tracking-wider">Portal Ujian & Administrasi Madrasah</p>
+            <p class="text-xs font-semibold text-textSecondary uppercase tracking-wider">{{ $loginTenant?->name ?: 'Portal Ujian & Administrasi Madrasah' }}</p>
             <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
                 <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span> Platform Asesmen Digital Modern
             </div>
@@ -58,14 +71,14 @@
             <!-- Identitas pengguna -->
             <div>
                 <label for="identifier" class="block text-xs font-bold text-navy-900 uppercase tracking-wider mb-1.5">
-                    Username / NIP / NIK / NISN <span class="text-red-500">*</span>
+                    Username Admin / NIP / NIK / NISN <span class="text-red-500">*</span>
                 </label>
                 <div class="relative">
-                    <input type="text" id="identifier" name="identifier" value="{{ old('identifier') }}"
-                        placeholder="Masukkan username, NIP, NIK, atau NISN" required autofocus autocomplete="username"
+                    <input type="text" id="identifier" name="identifier" value=""
+                        placeholder="Username Admin, NIP ASN, NIK Guru Honorer, atau NISN Siswa" required autofocus autocomplete="username"
                         class="w-full px-4 py-3 bg-contentBg border border-cardBorder rounded-xl text-sm text-navy-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:bg-white transition">
                 </div>
-                <p class="text-[11px] text-textSecondary mt-1">Admin: username · Guru: NIP, NIK, atau username · Siswa: NISN.</p>
+                <p class="text-[11px] text-textSecondary mt-1">Admin: username · Guru PNS/PPPK: NIP 18 digit · Guru Honorer: NIK 16 digit · Siswa: NISN 10 digit.</p>
             </div>
 
             <!-- Password -->
@@ -118,7 +131,7 @@
                 </svg>
                 Lihat Landing Page & Status API Sistem
             </a>
-            <p class="text-[11px] text-textSecondary">© {{ date('Y') }} CBT Madrasah — Platform Asesmen Digital Multi-tenant</p>
+            <p class="text-[11px] text-textSecondary">© {{ date('Y') }} CBT Madrasah — Platform Asesmen Digital untuk Madrasah</p>
         </div>
     </div>
 

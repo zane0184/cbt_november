@@ -573,15 +573,17 @@ class InstallerService
                             'action' => 'PRE_ACTIVATION_FINALIZED',
                             'entity_type' => 'installation',
                             'entity_id' => (string) $lockedState['installation_identity_id'],
-                            'old_values' => ['state' => (string) ($state['state'] ?? 'PRE_ACTIVATION_READY')],
-                            'new_values' => [
+                            'old_values' => app(AuditPayloadSanitizer::class)->sanitize([
+                                'state' => (string) ($state['state'] ?? 'PRE_ACTIVATION_READY'),
+                            ]),
+                            'new_values' => app(AuditPayloadSanitizer::class)->sanitize([
                                 'state' => 'LOCKED',
                                 'license_mode' => 'PRE_ACTIVATION_2026',
                                 'schema_fingerprint' => $verification['schema_fingerprint'],
                                 'pre_activation_issued_at' => $lockedState['pre_activation_issued_at'] ?? null,
                                 'pre_activation_expires_at' => $lockedState['pre_activation_expires_at'] ?? null,
                                 'migration_count' => $verification['migration_count'],
-                            ],
+                            ]),
                             'created_at' => now(),
                         ]);
                     }

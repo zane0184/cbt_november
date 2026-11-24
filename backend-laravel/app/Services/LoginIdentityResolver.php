@@ -7,21 +7,23 @@ use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\TeacherProfile;
 use App\Models\User;
-use Illuminate\Support\Collection;
 
 class LoginIdentityResolver
 {
     public function resolve(string $identifier): ?User
     {
         $identifier = trim($identifier);
-        if ($identifier === '' || strlen($identifier) > 100) return null;
+        if ($identifier === '' || strlen($identifier) > 100) {
+            return null;
+        }
+
         $installations = LocalInstallationIdentity::withoutGlobalScopes()->limit(2)->get();
-        if ($installations->count() !== 1) return null;
+        if ($installations->count() !== 1) {
+            return null;
+        }
 
         $tenantId = (string) $installations->first()->tenant_id;
-        // The System Global Tenant is intentionally present in seeded
-        // installations for shared, read-only curriculum references. It is
-        // not a second school tenant and must not make local login ambiguous.
+        // SYSTEM_GLOBAL is reserved for shared read-only references, not a second school.
         $localTenantIds = Tenant::withoutGlobalScopes()
             ->where('id', '<>', Tenant::SYSTEM_TENANT_ID)
             ->whereNull('deleted_at')
@@ -29,40 +31,98 @@ class LoginIdentityResolver
             ->pluck('id')
             ->map(fn ($id) => (string) $id);
 
-        // A local installation represents exactly one madrasah. SYSTEM_GLOBAL
-        // is shared reference data, but a second school tenant in the same
-        // database is still an invalid/ambiguous installation.
         if ($localTenantIds->count() !== 1 || $localTenantIds->first() !== $tenantId) {
             return null;
         }
+
         $normalized = strtolower($identifier);
+        $adminUsernameIds = User::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->whereRaw('LOWER(username) = ?', [$normalized])
+            ->pluck('id');
 
-        $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->whereRaw('LOWER(username) = ?', [$normalized])->get();
-        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->where(function ($query) use ($normalized): void {
-                $query->whereRaw('LOWER(nip) = ?', [$normalized])->orWhereRaw('LOWER(nik) = ?', [$normalized]);
-            })->pluck('user_id');
-        $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
-            ->where('nisn', $identifier)->pluck('user_id');
+        $teacherUserIds = collect();
+        if (preg_match('/^\d{18}$/D', $identifier) === 1) {
+            // ASN teachers authenticate only with their 18-digit NIP.
+            $teacherUserIds = TeacherProfile::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->whereIn('employment_status', ['PNS', 'PPPK'])
+                ->where('nip', $identifier)
+                ->pluck('user_id');
+        } elseif (preg_match('/^\d{16}$/D', $identifier) === 1) {
+            // Honorer teachers authenticate only with their 16-digit NIK.
+            $teacherUserIds = TeacherProfile::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('employment_status', 'HONORER')
+                ->where('nik', $identifier)
+                ->pluck('user_id');
+        }
 
-        $candidateIds = collect($usernameUsers->pluck('id'))
-            ->merge($teacherUserIds)->merge($studentUserIds)->map(fn ($id) => (string) $id)->unique()->values();
-        if ($candidateIds->count() !== 1) return null;
+        $studentUserIds = collect();
+        if (preg_match('/^\d{10}$/D', $identifier) === 1) {
+            $studentUserIds = StudentProfile::withoutGlobalScopes()
+                ->where('tenant_id', $tenantId)
+                ->whereNull('deleted_at')
+                ->where('nisn', $identifier)
+                ->pluck('user_id');
+        }
 
-        $user = User::withoutGlobalScopes()->with('roles')->where('tenant_id', $tenantId)->whereNull('deleted_at')->whereKey($candidateIds->first())->first();
-        if (! $user) return null;
+        // Keep ambiguity fail-closed, including collisions between Admin usernames
+        // and another role's official login identifier.
+        $candidateIds = collect($adminUsernameIds)
+            ->merge($teacherUserIds)
+            ->merge($studentUserIds)
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values();
+
+        if ($candidateIds->count() !== 1) {
+            return null;
+        }
+
+        $user = User::withoutGlobalScopes()
+            ->with('roles')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->whereKey($candidateIds->first())
+            ->first();
+
+        if (!$user) {
+            return null;
+        }
+
         $roles = $user->roles->pluck('name')->all();
         $allowedRoles = ['ADMIN_MADRASAH', 'GURU', 'SISWA'];
-        if (count($roles) !== 1 || !in_array($roles[0], $allowedRoles, true)) return null;
+        if (count($roles) !== 1 || !in_array($roles[0], $allowedRoles, true)) {
+            return null;
+        }
 
-        $matchesUsername = $usernameUsers->contains(fn ($candidate) => (string) $candidate->id === (string) $user->id);
-        $matchesTeacher = $teacherUserIds->contains(fn ($id) => (string) $id === (string) $user->id);
-        $matchesStudent = $studentUserIds->contains(fn ($id) => (string) $id === (string) $user->id);
+        $matchesAdminUsername = $adminUsernameIds->contains(
+            fn ($id) => (string) $id === (string) $user->id
+        );
+        $matchesTeacherIdentity = $teacherUserIds->contains(
+            fn ($id) => (string) $id === (string) $user->id
+        );
+        $matchesStudentNisn = $studentUserIds->contains(
+            fn ($id) => (string) $id === (string) $user->id
+        );
 
-        if (in_array('SISWA', $roles, true)) return $matchesStudent ? $user : null;
-        if (in_array('GURU', $roles, true)) return ($matchesTeacher || $matchesUsername) ? $user : null;
-        if ($roles[0] === 'ADMIN_MADRASAH') return $matchesUsername ? $user : null;
+        if ($roles[0] === 'ADMIN_MADRASAH') {
+            return $matchesAdminUsername ? $user : null;
+        }
+        if ($roles[0] === 'GURU') {
+            // Username and NUPTK are deliberately not authentication fallbacks.
+            return $matchesTeacherIdentity ? $user : null;
+        }
+        if ($roles[0] === 'SISWA') {
+            return $matchesStudentNisn ? $user : null;
+        }
+
         return null;
     }
 }

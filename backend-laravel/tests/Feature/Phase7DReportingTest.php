@@ -8,9 +8,16 @@ use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
+use App\Models\Curriculum;
+use App\Models\GradeLevel;
+use App\Models\Phase;
 use App\Models\Role;
+use App\Models\Rombel;
+use App\Models\StudentProfile;
+use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\Reporting\ExamResultReportService;
 use App\Services\Reporting\ReportHeaderService;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -298,7 +305,7 @@ class Phase7DReportingTest extends TestCase
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/students/{$this->studentA->id}/export/pdf");
 
-        $response->assertForbidden();
+        $response->assertForbidden();
         $service = new ReportHeaderService();
         $dataUri = $service->getLogoDataUri($this->tenantA);
 
@@ -319,7 +326,7 @@ class Phase7DReportingTest extends TestCase
         $response = $this->authAs($this->adminA)
             ->get("/api/v1/reports/exams/{$this->examA->id}/summary/export/pdf");
 
-        $response->assertForbidden();
+        $response->assertForbidden();
         $view = view('reports.pdf.exam-summary', [
             'summary' => [
                 'exam_title' => 'Ujian Matematika Bab 1',
@@ -407,4 +414,69 @@ class Phase7DReportingTest extends TestCase
         $this->assertEquals($scoreBefore->grading_status, $scoreAfter->grading_status);
         $this->assertEquals($this->attemptA->status, $this->attemptA->fresh()->status);
     }
+
+    public function test_rombel_filter_is_applied_to_result_queries_and_export(): void
+    {
+        app(TenantContext::class)->setTenantId($this->tenantA->id);
+
+        $assessment = Assessment::findOrFail($this->examA->assessment_id);
+        $teacherProfile = TeacherProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->guruA->id,
+            'full_name' => $this->guruA->name,
+            'employment_status' => 'PNS',
+            'nip' => '198001012006041001',
+            'employee_identifier' => '198001012006041001',
+        ]);
+
+        $curriculum = Curriculum::create([
+            'tenant_id' => $this->tenantA->id,
+            'name' => 'Kurikulum Uji Laporan',
+            'code' => 'REPORT_FILTER_TEST',
+        ]);
+        $phase = Phase::create([
+            'tenant_id' => $this->tenantA->id,
+            'curriculum_id' => $curriculum->id,
+            'name' => 'Fase C',
+            'code' => 'C',
+        ]);
+        $gradeLevel = GradeLevel::create([
+            'tenant_id' => $this->tenantA->id,
+            'phase_id' => $phase->id,
+            'name' => 'Kelas 6',
+            'code' => 'K6',
+            'level' => 6,
+        ]);
+
+        $rombel = Rombel::create([
+            'tenant_id' => $this->tenantA->id,
+            'academic_year_id' => $assessment->academic_year_id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => 'Kelas 6A',
+            'teacher_id' => $teacherProfile->id,
+            'capacity' => 35,
+            'status' => 'ACTIVE',
+        ]);
+
+        $studentProfile = StudentProfile::create([
+            'tenant_id' => $this->tenantA->id,
+            'user_id' => $this->studentA->id,
+            'nisn' => '1234567890',
+            'full_name' => $this->studentA->name,
+            'status' => 'ACTIVE',
+        ]);
+        $studentProfile->rombels()->attach($rombel->id);
+
+        $service = app(ExamResultReportService::class);
+        $filters = ['rombel_id' => $rombel->id];
+
+        $results = $service->getResults($this->examA, $filters);
+        $exportResults = $service->getAllResultsForExport($this->examA, $filters);
+
+        $this->assertCount(1, $results);
+        $this->assertCount(1, $exportResults);
+        $this->assertSame($this->attemptA->id, $results->first()->id);
+    }
+
+
 }

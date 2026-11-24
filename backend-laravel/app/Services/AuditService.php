@@ -11,6 +11,7 @@ class AuditService
     public function log(string $action, string $entityType, ?string $entityId = null, ?array $oldValues = null, ?array $newValues = null): void
     {
         $user = auth()->user();
+        $sanitizer = app(AuditPayloadSanitizer::class);
 
         AuditLog::create([
             'id' => (string) Str::uuid(),
@@ -19,10 +20,10 @@ class AuditService
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
-            'ip_address' => Request::ip(),
-            'user_agent' => Request::userAgent(),
+            'old_values' => $sanitizer->sanitize($oldValues),
+            'new_values' => $sanitizer->sanitize($newValues),
+            'ip_address' => $sanitizer->anonymizeIpAddress(Request::ip()),
+            'user_agent' => $sanitizer->fingerprintUserAgent(Request::userAgent()),
             'created_at' => now(),
         ]);
     }

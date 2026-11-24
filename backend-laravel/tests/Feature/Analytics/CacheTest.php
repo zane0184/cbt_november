@@ -43,11 +43,11 @@ class CacheTest extends TestCase
         );
         $exam = Exam::factory()->create(['tenant_id' => $tenant->id]);
         $student = User::factory()->create(['tenant_id' => $tenant->id]);
-        $profile = StudentProfile::create([
+        $profile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'user_id' => $student->id,
             'nis' => '12345',
             'full_name' => 'Student Name'
-        ]);
+        ]));
         $rombel = Rombel::factory()->create(['tenant_id' => $tenant->id]);
         $academicYear = AcademicYear::query()->whereKey($rombel->academic_year_id)->firstOrFail();
         $semester = Semester::create([
@@ -69,11 +69,11 @@ class CacheTest extends TestCase
             'semester_id' => $semester->id,
             'created_by' => $teacher->id,
         ]);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $tenant->id,
             'user_id' => $teacher->id,
             'full_name' => $teacher->name,
-        ]);
+        ]));
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $tenant->id,
             'teacher_profile_id' => $teacherProfile->id,

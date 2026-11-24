@@ -3,7 +3,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('app.name', 'CBT Madrasah') }} - Modern EdTech Admin</title>
+    @php
+        $tenantBrandingService = app(\App\Services\TenantBrandingService::class);
+        $tenantBranding = $tenantBrandingService->currentTenant();
+        $tenantLogoUrl = $tenantBrandingService->publicUrl($tenantBranding?->logo_path);
+        $tenantFavicon = $tenantBrandingService->faviconAttributes($tenantBranding?->favicon_path);
+    @endphp
+    <title>{{ $tenantBranding?->short_name ?: ($tenantBranding?->name ?: config('app.name', 'CBT Madrasah')) }} - CBT Madrasah</title>
+    @if($tenantFavicon)
+        <link rel="icon" type="{{ $tenantFavicon['mime'] }}" href="{{ $tenantFavicon['url'] }}">
+    @else
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
+    @endif
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -52,7 +63,11 @@
     <aside class="hidden h-screen w-64 shrink-0 flex-col justify-between overflow-y-auto border-r border-navy-800 bg-navy-900 text-white md:sticky md:top-0 md:flex">
         <div>
             <div class="flex items-center gap-3 border-b border-navy-800 px-6 py-5">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-xl font-bold text-white">C</div>
+                @if($tenantLogoUrl)
+                    <img src="{{ $tenantLogoUrl }}" alt="Logo {{ $tenantBranding?->name ?: 'Madrasah' }}" class="h-10 w-10 rounded-xl bg-white p-1 object-contain">
+                @else
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-xl font-bold text-white">C</div>
+                @endif
                 <div>
                     <h1 class="text-base font-bold leading-tight">CBT MADRASAH</h1>
                     <p class="text-xs text-gray-400">{{ $isAdmin ? 'Panel Admin Madrasah' : ($isGuru ? 'Portal Guru' : 'Portal CBT') }}</p>
@@ -65,6 +80,14 @@
                     <a href="/admin/dashboard" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/dashboard') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                         <span aria-hidden="true">▦</span><span>Dashboard Admin</span>
                     </a>
+                    @if($u->hasPermission('tenant.manage'))
+                        <a href="/admin/school-profile" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/school-profile*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span aria-hidden="true">⌂</span><span>Profil Madrasah</span>
+                        </a>
+                        <a href="/admin/branding-assets" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/branding-assets*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span aria-hidden="true">◈</span><span>Logo & Favicon</span>
+                        </a>
+                    @endif
                     @if($u->hasPermission('academic.manage'))
                         <a href="/admin/academic" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/academic*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span aria-hidden="true">▤</span><span>Data Akademik & Rombel</span>
@@ -142,6 +165,10 @@
             <nav aria-label="Navigasi mobile" class="max-h-[70vh] space-y-1 overflow-y-auto border-t border-cardBorder py-3 text-sm">
                 @if($isAdmin)
                     <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/dashboard">Dashboard Admin</a>
+                    @if($u->hasPermission('tenant.manage'))
+                        <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/school-profile">Profil Madrasah</a>
+                        <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/branding-assets">Logo & Favicon</a>
+                    @endif
                     @if($u->hasPermission('academic.manage'))
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/academic">Data Akademik & Rombel</a>
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/teacher-assignments">Penugasan Guru</a>

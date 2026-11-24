@@ -68,11 +68,11 @@ class ExamBuilderTest extends TestCase
             'name' => '1A',
             'status' => 'ACTIVE',
         ]);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->teacher->id,
             'full_name' => 'Guru',
-        ]);
+        ]));
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
@@ -223,11 +223,11 @@ class ExamBuilderTest extends TestCase
         ]);
         $student->roles()->attach($studentRole);
 
-        $profile = \App\Models\StudentProfile::create([
+        $profile = \App\Models\StudentProfile::create($this->withSyntheticStudentIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $student->id,
             'full_name' => 'Siswa Selesai',
-        ]);
+        ]));
         $rombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),
@@ -267,11 +267,11 @@ class ExamBuilderTest extends TestCase
             'password' => 'p',
         ]);
         $student->roles()->attach($studentRole);
-        $profile = \App\Models\StudentProfile::create([
+        $profile = \App\Models\StudentProfile::create($this->withSyntheticStudentIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $student->id,
             'full_name' => 'Siswa Sudah Selesai',
-        ]);
+        ]));
         $assignedRombel = Rombel::where('tenant_id', $this->tenant->id)->where('name', '1A')->firstOrFail();
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),

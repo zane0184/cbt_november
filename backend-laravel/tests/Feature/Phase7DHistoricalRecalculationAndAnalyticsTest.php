@@ -106,13 +106,13 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         ]);
         $this->studentA->roles()->attach($studentRole);
 
-        $studentProfile = StudentProfile::create([
+        $studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'tenant_id' => $this->tenantA->id,
             'user_id' => $this->studentA->id,
             'full_name' => 'Siswa A',
             'nis' => '12345',
             'nisn' => '1234567890',
-        ]);
+        ]));
 
         $this->academicYear = AcademicYear::create([
             'tenant_id' => $this->tenantA->id,
@@ -154,12 +154,12 @@ class Phase7DHistoricalRecalculationAndAnalyticsTest extends TestCase
         ]);
         $studentProfile->rombels()->attach($this->rombel->id, ['id' => (string)Str::uuid(), 'tenant_id' => $this->tenantA->id]);
 
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenantA->id,
             'user_id' => $this->teacherA->id,
             'full_name' => 'Guru A',
             'employee_identifier' => 'GURU-A-001',
-        ]);
+        ]));
         $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
             'teacher_profile_id' => $teacherProfile->id,

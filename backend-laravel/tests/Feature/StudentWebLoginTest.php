@@ -13,6 +13,7 @@ use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -121,7 +122,7 @@ class StudentWebLoginTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertOk();
-        $response->assertSee('Username / NIP / NIK / NISN');
+        $response->assertSee('Username Admin / NIP / NIK / NISN');
         $response->assertSee('Siswa: NISN');
         $response->assertSee('name="identifier"', false);
     }
@@ -158,20 +159,20 @@ class StudentWebLoginTest extends TestCase
             'password' => bcrypt('SandiUji#2026'),
         ]);
         $second->roles()->attach($studentRole);
-        StudentProfile::create([
-            'user_id' => $second->id,
-            'nisn' => $this->nisn,
-            'full_name' => 'Siswa Duplikat',
-        ]);
+        $duplicateRejected = false;
+        try {
+            StudentProfile::create([
+                'user_id' => $second->id,
+                'nisn' => $this->nisn,
+                'full_name' => 'Siswa Duplikat',
+            ]);
+        } catch (QueryException) {
+            $duplicateRejected = true;
+        }
+
         app(TenantContext::class)->setTenantId(null);
-
-        $response = $this->post('/login', [
-            'identifier' => $this->nisn,
-            'password' => 'SandiUji#2026',
-        ]);
-
-        $response->assertSessionHasErrors('identifier');
-        $this->assertGuest();
+        $this->assertTrue($duplicateRejected, 'Database must reject a duplicate NISN within the same tenant.');
+        $this->assertDatabaseMissing('student_profiles', ['user_id' => $second->id]);
     }
 
     public function test_student_role_combined_with_another_role_is_rejected(): void

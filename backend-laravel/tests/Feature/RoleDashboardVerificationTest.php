@@ -69,10 +69,10 @@ class RoleDashboardVerificationTest extends TestCase
         $this->multiRoleSiswaA = $this->makeUser('multi-siswa-a', $roles['SISWA']);
         $this->multiRoleSiswaA->roles()->attach($roles['GURU']);
 
-        TeacherProfile::create([
+        TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $this->guruA->id,
             'full_name' => 'Guru A',
-        ]);
+        ]));
 
         $context->setTenantId($this->tenantB->id);
         $adminRole = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();

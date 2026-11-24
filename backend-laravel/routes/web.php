@@ -13,6 +13,8 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\CurriculumRegistryManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\TenantProfileManagement;
+use App\Livewire\Admin\TenantBrandingAssetsManagement;
 
 Route::get('/', function () {
     if (!auth()->check()) {
@@ -35,8 +37,8 @@ Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login')
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
-Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware('auth')->name('license.status');
-Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'throttle:5,1'])->name('license.refresh');
+Route::get('/license/status', \App\Http\Controllers\LicenseStatusController::class)->middleware(['auth', 'active.user'])->name('license.status');
+Route::post('/license/refresh', [\App\Http\Controllers\LicenseStatusController::class, 'refresh'])->middleware(['auth', 'active.user', 'throttle:5,1'])->name('license.refresh');
 
 // Web Installer Wizard Routes
 Route::middleware(['prevent_reinstall', 'installer_bootstrap'])->prefix('install')->name('installer.')->group(function () {
@@ -63,17 +65,19 @@ Route::get('/exams/{exam}/monitoring', function (\App\Models\Exam $exam) {
         abort(403, 'Anda tidak memiliki izin untuk mengakses monitoring ujian ini.');
     }
     return view('monitoring.dashboard', ['examId' => $exam->id]);
-})->middleware(['auth', 'tenant', 'license']);
+})->middleware(['auth', 'active.user', 'tenant', 'license']);
 
-Route::middleware(['auth', 'tenant', 'license'])->prefix('student')->name('student.')->group(function () {
+Route::middleware(['auth', 'active.user', 'tenant', 'license'])->prefix('student')->name('student.')->group(function () {
     Route::get('/exams', [StudentExamController::class, 'index'])->name('exams.index');
     Route::get('/exams/{exam}', [StudentExamController::class, 'show'])->name('exams.show');
     Route::get('/results/{attempt}', [StudentExamController::class, 'result'])->name('results.show');
 });
 
-Route::middleware(['auth', 'tenant', 'license'])->group(function () {
+Route::middleware(['auth', 'active.user', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
     Route::get('/admin/dashboard', Dashboard::class)->name('admin.dashboard');
+    Route::get('/admin/school-profile', TenantProfileManagement::class)->name('admin.school-profile');
+    Route::get('/admin/branding-assets', TenantBrandingAssetsManagement::class)->name('admin.branding-assets');
 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);

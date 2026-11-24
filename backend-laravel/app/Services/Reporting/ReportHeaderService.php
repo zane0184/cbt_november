@@ -3,59 +3,46 @@
 namespace App\Services\Reporting;
 
 use App\Models\Tenant;
+use App\Services\TenantBrandingService;
 
 class ReportHeaderService
 {
     /**
-     * Resolve tenant logo into base64 Data URI if a valid image file exists,
-     * otherwise return null to trigger clean text-based kop fallback.
+     * Resolve the dedicated document logo (falling back to the app logo)
+     * into a safe Data URI. Invalid/missing assets trigger text-only fallback.
      */
     public function getLogoDataUri(?Tenant $tenant): ?string
     {
-        if (!$tenant || empty($tenant->logo_path)) {
+        if (!$tenant) {
             return null;
         }
 
-        $logoPath = trim($tenant->logo_path);
+        $branding = app(TenantBrandingService::class);
 
-        $candidates = [];
+        foreach (array_unique([$tenant->document_logo_path, $tenant->logo_path]) as $relativePath) {
+            $filePath = $branding->localPath($relativePath, (string) $tenant->id);
+            if (!$filePath || !is_readable($filePath) || filesize($filePath) <= 0) {
+                continue;
+            }
 
-        if (file_exists($logoPath)) {
-            $candidates[] = $logoPath;
-        }
-
-        $candidates[] = storage_path('app/public/' . ltrim($logoPath, '/'));
-        $candidates[] = storage_path('app/' . ltrim($logoPath, '/'));
-        $candidates[] = public_path(ltrim($logoPath, '/'));
-        $candidates[] = public_path('storage/' . ltrim($logoPath, '/'));
-
-        foreach ($candidates as $filePath) {
-            if (file_exists($filePath) && is_file($filePath) && is_readable($filePath) && filesize($filePath) > 0) {
-                try {
-                    $content = @file_get_contents($filePath);
-                    if ($content === false || strlen($content) === 0) {
-                        continue;
-                    }
-
-                    $mime = @mime_content_type($filePath);
-                    if (!$mime || !str_starts_with($mime, 'image/')) {
-                        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                        $mime = match ($ext) {
-                            'png' => 'image/png',
-                            'jpg', 'jpeg' => 'image/jpeg',
-                            'gif' => 'image/gif',
-                            'svg' => 'image/svg+xml',
-                            'webp' => 'image/webp',
-                            default => null,
-                        };
-                    }
-
-                    if ($mime) {
-                        return 'data:' . $mime . ';base64,' . base64_encode($content);
-                    }
-                } catch (\Throwable $e) {
+            try {
+                $content = file_get_contents($filePath);
+                if ($content === false || $content === '') {
                     continue;
                 }
+
+                $mime = mime_content_type($filePath);
+                if (!in_array($mime, ['image/png', 'image/jpeg', 'image/webp'], true)) {
+                    continue;
+                }
+
+                if (@getimagesize($filePath) === false) {
+                    continue;
+                }
+
+                return 'data:' . $mime . ';base64,' . base64_encode($content);
+            } catch (\Throwable) {
+                continue;
             }
         }
 

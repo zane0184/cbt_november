@@ -1,10 +1,12 @@
 <?php
 
 use Illuminate\Foundation\Application;
+use App\Console\Commands\LoginIdentityPreflightCommand;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
+    ->withCommands([LoginIdentityPreflightCommand::class])
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -18,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'prevent_reinstall' => \App\Http\Middleware\PreventReinstallation::class,
             'installer_bootstrap' => \App\Http\Middleware\AuthorizeInstallerBootstrap::class,
             'license' => \App\Http\Middleware\EnsureLicenseActive::class,
+            'active.user' => \App\Http\Middleware\EnsureActiveUser::class,
         ]);
         $middleware->priority([
             \Illuminate\Auth\Middleware\Authenticate::class,

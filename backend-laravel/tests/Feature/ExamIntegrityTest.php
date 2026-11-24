@@ -63,7 +63,7 @@ class ExamIntegrityTest extends TestCase
         $subject = Subject::create(['tenant_id' => $this->tenantA->id, 'code' => 'MAT', 'name' => 'Matematika', 'short_name' => 'MTK', 'status' => 'ACTIVE']);
         $gradeLevel = GradeLevel::create(['phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1]);
         $rombel = Rombel::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $ayA->id, 'grade_level_id' => $gradeLevel->id, 'name' => '1A', 'status' => 'ACTIVE']);
-        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenantA->id, 'user_id' => $this->userA->id, 'full_name' => 'Guru A']);
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $this->tenantA->id, 'user_id' => $this->userA->id, 'full_name' => 'Guru A']));
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id,
             'teacher_profile_id' => $teacherProfile->id,

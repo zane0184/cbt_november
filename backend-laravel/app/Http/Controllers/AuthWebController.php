@@ -7,6 +7,7 @@ use App\Models\LocalInstallationIdentity;
 use App\Models\User;
 use App\Services\LoginIdentityResolver;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -37,24 +38,30 @@ class AuthWebController extends Controller
 
     public function login(Request $request, LoginIdentityResolver $resolver)
     {
-        $request->validate(['identifier' => 'required|string|max:100', 'password' => 'required|string']);
+        $request->session()->forget('_old_input');
+        try {
+            $request->validate(['identifier' => 'required|string|max:100', 'password' => 'required|string']);
+        } catch (ValidationException) {
+            $request->session()->forget('_old_input');
+            return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.']);
+        }
         $identifier = trim((string) $request->input('identifier'));
-        $throttleKey = 'login:web:'.Str::lower($identifier).'|'.$request->ip();
+        $throttleKey = 'login:web:'.hash('sha256', Str::lower($identifier).'|'.$request->ip());
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-            return back()->withErrors(['identifier' => "Terlalu banyak percobaan login. Silakan coba lagi dalam {$seconds} detik."])->withInput($request->only('identifier'));
+            return back()->withErrors(['identifier' => "Terlalu banyak percobaan login. Silakan coba lagi dalam {$seconds} detik."]);
         }
 
         $user = $resolver->resolve($identifier);
         if (!$user || !Hash::check((string) $request->input('password'), (string) $user->password)) {
             RateLimiter::hit($throttleKey, 60);
-            return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.'])->withInput($request->only('identifier'));
+            return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.']);
         }
 
         if (!$user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA'])) {
             RateLimiter::hit($throttleKey, 60);
-            return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.'])->withInput($request->only('identifier'));
+            return back()->withErrors(['identifier' => 'Role pengguna tidak memiliki akses ke portal CBT Madrasah.']);
         }
 
         // Serialize Web login with Attempt creation. A Siswa who already has
@@ -63,6 +70,7 @@ class AuthWebController extends Controller
             $lockedUser = User::withoutGlobalScopes()
                 ->where('tenant_id', $user->tenant_id)
                 ->whereNull('deleted_at')
+                ->where('is_active', true)
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->first();
@@ -90,6 +98,8 @@ class AuthWebController extends Controller
                     return ['status' => 'ACTIVE_EXAM'];
                 }
 
+                $lockedUser->forceFill(['last_login_at' => now()])->save();
+
                 return ['status' => 'OK', 'user' => $lockedUser];
             } finally {
                 $tenantContext->setTenantId($previousTenantId);
@@ -100,12 +110,12 @@ class AuthWebController extends Controller
         if ($loginResult['status'] === 'ACTIVE_EXAM') {
             return back()->withErrors([
                 'identifier' => 'Ujian sedang aktif pada sesi/perangkat lain. Lanjutkan ujian dari sesi yang sama; hubungi Admin bila perangkat perlu dipulihkan.',
-            ])->withInput($request->only('identifier'));
+            ]);
         }
 
         if ($loginResult['status'] !== 'OK') {
             RateLimiter::hit($throttleKey, 60);
-            return back()->withErrors(['identifier' => 'Identitas atau role pengguna tidak lagi valid.'])->withInput($request->only('identifier'));
+            return back()->withErrors(['identifier' => 'Identitas atau role pengguna tidak lagi valid.']);
         }
 
         $user = $loginResult['user'];

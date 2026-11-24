@@ -1,0 +1,185 @@
+name: Build Standalone Web CBT Deployment ZIP
+
+on:
+  push:
+    branches:
+      - work/schema-dump-export-20261119
+      - fix/p0-96g-installer-private-db-config-20261120
+      - fix/web-portal-usability-rbac-20261120
+    paths:
+      - '.github/workflows/build-web-deployment.yml'
+      - 'backend-laravel/**'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-cbt-deployment-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build and verify Web CBT deployment archive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Set up PHP 8.3 and required extensions
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, xml, xmlwriter, zip, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Prepare Laravel writable build directories
+        run: |
+          mkdir -p backend-laravel/bootstrap/cache
+          mkdir -p backend-laravel/storage/app/private
+          mkdir -p backend-laravel/storage/framework/cache/data
+          mkdir -p backend-laravel/storage/framework/sessions
+          mkdir -p backend-laravel/storage/framework/views
+          mkdir -p backend-laravel/storage/logs
+
+      - name: Validate locked Composer project
+        working-directory: backend-laravel
+        run: |
+          composer validate --strict --no-check-publish
+          composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+          composer check-platform-reqs --no-dev
+          php artisan --version
+          php artisan route:list --path=install --json > "$RUNNER_TEMP/installer-routes.json"
+          php -r '$routes = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR); $uris = array_column($routes, "uri"); foreach (["install/authorize", "install/requirements", "install/database/test", "install/migrations/run", "install/admin/save", "install/complete"] as $required) { if (!in_array($required, $uris, true)) { fwrite(STDERR, "Missing installer route: {$required}" . PHP_EOL); exit(1); } }' "$RUNNER_TEMP/installer-routes.json"
+          test -f vendor/autoload.php
+
+      - name: Assemble clean standalone deployment tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA="$(git rev-parse HEAD)"
+          SOURCE_BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          SOURCE_DATE="$(git show -s --format=%cI HEAD)"
+          STAGE="$RUNNER_TEMP/CBT_MADRASAH_WEB_DEPLOYMENT"
+          mkdir -p "$STAGE/backend-laravel"
+
+          rsync -a --delete \
+            --exclude='.env' \
+            --exclude='.git/' \
+            --exclude='backup_before_patch/' \
+            --exclude='tests/' \
+            --exclude='docs/' \
+            --exclude='phpunit.xml' \
+            --exclude='phpunit.mysql.xml' \
+            --exclude='.phpunit.result.cache' \
+            --exclude='vendor/**/phpunit.xml*' \
+            --exclude='vendor/**/.phpunit.cache/***' \
+            --exclude='vendor/**/.phpunit.result.cache' \
+            --exclude='database/seeders/DemoDataSeeder.php' \
+            --exclude='database/seeders/RuntimeTestSeeder.php' \
+            --exclude='AUDIT_AWAL_SOURCE_TENANT.md' \
+            --exclude='README_AUDIT_PERBAIKAN.md' \
+            --exclude='check_latest.php' \
+            --exclude='debug_auth.php' \
+            --exclude='debug_scores.php' \
+            --exclude='phase6f_seed.php' \
+            --exclude='read_attempts.php' \
+            --exclude='smoke_test.php' \
+            --exclude='tenant_id}' \
+            --exclude='storage/logs/***' \
+            --exclude='storage/reports/***' \
+            --exclude='storage/framework/cache/***' \
+            --exclude='storage/framework/sessions/***' \
+            --exclude='storage/framework/views/***' \
+            --exclude='storage/app/private/***' \
+            --exclude='bootstrap/cache/config.php' \
+            --exclude='bootstrap/cache/routes-*.php' \
+            --exclude='bootstrap/cache/events.php' \
+            backend-laravel/ "$STAGE/backend-laravel/"
+
+          mkdir -p \
+            "$STAGE/backend-laravel/storage/app/private" \
+            "$STAGE/backend-laravel/storage/framework/cache/data" \
+            "$STAGE/backend-laravel/storage/framework/sessions" \
+            "$STAGE/backend-laravel/storage/framework/views" \
+            "$STAGE/backend-laravel/storage/logs" \
+            "$STAGE/backend-laravel/bootstrap/cache"
+
+          cp docs/PANDUAN_INSTALASI_WEB_CBT_MANDIRI.md "$STAGE/README_PEMASANGAN.md"
+          cp docs/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md "$STAGE/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md"
+          cp backend-laravel/DISTRIBUTION_EXCLUSIONS.md "$STAGE/CATATAN_EKSKLUSI_DISTRIBUSI.md"
+
+          cat > "$STAGE/PACKAGE_MANIFEST.txt" <<EOF
+          CBT MADRASAH — STANDALONE WEB DEPLOYMENT PACKAGE
+          Source repository: zane0184/cbt_november
+          Source branch: $SOURCE_BRANCH
+          Source commit: $SOURCE_SHA
+          Source commit date: $SOURCE_DATE
+          PHP build runtime: $(php -r 'echo PHP_VERSION;')
+          Composer: $(composer --version --no-ansi)
+          Laravel: $(cd "$STAGE/backend-laravel" && php artisan --version)
+          Package model: one isolated installation and one dedicated database per madrasah
+          Publisher licensing: strict PUBLISHER remains the default
+          2026 pilot mode: optional per-install PRE_ACTIVATION_2026, max 180 days, issue deadline 2026-12-31
+          Android client: deferred until June 2027; not included
+          Publisher Super Admin portal: not included
+          Build purpose: staging/deployment candidate; not production approval
+          EOF
+
+          cd "$STAGE"
+          test -s README_PEMASANGAN.md
+          test -s PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md
+          grep -q 'CBT_LICENSE_MODE=PUBLISHER' backend-laravel/.env.example
+          find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
+
+          test -f backend-laravel/artisan
+          test -f backend-laravel/composer.json
+          test -f backend-laravel/composer.lock
+          test -f backend-laravel/vendor/autoload.php
+          test -f backend-laravel/.env.example
+          grep -q 'CBT_LICENSE_MODE=PUBLISHER' backend-laravel/.env.example
+          test -f backend-laravel/database/migrations/2026_11_20_100001_create_exam_proctor_assignments_table.php
+          test ! -e backend-laravel/.env
+          test ! -d backend-laravel/tests
+          test ! -d backend-laravel/backup_before_patch
+
+          if find backend-laravel \( -type f \( -name '.env' -o -name 'phpunit.xml' -o -name 'phpunit.mysql.xml' -o -name 'phpunit.xml.dist' -o -name '.phpunit.result.cache' \) -o -type d -name '.phpunit.cache' \) | grep -q .; then
+            echo 'Forbidden environment/test artifact found in deployment tree.' >&2
+            exit 1
+          fi
+          if find backend-laravel -type f \( -name 'DemoDataSeeder.php' -o -name 'RuntimeTestSeeder.php' -o -name 'debug_auth.php' -o -name 'debug_scores.php' -o -name 'smoke_test.php' -o -name 'read_attempts.php' -o -name 'check_latest.php' -o -name 'phase6f_seed.php' \) | grep -q .; then
+            echo 'Forbidden demo/debug artifact found in deployment tree.' >&2
+            exit 1
+          fi
+
+          cd "$RUNNER_TEMP"
+          ARCHIVE="CBT_MADRASAH_WEB_DEPLOYMENT_${SOURCE_SHA:0:12}.zip"
+          zip -qr "$ARCHIVE" CBT_MADRASAH_WEB_DEPLOYMENT
+          unzip -t "$ARCHIVE"
+          unzip -Z1 "$ARCHIVE" > "$ARCHIVE.contents.txt"
+          if grep -E '(^|/)backup_before_patch/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/tests/|(^|/)\.env$|(^|/)phpunit\.xml([^/]*$)|(^|/)\.phpunit\.cache/|DemoDataSeeder\.php|RuntimeTestSeeder\.php|phpunit\.mysql\.xml' "$ARCHIVE.contents.txt"; then
+            echo 'Archive contains a forbidden path.' >&2
+            exit 1
+          fi
+          sha256sum "$ARCHIVE" | tee "$ARCHIVE.sha256"
+          du -h "$ARCHIVE"
+          echo "ARCHIVE=$ARCHIVE" >> "$GITHUB_ENV"
+
+      - name: Upload verified deployment archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: cbt-madrasah-web-deployment-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/${{ env.ARCHIVE }}
+            ${{ runner.temp }}/${{ env.ARCHIVE }}.sha256
+            ${{ runner.temp }}/${{ env.ARCHIVE }}.contents.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30

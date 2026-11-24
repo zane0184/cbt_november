@@ -79,8 +79,8 @@ class TeacherPracticeWorkflowTest extends TestCase
         ]);
         $this->student2->roles()->attach($studentRole);
 
-        $sp1 = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student1->id, 'full_name' => 'Siswa Rombel A']);
-        $sp2 = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student2->id, 'full_name' => 'Siswa Rombel B']);
+        $sp1 = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->student1->id, 'full_name' => 'Siswa Rombel A']));
+        $sp2 = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->student2->id, 'full_name' => 'Siswa Rombel B']));
 
         $curriculum = Curriculum::create(['name' => 'Kurikulum Merdeka', 'code' => 'K-MERDEKA', 'is_active' => true]);
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase C', 'code' => 'C']);
@@ -103,7 +103,7 @@ class TeacherPracticeWorkflowTest extends TestCase
             'name' => 'Kelas 6-A',
             'status' => 'ACTIVE',
         ]);
-        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru Pengajar Fiqih']);
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru Pengajar Fiqih']));
         $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,

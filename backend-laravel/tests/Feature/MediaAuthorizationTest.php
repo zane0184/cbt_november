@@ -39,11 +39,11 @@ class MediaAuthorizationTest extends TestCase
             'password' => bcrypt('password'),
         ]);
         $this->teacher->roles()->attach($role);
-        TeacherProfile::create([
+        TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $this->teacher->id,
             'employee_identifier' => 'GURU-MEDIA-1',
             'full_name' => $this->teacher->name,
-        ]);
+        ]));
 
         $this->otherTeacher = User::create([
             'tenant_id' => $this->tenant->id,
@@ -52,11 +52,11 @@ class MediaAuthorizationTest extends TestCase
             'password' => bcrypt('password'),
         ]);
         $this->otherTeacher->roles()->attach($role);
-        TeacherProfile::create([
+        TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $this->otherTeacher->id,
             'employee_identifier' => 'GURU-MEDIA-2',
             'full_name' => $this->otherTeacher->name,
-        ]);
+        ]));
         $this->bootstrapCbtRolePermissions();
     }
 

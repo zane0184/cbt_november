@@ -18,13 +18,13 @@ Route::prefix('v1')->group(function () {
 
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthController::class, 'login']);
-        Route::middleware(['auth:sanctum', 'tenant'])->group(function () {
+        Route::middleware(['auth:sanctum', 'active.user', 'tenant'])->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::post('/logout', [AuthController::class, 'logout']);
         });
     });
 
-    Route::middleware(['auth:sanctum', 'tenant', 'license'])->group(function () {
+    Route::middleware(['auth:sanctum', 'active.user', 'tenant', 'license'])->group(function () {
         // Curriculum Detail
         // Legacy curriculum master APIs are reference-only. Official curriculum
         // versions/structure are managed through the audited registry; Guru may

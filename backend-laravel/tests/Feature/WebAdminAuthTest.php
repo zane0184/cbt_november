@@ -60,8 +60,9 @@ class WebAdminAuthTest extends TestCase
 
         TeacherProfile::create([
             'user_id' => $this->guru->id,
+            'employment_status' => 'PNS',
             'nip' => '198001012006041001',
-            'nik' => '3171000000000001',
+            'employee_identifier' => '198001012006041001',
             'full_name' => 'Guru Uji',
         ]);
         StudentProfile::create([
@@ -103,7 +104,7 @@ class WebAdminAuthTest extends TestCase
         $response->assertOk();
         $response->assertSee('CBT MADRASAH');
         $response->assertSee('Masuk ke CBT Madrasah');
-        $response->assertSee('Username / NIP / NIK / NISN');
+        $response->assertSee('Username Admin / NIP / NIK / NISN');
         $response->assertSee('Siswa: NISN');
         $response->assertSee('name="identifier"', false);
         $response->assertSee('name="password"', false);
@@ -170,11 +171,140 @@ class WebAdminAuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_teacher_can_login_using_nip(): void
+    public function test_asn_teacher_can_login_using_nip_only(): void
     {
         $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => $this->password]);
         $response->assertRedirect('/guru/dashboard');
         $this->assertAuthenticatedAs($this->guru);
+    }
+
+    public function test_pppk_teacher_can_login_using_18_digit_nip(): void
+    {
+        $pppkRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $pppk = $this->makeUser('guru.pppk', 'Guru PPPK', $pppkRole);
+        TeacherProfile::create([
+            'user_id' => $pppk->id,
+            'employment_status' => 'PPPK',
+            'nip' => '199001012021041001',
+            'employee_identifier' => '199001012021041001',
+            'full_name' => 'Guru PPPK',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->post('/login', [
+            'identifier' => '199001012021041001',
+            'password' => $this->password,
+        ]);
+        $response->assertRedirect('/guru/dashboard');
+        $this->assertAuthenticatedAs($pppk);
+    }
+
+    public function test_guru_username_is_not_an_authentication_fallback(): void
+    {
+        $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => $this->password]);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_honorer_teacher_can_login_using_nik_only(): void
+    {
+        $honorerRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $honorer = $this->makeUser('guru.honorer', 'Guru Honorer', $honorerRole);
+        TeacherProfile::create([
+            'user_id' => $honorer->id,
+            'employment_status' => 'HONORER',
+            'nik' => '3171000000000001',
+            'employee_identifier' => '3171000000000001',
+            'full_name' => 'Guru Honorer',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->post('/login', ['identifier' => '3171000000000001', 'password' => $this->password]);
+        $response->assertRedirect('/guru/dashboard');
+        $this->assertAuthenticatedAs($honorer);
+    }
+
+    public function test_honorer_teacher_username_is_not_an_authentication_fallback(): void
+    {
+        $honorerRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $honorer = $this->makeUser('guru.honorer.no.login', 'Guru Honorer', $honorerRole);
+        TeacherProfile::create([
+            'user_id' => $honorer->id,
+            'employment_status' => 'HONORER',
+            'nik' => '3171000000000002',
+            'employee_identifier' => '3171000000000002',
+            'full_name' => 'Guru Honorer',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->post('/login', ['identifier' => 'guru.honorer.no.login', 'password' => $this->password]);
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_nuptk_is_not_an_authentication_fallback(): void
+    {
+        $guruRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $teacher = $this->makeUser('guru.nuptk', 'Guru NUPTK', $guruRole);
+        TeacherProfile::create([
+            'user_id' => $teacher->id,
+            'employment_status' => 'PNS',
+            'nip' => '198001012006041002',
+            'employee_identifier' => '198001012006041002',
+            'nuptk' => '1234567890123456',
+            'full_name' => 'Guru NUPTK',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $response = $this->post('/login', [
+            'identifier' => '1234567890123456',
+            'password' => $this->password,
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertGuest();
+    }
+
+    public function test_api_login_uses_nip_for_asn_and_rejects_guru_username(): void
+    {
+        $success = $this->postJson('/api/v1/auth/login', [
+            'identifier' => '198001012006041001', 'password' => $this->password,
+        ]);
+        $success->assertOk()->assertJsonPath('data.user.id', $this->guru->id);
+
+        $rejected = $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'guru.uji', 'password' => $this->password,
+        ]);
+        $rejected->assertUnprocessable();
+    }
+
+    public function test_api_login_uses_nik_for_honorer_and_rejects_honorer_username(): void
+    {
+        $honorerRole = Role::where('name', 'GURU')->firstOrFail();
+        app(TenantContext::class)->setTenantId($this->tenant->id);
+        $honorer = $this->makeUser('guru.honorer.api', 'Guru Honorer API', $honorerRole);
+        TeacherProfile::create([
+            'user_id' => $honorer->id,
+            'employment_status' => 'HONORER',
+            'nik' => '3171000000000005',
+            'employee_identifier' => '3171000000000005',
+            'full_name' => 'Guru Honorer API',
+        ]);
+        app(TenantContext::class)->setTenantId(null);
+
+        $success = $this->postJson('/api/v1/auth/login', [
+            'identifier' => '3171000000000005', 'password' => $this->password,
+        ]);
+        $success->assertOk()->assertJsonPath('data.user.id', $honorer->id);
+
+        $rejected = $this->postJson('/api/v1/auth/login', [
+            'identifier' => 'guru.honorer.api', 'password' => $this->password,
+        ]);
+        $rejected->assertUnprocessable();
     }
 
     public function test_student_can_login_using_nisn_without_email(): void
@@ -200,20 +330,33 @@ class WebAdminAuthTest extends TestCase
         $this->get('/student/exams')->assertForbidden();
     }
 
+    public function test_login_validation_does_not_flash_personal_identifier_into_session(): void
+    {
+        $response = $this->post('/login', [
+            'identifier' => '198001012006041001',
+            'password' => '',
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertFalse(session()->has('_old_input'));
+    }
+
     public function test_invalid_password_returns_generic_identifier_error(): void
     {
-        $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => 'salah']);
+        $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => 'salah']);
         $response->assertSessionHasErrors('identifier');
         $this->assertGuest();
     }
 
     public function test_login_rate_limiter_blocks_repeated_failures(): void
     {
-        RateLimiter::clear('login:web:guru.uji|127.0.0.1');
+        $identifier = '198001012006041001';
+        $throttleKey = 'login:web:'.hash('sha256', $identifier.'|127.0.0.1');
+        RateLimiter::clear($throttleKey);
         for ($i = 0; $i < 5; $i++) {
-            $this->post('/login', ['identifier' => 'guru.uji', 'password' => 'salah']);
+            $this->post('/login', ['identifier' => $identifier, 'password' => 'salah']);
         }
-        $response = $this->post('/login', ['identifier' => 'guru.uji', 'password' => 'salah']);
+        $response = $this->post('/login', ['identifier' => $identifier, 'password' => 'salah']);
         $response->assertSessionHasErrors('identifier');
         $this->assertStringContainsString('Terlalu banyak percobaan login', session('errors')->first('identifier'));
     }

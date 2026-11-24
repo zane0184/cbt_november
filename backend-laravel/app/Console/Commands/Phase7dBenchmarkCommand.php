@@ -16,7 +16,11 @@ use App\Models\ExamQuestionSnapshot;
 use App\Models\GradeLevel;
 use App\Models\KktpVersion;
 use App\Models\LearningObjective;
+use App\Models\MultiCurriculumVersion;
 use App\Models\LearningOutcome;
+use App\Models\TeacherSubjectAssignment;
+use App\Models\TenantCurriculumRegistration;
+use App\Services\RolePermissionBootstrapper;
 use App\Models\LearningPath;
 use App\Models\LearningPathVersion;
 use App\Models\Phase;
@@ -35,6 +39,7 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class Phase7dBenchmarkCommand extends Command
@@ -44,64 +49,169 @@ class Phase7dBenchmarkCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'benchmark:phase7d {--runs=5 : Number of iterations} {--json : Output JSON report}';
+    protected $signature = 'benchmark:phase7d {--runs=5 : Number of iterations} {--json : Output JSON report} {--driver=mysql : Disposable benchmark database driver} {--allow-mysql : Explicitly permit a local disposable MySQL database}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Phase 7D.5 local benchmark harness for Curriculum Achievement & Report PDF Export';
+    protected $description = 'Phase 7D.5 benchmark harness using a disposable local MySQL database';
+
+    private string $benchmarkDatabaseVersion = '';
 
     public function handle(): int
     {
-        $runs = (int)$this->option('runs');
-        if ($runs < 1) {
-            $runs = 5;
+        $runs = (int) $this->option('runs');
+        if ($runs < 1 || $runs > 20) {
+            $this->error('Jumlah run harus berada pada rentang 1–20.');
+            return self::FAILURE;
         }
 
-        $this->info("=================================================");
-        $this->info("Phase 7D.5 Local Benchmark Harness");
+        $safetyError = $this->validateMysqlBenchmarkSafety();
+        if ($safetyError !== null) {
+            $this->error($safetyError);
+            return self::FAILURE;
+        }
+
+        $mysqlConfig = config('database.connections.mysql');
+        $originalDefaultConnection = config('database.default');
+        $originalBenchmarkConnection = config('database.connections.phase7d_benchmark');
+        $tenantContext = app(TenantContext::class);
+        $previousTenantId = $tenantContext->getTenantId();
+        $authGuard = auth();
+        $previousAuthUser = $authGuard->user();
+
+        $temporaryDatabaseName = 'cbt_phase7d_' . Str::lower(Str::random(12));
+        $benchmarkConnectionName = 'phase7d_benchmark';
+        $databaseCreated = false;
+        $benchmarkFailure = null;
+        $cleanupFailure = null;
+        $op1Results = [];
+        $op2Results = [];
+
+        $this->info('=================================================');
+        $this->info('Phase 7D.5 Disposable MySQL Benchmark Harness');
         $this->info("Runs per operation: {$runs}");
-        $this->info("=================================================");
+        $this->info('Database: temporary MySQL schema; production database is never migrated.');
+        $this->info('=================================================');
 
-        // Configure isolated SQLite database for benchmark
-        $dbPath = database_path('benchmark.sqlite');
-        if (!file_exists($dbPath)) {
-            touch($dbPath);
+        try {
+            DB::connection('mysql')->statement(
+                "CREATE DATABASE `{$temporaryDatabaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            );
+            $databaseCreated = true;
+            $this->info("Temporary benchmark schema created: {$temporaryDatabaseName}");
+
+            $benchmarkConnectionConfig = $mysqlConfig;
+            $benchmarkConnectionConfig['database'] = $temporaryDatabaseName;
+            unset($benchmarkConnectionConfig['url']);
+
+            config([
+                "database.connections.{$benchmarkConnectionName}" => $benchmarkConnectionConfig,
+                'database.default' => $benchmarkConnectionName,
+            ]);
+            DB::purge($benchmarkConnectionName);
+
+            $this->benchmarkDatabaseVersion = (string) DB::connection($benchmarkConnectionName)
+                ->selectOne('SELECT VERSION() AS version')
+                ->version;
+
+            $this->info('Running migrations on isolated MySQL benchmark database...');
+            $migrationExitCode = Artisan::call('migrate:fresh', [
+                '--database' => $benchmarkConnectionName,
+                '--force' => true,
+            ]);
+            if ($migrationExitCode !== 0) {
+                throw new \RuntimeException('Benchmark MySQL migration failed.');
+            }
+
+            $this->info('Bootstrapping official curriculum reference data...');
+            app(\Database\Seeders\CurriculumReferenceSourceSeeder::class)->run();
+            app(\Database\Seeders\CurriculumRegistryBootstrapSeeder::class)->run();
+
+            $this->info('Seeding representative workload...');
+            $startTime = microtime(true);
+            $workload = $this->seedWorkload();
+            $seedDuration = round((microtime(true) - $startTime) * 1000, 2);
+            $this->info("Workload seeded in {$seedDuration} ms.");
+
+            $this->info("\n--- Operation 1: Batch Achievement Calculation (100 Students) ---");
+            $op1Results = $this->runBatchAchievementBenchmark($workload, $runs);
+
+            $this->info("\n--- Operation 2: Combined 100-student PDF Report Export ---");
+            $op2Results = $this->runPdfExportBenchmark($workload, $runs);
+        } catch (\Throwable $exception) {
+            $benchmarkFailure = $exception;
+        } finally {
+            try {
+                DB::disconnect($benchmarkConnectionName);
+                DB::purge($benchmarkConnectionName);
+            } catch (\Throwable) {
+                // Cleanup continues; the control MySQL connection remains separate.
+            }
+
+            config([
+                'database.default' => $originalDefaultConnection,
+                "database.connections.{$benchmarkConnectionName}" => $originalBenchmarkConnection,
+            ]);
+
+            try {
+                DB::purge($benchmarkConnectionName);
+            } catch (\Throwable) {
+                // Preserve original application connection configuration.
+            }
+
+            try {
+                // Drop only a schema created by this exact benchmark invocation.
+                // If CREATE DATABASE failed (for example, a random-name collision),
+                // never delete a pre-existing schema; still verify that our target is absent.
+                if ($databaseCreated) {
+                    DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
+                }
+
+                $remaining = DB::connection('mysql')->select(
+                    'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
+                    [$temporaryDatabaseName]
+                );
+                if ($remaining !== []) {
+                    throw new \RuntimeException("Temporary benchmark database {$temporaryDatabaseName} still exists after cleanup.");
+                }
+
+                $this->info("Temporary MySQL database absence verified: {$temporaryDatabaseName}");
+            } catch (\Throwable $exception) {
+                $cleanupFailure = $exception;
+            }
+
+            try {
+                $tenantContext->setTenantId($previousTenantId);
+            } catch (\Throwable) {
+                // Do not prevent database cleanup.
+            }
+
+            try {
+                if ($previousAuthUser !== null) {
+                    $authGuard->setUser($previousAuthUser);
+                } elseif (method_exists($authGuard, 'forgetUser')) {
+                    $authGuard->forgetUser();
+                }
+            } catch (\Throwable) {
+                // Do not prevent database cleanup.
+            }
         }
 
-        config([
-            'database.default' => 'sqlite',
-            'database.connections.sqlite.database' => $dbPath,
-        ]);
-
-        DB::purge('sqlite');
-
-        $this->info("Running migrations on isolated benchmark database...");
-        Artisan::call('migrate:fresh', ['--database' => 'sqlite', '--force' => true]);
-
-        $this->info("Seeding representative workload...");
-        $startTime = microtime(true);
-        $workload = $this->seedWorkload();
-        $seedDuration = round((microtime(true) - $startTime) * 1000, 2);
-        $this->info("Workload seeded in {$seedDuration} ms.");
-
-        // Operation 1: Batch Achievement Calculation
-        $this->info("\n--- Operation 1: Batch Achievement Calculation (100 Students) ---");
-        $op1Results = $this->runBatchAchievementBenchmark($workload, $runs);
-
-        // Operation 2: Combined 100-student PDF Report Export
-        $this->info("\n--- Operation 2: Combined 100-student PDF Report Export ---");
-        $op2Results = $this->runPdfExportBenchmark($workload, $runs);
-
-        // Cleanup isolated DB file
-        DB::disconnect('sqlite');
-        if (file_exists($dbPath)) {
-            @unlink($dbPath);
+        if ($cleanupFailure !== null) {
+            throw new \RuntimeException(
+                'Benchmark temporary database cleanup failed.',
+                0,
+                $cleanupFailure
+            );
         }
 
-        // Summary report & governance threshold evaluation
+        if ($benchmarkFailure !== null) {
+            throw $benchmarkFailure;
+        }
+
         $summary = $this->buildSummaryReport($op1Results, $op2Results, $runs);
 
         if ($this->option('json')) {
@@ -110,7 +220,6 @@ class Phase7dBenchmarkCommand extends Command
             $this->printSummaryTable($summary);
         }
 
-        // Save report to storage
         $reportDir = storage_path('reports');
         if (!file_exists($reportDir)) {
             mkdir($reportDir, 0755, true);
@@ -119,6 +228,46 @@ class Phase7dBenchmarkCommand extends Command
         $this->info("\nBenchmark report saved to: " . $reportDir . '/phase7d_benchmark_report.json');
 
         return 0;
+    }
+
+    private function validateMysqlBenchmarkSafety(): ?string
+    {
+        if ($this->option('driver') !== 'mysql') {
+            return 'Benchmark hanya mendukung MySQL 8; SQLite tidak digunakan karena migrasi target memakai constraint MySQL.';
+        }
+
+        if (!$this->option('allow-mysql')) {
+            return 'Benchmark memerlukan opt-in eksplisit --allow-mysql.';
+        }
+
+        if (env('CBT_BENCHMARK_ALLOW_MYSQL') !== '1') {
+            return 'Set CBT_BENCHMARK_ALLOW_MYSQL=1 hanya pada lingkungan test/local disposable.';
+        }
+
+        if (!app()->environment(['local', 'testing'])) {
+            return 'Benchmark dilarang berjalan di luar APP_ENV=local/testing.';
+        }
+
+        if (config('database.default') !== 'mysql') {
+            return 'Default DB_CONNECTION harus mysql dan menunjuk ke database disposable.';
+        }
+
+        $mysqlConfig = config('database.connections.mysql', []);
+        if (($mysqlConfig['driver'] ?? null) !== 'mysql') {
+            return 'Konfigurasi koneksi mysql tidak tersedia.';
+        }
+
+        $host = strtolower((string) ($mysqlConfig['host'] ?? ''));
+        if (!in_array($host, ['localhost', '127.0.0.1', '::1', 'mysql'], true)) {
+            return 'Benchmark hanya diizinkan pada MySQL lokal; remote database ditolak.';
+        }
+
+        $baseDatabase = (string) ($mysqlConfig['database'] ?? '');
+        if (preg_match('/^(cbt_ci_|cbt_test_|cbt_benchmark_|testing)/i', $baseDatabase) !== 1) {
+            return 'Nama database dasar harus memakai prefix cbt_ci_, cbt_test_, cbt_benchmark_, atau testing.';
+        }
+
+        return null;
     }
 
     private function seedWorkload(): array
@@ -141,6 +290,7 @@ class Phase7dBenchmarkCommand extends Command
             $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
             $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
             $siswaRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+            app(RolePermissionBootstrapper::class)->bootstrap();
 
             $adminUser = User::create([
                 'tenant_id' => $tenant->id,
@@ -159,6 +309,19 @@ class Phase7dBenchmarkCommand extends Command
             ]);
             $teacherUser->roles()->attach($guruRole);
             $teacherUser->load('roles');
+
+            $globalCurriculumVersion = MultiCurriculumVersion::query()
+                ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
+                ->where('version_code', 'KMA-1503-2025')
+                ->firstOrFail();
+
+            $curriculumRegistration = TenantCurriculumRegistration::query()->create([
+                'tenant_id' => $tenant->id,
+                'multi_curriculum_version_id' => $globalCurriculumVersion->id,
+                'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                'status' => 'ACTIVE',
+                'registered_at' => now(),
+            ]);
 
             $academicYear = AcademicYear::create([
                 'tenant_id' => $tenant->id,
@@ -207,6 +370,9 @@ class Phase7dBenchmarkCommand extends Command
                 'tenant_id' => $tenant->id,
                 'user_id' => $teacherUser->id,
                 'full_name' => $teacherUser->name,
+                'employment_status' => 'PNS',
+                'nip' => '199001012026041001',
+                'employee_identifier' => '199001012026041001',
             ]);
 
             $rombel = Rombel::create([
@@ -216,6 +382,28 @@ class Phase7dBenchmarkCommand extends Command
                 'name' => 'Kelas 5 Bench',
                 'teacher_id' => $teacherProfile->id,
                 'status' => 'ACTIVE'
+            ]);
+
+            $assignment = TeacherSubjectAssignment::query()->create([
+                'teacher_profile_id' => $teacherProfile->id,
+                'subject_id' => $subject->id,
+                'rombel_id' => $rombel->id,
+                'academic_year_id' => $academicYear->id,
+                'semester_id' => $semester->id,
+                'starts_at' => now()->subDay()->toDateString(),
+                'ends_at' => now()->addYear()->toDateString(),
+                'status' => 'ACTIVE',
+                'multi_curriculum_version_id' => $globalCurriculumVersion->id,
+                'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                'tenant_curriculum_registration_id' => $curriculumRegistration->id,
+                'curriculum_context_snapshot' => [
+                    'curriculum_version_id' => $globalCurriculumVersion->id,
+                    'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                    'tenant_curriculum_registration_id' => $curriculumRegistration->id,
+                    'version_code' => $globalCurriculumVersion->version_code,
+                    'source_id' => $globalCurriculumVersion->source_id,
+                ],
+                'created_by' => $teacherUser->id,
             ]);
 
             // 1 CP
@@ -338,6 +526,11 @@ class Phase7dBenchmarkCommand extends Command
                     'semester_id' => $semester->id,
                     'curriculum_id' => $curriculum->id,
                     'subject_id' => $subject->id,
+                    'teacher_subject_assignment_id' => $assignment->id,
+                    'curriculum_version_id' => $globalCurriculumVersion->id,
+                    'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                    'tenant_curriculum_registration_id' => $curriculumRegistration->id,
+                    'curriculum_context_snapshot' => $assignment->curriculum_context_snapshot,
                     'title' => "Penilaian {$i}",
                     'assessment_type' => ($i % 2 == 1) ? 'FORMATIVE' : 'SUMMATIVE',
                     'status' => 'PUBLISHED',
@@ -396,7 +589,8 @@ class Phase7dBenchmarkCommand extends Command
                     'tenant_id' => $tenant->id,
                     'user_id' => $student->id,
                     'nis' => sprintf('NIS_%03d', $s),
-                    'nisn' => sprintf('NISN_%03d', $s),
+                    // Synthetic 10-digit NISN-format fixture; not a real student identity.
+                    'nisn' => sprintf('%010d', 9000000000 + $s),
                     'full_name' => $student->name,
                 ]);
                 $profile->rombels()->attach($rombel->id, ['id' => (string)Str::uuid(), 'tenant_id' => $tenant->id]);
@@ -449,6 +643,7 @@ class Phase7dBenchmarkCommand extends Command
             return [
                 'tenant' => $tenant,
                 'adminUser' => $adminUser,
+                'teacherUser' => $teacherUser,
                 'academicYear' => $academicYear,
                 'semester' => $semester,
                 'subject' => $subject,
@@ -514,10 +709,15 @@ class Phase7dBenchmarkCommand extends Command
         $reportController = app(ReportController::class);
         $exam = $workload['exams'][0];
         $rombel = $workload['rombel'];
-        $adminUser = $workload['adminUser'];
-        $adminUser->load('roles');
+        $teacherUser = $workload['teacherUser'];
+        $teacherUser->load('roles');
 
-        app('auth')->setUser($adminUser);
+        app('auth')->setUser($teacherUser);
+
+        // Preflight the real registered ReportPolicy. ReportController below calls
+        // the same policy again internally through $this->authorize().
+        Gate::forUser($teacherUser)->authorize('viewExamResults', $exam);
+        $this->line('ReportPolicy preflight PASS: exact Guru role, report.view grant, active assignment and all participants covered.');
 
         // Warm-up run for Dompdf (class loading, CSS/font engine initialization) - excluded from official stats
         $this->line("  [Warm-up] Initializing Dompdf & rendering warm-up PDF...");
@@ -525,9 +725,9 @@ class Phase7dBenchmarkCommand extends Command
         $warmupReq = Request::create("/api/v1/reports/exams/{$exam->id}/export/pdf", 'GET', [
             'rombel_id' => $rombel->id,
         ]);
-        $warmupReq->setUserResolver(fn() => $adminUser);
+        $warmupReq->setUserResolver(fn() => $teacherUser);
         $warmupResp = $reportController->exportPdf($warmupReq, $exam);
-        $warmupBytes = strlen($warmupResp->getContent());
+        $warmupBytes = $this->persistAndVerifyPdfResponse($warmupResp, 'warm-up');
         $warmupDuration = round((microtime(true) - $warmupStart) * 1000, 2);
         $this->line(sprintf("  [Warm-up] Completed in %8.2f ms | PDF Size: %d bytes", $warmupDuration, $warmupBytes));
 
@@ -540,15 +740,14 @@ class Phase7dBenchmarkCommand extends Command
             $request = Request::create("/api/v1/reports/exams/{$exam->id}/export/pdf", 'GET', [
                 'rombel_id' => $rombel->id,
             ]);
-            $request->setUserResolver(fn() => $adminUser);
+            $request->setUserResolver(fn() => $teacherUser);
 
             $response = $reportController->exportPdf($request, $exam);
-            $content = $response->getContent();
+            $bytes = $this->persistAndVerifyPdfResponse($response, "run-{$r}");
 
             $end = microtime(true);
             $peakMem = memory_get_peak_usage(true) / 1024 / 1024;
             $durationMs = ($end - $start) * 1000;
-            $bytes = strlen($content);
 
             $runsData[] = [
                 'run' => $r,
@@ -561,6 +760,106 @@ class Phase7dBenchmarkCommand extends Command
         }
 
         return $runsData;
+    }
+
+    /**
+     * Persist the actual controller response to a temporary .pdf file and verify
+     * HTTP success, PDF signature, non-zero bytes, and file removal afterwards.
+     */
+    private function persistAndVerifyPdfResponse($response, string $label): int
+    {
+        if (!method_exists($response, 'getStatusCode') || $response->getStatusCode() !== 200) {
+            throw new \RuntimeException("PDF {$label} did not return HTTP 200.");
+        }
+
+        $content = null;
+
+        if (method_exists($response, 'getContent')) {
+            $responseContent = $response->getContent();
+            if (is_string($responseContent) && $responseContent !== '') {
+                $content = $responseContent;
+            }
+        }
+
+        // StreamedResponse::getContent() returns false; execute its real callback.
+        if ((!is_string($content) || $content === '') && method_exists($response, 'sendContent')) {
+            ob_start();
+            try {
+                $response->sendContent();
+                $streamedContent = ob_get_contents();
+            } finally {
+                ob_end_clean();
+            }
+            if (is_string($streamedContent) && $streamedContent !== '') {
+                $content = $streamedContent;
+            }
+        }
+
+        // BinaryFileResponse may expose an actual generated file.
+        if ((!is_string($content) || $content === '') && method_exists($response, 'getFile')) {
+            $file = $response->getFile();
+            if ($file && method_exists($file, 'getPathname') && is_file($file->getPathname())) {
+                $fileContent = file_get_contents($file->getPathname());
+                if (is_string($fileContent) && $fileContent !== '') {
+                    $content = $fileContent;
+                }
+            }
+        }
+
+        if (!is_string($content) || $content === '') {
+            throw new \RuntimeException("PDF {$label} response body is empty or could not be streamed.");
+        }
+
+        $temporaryBase = tempnam(sys_get_temp_dir(), 'cbt-pdf-');
+        if ($temporaryBase === false) {
+            throw new \RuntimeException("Unable to allocate temporary PDF path for {$label}.");
+        }
+
+        $pdfPath = $temporaryBase . '.pdf';
+        try {
+            if (!rename($temporaryBase, $pdfPath)) {
+                throw new \RuntimeException("Unable to prepare temporary PDF file for {$label}.");
+            }
+
+            $written = file_put_contents($pdfPath, $content, LOCK_EX);
+            if ($written === false || $written !== strlen($content)) {
+                throw new \RuntimeException("PDF {$label} could not be fully written to disk.");
+            }
+
+            clearstatcache(true, $pdfPath);
+            $bytes = filesize($pdfPath);
+            if ($bytes === false || $bytes <= 0) {
+                throw new \RuntimeException("PDF {$label} file size must be greater than zero.");
+            }
+
+            $handle = fopen($pdfPath, 'rb');
+            if ($handle === false) {
+                throw new \RuntimeException("PDF {$label} file could not be reopened.");
+            }
+            try {
+                $signature = fread($handle, 5);
+            } finally {
+                fclose($handle);
+            }
+
+            if ($signature !== '%PDF-') {
+                throw new \RuntimeException("PDF {$label} file has an invalid PDF signature.");
+            }
+
+            $this->line("  Verified {$label}: HTTP 200 | PDF signature valid | file size {$bytes} bytes.");
+            return $bytes;
+        } finally {
+            if (file_exists($pdfPath)) {
+                unlink($pdfPath);
+            }
+            if (file_exists($temporaryBase)) {
+                unlink($temporaryBase);
+            }
+            clearstatcache(true, $pdfPath);
+            if (file_exists($pdfPath) || file_exists($temporaryBase)) {
+                throw new \RuntimeException("Temporary PDF {$label} file cleanup could not be verified.");
+            }
+        }
     }
 
     private function buildSummaryReport(array $op1Results, array $op2Results, int $runs): array
@@ -611,6 +910,9 @@ class Phase7dBenchmarkCommand extends Command
             'timestamp' => now()->toIso8601String(),
             'php_version' => PHP_VERSION,
             'laravel_version' => app()->version(),
+            'database_driver' => 'mysql',
+            'database_version' => $this->benchmarkDatabaseVersion,
+            'benchmark_database_scope' => 'disposable temporary schema; dropped and absence verified after run',
             'workload_definition' => [
                 'tenant_count' => 1,
                 'rombel_count' => 1,

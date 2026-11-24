@@ -16,7 +16,7 @@
                 <select wire:model="selectedStudentProfileId" required class="w-full border border-cardBorder rounded-xl px-3 py-2 text-sm">
                     <option value="">Pilih Siswa</option>
                     @foreach($availableStudents as $student)
-                        <option value="{{ $student->id }}">{{ $student->full_name }} — NISN {{ $student->nisn ?: 'belum diisi' }}</option>
+                        <option value="{{ $student->id }}">{{ $student->full_name }} — NISN {{ $student->nisn ? str_repeat('•', max(0, strlen($student->nisn) - 4)).substr($student->nisn, -4) : 'belum diisi' }}</option>
                     @endforeach
                 </select>
                 @error('selectedStudentProfileId') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
@@ -50,7 +50,7 @@
                     @forelse($students as $student)
                         <tr>
                             <td class="px-5 py-3 text-sm font-semibold">{{ $student->full_name }}</td>
-                            <td class="px-5 py-3 text-xs">{{ $student->nisn ?: '—' }}</td>
+                            <td class="px-5 py-3 text-xs">{{ $student->nisn ? str_repeat('•', max(0, strlen($student->nisn) - 4)).substr($student->nisn, -4) : '—' }}</td>
                             <td class="px-5 py-3 text-xs">
                                 @forelse($student->rombels as $rombel)
                                     <span class="inline-flex mr-1 mb-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 border border-blue-100">{{ $rombel->name }} · {{ $rombel->academicYear?->name ?? '—' }}</span>

@@ -8,6 +8,7 @@ use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamParticipant;
 use App\Models\ExamQuestionSnapshot;
+use App\Services\AuditPayloadSanitizer;
 use App\Services\ScoringService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -154,22 +155,23 @@ class ExpireExamAttemptsCommand extends Command
                     $score = $scoringService->scoreAttempt($attempt);
                 }
 
+                $auditSanitizer = app(AuditPayloadSanitizer::class);
                 AuditLog::create([
                     'tenant_id' => $attempt->tenant_id,
                     'user_id' => null,
                     'action' => 'EXPIRE_ATTEMPT',
                     'entity_type' => 'ExamAttempt',
                     'entity_id' => $attempt->id,
-                    'old_values' => [
+                    'old_values' => $auditSanitizer->sanitize([
                         'status' => 'IN_PROGRESS',
                         'expires_at' => $attempt->expires_at?->toIso8601String(),
-                    ],
-                    'new_values' => [
+                    ]),
+                    'new_values' => $auditSanitizer->sanitize([
                         'status' => 'EXPIRED',
                         'processed_at' => $closedAt->toIso8601String(),
                         'score_id' => $score?->id,
                         'scoring_skipped_reason' => $skipReason,
-                    ],
+                    ]),
                     'ip_address' => null,
                     'user_agent' => 'cbt:expire-attempts',
                     'created_at' => $closedAt,
