@@ -79,7 +79,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
-          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, pdo_sqlite, sqlite3, tokenizer, xml, curl, dom, gd, zip
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, tokenizer, xml, curl, dom, gd, zip
           coverage: none
           tools: composer:v2
 
@@ -149,12 +149,7 @@ jobs:
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
 
-      - name: Run benchmark fixture smoke and verify temporary SQLite cleanup
-        shell: bash
-        run: |
-          set -euo pipefail
-          before_count="$(find /tmp -maxdepth 1 -type f -name 'cbt-phase7d-*' | wc -l)"
-          php artisan benchmark:phase7d --runs=1 --json
-          after_count="$(find /tmp -maxdepth 1 -type f -name 'cbt-phase7d-*' | wc -l)"
-          test "$before_count" -eq "$after_count"
-          echo "Temporary SQLite benchmark files cleaned."
+      - name: Run disposable MySQL benchmark smoke and verify cleanup
+        env:
+          CBT_BENCHMARK_ALLOW_MYSQL: "1"
+        run: php artisan benchmark:phase7d --runs=1 --driver=mysql --allow-mysql --json

@@ -44,59 +44,83 @@ class Phase7dBenchmarkCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'benchmark:phase7d {--runs=5 : Number of iterations} {--json : Output JSON report}';
+    protected $signature = 'benchmark:phase7d {--runs=5 : Number of iterations} {--json : Output JSON report} {--driver=mysql : Disposable benchmark database driver} {--allow-mysql : Explicitly permit a local disposable MySQL database}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Phase 7D.5 local benchmark harness for Curriculum Achievement & Report PDF Export';
+    protected $description = 'Phase 7D.5 benchmark harness using a disposable local MySQL database';
+
+    private string $benchmarkDatabaseVersion = '';
 
     public function handle(): int
     {
         $runs = (int) $this->option('runs');
-        if ($runs < 1) {
-            $runs = 5;
-        }
-
-        $this->info("=================================================");
-        $this->info("Phase 7D.5 Local Benchmark Harness");
-        $this->info("Runs per operation: {$runs}");
-        $this->info("=================================================");
-
-        // Always use a unique temporary SQLite file; never reuse a project file with migrate:fresh.
-        $databasePath = tempnam(sys_get_temp_dir(), 'cbt-phase7d-');
-        if ($databasePath === false) {
-            $this->error('Tidak dapat membuat database benchmark sementara.');
+        if ($runs < 1 || $runs > 20) {
+            $this->error('Jumlah run harus berada pada rentang 1–20.');
             return self::FAILURE;
         }
 
+        $safetyError = $this->validateMysqlBenchmarkSafety();
+        if ($safetyError !== null) {
+            $this->error($safetyError);
+            return self::FAILURE;
+        }
+
+        $mysqlConfig = config('database.connections.mysql');
         $originalDefaultConnection = config('database.default');
-        $originalSqliteConnection = config('database.connections.sqlite', []);
+        $originalBenchmarkConnection = config('database.connections.phase7d_benchmark');
         $tenantContext = app(TenantContext::class);
         $previousTenantId = $tenantContext->getTenantId();
         $authGuard = auth();
         $previousAuthUser = $authGuard->user();
 
+        $temporaryDatabaseName = 'cbt_phase7d_' . Str::lower(Str::random(12));
+        $benchmarkConnectionName = 'phase7d_benchmark';
+        $databaseCreated = false;
+        $benchmarkFailure = null;
+        $cleanupFailure = null;
+        $op1Results = [];
+        $op2Results = [];
+
+        $this->info('=================================================');
+        $this->info('Phase 7D.5 Disposable MySQL Benchmark Harness');
+        $this->info("Runs per operation: {$runs}");
+        $this->info('Database: temporary MySQL schema; production database is never migrated.');
+        $this->info('=================================================');
+
         try {
+            DB::connection('mysql')->statement(
+                "CREATE DATABASE `{$temporaryDatabaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+            );
+            $databaseCreated = true;
+
+            $benchmarkConnectionConfig = $mysqlConfig;
+            $benchmarkConnectionConfig['database'] = $temporaryDatabaseName;
+            unset($benchmarkConnectionConfig['url']);
+
             config([
-                'database.default' => 'sqlite',
-                'database.connections.sqlite.database' => $databasePath,
+                "database.connections.{$benchmarkConnectionName}" => $benchmarkConnectionConfig,
+                'database.default' => $benchmarkConnectionName,
             ]);
+            DB::purge($benchmarkConnectionName);
 
-            DB::purge('sqlite');
+            $this->benchmarkDatabaseVersion = (string) DB::connection($benchmarkConnectionName)
+                ->selectOne('SELECT VERSION() AS version')
+                ->version;
 
-            $this->info("Running migrations on isolated benchmark database...");
+            $this->info('Running migrations on isolated MySQL benchmark database...');
             $migrationExitCode = Artisan::call('migrate:fresh', [
-                '--database' => 'sqlite',
+                '--database' => $benchmarkConnectionName,
                 '--force' => true,
             ]);
             if ($migrationExitCode !== 0) {
-                throw new \RuntimeException('Benchmark SQLite migration failed.');
+                throw new \RuntimeException('Benchmark MySQL migration failed.');
             }
 
-            $this->info("Seeding representative workload...");
+            $this->info('Seeding representative workload...');
             $startTime = microtime(true);
             $workload = $this->seedWorkload();
             $seedDuration = round((microtime(true) - $startTime) * 1000, 2);
@@ -107,34 +131,47 @@ class Phase7dBenchmarkCommand extends Command
 
             $this->info("\n--- Operation 2: Combined 100-student PDF Report Export ---");
             $op2Results = $this->runPdfExportBenchmark($workload, $runs);
+        } catch (\Throwable $exception) {
+            $benchmarkFailure = $exception;
         } finally {
             try {
-                DB::disconnect('sqlite');
+                DB::disconnect($benchmarkConnectionName);
+                DB::purge($benchmarkConnectionName);
             } catch (\Throwable) {
-                // Cleanup continues even if a partially initialized connection cannot disconnect.
-            }
-
-            try {
-                DB::purge('sqlite');
-            } catch (\Throwable) {
-                // The temporary file is still removed below.
+                // Cleanup continues; the control MySQL connection remains separate.
             }
 
             config([
                 'database.default' => $originalDefaultConnection,
-                'database.connections.sqlite' => $originalSqliteConnection,
+                "database.connections.{$benchmarkConnectionName}" => $originalBenchmarkConnection,
             ]);
 
             try {
-                DB::purge('sqlite');
+                DB::purge($benchmarkConnectionName);
             } catch (\Throwable) {
-                // Preserve the original application connection configuration.
+                // Preserve original application connection configuration.
+            }
+
+            if ($databaseCreated) {
+                try {
+                    DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
+                    $remaining = DB::connection('mysql')->select(
+                        'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
+                        [$temporaryDatabaseName]
+                    );
+                    if ($remaining !== []) {
+                        throw new \RuntimeException('Temporary benchmark database still exists after cleanup.');
+                    }
+                    $this->info('Temporary MySQL database removed; absence verified.');
+                } catch (\Throwable $exception) {
+                    $cleanupFailure = $exception;
+                }
             }
 
             try {
                 $tenantContext->setTenantId($previousTenantId);
             } catch (\Throwable) {
-                // Do not prevent temporary database cleanup.
+                // Do not prevent database cleanup.
             }
 
             try {
@@ -144,14 +181,20 @@ class Phase7dBenchmarkCommand extends Command
                     $authGuard->forgetUser();
                 }
             } catch (\Throwable) {
-                // Do not prevent temporary database cleanup.
+                // Do not prevent database cleanup.
             }
+        }
 
-            foreach ([$databasePath, $databasePath . '-journal', $databasePath . '-wal', $databasePath . '-shm'] as $temporaryFile) {
-                if (is_file($temporaryFile)) {
-                    @unlink($temporaryFile);
-                }
-            }
+        if ($cleanupFailure !== null) {
+            throw new \RuntimeException(
+                'Benchmark temporary database cleanup failed.',
+                0,
+                $cleanupFailure
+            );
+        }
+
+        if ($benchmarkFailure !== null) {
+            throw $benchmarkFailure;
         }
 
         $summary = $this->buildSummaryReport($op1Results, $op2Results, $runs);
@@ -170,6 +213,46 @@ class Phase7dBenchmarkCommand extends Command
         $this->info("\nBenchmark report saved to: " . $reportDir . '/phase7d_benchmark_report.json');
 
         return 0;
+    }
+
+    private function validateMysqlBenchmarkSafety(): ?string
+    {
+        if ($this->option('driver') !== 'mysql') {
+            return 'Benchmark hanya mendukung MySQL 8; SQLite tidak digunakan karena migrasi target memakai constraint MySQL.';
+        }
+
+        if (!$this->option('allow-mysql')) {
+            return 'Benchmark memerlukan opt-in eksplisit --allow-mysql.';
+        }
+
+        if (env('CBT_BENCHMARK_ALLOW_MYSQL') !== '1') {
+            return 'Set CBT_BENCHMARK_ALLOW_MYSQL=1 hanya pada lingkungan test/local disposable.';
+        }
+
+        if (!app()->environment(['local', 'testing'])) {
+            return 'Benchmark dilarang berjalan di luar APP_ENV=local/testing.';
+        }
+
+        if (config('database.default') !== 'mysql') {
+            return 'Default DB_CONNECTION harus mysql dan menunjuk ke database disposable.';
+        }
+
+        $mysqlConfig = config('database.connections.mysql', []);
+        if (($mysqlConfig['driver'] ?? null) !== 'mysql') {
+            return 'Konfigurasi koneksi mysql tidak tersedia.';
+        }
+
+        $host = strtolower((string) ($mysqlConfig['host'] ?? ''));
+        if (!in_array($host, ['localhost', '127.0.0.1', '::1', 'mysql'], true)) {
+            return 'Benchmark hanya diizinkan pada MySQL lokal; remote database ditolak.';
+        }
+
+        $baseDatabase = (string) ($mysqlConfig['database'] ?? '');
+        if (preg_match('/^(cbt_ci_|cbt_test_|cbt_benchmark_|testing)/i', $baseDatabase) !== 1) {
+            return 'Nama database dasar harus memakai prefix cbt_ci_, cbt_test_, cbt_benchmark_, atau testing.';
+        }
+
+        return null;
     }
 
     private function seedWorkload(): array
@@ -666,6 +749,9 @@ class Phase7dBenchmarkCommand extends Command
             'timestamp' => now()->toIso8601String(),
             'php_version' => PHP_VERSION,
             'laravel_version' => app()->version(),
+            'database_driver' => 'mysql',
+            'database_version' => $this->benchmarkDatabaseVersion,
+            'benchmark_database_scope' => 'disposable temporary schema; dropped and absence verified after run',
             'workload_definition' => [
                 'tenant_count' => 1,
                 'rombel_count' => 1,
