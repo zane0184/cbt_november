@@ -17,10 +17,10 @@ class InstallationIdentityService
         $existing = $identities->first();
         if ($existing) {
             if ((string) $existing->tenant_id !== $tenantId || $existing->product_code !== (string) config('license.product_code', 'CBT-MI')) throw new RuntimeException('INSTALLATION_TENANT_MISMATCH');
-            if (Tenant::withoutGlobalScopes()->count() !== 1) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
+            if ($this->madrasahTenantCount() !== 1) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
             return $existing;
         }
-        if (Tenant::withoutGlobalScopes()->count() !== 1 || ! Tenant::withoutGlobalScopes()->whereKey($tenantId)->exists()) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
+        if ($this->madrasahTenantCount() !== 1 || !$this->isMadrasahTenant($tenantId)) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
         if (! function_exists('sodium_crypto_sign_keypair')) throw new RuntimeException('PHP_SODIUM_REQUIRED');
         if (! config('app.key')) throw new RuntimeException('APP_KEY_REQUIRED');
 
@@ -44,6 +44,24 @@ class InstallationIdentityService
             'product_code' => (string) config('license.product_code', 'CBT-MI'),
             'product_version' => (string) config('license.product_version', '1.0.0'),
         ]);
+    }
+
+    private function madrasahTenantCount(): int
+    {
+        return Tenant::withoutGlobalScopes()
+            ->where('id', '!=', Tenant::SYSTEM_TENANT_ID)
+            ->whereNull('deleted_at')
+            ->count();
+    }
+
+    private function isMadrasahTenant(string $tenantId): bool
+    {
+        return $tenantId !== Tenant::SYSTEM_TENANT_ID
+            && Tenant::withoutGlobalScopes()
+                ->whereKey($tenantId)
+                ->where('id', '!=', Tenant::SYSTEM_TENANT_ID)
+                ->whereNull('deleted_at')
+                ->exists();
     }
 
     public function secretKey(LocalInstallationIdentity $identity): string
