@@ -15,10 +15,11 @@ PR #23: tetap OPEN / DRAFT / NOT MERGED
 - 11 security regression tests ditambahkan (total StudentImportTest menjadi 22).
 - PHP lint, composer, whitespace check dan focused security test steps pada exact SHA 77e464: PASS.
 
-## Menunggu
-- Full PHPUnit suite PHP 8.3 + MySQL 8.0 InnoDB disposable.
-- Full PHPUnit suite PHP 8.4 + MySQL 8.0 InnoDB disposable.
-- Jangan klaim full suite PASS sampai kedua job selesai dan log final diperiksa.
+## Verifikasi final exact SHA 77e46497d4341078b9310c6454c42fdbe774542b
+- GitHub Actions run 45479381320: SUCCESS.
+- PHP 8.3 / MySQL 8.0.46 InnoDB disposable: 22 focused tests passed / 390 assertions; full suite 607 passed, 1 skipped, 0 failed / 3.163 assertions.
+- PHP 8.4 / MySQL 8.0.46 InnoDB disposable: 22 focused tests passed / 390 assertions; full suite 607 passed, 1 skipped, 0 failed / 3.163 assertions.
+- Composer validate/install, PHP lint, git diff --check: PASS.
 
 ## Jangan dilakukan
 - Jangan jalankan migration pada database produksi.
@@ -28,12 +29,12 @@ PR #23: tetap OPEN / DRAFT / NOT MERGED
 - Jangan mengklaim Student Import siap produksi atau ZIP siap uji operasional.
 
 ## Langkah berikutnya
-1. Verifikasi hasil final run 45479381320 pada exact SHA 77e464.
-2. Jika dua full suite PASS, buat report/checkpoint final dan Draft PR ke work/benchmark-cleanup-proof-20261125; tidak merge.
-3. Jika gagal, perbaiki akar masalah dan ulangi test.
-4. Berikutnya: implementasi DOCX question parser dan TRUE_FALSE_GROUP/shared stimulus sesuai addendum owner 25 November.
-5. Setelah itu: integrasi runner Web Siswa secara selektif, browser-to-real-Laravel E2E, Guru import XLSX/CSV, curriculum provenance, dan ZIP acceptance.
+1. Buat Draft PR ke work/benchmark-cleanup-proof-20261125 untuk review; tidak merge.
+2. Lakukan staging acceptance terisolasi untuk Student Import; jangan sentuh database produksi.
+3. Berikutnya: implementasi DOCX question parser dan TRUE_FALSE_GROUP/shared stimulus sesuai addendum owner 25 November.
+4. Setelah itu: integrasi runner Web Siswa secara selektif, browser-to-real-Laravel E2E, Guru import XLSX/CSV, curriculum provenance, dan ZIP acceptance.
 
 ## Status
-Student Import hardening: IMPLEMENTED; FOCUSED TEST PASS; FULL SUITE PENDING.
+Student Import security hardening: IMPLEMENTED + CI VERIFIED pada exact SHA.
+Student Import staging/operational acceptance: BELUM DIUJI.
 ZIP SIAP UJI OPERASIONAL TERBATAS: BELUM.
