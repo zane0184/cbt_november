@@ -466,19 +466,25 @@ class StudentImportService
             $headers = array_map(fn ($value) => $this->normalizeHeader((string) $value), $headerRow);
             $rows = [];
             $recordNumber = 1;
+            $dataRowCount = 0;
             $cellCount = count($headerRow);
 
             while (($values = $this->readCsvRecord($handle, $delimiter)) !== false) {
                 $recordNumber++;
-                $cellCount += count($values);
-                if ($recordNumber > self::MAX_ROWS + 1) {
-                    throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
-                }
-                if ($cellCount > self::MAX_CELLS) {
-                    throw ValidationException::withMessages(['file' => 'Jumlah cell CSV melewati batas keamanan.']);
-                }
+
+                // Blank physical records are ignored and do not consume data-row or cell limits.
                 if ($this->isBlankRow($values)) {
                     continue;
+                }
+
+                $dataRowCount++;
+                if ($dataRowCount > self::MAX_ROWS) {
+                    throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
+                }
+
+                $cellCount += count($values);
+                if ($cellCount > self::MAX_CELLS) {
+                    throw ValidationException::withMessages(['file' => 'Jumlah cell CSV melewati batas keamanan.']);
                 }
                 if (count($values) !== count($headers)) {
                     throw ValidationException::withMessages(['file' => 'Jumlah kolom setiap record CSV harus sama dengan header.']);
