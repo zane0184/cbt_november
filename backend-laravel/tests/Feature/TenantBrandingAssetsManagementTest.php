@@ -178,4 +178,158 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
     }
 
+
+    public function test_pdf_report_header_falls_back_to_valid_app_logo_when_document_logo_is_invalid(): void
+    {
+        $appLogoPath = app(TenantBrandingService::class)->storeUpload(
+            UploadedFile::fake()->image('fallback-app.png', 120, 120),
+            (string) $this->tenant->id,
+            'app-logo'
+        );
+
+        $this->tenant->forceFill([
+            'logo_path' => $appLogoPath,
+            'document_logo_path' => '../outside/document.png',
+        ])->save();
+
+        $dataUri = app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh());
+        $this->assertIsString($dataUri);
+        $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
+        $this->assertSame(
+            File::get(storage_path('app/public/' . $appLogoPath)),
+            base64_decode(substr($dataUri, strlen('data:image/png;base64,')), true)
+        );
+    }
+
+    public function test_branding_local_path_rejects_traversal_absolute_backslash_and_missing_paths(): void
+    {
+        $branding = app(TenantBrandingService::class);
+
+        foreach ([
+            '../outside.png',
+            'tenants/' . $this->tenant->id . '/branding/../../outside.png',
+            '/etc/passwd',
+            'tenants\\' . $this->tenant->id . '\\branding\\logo.png',
+            'tenants/' . $this->tenant->id . '/branding/missing.png',
+        ] as $path) {
+            $this->assertNull($branding->localPath($path), 'Unsafe path was accepted: ' . $path);
+        }
+    }
+
+    public function test_branding_service_rejects_invalid_image_content_and_oversized_uploads(): void
+    {
+        $branding = app(TenantBrandingService::class);
+
+        try {
+            $branding->storeUpload(
+                UploadedFile::fake()->createWithContent('spoofed.png', 'not-an-image'),
+                (string) $this->tenant->id,
+                'app-logo'
+            );
+            $this->fail('A non-image payload must be rejected.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('gambar raster', $exception->getMessage());
+        }
+
+        try {
+            $branding->storeUpload(
+                UploadedFile::fake()->create('oversized.png', 2049, 'image/png'),
+                (string) $this->tenant->id,
+                'app-logo'
+            );
+            $this->fail('An oversized logo must be rejected by the service boundary.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('Ukuran', $exception->getMessage());
+        }
+    }
+
+    public function test_branding_service_rejects_mismatched_file_extension_and_image_type(): void
+    {
+        $file = UploadedFile::fake()->createWithContent('fake.jpg', base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p1sAAAAASUVORK5CYII=',
+            true
+        ));
+
+        try {
+            app(TenantBrandingService::class)->storeUpload(
+                $file,
+                (string) $this->tenant->id,
+                'app-logo'
+            );
+            $this->fail('A PNG payload with a JPG extension must be rejected.');
+        } catch (\\RuntimeException $exception) {
+            $this->assertStringContainsString('Ekstensi dan MIME', $exception->getMessage());
+        }
+    }
+
+    public function test_admin_can_replace_and_remove_document_logo_and_favicon(): void
+    {
+        $branding = app(TenantBrandingService::class);
+        $oldDocument = $branding->storeUpload(UploadedFile::fake()->image('old-document.png', 120, 80), (string) $this->tenant->id, 'document-logo');
+        $oldFavicon = $branding->storeUpload(UploadedFile::fake()->image('old-favicon.png', 64, 64), (string) $this->tenant->id, 'favicon');
+        $this->tenant->forceFill(['document_logo_path' => $oldDocument, 'favicon_path' => $oldFavicon])->save();
+
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('documentLogoUpload', UploadedFile::fake()->image('new-document.png', 140, 90))
+            ->set('faviconUpload', UploadedFile::fake()->image('new-favicon.png', 64, 64))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $fresh = $this->tenant->fresh();
+        $this->assertNotSame($oldDocument, $fresh->document_logo_path);
+        $this->assertNotSame($oldFavicon, $fresh->favicon_path);
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $oldDocument));
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $oldFavicon));
+        $this->assertFileExists(storage_path('app/public/' . $fresh->document_logo_path));
+        $this->assertFileExists(storage_path('app/public/' . $fresh->favicon_path));
+
+        Livewire::test(TenantBrandingAssetsManagement::class)->call('removeDocumentLogo')->assertHasNoErrors();
+        Livewire::test(TenantBrandingAssetsManagement::class)->call('removeFavicon')->assertHasNoErrors();
+
+        $fresh = $this->tenant->fresh();
+        $this->assertNull($fresh->document_logo_path);
+        $this->assertNull($fresh->favicon_path);
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $oldDocument));
+        $this->assertFileDoesNotExist(storage_path('app/public/' . $oldFavicon));
+    }
+
+    public function test_branding_upload_is_scoped_to_the_authenticated_installation_tenant(): void
+    {
+        $otherTenant = Tenant::create(['name' => 'Madrasah Other', 'code' => 'BRAND-B']);
+        $role = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $otherAdmin = User::create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Admin Other',
+            'email' => 'admin.other-branding@example.test',
+            'password' => 'password-admin-other',
+        ]);
+        $otherAdmin->roles()->sync([$role->id]);
+
+        $this->actingAs($otherAdmin);
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('appLogoUpload', UploadedFile::fake()->image('other-logo.png', 120, 120))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertNull($this->tenant->fresh()->logo_path);
+        $this->assertStringStartsWith('tenants/' . $otherTenant->id . '/branding/app-logo-', $otherTenant->fresh()->logo_path);
+    }
+
+    public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
+    {
+        $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
+
+        $migration->up();
+        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
+        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+
+        Schema::table('tenants', function ($table): void {
+            $table->dropColumn('favicon_path');
+        });
+        $migration->up();
+
+        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
+        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+    }
+
 }
