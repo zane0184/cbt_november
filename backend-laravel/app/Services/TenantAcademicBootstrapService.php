@@ -22,6 +22,15 @@ use RuntimeException;
  */
 class TenantAcademicBootstrapService
 {
+    private const ACADEMIC_YEARS = [
+        '2026/2027',
+        '2027/2028',
+        '2028/2029',
+        '2029/2030',
+        '2030/2031',
+        '2031/2032',
+    ];
+
     private const PHASES = [
         'A' => [1, 2],
         'B' => [3, 4],
@@ -144,6 +153,63 @@ class TenantAcademicBootstrapService
                     }
                 }
 
+                $academicYearIds = [];
+                $semesterIds = [];
+
+                foreach (self::ACADEMIC_YEARS as $academicYearName) {
+                    $academicYear = AcademicYear::withTrashed()
+                        ->where('tenant_id', $tenantId)
+                        ->where('name', $academicYearName)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if ($academicYear && $academicYear->trashed()) {
+                        throw new RuntimeException('A required academic year was previously archived; it will not be restored automatically.');
+                    }
+
+                    if (!$academicYear) {
+                        $academicYear = AcademicYear::create([
+                            'name' => $academicYearName,
+                            'is_active' => false,
+                        ]);
+                    }
+
+                    if ((string) $academicYear->tenant_id !== $tenantId || $academicYear->name !== $academicYearName) {
+                        throw new RuntimeException('Existing academic year conflicts with the required local academic period catalog.');
+                    }
+
+                    $academicYearIds[] = $academicYear->id;
+
+                    foreach (['GANJIL', 'GENAP'] as $term) {
+                        $semester = Semester::withTrashed()
+                            ->where('tenant_id', $tenantId)
+                            ->where('academic_year_id', $academicYear->id)
+                            ->where('term', $term)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($semester && $semester->trashed()) {
+                            throw new RuntimeException('A required semester was previously archived; it will not be restored automatically.');
+                        }
+
+                        if (!$semester) {
+                            $semester = Semester::create([
+                                'academic_year_id' => $academicYear->id,
+                                'term' => $term,
+                                'is_active' => false,
+                            ]);
+                        }
+
+                        if ((string) $semester->tenant_id !== $tenantId
+                            || (string) $semester->academic_year_id !== (string) $academicYear->id
+                            || $semester->term !== $term) {
+                            throw new RuntimeException('Existing semester conflicts with its tenant academic-year relation.');
+                        }
+
+                        $semesterIds[] = $semester->id;
+                    }
+                }
+
                 return [
                     'tenant_id' => $tenantId,
                     'curriculum_id' => $curriculum->id,
@@ -151,6 +217,10 @@ class TenantAcademicBootstrapService
                     'grade_level_ids' => $gradeLevelIds,
                     'phase_count' => count($phaseIds),
                     'grade_level_count' => count($gradeLevelIds),
+                    'academic_year_ids' => $academicYearIds,
+                    'academic_year_count' => count($academicYearIds),
+                    'semester_ids' => $semesterIds,
+                    'semester_count' => count($semesterIds),
                     'registry_version_id' => $version->id,
                 ];
             }, 3);
