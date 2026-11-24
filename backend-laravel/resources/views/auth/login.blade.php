@@ -5,12 +5,12 @@
         $loginBrandingService = app(\App\Services\TenantBrandingService::class);
         $loginTenant = $loginBrandingService->currentTenant();
         $loginLogoUrl = $loginBrandingService->publicUrl($loginTenant?->logo_path);
-        $loginFaviconUrl = $loginBrandingService->publicUrl($loginTenant?->favicon_path);
+        $loginFaviconUrl = $loginBrandingService->publicUrl($loginTenant?->favicon_path);\n        $loginFaviconMime = strtolower(pathinfo((string) ($loginTenant?->favicon_path ?? ''), PATHINFO_EXTENSION)) === 'webp' ? 'image/webp' : 'image/png';
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $loginTenant?->short_name ?: ($loginTenant?->name ?: 'Login CBT Madrasah') }}</title>
-    @if($loginFaviconUrl)<link rel="icon" type="image/png" href="{{ $loginFaviconUrl }}">@endif
+    @if($loginFaviconUrl)<link rel="icon" type="{{ $loginFaviconMime }}" href="{{ $loginFaviconUrl }}">@endif
     <link rel="stylesheet" href="{{ asset('css/student-portal.css') }}">
     <style>
         body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
