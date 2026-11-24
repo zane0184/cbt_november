@@ -14,6 +14,7 @@ on:
       - work/solo-web-cbt-role-rbac-20261123
       - work/phpunit-41-root-cause-20261123
       - work/p1-seven-targets-20261124
+      - work/p0-academic-provisioning-20261125
   pull_request:
     branches:
       - main
@@ -29,6 +30,7 @@ concurrency:
 
 jobs:
   benchmark-mysql-pdf:
+    if: github.ref_name != 'work/p0-academic-provisioning-20261125'
     name: Disposable MySQL benchmark and PDF Policy verification
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -112,6 +114,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
   laravel-mysql:
+    if: github.ref_name != 'work/p0-academic-provisioning-20261125'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     services:
@@ -233,3 +236,128 @@ jobs:
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
 
+  p0-academic-installer:
+    if: github.ref_name == 'work/p0-academic-provisioning-20261125'
+    name: PHP 8.3 / MySQL 8.0 InnoDB — P0 Academic and Installer E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cbt_ci_p0_academic
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    defaults:
+      run:
+        working-directory: backend-laravel
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      CBT_LICENSE_TEST_BYPASS: "true"
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_DATABASE: cbt_ci_p0_academic
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      CBT_INSTALLER_E2E: "1"
+      CBT_INSTALLER_E2E_DB_HOST: "127.0.0.1"
+      CBT_INSTALLER_E2E_DB_PORT: "3306"
+      CBT_INSTALLER_E2E_DB_DATABASE: "cbt_installer_test_academic"
+      CBT_INSTALLER_E2E_DB_USERNAME: root
+      CBT_INSTALLER_E2E_DB_PASSWORD: root
+    steps:
+      - name: Checkout exact pushed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, pdo_sqlite, sqlite3, tokenizer, xml, curl, dom, gd, zip, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Verify exact commit and disposable MySQL 8 InnoDB databases
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "SOURCE_SHA=$GITHUB_SHA"
+          test "$APP_ENV" = "testing"
+          test "$DB_DATABASE" = "cbt_ci_p0_academic"
+          test "$CBT_INSTALLER_E2E" = "1"
+          test "$CBT_INSTALLER_E2E_DB_DATABASE" = "cbt_installer_test_academic"
+          test "$CBT_INSTALLER_E2E_DB_DATABASE" != "$DB_DATABASE"
+          php -r '
+            $pdo = new PDO(
+              "mysql:host=" . getenv("DB_HOST") . ";port=" . getenv("DB_PORT") . ";dbname=" . getenv("DB_DATABASE"),
+              getenv("DB_USERNAME"), getenv("DB_PASSWORD"),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $row = $pdo->query("SELECT DATABASE() AS db, VERSION() AS version, @@default_storage_engine AS engine")->fetch(PDO::FETCH_ASSOC);
+            if ($row["db"] !== "cbt_ci_p0_academic" || !str_starts_with($row["version"], "8.") || strtoupper($row["engine"]) !== "INNODB") {
+              fwrite(STDERR, "Disposable MySQL identity check failed.\\n");
+              exit(1);
+            }
+            echo "Verified " . $row["db"] . " / MySQL " . $row["version"] . " / " . $row["engine"] . PHP_EOL;
+          '
+          mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USERNAME" --password="$DB_PASSWORD" \
+            --execute="CREATE DATABASE IF NOT EXISTS cbt_installer_test_academic CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+      - name: Validate locked Composer project and install dependencies
+        run: |
+          composer validate --no-check-publish
+          composer install --no-interaction --prefer-dist --no-progress --no-scripts
+          composer check-platform-reqs
+
+      - name: Prepare Laravel runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/app/private storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage
+          touch .env
+          php artisan package:discover --ansi
+          php artisan --version
+
+      - name: PHP lint application, migrations, seeders, and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app database/migrations database/seeders tests -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
+
+      - name: Prepare disposable test database
+        run: php artisan migrate:fresh --force
+
+      - name: Run P0 academic, Admin UI, and clean-install E2E tests only
+        run: |
+          php artisan test \
+            tests/Feature/TenantAcademicBootstrapServiceTest.php \
+            tests/Feature/AcademicYearManagementTest.php \
+            tests/Feature/InstallerEndToEndTest.php \
+            tests/Feature/AdminUiVerificationTest.php \
+            --display-warnings
+
+      - name: Verify no production or shared database was targeted
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$DB_DATABASE" = "cbt_ci_p0_academic"
+          test "$CBT_INSTALLER_E2E_DB_DATABASE" = "cbt_installer_test_academic"
+          test "$DB_DATABASE" != "$CBT_INSTALLER_E2E_DB_DATABASE"
