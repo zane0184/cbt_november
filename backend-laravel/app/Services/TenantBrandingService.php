@@ -42,8 +42,8 @@ class TenantBrandingService
             throw new RuntimeException('Jenis aset branding tidak didukung.');
         }
 
-        if (!Str::isUuid($tenantId)) {
-            throw new RuntimeException('Identitas instalasi branding tidak valid.');
+        if (!Str::isUuid($tenantId) || $this->resolveInstallationTenantId($tenantId) !== $tenantId) {
+            throw new RuntimeException('Identitas instalasi branding tidak sesuai dengan akun atau instalasi aktif.');
         }
 
         $maxBytes = $kind === 'favicon' ? 512 * 1024 : 2048 * 1024;
@@ -158,7 +158,11 @@ class TenantBrandingService
      */
     public function deleteManaged(?string $relativePath, string $tenantId): void
     {
-        if (!$relativePath || str_contains($relativePath, '..')) {
+        if (
+            !$relativePath
+            || str_contains($relativePath, '..')
+            || $this->resolveInstallationTenantId($tenantId) !== $tenantId
+        ) {
             return;
         }
 
