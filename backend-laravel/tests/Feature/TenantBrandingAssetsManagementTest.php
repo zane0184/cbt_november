@@ -820,6 +820,17 @@ class TenantBrandingAssetsManagementTest extends TestCase
                     $this->assertSame($value, $first[$column], $fixture['name'] . ' must preserve existing ' . $column);
                 }
 
+                $firstIndexState = collect(DB::select('SHOW INDEX FROM tenants'))
+                    ->map(fn ($index): array => [
+                        $index->Key_name,
+                        $index->Column_name,
+                        (int) $index->Seq_in_index,
+                        (int) $index->Non_unique,
+                    ])
+                    ->sortBy(fn (array $index): string => implode('|', $index))
+                    ->values()
+                    ->all();
+
                 // Re-running up against the target schema must be a no-op.
                 $migration->up();
                 $second = (array) DB::table('tenants')->where('id', $tenantId)->first();
@@ -857,17 +868,6 @@ class TenantBrandingAssetsManagementTest extends TestCase
                         $fixture['name'] . ' branding reference index must remain non-unique'
                     );
                 }
-                $firstIndexState = $indexRows
-                    ->map(fn ($index): array => [
-                        $index->Key_name,
-                        $index->Column_name,
-                        (int) $index->Seq_in_index,
-                        (int) $index->Non_unique,
-                    ])
-                    ->sortBy(fn (array $index): string => implode('|', $index))
-                    ->values()
-                    ->all();
-
                 try {
                     $migration->down();
                     $this->fail($fixture['name'] . ' rollback must fail closed.');
