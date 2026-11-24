@@ -356,7 +356,22 @@ class StudentImportTest extends TestCase
         (new Xlsx($spreadsheet))->save($path);
         $content = file_get_contents($path);
         @unlink($path);
-        $spreadsheet->discon    public function test_xlsx_preflight_rejects_zip_path_traversal(): void
+        $spreadsheet->discon        $spreadsheet->disconnectWorksheets();
+
+
+
+        $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('NISN harus disimpan sebagai teks');
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+
+    public function test_xlsx_preflight_rejects_zip_path_traversal(): void
     {
         $this->actingAs($this->admin);
         $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
@@ -480,18 +495,6 @@ class StudentImportTest extends TestCase
         $csv = "nama,nisn\n" . str_repeat('X', 70000) . ",0001234567\n";
 
         $this->assertCsvPreviewRejected($csv);
-    }
-
-nectWorksheets();
-
-        $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
-        Livewire::test(StudentImport::class)
-            ->set('selectedRombelId', $this->rombel->id)
-            ->set('file', $file)
-            ->call('preview')
-            ->assertHasNoErrors()
-            ->assertSee('NISN harus disimpan sebagai teks');
-        $this->assertDatabaseCount('student_profiles', 0);
     }
 
 
