@@ -108,3 +108,39 @@ PR #24 telah diubah judul/body menjadi **SUPERSEDED — DO NOT MERGE** dan tetap
 - Jangan cherry-pick atau merge branch P0 lama.
 - Tunggu CI run `45480853326` pada SHA `653412d`.
 - Setelah branch stabil, buat branch korektif baru dari head integrasi terkini untuk blank-row CSV dan coverage batas CSV; backup source/test terlebih dahulu.
+
+
+## 8. UPDATE AUDIT — INTEGRATION CI DAN CSV FOLLOW-UP
+
+### Integration branch CI
+Branch source of truth `work/benchmark-cleanup-proof-20261125`, exact SHA `653412daace51fa973c697f98195a9fa8a91219a`, CI run `45480853326`: SUCCESS.
+
+Per PHP 8.3 dan PHP 8.4, MySQL 8.0.46 InnoDB disposable:
+- StudentImportTest: 11 passed, 52 assertions.
+- Benchmark cleanup denial-path: 1 passed, 20 assertions.
+- Full PHPUnit: 606 passed, 1 skipped, 0 failed, 3.058 assertions.
+
+Ini memverifikasi integrasi terbaru setelah perbaikan off-by-one worksheet row bound. Namun, CSV blank-row behavior masih memerlukan perbaikan dan regression coverage sebelum Student Import operasional dinyatakan selesai.
+
+### CSV follow-up branch
+Branch baru dibuat dari exact integration SHA 653412:
+`work/p0-csv-import-hardening-20261125`.
+
+Backup byte-exact sebelum patch:
+- StudentImportService.php: SHA-256 `9a335dad3c2c0371b515b1a37850e86f1c47da5765c22388264d0f6fbb31b897`; Git blob `0c218d8ac481e6d3a5287c4a1cdc50bdfed88285`.
+- StudentImportTest.php: SHA-256 `3398c48358d50bf86b3a762f5db9e386db3d060b6590d6f3e88c924207e3149d`; Git blob `e0a4ab94142388552446e6d7f1474516494f9cc6`.
+- docx-import-parser-ci.yml: SHA-256 `67e3f9d5f8e070d5dbb63ca540a1dbbce7d2db0d261d6acb92da5456f83dacb4`; Git blob `d9bca1b84256ce6d2b6c9b973fcf086c599d0fe8`.
+
+Seluruh backup diverifikasi identik dengan source (Git blob SHA-1 sama dan content sama).
+
+Perubahan pada branch follow-up:
+- Blank CSV records dilewati sebelum menghitung data rows dan cells.
+- Physical record number tetap dipertahankan untuk laporan baris duplikat.
+- Delapan regression tests baru: blank row import, physical row numbering, >32 columns, >256 KiB record, >4 KiB cell, invalid UTF-8, NUL byte, dan >5.000 nonblank rows.
+- CI workflow diperluas agar berjalan pada branch follow-up dan menambahkan git diff --check.
+
+CI runs:
+- `45482033725` pada commit `25ba5dd`: IN PROGRESS.
+- `45482057434` pada exact head `6232e180d586a9589d93bb61b882a607a69098d0`: PENDING/QUEUED saat update.
+Belum ada klaim PASS untuk CSV follow-up.
+
