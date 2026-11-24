@@ -63,3 +63,18 @@
   - Source blob SHA: `97001a504f11c19c686d35bd83fda824c4590203`
   - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/portal-profile.blade.php.before`
   - Backup commit: `undefined`
+
+- Source: `backend-laravel/database/migrations/2026_11_24_170001_enforce_tenant_login_identity_uniques.php`
+  - Source blob SHA: `c7dcc69d494e42c6fde77b77b76f8f7a6467bad2`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/2026_11_24_170001_enforce_tenant_login_identity_uniques.php.before_refinement`
+  - Backup commit: `undefined`
+
+- Source: `backend-laravel/app/Console/Commands/LoginIdentityPreflightCommand.php`
+  - Source blob SHA: `ce0fbe32ddd2c57faecf857ae1041946405db368`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/LoginIdentityPreflightCommand.php.before_refinement`
+  - Backup commit: `undefined`
+
+- Source: `backend-laravel/tests/Feature/LoginIdentityPreflightCommandTest.php`
+  - Source blob SHA: `f6b8f1729b20394ed9b67720c343ac7c30e23b66`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/LoginIdentityPreflightCommandTest.php.before_refinement`
+  - Backup commit: `undefined`
