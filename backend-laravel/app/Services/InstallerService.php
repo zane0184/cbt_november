@@ -911,6 +911,58 @@ class InstallerService
             }
         }
 
+        $requiredYears = [
+            '2026/2027',
+            '2027/2028',
+            '2028/2029',
+            '2029/2030',
+            '2030/2031',
+            '2031/2032',
+        ];
+        $years = DB::table('academic_years')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->whereIn('name', $requiredYears)
+            ->get();
+
+        if ($years->count() !== count($requiredYears)) {
+            return false;
+        }
+
+        foreach ($years as $year) {
+            $terms = DB::table('semesters')
+                ->where('tenant_id', $tenantId)
+                ->where('academic_year_id', $year->id)
+                ->whereNull('deleted_at')
+                ->pluck('term')
+                ->all();
+            sort($terms);
+            if ($terms !== ['GANJIL', 'GENAP']) {
+                return false;
+            }
+        }
+
+        $activeYearIds = DB::table('academic_years')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->pluck('id')
+            ->all();
+        $activeSemesters = DB::table('semesters')
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->get();
+
+        if (count($activeYearIds) > 1 || $activeSemesters->count() > 1 || count($activeYearIds) !== $activeSemesters->count()) {
+            return false;
+        }
+
+        if ($activeSemesters->isNotEmpty()
+            && (string) $activeSemesters->first()->academic_year_id !== (string) $activeYearIds[0]) {
+            return false;
+        }
+
         return true;
     }
 
