@@ -17,7 +17,7 @@ class InstallationIdentityService
         $existing = $identities->first();
         if ($existing) {
             if ((string) $existing->tenant_id !== $tenantId || $existing->product_code !== (string) config('license.product_code', 'CBT-MI')) throw new RuntimeException('INSTALLATION_TENANT_MISMATCH');
-            if ($this->madrasahTenantCount() !== 1) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
+            if ($this->madrasahTenantCount() !== 1 || !$this->isMadrasahTenant($tenantId)) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
             return $existing;
         }
         if ($this->madrasahTenantCount() !== 1 || !$this->isMadrasahTenant($tenantId)) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
