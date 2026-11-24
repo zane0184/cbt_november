@@ -217,33 +217,72 @@ class TenantBrandingAssetsManagementTest extends TestCase
     public function test_branding_local_path_rejects_traversal_absolute_backslash_and_missing_paths(): void
     {
         $branding = app(TenantBrandingService::class);
+        $tenantId = (string) $this->tenant->id;
+        $tenantBrandingDirectory = storage_path('app/public/tenants/' . $tenantId . '/branding');
+        File::ensureDirectoryExists($tenantBrandingDirectory);
 
         foreach ([
             '../outside.png',
-            'tenants/' . $this->tenant->id . '/branding/../../outside.png',
+            'tenants/' . $tenantId . '/branding/../../outside.png',
             '/etc/passwd',
-            'tenants\\' . $this->tenant->id . '\\branding\\logo.png',
-            'tenants/' . $this->tenant->id . '/branding/missing.png',
+            'tenants\\' . $tenantId . '\\branding\\logo.png',
+            'tenants/' . $tenantId . '/branding/missing.png',
+            'tenants/' . $tenantId . '/branding/nested/file.png',
         ] as $path) {
             $this->assertNull($branding->localPath($path), 'Unsafe path was accepted: ' . $path);
         }
 
-        $otherTenantId = (string) Str::uuid();
-        $otherPath = 'tenants/' . $otherTenantId . '/branding/real-logo.png';
-        $aliasPath = 'tenants/' . $this->tenant->id . '/branding/aliased-logo.png';
-        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $otherPath)));
-        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $aliasPath)));
-        File::copy(
-            UploadedFile::fake()->image('real-logo.png', 120, 120)->getRealPath(),
-            storage_path('app/public/' . $otherPath)
-        );
-        symlink(
-            storage_path('app/public/' . $otherPath),
-            storage_path('app/public/' . $aliasPath)
-        );
+        $internalImage = UploadedFile::fake()->image('internal-target.png', 120, 120);
+        $internalTarget = $tenantBrandingDirectory . '/internal-target.png';
+        $this->assertTrue(File::copy($internalImage->getRealPath(), $internalTarget));
+        $internalLink = $tenantBrandingDirectory . '/internal-link.png';
+        $this->assertTrue(symlink($internalTarget, $internalLink));
 
-        $this->assertNull($branding->localPath($aliasPath), 'A symlink into another tenant branding directory must be rejected.');
-        File::deleteDirectory(storage_path('app/public/tenants/' . $otherTenantId));
+        $internalLinkPath = 'tenants/' . $tenantId . '/branding/internal-link.png';
+        $this->assertSame(realpath($internalTarget), $branding->localPath($internalLinkPath));
+        $branding->deleteManaged($internalLinkPath, $tenantId);
+        $this->assertFileDoesNotExist($internalLink);
+        $this->assertFileExists($internalTarget);
+
+        $otherTenantId = (string) Str::uuid();
+        $otherTenantDirectory = storage_path('app/public/tenants/' . $otherTenantId . '/branding');
+        File::ensureDirectoryExists($otherTenantDirectory);
+        $crossTenantImage = UploadedFile::fake()->image('cross-tenant-target.png', 120, 120);
+        $crossTenantTarget = $otherTenantDirectory . '/cross-tenant-target.png';
+        $this->assertTrue(File::copy($crossTenantImage->getRealPath(), $crossTenantTarget));
+
+        $outsideDirectory = storage_path('app/private/branding-outside-' . strtolower(Str::random(10)));
+        File::ensureDirectoryExists($outsideDirectory);
+        $outsideTarget = $outsideDirectory . '/outside-target.bin';
+        File::put($outsideTarget, 'outside-installation-target');
+
+        try {
+            $crossTenantLink = $tenantBrandingDirectory . '/cross-tenant-link.png';
+            $this->assertTrue(symlink($crossTenantTarget, $crossTenantLink));
+            $crossTenantLinkPath = 'tenants/' . $tenantId . '/branding/cross-tenant-link.png';
+            $this->assertNull($branding->localPath($crossTenantLinkPath));
+            $branding->deleteManaged($crossTenantLinkPath, $tenantId);
+            $this->assertFileDoesNotExist($crossTenantLink);
+            $this->assertFileExists($crossTenantTarget);
+
+            $outsideLink = $tenantBrandingDirectory . '/outside-link.png';
+            $this->assertTrue(symlink($outsideTarget, $outsideLink));
+            $outsideLinkPath = 'tenants/' . $tenantId . '/branding/outside-link.png';
+            $this->assertNull($branding->localPath($outsideLinkPath));
+            $branding->deleteManaged($outsideLinkPath, $tenantId);
+            $this->assertFileDoesNotExist($outsideLink);
+            $this->assertFileExists($outsideTarget);
+
+            $brokenLink = $tenantBrandingDirectory . '/broken-link.png';
+            $this->assertTrue(symlink($tenantBrandingDirectory . '/missing-target.png', $brokenLink));
+            $brokenLinkPath = 'tenants/' . $tenantId . '/branding/broken-link.png';
+            $this->assertNull($branding->localPath($brokenLinkPath));
+            $branding->deleteManaged($brokenLinkPath, $tenantId);
+            $this->assertFalse(is_link($brokenLink), 'A dangling symlink entry should be removable without touching its target.');
+        } finally {
+            File::deleteDirectory(storage_path('app/public/tenants/' . $otherTenantId));
+            File::deleteDirectory($outsideDirectory);
+        }
     }
 
     public function test_branding_service_rejects_invalid_image_content_and_oversized_uploads(): void
@@ -323,7 +362,8 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
     public function test_branding_upload_is_scoped_to_the_authenticated_installation_tenant(): void
     {
-        $appLogoPath = app(TenantBrandingService::class)->storeUpload(
+        $branding = app(TenantBrandingService::class);
+        $appLogoPath = $branding->storeUpload(
             UploadedFile::fake()->image('tenant-a-logo.png', 120, 120),
             (string) $this->tenant->id,
             'app-logo'
@@ -340,15 +380,29 @@ class TenantBrandingAssetsManagementTest extends TestCase
         ]);
         $otherAdmin->roles()->sync([$role->id]);
 
-        $this->actingAs($otherAdmin);
-        // actingAs() swaps the guard user without dispatching the Authenticated
-        // event used by the real request lifecycle to synchronize TenantContext.
-        app(\App\Contexts\TenantContext::class)->setTenantId($otherTenant->id);
+        // User B + Context B: direct service use (without a Livewire request)
+        // may resolve B's own asset but must not resolve A's asset.
+        $this->actingAs($otherAdmin, 'web');
+        Auth::guard('sanctum')->forgetUser();
+        $this->setTenantContext((string) $otherTenant->id);
+        $otherLogoPath = $branding->storeUpload(
+            UploadedFile::fake()->image('tenant-b-logo.png', 120, 120),
+            (string) $otherTenant->id,
+            'app-logo'
+        );
+        $otherTenant->forceFill(['logo_path' => $otherLogoPath])->save();
 
-        $branding = app(TenantBrandingService::class);
+        $this->assertNotNull($branding->localPath($otherLogoPath));
         $this->assertNull($branding->localPath($appLogoPath));
         $this->assertNull($branding->publicUrl($appLogoPath));
         $this->assertNull(app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh()));
+
+        // User A + Context B is inconsistent and must fail closed.
+        $this->actingAs($this->admin, 'web');
+        Auth::guard('sanctum')->forgetUser();
+        $this->setTenantContext((string) $otherTenant->id);
+        $this->assertNull($branding->localPath($appLogoPath));
+        $this->assertNull($branding->localPath($otherLogoPath));
 
         try {
             $branding->storeUpload(
@@ -356,66 +410,152 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 (string) $this->tenant->id,
                 'app-logo'
             );
-            $this->fail('A tenant B account must not write branding under tenant A.');
+            $this->fail('User A with Context B must not upload into either installation.');
         } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('tidak sesuai', $exception->getMessage());
         }
 
-        Livewire::test(TenantBrandingAssetsManagement::class)
-            ->set('appLogoUpload', UploadedFile::fake()->image('other-logo.png', 120, 120))
-            ->call('save')
-            ->assertHasNoErrors();
+        // User B + Context A is also inconsistent and must fail closed.
+        $this->actingAs($otherAdmin, 'web');
+        Auth::guard('sanctum')->forgetUser();
+        $this->setTenantContext((string) $this->tenant->id);
+        $this->assertNull($branding->localPath($appLogoPath));
+        $this->assertNull($branding->localPath($otherLogoPath));
 
-        $this->assertSame($appLogoPath, $this->tenant->fresh()->logo_path);
-        $this->assertFileExists(storage_path('app/public/' . $appLogoPath));
-        $this->assertStringStartsWith('tenants/' . $otherTenant->id . '/branding/app-logo-', $otherTenant->fresh()->logo_path);
-        $this->assertFileExists(storage_path('app/public/' . $otherTenant->fresh()->logo_path));
+        // Missing context for an authenticated user is not inferred from a
+        // path, UUID, cached Tenant model, or previous request.
+        $this->setTenantContext(null);
+        $this->assertNull($branding->localPath($otherLogoPath));
+
+        // No authenticated user and no single local installation identity:
+        // no managed branding path may be returned.
+        Auth::forgetGuards();
+        request()->setUserResolver(fn ($guard = null) => null);
+        $this->setTenantContext(null);
+        if (Schema::hasTable('local_installation_identities')) {
+            DB::table('local_installation_identities')->delete();
+        }
+        $this->assertNull($branding->localPath($appLogoPath));
+        $this->assertNull($branding->localPath($otherLogoPath));
     }
 
     public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
     {
-        $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
-        $documentPath = 'tenants/' . $this->tenant->id . '/branding/legacy-document.png';
-        $faviconPath = 'tenants/' . $this->tenant->id . '/branding/legacy-favicon.png';
-        $this->tenant->forceFill([
-            'document_logo_path' => $documentPath,
-            'favicon_path' => $faviconPath,
-        ])->save();
+        $this->assertSame('mysql', DB::connection()->getDriverName(), 'The branding migration matrix must run on disposable MySQL/InnoDB.');
 
-        // Target schema: both columns already exist; migration must be a no-op.
-        $migration->up();
-        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
-        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
-        $this->assertSame($documentPath, $this->tenant->fresh()->document_logo_path);
-        $this->assertSame($faviconPath, $this->tenant->fresh()->favicon_path);
+        $originalDefault = config('database.default');
+        $mysqlConfig = config('database.connections.mysql');
+        $database = 'cbt_branding_matrix_' . strtolower(Str::random(10));
+        $controlConnection = 'branding_matrix_control';
+        $fixtureConnection = 'branding_matrix_fixture';
+        $createdDatabase = false;
 
-        // Legacy schema with only document_logo_path.
-        Schema::table('tenants', function ($table): void {
-            $table->dropColumn('favicon_path');
-        });
-        $migration->up();
-        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
-        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
-        $this->assertSame($documentPath, $this->tenant->fresh()->document_logo_path);
+        config(['database.connections.' . $controlConnection => $mysqlConfig]);
+        DB::purge($controlConnection);
 
-        // Legacy schema with only favicon_path.
-        Schema::table('tenants', function ($table): void {
-            $table->dropColumn('document_logo_path');
-        });
-        $migration->up();
-        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
-        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
-        $this->assertSame($faviconPath, $this->tenant->fresh()->favicon_path);
+        try {
+            DB::connection($controlConnection)->statement(
+                'CREATE DATABASE ' . $database . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+            );
+            $createdDatabase = true;
 
-        // Empty pre-branding schema: neither column exists.
-        Schema::table('tenants', function ($table): void {
-            $table->dropColumn(['document_logo_path', 'favicon_path']);
-        });
-        $migration->up();
-        $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
-        $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+            config([
+                'database.connections.' . $fixtureConnection => array_merge($mysqlConfig, ['database' => $database]),
+                'database.default' => $fixtureConnection,
+            ]);
+            DB::purge($fixtureConnection);
+            DB::setDefaultConnection($fixtureConnection);
+
+            $fixtures = [
+                ['name' => 'empty', 'document' => false, 'favicon' => false, 'document_index' => false],
+                ['name' => 'document_only', 'document' => true, 'favicon' => false, 'document_index' => false],
+                ['name' => 'favicon_only', 'document' => false, 'favicon' => true, 'document_index' => false],
+                ['name' => 'target_schema', 'document' => true, 'favicon' => true, 'document_index' => false],
+                ['name' => 'target_schema_with_index', 'document' => true, 'favicon' => true, 'document_index' => true],
+            ];
+
+            foreach ($fixtures as $fixture) {
+                Schema::dropIfExists('tenants');
+                Schema::create('tenants', function (Blueprint $table) use ($fixture): void {
+                    $table->uuid('id')->primary();
+                    $table->string('name', 120);
+                    $table->string('logo_path', 500)->nullable();
+
+                    if ($fixture['document']) {
+                        $table->string('document_logo_path', 500)->nullable();
+                    }
+                    if ($fixture['favicon']) {
+                        $table->string('favicon_path', 500)->nullable();
+                    }
+
+                    $table->index('name', 'tenants_name_idx');
+                    if ($fixture['document_index']) {
+                        $table->index('document_logo_path', 'tenants_document_logo_path_idx');
+                    }
+                });
+
+                $tenantId = (string) Str::uuid();
+                $row = [
+                    'id' => $tenantId,
+                    'name' => 'preserve-' . $fixture['name'],
+                    'logo_path' => 'legacy/' . $fixture['name'] . '-logo.png',
+                ];
+                if ($fixture['document']) {
+                    $row['document_logo_path'] = 'legacy/' . $fixture['name'] . '-document.png';
+                }
+                if ($fixture['favicon']) {
+                    $row['favicon_path'] = 'legacy/' . $fixture['name'] . '-favicon.png';
+                }
+                DB::table('tenants')->insert($row);
+
+                $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
+                $migration->up();
+
+                $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'), $fixture['name']);
+                $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'), $fixture['name']);
+
+                $first = (array) DB::table('tenants')->where('id', $tenantId)->first();
+                foreach ($row as $column => $value) {
+                    $this->assertSame($value, $first[$column], $fixture['name'] . ' must preserve existing ' . $column);
+                }
+
+                // Re-running up against the target schema must be a no-op.
+                $migration->up();
+                $second = (array) DB::table('tenants')->where('id', $tenantId)->first();
+                $this->assertSame($first, $second, $fixture['name'] . ' migration up must be idempotent');
+
+                $indexNames = collect(DB::select('SHOW INDEX FROM tenants'))
+                    ->pluck('Key_name')
+                    ->unique()
+                    ->all();
+                $this->assertContains('tenants_name_idx', $indexNames);
+                if ($fixture['document_index']) {
+                    $this->assertContains('tenants_document_logo_path_idx', $indexNames);
+                }
+
+                try {
+                    $migration->down();
+                    $this->fail($fixture['name'] . ' rollback must fail closed.');
+                } catch (\LogicException $exception) {
+                    $this->assertStringContainsString('forward-only', $exception->getMessage());
+                }
+
+                $this->assertTrue(Schema::hasColumn('tenants', 'document_logo_path'));
+                $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
+                $afterRollbackAttempt = (array) DB::table('tenants')->where('id', $tenantId)->first();
+                $this->assertSame($second, $afterRollbackAttempt, $fixture['name'] . ' rollback must preserve all data');
+            }
+        } finally {
+            DB::setDefaultConnection($originalDefault);
+            config(['database.default' => $originalDefault]);
+            DB::purge($fixtureConnection);
+
+            if ($createdDatabase) {
+                DB::connection($controlConnection)->statement('DROP DATABASE IF EXISTS ' . $database);
+            }
+            DB::purge($controlConnection);
+        }
     }
-
 
     public function test_pdf_header_falls_back_when_document_logo_is_missing_or_corrupt_and_returns_null_without_app_logo(): void
     {
