@@ -395,7 +395,7 @@ class StudentImportTest extends TestCase
             ->assertSet('previewRows.0.row', 2)
             ->assertSet('previewRows.1.row', 4)
             ->assertSee('NISN duplikat di dalam file');
-        
+
         $this->assertDatabaseCount('student_profiles', 0);
     }
 
