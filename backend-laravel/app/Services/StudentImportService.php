@@ -9,6 +9,7 @@ use App\Models\StudentProfile;
 use App\Models\User;
 use App\Services\Import\StudentImportReadFilter;
 use App\Services\Import\XlsxPackagePreflight;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -38,6 +39,7 @@ class StudentImportService
 
     public function preview(string $path, string $extension, string $tenantId, string $rombelId): array
     {
+        $this->assertAdminActor($tenantId);
         $rombel = $this->resolveRombel($tenantId, $rombelId);
         [$headers, $sourceRows] = $this->readRows($path, strtolower($extension));
 
@@ -183,6 +185,8 @@ class StudentImportService
 
     public function import(array $preview, string $tenantId, string $actorId, string $rombelId): array
     {
+        $this->assertAdminActor($tenantId, $actorId);
+
         if (($preview['total'] ?? 0) < 1 || ($preview['invalid'] ?? 0) > 0) {
             throw ValidationException::withMessages([
                 'file' => 'Import dibatalkan. Perbaiki seluruh baris yang memiliki error lalu buat preview kembali.',
@@ -290,6 +294,36 @@ class StudentImportService
         } finally {
             $context->setTenantId($previousTenant);
         }
+    }
+
+    private function assertAdminActor(string $tenantId, ?string $actorId = null): User
+    {
+        $authenticatedId = auth()->id();
+        if (!$authenticatedId || ($actorId !== null && (string) $authenticatedId !== $actorId)) {
+            throw new AuthorizationException('Aktor Import Siswa tidak sesuai dengan sesi autentikasi.');
+        }
+
+        $actor = User::withoutGlobalScopes()
+            ->whereKey($authenticatedId)
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (
+            !$actor
+            || !(bool) $actor->is_active
+            || !$actor->hasExactRole('ADMIN_MADRASAH')
+            || !$actor->hasPermission('user.manage')
+        ) {
+            throw new AuthorizationException('Import Siswa hanya dapat dilakukan Admin Madrasah aktif dengan permission user.manage.');
+        }
+
+        $contextTenantId = app(TenantContext::class)->getTenantId();
+        if ($contextTenantId !== null && $contextTenantId !== $tenantId) {
+            throw new AuthorizationException('Tenant context tidak cocok dengan Admin Madrasah yang terautentikasi.');
+        }
+
+        return $actor;
     }
 
     private function resolveRombel(string $tenantId, string $rombelId, bool $lock = false): Rombel
@@ -409,9 +443,10 @@ class StudentImportService
 
             $delimiters = [',', ';', "\t"];
             $delimiter = ',';
-            $highestCount = -1;
+            $highestCount = 1;
             foreach ($delimiters as $candidate) {
-                $count = substr_count($firstLine, $candidate);
+                $parsedHeader = str_getcsv($firstLine, $candidate, '"', '');
+                $count = is_array($parsedHeader) ? count($parsedHeader) : 1;
                 if ($count > $highestCount) {
                     $highestCount = $count;
                     $delimiter = $candidate;
@@ -436,14 +471,17 @@ class StudentImportService
             while (($values = $this->readCsvRecord($handle, $delimiter)) !== false) {
                 $recordNumber++;
                 $cellCount += count($values);
-                if (count($values) !== count($headers)) {
-                    throw ValidationException::withMessages(['file' => 'Jumlah kolom setiap record CSV harus sama dengan header.']);
-                }
                 if ($recordNumber > self::MAX_ROWS + 1) {
                     throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
                 }
                 if ($cellCount > self::MAX_CELLS) {
                     throw ValidationException::withMessages(['file' => 'Jumlah cell CSV melewati batas keamanan.']);
+                }
+                if ($this->isBlankRow($values)) {
+                    continue;
+                }
+                if (count($values) !== count($headers)) {
+                    throw ValidationException::withMessages(['file' => 'Jumlah kolom setiap record CSV harus sama dengan header.']);
                 }
 
                 $rows[] = ['row' => $recordNumber, 'values' => $values];
@@ -518,6 +556,12 @@ class StudentImportService
 
         $currentExecutionLimit = (int) ini_get('max_execution_time');
         if ($currentExecutionLimit === 0 || $currentExecutionLimit > 30) {
+            if (!function_exists('set_time_limit')) {
+                throw ValidationException::withMessages([
+                    'file' => 'Runtime PHP tidak mengizinkan penerapan batas waktu parsing 30 detik.',
+                ]);
+            }
+
             $changed = @set_time_limit(30);
             if (!$changed && (int) ini_get('max_execution_time') > 30) {
                 throw ValidationException::withMessages([

@@ -52,7 +52,6 @@ final class XlsxPackagePreflight
 
             $names = [];
             $totalExpanded = 0;
-            $xmlEntries = [];
 
             for ($index = 0; $index < $zip->numFiles; $index++) {
                 $stat = $zip->statIndex($index);
@@ -81,6 +80,9 @@ final class XlsxPackagePreflight
                 }
 
                 $this->assertNotSymlink($zip, $index);
+                if (isset($stat['encryption_method']) && (int) $stat['encryption_method'] !== 0) {
+                    $this->reject('Entry XLSX terenkripsi tidak diizinkan.');
+                }
 
                 $expanded = (int) $stat['size'];
                 $compressed = (int) $stat['comp_size'];
@@ -117,7 +119,6 @@ final class XlsxPackagePreflight
                         $this->assertNoExternalRelationships($xml, $name);
                     }
 
-                    $xmlEntries[$name] = true;
                 }
             }
 
@@ -347,6 +348,13 @@ final class XlsxPackagePreflight
                 $cellCount++;
                 if ($cellCount > self::MAX_CELLS) {
                     $this->reject('Jumlah cell XLSX melewati batas keamanan.');
+                }
+            }
+
+            if ($reader->localName === 'is') {
+                $inlineString = $reader->readString();
+                if (strlen($inlineString) > self::MAX_CELL_BYTES) {
+                    $this->reject('Isi inline string XLSX melewati batas 4 KiB.');
                 }
             }
 

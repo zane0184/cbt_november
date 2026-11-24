@@ -16,7 +16,9 @@ use App\Models\Rombel;
 use App\Models\StudentProfile;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -48,6 +50,7 @@ class StudentImportTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'name' => 'Admin Import',
             'password' => bcrypt('PasswordAdmin#2026'),
+            'is_active' => true,
         ]);
         $this->admin->roles()->sync([$adminRole->id]);
 
@@ -352,4 +355,144 @@ class StudentImportTest extends TestCase
         $this->actingAs($student);
         $this->get('/admin/students/import')->assertForbidden();
     }
+    public function test_csv_rejects_more_than_32_columns(): void
+    {
+        $this->actingAs($this->admin);
+        $headers = implode(',', array_map(fn ($index) => 'column_' . $index, range(1, 33)));
+        $values = implode(',', array_fill(0, 33, 'value'));
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $headers . "\n" . $values . "\n");
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+    public function test_csv_rejects_cell_larger_than_4_kib(): void
+    {
+        $this->actingAs($this->admin);
+        $file = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn\n" . str_repeat('A', 4097) . ",0001234567\n"
+        );
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file');
+    }
+
+    public function test_csv_rejects_record_larger_than_256_kib(): void
+    {
+        $this->actingAs($this->admin);
+        $file = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn\n" . str_repeat('A', 300 * 1024) . ",0001234567\n"
+        );
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file');
+    }
+
+    public function test_csv_rejects_invalid_utf8_and_nul_bytes(): void
+    {
+        $this->actingAs($this->admin);
+
+        foreach (["Siswa\xFF,0001234567", "Siswa\0Uji,0001234567"] as $record) {
+            $file = UploadedFile::fake()->createWithContent('siswa.csv', "nama,nisn\n" . $record . "\n");
+            Livewire::test(StudentImport::class)
+                ->set('selectedRombelId', $this->rombel->id)
+                ->set('file', $file)
+                ->call('preview')
+                ->assertHasErrors('file');
+        }
+    }
+
+    public function test_csv_rejects_inconsistent_column_count_but_ignores_blank_lines(): void
+    {
+        $this->actingAs($this->admin);
+        $valid = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn\n\nSiswa Valid,0001234567\n"
+        );
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $valid)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('0001234567');
+
+        $invalid = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn\nSiswa Invalid,0001234567,extra\n"
+        );
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $invalid)
+            ->call('preview')
+            ->assertHasErrors('file');
+    }
+
+    public function test_service_enforces_upload_size_limit_without_livewire_validation(): void
+    {
+        $this->actingAs($this->admin);
+        $path = tempnam(sys_get_temp_dir(), 'student-import-large-');
+        file_put_contents($path, str_repeat('A', 10 * 1024 * 1024 + 1));
+
+        try {
+            $this->expectException(ValidationException::class);
+            app(StudentImportService::class)->preview($path, 'csv', $this->tenant->id, $this->rombel->id);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+    public function test_service_preview_rejects_non_admin_direct_invocation(): void
+    {
+        $teacherRole = Role::firstOrCreate(['name' => 'GURU', 'label' => 'Guru']);
+        $teacher = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Bukan Admin',
+            'password' => bcrypt('PasswordGuru#2026'),
+            'is_active' => true,
+        ]);
+        $teacher->roles()->sync([$teacherRole->id]);
+        $this->actingAs($teacher);
+
+        $this->expectException(AuthorizationException::class);
+        app(StudentImportService::class)->preview('/not-used.csv', 'csv', $this->tenant->id, $this->rombel->id);
+    }
+
+    public function test_service_rejects_cross_tenant_preview_even_when_admin_is_authenticated(): void
+    {
+        $otherTenant = Tenant::create(['name' => 'Tenant Tidak Sah', 'code' => 'TENUNSAH']);
+        $this->actingAs($this->admin);
+
+        $this->expectException(AuthorizationException::class);
+        app(StudentImportService::class)->preview('/not-used.csv', 'csv', $otherTenant->id, $this->rombel->id);
+    }
+
+    public function test_service_import_rejects_actor_id_different_from_authenticated_admin(): void
+    {
+        $otherUser = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Akun Lain',
+            'password' => bcrypt('PasswordOther#2026'),
+            'is_active' => true,
+        ]);
+        $this->actingAs($this->admin);
+
+        $this->expectException(AuthorizationException::class);
+        app(StudentImportService::class)->import([], $this->tenant->id, $otherUser->id, $this->rombel->id);
+    }
+
 }
