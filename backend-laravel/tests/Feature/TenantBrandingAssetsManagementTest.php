@@ -659,6 +659,13 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
     public function test_branding_resolution_is_isolated_between_two_disposable_installation_databases(): void
     {
+        if (
+            !app()->environment('testing')
+            || DB::connection()->getDriverName() !== 'mysql'
+            || !str_starts_with((string) config('database.connections.mysql.database'), 'cbt_ci_')
+        ) {
+            $this->markTestSkipped('Two-installation isolation requires the isolated cbt_ci_* MySQL test database.');
+        }
         $databaseA = 'cbt_brand_a_' . strtolower(Str::random(10));
         $databaseB = 'cbt_brand_b_' . strtolower(Str::random(10));
         $tenantAId = (string) Str::uuid();
