@@ -160,20 +160,19 @@ class Phase7dBenchmarkCommand extends Command
                 // Preserve original application connection configuration.
             }
 
-            if ($databaseCreated) {
-                try {
-                    DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
-                    $remaining = DB::connection('mysql')->select(
-                        'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
-                        [$temporaryDatabaseName]
-                    );
-                    if ($remaining !== []) {
-                        throw new \RuntimeException('Temporary benchmark database still exists after cleanup.');
-                    }
-                    $this->info('Temporary MySQL database removed; absence verified.');
-                } catch (\Throwable $exception) {
-                    $cleanupFailure = $exception;
+            // Always attempt DROP, even if CREATE DATABASE reported an error after server-side creation.
+            try {
+                DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
+                $remaining = DB::connection('mysql')->select(
+                    'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
+                    [$temporaryDatabaseName]
+                );
+                if ($remaining !== []) {
+                    throw new \RuntimeException('Temporary benchmark database still exists after cleanup.');
                 }
+                $this->info('Temporary MySQL database removed; absence verified.');
+            } catch (\Throwable $exception) {
+                $cleanupFailure = $exception;
             }
 
             try {
@@ -715,7 +714,7 @@ class Phase7dBenchmarkCommand extends Command
         ]);
         $warmupReq->setUserResolver(fn() => $teacherUser);
         $warmupResp = $reportController->exportPdf($warmupReq, $exam);
-        $warmupBytes = strlen($warmupResp->getContent());
+        $warmupBytes = $this->persistAndVerifyPdfResponse($warmupResp, 'warm-up');
         $warmupDuration = round((microtime(true) - $warmupStart) * 1000, 2);
         $this->line(sprintf("  [Warm-up] Completed in %8.2f ms | PDF Size: %d bytes", $warmupDuration, $warmupBytes));
 
@@ -731,12 +730,11 @@ class Phase7dBenchmarkCommand extends Command
             $request->setUserResolver(fn() => $teacherUser);
 
             $response = $reportController->exportPdf($request, $exam);
-            $content = $response->getContent();
+            $bytes = $this->persistAndVerifyPdfResponse($response, "run-{$r}");
 
             $end = microtime(true);
             $peakMem = memory_get_peak_usage(true) / 1024 / 1024;
             $durationMs = ($end - $start) * 1000;
-            $bytes = strlen($content);
 
             $runsData[] = [
                 'run' => $r,
@@ -749,6 +747,73 @@ class Phase7dBenchmarkCommand extends Command
         }
 
         return $runsData;
+    }
+
+    /**
+     * Persist the actual controller response to a temporary .pdf file and verify
+     * HTTP success, PDF signature, non-zero bytes, and file removal afterwards.
+     */
+    private function persistAndVerifyPdfResponse($response, string $label): int
+    {
+        if (!method_exists($response, 'getStatusCode') || $response->getStatusCode() !== 200) {
+            throw new \RuntimeException("PDF {$label} did not return HTTP 200.");
+        }
+
+        $content = $response->getContent();
+        if (!is_string($content) || $content === '') {
+            throw new \RuntimeException("PDF {$label} response body is empty.");
+        }
+
+        $temporaryBase = tempnam(sys_get_temp_dir(), 'cbt-pdf-');
+        if ($temporaryBase === false) {
+            throw new \RuntimeException("Unable to allocate temporary PDF path for {$label}.");
+        }
+
+        $pdfPath = $temporaryBase . '.pdf';
+        try {
+            if (!rename($temporaryBase, $pdfPath)) {
+                throw new \RuntimeException("Unable to prepare temporary PDF file for {$label}.");
+            }
+
+            $written = file_put_contents($pdfPath, $content, LOCK_EX);
+            if ($written === false || $written !== strlen($content)) {
+                throw new \RuntimeException("PDF {$label} could not be fully written to disk.");
+            }
+
+            clearstatcache(true, $pdfPath);
+            $bytes = filesize($pdfPath);
+            if ($bytes === false || $bytes <= 0) {
+                throw new \RuntimeException("PDF {$label} file size must be greater than zero.");
+            }
+
+            $handle = fopen($pdfPath, 'rb');
+            if ($handle === false) {
+                throw new \RuntimeException("PDF {$label} file could not be reopened.");
+            }
+            try {
+                $signature = fread($handle, 5);
+            } finally {
+                fclose($handle);
+            }
+
+            if ($signature !== '%PDF-') {
+                throw new \RuntimeException("PDF {$label} file has an invalid PDF signature.");
+            }
+
+            $this->line("  Verified {$label}: HTTP 200 | PDF signature valid | file size {$bytes} bytes.");
+            return $bytes;
+        } finally {
+            if (file_exists($pdfPath)) {
+                unlink($pdfPath);
+            }
+            if (file_exists($temporaryBase)) {
+                unlink($temporaryBase);
+            }
+            clearstatcache(true, $pdfPath);
+            if (file_exists($pdfPath) || file_exists($temporaryBase)) {
+                throw new \RuntimeException("Temporary PDF {$label} file cleanup could not be verified.");
+            }
+        }
     }
 
     private function buildSummaryReport(array $op1Results, array $op2Results, int $runs): array
