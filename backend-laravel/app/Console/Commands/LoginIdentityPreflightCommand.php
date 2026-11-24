@@ -18,7 +18,7 @@ class LoginIdentityPreflightCommand extends Command
             'nip', 'nik', 'nuptk', 'deleted_at',
         ],
         'student_profiles' => ['id', 'user_id', 'tenant_id', 'nisn', 'deleted_at'],
-        'users' => ['id', 'tenant_id'],
+        'users' => ['id', 'tenant_id', 'username'],
         'role_user' => ['user_id', 'role_id'],
         'roles' => ['id', 'name'],
     ];
@@ -62,6 +62,9 @@ class LoginIdentityPreflightCommand extends Command
             'Akun Guru tanpa profil aktif' => 0,
             'Akun Siswa tanpa profil aktif' => 0,
             'Akun Admin memiliki profil Guru/Siswa' => 0,
+            'Admin tanpa username valid' => 0,
+            'Username Admin memiliki spasi di tepi' => 0,
+            'Kelompok username Admin duplikat per tenant' => 0,
         ];
 
         DB::table('teacher_profiles')
@@ -262,7 +265,7 @@ class LoginIdentityPreflightCommand extends Command
         $users = DB::table('users as u')
             ->leftJoin('role_user as ru', 'ru.user_id', '=', 'u.id')
             ->leftJoin('roles as r', 'r.id', '=', 'ru.role_id')
-            ->select(['u.id', 'u.tenant_id'])
+            ->select(['u.id', 'u.tenant_id', 'u.username'])
             ->selectRaw('COUNT(ru.role_id) AS role_count')
             ->selectRaw('MAX(r.name) AS role_name')
             ->groupBy('u.id', 'u.tenant_id')
@@ -281,6 +284,16 @@ class LoginIdentityPreflightCommand extends Command
                 $counts['Akun memiliki role di luar tiga portal aktif']++;
             }
 
+            if ($roleName === 'ADMIN_MADRASAH') {
+                $usernameRaw = (string) ($user->username ?? '');
+                if (trim($usernameRaw) === '') {
+                    $counts['Admin tanpa username valid']++;
+                }
+                if ($usernameRaw !== trim($usernameRaw)) {
+                    $counts['Username Admin memiliki spasi di tepi']++;
+                }
+            }
+
             if ($roleName === 'GURU' && !isset($activeTeacherUserIds[$user->id])) {
                 $counts['Akun Guru tanpa profil aktif']++;
             } elseif ($roleName === 'SISWA' && !isset($activeStudentUserIds[$user->id])) {
@@ -290,6 +303,21 @@ class LoginIdentityPreflightCommand extends Command
                 $counts['Akun Admin memiliki profil Guru/Siswa']++;
             }
         }
+
+        $duplicateAdminUsernames = DB::table('users as u')
+            ->join('role_user as ru', 'ru.user_id', '=', 'u.id')
+            ->join('roles as r', 'r.id', '=', 'ru.role_id')
+            ->where('r.name', 'ADMIN_MADRASAH')
+            ->whereNotNull('u.username')
+            ->whereRaw("TRIM(u.username) <> ''")
+            ->select('u.tenant_id')
+            ->selectRaw('LOWER(TRIM(u.username)) AS normalized_username')
+            ->groupBy('u.tenant_id')
+            ->groupByRaw('LOWER(TRIM(u.username))')
+            ->havingRaw('COUNT(*) > 1');
+        $counts['Kelompok username Admin duplikat per tenant'] = DB::query()
+            ->fromSub($duplicateAdminUsernames, 'duplicate_admin_usernames')
+            ->count();
 
         $rows = [];
         foreach ($counts as $label => $count) {

@@ -44,6 +44,7 @@ class LoginIdentityPreflightCommandTest extends TestCase
 
         $student = $this->createUserWithRole('Siswa', 'siswa.preflight', 'SISWA');
         StudentProfile::create(['user_id' => $student->id, 'full_name' => 'Siswa', 'nisn' => '0001234567']);
+        $this->createUserWithRole('Admin Madrasah', 'admin.preflight', 'ADMIN_MADRASAH');
 
         $before = $this->snapshotIdentityTables();
         $exitCode = Artisan::call('login-identity:preflight');
@@ -183,6 +184,25 @@ class LoginIdentityPreflightCommandTest extends TestCase
         $this->assertStringContainsString('Akun Siswa tanpa profil aktif', $output);
         $this->assertStringNotContainsString('198001012006041001', $output);
         $this->assertStringNotContainsString('0001234567', $output);
+        $this->assertSame($before, $this->snapshotIdentityTables());
+    }
+
+    public function test_preflight_detects_missing_and_whitespace_padded_admin_username_without_mutation(): void
+    {
+        $blankAdmin = $this->createUserWithRole('Admin Tanpa Username', 'admin.blank', 'ADMIN_MADRASAH');
+        $paddedAdmin = $this->createUserWithRole('Admin Username Spasi', 'admin.padded', 'ADMIN_MADRASAH');
+
+        DB::table('users')->where('id', $blankAdmin->id)->update(['username' => '']);
+        DB::table('users')->where('id', $paddedAdmin->id)->update(['username' => ' admin.padded ']);
+
+        $before = $this->snapshotIdentityTables();
+        $exitCode = Artisan::call('login-identity:preflight');
+        $output = Artisan::output();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('Admin tanpa username valid', $output);
+        $this->assertStringContainsString('Username Admin memiliki spasi di tepi', $output);
+        $this->assertStringNotContainsString('admin.padded', $output);
         $this->assertSame($before, $this->snapshotIdentityTables());
     }
 
