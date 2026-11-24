@@ -643,30 +643,24 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->withCookie((string) config('session.cookie'), $store->getId());
     }
 
-    private function assertPersistedWebSessionsAreRevokedForDriver(string $driver): void
+    private function createTeacherProfileForSession(User $teacher): void
+    {
+        \\App\\Models\\TeacherProfile::create([
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $teacher->id,
+            'full_name' => $teacher->name,
+        ]);
+    }
+
+    private function assertSessionRevokedAfterResetForDriver(string $driver): void
     {
         $this->configurePersistentSessionDriver($driver);
         $this->makeLocalIdentity();
 
-        $resetTeacher = $this->makeLocalUser('GURU', 'session-reset-'.$driver);
-        $deactivatedTeacher = $this->makeLocalUser('GURU', 'session-deactivate-'.$driver);
-        $unrelatedTeacher = $this->makeLocalUser('GURU', 'session-unrelated-'.$driver);
+        $teacher = $this->makeLocalUser('GURU', 'session-reset-'.$driver);
+        $this->createTeacherProfileForSession($teacher);
+        [$cookieName, $sessionId] = $this->loginAndCapturePersistentWebSession($teacher);
 
-        foreach ([$resetTeacher, $deactivatedTeacher, $unrelatedTeacher] as $teacher) {
-            \App\Models\TeacherProfile::create([
-                'tenant_id' => $this->tenant->id,
-                'user_id' => $teacher->id,
-                'full_name' => $teacher->name,
-            ]);
-        }
-
-        [$cookieName, $resetCookie] = $this->loginAndCapturePersistentWebSession($resetTeacher);
-        Auth::forgetGuards();
-        [, $deactivateCookie] = $this->loginAndCapturePersistentWebSession($deactivatedTeacher, Str::random(40));
-        Auth::forgetGuards();
-        [, $unrelatedCookie] = $this->loginAndCapturePersistentWebSession($unrelatedTeacher, Str::random(40));
-
-        // A real login request must persist the session using the requested handler.
         $handlerClass = get_class(app('session')->driver()->getHandler());
         $this->assertStringContainsString(
             $driver === 'file' ? 'FileSessionHandler' : 'DatabaseSessionHandler',
@@ -675,48 +669,119 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         $this->isolateAdminLifecycleSession();
         $this->actingAs($this->admin);
-        Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
-        Auth::forgetGuards();
+        Livewire::test(UserManagement::class)->call('resetUserPassword', $teacher->id);
 
+        $this->assertSame(2, (int) $teacher->fresh()->auth_version);
+        if ($driver === 'database') {
+            $this->assertDatabaseMissing('sessions', ['id' => $sessionId]);
+        } else {
+            $this->assertFileExists(rtrim((string) config('session.files'), '/').'/'.$sessionId);
+        }
+
+        Auth::forgetGuards();
         $this->flushHeaders();
-        $this->withCookie($cookieName, $resetCookie)->get('/')->assertRedirect('/login');
+        $this->withCookie($cookieName, $sessionId)->get('/guru/dashboard')->assertRedirect('/login');
+    }
 
-        // Resetting one account must not invalidate another account's persisted session.
-        Auth::forgetGuards();
-        $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
+    private function assertSessionRevokedAfterDeactivationForDriver(string $driver): void
+    {
+        $this->configurePersistentSessionDriver($driver);
+        $this->makeLocalIdentity();
+
+        $teacher = $this->makeLocalUser('GURU', 'session-deactivate-'.$driver);
+        $this->createTeacherProfileForSession($teacher);
+        [$cookieName, $sessionId] = $this->loginAndCapturePersistentWebSession($teacher);
 
         $this->isolateAdminLifecycleSession();
         $this->actingAs($this->admin);
-        Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
-        Auth::forgetGuards();
+        Livewire::test(UserManagement::class)->call('deactivateUser', $teacher->id);
 
-        $this->flushHeaders();
-        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->assertFalse((bool) $teacher->fresh()->is_active);
+        $this->assertSame(2, (int) $teacher->fresh()->auth_version);
+        if ($driver === 'database') {
+            $this->assertDatabaseMissing('sessions', ['id' => $sessionId]);
+        } else {
+            $this->assertFileExists(rtrim((string) config('session.files'), '/').'/'.$sessionId);
+        }
 
-        // A different account's persisted session must survive deactivation too.
         Auth::forgetGuards();
         $this->flushHeaders();
-        $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
+        $this->withCookie($cookieName, $sessionId)->get('/guru/dashboard')->assertRedirect('/login');
 
         $this->isolateAdminLifecycleSession();
         $this->actingAs($this->admin);
-        Livewire::test(UserManagement::class)->call('activateUser', $deactivatedTeacher->id);
+        Livewire::test(UserManagement::class)->call('activateUser', $teacher->id);
+        $this->assertTrue((bool) $teacher->fresh()->is_active);
+        $this->assertSame(3, (int) $teacher->fresh()->auth_version);
+
         Auth::forgetGuards();
-
-        // Reactivation advances auth_version again; it never resurrects the old cookie.
-        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
-        $this->assertTrue((bool) $deactivatedTeacher->fresh()->is_active);
-        $this->assertSame(3, (int) $deactivatedTeacher->fresh()->auth_version);
+        $this->flushHeaders();
+        $this->withCookie($cookieName, $sessionId)->get('/guru/dashboard')->assertRedirect('/login');
     }
 
-    public function test_persisted_file_web_sessions_are_revoked_after_reset_deactivation_and_reactivation(): void
+    private function assertOtherUserSessionSurvivesForDriver(string $driver): void
     {
-        $this->assertPersistedWebSessionsAreRevokedForDriver('file');
+        $this->configurePersistentSessionDriver($driver);
+        $this->makeLocalIdentity();
+
+        $target = $this->makeLocalUser('GURU', 'session-target-'.$driver);
+        $unrelated = $this->makeLocalUser('GURU', 'session-unrelated-'.$driver);
+        $this->createTeacherProfileForSession($target);
+        $this->createTeacherProfileForSession($unrelated);
+
+        [$cookieName, $sessionId] = $this->loginAndCapturePersistentWebSession($unrelated);
+
+        $this->isolateAdminLifecycleSession();
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('resetUserPassword', $target->id);
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+        $this->withCookie($cookieName, $sessionId)->get('/guru/dashboard')->assertOk();
+
+        $this->isolateAdminLifecycleSession();
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('deactivateUser', $target->id);
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+        $this->withCookie($cookieName, $sessionId)->get('/guru/dashboard')->assertOk();
+
+        if ($driver === 'database') {
+            $this->assertDatabaseHas('sessions', ['id' => $sessionId, 'user_id' => $unrelated->id]);
+        } else {
+            $this->assertFileExists(rtrim((string) config('session.files'), '/').'/'.$sessionId);
+        }
     }
 
-    public function test_persisted_database_web_sessions_are_revoked_after_reset_deactivation_and_reactivation(): void
+    public function test_persisted_file_session_is_revoked_after_reset(): void
     {
-        $this->assertPersistedWebSessionsAreRevokedForDriver('database');
+        $this->assertSessionRevokedAfterResetForDriver('file');
+    }
+
+    public function test_persisted_database_session_is_revoked_after_reset(): void
+    {
+        $this->assertSessionRevokedAfterResetForDriver('database');
+    }
+
+    public function test_persisted_file_session_is_revoked_after_deactivation_and_activation(): void
+    {
+        $this->assertSessionRevokedAfterDeactivationForDriver('file');
+    }
+
+    public function test_persisted_database_session_is_revoked_after_deactivation_and_activation(): void
+    {
+        $this->assertSessionRevokedAfterDeactivationForDriver('database');
+    }
+
+    public function test_other_users_file_session_survives_reset_and_deactivation(): void
+    {
+        $this->assertOtherUserSessionSurvivesForDriver('file');
+    }
+
+    public function test_other_users_database_session_survives_reset_and_deactivation(): void
+    {
+        $this->assertOtherUserSessionSurvivesForDriver('database');
     }
 
 }
