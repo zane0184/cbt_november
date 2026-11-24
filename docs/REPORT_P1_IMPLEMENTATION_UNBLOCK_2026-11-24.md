@@ -878,3 +878,16 @@ Factories dan seeders pada exact source SHA:
 - PR #23: OPEN / DRAFT / NOT MERGED.
 - Production database: NOT TOUCHED.
 - STOP sebelum migration atau P1-ID-03B untuk review koordinator.
+
+
+---
+
+## KOREKSI BUKTI CI HISTORIS — run #45369049022
+
+Log job GitHub Actions untuk run #45369049022 (job ID 138358268882, conclusion SUCCESS) berhasil diambil ulang. Koreksi atas addendum sebelumnya yang menyatakan angka assertion tidak tersedia:
+- Focused Web login/tenant identity smoke: 56 passed, 225 assertions.
+- Full PHPUnit pada disposable MySQL 8: 534 passed, 2.265 assertions.
+- Seluruh step job berstatus completed/success, termasuk PHP 8.3, disposable MySQL identity check, Composer lock/platform validation/install, PHP lint app/migrations/tests, focused smoke, dan full PHPUnit.
+- SHA run tetap SHA historis 2598af967b22a8fa032cc910bb32230804a15390 sebagaimana dicatat di recovery report; hasil ini tidak berlaku sebagai CI exact HEAD branch sekarang.
+- Exact HEAD branch sekarang cb42852481893cdb416cc3c89386380d8f3d33ab tidak memiliki workflow run atau combined status yang dikembalikan.
+- Hasil CI tersebut tidak menutup gap cardinality, PII redaction, fixture normalization, atau workspace; P1-ID-03A tetap PARTIAL.
