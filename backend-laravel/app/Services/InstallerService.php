@@ -424,6 +424,16 @@ class InstallerService
 
                 try {
                     DB::transaction(function () use ($pendingState, $madrasahName, $madrasahCode, $adminName, $adminUsername, $adminEmail, $adminPassword, &$tenantId, &$adminId, &$recovered): void {
+                        // Serialize standalone tenant provisioning on the reserved System Tenant row.
+                        // The System Tenant is reference-only and does not consume the one-madrasah slot.
+                        $systemTenant = Tenant::withoutGlobalScopes()
+                            ->whereKey(Tenant::SYSTEM_TENANT_ID)
+                            ->lockForUpdate()
+                            ->first();
+                        if (! $systemTenant || $systemTenant->code !== Tenant::SYSTEM_TENANT_CODE) {
+                            throw new RuntimeException('INSTALL_SYSTEM_TENANT_MISSING_OR_INVALID');
+                        }
+
                         $existingTenant = Tenant::withoutGlobalScopes()->where('code', $madrasahCode)->lockForUpdate()->first();
                         $existingUserQuery = User::withoutGlobalScopes()->where('username', $adminUsername)->lockForUpdate();
                         $existingUser = $existingUserQuery->first();
@@ -450,6 +460,16 @@ class InstallerService
                         }
 
                         if (($pendingState['state'] ?? null) === 'TENANT_CREATED') throw new RuntimeException('INSTALL_RECOVERY_CONFLICT');
+
+                        // Fail closed if any madrasah tenant already exists. Count soft-deleted
+                        // rows too, preventing tenant replacement within one standalone database.
+                        $madrasahTenantCount = Tenant::withoutGlobalScopes()
+                            ->where('id', '!=', Tenant::SYSTEM_TENANT_ID)
+                            ->count();
+                        if ($madrasahTenantCount !== 0) {
+                            throw new RuntimeException('INSTALL_SINGLE_MADRASAH_LIMIT');
+                        }
+
                         $tenant = Tenant::create(['name' => $madrasahName, 'code' => $madrasahCode]);
                         $tenantId = $tenant->id;
                         app(TenantContext::class)->setTenantId($tenant->id);
@@ -487,6 +507,8 @@ class InstallerService
         } catch (Throwable $exception) {
             $message = match ($exception instanceof RuntimeException ? $exception->getMessage() : '') {
                 'INSTALL_RECOVERY_CONFLICT' => 'Data tenant/admin tidak cocok atau tidak lengkap. Installer dihentikan; tidak ada data existing yang diubah. Audit database diperlukan.',
+                'INSTALL_SINGLE_MADRASAH_LIMIT' => 'Database instalasi sudah memiliki tenant madrasah. Satu instalasi mandiri hanya boleh memiliki satu tenant madrasah.',
+                'INSTALL_SYSTEM_TENANT_MISSING_OR_INVALID' => 'System Tenant referensi tidak ditemukan atau identitasnya tidak valid. Instalasi dihentikan.',
                 default => 'Gagal membuat tenant dan Admin Madrasah. Tidak ada akun existing yang akan diperbarui.',
             };
             Log::error('CBT installer tenant/admin creation failed.', ['exception' => get_class($exception)]);
