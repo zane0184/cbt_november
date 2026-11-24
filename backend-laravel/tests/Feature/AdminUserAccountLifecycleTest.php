@@ -589,9 +589,11 @@ class AdminUserAccountLifecycleTest extends TestCase
     private function loginAndCapturePersistentWebSession(User $user, ?string $seedSessionId = null): array
     {
         $cookieName = (string) config('session.cookie');
-        if ($seedSessionId !== null) {
-            $this->withCookie($cookieName, $seedSessionId);
-        }
+        $store = app('session')->driver();
+        $store->flush();
+        $store->setId($seedSessionId ?? Str::random(40));
+        Auth::forgetGuards();
+        $this->flushHeaders();
 
         $response = $this->post('/login', [
             'identifier' => $user->username,
@@ -603,18 +605,34 @@ class AdminUserAccountLifecycleTest extends TestCase
             ->first(fn ($candidate) => $candidate->getName() === $cookieName);
         $this->assertNotNull($cookie, 'Web login must issue a session cookie.');
 
-        // Read the actual session ID used by the just-completed login request.
-        // withCookie() encrypts this plain ID to reproduce the browser request.
-        $sessionId = app('session')->driver()->getId();
-        $this->assertIsString($sessionId);
-        $this->assertNotSame('', $sessionId);
         if (config('session.driver') === 'database') {
-            $this->assertDatabaseHas('sessions', ['id' => $sessionId, 'user_id' => $user->id]);
+            $row = DB::table('sessions')->where('user_id', $user->id)
+                ->orderByDesc('last_activity')->first();
+            $this->assertNotNull($row, 'Database session must be associated with the authenticated account.');
+            $sessionId = (string) $row->id;
         } elseif (config('session.driver') === 'file') {
-            $this->assertFileExists(rtrim((string) config('session.files'), '/').'/'.$sessionId);
+            $files = glob(rtrim((string) config('session.files'), '/').'/*') ?: [];
+            $matchingFiles = array_values(array_filter($files, function ($file) use ($user) {
+                $payload = file_get_contents($file);
+                return is_string($payload) && str_contains($payload, (string) $user->id);
+            }));
+            $this->assertCount(1, $matchingFiles, 'Exactly one persisted file session must contain the authenticated user ID.');
+            $sessionId = basename($matchingFiles[0]);
+        } else {
+            $this->fail('This test only supports the configured file and database session drivers.');
         }
 
+        $this->assertNotSame('', $sessionId);
+
         return [$cookieName, $sessionId];
+    }
+
+    private function isolateAdminLifecycleSession(): void
+    {
+        Auth::forgetGuards();
+        $store = app('session')->driver();
+        $store->flush();
+        $store->setId(Str::random(40));
     }
 
     private function assertPersistedWebSessionsAreRevokedForDriver(string $driver): void
@@ -647,8 +665,7 @@ class AdminUserAccountLifecycleTest extends TestCase
             $handlerClass
         );
 
-        Auth::forgetGuards();
-        $this->withCookie($cookieName, Str::random(40));
+        $this->isolateAdminLifecycleSession();
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
         Auth::forgetGuards();
@@ -660,8 +677,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Auth::forgetGuards();
         $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
 
-        Auth::forgetGuards();
-        $this->withCookie($cookieName, Str::random(40));
+        $this->isolateAdminLifecycleSession();
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
@@ -674,8 +690,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->flushHeaders();
         $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
 
-        Auth::forgetGuards();
-        $this->withCookie($cookieName, Str::random(40));
+        $this->isolateAdminLifecycleSession();
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('activateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
