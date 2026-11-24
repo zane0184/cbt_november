@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Exam;
+use App\Policies\ReportPolicy;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -129,14 +131,30 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         );
         $this->assertSame([], $before, 'A previous benchmark schema must not be left behind.');
 
-        // Omit the official grant only in this failure-path test. The real
-        // ReportController and ReportPolicy must deny export; no policy is mocked.
+        $gate = Gate::getFacadeRoot();
+        $afterCallbacksProperty = new \ReflectionProperty($gate, 'afterCallbacks');
+        $originalAfterCallbacks = $afterCallbacksProperty->getValue($gate);
+        $policyObservations = [];
+        Gate::after(function ($user, string $ability, $result, array $arguments) use (&$policyObservations): void {
+            if ($ability === 'viewExamResults') {
+                $policyObservations[] = [
+                    'user' => $user,
+                    'result' => $result,
+                    'arguments' => $arguments,
+                ];
+            }
+        });
+
+        $originalBootstrapper = app(RolePermissionBootstrapper::class);
         $bootstrapper = \Mockery::mock(RolePermissionBootstrapper::class);
         $bootstrapper->shouldReceive('bootstrap')->once()->andReturnNull();
         $this->app->instance(RolePermissionBootstrapper::class, $bootstrapper);
 
+        $control->flushQueryLog();
+        $control->enableQueryLog();
         $exception = null;
-        $exitCode = 0;
+        $exitCode = null;
+
         try {
             $exitCode = Artisan::call('benchmark:phase7d', [
                 '--driver' => 'mysql',
@@ -146,25 +164,50 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
             ]);
         } catch (\Throwable $caught) {
             $exception = $caught;
+        } finally {
+            $control->disableQueryLog();
+            $this->app->instance(RolePermissionBootstrapper::class, $originalBootstrapper);
+            $afterCallbacksProperty->setValue($gate, $originalAfterCallbacks);
         }
 
-        // Gate::after is not a reliable observer when ability resolution throws.
-        // Assert the command reached the disposable schema, authorization denied
-        // the export, and cleanup removed that schema before the exception escaped.
-        $output = Artisan::output();
-        $this->assertStringContainsString('Temporary benchmark schema created:', $output);
-        $this->assertInstanceOf(
-            \Illuminate\Auth\Access\AuthorizationException::class,
-            $exception,
-            'The benchmark must fail specifically because report authorization denied export.'
+        $queries = $control->getQueryLog();
+        $createdSchemas = [];
+        $droppedSchemas = [];
+        foreach ($queries as $query) {
+            $sql = $query['query'];
+            if (preg_match('/^\s*CREATE\s+DATABASE\s+`(cbt_phase7d_[a-z0-9]+)`/i', $sql, $matches) === 1) {
+                $createdSchemas[] = $matches[1];
+            }
+            if (preg_match('/^\s*DROP\s+DATABASE(?:\s+IF\s+EXISTS)?\s+`(cbt_phase7d_[a-z0-9]+)`/i', $sql, $matches) === 1) {
+                $droppedSchemas[] = $matches[1];
+            }
+        }
+
+        $this->assertCount(1, $createdSchemas, 'This invocation must create exactly one temporary benchmark schema.');
+        $schema = $createdSchemas[0];
+        $this->assertMatchesRegularExpression('/^cbt_phase7d_[a-z0-9]+$/', $schema);
+        $this->assertSame([$schema], $droppedSchemas, 'The invocation must drop the exact schema it created.');
+
+        $this->assertInstanceOf(\Illuminate\Auth\Access\AuthorizationException::class, $exception);
+        $this->assertSame(1, preg_match('/^cbt_phase7d_[a-z0-9]+$/', $schema));
+        $this->assertNotSame(0, $exitCode === null ? 0 : $exitCode, 'Authorization failure must escape Artisan::call.');
+
+        $this->assertInstanceOf(ReportPolicy::class, Gate::getPolicyFor(Exam::class));
+        $this->assertCount(1, $policyObservations, 'ReportPolicy authorization must be observed exactly once.');
+        $observation = $policyObservations[0];
+        $this->assertFalse(
+            $observation['user']->hasPermission('report.view'),
+            'The benchmark teacher must not have report.view in this denial-path test.'
         );
-        $this->assertSame(1, preg_match('/Temporary benchmark schema created: cbt_phase7d_[a-z0-9]+/', $output));
-        $this->assertStringContainsString('Temporary MySQL database absence verified:', $output);
+        $this->assertFalse($observation['result'], 'The real ReportPolicy must deny the report ability.');
+        $this->assertCount(1, $observation['arguments']);
+        $this->assertInstanceOf(Exam::class, $observation['arguments'][0]);
 
         $after = DB::connection('mysql')->select(
-            "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
+            'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
+            [$schema]
         );
-        $this->assertSame([], $after, 'The temporary schema must be absent after the failed benchmark.');
+        $this->assertSame([], $after, 'INFORMATION_SCHEMA must prove the temporary schema is absent after cleanup.');
     }
 
 
