@@ -5,7 +5,8 @@
         $loginBrandingService = app(\App\Services\TenantBrandingService::class);
         $loginTenant = $loginBrandingService->currentTenant();
         $loginLogoUrl = $loginBrandingService->publicUrl($loginTenant?->logo_path);
-        $loginFaviconUrl = $loginBrandingService->publicUrl($loginTenant?->favicon_path);\n        $loginFaviconMime = strtolower(pathinfo((string) ($loginTenant?->favicon_path ?? ''), PATHINFO_EXTENSION)) === 'webp' ? 'image/webp' : 'image/png';
+        $loginFaviconUrl = $loginBrandingService->publicUrl($loginTenant?->favicon_path);
+        $loginFaviconMime = strtolower(pathinfo((string) ($loginTenant?->favicon_path ?? ''), PATHINFO_EXTENSION)) === 'webp' ? 'image/webp' : 'image/png';
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
