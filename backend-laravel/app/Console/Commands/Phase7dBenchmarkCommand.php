@@ -39,6 +39,7 @@ use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class Phase7dBenchmarkCommand extends Command
@@ -100,6 +101,7 @@ class Phase7dBenchmarkCommand extends Command
                 "CREATE DATABASE `{$temporaryDatabaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
             );
             $databaseCreated = true;
+            $this->info("Temporary benchmark schema created: {$temporaryDatabaseName}");
 
             $benchmarkConnectionConfig = $mysqlConfig;
             $benchmarkConnectionConfig['database'] = $temporaryDatabaseName;
@@ -160,20 +162,25 @@ class Phase7dBenchmarkCommand extends Command
                 // Preserve original application connection configuration.
             }
 
-            if ($databaseCreated) {
-                try {
+            try {
+                // Drop only a schema created by this exact benchmark invocation.
+                // If CREATE DATABASE failed (for example, a random-name collision),
+                // never delete a pre-existing schema; still verify that our target is absent.
+                if ($databaseCreated) {
                     DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `{$temporaryDatabaseName}`");
+                }
+
                 $remaining = DB::connection('mysql')->select(
                     'SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?',
                     [$temporaryDatabaseName]
                 );
                 if ($remaining !== []) {
-                    throw new \RuntimeException('Temporary benchmark database still exists after cleanup.');
+                    throw new \RuntimeException("Temporary benchmark database {$temporaryDatabaseName} still exists after cleanup.");
                 }
-                    $this->info('Temporary MySQL database removed; absence verified.');
-                } catch (\Throwable $exception) {
-                    $cleanupFailure = $exception;
-                }
+
+                $this->info("Temporary MySQL database absence verified: {$temporaryDatabaseName}");
+            } catch (\Throwable $exception) {
+                $cleanupFailure = $exception;
             }
 
             try {
@@ -707,6 +714,11 @@ class Phase7dBenchmarkCommand extends Command
 
         app('auth')->setUser($teacherUser);
 
+        // Preflight the real registered ReportPolicy. ReportController below calls
+        // the same policy again internally through $this->authorize().
+        Gate::forUser($teacherUser)->authorize('viewExamResults', $exam);
+        $this->line('ReportPolicy preflight PASS: exact Guru role, report.view grant, active assignment and all participants covered.');
+
         // Warm-up run for Dompdf (class loading, CSS/font engine initialization) - excluded from official stats
         $this->line("  [Warm-up] Initializing Dompdf & rendering warm-up PDF...");
         $warmupStart = microtime(true);
@@ -760,9 +772,42 @@ class Phase7dBenchmarkCommand extends Command
             throw new \RuntimeException("PDF {$label} did not return HTTP 200.");
         }
 
-        $content = $response->getContent();
+        $content = null;
+
+        if (method_exists($response, 'getContent')) {
+            $responseContent = $response->getContent();
+            if (is_string($responseContent) && $responseContent !== '') {
+                $content = $responseContent;
+            }
+        }
+
+        // StreamedResponse::getContent() returns false; execute its real callback.
+        if ((!is_string($content) || $content === '') && method_exists($response, 'sendContent')) {
+            ob_start();
+            try {
+                $response->sendContent();
+                $streamedContent = ob_get_contents();
+            } finally {
+                ob_end_clean();
+            }
+            if (is_string($streamedContent) && $streamedContent !== '') {
+                $content = $streamedContent;
+            }
+        }
+
+        // BinaryFileResponse may expose an actual generated file.
+        if ((!is_string($content) || $content === '') && method_exists($response, 'getFile')) {
+            $file = $response->getFile();
+            if ($file && method_exists($file, 'getPathname') && is_file($file->getPathname())) {
+                $fileContent = file_get_contents($file->getPathname());
+                if (is_string($fileContent) && $fileContent !== '') {
+                    $content = $fileContent;
+                }
+            }
+        }
+
         if (!is_string($content) || $content === '') {
-            throw new \RuntimeException("PDF {$label} response body is empty.");
+            throw new \RuntimeException("PDF {$label} response body is empty or could not be streamed.");
         }
 
         $temporaryBase = tempnam(sys_get_temp_dir(), 'cbt-pdf-');
