@@ -49,12 +49,12 @@ class TenantAcademicBootstrapServiceTest extends TestCase
         $this->assertSame(12, DB::table('semesters')->where('tenant_id', $tenant->id)->count());
         $this->assertSame(0, DB::table('semesters')->where('tenant_id', $tenant->id)->where('is_active', true)->count());
         $this->assertSame([
-            ['MI_1', 1, 'FASE_A'],
-            ['MI_2', 2, 'FASE_A'],
-            ['MI_3', 3, 'FASE_B'],
-            ['MI_4', 4, 'FASE_B'],
-            ['MI_5', 5, 'FASE_C'],
-            ['MI_6', 6, 'FASE_C'],
+            ['1', 1, 'A'],
+            ['2', 2, 'A'],
+            ['3', 3, 'B'],
+            ['4', 4, 'B'],
+            ['5', 5, 'C'],
+            ['6', 6, 'C'],
         ], $rows->map(fn ($row) => [$row->code, (int) $row->level, $row->phase_code])->all());
     }
 
@@ -99,7 +99,7 @@ class TenantAcademicBootstrapServiceTest extends TestCase
         try {
             $curriculum = Curriculum::create([
                 'name' => 'Kurikulum Merdeka',
-                'code' => 'KURIKULUM_MERDEKA',
+                'code' => 'K-MERDEKA',
                 'status' => 'ACTIVE',
                 'is_active' => true,
             ]);
