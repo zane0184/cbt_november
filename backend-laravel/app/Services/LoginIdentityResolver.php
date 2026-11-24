@@ -39,6 +39,7 @@ class LoginIdentityResolver
         $adminUsernameIds = User::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
+            ->where('is_active', true)
             ->whereRaw('LOWER(username) = ?', [$normalized])
             ->pluck('id');
 
@@ -87,6 +88,7 @@ class LoginIdentityResolver
             ->with('roles')
             ->where('tenant_id', $tenantId)
             ->whereNull('deleted_at')
+            ->where('is_active', true)
             ->whereKey($candidateIds->first())
             ->first();
 

@@ -12,7 +12,7 @@ use App\Http\Controllers\Teacher\TeacherQuestionMediaController;
 use App\Http\Controllers\Api\V1\MediaController;
 use Illuminate\Support\Facades\Route;
 
-Route::middleware(['auth', 'tenant', 'license', EnsureTeacherPortalAccess::class])
+Route::middleware(['auth', 'active.user', 'tenant', 'license', EnsureTeacherPortalAccess::class])
     ->prefix('guru')
     ->name('teacher.')
     ->group(function (): void {

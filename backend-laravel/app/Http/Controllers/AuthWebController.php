@@ -70,6 +70,7 @@ class AuthWebController extends Controller
             $lockedUser = User::withoutGlobalScopes()
                 ->where('tenant_id', $user->tenant_id)
                 ->whereNull('deleted_at')
+                ->where('is_active', true)
                 ->whereKey($user->id)
                 ->lockForUpdate()
                 ->first();
@@ -96,6 +97,8 @@ class AuthWebController extends Controller
                     && app(\App\Services\ActiveExamLoginGuard::class)->hasActiveAttempt($lockedUser)) {
                     return ['status' => 'ACTIVE_EXAM'];
                 }
+
+                $lockedUser->forceFill(['last_login_at' => now()])->save();
 
                 return ['status' => 'OK', 'user' => $lockedUser];
             } finally {

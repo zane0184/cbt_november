@@ -7,6 +7,7 @@ use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use App\Services\AuditService;
+use App\Services\UserAccountService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -30,6 +31,9 @@ class UserManagement extends Component
     public $nuptk = '';
     public $nik = '';
     public $nisn = '';
+    public ?string $oneTimePassword = null;
+    public ?string $oneTimePasswordFor = null;
+    public bool $showOneTimePasswordModal = false;
 
     public function mount(): void
     {
@@ -203,6 +207,36 @@ class UserManagement extends Component
         $this->reset(['name','username','email','password','selectedRole','employmentStatus','nip','nuptk','nik','nisn']);
         $this->dispatch('notify', ['type' => 'success', 'message' => "Pengguna {$createdName} berhasil ditambahkan."]);
         session()->flash('message', "Pengguna {$createdName} berhasil ditambahkan.");
+    }
+
+    public function activateUser(string $userId): void
+    {
+        $this->authorizeUserManagement();
+        app(UserAccountService::class)->activate($userId);
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Akun berhasil diaktifkan.']);
+    }
+
+    public function deactivateUser(string $userId): void
+    {
+        $this->authorizeUserManagement();
+        app(UserAccountService::class)->deactivate($userId);
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Akun dinonaktifkan dan sesi aktif dicabut.']);
+    }
+
+    public function resetUserPassword(string $userId): void
+    {
+        $this->authorizeUserManagement();
+        $user = User::query()->where('tenant_id', auth()->user()->tenant_id)->whereKey($userId)->firstOrFail();
+        $this->oneTimePassword = app(UserAccountService::class)->resetPassword($userId);
+        $this->oneTimePasswordFor = $user->name;
+        $this->showOneTimePasswordModal = true;
+    }
+
+    public function closeOneTimePasswordModal(): void
+    {
+        $this->oneTimePassword = null;
+        $this->oneTimePasswordFor = null;
+        $this->showOneTimePasswordModal = false;
     }
 
     public function updatingSearch(): void { $this->resetPage(); }
