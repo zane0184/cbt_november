@@ -104,6 +104,51 @@ class LoginIdentitySQLiteTriggerTest extends TestCase
                 '198001012006041002'
             )));
 
+            DB::table('teacher_profiles')->insert($this->teacherRow(
+                'teacher-honorer-valid',
+                'HONORER',
+                null,
+                '3171000000000002',
+                null,
+                '3171000000000002'
+            ));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+                'teacher-short-nik',
+                'HONORER',
+                null,
+                str_repeat('4', 15),
+                null,
+                str_repeat('4', 15)
+            )));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+                'teacher-nonnumeric-nik',
+                'HONORER',
+                null,
+                substr('3171000000000003', 0, 15) . 'A',
+                null,
+                substr('3171000000000003', 0, 15) . 'A'
+            )));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+                'teacher-nonnumeric-nip',
+                'PNS',
+                substr('198001012006041004', 0, 17) . 'A',
+                null,
+                null,
+                substr('198001012006041004', 0, 17) . 'A'
+            )));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+                'teacher-invalid-status',
+                'CONTRACT',
+                '198001012006041005',
+                null,
+                null,
+                '198001012006041005'
+            )));
+
             $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
                 'teacher-bad-nuptk',
                 'PNS',
@@ -116,6 +161,14 @@ class LoginIdentitySQLiteTriggerTest extends TestCase
             $this->assertQueryRejected(fn () => DB::table('teacher_profiles')
                 ->where('id', 'teacher-valid')
                 ->update(['nip' => str_repeat('3', 17), 'employee_identifier' => str_repeat('3', 17)]));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')
+                ->where('id', 'teacher-valid')
+                ->update(['employee_identifier' => str_repeat('8', 18)]));
+
+            $this->assertQueryRejected(fn () => DB::table('teacher_profiles')
+                ->where('id', 'teacher-valid')
+                ->update(['employment_status' => 'HONORER']));
 
             DB::table('student_profiles')->insert([
                 'id' => 'student-valid',
@@ -133,6 +186,26 @@ class LoginIdentitySQLiteTriggerTest extends TestCase
                 'user_id' => 'user-student-invalid',
                 'full_name' => 'Siswa Invalid',
                 'nisn' => 'NISN-BAD',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+
+            $this->assertQueryRejected(fn () => DB::table('student_profiles')->insert([
+                'id' => 'student-short',
+                'tenant_id' => 'tenant-1',
+                'user_id' => 'user-student-short',
+                'full_name' => 'Siswa NISN Pendek',
+                'nisn' => '123456789',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+
+            $this->assertQueryRejected(fn () => DB::table('student_profiles')->insert([
+                'id' => 'student-long',
+                'tenant_id' => 'tenant-1',
+                'user_id' => 'user-student-long',
+                'full_name' => 'Siswa NISN Panjang',
+                'nisn' => '12345678901',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));

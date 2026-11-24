@@ -51,6 +51,17 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
             '3171000000000001'
         ));
 
+        $validPppk = $this->makeUser('teacher.pppk');
+        DB::table('teacher_profiles')->insert($this->teacherRow(
+            $validPppk,
+            (string) Str::uuid(),
+            'PPPK',
+            '199001012026041001',
+            null,
+            '1234567890123456',
+            '199001012026041001'
+        ));
+
         $validStudent = $this->makeUser('student.valid');
         $validStudentId = (string) Str::uuid();
         DB::table('student_profiles')->insert($this->studentRow($validStudent, $validStudentId, '9000000001'));
@@ -64,6 +75,65 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
             null,
             null,
             str_repeat('1', 17)
+        )));
+
+        $nonNumericNipUser = $this->makeUser('teacher.nonnumericnip');
+        $nonNumericNip = substr('198001012006041007', 0, 17) . 'A';
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+            $nonNumericNipUser,
+            (string) Str::uuid(),
+            'PNS',
+            $nonNumericNip,
+            null,
+            null,
+            $nonNumericNip
+        )));
+
+        $shortNikUser = $this->makeUser('teacher.shortnik');
+        $shortNik = str_repeat('3', 15);
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+            $shortNikUser,
+            (string) Str::uuid(),
+            'HONORER',
+            null,
+            $shortNik,
+            null,
+            $shortNik
+        )));
+
+        $nonNumericNikUser = $this->makeUser('teacher.nonnumericnik');
+        $nonNumericNik = substr('3171000000000004', 0, 15) . 'A';
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+            $nonNumericNikUser,
+            (string) Str::uuid(),
+            'HONORER',
+            null,
+            $nonNumericNik,
+            null,
+            $nonNumericNik
+        )));
+
+        $invalidStatusUser = $this->makeUser('teacher.invalidstatus');
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+            $invalidStatusUser,
+            (string) Str::uuid(),
+            'CONTRACT',
+            '199001012026041004',
+            null,
+            null,
+            '199001012026041004'
+        )));
+
+        $badNuptkNonNumericUser = $this->makeUser('teacher.badnuptknonnumeric');
+        $badNuptkNonNumeric = substr('1234567890123456', 0, 15) . 'X';
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')->insert($this->teacherRow(
+            $badNuptkNonNumericUser,
+            (string) Str::uuid(),
+            'PNS',
+            '199001012026041003',
+            null,
+            $badNuptkNonNumeric,
+            '199001012026041003'
         )));
 
         $wrongCategoryUser = $this->makeUser('teacher.wrongcategory');
@@ -110,6 +180,20 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
             '198001012006041006'
         )));
 
+        $shortNisnStudent = $this->makeUser('student.shortnisn');
+        $this->assertQueryRejected(fn () => DB::table('student_profiles')->insert($this->studentRow(
+            $shortNisnStudent,
+            (string) Str::uuid(),
+            '123456789'
+        )));
+
+        $longNisnStudent = $this->makeUser('student.longnisn');
+        $this->assertQueryRejected(fn () => DB::table('student_profiles')->insert($this->studentRow(
+            $longNisnStudent,
+            (string) Str::uuid(),
+            '12345678901'
+        )));
+
         $badStudent = $this->makeUser('student.badnisn');
         $this->assertQueryRejected(fn () => DB::table('student_profiles')->insert($this->studentRow(
             $badStudent,
@@ -127,6 +211,18 @@ class LoginIdentityDatabaseConstraintTest extends TestCase
         $this->assertQueryRejected(fn () => DB::table('student_profiles')
             ->where('id', $validStudentId)
             ->update(['nisn' => 'BAD']));
+
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')
+            ->where('id', $validTeacherId)
+            ->update(['employee_identifier' => str_repeat('8', 18)]));
+
+        $this->assertQueryRejected(fn () => DB::table('teacher_profiles')
+            ->where('id', $validTeacherId)
+            ->update(['employment_status' => 'HONORER']));
+
+        $this->assertQueryRejected(fn () => DB::table('student_profiles')
+            ->where('id', $validStudentId)
+            ->update(['nisn' => '123456789']));
 
         $this->assertDatabaseHas('teacher_profiles', ['id' => $validTeacherId, 'nip' => $validNip]);
         $this->assertDatabaseHas('student_profiles', ['id' => $validStudentId, 'nisn' => '9000000001']);
