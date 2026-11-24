@@ -22,10 +22,10 @@ class StudentImportService
     private const MAX_CSV_COLUMNS = 32;
     private const MAX_CSV_RECORD_BYTES = 65536;
     private const MAX_ZIP_ENTRIES = 256;
-    private const MAX_ZIP_ENTRY_BYTES = 32 * 1024 * 1024;
-    private const MAX_ZIP_TOTAL_EXPANDED_BYTES = 64 * 1024 * 1024;
+    private const MAX_ZIP_ENTRY_BYTES = 24 * 1024 * 1024;
+    private const MAX_ZIP_TOTAL_EXPANDED_BYTES = 32 * 1024 * 1024;
     private const MAX_ZIP_COMPRESSION_RATIO = 100;
-    private const MAX_XML_ENTRY_BYTES = 32 * 1024 * 1024;
+    private const MAX_XML_ENTRY_BYTES = 24 * 1024 * 1024;
 
     private const OPTIONAL_HEADERS = [
         'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
@@ -328,7 +328,14 @@ class StudentImportService
         $this->preflightXlsx($path);
 
         try {
-            $spreadsheet = IOFactory::load($path);
+            $reader = IOFactory::createReader('Xlsx');
+            $reader->setReadDataOnly(true);
+            $sheetNames = $reader->listWorksheetNames($path);
+            if (!isset($sheetNames[0]) || !is_string($sheetNames[0]) || $sheetNames[0] === '') {
+                throw ValidationException::withMessages(['file' => 'Workbook XLSX tidak memiliki worksheet yang dapat dibaca.']);
+            }
+            $reader->setLoadSheetsOnly([$sheetNames[0]]);
+            $spreadsheet = $reader->load($path);
             $sheet = $spreadsheet->getSheet(0);
             $lastColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             $lastRow = $sheet->getHighestDataRow();
