@@ -592,6 +592,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $store = app('session')->driver();
         $store->flush();
         $store->setId($seedSessionId ?? Str::random(40));
+        $this->withCookie($cookieName, $store->getId());
         Auth::forgetGuards();
         $this->flushHeaders();
 
@@ -605,24 +606,23 @@ class AdminUserAccountLifecycleTest extends TestCase
             ->first(fn ($candidate) => $candidate->getName() === $cookieName);
         $this->assertNotNull($cookie, 'Web login must issue a session cookie.');
 
+        $sessionId = $store->getId();
+        $this->assertNotSame('', $sessionId);
+
+        // Follow the login redirect as a browser would. This first protected Web
+        // request binds database-backed sessions to the authenticated user.
+        $this->flushHeaders();
+        $this->withCookie($cookieName, $sessionId)->get('/guru/dashboard')->assertOk();
+
         if (config('session.driver') === 'database') {
-            $row = DB::table('sessions')->where('user_id', $user->id)
-                ->orderByDesc('last_activity')->first();
-            $this->assertNotNull($row, 'Database session must be associated with the authenticated account.');
-            $sessionId = (string) $row->id;
+            $this->assertDatabaseHas('sessions', ['id' => $sessionId, 'user_id' => $user->id]);
         } elseif (config('session.driver') === 'file') {
-            $files = glob(rtrim((string) config('session.files'), '/').'/*') ?: [];
-            $matchingFiles = array_values(array_filter($files, function ($file) use ($user) {
-                $payload = file_get_contents($file);
-                return is_string($payload) && str_contains($payload, (string) $user->id);
-            }));
-            $this->assertCount(1, $matchingFiles, 'Exactly one persisted file session must contain the authenticated user ID.');
-            $sessionId = basename($matchingFiles[0]);
+            $sessionFile = rtrim((string) config('session.files'), '/').'/'.$sessionId;
+            $this->assertFileExists($sessionFile);
+            $this->assertStringContainsString((string) $user->id, (string) file_get_contents($sessionFile));
         } else {
             $this->fail('This test only supports the configured file and database session drivers.');
         }
-
-        $this->assertNotSame('', $sessionId);
 
         return [$cookieName, $sessionId];
     }
@@ -633,6 +633,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $store = app('session')->driver();
         $store->flush();
         $store->setId(Str::random(40));
+        $this->withCookie((string) config('session.cookie'), $store->getId());
     }
 
     private function assertPersistedWebSessionsAreRevokedForDriver(string $driver): void
