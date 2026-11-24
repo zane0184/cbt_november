@@ -324,6 +324,7 @@ class AdminUiVerificationTest extends TestCase
         $this->actingAs($this->admin);
 
         Livewire::test(UserManagement::class)
+            ->call('openCreateModal')
             ->set('selectedRole', 'GURU')
             ->set('nip', '198001012006041001')
             ->set('nik', '3171000000000001')
