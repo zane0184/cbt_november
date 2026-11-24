@@ -29,6 +29,10 @@ class StudentImportService
         $rombel = $this->resolveRombel($tenantId, $rombelId);
         [$headers, $sourceRows] = $this->readRows($path, strtolower($extension));
 
+        if (count(array_unique($headers)) !== count($headers)) {
+            throw ValidationException::withMessages(['file' => 'Nama kolom tidak boleh duplikat.']);
+        }
+
         foreach (['nama', 'nisn'] as $required) {
             if (!in_array($required, $headers, true)) {
                 throw ValidationException::withMessages([
@@ -354,9 +358,26 @@ class StudentImportService
         }
 
         try {
-            $headerRow = fgetcsv($handle);
-            if (!is_array($headerRow)) {
+            $firstLine = fgets($handle);
+            if ($firstLine === false) {
                 throw ValidationException::withMessages(['file' => 'File CSV kosong.']);
+            }
+
+            $delimiters = [',', ';', "\t"];
+            $delimiter = ',';
+            $highestCount = -1;
+            foreach ($delimiters as $candidate) {
+                $count = substr_count($firstLine, $candidate);
+                if ($count > $highestCount) {
+                    $highestCount = $count;
+                    $delimiter = $candidate;
+                }
+            }
+
+            rewind($handle);
+            $headerRow = fgetcsv($handle, 0, $delimiter, '"', '');
+            if (!is_array($headerRow)) {
+                throw ValidationException::withMessages(['file' => 'Header CSV tidak dapat dibaca.']);
             }
 
             if (isset($headerRow[0]) && is_string($headerRow[0])) {
@@ -367,9 +388,12 @@ class StudentImportService
             $rows = [];
             $line = 1;
 
-            while (($values = fgetcsv($handle)) !== false) {
+            while (($values = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
                 $line++;
                 $rows[] = ['row' => $line, 'values' => $values];
+                if (count($rows) > self::MAX_ROWS) {
+                    throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
+                }
             }
 
             return [$headers, $rows];
