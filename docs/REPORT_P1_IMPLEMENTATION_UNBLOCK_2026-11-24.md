@@ -592,3 +592,47 @@ Pencarian source app/, migrations, seeders, dan factories dalam paket menghasilk
 
 ### NEXT ACTION
 Pulihkan checkout Git asli dan workspace writable lengkap beserta tests/backups, PHP 8.3, Composer locked dependencies, PDO MySQL, dan MySQL 8/InnoDB disposable. Setelah itu backup byte-exact setiap file, implementasikan P1-ID-03A saja, jalankan focused/full PHPUnit dan CI exact SHA. STOP sebelum P1-ID-03B untuk review koordinator.
+
+
+---
+
+## KOREKSI DAN ADDENDUM FINAL REFRESH P1-ID-03A — 24 November 2026
+
+### AUDIT — koreksi jumlah test dan pendalaman writer
+- Koreksi hitungan: Git tree exact source SHA `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050` berisi **75 file PHP di tests/**, bukan 77. Angka 77 pada checkpoint sebelumnya adalah salah hitung. Seluruh 75 file tersebut telah diambil dan diperiksa secara statis; 27 file/concern memiliki referensi atau fixture TeacherProfile/StudentProfile.
+- Contoh fixture yang belum mengikuti kontrak identitas: `Analytics/CacheTest` (StudentProfile hanya NIS; TeacherProfile hanya nama), `ExamAnswerTest` (StudentProfile tanpa NISN), `ExamBuilderTest`, `ExamIntegrityTest`, `ExamListContractTest`, `ExamManagementHardeningTest`, `ExamSnapshotTest`, `ExamVerificationTest`, `MonitoringTest`, `MonitoringDuplicationTest`, `Phase7BManualReviewTest`, `Phase7CReopenTest`, `ProctorAssignmentSecurityTest`, `QuestionBankTest`, `RoleDashboardVerificationTest`, `Security/AnswerKeyLeakageTest`, `TeacherPracticeWorkflowTest`, dan helper `CreatesTeacherExamScope`. `MediaAuthorizationTest` memakai employee_identifier `GURU-MEDIA-1/2`; `Phase7DHistoricalRecalculationAndAnalyticsTest` memakai `GURU-A-001`. Test negatif yang sengaja mengandung anomali harus tetap dipertahankan sebagai negative fixtures terisolasi.
+- Pendalaman otorisasi: `UserManagement::createUser()` memeriksa tepat satu role ADMIN_MADRASAH + permission `user.manage`, membatasi role yang dibuat ke GURU/SISWA, dan membuat User/Profile dalam transaksi. Route group memasang auth + IdentifyTenant + license; IdentifyTenant mengambil tenant hanya dari akun terautentikasi. Trait TenantScoped menimpa tenant_id dari konteks server-side. `TeacherProfilePage::savePhone()` memakai TeacherPortalAccess yang memeriksa akun aktif, tenant cocok, tepat satu role GURU, dan tepat satu TeacherProfile; query update juga mengunci row berdasarkan tenant/user/profile.
+- Temuan audit log tambahan: `TeacherProfilePage::savePhone()` mengirim old/new `phone` ke AuditService tanpa redaksi; PII redaction tidak boleh hanya menarget NIP/NIK/NISN/NUPTK. `UserManagement::createUser()` tidak memanggil AuditService/AuditLog, sehingga pembuatan akun/profil identitas belum terlihat memiliki event audit pada jalur tersebut.
+- `Phase7dBenchmarkCommand::handle()` mengalihkan koneksi default ke file SQLite `database/benchmark.sqlite` dan menjalankan `migrate:fresh` pada koneksi sqlite, bukan database MySQL produksi. Namun cleanup file hanya terjadi pada jalur normal; belum berada dalam `finally`, sehingga exception dapat meninggalkan file benchmark. Command tidak dijalankan.
+- Source snapshot audit: 187 app PHP, 13 factory, 5 seeder; tidak ada factory/seeder identitas. 107 AuditService::log() call di 33 caller files; dua direct runtime AuditLog::create() bypass (ExpireExamAttemptsCommand::expireOne dan InstallerService::lockInstaller); satu historical migration insert. Tidak ditemukan writer runtime lain ke kolom identitas profil selain UserManagement dan benchmark.
+- Workspace asli tetap tidak ada. Snapshot `/mnt/data/CBT_AUDIT_SNAPSHOT_2f135172/` tersedia sebagai snapshot distribusi tanpa .git; bukan checkout dan tidak dijadikan workspace patch.
+- Local lint yang benar-benar dijalankan pada 282 file project-owned (app, database, routes, bootstrap, config) lulus pada PHP 8.4.24. Ini bukan lint PHP 8.3, bukan PHPUnit, dan tidak mencakup tests karena tests tidak ada dalam paket snapshot. Scan semua 7.846 file PHP termasuk vendor tidak digunakan sebagai hasil lint: berhenti pada file vendor Symfony polyfill yang tidak kompatibel dengan interpreter lokal dan timeout.
+- CI pada exact HEAD sebelum addendum ini `2598af967b22a8fa032cc910bb32230804a15390`: Tenant Backend CI #45369049022 SUCCESS; Composer validation/install, PHP lint app/migrations/tests, disposable MySQL 8, focused login/tenant smoke, dan full PHPUnit steps semuanya SUCCESS. ZIP workflow #45369048969 SUCCESS untuk build/archive; artifact #14907742542, 19,768,218 bytes. Build archive bukan ZIP acceptance.
+
+### DESAIN
+- Normalisasi fixture generik pada 27 file/concern dengan helper identitas valid berbasis string: NIP 18 digit untuk PNS/PPPK, NIK 16 digit untuk Honorer, NISN 10 digit untuk Siswa. Leading zero dipertahankan. Fixture anomali hanya untuk test negatif yang eksplisit.
+- Tambahkan audit event untuk create akun/profil identitas melalui jalur aman dan redacted; pastikan phone/email dan PII lain juga disanitasi.
+- Redactor recursive harus berjalan pada semua runtime writer, termasuk dua bypass AuditLog langsung; jangan mengubah histori.
+- Tambahkan cleanup benchmark dalam finally dan guard agar hanya memakai file SQLite benchmark khusus.
+- Koreksi preflight dan test coverage seperti daftar gap di addendum sebelumnya.
+
+### IMPLEMENTASI
+- Tidak ada source aplikasi, test, migration, workflow, dependency, konfigurasi, atau database yang diubah.
+- Tidak ada source patch melalui GitHub Contents API.
+- Tidak ada source backup baru karena tidak ada source yang diedit.
+- Hanya laporan/checkpoint dokumentasi yang diperbarui.
+
+### PENGUJIAN
+- Local PHP lint: 282/282 file project-owned PASS pada PHP 8.4.24.
+- CI exact SHA `2598af967b22a8fa032cc910bb32230804a15390`: run #45369049022 SUCCESS; seluruh step termasuk focused dan full PHPUnit SUCCESS. Angka assertion tidak diambil dari metadata job ini, sehingga tidak ditambahkan sebagai angka baru.
+- ZIP #45369048969 SUCCESS untuk build/upload saja; final ZIP NOT ACCEPTED.
+- Preflight read-only DB snapshot, fixture-normalization tests, redactor tests, dan PHPUnit lokal: NOT RUN / NOT IMPLEMENTED.
+
+### STATUS / STOP
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- Checkout Git asli/workspace kanonis: BLOCKED.
+- Staging/ZIP acceptance: NOT VERIFIED / NOT ACCEPTED.
+- Production database: NOT TOUCHED.
+- STOP sebelum P1-ID-03B untuk review koordinator.

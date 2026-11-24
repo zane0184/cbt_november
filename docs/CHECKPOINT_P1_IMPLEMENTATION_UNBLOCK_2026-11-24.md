@@ -239,3 +239,41 @@ Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implem
 3. Backup byte-exact sebelum tiap source edit.
 4. Implementasikan P1-ID-03A saja dan jalankan focused/full PHPUnit + CI exact SHA.
 5. STOP sebelum P1-ID-03B untuk review koordinator.
+
+
+---
+
+## KOREKSI CHECKPOINT — jumlah test dan hasil refresh exact HEAD (24 November 2026)
+
+### AUDIT
+- Koreksi: exact source tree `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050` memiliki **75 file PHP tests/**, bukan 77. Angka 77 pada addendum sebelumnya adalah salah hitung. Seluruh 75 file telah diperiksa statis; 27 file/concern berisi profile references/fixtures.
+- Fixture generik yang belum sesuai kontrak terdapat antara lain pada Analytics/CacheTest, ExamAnswerTest, ExamBuilderTest, ExamIntegrityTest, ExamListContractTest, ExamManagementHardeningTest, ExamSnapshotTest, ExamVerificationTest, MonitoringTest, MonitoringDuplicationTest, Phase7BManualReviewTest, Phase7CReopenTest, ProctorAssignmentSecurityTest, QuestionBankTest, RoleDashboardVerificationTest, Security/AnswerKeyLeakageTest, TeacherPracticeWorkflowTest, dan CreatesTeacherExamScope. MediaAuthorization memakai employee_identifier GURU-MEDIA-1/2; Phase7DHistorical memakai GURU-A-001. Pertahankan anomali hanya di negative tests.
+- UserManagement::createUser() memiliki gate Admin Madrasah tunggal + user.manage, role GURU/SISWA terbatas, transaksi, dan tenant berasal dari middleware IdentifyTenant/TenantScoped. Namun jalur create ini belum memanggil AuditService/AuditLog.
+- TeacherProfilePage::savePhone() memvalidasi TeacherPortalAccess (akun aktif, tenant, tepat satu role GURU, tepat satu profile), mengunci profile scoped, tetapi mengirim old/new phone ke AuditService tanpa redaksi.
+- Benchmark memakai file SQLite terpisah dan migrate:fresh pada koneksi SQLite; cleanup hanya di jalur normal, bukan finally.
+- Source audit snapshot 187 app PHP, 13 factories, 5 seeders; 107 AuditService::log calls / 33 files; dua direct runtime AuditLog bypass; satu migration historical insert.
+- Local lint 282/282 project-owned PHP files PASS pada PHP 8.4.24. Ini bukan PHP 8.3/PHPUnit.
+- PR #23 OPEN/DRAFT/NOT MERGED; branch HEAD sebelum checkpoint ini `2598af967b22a8fa032cc910bb32230804a15390`; base `1c33e5d422175f9bd85d206230271a9fe5a4eecd`.
+- CI exact HEAD 2598: #45369049022 SUCCESS (Composer, PHP lint, disposable MySQL 8, focused dan full PHPUnit steps SUCCESS). ZIP #45369048969 SUCCESS build/archive; artifact #14907742542 / 19,768,218 bytes; final ZIP NOT ACCEPTED.
+- Snapshot `CBT_AUDIT_SNAPSHOT_2f135172` bukan checkout Git; workspace kanonis tetap tidak tersedia.
+
+### DESAIN
+- Normalisasi fixture valid dengan helper berbasis string dan leading zero; pertahankan negative fixtures secara terisolasi.
+- Perluas redactor recursive ke seluruh PII termasuk phone/email dan semua runtime writer; tambahkan audit create akun/profil.
+- Tambahkan cleanup benchmark finally; tutup gap preflight/test DB immutability.
+
+### IMPLEMENTASI
+- Tidak ada source/test/migration/config/workflow/dependency/DB diubah.
+- Tidak ada source backup baru.
+- Dokumentasi report dan checkpoint diperbarui saja.
+
+### PENGUJIAN
+- PHP lint 282/282 project-owned files PASS (PHP 8.4.24).
+- CI exact SHA 2598 PASS pada seluruh step; tidak menambahkan angka assertion yang tidak tersedia dari metadata job.
+- PHPUnit lokal, preflight immutability, benchmark, dan redactor tests NOT RUN.
+
+### STATUS / NEXT
+- P1-ID-03A PARTIAL / NOT COMPLETE.
+- P1-ID-03B BLOCKED / NOT STARTED.
+- Pulihkan checkout Git asli + workspace writable + PHP 8.3/Composer/PDO MySQL/MySQL 8 disposable; backup byte-exact sebelum source edit.
+- STOP untuk review koordinator sebelum P1-ID-03B.
