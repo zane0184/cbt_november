@@ -466,7 +466,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
         // No authenticated user and no single local installation identity:
         // no managed branding path may be returned.
         Auth::shouldUse('web');
-        Auth::guard('web')->setUser(null);
+        Auth::guard('web')->forgetUser();
         Auth::guard('sanctum')->forgetUser();
         $this->setTenantContext(null);
         if (Schema::hasTable('local_installation_identities')) {
@@ -737,7 +737,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             }
 
             Auth::shouldUse('web');
-            Auth::guard('web')->setUser(null);
+            Auth::guard('web')->forgetUser();
             Auth::guard('sanctum')->forgetUser();
             config(['database.default' => 'installation_a']);
             DB::purge('installation_a');
