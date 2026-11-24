@@ -369,6 +369,10 @@ class TenantBrandingAssetsManagementTest extends TestCase
             'app-logo'
         );
         $this->tenant->forceFill(['logo_path' => $appLogoPath])->save();
+        $this->actingAs($this->admin, 'web');
+        Auth::guard('sanctum')->forgetUser();
+        $this->setTenantContext((string) $this->tenant->id);
+        $this->assertNotNull($branding->localPath($appLogoPath));
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Other', 'code' => 'BRAND-B']);
         $role = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
@@ -441,7 +445,13 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
     public function test_branding_migration_up_is_idempotent_and_repairs_legacy_partial_schema(): void
     {
-        $this->assertSame('mysql', DB::connection()->getDriverName(), 'The branding migration matrix must run on disposable MySQL/InnoDB.');
+        if (
+            !app()->environment('testing')
+            || DB::connection()->getDriverName() !== 'mysql'
+            || !str_starts_with((string) config('database.connections.mysql.database'), 'cbt_ci_')
+        ) {
+            $this->markTestSkipped('The migration matrix requires the isolated cbt_ci_* MySQL test database.');
+        }
 
         $originalDefault = config('database.default');
         $mysqlConfig = config('database.connections.mysql');
@@ -507,6 +517,9 @@ class TenantBrandingAssetsManagementTest extends TestCase
                     $row['favicon_path'] = 'legacy/' . $fixture['name'] . '-favicon.png';
                 }
                 DB::table('tenants')->insert($row);
+
+                $tableStatus = DB::selectOne("SHOW TABLE STATUS WHERE Name = 'tenants'");
+                $this->assertSame('InnoDB', $tableStatus->Engine, $fixture['name'] . ' fixture must use InnoDB');
 
                 $migration = require database_path('migrations/2026_11_24_230001_add_tenant_branding_asset_paths.php');
                 $migration->up();
@@ -706,6 +719,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertNotNull($header->getLogoDataUri($tenantA));
 
             config(['database.default' => 'installation_b']);
+            $this->setTenantContext($tenantBId);
             $tenantB = $branding->currentTenant();
 
             $this->assertNotNull($tenantB);
