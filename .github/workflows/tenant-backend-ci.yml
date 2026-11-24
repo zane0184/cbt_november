@@ -124,6 +124,12 @@ jobs:
       - name: Discover Laravel packages explicitly
         run: php artisan package:discover --ansi
 
+      - name: PHP lint application, migrations, and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app database/migrations tests -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
+
       - name: Prepare empty test environment file
         run: touch .env
 
@@ -138,7 +144,7 @@ jobs:
             --execute="CREATE DATABASE IF NOT EXISTS cbt_installer_test_pilot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
       - name: Run focused Web login and tenant identity smoke tests
-        run: php artisan test --display-warnings --filter='WebAdminAuthTest|StudentWebLoginTest'
+        run: php artisan test --display-warnings --filter='WebAdminAuthTest|StudentWebLoginTest|AdminUiVerificationTest'
 
       - name: Run complete PHPUnit suite against disposable MySQL 8
         run: php artisan test --display-warnings
