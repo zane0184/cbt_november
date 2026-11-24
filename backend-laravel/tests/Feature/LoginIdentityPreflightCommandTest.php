@@ -51,6 +51,30 @@ class LoginIdentityPreflightCommandTest extends TestCase
         $this->assertStringNotContainsString('0001234567', $output);
     }
 
+    public function test_preflight_detects_whitespace_padded_identity_without_echoing_value(): void
+    {
+        $teacher = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Spasi',
+            'username' => 'guru.spasi',
+            'password' => bcrypt('password123456'),
+        ]);
+        TeacherProfile::create([
+            'user_id' => $teacher->id,
+            'full_name' => 'Guru Spasi',
+            'employment_status' => 'PNS',
+            'nip' => ' 198001012006041003 ',
+            'employee_identifier' => ' 198001012006041003 ',
+        ]);
+
+        $exitCode = Artisan::call('login-identity:preflight');
+        $output = Artisan::output();
+
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('Field identitas Guru memiliki spasi di tepi', $output);
+        $this->assertStringNotContainsString('198001012006041003', $output);
+    }
+
     public function test_preflight_fails_closed_for_legacy_teacher_without_status_or_login_identity(): void
     {
         $legacy = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Guru Legacy', 'username' => 'guru.legacy', 'password' => bcrypt('password123456')]);
