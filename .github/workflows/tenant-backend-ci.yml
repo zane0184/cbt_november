@@ -349,6 +349,7 @@ jobs:
           php artisan test \
             tests/Feature/TenantAcademicBootstrapServiceTest.php \
             tests/Feature/AcademicYearManagementTest.php \
+            tests/Feature/TeacherSubjectAssignmentManagementTest.php \
             tests/Feature/InstallerEndToEndTest.php \
             tests/Feature/AdminUiVerificationTest.php \
             tests/Feature/TeacherPracticeWorkflowTest.php \
