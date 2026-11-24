@@ -308,6 +308,17 @@ class InstallerService
                         throw new RuntimeException('MIGRATION_LEDGER_INCOMPLETE');
                     }
 
+                    // System Tenant is an internal registry namespace, not a second madrasah.
+                    // The local installation identity guard excludes this reserved tenant.
+                    $seedExitCode = Artisan::call('db:seed', [
+                        '--class' => DatabaseSeeder::class,
+                        '--force' => true,
+                    ]);
+                    if ($seedExitCode !== 0) {
+                        throw new RuntimeException('BASE_SEED_EXIT_' . $seedExitCode);
+                    }
+                    $this->verifyBaseAcademicRegistry();
+
                     $schemaFingerprint = $this->schemaFingerprint();
                     $this->stateStore->write(array_merge($state, [
                         'state' => 'SCHEMA_READY',
@@ -459,12 +470,9 @@ class InstallerService
                     app(TenantContext::class)->setTenantId(null);
                 }
 
-                // Seed the official registry and academic FK catalog inside this
-                // madrasah's only tenant. Never create a second System Tenant locally.
-                $curriculumRegistry = app(TenantCurriculumRegistryBootstrapper::class)
-                    ->seedForTenant((string) $tenantId);
-                $this->verifyBaseAcademicRegistry((string) $tenantId);
-
+                // Provision only the madrasah-owned academic FK catalog. The
+                // canonical curriculum reference registry is seeded once under the
+                // reserved internal System Tenant during clean schema bootstrap.
                 $academicCatalog = app(TenantAcademicBootstrapService::class)
                     ->provisionForTenant((string) $tenantId);
 
@@ -485,10 +493,6 @@ class InstallerService
                         'grade_level_count' => $academicCatalog['grade_level_count'],
                         'academic_year_count' => $academicCatalog['academic_year_count'],
                         'semester_count' => $academicCatalog['semester_count'],
-                    ],
-                    'curriculum_registry' => [
-                        'source_count' => $curriculumRegistry['source_count'],
-                        'assessment_taxonomy_count' => $curriculumRegistry['assessment_taxonomy_count'],
                     ],
                 ];
             });
@@ -799,23 +803,23 @@ class InstallerService
         }
     }
 
-    private function verifyBaseAcademicRegistry(string $tenantId): void
+    private function verifyBaseAcademicRegistry(): void
     {
-        $tenantExists = DB::table('tenants')
-            ->where('id', $tenantId)
+        $systemTenantId = Tenant::SYSTEM_TENANT_ID;
+        $systemTenantExists = DB::table('tenants')
+            ->where('id', $systemTenantId)
             ->whereNull('deleted_at')
             ->exists();
-        $tenantCount = DB::table('tenants')->whereNull('deleted_at')->count();
 
         $version = DB::table('multi_curriculum_versions')
-            ->where('tenant_id', $tenantId)
+            ->where('tenant_id', $systemTenantId)
             ->where('version_code', 'KMA-1503-2025')
             ->where('status', 'ACTIVE')
             ->where('is_official', true)
             ->where('is_editable', false)
             ->first();
 
-        if (!$tenantExists || $tenantCount !== 1 || !$version) {
+        if (!$systemTenantExists || !$version) {
             throw new RuntimeException('BASE_CURRICULUM_REGISTRY_MISSING');
         }
 
@@ -831,7 +835,7 @@ class InstallerService
 
         foreach ($expectedCounts as $nodeType => $expectedCount) {
             $actualCount = DB::table('multi_curriculum_structures')
-                ->where('tenant_id', $tenantId)
+                ->where('tenant_id', $systemTenantId)
                 ->where('multi_curriculum_version_id', $version->id)
                 ->where('node_type', $nodeType)
                 ->where('status', 'ACTIVE')
