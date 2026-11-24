@@ -17,7 +17,7 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class StudentImportService
 {
-    private const MAX_ROWS = 5000;
+    private const MAX_ROWS = 5000;\n\n    private const MAX_COLUMNS = 32;\n\n    private const MAX_CELLS = 160000;\n\n    private const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;\n\n    private const MAX_CSV_RECORD_BYTES = 256 * 1024;\n\n    private const MAX_CELL_BYTES = 4096;
 
     private const OPTIONAL_HEADERS = [
         'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
@@ -306,6 +306,9 @@ class StudentImportService
 
     private function readRows(string $path, string $extension): array
     {
+        $this->assertRuntimeLimits();
+        $this->assertUploadEnvelope($path, $extension);
+
         if (in_array($extension, ['csv', 'txt'], true)) {
             return $this->readCsv($path);
         }
@@ -314,22 +317,36 @@ class StudentImportService
             throw ValidationException::withMessages(['file' => 'Format file harus XLSX atau CSV.']);
         }
 
+        $spreadsheet = null;
         try {
-            $spreadsheet = IOFactory::load($path);
-            $sheet = $spreadsheet->getSheet(0);
+            // Package and worksheet checks must complete before PhpSpreadsheet reads the workbook.
+            $sheetName = app(XlsxPackagePreflight::class)->inspect($path);
+            $reader = IOFactory::createReader('Xlsx');
+            $reader->setReadDataOnly(true);
+            $reader->setLoadSheetsOnly([$sheetName]);
+            $reader->setReadFilter(new StudentImportReadFilter(self::MAX_ROWS + 1, self::MAX_COLUMNS));
+
+            $spreadsheet = $reader->load($path);
+            $sheet = $spreadsheet->getSheetByName($sheetName);
+            if ($sheet === null) {
+                throw ValidationException::withMessages(['file' => 'Worksheet Import Siswa tidak ditemukan.']);
+            }
+
             $lastColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             $lastRow = $sheet->getHighestDataRow();
 
-            // Reject oversized worksheet dimensions before allocating a row array.
+            // Defense in depth after the pre-load package/dimension gate.
             if ($lastRow > self::MAX_ROWS + 1) {
                 throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
             }
-            if ($lastColumn > 32) {
+            if ($lastColumn > self::MAX_COLUMNS) {
                 throw ValidationException::withMessages(['file' => 'Maksimal 32 kolom per proses import.']);
+            }
+            if (($lastRow * $lastColumn) > self::MAX_CELLS) {
+                throw ValidationException::withMessages(['file' => 'Jumlah cell XLSX melewati batas keamanan.']);
             }
 
             $headers = [];
-
             for ($column = 1; $column <= $lastColumn; $column++) {
                 $cell = $sheet->getCell(Coordinate::stringFromColumnIndex($column) . '1');
                 $headers[] = $this->normalizeHeader((string) $cell->getValue());
@@ -341,23 +358,30 @@ class StudentImportService
                 for ($column = 1; $column <= $lastColumn; $column++) {
                     $cell = $sheet->getCell(Coordinate::stringFromColumnIndex($column) . $row);
                     if ($cell->getDataType() === DataType::TYPE_FORMULA) {
-                        $values[] = null;
-                    } else {
-                        $values[] = $cell->getValue();
+                        throw ValidationException::withMessages([
+                            'file' => 'Formula tidak diizinkan pada file Import Siswa; gunakan nilai tetap.',
+                        ]);
                     }
+                    $value = $cell->getValue();
+                    if (is_string($value) && strlen($value) > self::MAX_CELL_BYTES) {
+                        throw ValidationException::withMessages(['file' => 'Isi satu cell XLSX melewati batas 4 KiB.']);
+                    }
+                    $values[] = $value;
                 }
                 $rows[] = ['row' => $row, 'values' => $values];
             }
 
-            $spreadsheet->disconnectWorksheets();
-
             return [$headers, $rows];
         } catch (ValidationException $exception) {
             throw $exception;
-        } catch (\Throwable $exception) {
+        } catch (\\Throwable $exception) {
             throw ValidationException::withMessages([
                 'file' => 'File XLSX tidak dapat dibaca. Pastikan file tidak rusak dan bukan hasil ekspor yang dilindungi.',
             ]);
+        } finally {
+            if ($spreadsheet !== null) {
+                $spreadsheet->disconnectWorksheets();
+            }
         }
     }
 
@@ -369,12 +393,12 @@ class StudentImportService
         }
 
         try {
-            $firstLine = fgets($handle);
-            if ($firstLine === false) {
-                throw ValidationException::withMessages(['file' => 'File CSV kosong.']);
+            $firstLine = fgets($handle, self::MAX_CSV_RECORD_BYTES + 1);
+            if ($firstLine === false || strlen($firstLine) > self::MAX_CSV_RECORD_BYTES || (!str_ends_with($firstLine, "\\n") && !feof($handle))) {
+                throw ValidationException::withMessages(['file' => 'Header CSV kosong atau melebihi batas ukuran record.']);
             }
 
-            $delimiters = [',', ';', "\t"];
+            $delimiters = [',', ';', "\\t"];
             $delimiter = ',';
             $highestCount = -1;
             foreach ($delimiters as $candidate) {
@@ -386,31 +410,130 @@ class StudentImportService
             }
 
             rewind($handle);
-            $headerRow = fgetcsv($handle, 0, $delimiter, '"', '');
+            $headerRow = $this->readCsvRecord($handle, $delimiter);
             if (!is_array($headerRow)) {
                 throw ValidationException::withMessages(['file' => 'Header CSV tidak dapat dibaca.']);
             }
 
             if (isset($headerRow[0]) && is_string($headerRow[0])) {
-                $headerRow[0] = preg_replace('/^\xEF\xBB\xBF/', '', $headerRow[0]) ?? $headerRow[0];
+                $headerRow[0] = preg_replace('/^\\xEF\\xBB\\xBF/', '', $headerRow[0]) ?? $headerRow[0];
             }
 
             $headers = array_map(fn ($value) => $this->normalizeHeader((string) $value), $headerRow);
             $rows = [];
-            $line = 1;
+            $recordNumber = 1;
+            $cellCount = count($headerRow);
 
-            while (($values = fgetcsv($handle, 0, $delimiter, '"', '')) !== false) {
-                $line++;
-                $rows[] = ['row' => $line, 'values' => $values];
-                if (count($rows) > self::MAX_ROWS) {
+            while (($values = $this->readCsvRecord($handle, $delimiter)) !== false) {
+                $recordNumber++;
+                $cellCount += count($values);
+                if ($recordNumber > self::MAX_ROWS + 1) {
                     throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
                 }
+                if ($cellCount > self::MAX_CELLS) {
+                    throw ValidationException::withMessages(['file' => 'Jumlah cell CSV melewati batas keamanan.']);
+                }
+
+                $rows[] = ['row' => $recordNumber, 'values' => $values];
             }
 
             return [$headers, $rows];
         } finally {
             fclose($handle);
         }
+    }
+
+    private function readCsvRecord($handle, string $delimiter): array|false
+    {
+        $start = ftell($handle);
+        $values = fgetcsv($handle, self::MAX_CSV_RECORD_BYTES + 1, $delimiter, '"', '');
+        $end = ftell($handle);
+
+        if ($values === false) {
+            if (!feof($handle)) {
+                throw ValidationException::withMessages(['file' => 'Record CSV malformed atau tidak dapat dibaca.']);
+            }
+
+            return false;
+        }
+
+        if (!is_int($start) || !is_int($end) || ($end - $start) > self::MAX_CSV_RECORD_BYTES) {
+            throw ValidationException::withMessages(['file' => 'Satu record CSV melewati batas 256 KiB.']);
+        }
+        if (count($values) > self::MAX_COLUMNS) {
+            throw ValidationException::withMessages(['file' => 'CSV maksimal 32 kolom per record.']);
+        }
+
+        foreach ($values as $value) {
+            if ($value === null) {
+                continue;
+            }
+            if (!is_string($value) || strlen($value) > self::MAX_CELL_BYTES) {
+                throw ValidationException::withMessages(['file' => 'Isi satu cell CSV melewati batas 4 KiB.']);
+            }
+            if (!mb_check_encoding($value, 'UTF-8') || str_contains($value, "\\0")) {
+                throw ValidationException::withMessages(['file' => 'CSV harus berisi teks UTF-8 valid tanpa NUL byte.']);
+            }
+        }
+
+        return $values;
+    }
+
+    private function assertUploadEnvelope(string $path, string $extension): void
+    {
+        $size = filesize($path);
+        if (!is_int($size) || $size < 1 || $size > self::MAX_UPLOAD_BYTES) {
+            throw ValidationException::withMessages(['file' => 'Ukuran file harus lebih dari 0 dan maksimal 10 MiB.']);
+        }
+
+        if (in_array($extension, ['csv', 'txt'], true)) {
+            $mime = (new \\finfo(FILEINFO_MIME_TYPE))->file($path);
+            $allowed = ['text/plain', 'text/csv', 'application/csv', 'application/vnd.ms-excel', 'application/octet-stream'];
+            if (!is_string($mime) || !in_array($mime, $allowed, true)) {
+                throw ValidationException::withMessages(['file' => 'Konten file tidak dikenali sebagai CSV/text.']);
+            }
+        }
+    }
+
+    private function assertRuntimeLimits(): void
+    {
+        $memoryLimit = $this->memoryLimitBytes((string) ini_get('memory_limit'));
+        if ($memoryLimit !== null && $memoryLimit < (256 * 1024 * 1024)) {
+            throw ValidationException::withMessages([
+                'file' => 'Import membutuhkan memory_limit PHP minimal 256M. Hubungi Admin teknis.',
+            ]);
+        }
+
+        $currentExecutionLimit = (int) ini_get('max_execution_time');
+        if ($currentExecutionLimit === 0 || $currentExecutionLimit > 30) {
+            $changed = @set_time_limit(30);
+            if (!$changed && (int) ini_get('max_execution_time') > 30) {
+                throw ValidationException::withMessages([
+                    'file' => 'Batas waktu parsing 30 detik tidak dapat diterapkan pada runtime PHP.',
+                ]);
+            }
+        }
+    }
+
+    private function memoryLimitBytes(string $limit): ?int
+    {
+        $limit = trim($limit);
+        if ($limit === '' || $limit === '-1') {
+            return null;
+        }
+
+        if (!preg_match('/^(\\d+)\\s*([KMG]?)$/i', $limit, $matches)) {
+            return null;
+        }
+
+        $value = (int) $matches[1];
+        $unit = strtoupper($matches[2] ?? '');
+        return match ($unit) {
+            'G' => $value * 1024 * 1024 * 1024,
+            'M' => $value * 1024 * 1024,
+            'K' => $value * 1024,
+            default => $value,
+        };
     }
 
     private function normalizeHeader(string $header): string
