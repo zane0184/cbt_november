@@ -16,7 +16,11 @@ use App\Models\ExamQuestionSnapshot;
 use App\Models\GradeLevel;
 use App\Models\KktpVersion;
 use App\Models\LearningObjective;
+use App\Models\MultiCurriculumVersion;
 use App\Models\LearningOutcome;
+use App\Models\TeacherSubjectAssignment;
+use App\Models\TenantCurriculumRegistration;
+use App\Services\RolePermissionBootstrapper;
 use App\Models\LearningPath;
 use App\Models\LearningPathVersion;
 use App\Models\Phase;
@@ -119,6 +123,10 @@ class Phase7dBenchmarkCommand extends Command
             if ($migrationExitCode !== 0) {
                 throw new \RuntimeException('Benchmark MySQL migration failed.');
             }
+
+            $this->info('Bootstrapping official curriculum reference data...');
+            app(\Database\Seeders\CurriculumReferenceSourceSeeder::class)->run();
+            app(\Database\Seeders\CurriculumRegistryBootstrapSeeder::class)->run();
 
             $this->info('Seeding representative workload...');
             $startTime = microtime(true);
@@ -275,6 +283,7 @@ class Phase7dBenchmarkCommand extends Command
             $adminRole = Role::firstOrCreate(['name' => 'ADMIN_MADRASAH'], ['label' => 'Admin Madrasah']);
             $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
             $siswaRole = Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']);
+            app(RolePermissionBootstrapper::class)->bootstrap();
 
             $adminUser = User::create([
                 'tenant_id' => $tenant->id,
@@ -293,6 +302,19 @@ class Phase7dBenchmarkCommand extends Command
             ]);
             $teacherUser->roles()->attach($guruRole);
             $teacherUser->load('roles');
+
+            $globalCurriculumVersion = MultiCurriculumVersion::query()
+                ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
+                ->where('version_code', 'KMA-1503-2025')
+                ->firstOrFail();
+
+            $curriculumRegistration = TenantCurriculumRegistration::query()->create([
+                'tenant_id' => $tenant->id,
+                'multi_curriculum_version_id' => $globalCurriculumVersion->id,
+                'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                'status' => 'ACTIVE',
+                'registered_at' => now(),
+            ]);
 
             $academicYear = AcademicYear::create([
                 'tenant_id' => $tenant->id,
@@ -353,6 +375,28 @@ class Phase7dBenchmarkCommand extends Command
                 'name' => 'Kelas 5 Bench',
                 'teacher_id' => $teacherProfile->id,
                 'status' => 'ACTIVE'
+            ]);
+
+            $assignment = TeacherSubjectAssignment::query()->create([
+                'teacher_profile_id' => $teacherProfile->id,
+                'subject_id' => $subject->id,
+                'rombel_id' => $rombel->id,
+                'academic_year_id' => $academicYear->id,
+                'semester_id' => $semester->id,
+                'starts_at' => now()->subDay()->toDateString(),
+                'ends_at' => now()->addYear()->toDateString(),
+                'status' => 'ACTIVE',
+                'multi_curriculum_version_id' => $globalCurriculumVersion->id,
+                'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                'tenant_curriculum_registration_id' => $curriculumRegistration->id,
+                'curriculum_context_snapshot' => [
+                    'curriculum_version_id' => $globalCurriculumVersion->id,
+                    'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                    'tenant_curriculum_registration_id' => $curriculumRegistration->id,
+                    'version_code' => $globalCurriculumVersion->version_code,
+                    'source_id' => $globalCurriculumVersion->source_id,
+                ],
+                'created_by' => $teacherUser->id,
             ]);
 
             // 1 CP
@@ -475,6 +519,11 @@ class Phase7dBenchmarkCommand extends Command
                     'semester_id' => $semester->id,
                     'curriculum_id' => $curriculum->id,
                     'subject_id' => $subject->id,
+                    'teacher_subject_assignment_id' => $assignment->id,
+                    'curriculum_version_id' => $globalCurriculumVersion->id,
+                    'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+                    'tenant_curriculum_registration_id' => $curriculumRegistration->id,
+                    'curriculum_context_snapshot' => $assignment->curriculum_context_snapshot,
                     'title' => "Penilaian {$i}",
                     'assessment_type' => ($i % 2 == 1) ? 'FORMATIVE' : 'SUMMATIVE',
                     'status' => 'PUBLISHED',
@@ -587,6 +636,7 @@ class Phase7dBenchmarkCommand extends Command
             return [
                 'tenant' => $tenant,
                 'adminUser' => $adminUser,
+                'teacherUser' => $teacherUser,
                 'academicYear' => $academicYear,
                 'semester' => $semester,
                 'subject' => $subject,
@@ -652,10 +702,10 @@ class Phase7dBenchmarkCommand extends Command
         $reportController = app(ReportController::class);
         $exam = $workload['exams'][0];
         $rombel = $workload['rombel'];
-        $adminUser = $workload['adminUser'];
-        $adminUser->load('roles');
+        $teacherUser = $workload['teacherUser'];
+        $teacherUser->load('roles');
 
-        app('auth')->setUser($adminUser);
+        app('auth')->setUser($teacherUser);
 
         // Warm-up run for Dompdf (class loading, CSS/font engine initialization) - excluded from official stats
         $this->line("  [Warm-up] Initializing Dompdf & rendering warm-up PDF...");
@@ -663,7 +713,7 @@ class Phase7dBenchmarkCommand extends Command
         $warmupReq = Request::create("/api/v1/reports/exams/{$exam->id}/export/pdf", 'GET', [
             'rombel_id' => $rombel->id,
         ]);
-        $warmupReq->setUserResolver(fn() => $adminUser);
+        $warmupReq->setUserResolver(fn() => $teacherUser);
         $warmupResp = $reportController->exportPdf($warmupReq, $exam);
         $warmupBytes = strlen($warmupResp->getContent());
         $warmupDuration = round((microtime(true) - $warmupStart) * 1000, 2);
@@ -678,7 +728,7 @@ class Phase7dBenchmarkCommand extends Command
             $request = Request::create("/api/v1/reports/exams/{$exam->id}/export/pdf", 'GET', [
                 'rombel_id' => $rombel->id,
             ]);
-            $request->setUserResolver(fn() => $adminUser);
+            $request->setUserResolver(fn() => $teacherUser);
 
             $response = $reportController->exportPdf($request, $exam);
             $content = $response->getContent();
