@@ -541,8 +541,9 @@ class AdminUserAccountLifecycleTest extends TestCase
             Livewire::test(UserManagement::class)->call('deactivateUser', $foreignTeacher->id);
             $this->fail('Cross-tenant deactivation must not find or mutate the foreign account.');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
-            $this->assertTrue((bool) $foreignTeacher->fresh()->is_active);
-            $this->assertSame(1, (int) $foreignTeacher->fresh()->auth_version);
+            $foreignFresh = User::withoutGlobalScopes()->findOrFail($foreignTeacher->id);
+            $this->assertTrue((bool) $foreignFresh->is_active);
+            $this->assertSame(1, (int) $foreignFresh->auth_version);
         }
 
         $localStudent = $this->makeLocalUser('SISWA', 'non-admin-actor-target');
@@ -602,6 +603,14 @@ class AdminUserAccountLifecycleTest extends TestCase
         $resetTeacher = $this->makeLocalUser('GURU', 'session-reset-'.$driver);
         $deactivatedTeacher = $this->makeLocalUser('GURU', 'session-deactivate-'.$driver);
         $unrelatedTeacher = $this->makeLocalUser('GURU', 'session-unrelated-'.$driver);
+
+        foreach ([$resetTeacher, $deactivatedTeacher, $unrelatedTeacher] as $teacher) {
+            \\App\\Models\\TeacherProfile::create([
+                'tenant_id' => $this->tenant->id,
+                'user_id' => $teacher->id,
+                'full_name' => $teacher->name,
+            ]);
+        }
 
         [$cookieName, $resetCookie] = $this->loginAndCapturePersistentWebSession($resetTeacher);
         Auth::forgetGuards();
