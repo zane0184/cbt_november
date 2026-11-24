@@ -47,11 +47,11 @@ class ExamAnswerTest extends TestCase
             \App\Models\Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa'])
         );
 
-        StudentProfile::create([
+        StudentProfile::create($this->withSyntheticStudentIdentity([
             'user_id' => $this->student->id,
             'nis' => 'ANS-' . Str::random(8),
             'full_name' => $this->student->name,
-        ]);
+        ]));
 
         // Two independent API sessions exist before the Attempt starts.
         $this->apiToken = $this->student->createToken('answer-test-session')->plainTextToken;

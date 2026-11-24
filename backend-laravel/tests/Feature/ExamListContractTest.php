@@ -55,8 +55,8 @@ class ExamListContractTest extends TestCase
         $phase = Phase::create(['tenant_id' => $this->tenant->id, 'curriculum_id' => $curriculum->id, 'name' => 'Fase A', 'code' => 'A', 'status' => 'ACTIVE']);
         $grade = GradeLevel::create(['tenant_id' => $this->tenant->id, 'phase_id' => $phase->id, 'name' => 'Kelas 1', 'code' => '1', 'level' => 1, 'status' => 'ACTIVE']);
         $this->rombel = Rombel::create(['tenant_id' => $this->tenant->id, 'academic_year_id' => $ay->id, 'grade_level_id' => $grade->id, 'name' => '1A', 'status' => 'ACTIVE']);
-        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru']);
-        $this->studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->siswa->id, 'full_name' => 'Siswa']);
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru']));
+        $this->studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->siswa->id, 'full_name' => 'Siswa']));
         $this->rombel->students()->attach($this->studentProfile->id);
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,

@@ -67,11 +67,11 @@ class QuestionBankTest extends TestCase
         $curriculumA = \App\Models\Curriculum::create(['name' => 'KM A']);
         $phaseA = \App\Models\Phase::create(['curriculum_id' => $curriculumA->id, 'name' => 'Fase A', 'code' => 'A']);
         $this->subjectA = Subject::create(['name' => 'Matematika', 'code' => 'MTK']);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenantA->id,
             'user_id' => $this->userA->id,
             'full_name' => 'Teacher A',
-        ]);
+        ]));
         $academicYear = AcademicYear::create(['tenant_id' => $this->tenantA->id, 'name' => '2026/2027', 'is_active' => true]);
         $semester = Semester::create(['tenant_id' => $this->tenantA->id, 'academic_year_id' => $academicYear->id, 'term' => 'GANJIL', 'is_active' => true]);
         $phaseForAssignment = Phase::create(['curriculum_id' => $curriculumA->id, 'name' => 'Fase Assignment', 'code' => 'FA']);

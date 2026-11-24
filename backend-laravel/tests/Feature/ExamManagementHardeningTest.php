@@ -82,8 +82,8 @@ class ExamManagementHardeningTest extends TestCase
         ]);
         $this->student2->roles()->attach($studentRole);
 
-        $sp1 = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student1->id, 'full_name' => 'Siswa A']);
-        $sp2 = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student2->id, 'full_name' => 'Siswa B']);
+        $sp1 = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->student1->id, 'full_name' => 'Siswa A']));
+        $sp2 = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->student2->id, 'full_name' => 'Siswa B']));
 
         $curriculum = Curriculum::create(['name' => 'K-Merdeka', 'code' => 'KM', 'is_active' => true]);
         $phase = Phase::create(['curriculum_id' => $curriculum->id, 'name' => 'Fase C', 'code' => 'C']);
@@ -113,7 +113,7 @@ class ExamManagementHardeningTest extends TestCase
             'name' => 'Kelas 6-B',
             'status' => 'ACTIVE',
         ]);
-        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru Penguji']);
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru Penguji']));
         $this->assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
@@ -214,11 +214,11 @@ class ExamManagementHardeningTest extends TestCase
             'email' => 'guru-lain@example.test',
             'password' => bcrypt('password'),
         ]);
-        $foreignProfile = TeacherProfile::create([
+        $foreignProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $foreignTeacher->id,
             'full_name' => 'Guru Lain',
-        ]);
+        ]));
         $foreignAssignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $foreignProfile->id,

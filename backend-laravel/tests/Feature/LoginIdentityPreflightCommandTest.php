@@ -25,6 +25,11 @@ class LoginIdentityPreflightCommandTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        if (DB::connection()->getDriverName() !== 'mysql') {
+            $this->markTestSkipped('Legacy malformed identity fixtures require disposable MySQL CHECK-constraint control.');
+        }
+        // Test-only: simulate imported legacy rows that predate the new CHECK constraints.
+        DB::statement('SET SESSION check_constraint_checks = OFF');
         $this->tenant = Tenant::create(['name' => 'Madrasah Preflight', 'code' => 'PREFLIGHT']);
         app(TenantContext::class)->setTenantId($this->tenant->id);
     }
@@ -242,6 +247,17 @@ class LoginIdentityPreflightCommandTest extends TestCase
             $this->assertStringContainsString('kolom wajib pada tabel teacher_profiles belum lengkap', $output);
         } finally {
             Schema::clearResolvedInstance('db.schema');
+        }
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            if (DB::connection()->getDriverName() === 'mysql') {
+                DB::statement('SET SESSION check_constraint_checks = ON');
+            }
+        } finally {
+            parent::tearDown();
         }
     }
 

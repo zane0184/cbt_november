@@ -46,7 +46,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $this->admin->roles()->attach($adminRole->id);
         $this->proctor = User::create(['tenant_id' => $this->tenant->id, 'name' => 'Proktor A', 'email' => 'proktor-a@example.test', 'password' => bcrypt('password')]);
         $this->proctor->roles()->attach($proctorRole->id);
-        TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->proctor->id, 'full_name' => $this->proctor->name]);
+        TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->proctor->id, 'full_name' => $this->proctor->name]));
 
         $year = AcademicYear::create(['name' => '2026/2027', 'is_active' => true]);
         $assessment = Assessment::create(['academic_year_id' => $year->id, 'title' => 'Asesmen Proktor', 'assessment_type' => 'SUMMATIVE', 'created_by' => $this->admin->id]);
@@ -231,7 +231,7 @@ class ProctorAssignmentSecurityTest extends TestCase
         $proctorRole = Role::where('name', 'GURU')->firstOrFail();
         $proctorB = User::create(['tenant_id' => $tenantB->id, 'name' => 'Proktor B', 'email' => 'proktor-b@example.test', 'password' => bcrypt('password')]);
         $proctorB->roles()->attach($proctorRole->id);
-        TeacherProfile::create(['tenant_id' => $tenantB->id, 'user_id' => $proctorB->id, 'full_name' => $proctorB->name]);
+        TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $tenantB->id, 'user_id' => $proctorB->id, 'full_name' => $proctorB->name]));
         $context->setTenantId(null);
         TenantContext::resetInstance();
 

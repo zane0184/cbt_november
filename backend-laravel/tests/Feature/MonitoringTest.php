@@ -75,8 +75,8 @@ class MonitoringTest extends TestCase
             'name' => '1A',
             'status' => 'ACTIVE',
         ]);
-        $teacherProfile = TeacherProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru']);
-        $studentProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id, 'full_name' => 'Siswa']);
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->teacher->id, 'full_name' => 'Guru']));
+        $studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $this->student->id, 'full_name' => 'Siswa']));
         $this->rombel->students()->attach($studentProfile->id);
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
@@ -283,7 +283,7 @@ class MonitoringTest extends TestCase
             'password' => 'p',
         ]);
         $otherStudent->roles()->attach(Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']));
-        $otherProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $otherStudent->id, 'full_name' => 'Siswa Kedua']);
+        $otherProfile = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $otherStudent->id, 'full_name' => 'Siswa Kedua']));
         $this->rombel->students()->attach($otherProfile->id);
         $otherParticipant = $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $otherStudent->id]);
         $otherAttempt = ExamAttempt::create([
@@ -310,7 +310,7 @@ class MonitoringTest extends TestCase
             'password' => 'p',
         ]);
         $otherStudent->roles()->attach(Role::firstOrCreate(['name' => 'SISWA'], ['label' => 'Siswa']));
-        $otherProfile = StudentProfile::create(['tenant_id' => $this->tenant->id, 'user_id' => $otherStudent->id, 'full_name' => 'Siswa Ketiga']);
+        $otherProfile = StudentProfile::create($this->withSyntheticStudentIdentity(['tenant_id' => $this->tenant->id, 'user_id' => $otherStudent->id, 'full_name' => 'Siswa Ketiga']));
         $this->rombel->students()->attach($otherProfile->id);
         $otherParticipant = $this->exam->participants()->create(['tenant_id' => $this->tenant->id, 'user_id' => $otherStudent->id]);
         $otherAttempt = ExamAttempt::create([

@@ -138,12 +138,12 @@ class Phase7BManualReviewTest extends TestCase
             'grade_level_id' => $grade->id,
             'name' => 'Kelas 1A Phase 7B',
         ]);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenantA->id, 'user_id' => $this->teacherA->id, 'full_name' => 'Guru Tenant A',
-        ]);
-        $studentProfile = StudentProfile::create([
+        ]));
+        $studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'tenant_id' => $this->tenantA->id, 'user_id' => $this->studentA->id, 'full_name' => 'Siswa Tenant A',
-        ]);
+        ]));
         $studentProfile->rombels()->attach($this->rombelA->id, ['id' => (string) Str::uuid(), 'tenant_id' => $this->tenantA->id]);
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenantA->id, 'teacher_profile_id' => $teacherProfile->id,

@@ -58,17 +58,17 @@ class MonitoringDuplicationTest extends TestCase
             'name' => '1A',
             'status' => 'ACTIVE',
         ]);
-        $studentProfile = StudentProfile::create([
+        $studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->student->id,
             'full_name' => 'Siswa 1',
-        ]);
+        ]));
         $studentProfile->rombels()->attach($rombel->id, ['tenant_id' => $this->tenant->id]);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->teacher->id,
             'full_name' => 'Guru',
-        ]);
+        ]));
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,

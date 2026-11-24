@@ -236,11 +236,11 @@ class ExamVerificationTest extends TestCase
         $context = app(\App\Contexts\TenantContext::class);
         $context->setTenantId($this->tenantA->id);
 
-        $tp = TeacherProfile::create([
+        $tp = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenantA->id,
             'user_id' => $this->guruA->id,
             'full_name' => 'Guru A'
-        ]);
+        ]));
 
         $curr = \App\Models\Curriculum::create(['name' => 'K', 'code' => 'K-' . Str::random(4)]);
 
@@ -255,10 +255,10 @@ class ExamVerificationTest extends TestCase
             'teacher_id' => $tp->id
         ]);
 
-        $student = StudentProfile::create([
+        $student = StudentProfile::create($this->withSyntheticStudentIdentity([
             'user_id' => $this->siswaA->id,
             'nis' => '123', 'full_name' => 'Siswa A'
-        ]);
+        ]));
 
         \Illuminate\Support\Facades\DB::table('rombel_student')->insert([
             'id' => (string) Str::uuid(),

@@ -167,11 +167,11 @@ class AdminUiVerificationTest extends TestCase
             'password' => bcrypt('password123456'),
         ]);
         $studentUser->roles()->attach($studentRole);
-        $profile = StudentProfile::create([
+        $profile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'user_id' => $studentUser->id,
             'full_name' => 'Siswa Rombel',
             'nisn' => '0087654321',
-        ]);
+        ]));
         $rombel = Rombel::create([
             'academic_year_id' => $this->academicYear->id,
             'grade_level_id' => $this->gradeLevel->id,
@@ -457,17 +457,17 @@ class AdminUiVerificationTest extends TestCase
             'tenant_id' => $this->tenant->id, 'name' => 'Guru Unik 2',
             'username' => 'guru.unik.2', 'password' => bcrypt('password123456'),
         ]);
-        TeacherProfile::create([
+        TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $teacherOne->id, 'full_name' => 'Guru Unik 1',
             'employment_status' => 'PNS', 'nip' => '198001012006041001',
-        ]);
+        ]));
 
         $nipDuplicateRejected = false;
         try {
-            TeacherProfile::create([
+            TeacherProfile::create($this->withSyntheticTeacherIdentity([
                 'user_id' => $teacherTwo->id, 'full_name' => 'Guru Unik 2',
                 'employment_status' => 'PNS', 'nip' => '198001012006041001',
-            ]);
+            ]));
         } catch (QueryException) {
             $nipDuplicateRejected = true;
         }
@@ -480,16 +480,16 @@ class AdminUiVerificationTest extends TestCase
                 'username' => $username, 'password' => bcrypt('password123456'),
             ]);
         }
-        TeacherProfile::create([
+        TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $nikUsers[0]->id, 'full_name' => 'Guru NIK 1',
             'employment_status' => 'HONORER', 'nik' => '3171000000000004',
-        ]);
+        ]));
         $nikDuplicateRejected = false;
         try {
-            TeacherProfile::create([
+            TeacherProfile::create($this->withSyntheticTeacherIdentity([
                 'user_id' => $nikUsers[1]->id, 'full_name' => 'Guru NIK 2',
                 'employment_status' => 'HONORER', 'nik' => '3171000000000004',
-            ]);
+            ]));
         } catch (QueryException) {
             $nikDuplicateRejected = true;
         }
@@ -502,16 +502,16 @@ class AdminUiVerificationTest extends TestCase
                 'username' => $username, 'password' => bcrypt('password123456'),
             ]);
         }
-        TeacherProfile::create([
+        TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $nuptkUsers[0]->id, 'full_name' => 'Guru NUPTK 1',
             'employment_status' => 'PNS', 'nuptk' => '1234567890123457',
-        ]);
+        ]));
         $nuptkDuplicateRejected = false;
         try {
-            TeacherProfile::create([
+            TeacherProfile::create($this->withSyntheticTeacherIdentity([
                 'user_id' => $nuptkUsers[1]->id, 'full_name' => 'Guru NUPTK 2',
                 'employment_status' => 'PNS', 'nuptk' => '1234567890123457',
-            ]);
+            ]));
         } catch (QueryException) {
             $nuptkDuplicateRejected = true;
         }
@@ -525,15 +525,15 @@ class AdminUiVerificationTest extends TestCase
             'tenant_id' => $this->tenant->id, 'name' => 'Siswa Unik 2',
             'username' => 'siswa.unik.2', 'password' => bcrypt('password123456'),
         ]);
-        StudentProfile::create([
+        StudentProfile::create($this->withSyntheticStudentIdentity([
             'user_id' => $studentOne->id, 'full_name' => 'Siswa Unik 1', 'nisn' => '0000000123',
-        ]);
+        ]));
 
         $nisnDuplicateRejected = false;
         try {
-            StudentProfile::create([
+            StudentProfile::create($this->withSyntheticStudentIdentity([
                 'user_id' => $studentTwo->id, 'full_name' => 'Siswa Unik 2', 'nisn' => '0000000123',
-            ]);
+            ]));
         } catch (QueryException) {
             $nisnDuplicateRejected = true;
         }
@@ -549,15 +549,14 @@ class AdminUiVerificationTest extends TestCase
             'username' => 'guru.privasi',
             'password' => bcrypt('password123456'),
         ]);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'user_id' => $teacherUser->id,
             'full_name' => 'Guru Privasi',
             'employment_status' => 'PNS',
             'employee_identifier' => '198001012006041002',
             'nip' => '198001012006041002',
-            'nik' => '3171000000000003',
             'nuptk' => '1234567890123456',
-        ]);
+        ]));
 
         $teacherArray = $teacherProfile->toArray();
         foreach (['employee_identifier', 'nip', 'nik', 'nuptk'] as $field) {
@@ -565,17 +564,32 @@ class AdminUiVerificationTest extends TestCase
         }
         $this->assertSame('198001012006041002', $teacherProfile->nip);
 
+        $honorerUser = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Honorer Privasi',
+            'username' => 'guru.honorer.privasi',
+            'password' => bcrypt('password123456'),
+        ]);
+        $honorerProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
+            'user_id' => $honorerUser->id,
+            'full_name' => 'Guru Honorer Privasi',
+            'employment_status' => 'HONORER',
+            'nik' => '3171000000000003',
+        ]));
+        $this->assertArrayNotHasKey('nik', $honorerProfile->toArray());
+        $this->assertSame('3171000000000003', $honorerProfile->nik);
+
         $studentUser = User::create([
             'tenant_id' => $this->tenant->id,
             'name' => 'Siswa Privasi',
             'username' => 'siswa.privasi',
             'password' => bcrypt('password123456'),
         ]);
-        $studentProfile = StudentProfile::create([
+        $studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'user_id' => $studentUser->id,
             'full_name' => 'Siswa Privasi',
             'nisn' => '0001234568',
-        ]);
+        ]));
 
         $this->assertArrayNotHasKey('nisn', $studentProfile->toArray());
         $this->assertSame('0001234568', $studentProfile->nisn);
@@ -743,11 +757,11 @@ class AdminUiVerificationTest extends TestCase
         ]);
         $guru->roles()->attach($guruRole);
 
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $guru->id,
             'full_name' => $guru->name,
-        ]);
+        ]));
         $rombel = Rombel::create([
             'tenant_id' => $this->tenant->id,
             'academic_year_id' => $this->academicYear->id,

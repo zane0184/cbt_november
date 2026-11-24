@@ -104,17 +104,17 @@ class ExamSnapshotTest extends TestCase
             'status' => 'ACTIVE',
         ]);
         $this->rombel = $rombel;
-        $studentProfile = StudentProfile::create([
+        $studentProfile = StudentProfile::create($this->withSyntheticStudentIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->student->id,
             'full_name' => 'Siswa Uji',
-        ]);
+        ]));
         $studentProfile->rombels()->attach($rombel->id, ['tenant_id' => $this->tenant->id]);
-        $teacherProfile = TeacherProfile::create([
+        $teacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $this->tenant->id,
             'user_id' => $this->user->id,
             'full_name' => 'Guru',
-        ]);
+        ]));
         $assignment = TeacherSubjectAssignment::create([
             'tenant_id' => $this->tenant->id,
             'teacher_profile_id' => $teacherProfile->id,
@@ -485,11 +485,11 @@ class ExamSnapshotTest extends TestCase
             'short_name' => 'OMT',
             'status' => 'ACTIVE',
         ]);
-        $otherTeacherProfile = TeacherProfile::create([
+        $otherTeacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
             'tenant_id' => $otherTenant->id,
             'user_id' => $otherUser->id,
             'full_name' => 'Other Guru',
-        ]);
+        ]));
         $otherCurriculum = Curriculum::create([
             'name' => 'Kurikulum Tenant 2',
             'code' => 'KM-OTHER-' . $otherTenant->code,
