@@ -72,7 +72,7 @@ class TenantBrandingService
             !$detected
             || !in_array($originalExtension, ['png', 'jpg', 'jpeg', 'webp'], true)
             || $normalizedOriginalExtension !== $detected[0]
-            || (new \\finfo(FILEINFO_MIME_TYPE))->file($sourcePath) !== $detected[1]
+            || (new \finfo(FILEINFO_MIME_TYPE))->file($sourcePath) !== $detected[1]
         ) {
             throw new RuntimeException('Ekstensi dan MIME file branding tidak sesuai dengan konten gambar.');
         }
