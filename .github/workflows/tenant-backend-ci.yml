@@ -354,6 +354,7 @@ jobs:
             tests/Feature/TeacherPracticeWorkflowTest.php \
             tests/Feature/StudentExamPortalTest.php \
             tests/Feature/StudentWebLoginTest.php \
+            tests/Feature/WebAdminAuthTest.php \
             tests/Feature/ExamExecutionHardeningTest.php \
             tests/Feature/ExamAnswerTest.php \
             tests/Feature/ExamSnapshotTest.php \
