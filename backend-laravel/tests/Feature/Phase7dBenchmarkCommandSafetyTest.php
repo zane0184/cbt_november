@@ -131,8 +131,12 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
 
         $observedTemporarySchemas = 0;
         $policyDecisions = [];
-        Gate::after(function ($user, string $ability, ?bool $result) use (&$policyDecisions): void {
+        Gate::after(function ($user, string $ability, ?bool $result) use (&$policyDecisions, &$observedTemporarySchemas): void {
             if ($ability === 'viewExamResults') {
+                $schemas = DB::connection('mysql')->select(
+                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
+                );
+                $observedTemporarySchemas = count($schemas);
                 $policyDecisions[] = $result;
             }
         });
