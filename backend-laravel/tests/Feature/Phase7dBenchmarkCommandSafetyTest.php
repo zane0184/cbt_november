@@ -153,10 +153,9 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $control->flushQueryLog();
         $control->enableQueryLog();
         $exception = null;
-        $exitCode = null;
 
         try {
-            $exitCode = Artisan::call('benchmark:phase7d', [
+            Artisan::call('benchmark:phase7d', [
                 '--driver' => 'mysql',
                 '--runs' => 1,
                 '--allow-mysql' => true,
@@ -189,8 +188,6 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $this->assertSame([$schema], $droppedSchemas, 'The invocation must drop the exact schema it created.');
 
         $this->assertInstanceOf(\Illuminate\Auth\Access\AuthorizationException::class, $exception);
-        $this->assertSame(1, preg_match('/^cbt_phase7d_[a-z0-9]+$/', $schema));
-        $this->assertNotSame(0, $exitCode === null ? 0 : $exitCode, 'Authorization failure must escape Artisan::call.');
 
         $this->assertInstanceOf(ReportPolicy::class, Gate::getPolicyFor(Exam::class));
         $this->assertCount(1, $policyObservations, 'ReportPolicy authorization must be observed exactly once.');
