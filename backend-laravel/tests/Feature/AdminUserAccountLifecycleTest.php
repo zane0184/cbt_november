@@ -339,6 +339,11 @@ class AdminUserAccountLifecycleTest extends TestCase
         // explicitly disables Vite manifest resolution without changing production rendering.
         $this->withoutVite();
         $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
+            ->get('/')->assertRedirect('/account/password/change');
+        $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
+            ->get('/login')->assertRedirect('/account/password/change');
+
+        $this->actingAs($teacher)->withSession(['account_auth_version' => 1])
             ->get('/admin/dashboard')->assertRedirect('/account/password/change');
 
         Auth::guard('web')->logout();
@@ -649,7 +654,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Auth::forgetGuards();
 
         $this->flushHeaders();
-        $this->withCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withCookie($cookieName, $resetCookie)->get('/')->assertRedirect('/login');
 
         // Resetting one account must not invalidate another account's persisted session.
         Auth::forgetGuards();
