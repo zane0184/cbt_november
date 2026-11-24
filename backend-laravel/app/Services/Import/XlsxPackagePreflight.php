@@ -17,7 +17,7 @@ final class XlsxPackagePreflight
     public const MAX_XML_BYTES = 10 * 1024 * 1024;
     public const MAX_SHARED_STRINGS_BYTES = 10 * 1024 * 1024;
     public const MAX_STYLES_BYTES = 2 * 1024 * 1024;
-    public const MAX_ROWS = 5001;
+    public const MAX_ROWS = 5000;
     public const MAX_COLUMNS = 32;
     public const MAX_CELLS = 160000;
     public const MAX_CELL_BYTES = 4096;
