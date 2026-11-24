@@ -6,6 +6,7 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\Rombel;
 use App\Models\Subject;
+use App\Services\AcademicYearManagementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -99,7 +100,7 @@ class AcademicManagement extends Component
             'academicYearName' => ['required', 'string', 'max:9', 'regex:/^\\d{4}\\/\\d{4}$/'],
         ]);
 
-        app(\\App\\Services\\AcademicYearManagementService::class)
+        app(AcademicYearManagementService::class)
             ->createForTenant((string) auth()->user()->tenant_id, trim($this->academicYearName));
 
         $createdName = trim($this->academicYearName);
@@ -112,7 +113,7 @@ class AcademicManagement extends Component
     {
         $this->authorizeAcademicManagement();
 
-        $year = app(\\App\\Services\\AcademicYearManagementService::class)
+        $year = app(AcademicYearManagementService::class)
             ->activateYearForTenant((string) auth()->user()->tenant_id, $academicYearId);
 
         session()->flash('message', "Tahun pelajaran {$year->name} diaktifkan. Semester Ganjil dipilih jika belum ada semester aktif pada tahun tersebut.");
@@ -122,7 +123,7 @@ class AcademicManagement extends Component
     {
         $this->authorizeAcademicManagement();
 
-        $semester = app(\\App\\Services\\AcademicYearManagementService::class)
+        $semester = app(AcademicYearManagementService::class)
             ->activateSemesterForTenant((string) auth()->user()->tenant_id, $semesterId);
 
         session()->flash('message', "Semester {$semester->term} tahun pelajaran {$semester->academicYear->name} berhasil diaktifkan.");
