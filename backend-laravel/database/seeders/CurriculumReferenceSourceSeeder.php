@@ -11,17 +11,9 @@ class CurriculumReferenceSourceSeeder extends Seeder
 {
     public function run(): void
     {
-        SystemTenantSeeder::seed();
-        $this->seedForTenant(Tenant::SYSTEM_TENANT_ID);
-    }
+        DB::transaction(function (): void {
+            SystemTenantSeeder::seed();
 
-    /**
-     * Seed reference metadata into the supplied installation tenant.
-     * The caller must establish and validate the tenant context first.
-     */
-    public function seedForTenant(string $tenantId): void
-    {
-        DB::transaction(function () use ($tenantId): void {
             $sources = [
                 [
                     'issuer' => 'Kementerian Agama Republik Indonesia',
@@ -155,7 +147,7 @@ class CurriculumReferenceSourceSeeder extends Seeder
             foreach ($sources as $source) {
                 CurriculumReferenceSource::query()->updateOrCreate(
                     [
-                        'tenant_id' => $tenantId,
+                        'tenant_id' => Tenant::SYSTEM_TENANT_ID,
                         'issuer' => $source['issuer'],
                         'document_number' => $source['document_number'],
                         'document_version' => $source['document_version'],
