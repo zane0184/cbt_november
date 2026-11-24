@@ -233,18 +233,29 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
-    public function admin_cannot_create_teacher_without_employment_status_and_required_identity()
+    public function admin_can_create_teacher_without_optional_nip_nuptk_or_nik()
     {
         $this->actingAs($this->admin);
 
         Livewire::test(UserManagement::class)
-            ->set('name', 'Guru Tanpa Identitas')
+            ->set('name', 'Guru Tanpa Nomor Identitas')
+            ->set('username', 'guru.tanpa.nomor')
             ->set('password', 'secret123456789')
             ->set('selectedRole', 'GURU')
             ->call('createUser')
-            ->assertHasErrors(['employmentStatus']);
+            ->assertHasNoErrors();
 
-        $this->assertDatabaseMissing('users', ['tenant_id' => $this->tenant->id, 'name' => 'Guru Tanpa Identitas']);
+        $created = User::query()->where('tenant_id', $this->tenant->id)
+            ->where('username', 'guru.tanpa.nomor')->firstOrFail();
+
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'user_id' => $created->id,
+            'employment_status' => null,
+            'nip' => null,
+            'nik' => null,
+            'nuptk' => null,
+        ]);
     }
 
     /** @test */

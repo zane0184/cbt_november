@@ -39,12 +39,15 @@ class LoginIdentityResolver
 
         $usernameUsers = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->whereRaw('LOWER(username) = ?', [$normalized])->get();
-        $teacherUserIds = TeacherProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
+        $teacherUserIds = TeacherProfile::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
             ->where(function ($query) use ($normalized): void {
-                $query->whereIn('employment_status', ['PNS', 'PPPK'])->where('nip', $normalized);
-            })->orWhere(function ($query) use ($tenantId, $normalized): void {
-                $query->where('tenant_id', $tenantId)->whereNull('deleted_at')->where('employment_status', 'HONORER')->where('nik', $normalized);
-            })->pluck('user_id');
+                $query->where('nip', $normalized)
+                    ->orWhere('nuptk', $normalized)
+                    ->orWhere('nik', $normalized);
+            })
+            ->pluck('user_id');
         $studentUserIds = StudentProfile::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereNull('deleted_at')
             ->where('nisn', $identifier)->pluck('user_id');
 
@@ -63,7 +66,7 @@ class LoginIdentityResolver
         $matchesStudent = $studentUserIds->contains(fn ($id) => (string) $id === (string) $user->id);
 
         if (in_array('SISWA', $roles, true)) return $matchesStudent ? $user : null;
-        if (in_array('GURU', $roles, true)) return $matchesTeacher ? $user : null;
+        if (in_array('GURU', $roles, true)) return ($matchesUsername || $matchesTeacher) ? $user : null;
         if ($roles[0] === 'ADMIN_MADRASAH') return $matchesUsername ? $user : null;
         return null;
     }
