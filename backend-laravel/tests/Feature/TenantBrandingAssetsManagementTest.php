@@ -396,7 +396,8 @@ class TenantBrandingAssetsManagementTest extends TestCase
         );
         $this->tenant->forceFill(['logo_path' => $appLogoPath])->save();
         $this->actingAs($this->admin, 'web');
-        Auth::guard('sanctum')->forgetUser();
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($this->admin);
         $this->setTenantContext((string) $this->tenant->id);
         $this->assertNotNull($branding->localPath($appLogoPath));
 
@@ -413,7 +414,9 @@ class TenantBrandingAssetsManagementTest extends TestCase
         // User B + Context B: direct service use (without a Livewire request)
         // may resolve B's own asset but must not resolve A's asset.
         $this->actingAs($otherAdmin, 'web');
-        Auth::guard('sanctum')->forgetUser();
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($otherAdmin);
+        $this->assertSame($otherAdmin->id, Auth::user()?->id, 'The active web guard must resolve User B after the account switch.');
         $this->setTenantContext((string) $otherTenant->id);
         $otherLogoPath = $branding->storeUpload(
             UploadedFile::fake()->image('tenant-b-logo.png', 120, 120),
@@ -429,7 +432,9 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
         // User A + Context B is inconsistent and must fail closed.
         $this->actingAs($this->admin, 'web');
-        Auth::guard('sanctum')->forgetUser();
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($this->admin);
+        $this->assertSame($this->admin->id, Auth::user()?->id, 'The active web guard must resolve User A after switching back.');
         $this->setTenantContext((string) $otherTenant->id);
         $this->assertNull($branding->localPath($appLogoPath));
         $this->assertNull($branding->localPath($otherLogoPath));
@@ -447,7 +452,8 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
         // User B + Context A is also inconsistent and must fail closed.
         $this->actingAs($otherAdmin, 'web');
-        Auth::guard('sanctum')->forgetUser();
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser($otherAdmin);
         $this->setTenantContext((string) $this->tenant->id);
         $this->assertNull($branding->localPath($appLogoPath));
         $this->assertNull($branding->localPath($otherLogoPath));
@@ -459,8 +465,9 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
         // No authenticated user and no single local installation identity:
         // no managed branding path may be returned.
-        Auth::forgetGuards();
-        request()->setUserResolver(fn ($guard = null) => null);
+        Auth::shouldUse('web');
+        Auth::guard('web')->setUser(null);
+        Auth::guard('sanctum')->forgetUser();
         $this->setTenantContext(null);
         if (Schema::hasTable('local_installation_identities')) {
             DB::table('local_installation_identities')->delete();
@@ -729,10 +736,14 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 File::copy($image->getRealPath(), storage_path('app/public/' . $path));
             }
 
-            Auth::logout();
-            Auth::forgetGuards();
+            Auth::shouldUse('web');
+            Auth::guard('web')->setUser(null);
+            Auth::guard('sanctum')->forgetUser();
             config(['database.default' => 'installation_a']);
+            DB::purge('installation_a');
             DB::setDefaultConnection('installation_a');
+            $this->assertSame('installation_a', DB::getDefaultConnection());
+            $this->assertSame($tenantAId, DB::table('local_installation_identities')->value('tenant_id'));
 
             $branding = app(TenantBrandingService::class);
             $header = app(ReportHeaderService::class);
@@ -746,7 +757,10 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->assertNotNull($header->getLogoDataUri($tenantA));
 
             config(['database.default' => 'installation_b']);
+            DB::purge('installation_b');
             DB::setDefaultConnection('installation_b');
+            $this->assertSame('installation_b', DB::getDefaultConnection());
+            $this->assertSame($tenantBId, DB::table('local_installation_identities')->value('tenant_id'));
             $this->setTenantContext($tenantBId);
             $tenantB = $branding->currentTenant();
 
