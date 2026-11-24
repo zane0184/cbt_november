@@ -972,7 +972,17 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->assertStringStartsWith('data:image/png;base64,', $dataUri);
 
         $this->tenant->forceFill(['logo_path' => null, 'document_logo_path' => $missingPath])->save();
-        $this->assertNull(app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh()));
+        $tenantWithoutLogo = $this->tenant->fresh();
+        $logoDataUri = app(ReportHeaderService::class)->getLogoDataUri($tenantWithoutLogo);
+        $this->assertNull($logoDataUri);
+
+        $headerHtml = view('reports.pdf.header', [
+            'logoDataUri' => $logoDataUri,
+            'tenant' => $tenantWithoutLogo,
+        ])->render();
+        $this->assertStringNotContainsString('<img', $headerHtml);
+        $this->assertStringContainsString('KEMENTERIAN AGAMA REPUBLIK INDONESIA', $headerHtml);
+        $this->assertStringContainsString($tenantWithoutLogo->name, $headerHtml);
     }
 
     public function test_admin_can_replace_and_remove_app_logo_through_branding_management(): void
