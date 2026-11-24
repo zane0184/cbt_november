@@ -304,6 +304,10 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $otherAdmin->roles()->sync([$role->id]);
 
         $this->actingAs($otherAdmin);
+        // actingAs() swaps the guard user without dispatching the Authenticated
+        // event used by the real request lifecycle to synchronize TenantContext.
+        app(\\App\\Contexts\\TenantContext::class)->setTenantId($otherTenant->id);
+
         Livewire::test(TenantBrandingAssetsManagement::class)
             ->set('appLogoUpload', UploadedFile::fake()->image('other-logo.png', 120, 120))
             ->call('save')
