@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Exam;
-use App\Policies\ReportPolicy;
+use App\Policies\ExamPolicy;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -135,7 +135,8 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $afterCallbacksProperty = new \ReflectionProperty($gate, 'afterCallbacks');
         $originalAfterCallbacks = $afterCallbacksProperty->getValue($gate);
         $policyObservations = [];
-        Gate::after(function ($user, string $ability, $result, array $arguments) use (&$policyObservations): void {
+        $schemaCountsAtPolicyEvaluation = [];
+        Gate::after(function ($user, string $ability, $result, array $arguments) use (&$policyObservations, &$schemaCountsAtPolicyEvaluation, $control): void {
             if ($ability === 'viewExamResults') {
                 $policyObservations[] = [
                     'user' => $user,
@@ -143,6 +144,10 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                     'has_report_view' => $user->hasPermission('report.view'),
                     'arguments' => $arguments,
                 ];
+                $schemasAtDecision = $control->select(
+                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
+                );
+                $schemaCountsAtPolicyEvaluation[] = count($schemasAtDecision);
             }
         });
 
@@ -190,8 +195,12 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
 
         $this->assertInstanceOf(\Illuminate\Auth\Access\AuthorizationException::class, $exception);
 
-        $this->assertInstanceOf(ReportPolicy::class, Gate::getPolicyFor(Exam::class));
-        $this->assertCount(1, $policyObservations, 'ReportPolicy authorization must be observed exactly once.');
+        $this->assertStringContainsString('Running migrations on isolated MySQL benchmark database...', Artisan::output());
+        $this->assertStringContainsString('Workload seeded in ', Artisan::output());
+
+        $this->assertInstanceOf(ExamPolicy::class, Gate::getPolicyFor(Exam::class));
+        $this->assertCount(1, $policyObservations, 'The real report authorization must be evaluated exactly once.');
+        $this->assertSame([1], $schemaCountsAtPolicyEvaluation, 'The disposable schema must still exist when the real controller policy denies export.');
         $observation = $policyObservations[0];
         $this->assertFalse(
             $observation['has_report_view'],
