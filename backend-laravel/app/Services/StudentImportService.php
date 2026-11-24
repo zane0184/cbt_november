@@ -527,16 +527,18 @@ class StudentImportService
 
             $maxColumn = Coordinate::columnIndexFromString(strtoupper($coordinate[1]));
             $maxRow = (int) $coordinate[2];
-        } else {
-            preg_match_all('/<c\b[^>]*\br\s*=\s*["\']\$?([A-Z]{1,3})\$?(\d+)["\']/i', $xml, $cells, PREG_SET_ORDER);
-            if (count($cells) > self::MAX_ROWS * self::MAX_CSV_COLUMNS) {
-                throw ValidationException::withMessages(['file' => 'Worksheet XLSX memiliki terlalu banyak cell.']);
-            }
+        }
 
-            foreach ($cells as $cell) {
-                $maxColumn = max($maxColumn, Coordinate::columnIndexFromString(strtoupper($cell[1])));
-                $maxRow = max($maxRow, (int) $cell[2]);
-            }
+        // Verify actual cell references even when the dimension attribute exists.
+        // A forged small dimension must not hide cells placed outside import limits.
+        preg_match_all('/<c\b[^>]*\br\s*=\s*["\']\$?([A-Z]{1,3})\$?(\d+)["\']/i', $xml, $cells, PREG_SET_ORDER);
+        if (count($cells) > self::MAX_ROWS * self::MAX_CSV_COLUMNS) {
+            throw ValidationException::withMessages(['file' => 'Worksheet XLSX memiliki terlalu banyak cell.']);
+        }
+
+        foreach ($cells as $cell) {
+            $maxColumn = max($maxColumn, Coordinate::columnIndexFromString(strtoupper($cell[1])));
+            $maxRow = max($maxRow, (int) $cell[2]);
         }
 
         if ($maxRow > self::MAX_ROWS + 1) {
@@ -615,7 +617,7 @@ class StudentImportService
     private function assertCsvRecordBounds(array $values, ?int $expectedColumns, string $recordLabel): void
     {
         if (count($values) > self::MAX_CSV_COLUMNS
-            || ($expectedColumns !== null && count($values) !== $expectedColumns)) {
+            || ($expectedColumns !== null && count($values) > $expectedColumns)) {
             throw ValidationException::withMessages(['file' => "Jumlah kolom CSV pada {$recordLabel} tidak konsisten atau melebihi batas."]);
         }
 
