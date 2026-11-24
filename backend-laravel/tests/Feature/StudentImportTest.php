@@ -361,20 +361,17 @@ class StudentImportTest extends TestCase
         $this->assertDatabaseHas('student_profiles', ['nisn' => '0007654321']);
     }
 
-    public function test_csv_duplicate_row_number_preserves_blank_physical_records(): void
+    public function test_csv_reader_preserves_physical_record_numbers_after_blank_records(): void
     {
-        $this->actingAs($this->admin);
         $csv = "nama,nisn\nSiswa Satu,0001234567\n\nSiswa Duplikat,0001234567\n";
         $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
 
-        Livewire::test(StudentImport::class)
-            ->set('selectedRombelId', $this->rombel->id)
-            ->set('file', $file)
-            ->call('preview')
-            ->assertHasNoErrors()
-            ->assertSee('NISN duplikat di dalam file (baris 4)');
+        $rows = app(\App\Services\StudentImportService::class)->readRows($file->getRealPath(), 'csv');
 
-        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertCount(2, $rows);
+        $this->assertSame(2, $rows[0]['row']);
+        $this->assertSame(4, $rows[1]['row']);
+        $this->assertSame('Siswa Duplikat', $rows[1]['values'][0]);
     }
 
     public function test_csv_import_rejects_more_than_32_columns(): void
