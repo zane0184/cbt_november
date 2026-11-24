@@ -8,6 +8,9 @@ use App\Models\Assessment;
 use App\Models\Exam;
 use App\Models\ExamAttempt;
 use App\Models\ExamAttemptScore;
+use App\Models\Curriculum;
+use App\Models\GradeLevel;
+use App\Models\Phase;
 use App\Models\Role;
 use App\Models\Rombel;
 use App\Models\StudentProfile;
@@ -426,11 +429,30 @@ class Phase7DReportingTest extends TestCase
             'employee_identifier' => '198001012006041001',
         ]);
 
+        $curriculum = Curriculum::create([
+            'tenant_id' => $this->tenantA->id,
+            'name' => 'Kurikulum Uji Laporan',
+            'code' => 'REPORT_FILTER_TEST',
+        ]);
+        $phase = Phase::create([
+            'tenant_id' => $this->tenantA->id,
+            'curriculum_id' => $curriculum->id,
+            'name' => 'Fase C',
+            'code' => 'C',
+        ]);
+        $gradeLevel = GradeLevel::create([
+            'tenant_id' => $this->tenantA->id,
+            'phase_id' => $phase->id,
+            'name' => 'Kelas 6',
+            'code' => 'K6',
+            'level' => 6,
+        ]);
+
         $rombel = Rombel::create([
             'tenant_id' => $this->tenantA->id,
             'academic_year_id' => $assessment->academic_year_id,
+            'grade_level_id' => $gradeLevel->id,
             'name' => 'Kelas 6A',
-            'level' => 6,
             'teacher_id' => $teacherProfile->id,
             'capacity' => 35,
             'status' => 'ACTIVE',

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\V1\ReportController;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class Phase7dBenchmarkCommandSafetyTest extends TestCase
@@ -21,7 +23,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
             'database.default' => 'mysql',
             'database.connections.mysql.driver' => 'mysql',
             'database.connections.mysql.host' => '127.0.0.1',
-            'database.connections.mysql.database' => 'cbt_ci_test',
+            'database.connections.mysql.database' => env('DB_DATABASE', 'cbt_ci_test'),
         ]);
     }
 
@@ -115,4 +117,53 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $_ENV['CBT_BENCHMARK_ALLOW_MYSQL'] = $value;
         $_SERVER['CBT_BENCHMARK_ALLOW_MYSQL'] = $value;
     }
+    public function test_temporary_mysql_schema_is_removed_when_pdf_export_fails(): void
+    {
+        $this->setOptIn('1');
+        DB::purge('mysql');
+
+        $control = DB::connection('mysql');
+        $before = $control->select(
+            "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
+        );
+        $this->assertSame([], $before, 'A previous benchmark schema must not be left behind.');
+
+        $observedTemporarySchemas = 0;
+        $controller = \\Mockery::mock(ReportController::class);
+        $controller->shouldReceive('exportPdf')
+            ->once()
+            ->andReturnUsing(function () use (&$observedTemporarySchemas): never {
+                $schemas = DB::connection('mysql')->select(
+                    "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
+                );
+                $observedTemporarySchemas = count($schemas);
+
+                throw new \\RuntimeException('Deliberate PDF failure for cleanup regression test.');
+            });
+        $this->app->instance(ReportController::class, $controller);
+
+        $thrown = false;
+        $exitCode = 0;
+        try {
+            $exitCode = Artisan::call('benchmark:phase7d', [
+                '--driver' => 'mysql',
+                '--runs' => 1,
+                '--allow-mysql' => true,
+                '--json' => true,
+            ]);
+        } catch (\\Throwable) {
+            $thrown = true;
+        }
+
+        $controller->shouldHaveReceived('exportPdf')->once();
+        $this->assertTrue($thrown || $exitCode !== 0, 'The deliberate PDF failure must fail the benchmark command.');
+        $this->assertSame(1, $observedTemporarySchemas, 'The injected failure must occur after the disposable schema exists.');
+
+        $after = DB::connection('mysql')->select(
+            "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
+        );
+        $this->assertSame([], $after, 'The temporary schema must be absent after the failed benchmark.');
+    }
+
+
 }
