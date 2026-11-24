@@ -63,6 +63,92 @@ class StudentImportTest extends TestCase
         ]);
     }
 
+    private function createValidStudentXlsx(): string
+    {
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(['nama', 'nisn'], null, 'A1');
+        $sheet->setCellValue('A2', 'Siswa Security');
+        $sheet->setCellValueExplicit('B2', '0000000123', DataType::TYPE_STRING);
+
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'student-import-security-');
+        if ($temporaryPath === false) {
+            throw new \RuntimeException('Unable to create XLSX fixture path.');
+        }
+
+        $xlsxPath = $temporaryPath . '.xlsx';
+        rename($temporaryPath, $xlsxPath);
+
+        try {
+            (new Xlsx($spreadsheet))->save($xlsxPath);
+            $content = file_get_contents($xlsxPath);
+            if (!is_string($content)) {
+                throw new \RuntimeException('Unable to read XLSX fixture.');
+            }
+
+            return $content;
+        } finally {
+            $spreadsheet->disconnectWorksheets();
+            @unlink($xlsxPath);
+        }
+    }
+
+    private function mutateXlsx(string $content, callable $mutator): string
+    {
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'student-import-mutated-');
+        if ($temporaryPath === false) {
+            throw new \RuntimeException('Unable to create mutated XLSX fixture path.');
+        }
+
+        $xlsxPath = $temporaryPath . '.xlsx';
+        rename($temporaryPath, $xlsxPath);
+
+        try {
+            file_put_contents($xlsxPath, $content);
+            $zip = new \ZipArchive();
+            if ($zip->open($xlsxPath) !== true) {
+                throw new \RuntimeException('Unable to open XLSX fixture for mutation.');
+            }
+
+            try {
+                $mutator($zip);
+            } finally {
+                $zip->close();
+            }
+
+            $mutated = file_get_contents($xlsxPath);
+            if (!is_string($mutated)) {
+                throw new \RuntimeException('Unable to read mutated XLSX fixture.');
+            }
+
+            return $mutated;
+        } finally {
+            @unlink($xlsxPath);
+        }
+    }
+
+    private function assertXlsxPreviewRejected(string $content): void
+    {
+        $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file');
+    }
+
+    private function assertCsvPreviewRejected(string $content): void
+    {
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $content);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file');
+    }
+
     public function test_admin_can_preview_and_import_csv_preserving_leading_zero_nisn_and_audit_batch(): void
     {
         $this->actingAs($this->admin);
@@ -264,7 +350,104 @@ class StudentImportTest extends TestCase
         (new Xlsx($spreadsheet))->save($path);
         $content = file_get_contents($path);
         @unlink($path);
-        $spreadsheet->disconnectWorksheets();
+        $spreadsheet->discon    public function test_xlsx_preflight_rejects_zip_path_traversal(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $this->assertTrue($zip->addFromString('../outside.xml', '<root/>'));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_external_relationships(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $rels = '<?xml version="1.0"?><Relationships><Relationship Id="rId1" Target="https://example.invalid/file" TargetMode="External"/></Relationships>';
+            $this->assertTrue($zip->addFromString('xl/worksheets/_rels/sheet2.xml.rels', $rels));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_dtd_and_entity_declarations(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $xml = '<?xml version="1.0"?><!DOCTYPE worksheet [<!ENTITY xxe SYSTEM "file:///etc/passwd">]><worksheet>&xxe;</worksheet>';
+            $this->assertTrue($zip->addFromString('xl/worksheets/sheet2.xml', $xml));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_oversized_worksheet_dimensions(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $xml = '<?xml version="1.0"?><worksheet><dimension ref="A1:AZ5002"/></worksheet>';
+            $this->assertTrue($zip->addFromString('xl/worksheets/sheet2.xml', $xml));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_checks_cell_references_even_when_dimension_is_forged_small(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $xml = '<?xml version="1.0"?><worksheet><dimension ref="A1:B2"/><sheetData><row r="9000"><c r="XFD9000"><v>1</v></c></row></sheetData></worksheet>';
+            $this->assertTrue($zip->addFromString('xl/worksheets/sheet2.xml', $xml));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_excessive_zip_entry_count(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            for ($index = 0; $index < 260; $index++) {
+                $this->assertTrue($zip->addFromString('extra/entry-' . $index . '.txt', 'x'));
+            }
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_excessive_compression_ratio(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $entry = 'xl/worksheetExtensions/compression-ratio.xml';
+            $this->assertTrue($zip->addFromString($entry, str_repeat('A', 1024 * 1024)));
+            $this->assertTrue($zip->setCompressionName($entry, \ZipArchive::CM_DEFLATE));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_csv_import_rejects_more_than_32_columns(): void
+    {
+        $this->actingAs($this->admin);
+        $headers = array_merge(['nama', 'nisn'], array_map(
+            static fn (int $index): string => 'extra_' . $index,
+            range(1, 31)
+        ));
+
+        $this->assertCsvPreviewRejected(implode(',', $headers) . "\n");
+    }
+
+    public function test_csv_import_rejects_oversized_records(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\n" . str_repeat('X', 70000) . ",0001234567\n";
+
+        $this->assertCsvPreviewRejected($csv);
+    }
+
+nectWorksheets();
 
         $file = UploadedFile::fake()->createWithContent('siswa.xlsx', $content);
         Livewire::test(StudentImport::class)
