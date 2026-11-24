@@ -136,6 +136,9 @@ class StudentImportTest extends TestCase
             ->set('file', $file)
             ->call('preview')
             ->assertHasErrors('file');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
     }
 
     private function assertCsvPreviewRejected(string $content): void
@@ -147,6 +150,9 @@ class StudentImportTest extends TestCase
             ->set('file', $file)
             ->call('preview')
             ->assertHasErrors('file');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
     }
 
     public function test_admin_can_preview_and_import_csv_preserving_leading_zero_nisn_and_audit_batch(): void
@@ -423,6 +429,35 @@ class StudentImportTest extends TestCase
             $entry = 'xl/worksheetExtensions/compression-ratio.xml';
             $this->assertTrue($zip->addFromString($entry, str_repeat('A', 1024 * 1024)));
             $this->assertTrue($zip->setCompressionName($entry, \ZipArchive::CM_DEFLATE));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_single_oversized_zip_entry(): void
+    {
+        $this->actingAs($this->admin);
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip): void {
+            $entry = 'xl/custom/oversized.xml';
+            $this->assertTrue($zip->addFromString($entry, str_repeat('A', 25 * 1024 * 1024)));
+            $this->assertTrue($zip->setCompressionName($entry, \ZipArchive::CM_DEFLATE));
+        });
+
+        $this->assertXlsxPreviewRejected($content);
+    }
+
+    public function test_xlsx_preflight_rejects_total_expanded_size_over_limit(): void
+    {
+        $this->actingAs($this->admin);
+        $block = str_repeat('A', 62 * 1024) . random_bytes(2 * 1024);
+        $expanded = str_repeat($block, 272);
+
+        $content = $this->mutateXlsx($this->createValidStudentXlsx(), function (\ZipArchive $zip) use ($expanded): void {
+            foreach (['expanded-a.xml', 'expanded-b.xml'] as $name) {
+                $entry = 'xl/custom/' . $name;
+                $this->assertTrue($zip->addFromString($entry, $expanded));
+                $this->assertTrue($zip->setCompressionName($entry, \ZipArchive::CM_DEFLATE));
+            }
         });
 
         $this->assertXlsxPreviewRejected($content);
