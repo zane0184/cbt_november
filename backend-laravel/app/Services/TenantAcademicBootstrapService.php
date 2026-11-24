@@ -62,7 +62,7 @@ class TenantAcademicBootstrapService
                     throw new RuntimeException('Academic bootstrap tenant does not exist or is inactive.');
                 }
 
-                $version = $this->assertCanonicalRegistryReady();
+                $version = $this->assertCanonicalRegistryReady($tenantId);
                 $curriculum = $this->resolveLocalCurriculum($tenantId);
 
                 $phaseIds = [];
@@ -70,7 +70,7 @@ class TenantAcademicBootstrapService
 
                 foreach (self::PHASES as $phaseCode => $grades) {
                     $canonicalPhase = MultiCurriculumStructure::query()
-                        ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
+                        ->where('tenant_id', $tenantId)
                         ->where('multi_curriculum_version_id', $version->id)
                         ->where('node_type', 'PHASE')
                         ->where('code', 'FASE_' . $phaseCode)
@@ -260,7 +260,7 @@ class TenantAcademicBootstrapService
         return $curriculum;
     }
 
-    private function assertCanonicalRegistryReady(): MultiCurriculumVersion
+    private function assertCanonicalRegistryReady(string $tenantId): MultiCurriculumVersion
     {
         $version = MultiCurriculumVersion::query()
             ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
