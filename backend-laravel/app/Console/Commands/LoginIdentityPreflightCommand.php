@@ -12,13 +12,21 @@ class LoginIdentityPreflightCommand extends Command
 
     protected $description = 'Audit read-only identitas login Admin, Guru, dan Siswa sebelum penegakan constraint.';
 
+    private const REQUIRED_SCHEMA = [
+        'teacher_profiles' => [
+            'id', 'user_id', 'tenant_id', 'employment_status', 'employee_identifier',
+            'nip', 'nik', 'nuptk', 'deleted_at',
+        ],
+        'student_profiles' => ['id', 'user_id', 'tenant_id', 'nisn', 'deleted_at'],
+        'users' => ['id', 'tenant_id'],
+        'role_user' => ['user_id', 'role_id'],
+        'roles' => ['id', 'name'],
+    ];
+
     public function handle(): int
     {
-        foreach (['teacher_profiles', 'student_profiles'] as $table) {
-            if (!Schema::hasTable($table)) {
-                $this->error("Preflight dihentikan: tabel {$table} belum tersedia.");
-                return self::FAILURE;
-            }
+        if (!$this->validateRequiredSchema()) {
+            return self::FAILURE;
         }
 
         $counts = [
@@ -28,6 +36,8 @@ class LoginIdentityPreflightCommand extends Command
             'NIP terisi dengan format tidak valid' => 0,
             'NIK terisi dengan format tidak valid' => 0,
             'NUPTK terisi dengan format tidak valid' => 0,
+            'Guru PNS/PPPK mengisi NIK yang tidak diperbolehkan' => 0,
+            'Guru Honorer mengisi NIP yang tidak diperbolehkan' => 0,
             'employee_identifier tidak sesuai identitas login' => 0,
             'Field identitas Guru berisi string kosong' => 0,
             'Field identitas Guru memiliki spasi di tepi' => 0,
@@ -38,6 +48,20 @@ class LoginIdentityPreflightCommand extends Command
             'Kelompok NIK duplikat per tenant' => 0,
             'Kelompok NUPTK duplikat per tenant' => 0,
             'Kelompok NISN duplikat per tenant' => 0,
+            'Profil Guru tanpa user' => 0,
+            'Profil Siswa tanpa user' => 0,
+            'Tenant profil Guru tidak sama dengan tenant user' => 0,
+            'Tenant profil Siswa tidak sama dengan tenant user' => 0,
+            'Profil Guru tidak memiliki tepat satu role GURU' => 0,
+            'Profil Siswa tidak memiliki tepat satu role SISWA' => 0,
+            'User memiliki profil Guru lebih dari satu' => 0,
+            'User memiliki profil Siswa lebih dari satu' => 0,
+            'User memiliki profil Guru dan Siswa sekaligus' => 0,
+            'Akun memiliki jumlah role bukan satu' => 0,
+            'Akun memiliki role di luar tiga portal aktif' => 0,
+            'Akun Guru tanpa profil aktif' => 0,
+            'Akun Siswa tanpa profil aktif' => 0,
+            'Akun Admin memiliki profil Guru/Siswa' => 0,
         ];
 
         DB::table('teacher_profiles')
@@ -87,12 +111,18 @@ class LoginIdentityPreflightCommand extends Command
                         if (preg_match('/^\d{18}$/D', $nipRaw) !== 1) {
                             $counts['Guru PNS/PPPK tanpa NIP valid 18 digit']++;
                         }
+                        if ($nik !== '') {
+                            $counts['Guru PNS/PPPK mengisi NIK yang tidak diperbolehkan']++;
+                        }
                         if ($employeeIdentifier !== $nipRaw) {
                             $counts['employee_identifier tidak sesuai identitas login']++;
                         }
                     } elseif ($status === 'HONORER') {
                         if (preg_match('/^\d{16}$/D', $nikRaw) !== 1) {
                             $counts['Guru Honorer tanpa NIK valid 16 digit']++;
+                        }
+                        if ($nip !== '') {
+                            $counts['Guru Honorer mengisi NIP yang tidak diperbolehkan']++;
                         }
                         if ($employeeIdentifier !== $nikRaw) {
                             $counts['employee_identifier tidak sesuai identitas login']++;
@@ -108,6 +138,7 @@ class LoginIdentityPreflightCommand extends Command
                 foreach ($rows as $row) {
                     $nisnRaw = (string) ($row->nisn ?? '');
                     $nisn = trim($nisnRaw);
+
                     if ($row->nisn !== null && $nisn === '') {
                         $counts['NISN berisi string kosong']++;
                     }
@@ -136,6 +167,130 @@ class LoginIdentityPreflightCommand extends Command
             $counts[$label] = DB::query()->fromSub($duplicates, 'duplicate_identity_groups')->count();
         }
 
+        $activeTeacherUserIds = array_fill_keys(
+            DB::table('teacher_profiles')->whereNull('deleted_at')->pluck('user_id')->all(),
+            true
+        );
+        $activeStudentUserIds = array_fill_keys(
+            DB::table('student_profiles')->whereNull('deleted_at')->pluck('user_id')->all(),
+            true
+        );
+
+        $teacherProfiles = DB::table('teacher_profiles as tp')
+            ->leftJoin('users as u', 'u.id', '=', 'tp.user_id')
+            ->leftJoin('role_user as ru', 'ru.user_id', '=', 'u.id')
+            ->leftJoin('roles as r', 'r.id', '=', 'ru.role_id')
+            ->whereNull('tp.deleted_at')
+            ->select([
+                'tp.id',
+                'tp.user_id',
+                'tp.tenant_id as profile_tenant_id',
+                'u.id as matched_user_id',
+                'u.tenant_id as user_tenant_id',
+            ])
+            ->selectRaw('COUNT(ru.role_id) AS role_count')
+            ->selectRaw("SUM(CASE WHEN r.name = 'GURU' THEN 1 ELSE 0 END) AS guru_role_count")
+            ->groupBy('tp.id', 'tp.user_id', 'tp.tenant_id', 'u.id', 'u.tenant_id')
+            ->get();
+
+        foreach ($teacherProfiles as $profile) {
+            if ($profile->matched_user_id === null) {
+                $counts['Profil Guru tanpa user']++;
+            } elseif ((string) $profile->profile_tenant_id !== (string) $profile->user_tenant_id) {
+                $counts['Tenant profil Guru tidak sama dengan tenant user']++;
+            }
+
+            if ((int) $profile->role_count !== 1 || (int) $profile->guru_role_count !== 1) {
+                $counts['Profil Guru tidak memiliki tepat satu role GURU']++;
+            }
+        }
+
+        $studentProfiles = DB::table('student_profiles as sp')
+            ->leftJoin('users as u', 'u.id', '=', 'sp.user_id')
+            ->leftJoin('role_user as ru', 'ru.user_id', '=', 'u.id')
+            ->leftJoin('roles as r', 'r.id', '=', 'ru.role_id')
+            ->whereNull('sp.deleted_at')
+            ->select([
+                'sp.id',
+                'sp.user_id',
+                'sp.tenant_id as profile_tenant_id',
+                'u.id as matched_user_id',
+                'u.tenant_id as user_tenant_id',
+            ])
+            ->selectRaw('COUNT(ru.role_id) AS role_count')
+            ->selectRaw("SUM(CASE WHEN r.name = 'SISWA' THEN 1 ELSE 0 END) AS siswa_role_count")
+            ->groupBy('sp.id', 'sp.user_id', 'sp.tenant_id', 'u.id', 'u.tenant_id')
+            ->get();
+
+        foreach ($studentProfiles as $profile) {
+            if ($profile->matched_user_id === null) {
+                $counts['Profil Siswa tanpa user']++;
+            } elseif ((string) $profile->profile_tenant_id !== (string) $profile->user_tenant_id) {
+                $counts['Tenant profil Siswa tidak sama dengan tenant user']++;
+            }
+
+            if ((int) $profile->role_count !== 1 || (int) $profile->siswa_role_count !== 1) {
+                $counts['Profil Siswa tidak memiliki tepat satu role SISWA']++;
+            }
+        }
+
+        $duplicateTeacherUsers = DB::table('teacher_profiles')
+            ->whereNull('deleted_at')
+            ->select('user_id')
+            ->groupBy('user_id')
+            ->havingRaw('COUNT(*) > 1');
+        $counts['User memiliki profil Guru lebih dari satu'] = DB::query()
+            ->fromSub($duplicateTeacherUsers, 'duplicate_teacher_users')
+            ->count();
+
+        $duplicateStudentUsers = DB::table('student_profiles')
+            ->whereNull('deleted_at')
+            ->select('user_id')
+            ->groupBy('user_id')
+            ->havingRaw('COUNT(*) > 1');
+        $counts['User memiliki profil Siswa lebih dari satu'] = DB::query()
+            ->fromSub($duplicateStudentUsers, 'duplicate_student_users')
+            ->count();
+
+        $counts['User memiliki profil Guru dan Siswa sekaligus'] = DB::table('teacher_profiles as tp')
+            ->join('student_profiles as sp', 'sp.user_id', '=', 'tp.user_id')
+            ->whereNull('tp.deleted_at')
+            ->whereNull('sp.deleted_at')
+            ->distinct()
+            ->count('tp.user_id');
+
+        $users = DB::table('users as u')
+            ->leftJoin('role_user as ru', 'ru.user_id', '=', 'u.id')
+            ->leftJoin('roles as r', 'r.id', '=', 'ru.role_id')
+            ->select(['u.id', 'u.tenant_id'])
+            ->selectRaw('COUNT(ru.role_id) AS role_count')
+            ->selectRaw('MAX(r.name) AS role_name')
+            ->groupBy('u.id', 'u.tenant_id')
+            ->get();
+
+        foreach ($users as $user) {
+            $roleCount = (int) $user->role_count;
+            $roleName = (string) ($user->role_name ?? '');
+
+            if ($roleCount !== 1) {
+                $counts['Akun memiliki jumlah role bukan satu']++;
+                continue;
+            }
+
+            if (!in_array($roleName, ['ADMIN_MADRASAH', 'GURU', 'SISWA'], true)) {
+                $counts['Akun memiliki role di luar tiga portal aktif']++;
+            }
+
+            if ($roleName === 'GURU' && !isset($activeTeacherUserIds[$user->id])) {
+                $counts['Akun Guru tanpa profil aktif']++;
+            } elseif ($roleName === 'SISWA' && !isset($activeStudentUserIds[$user->id])) {
+                $counts['Akun Siswa tanpa profil aktif']++;
+            } elseif ($roleName === 'ADMIN_MADRASAH'
+                && (isset($activeTeacherUserIds[$user->id]) || isset($activeStudentUserIds[$user->id]))) {
+                $counts['Akun Admin memiliki profil Guru/Siswa']++;
+            }
+        }
+
         $rows = [];
         foreach ($counts as $label => $count) {
             $rows[] = [$label, $count];
@@ -143,11 +298,31 @@ class LoginIdentityPreflightCommand extends Command
         $this->table(['Pemeriksaan read-only', 'Jumlah'], $rows);
 
         if (array_sum($counts) > 0) {
-            $this->error('Ditemukan konflik identitas. Tidak ada data yang diubah; rekonsiliasi harus dilakukan berdasarkan bukti resmi.');
+            $this->error('Ditemukan konflik identitas atau relasi akun/profil. Tidak ada data yang diubah; rekonsiliasi harus dilakukan berdasarkan bukti resmi.');
             return self::FAILURE;
         }
 
-        $this->info('Tidak ditemukan konflik pada pemeriksaan identitas yang dicakup. Tidak ada data yang diubah.');
+        $this->info('Tidak ditemukan konflik identitas/relasi pada pemeriksaan yang dicakup. Tidak ada data yang diubah.');
         return self::SUCCESS;
+    }
+
+    private function validateRequiredSchema(): bool
+    {
+        foreach (self::REQUIRED_SCHEMA as $table => $requiredColumns) {
+            if (!Schema::hasTable($table)) {
+                $this->error("Preflight dihentikan: tabel {$table} belum tersedia.");
+                return false;
+            }
+
+            $availableColumns = Schema::getColumnListing($table);
+            $missingColumns = array_values(array_diff($requiredColumns, $availableColumns));
+
+            if ($missingColumns !== []) {
+                $this->error("Preflight dihentikan: kolom wajib pada tabel {$table} belum lengkap (" . implode(', ', $missingColumns) . ').');
+                return false;
+            }
+        }
+
+        return true;
     }
 }
