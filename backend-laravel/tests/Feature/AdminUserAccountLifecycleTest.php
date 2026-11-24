@@ -608,15 +608,12 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         // Recover the actual session ID from the encrypted Set-Cookie response.
         $decryptedCookie = app('encrypter')->decrypt($cookie->getValue(), false);
-        $this->assertTrue(
-            \Illuminate\Cookie\CookieValuePrefix::validate(
-                $cookieName,
-                $decryptedCookie,
-                app('encrypter')->getAllKeys()
-            ),
-            'The browser session cookie must have a valid Laravel prefix.'
+        $sessionId = \Illuminate\Cookie\CookieValuePrefix::validate(
+            $cookieName,
+            $decryptedCookie,
+            app('encrypter')->getAllKeys()
         );
-        $sessionId = \Illuminate\Cookie\CookieValuePrefix::remove($decryptedCookie);
+        $this->assertIsString($sessionId, 'The browser session cookie must have a valid Laravel prefix.');
         $this->assertNotSame('', $sessionId);
 
         // Follow the login redirect as a browser would. This first protected Web
