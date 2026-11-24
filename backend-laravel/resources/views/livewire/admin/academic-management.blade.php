@@ -30,6 +30,15 @@
         </div>
     @endif
 
+    <div class="bg-white border border-cardBorder rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="text-xs font-bold text-navy-900">Periode Akademik Aktif</div>
+        @if($activeSemester)
+            <div class="text-sm font-bold text-emerald-700">{{ $activeSemester->academicYear->name }} — Semester {{ ucfirst(strtolower($activeSemester->term)) }}</div>
+        @else
+            <div class="text-sm font-bold text-amber-700">Belum Ditetapkan — Admin harus memilih semester aktif</div>
+        @endif
+    </div>
+
     <!-- Navigation Tabs -->
     <div class="flex border-b border-cardBorder gap-2">
         <button wire:click="setTab('rombel')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'rombel' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
@@ -139,7 +148,7 @@
         <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
             <div class="p-5 border-b border-cardBorder">
                 <h3 class="text-base font-bold text-navy-900">Tahun Pelajaran dan Semester</h3>
-                <p class="text-xs text-textSecondary mt-1">Setiap tahun pelajaran otomatis memiliki Semester Ganjil dan Genap. Mengganti periode aktif tidak menghapus rombel, penugasan, ujian, atau histori sebelumnya.</p>
+                <p class="text-xs text-textSecondary mt-1">Setiap tahun pelajaran memiliki Semester Ganjil dan Genap. Tidak ada semester aktif secara otomatis. Memilih semester aktif akan menonaktifkan periode sebelumnya tanpa menghapus rombel, penugasan, ujian, atau histori.</p>
             </div>
             <div class="divide-y divide-cardBorder">
                 @forelse($academicYears as $academicYear)
@@ -155,11 +164,7 @@
                                     @endif
                                 </div>
                             </div>
-                            @if(!$academicYear->is_active)
-                                <button wire:click="activateAcademicYear('{{ $academicYear->id }}')" class="px-3 py-2 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
-                                    Jadikan Tahun Aktif
-                                </button>
-                            @endif
+
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             @foreach($academicYear->semesters as $semester)
@@ -193,7 +198,7 @@
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-cardBorder">
                 <h3 class="text-lg font-bold text-navy-900">Tambah Tahun Pelajaran</h3>
-                <p class="text-xs text-textSecondary">Sistem akan membuat Semester Ganjil dan Genap. Tahun aktif sebelumnya dan seluruh histori tetap dipertahankan.</p>
+                <p class="text-xs text-textSecondary">Sistem akan membuat Semester Ganjil dan Genap dalam status tidak aktif. Admin harus menetapkan sendiri semester aktif; tidak ada periode yang dipilih otomatis.</p>
                 <form wire:submit.prevent="createAcademicYear" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tahun Pelajaran</label>
