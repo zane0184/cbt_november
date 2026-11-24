@@ -31,9 +31,9 @@ Route::get('/', function () {
         'SISWA' => redirect('/student/exams'),
         default => abort(403, 'Role akun tidak memiliki portal lokal.'),
     };
-});
+})->middleware('tenant');
 
-Route::get('/login', [AuthWebController::class, 'showLoginForm'])->name('login');
+Route::get('/login', [AuthWebController::class, 'showLoginForm'])->middleware('tenant')->name('login');
 Route::post('/login', [AuthWebController::class, 'login']);
 Route::post('/logout', [AuthWebController::class, 'logout'])->name('logout');
 Route::post('/auth/logout', [AuthWebController::class, 'logout']);
