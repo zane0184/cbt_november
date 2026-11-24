@@ -120,7 +120,7 @@ class AccountResetAttemptConcurrencyTest extends TestCase
 
         if (!is_resource($process)) {
             @unlink($scriptPath);
-            throw new \\RuntimeException('Could not start independent MySQL transaction process.');
+            throw new \RuntimeException('Could not start independent MySQL transaction process.');
         }
 
         fclose($pipes[0]);
@@ -150,7 +150,7 @@ $pdo = new PDO(
 );
 $pdo->exec('SET SESSION innodb_lock_wait_timeout = 12');
 $pdo->beginTransaction();
-echo "START_REQUEST_READY\\n";
+echo "START_REQUEST_READY\n";
 flush();
 
 $exam = $pdo->prepare('SELECT id FROM exams WHERE id = ? AND tenant_id = ? FOR UPDATE');
@@ -176,8 +176,8 @@ $account = $user->fetch(PDO::FETCH_ASSOC);
 if (!$account || !(bool) $account['is_active'] || (bool) $account['must_change_password']) {
     $pdo->commit();
     echo !$account || !(bool) $account['is_active']
-        ? "ACCOUNT_INACTIVE_REJECTED\\n"
-        : "PASSWORD_CHANGE_REQUIRED_REJECTED\\n";
+        ? "ACCOUNT_INACTIVE_REJECTED\n"
+        : "PASSWORD_CHANGE_REQUIRED_REJECTED\n";
     flush();
     exit(0);
 }
@@ -189,7 +189,7 @@ $insert->execute([
     $payload['participant_id'], $now, $now, $now, $now,
 ]);
 $pdo->commit();
-echo "ATTEMPT_STARTED\\n";
+echo "ATTEMPT_STARTED\n";
 flush();
 PHP;
     }
@@ -456,11 +456,11 @@ $insert->execute([
     $payload['attempt_id'], $payload['tenant_id'], $payload['exam_id'],
     $payload['participant_id'], $now, $now, $now, $now,
 ]);
-echo "ATTEMPT_LOCKED_AND_INSERTED\\n";
+echo "ATTEMPT_LOCKED_AND_INSERTED\n";
 flush();
 usleep(1200000);
 $pdo->commit();
-echo "ATTEMPT_COMMITTED\\n";
+echo "ATTEMPT_COMMITTED\n";
 flush();
 PHP;
         [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
@@ -495,7 +495,7 @@ PHP;
         $this->assertSame(0, $primary->table('device_leases')->where('exam_attempt_id', $attemptId)->count());
         $this->assertSame(1, (int) $primary->table('exam_attempts')->where('id', $attemptId)->value('fence_generation'));
 
-        $audit = \\App\\Models\\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')
+        $audit = \App\Models\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')
             ->where('entity_id', $this->student->id)->firstOrFail();
         $this->assertSame('REJECTED', $audit->new_values['outcome']);
         $this->assertSame('ACTIVE_ATTEMPT_IN_PROGRESS', $audit->new_values['reason']);
@@ -611,11 +611,11 @@ $pdo->beginTransaction();
 $user = $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE');
 $user->execute([$payload['student_id']]);
 $user->fetch(PDO::FETCH_ASSOC);
-echo "USER_ROW_LOCKED\\n";
+echo "USER_ROW_LOCKED\n";
 flush();
 usleep(4500000);
 $pdo->commit();
-echo "USER_ROW_RELEASED\\n";
+echo "USER_ROW_RELEASED\n";
 flush();
 PHP;
         [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
@@ -628,7 +628,7 @@ PHP;
             $caught = false;
             try {
                 Livewire::test(UserManagement::class)->call('deactivateUser', $this->student->id);
-            } catch (\\Illuminate\\Database\\QueryException $exception) {
+            } catch (\Illuminate\Database\QueryException $exception) {
                 $caught = str_contains($exception->getMessage(), '1205')
                     || str_contains($exception->getMessage(), 'Lock wait timeout');
             }
@@ -648,7 +648,7 @@ PHP;
         $this->assertSame($beforeExam, (array) $primary->table('exams')->where('id', $this->exam->id)->first());
         $this->assertSame($beforeParticipant, (array) $primary->table('exam_participants')->where('id', $this->participant->id)->first());
         $this->assertSame(1, $primary->table('personal_access_tokens')->where('tokenable_id', $this->student->id)->count());
-        $this->assertSame(0, \\App\\Models\\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')->where('entity_id', $this->student->id)->count());
+        $this->assertSame(0, \App\Models\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')->where('entity_id', $this->student->id)->count());
         $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
     }
 
@@ -676,7 +676,7 @@ $pdo->beginTransaction();
 $user = $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE');
 $user->execute([$payload['student_id']]);
 $user->fetch(PDO::FETCH_ASSOC);
-echo "USER_LOCKED\\n";
+echo "USER_LOCKED\n";
 flush();
 usleep(500000);
 
@@ -685,16 +685,16 @@ try {
     $exam->execute([$payload['exam_id'], $payload['tenant_id']]);
     $exam->fetch(PDO::FETCH_ASSOC);
     $pdo->commit();
-    echo "UNEXPECTED_NO_DEADLOCK\\n";
+    echo "UNEXPECTED_NO_DEADLOCK\n";
 } catch (PDOException $exception) {
     $driverCode = (int) ($exception->errorInfo[1] ?? 0);
     if ($driverCode !== 1213 && $exception->getCode() !== '40001') {
         if ($pdo->inTransaction()) $pdo->rollBack();
-        fwrite(STDERR, $exception->getMessage()."\\n");
+        fwrite(STDERR, $exception->getMessage()."\n");
         exit(2);
     }
     if ($pdo->inTransaction()) $pdo->rollBack();
-    echo "DEADLOCK_ROLLBACK\\n";
+    echo "DEADLOCK_ROLLBACK\n";
 }
 flush();
 PHP;
