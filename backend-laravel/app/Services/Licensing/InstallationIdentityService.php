@@ -10,6 +10,30 @@ use RuntimeException;
 
 class InstallationIdentityService
 {
+    /**
+     * A standalone installation may contain the reserved System Tenant used only
+     * for global reference catalogs, plus exactly one madrasah tenant.
+     *
+     * Count all non-system rows (including soft-deleted rows) so deleting a
+     * madrasah record cannot be used to provision a second tenant in the same DB.
+     */
+    private function assertSingleMadrasahTenant(string $tenantId): void
+    {
+        if ($tenantId === Tenant::SYSTEM_TENANT_ID) {
+            throw new RuntimeException('INSTALLATION_TENANT_MISMATCH');
+        }
+
+        $madrasahTenantCount = Tenant::withoutGlobalScopes()
+            ->where('id', '!=', Tenant::SYSTEM_TENANT_ID)
+            ->count();
+
+        $activeTenantExists = Tenant::query()->whereKey($tenantId)->exists();
+
+        if ($madrasahTenantCount !== 1 || ! $activeTenantExists) {
+            throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
+        }
+    }
+
     public function getOrCreate(string $tenantId): LocalInstallationIdentity
     {
         $identities = LocalInstallationIdentity::query()->limit(2)->get();
@@ -17,10 +41,10 @@ class InstallationIdentityService
         $existing = $identities->first();
         if ($existing) {
             if ((string) $existing->tenant_id !== $tenantId || $existing->product_code !== (string) config('license.product_code', 'CBT-MI')) throw new RuntimeException('INSTALLATION_TENANT_MISMATCH');
-            if (Tenant::withoutGlobalScopes()->count() !== 1) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
+            $this->assertSingleMadrasahTenant($tenantId);
             return $existing;
         }
-        if (Tenant::withoutGlobalScopes()->count() !== 1 || ! Tenant::withoutGlobalScopes()->whereKey($tenantId)->exists()) throw new RuntimeException('CBT_STANDALONE_REQUIRES_ONE_TENANT');
+        $this->assertSingleMadrasahTenant($tenantId);
         if (! function_exists('sodium_crypto_sign_keypair')) throw new RuntimeException('PHP_SODIUM_REQUIRED');
         if (! config('app.key')) throw new RuntimeException('APP_KEY_REQUIRED');
 
