@@ -140,6 +140,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                 $policyObservations[] = [
                     'user' => $user,
                     'result' => $result,
+                    'has_report_view' => $user->hasPermission('report.view'),
                     'arguments' => $arguments,
                 ];
             }
@@ -193,7 +194,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $this->assertCount(1, $policyObservations, 'ReportPolicy authorization must be observed exactly once.');
         $observation = $policyObservations[0];
         $this->assertFalse(
-            $observation['user']->hasPermission('report.view'),
+            $observation['has_report_view'],
             'The benchmark teacher must not have report.view in this denial-path test.'
         );
         $this->assertFalse($observation['result'], 'The real ReportPolicy must deny the report ability.');
