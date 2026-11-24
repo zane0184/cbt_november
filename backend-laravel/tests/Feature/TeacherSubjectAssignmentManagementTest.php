@@ -149,7 +149,8 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->set('startsAt', now()->toDateString())
             ->set('endsAt', now()->addMonths(6)->toDateString())
             ->call('createAssignment')
-            ->assertHasNoErrors();
+            ->assertHasNoErrors()
+            ->assertSee('Guru Assignment Test');
 
         $this->assertDatabaseHas('teacher_subject_assignments', [
             'tenant_id' => $tenantId,
