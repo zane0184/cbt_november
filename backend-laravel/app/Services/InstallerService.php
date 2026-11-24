@@ -831,7 +831,7 @@ class InstallerService
 
         foreach ($expectedCounts as $nodeType => $expectedCount) {
             $actualCount = DB::table('multi_curriculum_structures')
-                ->where('tenant_id', $systemTenantId)
+                ->where('tenant_id', $tenantId)
                 ->where('multi_curriculum_version_id', $version->id)
                 ->where('node_type', $nodeType)
                 ->where('status', 'ACTIVE')
