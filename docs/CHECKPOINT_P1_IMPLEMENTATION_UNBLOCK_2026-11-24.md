@@ -58,3 +58,22 @@ Catatan: commit dokumentasi di atas hanya menambahkan laporan unblock. Tidak ada
 - ZIP: NOT ACCEPTED.
 - Staging: NOT VERIFIED.
 - Production: NOT TOUCHED.
+
+
+---
+
+## ADDENDUM — Refresh 24 November 2026
+
+- PR #23 tetap OPEN / DRAFT / NOT MERGED.
+- Branch HEAD terbaru yang diperiksa: `afd9efd4e03680e063e066f7456f9f7e32c7e614`.
+- Commit HEAD ini hanya menambahkan checkpoint; parent `3e851357...` hanya menambahkan laporan unblock; source aplikasi terakhir tetap pada `cd2b6ee8...`.
+- Dokumen laporan dan checkpoint sudah ada sebelum refresh ini dan diperbarui secara append-only; tidak ada source aplikasi yang diubah.
+- Toolchain lokal tetap BLOCKED: checkout tidak ada, DNS/HTTPS GitHub gagal, PHP 8.4.24 (bukan PHP 8.3), Composer tidak ada, PDO tanpa driver, MySQL/Docker tidak ada.
+- Tenant Backend CI run `45363315036` pada exact HEAD `afd9efd4...` masih IN_PROGRESS saat diperiksa; lint dan focused login/tenant smoke sudah PASS, full PHPUnit masih berjalan. Jangan catat full suite PASS sampai workflow selesai.
+- ZIP workflow run `45363315217` pada exact HEAD `afd9efd4...` SUCCESS, artifact `14906315115`; status tetap ZIP final NOT ACCEPTED karena build belum membuktikan fresh install, upgrade, restore, UAT, dan acceptance portal.
+- P1-ID-03A tetap PARTIAL; P1-ID-03B tetap BLOCKED/NOT STARTED.
+- Import Guru/Siswa tetap NOT IMPLEMENTED / NOT VERIFIED.
+- Web Admin/Guru/Siswa PARTIAL; Proktor Mode B BLOCKED; staging NOT VERIFIED; produksi NOT TOUCHED.
+
+### Next
+Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implementasikan P1-ID-03A dengan backup byte-exact dan pengujian. Jangan membuat migration enforcement atau memulai P1-ID-03B sebelum P1-ID-03A selesai dan disetujui.
