@@ -161,3 +161,41 @@ Status target 7: BUILD CANDIDATE PASS / FINAL DISTRIBUTION NOT ACCEPTED.
 6. Lakukan staging VPS hanya dengan database kosong/terisolasi dan approval; tidak menyentuh database produksi.
 7. Verifikasi isi ZIP, ekstraksi bersih, manifest, checksum, dependencies, struktur dan secret exclusion setelah seluruh fitur diterima.
 8. PR #23 tetap Draft; tidak merge, tidak production migrate/deploy dan tidak menyatakan siap distribusi.
+
+
+## Addendum koordinator — verifikasi terbaru PR #23 (24 November 2026)
+
+### AUDIT
+- Refreshed PR #23: head branch `work/p1-seven-targets-20261124`, HEAD `254aff686599a0bbfaa0a3a4f21a9ca0c720615d`, base P0 `1c33e5d422175f9bd85d206230271a9fe5a4eecd`; PR tetap OPEN/DRAFT, belum merge.
+- `main` pada saat audit berada di `e2992def788cbbbf416779524b6f4d21e50a2d58`; main belum berisi pekerjaan P1 terbaru. Jangan menganggap `main` adalah source implementasi P1.
+- Tenant Backend CI pada HEAD PR #23 terbaru gagal: run [45233757534](https://github.com/zane0184/cbt_november/actions/runs/45233757534). Step focused smoke `WebAdminAuthTest` berhenti dengan 1 failed, 28 passed, 93 assertions; full suite dilewati.
+- Root cause dari test yang diperiksa: `test_honorer_teacher_can_login_using_nik_only` membuat User ketika TenantContext aktif, mengosongkan TenantContext, lalu membuat `TeacherProfile` yang memakai tenant-scoped creation guard. Test melempar `Attempted to create a tenant-scoped model [App\Models\TeacherProfile] without a valid tenant context.` Ini masalah fixture test; jangan melemahkan global scope/tenant guard untuk memperbaikinya.
+- ZIP workflow terbaru pada HEAD yang sama [45233757532](https://github.com/zane0184/cbt_november/actions/runs/45233757532) SUCCESS. Ini hanya build workflow. Hasil tersebut tidak menimpa status CI backend yang gagal.
+- P1 checkpoint/report menunjukkan ADM-01–23 sebagian besar PARTIAL/NOT VERIFIED; Admin UI CRUD profil/logo/branding/kop/import/export/report/settings belum dibuktikan; Guru end-to-end belum diterima; Siswa belum real browser-to-Laravel E2E; Kurmer+KBC provenance E2E belum diterima; staging VPS NOT RUN; ZIP final NOT ACCEPTED.
+
+### DESAIN
+- Perbaikan sempit berikutnya: jaga TenantContext tetap terisi saat `TeacherProfile::create()` pada fixture Guru Honorer; setelah semua tenant-scoped records dibuat, baru kosongkan context. Pertahankan test NIK-only dan aturan tenant isolation.
+- Jalankan focused `WebAdminAuthTest` terlebih dahulu, lalu focused login smoke, lalu full PHPUnit MySQL 8 disposable pada exact HEAD baru. Jangan menerima hasil P0 lama sebagai bukti P1 baru.
+- Jangan melanjutkan audit lifecycle periode dengan rancangan shared active-tenant pointer sebelum desainnya direkonsiliasi dengan instalasi mandiri. Jangan menjalankan migration periode sekarang.
+- Pekerjaan lanjutan mengikuti tujuh target pada checkpoint P1; ADM-20 tetap fail-closed sampai marker/aktor ujian pusat disetujui dengan kontrak yang sah. Room tidak boleh menjadi admission gate.
+
+### IMPLEMENTASI
+- Pada audit addendum ini tidak ada file aplikasi/migration diubah. Tidak ada patch CI failure yang dilakukan.
+- PR #23 existing patch dan backup files dipertahankan apa adanya; tidak ada patch P0 yang diulang.
+
+### PENGUJIAN
+- Diperiksa: GitHub PR metadata, exact PR HEAD, changed-file list, workflow runs, job step summaries, job logs, report/checkpoint P1, file test dan file implementasi terkait.
+- Run #45233757534: FAIL pada focused smoke (1 failed, 28 passed, 93 assertions); full suite SKIPPED.
+- Run #45233757532: build ZIP workflow SUCCESS; arsip kandidat saja.
+- Tidak dijalankan dari lingkungan audit ini: PHPUnit lokal, browser E2E baru, staging VPS, backup/restore, load/security test, UAT.
+
+### URUTAN KERJA YANG BELUM SELESAI
+1. Perbaiki fixture Guru Honorer pada test, backup byte-exact file test sebelum mengedit, lalu rerun focused + full MySQL 8 CI.
+2. Lanjutkan Admin ADM-01–23 menurut dependency; prioritaskan ADM-06/07/08/13/15/16/17, lalu ADM-02–05/09–12/21–23. Tiap feature harus memiliki route/UI, policy, service, persistence, audit, negative authorization, dan test.
+3. Selesaikan Web Guru: DOCX import, authoring enam tipe soal dengan SHORT_ANSWER tetap fail-closed, snapshot/versioning, media, assessment/exam publish/token, hasil/essay grading, monitoring/Proktor assignment terbatas.
+4. Selesaikan Web Siswa pada integrated source: exact-role admission, no private metadata leak, IndexedDB durable queue, receipt/idempotency/conflict recovery, submit barrier, expiry, media auth, browser-to-real-Laravel E2E dan UAT.
+5. Verifikasi Kurmer+KBC sebagai satu kerangka terpadu dengan provenance resmi/version/checksum, pemetaan QuestionVersion → Exam snapshot → laporan; CP read-only dan TP/ATP sesuai assignment Guru.
+6. Staging VPS/aaPanel dengan jalur upload/extract dan database staging kosong/terisolasi; backup/restore serta acceptance security/load/browser/UAT.
+7. Bangun ulang dan verifikasi ZIP distribusi generik setelah seluruh acceptance gates lulus; no secrets, no backup/temp, README ekstraksi/instalasi, struktur dan checksum.
+
+Status akhir tahap ini: AUDIT KOORDINATOR DIPERBARUI; IMPLEMENTASI PATCH BERIKUTNYA BELUM DILAKUKAN; PR #23 tetap Draft; TIDAK SIAP DISTRIBUSI.
