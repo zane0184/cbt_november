@@ -281,6 +281,7 @@ class StudentImportService
         $query = Rombel::withoutGlobalScopes()
             ->where('tenant_id', $tenantId)
             ->where('status', 'ACTIVE')
+            ->whereNull('deleted_at')
             ->whereKey($rombelId);
 
         if ($lock) {
