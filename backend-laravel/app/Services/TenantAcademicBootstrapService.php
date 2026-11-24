@@ -3,11 +3,13 @@
 namespace App\Services;
 
 use App\Contexts\TenantContext;
+use App\Models\AcademicYear;
 use App\Models\Curriculum;
 use App\Models\GradeLevel;
 use App\Models\MultiCurriculumStructure;
 use App\Models\MultiCurriculumVersion;
 use App\Models\Phase;
+use App\Models\Semester;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
