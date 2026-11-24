@@ -342,9 +342,6 @@ class StudentImportService
             if ($lastColumn > self::MAX_COLUMNS) {
                 throw ValidationException::withMessages(['file' => 'Maksimal 32 kolom per proses import.']);
             }
-            if (($lastRow * $lastColumn) > self::MAX_CELLS) {
-                throw ValidationException::withMessages(['file' => 'Jumlah cell XLSX melewati batas keamanan.']);
-            }
 
             $headers = [];
             for ($column = 1; $column <= $lastColumn; $column++) {
@@ -394,11 +391,11 @@ class StudentImportService
 
         try {
             $firstLine = fgets($handle, self::MAX_CSV_RECORD_BYTES + 1);
-            if ($firstLine === false || strlen($firstLine) > self::MAX_CSV_RECORD_BYTES || (!str_ends_with($firstLine, "\\n") && !feof($handle))) {
+            if ($firstLine === false || strlen($firstLine) > self::MAX_CSV_RECORD_BYTES || (!str_ends_with($firstLine, "\n") && !feof($handle))) {
                 throw ValidationException::withMessages(['file' => 'Header CSV kosong atau melebihi batas ukuran record.']);
             }
 
-            $delimiters = [',', ';', "\\t"];
+            $delimiters = [',', ';', "\t"];
             $delimiter = ',';
             $highestCount = -1;
             foreach ($delimiters as $candidate) {
@@ -427,6 +424,9 @@ class StudentImportService
             while (($values = $this->readCsvRecord($handle, $delimiter)) !== false) {
                 $recordNumber++;
                 $cellCount += count($values);
+                if (count($values) !== count($headers)) {
+                    throw ValidationException::withMessages(['file' => 'Jumlah kolom setiap record CSV harus sama dengan header.']);
+                }
                 if ($recordNumber > self::MAX_ROWS + 1) {
                     throw ValidationException::withMessages(['file' => 'Maksimal 5.000 baris data per proses import.']);
                 }
@@ -471,7 +471,7 @@ class StudentImportService
             if (!is_string($value) || strlen($value) > self::MAX_CELL_BYTES) {
                 throw ValidationException::withMessages(['file' => 'Isi satu cell CSV melewati batas 4 KiB.']);
             }
-            if (!mb_check_encoding($value, 'UTF-8') || str_contains($value, "\\0")) {
+            if (!mb_check_encoding($value, 'UTF-8') || str_contains($value, "\0")) {
                 throw ValidationException::withMessages(['file' => 'CSV harus berisi teks UTF-8 valid tanpa NUL byte.']);
             }
         }
