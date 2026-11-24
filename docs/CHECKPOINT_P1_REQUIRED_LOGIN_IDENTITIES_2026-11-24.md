@@ -98,3 +98,8 @@ Status tetap:
 - ZIP belum siap distribusi.
 
 Pekerjaan berikutnya: dapatkan bukti exact-HEAD CI, jalankan pengujian MySQL disposable, lalu audit jalur update/import dan integrasi portal lainnya.
+
+
+### Blocker integritas database (klarifikasi)
+
+Unique index NIP/NIK/NUPTK/NISN dan preflight duplicate/blank/whitespace sudah ditulis, tetapi conditional DB enforcement untuk status dan format wajib belum dibuat. Raw SQL masih dapat menulis profil dengan status/identifier tidak sesuai selama tidak melanggar unique index. Read-only preflight hanya melaporkan, bukan mengunci penulisan. DB CHECK/trigger lintas MySQL 8 dan SQLite, plus validasi jalur update/import/recovery, menjadi blocker sebelum identitas dinyatakan lengkap.
