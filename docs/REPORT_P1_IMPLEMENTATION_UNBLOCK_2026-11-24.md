@@ -177,3 +177,64 @@ Existing preflight tests cover only three scenarios: valid PNS/Honorer/Siswa dat
 - Staging: NOT VERIFIED.
 - Final ZIP: NOT ACCEPTED.
 - Production: NOT TOUCHED.
+
+
+---
+
+## ADDENDUM — Refresh repository dan CI setelah checkpoint awal
+
+Waktu refresh: 24 November 2026, 09:15 UTC (berdasarkan metadata GitHub Actions).
+
+### AUDIT TERBARU
+- PR #23 masih OPEN / DRAFT / NOT MERGED.
+- Branch PR: `work/p1-seven-targets-20261124`.
+- Branch HEAD saat refresh: `afd9efd4e03680e063e066f7456f9f7e32c7e614`.
+- Commit `afd9efd4` hanya mengubah `docs/CHECKPOINT_P1_IMPLEMENTATION_UNBLOCK_2026-11-24.md`; parent-nya `3e851357bc673643674398cb4406b971c46fd337`.
+- Commit `3e851357` hanya menambahkan laporan unblock dan parent-nya adalah source HEAD `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050`.
+- Dengan demikian, source aplikasi yang terakhir diperiksa tetap `cd2b6ee8...`; dua commit setelahnya merupakan dokumentasi saja. Tidak ada source aplikasi yang berubah dalam dua commit tersebut.
+- Kedua dokumen unblock yang diminta ternyata sudah tersedia pada branch; laporan ini merupakan refresh/addendum atas dokumen yang sudah ada, bukan klaim bahwa file baru dibuat pada sesi refresh.
+- GitHub tree memuat 1.273 entry dan tidak terpotong. GitHub connector hanya memberi akses baca teks/metadata untuk kebutuhan ini; tidak menyediakan binary source archive yang dapat dipulihkan menjadi checkout lokal.
+- Pemeriksaan lokal diulang: `/mnt/data/CBT_MADRASAH_RECONSTRUCTION` tidak ada; Git 2.47.3 tersedia; PHP 8.4.24; Composer, MySQL client/server, Docker/Podman tidak ada; modul PDO tidak memiliki driver; DNS/HTTPS GitHub dari terminal gagal dengan `Could not resolve host: github.com`. TLS verification tetap aktif.
+- Tidak ada perubahan lokal yang dapat hilang karena tidak ada checkout/worktree ditemukan.
+
+### CI EXACT CURRENT BRANCH HEAD
+- Run Tenant Backend CI: `45363315036`, exact SHA `afd9efd4...`, status `IN_PROGRESS` pada saat addendum disusun.
+- Step yang sudah PASS: checkout, PHP 8.3 setup, disposable MySQL identity check, Composer lock/platform validation, locked dependency install, Laravel package discovery, PHP lint, disposable installer database setup, dan focused Web login/tenant identity smoke test.
+- Full PHPUnit terhadap disposable MySQL 8 masih RUNNING; belum ada hasil passed/failed final untuk run ini.
+- Run ZIP: `45363315217`, exact SHA `afd9efd4...`, conclusion SUCCESS. Artifact ID `14906315115`, nama `cbt-madrasah-web-deployment-afd9efd4e03680e063e066f7456f9f7e32c7e614`, ukuran 19.768.203 bytes.
+- ZIP build success bukan acceptance ZIP final. Fresh install, upgrade, restore, aaPanel install, security review, dan portal E2E tetap belum dibuktikan.
+- CI lama pada source SHA `cd2b6ee8...` tetap PASS 534 tests / 2.265 assertions; hasil itu tidak diganti atau dianggap hasil run baru pada `afd9efd4...`.
+
+### IMPLEMENTASI
+- Tidak ada pemulihan checkout lokal.
+- Tidak ada source aplikasi, migration, workflow, dependency lock, atau konfigurasi yang diubah.
+- Tidak ada patch aplikasi melalui GitHub Contents API.
+- Refresh ini hanya dokumentasi audit/checkpoint pada branch P1.
+- Tidak ada backup source baru karena tidak ada file source yang diubah.
+
+### PENGUJIAN
+- Environment diagnosis lokal: diperiksa ulang; hasil seperti di atas.
+- PHP lint lokal, Composer validation/install, PHPUnit lokal, MySQL lokal, migration, dan race test: NOT RUN.
+- CI `45363315036`: RUNNING; hasil penuh NOT YET AVAILABLE.
+- ZIP workflow `45363315217`: SUCCESS untuk build/archive workflow saja; ZIP belum diterima sebagai distribusi.
+- Produksi/staging: tidak disentuh.
+
+### KEPUTUSAN STATUS
+- Workspace/toolchain recovery: BLOCKED.
+- P1-ID-03A: PARTIAL, NOT COMPLETE.
+- P1-ID-03B: BLOCKED, NOT STARTED.
+- Import Guru/Siswa: NOT IMPLEMENTED / NOT VERIFIED.
+- Web Admin: PARTIAL.
+- Web Guru: PARTIAL.
+- Web Siswa: PARTIAL.
+- Proktor Mode B: BLOCKED.
+- Staging: NOT VERIFIED.
+- ZIP final: NOT ACCEPTED.
+- Production: NOT TOUCHED.
+
+### NEXT ACTION
+1. Sediakan runner/VM/container kerja dengan PHP 8.3 dan extension yang sesuai `composer.json`, Composer, dependency install dari `composer.lock`, PHPUnit, dan MySQL 8/InnoDB disposable.
+2. Pulihkan Git checkout normal melalui HTTPS setelah DNS tersedia. Bila hanya snapshot GitHub yang dapat diunduh, verifikasi commit/tree SHA dan tandai SNAPSHOT ONLY; jangan mengarang metadata Git.
+3. Tunggu hasil akhir CI `45363315036` dan catat hasil exact SHA.
+4. Lanjutkan P1-ID-03A saja dengan backup byte-exact sebelum setiap source edit.
+5. STOP sebelum P1-ID-03B sampai P1-ID-03A lulus dan mendapat persetujuan eksplisit.
