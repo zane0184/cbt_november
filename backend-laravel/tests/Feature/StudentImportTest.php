@@ -442,6 +442,46 @@ class StudentImportTest extends TestCase
             ->assertHasErrors('file');
     }
 
+    public function test_csv_blank_lines_do_not_consume_5000_data_row_limit_and_keep_physical_row_numbers(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\n";
+        for ($index = 1; $index <= 5000; $index++) {
+            $csv .= 'Siswa ' . $index . ',' . sprintf('%010d', $index) . "\n\n";
+        }
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('summary.total', 5000)
+            ->assertSet('previewRows.4999.row', 10000);
+
+        $this->assertDatabaseCount('student_profiles', 0);
+    }
+
+    public function test_csv_rejects_more_than_5000_nonblank_data_rows(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\n";
+        for ($index = 1; $index <= 5001; $index++) {
+            $csv .= 'Siswa ' . $index . ',' . sprintf('%010d', $index) . "\n";
+        }
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasErrors('file')
+            ->assertSee('Maksimal 5.000 baris data per proses import.');
+
+        $this->assertDatabaseCount('student_profiles', 0);
+        $this->assertDatabaseCount('student_import_batches', 0);
+    }
+
     public function test_service_enforces_upload_size_limit_without_livewire_validation(): void
     {
         $this->actingAs($this->admin);
