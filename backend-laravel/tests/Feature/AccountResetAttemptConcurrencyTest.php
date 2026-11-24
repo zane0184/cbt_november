@@ -99,6 +99,101 @@ class AccountResetAttemptConcurrencyTest extends TestCase
         ]);
     }
 
+    private function spawnConcurrentMysqlProcess(string $script, array $payload): array
+    {
+        $scriptPath = tempnam(sys_get_temp_dir(), 'cbt-account-race-');
+        file_put_contents($scriptPath, $script);
+
+        $database = config('database.connections.mysql');
+        $process = proc_open(
+            [PHP_BINARY, $scriptPath, base64_encode(json_encode(array_merge([
+                'host' => $database['host'],
+                'port' => $database['port'],
+                'database' => $database['database'],
+                'username' => $database['username'],
+                'password' => $database['password'],
+            ], $payload), JSON_THROW_ON_ERROR))],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            base_path()
+        );
+
+        if (!is_resource($process)) {
+            @unlink($scriptPath);
+            throw new \\RuntimeException('Could not start independent MySQL transaction process.');
+        }
+
+        fclose($pipes[0]);
+
+        return [$process, $pipes, $scriptPath];
+    }
+
+    private function lockExamParentsOnPrimaryConnection(): void
+    {
+        $connection = DB::connection('mysql');
+        $connection->table('exams')->where('id', $this->exam->id)->lockForUpdate()->first();
+        $connection->table('exam_participants')->where('id', $this->participant->id)->lockForUpdate()->first();
+        $connection->table('exam_attempts')->where('participant_id', $this->participant->id)
+            ->orderBy('id')->lockForUpdate()->get();
+    }
+
+    private function attemptStartWaitingScript(): string
+    {
+        return <<<'PHP'
+<?php
+$payload = json_decode(base64_decode($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$pdo = new PDO(
+    'mysql:host='.$payload['host'].';port='.$payload['port'].';dbname='.$payload['database'].';charset=utf8mb4',
+    $payload['username'],
+    $payload['password'],
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]
+);
+$pdo->exec('SET SESSION innodb_lock_wait_timeout = 12');
+$pdo->beginTransaction();
+echo "START_REQUEST_READY\\n";
+flush();
+
+$exam = $pdo->prepare('SELECT id FROM exams WHERE id = ? AND tenant_id = ? FOR UPDATE');
+$exam->execute([$payload['exam_id'], $payload['tenant_id']]);
+$exam->fetch(PDO::FETCH_ASSOC);
+
+$participant = $pdo->prepare('SELECT id FROM exam_participants WHERE id = ? AND exam_id = ? AND user_id = ? AND tenant_id = ? FOR UPDATE');
+$participant->execute([$payload['participant_id'], $payload['exam_id'], $payload['student_id'], $payload['tenant_id']]);
+$participant->fetch(PDO::FETCH_ASSOC);
+
+$expiry = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND (expires_at IS NULL OR expires_at <= NOW()) FOR UPDATE");
+$expiry->execute([$payload['participant_id']]);
+$expiry->fetchAll(PDO::FETCH_ASSOC);
+
+$active = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND expires_at > NOW() ORDER BY id FOR UPDATE");
+$active->execute([$payload['participant_id']]);
+$active->fetchAll(PDO::FETCH_ASSOC);
+
+$user = $pdo->prepare('SELECT id, is_active, must_change_password FROM users WHERE id = ? AND tenant_id = ? FOR UPDATE');
+$user->execute([$payload['student_id'], $payload['tenant_id']]);
+$account = $user->fetch(PDO::FETCH_ASSOC);
+
+if (!$account || !(bool) $account['is_active'] || (bool) $account['must_change_password']) {
+    $pdo->commit();
+    echo !$account || !(bool) $account['is_active']
+        ? "ACCOUNT_INACTIVE_REJECTED\\n"
+        : "PASSWORD_CHANGE_REQUIRED_REJECTED\\n";
+    flush();
+    exit(0);
+}
+
+$now = date('Y-m-d H:i:s');
+$insert = $pdo->prepare("INSERT INTO exam_attempts (id, tenant_id, exam_id, participant_id, attempt_number, status, started_at, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 'IN_PROGRESS', ?, DATE_ADD(?, INTERVAL 1 HOUR), ?, ?)");
+$insert->execute([
+    $payload['attempt_id'], $payload['tenant_id'], $payload['exam_id'],
+    $payload['participant_id'], $now, $now, $now, $now,
+]);
+$pdo->commit();
+echo "ATTEMPT_STARTED\\n";
+flush();
+PHP;
+    }
+
     protected function tearDown(): void
     {
         $connection = DB::connection('mysql');
@@ -307,4 +402,333 @@ PHP;
         $deadlocksAfter = (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0);
         $this->assertSame($deadlocksBefore, $deadlocksAfter, 'The parent-first lock order must not produce an InnoDB deadlock.');
     }
+
+    public function test_deactivation_waits_for_concurrent_mysql_attempt_start_and_rejects_without_mutation(): void
+    {
+        $primary = DB::connection('mysql');
+        $this->assertSame('mysql', $primary->getDriverName());
+        $this->student->createToken('deactivation-race-token');
+        DB::table('sessions')->insert([
+            'id' => 'deactivation-race-session', 'user_id' => $this->student->id,
+            'payload' => 'encrypted-session', 'last_activity' => now()->timestamp,
+        ]);
+
+        $primary->commit();
+        $primary->statement('SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        $primary->statement('SET SESSION innodb_lock_wait_timeout = 12');
+        $primary->beginTransaction();
+
+        $deadlocksBefore = (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0);
+        $attemptId = (string) Str::uuid();
+        $now = now()->toDateTimeString();
+        $database = config('database.connections.mysql');
+        $script = <<<'PHP'
+<?php
+$payload = json_decode(base64_decode($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$pdo = new PDO(
+    'mysql:host='.$payload['host'].';port='.$payload['port'].';dbname='.$payload['database'].';charset=utf8mb4',
+    $payload['username'],
+    $payload['password'],
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]
+);
+$pdo->exec('SET SESSION innodb_lock_wait_timeout = 12');
+$pdo->beginTransaction();
+
+$exam = $pdo->prepare('SELECT id FROM exams WHERE id = ? AND tenant_id = ? FOR UPDATE');
+$exam->execute([$payload['exam_id'], $payload['tenant_id']]);
+$exam->fetch(PDO::FETCH_ASSOC);
+$participant = $pdo->prepare('SELECT id FROM exam_participants WHERE id = ? AND exam_id = ? AND user_id = ? AND tenant_id = ? FOR UPDATE');
+$participant->execute([$payload['participant_id'], $payload['exam_id'], $payload['student_id'], $payload['tenant_id']]);
+$participant->fetch(PDO::FETCH_ASSOC);
+$expiry = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND (expires_at IS NULL OR expires_at <= NOW()) FOR UPDATE");
+$expiry->execute([$payload['participant_id']]);
+$expiry->fetchAll(PDO::FETCH_ASSOC);
+$active = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND expires_at > NOW() ORDER BY id FOR UPDATE");
+$active->execute([$payload['participant_id']]);
+$active->fetchAll(PDO::FETCH_ASSOC);
+$user = $pdo->prepare('SELECT id FROM users WHERE id = ? AND tenant_id = ? FOR UPDATE');
+$user->execute([$payload['student_id'], $payload['tenant_id']]);
+$user->fetch(PDO::FETCH_ASSOC);
+
+$now = date('Y-m-d H:i:s');
+$insert = $pdo->prepare("INSERT INTO exam_attempts (id, tenant_id, exam_id, participant_id, attempt_number, status, started_at, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 'IN_PROGRESS', ?, DATE_ADD(?, INTERVAL 1 HOUR), ?, ?)");
+$insert->execute([
+    $payload['attempt_id'], $payload['tenant_id'], $payload['exam_id'],
+    $payload['participant_id'], $now, $now, $now, $now,
+]);
+echo "ATTEMPT_LOCKED_AND_INSERTED\\n";
+flush();
+usleep(1200000);
+$pdo->commit();
+echo "ATTEMPT_COMMITTED\\n";
+flush();
+PHP;
+        [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
+            'tenant_id' => (string) $this->tenant->id,
+            'exam_id' => (string) $this->exam->id,
+            'participant_id' => (string) $this->participant->id,
+            'student_id' => (string) $this->student->id,
+            'attempt_id' => $attemptId,
+        ]);
+
+        try {
+            $this->assertSame('ATTEMPT_LOCKED_AND_INSERTED', trim((string) fgets($pipes[1])));
+            $this->actingAs($this->admin);
+            Livewire::test(UserManagement::class)->call('deactivateUser', $this->student->id);
+            $this->assertSame('ATTEMPT_COMMITTED', trim((string) fgets($pipes[1])));
+            $childError = stream_get_contents($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            @unlink($scriptPath);
+        }
+
+        $this->assertSame(0, $exitCode, 'Concurrent Attempt-start process failed: '.$childError);
+        $this->assertTrue((bool) $this->student->fresh()->is_active);
+        $this->assertSame(1, (int) $this->student->fresh()->auth_version);
+        $this->assertSame(1, DB::table('personal_access_tokens')->where('tokenable_id', $this->student->id)->count());
+        $this->assertDatabaseHas('sessions', ['id' => 'deactivation-race-session']);
+        $this->assertSame('IN_PROGRESS', $primary->table('exam_attempts')->where('id', $attemptId)->value('status'));
+        $this->assertSame(0, $primary->table('exam_attempt_answers')->where('exam_attempt_id', $attemptId)->count());
+        $this->assertSame(0, $primary->table('exam_attempt_scores')->where('attempt_id', $attemptId)->count());
+        $this->assertSame(0, $primary->table('device_leases')->where('exam_attempt_id', $attemptId)->count());
+        $this->assertSame(1, (int) $primary->table('exam_attempts')->where('id', $attemptId)->value('fence_generation'));
+
+        $audit = \\App\\Models\\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')
+            ->where('entity_id', $this->student->id)->firstOrFail();
+        $this->assertSame('REJECTED', $audit->new_values['outcome']);
+        $this->assertSame('ACTIVE_ATTEMPT_IN_PROGRESS', $audit->new_values['reason']);
+        $deadlocksAfter = (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0);
+        $this->assertSame($deadlocksBefore, $deadlocksAfter);
+    }
+
+    public function test_reset_wins_exam_parent_locks_and_concurrent_attempt_start_is_rejected_for_password_change(): void
+    {
+        $primary = DB::connection('mysql');
+        $primary->commit();
+        $primary->statement('SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        $primary->statement('SET SESSION innodb_lock_wait_timeout = 12');
+        $primary->beginTransaction();
+        $this->lockExamParentsOnPrimaryConnection();
+
+        [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($this->attemptStartWaitingScript(), [
+            'tenant_id' => (string) $this->tenant->id,
+            'exam_id' => (string) $this->exam->id,
+            'participant_id' => (string) $this->participant->id,
+            'student_id' => (string) $this->student->id,
+            'attempt_id' => (string) Str::uuid(),
+        ]);
+
+        try {
+            $this->assertSame('START_REQUEST_READY', trim((string) fgets($pipes[1])));
+            $this->actingAs($this->admin);
+            $component = Livewire::test(UserManagement::class)
+                ->call('resetUserPassword', $this->student->id)
+                ->assertSet('showTemporaryPasswordModal', true);
+            $temporaryPassword = $component->get('temporaryPassword');
+            $primary->commit();
+
+            $childResult = trim((string) fgets($pipes[1]));
+            $childError = stream_get_contents($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            @unlink($scriptPath);
+        }
+
+        $this->assertSame('PASSWORD_CHANGE_REQUIRED_REJECTED', $childResult);
+        $this->assertSame(0, $exitCode, 'Concurrent Attempt-start process failed: '.$childError);
+        $this->assertTrue(Hash::check($temporaryPassword, $this->student->fresh()->password));
+        $this->assertTrue((bool) $this->student->fresh()->must_change_password);
+        $this->assertSame(2, (int) $this->student->fresh()->auth_version);
+        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
+    }
+
+    public function test_deactivation_wins_exam_parent_locks_and_concurrent_attempt_start_is_rejected_for_inactive_account(): void
+    {
+        $primary = DB::connection('mysql');
+        $primary->commit();
+        $primary->statement('SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        $primary->statement('SET SESSION innodb_lock_wait_timeout = 12');
+        $primary->beginTransaction();
+        $this->lockExamParentsOnPrimaryConnection();
+
+        [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($this->attemptStartWaitingScript(), [
+            'tenant_id' => (string) $this->tenant->id,
+            'exam_id' => (string) $this->exam->id,
+            'participant_id' => (string) $this->participant->id,
+            'student_id' => (string) $this->student->id,
+            'attempt_id' => (string) Str::uuid(),
+        ]);
+
+        try {
+            $this->assertSame('START_REQUEST_READY', trim((string) fgets($pipes[1])));
+            $this->actingAs($this->admin);
+            Livewire::test(UserManagement::class)->call('deactivateUser', $this->student->id);
+            $primary->commit();
+
+            $childResult = trim((string) fgets($pipes[1]));
+            $childError = stream_get_contents($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            @unlink($scriptPath);
+        }
+
+        $this->assertSame('ACCOUNT_INACTIVE_REJECTED', $childResult);
+        $this->assertSame(0, $exitCode, 'Concurrent Attempt-start process failed: '.$childError);
+        $this->assertFalse((bool) $this->student->fresh()->is_active);
+        $this->assertSame(2, (int) $this->student->fresh()->auth_version);
+        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
+    }
+
+    public function test_deactivation_lock_timeout_rolls_back_every_account_and_exam_mutation(): void
+    {
+        $primary = DB::connection('mysql');
+        $primary->commit();
+        $primary->statement('SET SESSION innodb_lock_wait_timeout = 1');
+        $primary->beginTransaction();
+        $primary->commit();
+
+        $this->student->createToken('lock-timeout-token');
+        $beforeUser = (array) $primary->table('users')->where('id', $this->student->id)->first();
+        $beforeExam = (array) $primary->table('exams')->where('id', $this->exam->id)->first();
+        $beforeParticipant = (array) $primary->table('exam_participants')->where('id', $this->participant->id)->first();
+
+        $script = <<<'PHP'
+<?php
+$payload = json_decode(base64_decode($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$pdo = new PDO(
+    'mysql:host='.$payload['host'].';port='.$payload['port'].';dbname='.$payload['database'].';charset=utf8mb4',
+    $payload['username'],
+    $payload['password'],
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]
+);
+$pdo->beginTransaction();
+$user = $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE');
+$user->execute([$payload['student_id']]);
+$user->fetch(PDO::FETCH_ASSOC);
+echo "USER_ROW_LOCKED\\n";
+flush();
+usleep(4500000);
+$pdo->commit();
+echo "USER_ROW_RELEASED\\n";
+flush();
+PHP;
+        [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
+            'student_id' => (string) $this->student->id,
+        ]);
+
+        try {
+            $this->assertSame('USER_ROW_LOCKED', trim((string) fgets($pipes[1])));
+            $this->actingAs($this->admin);
+            $caught = false;
+            try {
+                Livewire::test(UserManagement::class)->call('deactivateUser', $this->student->id);
+            } catch (\\Illuminate\\Database\\QueryException $exception) {
+                $caught = str_contains($exception->getMessage(), '1205')
+                    || str_contains($exception->getMessage(), 'Lock wait timeout');
+            }
+            $this->assertTrue($caught, 'A sustained InnoDB lock wait must surface as a lock-timeout QueryException.');
+            $this->assertSame(0, $primary->transactionLevel(), 'Failed account transaction must roll back completely.');
+            $this->assertSame('USER_ROW_RELEASED', trim((string) fgets($pipes[1])));
+            $childError = stream_get_contents($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            @unlink($scriptPath);
+        }
+
+        $this->assertSame(0, $exitCode, 'Lock-holder process failed: '.$childError);
+        $this->assertSame($beforeUser, (array) $primary->table('users')->where('id', $this->student->id)->first());
+        $this->assertSame($beforeExam, (array) $primary->table('exams')->where('id', $this->exam->id)->first());
+        $this->assertSame($beforeParticipant, (array) $primary->table('exam_participants')->where('id', $this->participant->id)->first());
+        $this->assertSame(1, $primary->table('personal_access_tokens')->where('tokenable_id', $this->student->id)->count());
+        $this->assertSame(0, \\App\\Models\\AuditLog::where('action', 'DEACTIVATE_LOCAL_USER')->where('entity_id', $this->student->id)->count());
+        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
+    }
+
+    public function test_reset_transaction_rolls_back_cleanly_when_innodb_detects_reverse_lock_order_deadlock(): void
+    {
+        $primary = DB::connection('mysql');
+        $primary->commit();
+        $primary->statement('SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED');
+        $primary->statement('SET SESSION innodb_lock_wait_timeout = 12');
+        $primary->beginTransaction();
+        $this->lockExamParentsOnPrimaryConnection();
+
+        $deadlocksBefore = (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0);
+        $script = <<<'PHP'
+<?php
+$payload = json_decode(base64_decode($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+$pdo = new PDO(
+    'mysql:host='.$payload['host'].';port='.$payload['port'].';dbname='.$payload['database'].';charset=utf8mb4',
+    $payload['username'],
+    $payload['password'],
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_EMULATE_PREPARES => false]
+);
+$pdo->exec('SET SESSION innodb_lock_wait_timeout = 12');
+$pdo->beginTransaction();
+$user = $pdo->prepare('SELECT id FROM users WHERE id = ? FOR UPDATE');
+$user->execute([$payload['student_id']]);
+$user->fetch(PDO::FETCH_ASSOC);
+echo "USER_LOCKED\\n";
+flush();
+usleep(500000);
+
+try {
+    $exam = $pdo->prepare('SELECT id FROM exams WHERE id = ? AND tenant_id = ? FOR UPDATE');
+    $exam->execute([$payload['exam_id'], $payload['tenant_id']]);
+    $exam->fetch(PDO::FETCH_ASSOC);
+    $pdo->commit();
+    echo "UNEXPECTED_NO_DEADLOCK\\n";
+} catch (PDOException $exception) {
+    $driverCode = (int) ($exception->errorInfo[1] ?? 0);
+    if ($driverCode !== 1213 && $exception->getCode() !== '40001') {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        fwrite(STDERR, $exception->getMessage()."\\n");
+        exit(2);
+    }
+    if ($pdo->inTransaction()) $pdo->rollBack();
+    echo "DEADLOCK_ROLLBACK\\n";
+}
+flush();
+PHP;
+        [$process, $pipes, $scriptPath] = $this->spawnConcurrentMysqlProcess($script, [
+            'student_id' => (string) $this->student->id,
+            'exam_id' => (string) $this->exam->id,
+            'tenant_id' => (string) $this->tenant->id,
+        ]);
+
+        try {
+            $this->assertSame('USER_LOCKED', trim((string) fgets($pipes[1])));
+            $this->actingAs($this->admin);
+            $component = Livewire::test(UserManagement::class)
+                ->call('resetUserPassword', $this->student->id)
+                ->assertSet('showTemporaryPasswordModal', true);
+            $temporaryPassword = $component->get('temporaryPassword');
+            $primary->commit();
+
+            $childResult = trim((string) fgets($pipes[1]));
+            $childError = stream_get_contents($pipes[2]);
+            $exitCode = proc_close($process);
+        } finally {
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            @unlink($scriptPath);
+        }
+
+        $this->assertSame('DEADLOCK_ROLLBACK', $childResult, 'MySQL must detect and roll back the reverse-order competing transaction.');
+        $this->assertSame(0, $exitCode, 'Deadlock competitor failed: '.$childError);
+        $this->assertGreaterThan($deadlocksBefore, (int) ($primary->selectOne("SHOW GLOBAL STATUS LIKE 'Innodb_deadlocks'")->Value ?? 0));
+        $this->assertTrue(Hash::check($temporaryPassword, $this->student->fresh()->password));
+        $this->assertTrue((bool) $this->student->fresh()->must_change_password);
+        $this->assertSame(2, (int) $this->student->fresh()->auth_version);
+        $this->assertSame(0, $primary->table('exam_attempts')->where('participant_id', $this->participant->id)->count());
+    }
+
 }
