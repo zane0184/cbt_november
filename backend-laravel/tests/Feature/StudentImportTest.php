@@ -363,29 +363,40 @@ class StudentImportTest extends TestCase
 
     public function test_csv_blank_records_do_not_consume_the_5000_data_row_limit(): void
     {
+        $this->actingAs($this->admin);
         $csv = "nama,nisn\n";
         for ($index = 1; $index <= 5000; $index++) {
             $csv .= 'Siswa ' . $index . ',' . sprintf('%010d', $index) . "\n\n";
         }
         $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
 
-        $rows = app(\App\Services\StudentImportService::class)->readRows($file->getRealPath(), 'csv');
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('summary.total', 5000)
+            ->assertSet('previewRows.4999.row', 10000);
 
-        $this->assertCount(5000, $rows);
-        $this->assertSame(10000, $rows[4999]['row']);
+        $this->assertDatabaseCount('student_profiles', 0);
     }
 
     public function test_csv_reader_preserves_physical_record_numbers_after_blank_records(): void
     {
+        $this->actingAs($this->admin);
         $csv = "nama,nisn\nSiswa Satu,0001234567\n\nSiswa Duplikat,0001234567\n";
         $file = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
 
-        $rows = app(\App\Services\StudentImportService::class)->readRows($file->getRealPath(), 'csv');
-
-        $this->assertCount(2, $rows);
-        $this->assertSame(2, $rows[0]['row']);
-        $this->assertSame(4, $rows[1]['row']);
-        $this->assertSame('Siswa Duplikat', $rows[1]['values'][0]);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('previewRows.0.row', 2)
+            ->assertSet('previewRows.1.row', 4)
+            ->assertSee('NISN duplikat di dalam file');
+        
+        $this->assertDatabaseCount('student_profiles', 0);
     }
 
     public function test_csv_import_rejects_more_than_32_columns(): void
