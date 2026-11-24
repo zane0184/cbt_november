@@ -387,6 +387,47 @@ class AdminUiVerificationTest extends TestCase
     }
 
     /** @test */
+    public function teacher_and_student_login_identifiers_are_hidden_from_automatic_model_serialization()
+    {
+        $teacherUser = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Guru Privasi',
+            'username' => 'guru.privasi',
+            'password' => bcrypt('password123456'),
+        ]);
+        $teacherProfile = TeacherProfile::create([
+            'user_id' => $teacherUser->id,
+            'full_name' => 'Guru Privasi',
+            'employment_status' => 'PNS',
+            'employee_identifier' => '198001012006041002',
+            'nip' => '198001012006041002',
+            'nik' => '3171000000000003',
+            'nuptk' => '1234567890123456',
+        ]);
+
+        $teacherArray = $teacherProfile->toArray();
+        foreach (['employee_identifier', 'nip', 'nik', 'nuptk'] as $field) {
+            $this->assertArrayNotHasKey($field, $teacherArray);
+        }
+        $this->assertSame('198001012006041002', $teacherProfile->nip);
+
+        $studentUser = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Siswa Privasi',
+            'username' => 'siswa.privasi',
+            'password' => bcrypt('password123456'),
+        ]);
+        $studentProfile = StudentProfile::create([
+            'user_id' => $studentUser->id,
+            'full_name' => 'Siswa Privasi',
+            'nisn' => '0001234568',
+        ]);
+
+        $this->assertArrayNotHasKey('nisn', $studentProfile->toArray());
+        $this->assertSame('0001234568', $studentProfile->nisn);
+    }
+
+    /** @test */
     public function admin_can_create_student_with_tenant_scoped_profile()
     {
         $this->actingAs($this->admin);
