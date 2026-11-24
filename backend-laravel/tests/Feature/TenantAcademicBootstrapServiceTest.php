@@ -72,6 +72,8 @@ class TenantAcademicBootstrapServiceTest extends TestCase
         $this->assertSame(1, DB::table('curricula')->where('tenant_id', $tenant->id)->count());
         $this->assertSame(3, DB::table('phases')->where('tenant_id', $tenant->id)->count());
         $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(12, DB::table('semesters')->where('tenant_id', $tenant->id)->count());
     }
 
     public function test_each_installation_receives_separate_tenant_owned_academic_rows(): void
@@ -86,7 +88,9 @@ class TenantAcademicBootstrapServiceTest extends TestCase
         $this->assertNotSame($catalogA['curriculum_id'], $catalogB['curriculum_id']);
         $this->assertNotSame($catalogA['grade_level_ids'][1], $catalogB['grade_level_ids'][1]);
         $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenantA->id)->count());
+        $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $tenantA->id)->count());
         $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenantB->id)->count());
+        $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $tenantB->id)->count());
     }
 
     public function test_conflicting_existing_phase_is_rejected_without_overwriting_it(): void
@@ -106,7 +110,7 @@ class TenantAcademicBootstrapServiceTest extends TestCase
             $phase = Phase::create([
                 'curriculum_id' => $curriculum->id,
                 'name' => 'Fase Salah',
-                'code' => 'FASE_A',
+                'code' => 'A',
                 'status' => 'ACTIVE',
             ]);
         } finally {
