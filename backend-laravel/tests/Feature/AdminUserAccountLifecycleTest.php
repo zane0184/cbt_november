@@ -581,15 +581,19 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertSame($driver, app('session')->getDefaultDriver());
     }
 
-    private function loginAndCapturePersistentWebSession(User $user): array
+    private function loginAndCapturePersistentWebSession(User $user, ?string $seedSessionId = null): array
     {
+        $cookieName = (string) config('session.cookie');
+        if ($seedSessionId !== null) {
+            $this->withCookie($cookieName, $seedSessionId);
+        }
+
         $response = $this->post('/login', [
             'identifier' => $user->username,
             'password' => 'old-password-strong',
         ]);
         $response->assertRedirect('/guru/dashboard');
 
-        $cookieName = (string) config('session.cookie');
         $cookie = collect($response->headers->getCookies())
             ->first(fn ($candidate) => $candidate->getName() === $cookieName);
         $this->assertNotNull($cookie, 'Web login must issue a session cookie.');
@@ -627,9 +631,9 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         [$cookieName, $resetCookie] = $this->loginAndCapturePersistentWebSession($resetTeacher);
         Auth::forgetGuards();
-        [, $deactivateCookie] = $this->loginAndCapturePersistentWebSession($deactivatedTeacher);
+        [, $deactivateCookie] = $this->loginAndCapturePersistentWebSession($deactivatedTeacher, Str::random(40));
         Auth::forgetGuards();
-        [, $unrelatedCookie] = $this->loginAndCapturePersistentWebSession($unrelatedTeacher);
+        [, $unrelatedCookie] = $this->loginAndCapturePersistentWebSession($unrelatedTeacher, Str::random(40));
 
         // A real login request must persist the session using the requested handler.
         $handlerClass = get_class(app('session')->driver()->getHandler());
@@ -639,6 +643,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         );
 
         Auth::forgetGuards();
+        $this->withCookie($cookieName, Str::random(40));
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
         Auth::forgetGuards();
@@ -648,9 +653,10 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         // Resetting one account must not invalidate another account's persisted session.
         Auth::forgetGuards();
-        $this->withUnencryptedCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
+        $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
 
         Auth::forgetGuards();
+        $this->withCookie($cookieName, Str::random(40));
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
@@ -664,6 +670,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
 
         Auth::forgetGuards();
+        $this->withCookie($cookieName, Str::random(40));
         $this->actingAs($this->admin);
         Livewire::test(UserManagement::class)->call('activateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
