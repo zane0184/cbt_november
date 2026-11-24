@@ -43,3 +43,23 @@
   - Source blob SHA: `d1137fce9e10bc490a044f950170008d55cab914`
   - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/bootstrap-app.php.before`
   - Backup commit: `9b7eeb7cd9a541701362c0f398a3847956e37970`
+
+- Source: `backend-laravel/app/Models/TeacherProfile.php`
+  - Source blob SHA: `a5f232895d9e0702ad81dd939344780fe5e86331`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/TeacherProfile.php.before`
+  - Backup commit: `undefined`
+
+- Source: `backend-laravel/app/Models/StudentProfile.php`
+  - Source blob SHA: `4237e764cf722817cd1ce27b4ffa134ad2d776c7`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/StudentProfile.php.before`
+  - Backup commit: `undefined`
+
+- Source: `backend-laravel/resources/views/livewire/admin/student-rombel-management.blade.php`
+  - Source blob SHA: `dde84fb3f11f075a8633c6822bbf0ce2c7dde35c`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/student-rombel-management.blade.php.before`
+  - Backup commit: `undefined`
+
+- Source: `backend-laravel/resources/views/livewire/teacher/portal-profile.blade.php`
+  - Source blob SHA: `97001a504f11c19c686d35bd83fda824c4590203`
+  - Backup: `backend-laravel/backup_before_patch/P1_REQUIRED_LOGIN_IDENTITIES_20261124/portal-profile.blade.php.before`
+  - Backup commit: `undefined`
