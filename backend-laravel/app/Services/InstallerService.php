@@ -860,7 +860,7 @@ class InstallerService
     {
         $curriculum = DB::table('curricula')
             ->where('tenant_id', $tenantId)
-            ->where('code', 'KURIKULUM_MERDEKA')
+            ->where('code', 'K-MERDEKA')
             ->whereNull('deleted_at')
             ->first();
 
@@ -876,17 +876,17 @@ class InstallerService
             ->all();
 
         sort($phaseCodes);
-        if ($phaseCodes !== ['FASE_A', 'FASE_B', 'FASE_C']) {
+        if ($phaseCodes !== ['A', 'B', 'C']) {
             return false;
         }
 
         $expected = [
-            'MI_1' => ['level' => 1, 'phase' => 'FASE_A'],
-            'MI_2' => ['level' => 2, 'phase' => 'FASE_A'],
-            'MI_3' => ['level' => 3, 'phase' => 'FASE_B'],
-            'MI_4' => ['level' => 4, 'phase' => 'FASE_B'],
-            'MI_5' => ['level' => 5, 'phase' => 'FASE_C'],
-            'MI_6' => ['level' => 6, 'phase' => 'FASE_C'],
+            '1' => ['level' => 1, 'phase' => 'A'],
+            '2' => ['level' => 2, 'phase' => 'A'],
+            '3' => ['level' => 3, 'phase' => 'B'],
+            '4' => ['level' => 4, 'phase' => 'B'],
+            '5' => ['level' => 5, 'phase' => 'C'],
+            '6' => ['level' => 6, 'phase' => 'C'],
         ];
 
         $rows = DB::table('grade_levels')
