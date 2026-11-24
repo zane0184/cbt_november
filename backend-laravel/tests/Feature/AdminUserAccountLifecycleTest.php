@@ -540,7 +540,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         try {
             Livewire::test(UserManagement::class)->call('deactivateUser', $foreignTeacher->id);
             $this->fail('Cross-tenant deactivation must not find or mutate the foreign account.');
-        } catch (\\Illuminate\\Database\\Eloquent\\ModelNotFoundException) {
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             $this->assertTrue((bool) $foreignTeacher->fresh()->is_active);
             $this->assertSame(1, (int) $foreignTeacher->fresh()->auth_version);
         }
