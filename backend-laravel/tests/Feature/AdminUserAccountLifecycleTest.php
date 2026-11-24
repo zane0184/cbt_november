@@ -273,9 +273,15 @@ class AdminUserAccountLifecycleTest extends TestCase
         $beforeScore = (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first();
         $beforeLease = (array) DB::table('device_leases')->where('exam_attempt_id', $attempt->id)->first();
 
-        $student->createToken('student-device');
+        $oldToken = $student->createToken('student-device')->plainTextToken;
+        $other = $this->makeLocalUser('GURU', 'other-credential-owner');
+        $otherToken = $other->createToken('other-device')->plainTextToken;
         DB::table('sessions')->insert([
             'id' => 'student-session', 'user_id' => $student->id, 'payload' => 'encrypted-session',
+            'last_activity' => now()->timestamp,
+        ]);
+        DB::table('sessions')->insert([
+            'id' => 'other-owner-session', 'user_id' => $other->id, 'payload' => 'encrypted-session',
             'last_activity' => now()->timestamp,
         ]);
 
@@ -287,7 +293,17 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertSame(2, (int) $disabled->auth_version);
         $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $student->id)->count());
         $this->assertDatabaseMissing('sessions', ['id' => 'student-session']);
+        $this->assertSame(1, DB::table('personal_access_tokens')->where('tokenable_id', $other->id)->count());
+        $this->assertDatabaseHas('sessions', ['id' => 'other-owner-session', 'user_id' => $other->id]);
         $this->assertDatabaseHas('student_profiles', ['id' => $profile->id, 'nisn' => '0099887766']);
+
+        // Reuse the exact pre-deactivation bearer token: Sanctum must reject it.
+        Auth::forgetGuards();
+        $this->withToken($oldToken)->getJson('/api/v1/auth/me')->assertUnauthorized();
+
+        // Credentials owned by a different account remain usable.
+        Auth::forgetGuards();
+        $this->withToken($otherToken)->getJson('/api/v1/auth/me')->assertOk();
         $this->assertSame($beforeAttempt, (array) DB::table('exam_attempts')->where('id', $attempt->id)->first());
         $this->assertSame($beforeAnswer, (array) DB::table('exam_attempt_answers')->where('exam_attempt_id', $attempt->id)->first());
         $this->assertSame($beforeScore, (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first());
@@ -487,4 +503,156 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         $this->assertSame(0, DB::table('personal_access_tokens')->where('tokenable_id', $teacher->id)->count());
     }
+
+
+    public function test_deactivation_is_limited_to_guru_or_siswa_in_the_admin_tenant_and_requires_admin_actor(): void
+    {
+        $adminTarget = User::create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Protected Admin Target',
+            'username' => 'protected.admin.target',
+            'email' => 'protected.admin.target@test.local',
+            'password' => Hash::make('old-password-strong'),
+        ]);
+        $adminTarget->roles()->attach(Role::where('name', 'ADMIN_MADRASAH')->firstOrFail());
+
+        $multiRoleTarget = $this->makeLocalUser('GURU', 'multi-role-deactivation');
+        $multiRoleTarget->roles()->attach(Role::where('name', 'ADMIN_MADRASAH')->firstOrFail());
+
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('deactivateUser', $adminTarget->id)->assertForbidden();
+        Livewire::test(UserManagement::class)->call('deactivateUser', $multiRoleTarget->id)->assertForbidden();
+
+        $otherTenant = Tenant::create(['name' => 'Other Deactivation Tenant', 'code' => 'ALT03']);
+        app(TenantContext::class)->setTenantId((string) $otherTenant->id);
+        TenantContext::getInstance()?->setTenantId((string) $otherTenant->id);
+        $foreignTeacher = User::create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Foreign Deactivation Teacher',
+            'username' => 'foreign.deactivation.teacher',
+            'email' => 'foreign.deactivation.teacher@test.local',
+            'password' => Hash::make('old-password-strong'),
+        ]);
+        $foreignTeacher->roles()->attach(Role::where('name', 'GURU')->firstOrFail());
+        app(TenantContext::class)->setTenantId((string) $this->tenant->id);
+        TenantContext::getInstance()?->setTenantId((string) $this->tenant->id);
+
+        try {
+            Livewire::test(UserManagement::class)->call('deactivateUser', $foreignTeacher->id);
+            $this->fail('Cross-tenant deactivation must not find or mutate the foreign account.');
+        } catch (\\Illuminate\\Database\\Eloquent\\ModelNotFoundException) {
+            $this->assertTrue((bool) $foreignTeacher->fresh()->is_active);
+            $this->assertSame(1, (int) $foreignTeacher->fresh()->auth_version);
+        }
+
+        $localStudent = $this->makeLocalUser('SISWA', 'non-admin-actor-target');
+        $this->actingAs($this->makeLocalUser('GURU', 'unauthorized-deactivator'));
+        Livewire::test(UserManagement::class)->call('deactivateUser', $localStudent->id)->assertForbidden();
+        $this->assertTrue((bool) $localStudent->fresh()->is_active);
+    }
+
+    private function configurePersistentSessionDriver(string $driver): void
+    {
+        $files = storage_path('framework/testing-sessions');
+        if (!is_dir($files)) {
+            mkdir($files, 0777, true);
+        }
+
+        config([
+            'session.driver' => $driver,
+            'session.files' => $files,
+            'session.table' => 'sessions',
+            'session.connection' => 'mysql',
+            'session.cookie' => 'cbt_lifecycle_test_session',
+            'session.encrypt' => false,
+            'session.expire_on_close' => false,
+            'session.lifetime' => 120,
+            'session.path' => '/',
+            'session.domain' => null,
+            'session.secure' => false,
+            'session.http_only' => true,
+            'session.same_site' => 'lax',
+            'session.lottery' => [0, 100],
+        ]);
+        app('session')->forgetDrivers();
+        $this->assertSame($driver, app('session')->getDefaultDriver());
+    }
+
+    private function loginAndCapturePersistentWebSession(User $user): array
+    {
+        $response = $this->post('/login', [
+            'identifier' => $user->username,
+            'password' => 'old-password-strong',
+        ]);
+        $response->assertRedirect('/guru/dashboard');
+
+        $cookieName = (string) config('session.cookie');
+        $cookie = collect($response->headers->getCookies())
+            ->first(fn ($candidate) => $candidate->getName() === $cookieName);
+        $this->assertNotNull($cookie, 'Web login must issue a session cookie.');
+
+        return [$cookieName, $cookie->getValue()];
+    }
+
+    private function assertPersistedWebSessionsAreRevokedForDriver(string $driver): void
+    {
+        $this->configurePersistentSessionDriver($driver);
+        $this->makeLocalIdentity();
+
+        $resetTeacher = $this->makeLocalUser('GURU', 'session-reset-'.$driver);
+        $deactivatedTeacher = $this->makeLocalUser('GURU', 'session-deactivate-'.$driver);
+        $unrelatedTeacher = $this->makeLocalUser('GURU', 'session-unrelated-'.$driver);
+
+        [$cookieName, $resetCookie] = $this->loginAndCapturePersistentWebSession($resetTeacher);
+        Auth::forgetGuards();
+        [, $deactivateCookie] = $this->loginAndCapturePersistentWebSession($deactivatedTeacher);
+        Auth::forgetGuards();
+        [, $unrelatedCookie] = $this->loginAndCapturePersistentWebSession($unrelatedTeacher);
+
+        // A real login request must persist the session using the requested handler.
+        $handlerClass = get_class(app('session')->driver()->getHandler());
+        $this->assertStringContainsString(
+            $driver === 'file' ? 'FileSessionHandler' : 'DatabaseSessionHandler',
+            $handlerClass
+        );
+
+        Auth::forgetGuards();
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
+        Auth::forgetGuards();
+
+        $this->withCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
+
+        // Resetting one account must not invalidate another account's persisted session.
+        Auth::forgetGuards();
+        $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
+
+        Auth::forgetGuards();
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
+        Auth::forgetGuards();
+
+        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+
+        Auth::forgetGuards();
+        $this->actingAs($this->admin);
+        Livewire::test(UserManagement::class)->call('activateUser', $deactivatedTeacher->id);
+        Auth::forgetGuards();
+
+        // Reactivation advances auth_version again; it never resurrects the old cookie.
+        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->assertTrue((bool) $deactivatedTeacher->fresh()->is_active);
+        $this->assertSame(3, (int) $deactivatedTeacher->fresh()->auth_version);
+    }
+
+    public function test_persisted_file_web_sessions_are_revoked_after_reset_deactivation_and_reactivation(): void
+    {
+        $this->assertPersistedWebSessionsAreRevokedForDriver('file');
+    }
+
+    public function test_persisted_database_web_sessions_are_revoked_after_reset_deactivation_and_reactivation(): void
+    {
+        $this->assertPersistedWebSessionsAreRevokedForDriver('database');
+    }
+
 }
