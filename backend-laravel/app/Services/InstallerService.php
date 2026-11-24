@@ -470,6 +470,11 @@ class InstallerService
                     app(TenantContext::class)->setTenantId(null);
                 }
 
+                // Provision the existing tenant-owned academic FK catalog after the
+                // tenant/admin transaction. A retry reconciles this idempotently.
+                $academicCatalog = app(TenantAcademicBootstrapService::class)
+                    ->provisionForTenant((string) $tenantId);
+
                 $this->stateStore->write(array_merge($pendingState, [
                     'state' => 'ADMIN_CREATED', 'tenant_id' => $tenantId, 'tenant_code' => $madrasahCode,
                     'admin_id' => $adminId, 'admin_username' => $adminUsername,
@@ -479,7 +484,13 @@ class InstallerService
                 return [
                     'success' => true,
                     'message' => $recovered ? 'Data tenant dan Admin Madrasah dari transaksi sebelumnya berhasil diverifikasi.' : 'Profil madrasah dan akun Admin Madrasah berhasil dibuat.',
-                    'admin_id' => $adminId, 'tenant_id' => $tenantId, 'recovered' => $recovered,
+                    'admin_id' => $adminId,
+                    'tenant_id' => $tenantId,
+                    'recovered' => $recovered,
+                    'academic_catalog' => [
+                        'phase_count' => $academicCatalog['phase_count'],
+                        'grade_level_count' => $academicCatalog['grade_level_count'],
+                    ],
                 ];
             });
         } catch (Throwable $exception) {
