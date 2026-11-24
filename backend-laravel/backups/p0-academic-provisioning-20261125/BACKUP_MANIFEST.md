@@ -10,5 +10,6 @@
 | `backend-laravel/app/Livewire/Admin/AcademicManagement.php` | `63652d47345962c1cd49e08420956453765e9373` | `0808efb629405aa52f71754f87f6154bc21e51002dbb1b18e3fc70fa0fcbecad` | `backend-laravel/backups/p0-academic-provisioning-20261125/AcademicManagement.php.before` |
 | `backend-laravel/resources/views/livewire/admin/academic-management.blade.php` | `dd00edc31b554e4200dca1ced858b81d474a629c` | `af866459997774f41173b9081a1c0bd143a2808a32894f7f6e0f78b804f3f1a5` | `backend-laravel/backups/p0-academic-provisioning-20261125/academic-management.blade.php.before` |
 | `backend-laravel/tests/Feature/InstallerEndToEndTest.php` | `84b6becad2a700c799b51a9a8f2e6e9ddf86b777` | `67dad53e5ddba31fa0acd76885fb3862cf6cc67deac412c0e5ef8c69dad2a7da` | `backend-laravel/backups/p0-academic-provisioning-20261125/InstallerEndToEndTest.php.before` |
+| `.github/workflows/tenant-backend-ci.yml` | `d9678da8fd52210b970d50300f65f7e5dc437636` | `28cc7de24f8c92201dc2fe7772327ba3a19be84ec681964ec7c14a390ca7a822` | `.github/workflows/backup/p0-academic-provisioning-20261125/tenant-backend-ci.yml.before` |
 
 Backups are retained in the controlled repository and must be excluded from distribution ZIPs.
