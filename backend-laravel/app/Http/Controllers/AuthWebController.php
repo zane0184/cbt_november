@@ -37,7 +37,13 @@ class AuthWebController extends Controller
 
     public function login(Request $request, LoginIdentityResolver $resolver)
     {
-        $request->validate(['identifier' => 'required|string|max:100', 'password' => 'required|string']);
+        $request->session()->forget('_old_input');
+        try {
+            $request->validate(['identifier' => 'required|string|max:100', 'password' => 'required|string']);
+        } catch (ValidationException) {
+            $request->session()->forget('_old_input');
+            return back()->withErrors(['identifier' => 'Identitas atau password tidak valid.']);
+        }
         $identifier = trim((string) $request->input('identifier'));
         $throttleKey = 'login:web:'.hash('sha256', Str::lower($identifier).'|'.$request->ip());
 
