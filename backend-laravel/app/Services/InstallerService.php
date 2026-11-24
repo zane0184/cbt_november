@@ -7,7 +7,6 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
-use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -309,17 +308,6 @@ class InstallerService
                         throw new RuntimeException('MIGRATION_LEDGER_INCOMPLETE');
                     }
 
-                    // A clean installation must bootstrap the production-safe system catalog.
-                    // DatabaseSeeder is idempotent and seeds global reference data only.
-                    $seedExitCode = Artisan::call('db:seed', [
-                        '--class' => DatabaseSeeder::class,
-                        '--force' => true,
-                    ]);
-                    if ($seedExitCode !== 0) {
-                        throw new RuntimeException('BASE_SEED_EXIT_' . $seedExitCode);
-                    }
-                    $this->verifyBaseAcademicRegistry();
-
                     $schemaFingerprint = $this->schemaFingerprint();
                     $this->stateStore->write(array_merge($state, [
                         'state' => 'SCHEMA_READY',
@@ -471,8 +459,12 @@ class InstallerService
                     app(TenantContext::class)->setTenantId(null);
                 }
 
-                // Provision the existing tenant-owned academic FK catalog after the
-                // tenant/admin transaction. A retry reconciles this idempotently.
+                // Seed the official registry and academic FK catalog inside this
+                // madrasah's only tenant. Never create a second System Tenant locally.
+                $curriculumRegistry = app(TenantCurriculumRegistryBootstrapper::class)
+                    ->seedForTenant((string) $tenantId);
+                $this->verifyBaseAcademicRegistry((string) $tenantId);
+
                 $academicCatalog = app(TenantAcademicBootstrapService::class)
                     ->provisionForTenant((string) $tenantId);
 
@@ -491,6 +483,12 @@ class InstallerService
                     'academic_catalog' => [
                         'phase_count' => $academicCatalog['phase_count'],
                         'grade_level_count' => $academicCatalog['grade_level_count'],
+                        'academic_year_count' => $academicCatalog['academic_year_count'],
+                        'semester_count' => $academicCatalog['semester_count'],
+                    ],
+                    'curriculum_registry' => [
+                        'source_count' => $curriculumRegistry['source_count'],
+                        'assessment_taxonomy_count' => $curriculumRegistry['assessment_taxonomy_count'],
                     ],
                 ];
             });
@@ -801,23 +799,23 @@ class InstallerService
         }
     }
 
-    private function verifyBaseAcademicRegistry(): void
+    private function verifyBaseAcademicRegistry(string $tenantId): void
     {
-        $systemTenantId = Tenant::SYSTEM_TENANT_ID;
-        $systemTenantExists = DB::table('tenants')
-            ->where('id', $systemTenantId)
+        $tenantExists = DB::table('tenants')
+            ->where('id', $tenantId)
             ->whereNull('deleted_at')
             ->exists();
+        $tenantCount = DB::table('tenants')->whereNull('deleted_at')->count();
 
         $version = DB::table('multi_curriculum_versions')
-            ->where('tenant_id', $systemTenantId)
+            ->where('tenant_id', $tenantId)
             ->where('version_code', 'KMA-1503-2025')
             ->where('status', 'ACTIVE')
             ->where('is_official', true)
             ->where('is_editable', false)
             ->first();
 
-        if (!$systemTenantExists || !$version) {
+        if (!$tenantExists || $tenantCount !== 1 || !$version) {
             throw new RuntimeException('BASE_CURRICULUM_REGISTRY_MISSING');
         }
 
