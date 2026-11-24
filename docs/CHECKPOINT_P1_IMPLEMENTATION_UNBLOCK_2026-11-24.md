@@ -328,3 +328,10 @@ Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implem
 - Workspace recovery BLOCKED.
 - P1-ID-03B BLOCKED / NOT STARTED.
 - STOP sebelum migration atau P1-ID-03B untuk review koordinator.
+
+
+---
+
+## KOREKSI CHECKPOINT — angka CI run #45369049022
+
+Log job run #45369049022 diambil ulang: focused login/tenant smoke 56 passed / 225 assertions; full PHPUnit pada disposable MySQL 8 534 passed / 2.265 assertions. Job conclusion SUCCESS. SHA historis run adalah 2598af967b22a8fa032cc910bb32230804a15390; bukan exact HEAD branch sekarang. Exact HEAD branch sebelum koreksi checkpoint ini cb42852481893cdb416cc3c89386380d8f3d33ab tidak memiliki workflow run/status yang dikembalikan. Bukti CI lama tidak menutup gap P1-ID-03A dan tidak mengubah status PARTIAL.
