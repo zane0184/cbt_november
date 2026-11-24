@@ -308,6 +308,17 @@ class InstallerService
                         throw new RuntimeException('MIGRATION_LEDGER_INCOMPLETE');
                     }
 
+                    // A clean installation must bootstrap the production-safe system catalog.
+                    // DatabaseSeeder is idempotent and seeds global reference data only.
+                    $seedExitCode = Artisan::call('db:seed', [
+                        '--class' => \\Database\\Seeders\\DatabaseSeeder::class,
+                        '--force' => true,
+                    ]);
+                    if ($seedExitCode !== 0) {
+                        throw new RuntimeException('BASE_SEED_EXIT_' . $seedExitCode);
+                    }
+                    $this->verifyBaseAcademicRegistry();
+
                     $schemaFingerprint = $this->schemaFingerprint();
                     $this->stateStore->write(array_merge($state, [
                         'state' => 'SCHEMA_READY',
@@ -644,6 +655,10 @@ class InstallerService
                 return ['success' => false, 'message' => 'Tenant/admin postcondition failed.'];
             }
 
+            if (!$this->verifyTenantAcademicCatalog((string) $tenant->id)) {
+                return ['success' => false, 'message' => 'Tenant MI academic catalog (Fase A-C / Kelas 1-6) is incomplete.'];
+            }
+
             $identity = \App\Models\LocalInstallationIdentity::withoutGlobalScopes()->where('tenant_id', $tenant->id)->first();
             if (!$identity || (string) $identity->tenant_id !== (string) $tenant->id) return ['success' => false, 'message' => 'Identitas instalasi lokal tidak valid.'];
             $isPreActivation = ($state['license_mode'] ?? null) === 'PRE_ACTIVATION_2026';
@@ -772,6 +787,119 @@ class InstallerService
             Log::error('CBT installer postcondition verification failed.', ['exception' => get_class($exception)]);
             return ['success' => false, 'message' => 'Postcondition instalasi tidak dapat diverifikasi.'];
         }
+    }
+
+    private function verifyBaseAcademicRegistry(): void
+    {
+        $systemTenantId = Tenant::SYSTEM_TENANT_ID;
+        $systemTenantExists = DB::table('tenants')
+            ->where('id', $systemTenantId)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        $version = DB::table('multi_curriculum_versions')
+            ->where('tenant_id', $systemTenantId)
+            ->where('version_code', 'KMA-1503-2025')
+            ->where('status', 'ACTIVE')
+            ->where('is_official', true)
+            ->where('is_editable', false)
+            ->first();
+
+        if (!$systemTenantExists || !$version) {
+            throw new RuntimeException('BASE_CURRICULUM_REGISTRY_MISSING');
+        }
+
+        $expectedCounts = [
+            'PHASE' => 3,
+            'GRADE_LEVEL' => 6,
+            'PANCA_CINTA' => 5,
+            'PM_PRINCIPLE' => 4,
+            'PM_OLAH' => 4,
+            'PM_FRAMEWORK' => 4,
+            'DIMENSI_PROFIL_LULUSAN' => 8,
+        ];
+
+        foreach ($expectedCounts as $nodeType => $expectedCount) {
+            $actualCount = DB::table('multi_curriculum_structures')
+                ->where('tenant_id', $systemTenantId)
+                ->where('multi_curriculum_version_id', $version->id)
+                ->where('node_type', $nodeType)
+                ->where('status', 'ACTIVE')
+                ->where('is_official', true)
+                ->where('is_editable', false)
+                ->count();
+
+            if ($actualCount !== $expectedCount) {
+                throw new RuntimeException('BASE_CURRICULUM_NODE_COUNT_MISMATCH_' . $nodeType);
+            }
+        }
+
+        $metadata = is_array($version->metadata)
+            ? $version->metadata
+            : json_decode((string) $version->metadata, true);
+
+        if (!is_array($metadata)
+            || ($metadata['cp_content_imported'] ?? null) !== false
+            || ($metadata['artifact_checksum_verified'] ?? null) !== false) {
+            throw new RuntimeException('CP_ARTIFACT_MUST_REMAIN_UNVERIFIED_UNTIL_IMPORTED');
+        }
+    }
+
+    private function verifyTenantAcademicCatalog(string $tenantId): bool
+    {
+        $curriculum = DB::table('curricula')
+            ->where('tenant_id', $tenantId)
+            ->where('code', 'KURIKULUM_MERDEKA')
+            ->whereNull('deleted_at')
+            ->first();
+
+        if (!$curriculum) {
+            return false;
+        }
+
+        $phaseCodes = DB::table('phases')
+            ->where('tenant_id', $tenantId)
+            ->where('curriculum_id', $curriculum->id)
+            ->where('status', 'ACTIVE')
+            ->pluck('code')
+            ->all();
+
+        sort($phaseCodes);
+        if ($phaseCodes !== ['FASE_A', 'FASE_B', 'FASE_C']) {
+            return false;
+        }
+
+        $expected = [
+            'MI_1' => ['level' => 1, 'phase' => 'FASE_A'],
+            'MI_2' => ['level' => 2, 'phase' => 'FASE_A'],
+            'MI_3' => ['level' => 3, 'phase' => 'FASE_B'],
+            'MI_4' => ['level' => 4, 'phase' => 'FASE_B'],
+            'MI_5' => ['level' => 5, 'phase' => 'FASE_C'],
+            'MI_6' => ['level' => 6, 'phase' => 'FASE_C'],
+        ];
+
+        $rows = DB::table('grade_levels')
+            ->join('phases', function ($join) use ($tenantId): void {
+                $join->on('phases.id', '=', 'grade_levels.phase_id')
+                    ->where('phases.tenant_id', '=', $tenantId);
+            })
+            ->where('grade_levels.tenant_id', $tenantId)
+            ->select('grade_levels.code', 'grade_levels.level', 'phases.code as phase_code')
+            ->get()
+            ->keyBy('code');
+
+        if ($rows->count() !== count($expected)) {
+            return false;
+        }
+
+        foreach ($expected as $code => $mapping) {
+            $row = $rows->get($code);
+            if (!$row || (int) $row->level !== $mapping['level'] || $row->phase_code !== $mapping['phase']) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function verifyMigrationLedger(): array
