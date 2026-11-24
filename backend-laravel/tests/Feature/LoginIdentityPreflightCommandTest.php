@@ -63,8 +63,8 @@ class LoginIdentityPreflightCommandTest extends TestCase
             'user_id' => $teacher->id,
             'full_name' => 'Guru Spasi',
             'employment_status' => 'PNS',
-            'nip' => ' 198001012006041003 ',
-            'employee_identifier' => ' 198001012006041003 ',
+            'nip' => ' 19800101200604100',
+            'employee_identifier' => ' 19800101200604100',
         ]);
 
         $exitCode = Artisan::call('login-identity:preflight');
@@ -72,7 +72,7 @@ class LoginIdentityPreflightCommandTest extends TestCase
 
         $this->assertSame(1, $exitCode);
         $this->assertStringContainsString('Field identitas Guru memiliki spasi di tepi', $output);
-        $this->assertStringNotContainsString('198001012006041003', $output);
+        $this->assertStringNotContainsString('19800101200604100', $output);
     }
 
     public function test_preflight_fails_closed_for_legacy_teacher_without_status_or_login_identity(): void
