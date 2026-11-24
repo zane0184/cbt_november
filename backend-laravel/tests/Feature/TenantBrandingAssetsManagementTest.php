@@ -296,6 +296,55 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 $this->assertNull($branding->localPath($rootSymlinkPath));
                 $branding->deleteManaged($rootSymlinkPath, $tenantId);
                 $this->assertFileExists($redirectTarget);
+
+                // Upload must reject a symlinked branding directory before
+                // writing through it into a different public-storage location.
+                $redirectEntriesBefore = array_values(array_diff(scandir($redirectDirectory), ['.', '..']));
+                try {
+                    $branding->storeUpload(
+                        UploadedFile::fake()->image('must-not-escape.png', 120, 120),
+                        $tenantId,
+                        'app-logo'
+                    );
+                    $this->fail('Upload must reject a symlinked branding directory.');
+                } catch (\\RuntimeException $exception) {
+                    $this->assertStringContainsString('Direktori branding', $exception->getMessage());
+                }
+                $redirectEntriesAfter = array_values(array_diff(scandir($redirectDirectory), ['.', '..']));
+                $this->assertSame($redirectEntriesBefore, $redirectEntriesAfter);
+
+                // The public storage root itself must also be a real directory,
+                // not a symlink to another installation or private location.
+                $publicRoot = storage_path('app/public');
+                $detachedPublicRoot = dirname($publicRoot) . '/public-real-' . strtolower(Str::random(8));
+                $outsideEntriesBefore = array_values(array_diff(scandir($outsideDirectory), ['.', '..']));
+                $this->assertTrue(rename($publicRoot, $detachedPublicRoot));
+
+                try {
+                    $this->assertTrue(symlink($outsideDirectory, $publicRoot));
+                    try {
+                        $branding->storeUpload(
+                            UploadedFile::fake()->image('must-not-escape-root.png', 120, 120),
+                            $tenantId,
+                            'app-logo'
+                        );
+                        $this->fail('Upload must reject a symlinked public storage root.');
+                    } catch (\\RuntimeException $exception) {
+                        $this->assertStringContainsString('storage', strtolower($exception->getMessage()));
+                    }
+                    $this->assertSame(
+                        $outsideEntriesBefore,
+                        array_values(array_diff(scandir($outsideDirectory), ['.', '..']))
+                    );
+                    $this->assertFileExists($outsideTarget);
+                } finally {
+                    if (is_link($publicRoot)) {
+                        @unlink($publicRoot);
+                    }
+                    if (is_dir($detachedPublicRoot)) {
+                        rename($detachedPublicRoot, $publicRoot);
+                    }
+                }
             } finally {
                 if (is_link($brandingRoot)) {
                     @unlink($brandingRoot);
