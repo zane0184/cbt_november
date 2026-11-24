@@ -97,6 +97,31 @@ class StudentImportTest extends TestCase
         ]);
     }
 
+
+    public function test_successful_import_batch_cannot_be_replayed(): void
+    {
+        $this->actingAs($this->admin);
+        $csv = "nama,nisn\nSiswa Idempotent,0007654321\n";
+        $first = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $first)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->call('import')
+            ->assertHasNoErrors();
+
+        $second = UploadedFile::fake()->createWithContent('siswa.csv', $csv);
+        Livewire::test(StudentImport::class)
+            ->set('selectedRombelId', $this->rombel->id)
+            ->set('file', $second)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('sudah pernah berhasil diimpor');
+        $this->assertDatabaseCount('student_import_batches', 1);
+        $this->assertDatabaseCount('student_profiles', 1);
+    }
+
     public function test_invalid_nisn_is_rejected_before_any_student_account_is_created(): void
     {
         $this->actingAs($this->admin);
