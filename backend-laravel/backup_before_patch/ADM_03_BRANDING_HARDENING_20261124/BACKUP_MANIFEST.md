@@ -2,7 +2,7 @@
 
 - Repository: zane0184/cbt_november
 - Branch: work/p1-seven-targets-20261124
-- Baseline source ref: PR #23 HEAD before this backup sequence
+- Baseline source ref: PR #23 HEAD `199ed15df91a8c1ea8bfa5603830109375226117` (before backup commits)
 
 | Source path | Source blob SHA | Backup path |
 |---|---|---|
