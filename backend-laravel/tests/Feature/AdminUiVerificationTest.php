@@ -363,6 +363,50 @@ class AdminUiVerificationTest extends TestCase
         }
         $this->assertTrue($nipDuplicateRejected, 'Database must reject duplicate tenant-scoped NIP.');
 
+        $nikUsers = [];
+        foreach (['guru.nik.1', 'guru.nik.2'] as $username) {
+            $nikUsers[] = User::create([
+                'tenant_id' => $this->tenant->id, 'name' => $username,
+                'username' => $username, 'password' => bcrypt('password123456'),
+            ]);
+        }
+        TeacherProfile::create([
+            'user_id' => $nikUsers[0]->id, 'full_name' => 'Guru NIK 1',
+            'employment_status' => 'HONORER', 'nik' => '3171000000000004',
+        ]);
+        $nikDuplicateRejected = false;
+        try {
+            TeacherProfile::create([
+                'user_id' => $nikUsers[1]->id, 'full_name' => 'Guru NIK 2',
+                'employment_status' => 'HONORER', 'nik' => '3171000000000004',
+            ]);
+        } catch (QueryException) {
+            $nikDuplicateRejected = true;
+        }
+        $this->assertTrue($nikDuplicateRejected, 'Database must reject duplicate tenant-scoped NIK.');
+
+        $nuptkUsers = [];
+        foreach (['guru.nuptk.1', 'guru.nuptk.2'] as $username) {
+            $nuptkUsers[] = User::create([
+                'tenant_id' => $this->tenant->id, 'name' => $username,
+                'username' => $username, 'password' => bcrypt('password123456'),
+            ]);
+        }
+        TeacherProfile::create([
+            'user_id' => $nuptkUsers[0]->id, 'full_name' => 'Guru NUPTK 1',
+            'employment_status' => 'PNS', 'nuptk' => '1234567890123457',
+        ]);
+        $nuptkDuplicateRejected = false;
+        try {
+            TeacherProfile::create([
+                'user_id' => $nuptkUsers[1]->id, 'full_name' => 'Guru NUPTK 2',
+                'employment_status' => 'PNS', 'nuptk' => '1234567890123457',
+            ]);
+        } catch (QueryException) {
+            $nuptkDuplicateRejected = true;
+        }
+        $this->assertTrue($nuptkDuplicateRejected, 'Database must reject duplicate tenant-scoped NUPTK.');
+
         $studentOne = User::create([
             'tenant_id' => $this->tenant->id, 'name' => 'Siswa Unik 1',
             'username' => 'siswa.unik.1', 'password' => bcrypt('password123456'),
