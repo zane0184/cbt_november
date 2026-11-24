@@ -1,7 +1,7 @@
 <div class="space-y-6">
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div><h1 class="text-2xl font-bold text-navy-900">Manajemen Pengguna & Akun</h1><p class="text-xs text-textSecondary mt-1">Identitas login: Admin menggunakan username, Guru menggunakan NIP/NIK, dan Siswa menggunakan NISN.</p></div>
-        <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs">+ Tambah Pengguna</button>
+        <a href="{{ route(\'admin.students.import\') }}" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs">Import Siswa XLSX/CSV</a><button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs">+ Tambah Pengguna</button>
     </div>
     @if (session()->has('message'))<div class="bg-emerald-50 border-l-4 border-emerald-600 text-emerald-800 p-4 rounded-xl text-sm">{{ session('message') }}</div>@endif
     <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
