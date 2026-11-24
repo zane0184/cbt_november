@@ -1,6 +1,6 @@
 # LAPORAN P0 — STUDENT IMPORT SECURITY PREFLIGHT
 Tanggal: 25 November 2026
-Status saat laporan: IMPLEMENTASI TERTULIS; FULL REGRESSION MASIH BERJALAN
+Status akhir: IMPLEMENTASI DAN FULL REGRESSION PASS PADA EXACT SHA 77e46497d4341078b9310c6454c42fdbe774542b
 
 ## 1. AUDIT
 Audit exact baseline work/benchmark-cleanup-proof-20261125 @ b6148507bd77116dfc8a5f5697cf4cff226a4b87 menemukan:
@@ -58,27 +58,26 @@ Pada saat laporan dibuat:
 - Composer validation/install: PASS.
 - PHP lint: PASS pada kedua job.
 - Student Import security acceptance test step: PASS pada kedua job.
-- Full PHPUnit suite: masih IN PROGRESS pada kedua job.
-- Jumlah assertions dan hasil final full suite untuk exact SHA 77e464 belum tersedia; jangan klaim PASS sampai job selesai.
+- Focused Student Import security acceptance: 22 passed, 390 assertions pada PHP 8.3 dan PHP 8.4.
+- Full PHPUnit suite: masing-masing 607 passed, 1 skipped, 0 failed, 3.163 assertions pada PHP 8.3 dan PHP 8.4.
+- Kedua job memverifikasi database disposable cbt_ci_student_import_security / MySQL 8.0.46 / InnoDB.
+- Git diff --check, PHP lint, Composer validate/install: PASS.
+- GitHub Actions run 45479381320: SUCCESS pada exact SHA 77e46497d4341078b9310c6454c42fdbe774542b.
 
-Pembanding historis, bukan pengganti exact latest SHA:
-- Commit b033cad: PHP 8.3 dan 8.4 masing-masing 607 passed, 1 skipped, 0 failed, 3.153 assertions.
-- Commit b033cad focused Student Import: 22 passed, 380 assertions pada PHP 8.3 dan 8.4.
-Commit b033cad mendahului penyempurnaan cell-scan dan assertion reason pada 77e464; hasil tersebut hanya bukti pendukung.
+Catatan: hasil di atas berasal dari exact source SHA 77e46497d4341078b9310c6454c42fdbe774542b, bukan dari commit pembanding yang lebih lama.
 
 ## 5. STATUS
 - Implementasi preflight XLSX/OOXML dan CSV: DITULIS.
 - Backup byte-exact + SHA-256: PASS.
 - PHP lint dan focused security test pada exact SHA 77e464: PASS menurut step conclusion GitHub Actions.
-- Full PHPUnit exact SHA 77e464: PENDING.
+- Full PHPUnit exact SHA 77e46497d4341078b9310c6454c42fdbe774542b: PASS.
 - Staging/VPS: BELUM DIUJI.
 - ZIP acceptance: BELUM DIUJI.
 - Student Import siap produksi: BELUM.
 - ZIP SIAP UJI OPERASIONAL TERBATAS: BELUM.
 
 ## 6. TINDAK LANJUT
-1. Tunggu dan verifikasi full PHPUnit pada PHP 8.3 dan 8.4 untuk exact SHA 77e464.
-2. Jika lulus, ambil log final, perbarui checkpoint, lalu buat Draft PR dari work/p0-student-import-security-20261125 ke work/benchmark-cleanup-proof-20261125. Jangan merge.
-3. Jika gagal, analisis test/log dan perbaiki tanpa menghapus assertion atau mengubah FAIL menjadi SKIPPED.
-4. Setelah Student Import security diterima, lanjutkan DOCX question parser sesuai owner addendum 25 November: TRUE_FALSE_GROUP tiga stable IDs, scoring proporsional, shared stimulus first-class dan immutable snapshot.
-5. Port Web Siswa runner secara selektif; jangan membawa ExamSession/SessionRoom/session lifecycle dari PR #13.
+1. Buat Draft PR dari work/p0-student-import-security-20261125 ke work/benchmark-cleanup-proof-20261125 untuk review; jangan merge.
+2. Lakukan staging acceptance pada salinan/staging yang terisolasi setelah persetujuan operasional; jangan sentuh database produksi.
+3. Setelah Student Import security diterima, lanjutkan DOCX question parser sesuai owner addendum 25 November: TRUE_FALSE_GROUP tiga stable IDs, scoring proporsional, shared stimulus first-class dan immutable snapshot.
+4. Port Web Siswa runner secara selektif; jangan membawa ExamSession/SessionRoom/session lifecycle dari PR #13.
