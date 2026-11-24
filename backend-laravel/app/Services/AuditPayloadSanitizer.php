@@ -4,11 +4,13 @@ namespace App\Services;
 
 class AuditPayloadSanitizer
 {
+    private const SHORT_IDENTIFIER_KEYS = ['nip', 'nik', 'nisn', 'nis', 'nuptk'];
+
     private const SENSITIVE_KEY_FRAGMENTS = [
         'password', 'passwd', 'secret', 'token', 'authorization', 'cookie',
         'credential', 'apikey', 'privatekey', 'publickey',
         'email', 'phone', 'mobile', 'telephone', 'contactnumber',
-        'nip', 'nik', 'nisn', 'nis', 'nuptk', 'employeeidentifier', 'identifier',
+        'employeeidentifier', 'identifier',
         'address', 'birthdate', 'birthplace', 'fullname', 'studentname',
         'teachername', 'parentname', 'guardianname',
         'studentid', 'graderid', 'devicefingerprint', 'devicebindingid',
@@ -66,7 +68,15 @@ class AuditPayloadSanitizer
 
         foreach ($values as $key => $value) {
             if (is_string($key)) {
+                $camelCaseSeparated = (string) preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', $key);
                 $normalizedKey = strtolower((string) preg_replace('/[^a-z0-9]/i', '', $key));
+                $keyTokens = preg_split('/[^a-z0-9]+/i', $camelCaseSeparated, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+                if (in_array($normalizedKey, self::SHORT_IDENTIFIER_KEYS, true)
+                    || array_intersect(array_map('strtolower', $keyTokens), self::SHORT_IDENTIFIER_KEYS) !== []) {
+                    $sanitized[$key] = '[REDACTED]';
+                    continue;
+                }
 
                 foreach (self::SENSITIVE_KEY_FRAGMENTS as $fragment) {
                     if (str_contains($normalizedKey, $fragment)) {

@@ -27,6 +27,8 @@ class AuditPayloadSanitizerTest extends TestCase
                 'user_agent' => 'Browser version lengkap',
             ],
             'status' => 'ACTIVE',
+            'finished_at' => '2026-11-24T10:00:00+00:00',
+            'analysis_count' => 3,
             'scoring_skipped_code' => 'MISSING_OR_INVALID_QUESTION_ORDER',
         ]);
 
@@ -44,6 +46,8 @@ class AuditPayloadSanitizerTest extends TestCase
         $this->assertSame('[REDACTED]', $sanitized['nested']['ip_address']);
         $this->assertSame('[REDACTED]', $sanitized['nested']['user_agent']);
         $this->assertSame('ACTIVE', $sanitized['status']);
+        $this->assertSame('2026-11-24T10:00:00+00:00', $sanitized['finished_at']);
+        $this->assertSame(3, $sanitized['analysis_count']);
         $this->assertSame('MISSING_OR_INVALID_QUESTION_ORDER', $sanitized['scoring_skipped_code']);
     }
 

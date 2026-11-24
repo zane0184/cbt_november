@@ -138,7 +138,11 @@ class Phase7dBenchmarkCommand extends Command
             }
 
             try {
-                $authGuard->setUser($previousAuthUser);
+                if ($previousAuthUser !== null) {
+                    $authGuard->setUser($previousAuthUser);
+                } elseif (method_exists($authGuard, 'forgetUser')) {
+                    $authGuard->forgetUser();
+                }
             } catch (\Throwable) {
                 // Do not prevent temporary database cleanup.
             }
