@@ -129,9 +129,9 @@ class InstallerEndToEndTest extends TestCase
                 ->get();
             $this->assertCount(6, $gradeRows);
             $expectedPhase = [
-                'MI_1' => 'FASE_A', 'MI_2' => 'FASE_A',
-                'MI_3' => 'FASE_B', 'MI_4' => 'FASE_B',
-                'MI_5' => 'FASE_C', 'MI_6' => 'FASE_C',
+                '1' => 'A', '2' => 'A',
+                '3' => 'B', '4' => 'B',
+                '5' => 'C', '6' => 'C',
             ];
             foreach ($gradeRows as $gradeRow) {
                 $this->assertSame($expectedPhase[$gradeRow->code] ?? null, $gradeRow->phase_code);
