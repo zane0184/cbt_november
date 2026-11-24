@@ -129,7 +129,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $this->assertSame([], $before, 'A previous benchmark schema must not be left behind.');
 
         $observedTemporarySchemas = 0;
-        $controller = \\Mockery::mock(ReportController::class);
+        $controller = \Mockery::mock(ReportController::class);
         $controller->shouldReceive('exportPdf')
             ->once()
             ->andReturnUsing(function () use (&$observedTemporarySchemas): never {
@@ -138,7 +138,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                 );
                 $observedTemporarySchemas = count($schemas);
 
-                throw new \\RuntimeException('Deliberate PDF failure for cleanup regression test.');
+                throw new \RuntimeException('Deliberate PDF failure for cleanup regression test.');
             });
         $this->app->instance(ReportController::class, $controller);
 
@@ -151,7 +151,7 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                 '--allow-mysql' => true,
                 '--json' => true,
             ]);
-        } catch (\\Throwable) {
+        } catch (\Throwable) {
             $thrown = true;
         }
 
