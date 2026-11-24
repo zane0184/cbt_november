@@ -715,8 +715,26 @@ try {
     $exam = $pdo->prepare('SELECT id FROM exams WHERE id = ? AND tenant_id = ? FOR UPDATE');
     $exam->execute([$payload['exam_id'], $payload['tenant_id']]);
     $exam->fetch(PDO::FETCH_ASSOC);
+
+    $participant = $pdo->prepare('SELECT id FROM exam_participants WHERE id = ? AND exam_id = ? AND user_id = ? AND tenant_id = ? FOR UPDATE');
+    $participant->execute([$payload['participant_id'], $payload['exam_id'], $payload['student_id'], $payload['tenant_id']]);
+    $participant->fetch(PDO::FETCH_ASSOC);
+
+    $expiry = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND (expires_at IS NULL OR expires_at <= NOW()) FOR UPDATE");
+    $expiry->execute([$payload['participant_id']]);
+    $expiry->fetchAll(PDO::FETCH_ASSOC);
+    $active = $pdo->prepare("SELECT id FROM exam_attempts WHERE participant_id = ? AND status = 'IN_PROGRESS' AND expires_at > NOW() ORDER BY id FOR UPDATE");
+    $active->execute([$payload['participant_id']]);
+    $active->fetchAll(PDO::FETCH_ASSOC);
+
+    $now = date('Y-m-d H:i:s');
+    $insert = $pdo->prepare("INSERT INTO exam_attempts (id, tenant_id, exam_id, participant_id, attempt_number, status, started_at, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, 1, 'IN_PROGRESS', ?, DATE_ADD(?, INTERVAL 1 HOUR), ?, ?)");
+    $insert->execute([
+        $payload['attempt_id'], $payload['tenant_id'], $payload['exam_id'],
+        $payload['participant_id'], $now, $now, $now, $now,
+    ]);
     $pdo->commit();
-    echo "UNEXPECTED_NO_DEADLOCK\n";
+    echo "UNEXPECTED_ATTEMPT_STARTED\n";
 } catch (PDOException $exception) {
     $driverCode = (int) ($exception->errorInfo[1] ?? 0);
     if ($driverCode !== 1213) {
@@ -725,7 +743,7 @@ try {
         exit(2);
     }
     if ($pdo->inTransaction()) $pdo->rollBack();
-    echo "DEADLOCK_ROLLBACK\n";
+    echo "DEADLOCK_ROLLBACK_".$driverCode."\n";
 }
 flush();
 PHP;
