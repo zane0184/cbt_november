@@ -32,19 +32,24 @@ class AcademicYearManagementService
                 ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->count();
-            $activeSemester = Semester::query()
+            $activeSemesters = Semester::query()
                 ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            $activeYear = AcademicYear::query()
+            $activeYears = AcademicYear::query()
                 ->where('tenant_id', $tenantId)
                 ->where('is_active', true)
                 ->lockForUpdate()
-                ->first();
+                ->get();
 
-            if (($activeYear !== null) !== ($activeSemester !== null)
+            $activeSemester = $activeSemesters->first();
+            $activeYear = $activeYears->first();
+
+            if ($activeYears->count() > 1
+                || $activeSemesters->count() > 1
+                || (($activeYear !== null) !== ($activeSemester !== null))
                 || ($activeSemester && (string) $activeSemester->academic_year_id !== (string) $activeYear->id)) {
                 throw new RuntimeException('Active academic period state is inconsistent; audit it before creating another year.');
             }
