@@ -5,6 +5,7 @@ on:
     branches:
       - work/docx-import-parser-20261125
       - work/benchmark-cleanup-proof-20261125
+      - work/p0-csv-row-limit-20261125
   workflow_dispatch:
 
 permissions:
@@ -106,6 +107,9 @@ jobs:
           chmod -R u+rwX bootstrap/cache storage/framework storage/logs
           touch .env
           php artisan package:discover --ansi
+
+      - name: Check patch whitespace against audited base
+        run: git -C "$GITHUB_WORKSPACE" diff --check a65b4604495e8bcc153bf0e09df12a9efb11543a...$GITHUB_SHA
 
       - name: PHP lint application, migrations, and tests
         shell: bash
