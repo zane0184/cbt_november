@@ -143,8 +143,12 @@ jobs:
           mysql --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USERNAME" --password="$DB_PASSWORD" \
             --execute="CREATE DATABASE IF NOT EXISTS cbt_installer_test_pilot CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
+      - name: Verify login identity migrations on disposable MySQL 8
+        run: timeout 120s php artisan migrate:fresh --force -vvv
+
+
       - name: Run focused Web Admin authentication smoke tests
-        run: timeout 180s php artisan test --display-warnings --filter='WebAdminAuthTest'
+        run: timeout 120s php artisan test --display-warnings --filter='WebAdminAuthTest'
 
       - name: Run focused Web Student login smoke tests
         run: timeout 180s php artisan test --display-warnings --filter='StudentWebLoginTest'

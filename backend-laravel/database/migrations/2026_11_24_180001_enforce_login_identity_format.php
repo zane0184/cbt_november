@@ -3,8 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use LogicException;
-use RuntimeException;
 
 return new class extends Migration
 {
@@ -13,7 +11,7 @@ return new class extends Migration
         $driver = DB::connection()->getDriverName();
 
         if (!in_array($driver, ['mysql', 'sqlite'], true)) {
-            throw new RuntimeException("Login identity enforcement does not support database driver [{$driver}].");
+            throw new \\RuntimeException("Login identity enforcement does not support database driver [{$driver}].");
         }
 
         $this->assertRequiredColumns();
@@ -45,11 +43,11 @@ return new class extends Migration
 
         foreach ($required as $table => $columns) {
             if (!Schema::hasTable($table)) {
-                throw new RuntimeException("Login identity enforcement requires table [{$table}].");
+                throw new \\RuntimeException("Login identity enforcement requires table [{$table}].");
             }
             foreach ($columns as $column) {
                 if (!Schema::hasColumn($table, $column)) {
-                    throw new RuntimeException("Login identity enforcement requires column [{$table}.{$column}].");
+                    throw new \\RuntimeException("Login identity enforcement requires column [{$table}.{$column}].");
                 }
             }
         }
@@ -65,7 +63,7 @@ return new class extends Migration
             || preg_match('/^(\d+\.\d+\.\d+)/', $version, $matches) !== 1
             || version_compare($matches[1], '8.0.16', '<')
         ) {
-            throw new RuntimeException(
+            throw new \\RuntimeException(
                 "Login identity CHECK constraints require Oracle MySQL 8.0.16 or newer; detected [{$version}]."
             );
         }
@@ -96,7 +94,7 @@ return new class extends Migration
             ->exists();
 
         if ($invalidTeacher) {
-            throw new RuntimeException(
+            throw new \\RuntimeException(
                 'Login identity enforcement aborted: existing teacher profile category/identity anomalies must be reconciled first.'
             );
         }
@@ -107,7 +105,7 @@ return new class extends Migration
             ->exists();
 
         if ($invalidNuptk) {
-            throw new RuntimeException(
+            throw new \\RuntimeException(
                 'Login identity enforcement aborted: existing NUPTK format anomalies must be reconciled first.'
             );
         }
@@ -117,7 +115,7 @@ return new class extends Migration
             ->exists();
 
         if ($invalidStudent) {
-            throw new RuntimeException(
+            throw new \\RuntimeException(
                 'Login identity enforcement aborted: existing NISN format anomalies must be reconciled first.'
             );
         }
@@ -143,7 +141,7 @@ return new class extends Migration
                 strtoupper((string) $existing->ENFORCED) !== 'YES'
                 || $this->normalizeCheck((string) $existing->CHECK_CLAUSE) !== $this->normalizeCheck($expression)
             ) {
-                throw new RuntimeException("Existing CHECK constraint [{$name}] differs from the required definition.");
+                throw new \\RuntimeException("Existing CHECK constraint [{$name}] differs from the required definition.");
             }
             return;
         }
@@ -186,7 +184,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        throw new LogicException(
+        throw new \\LogicException(
             'Login identity database constraints are forward-only security invariants and cannot be rolled back automatically.'
         );
     }
