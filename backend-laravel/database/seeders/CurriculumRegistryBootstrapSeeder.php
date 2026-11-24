@@ -15,16 +15,10 @@ class CurriculumRegistryBootstrapSeeder extends Seeder
     public function run(): void
     {
         SystemTenantSeeder::seed();
-        $this->seedForTenant(Tenant::SYSTEM_TENANT_ID);
-    }
 
-    /**
-     * Seed the existing canonical curriculum registry into one installation tenant.
-     * No CP content is fabricated; the CP import/checksum flags remain false.
-     */
-    public function seedForTenant(string $tenantId): void
-    {
-        DB::transaction(function () use ($tenantId): void {
+        DB::transaction(function (): void {
+            $tenantId = Tenant::SYSTEM_TENANT_ID;
+
             $curriculum = MultiCurriculum::query()->updateOrCreate(
                 ['tenant_id' => $tenantId, 'code' => 'KURIKULUM_MERDEKA'],
                 [
