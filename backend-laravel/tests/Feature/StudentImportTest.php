@@ -356,7 +356,7 @@ class StudentImportTest extends TestCase
         (new Xlsx($spreadsheet))->save($path);
         $content = file_get_contents($path);
         @unlink($path);
-        $spreadsheet->discon        $spreadsheet->disconnectWorksheets();
+        $spreadsheet->disconnectWorksheets();
 
 
 
