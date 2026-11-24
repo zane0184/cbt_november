@@ -853,6 +853,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             DB::table('tenants')->where('id', $tenantAId)->update(['logo_path' => $pathAOld]);
+            $tenantA->refresh();
             $this->assertFileExists(storage_path('app/public/' . $pathAOld));
             $this->assertNotNull($branding->localPath($pathAOld));
             $this->assertIsString($header->getLogoDataUri($tenantA));
@@ -889,6 +890,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             DB::table('tenants')->where('id', $tenantBId)->update(['logo_path' => $pathBOld]);
+            $tenantB->refresh();
             $this->assertFileExists(storage_path('app/public/' . $pathBOld));
             $this->assertNotNull($branding->localPath($pathBOld));
             $this->assertIsString($header->getLogoDataUri($tenantB));
