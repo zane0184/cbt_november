@@ -78,17 +78,174 @@ class TenantBrandingService
         }
 
         $extension = $detected[0];
-        $relativePath = sprintf('tenants/%s/branding/%s-%s.%s', $tenantId, $kind, (string) Str::uuid(), $extension);
-        $root = storage_path('app/public');
-        File::ensureDirectoryExists($root);
-        $absolutePath = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
-        File::ensureDirectoryExists(dirname($absolutePath));
+        $root = $this->preparePublicStorageRoot();
+        if (!$root) {
+            throw new RuntimeException('Akar storage publik instalasi tidak aman.');
+        }
+
+        $tenantsDirectory = $root . DIRECTORY_SEPARATOR . 'tenants';
+        $tenantDirectory = $tenantsDirectory . DIRECTORY_SEPARATOR . $tenantId;
+        $brandingDirectory = $tenantDirectory . DIRECTORY_SEPARATOR . 'branding';
+
+        if (
+            !$this->ensureManagedDirectory($tenantsDirectory, $root)
+            || !$this->ensureManagedDirectory($tenantDirectory, $tenantsDirectory)
+            || !$this->ensureManagedDirectory($brandingDirectory, $tenantDirectory)
+        ) {
+            throw new RuntimeException('Direktori branding instalasi tidak aman.');
+        }
+
+        $managedRoot = $this->resolveManagedBrandingRoot($root, $tenantId);
+        if (!$managedRoot) {
+            throw new RuntimeException('Direktori branding instalasi tidak dapat diverifikasi.');
+        }
+
+        $filename = sprintf('%s-%s.%s', $kind, (string) Str::uuid(), $extension);
+        $relativePath = sprintf('tenants/%s/branding/%s', $tenantId, $filename);
+        $absolutePath = $managedRoot . DIRECTORY_SEPARATOR . $filename;
+
+        // Exclusive destination checks prevent following a pre-existing final
+        // symlink or overwriting an existing managed asset.
+        if (is_link($absolutePath) || file_exists($absolutePath)) {
+            throw new RuntimeException('Tujuan file branding sudah ada atau tidak aman.');
+        }
 
         if (!File::copy($file->getRealPath(), $absolutePath)) {
             throw new RuntimeException('File branding gagal disimpan ke storage lokal.');
         }
 
+        $resolvedTarget = realpath($absolutePath);
+        if (
+            is_link($absolutePath)
+            || !$resolvedTarget
+            || dirname($resolvedTarget) !== $managedRoot
+            || !str_starts_with($resolvedTarget, $managedRoot . DIRECTORY_SEPARATOR)
+        ) {
+            if (is_file($absolutePath) && !is_link($absolutePath)) {
+                File::delete($absolutePath);
+            }
+            throw new RuntimeException('File branding keluar dari direktori instalasi yang diizinkan.');
+        }
+
         return $relativePath;
+    }
+
+    /**
+     * Resolve the installation's public storage root without following a
+     * symlinked storage, app, or public directory.
+     */
+    private function existingPublicStorageRoot(): ?string
+    {
+        $storagePath = app()->storagePath();
+        $appPath = $storagePath . DIRECTORY_SEPARATOR . 'app';
+        $publicPath = $appPath . DIRECTORY_SEPARATOR . 'public';
+
+        if (
+            is_link($storagePath)
+            || is_link($appPath)
+            || is_link($publicPath)
+            || realpath(dirname($storagePath)) !== dirname($storagePath)
+        ) {
+            return null;
+        }
+
+        $resolvedStorage = realpath($storagePath);
+        $resolvedApp = realpath($appPath);
+        $resolvedPublic = realpath($publicPath);
+
+        if (
+            !$resolvedStorage
+            || !$resolvedApp
+            || !$resolvedPublic
+            || $resolvedStorage !== $storagePath
+            || $resolvedApp !== $appPath
+            || $resolvedPublic !== $publicPath
+            || !is_dir($resolvedPublic)
+        ) {
+            return null;
+        }
+
+        return $resolvedPublic;
+    }
+
+    /**
+     * Create the local public storage root only after verifying that no path
+     * component is a symlink or resolves outside this installation.
+     */
+    private function preparePublicStorageRoot(): ?string
+    {
+        $storagePath = app()->storagePath();
+        $storageParent = dirname($storagePath);
+
+        if (
+            is_link($storagePath)
+            || realpath($storageParent) !== $storageParent
+        ) {
+            return null;
+        }
+
+        if (!is_dir($storagePath)) {
+            if (file_exists($storagePath) || !@mkdir($storagePath, 0750)) {
+                return null;
+            }
+        }
+
+        $resolvedStorage = realpath($storagePath);
+        if (!$resolvedStorage || $resolvedStorage !== $storagePath || !is_dir($resolvedStorage)) {
+            return null;
+        }
+
+        $appPath = $resolvedStorage . DIRECTORY_SEPARATOR . 'app';
+        if (is_link($appPath)) {
+            return null;
+        }
+        if (!is_dir($appPath) && !@mkdir($appPath, 0750)) {
+            return null;
+        }
+
+        $resolvedApp = realpath($appPath);
+        if (!$resolvedApp || $resolvedApp !== $appPath || !is_dir($resolvedApp)) {
+            return null;
+        }
+
+        $publicPath = $resolvedApp . DIRECTORY_SEPARATOR . 'public';
+        if (is_link($publicPath)) {
+            return null;
+        }
+        if (!is_dir($publicPath) && !@mkdir($publicPath, 0750)) {
+            return null;
+        }
+
+        $resolvedPublic = realpath($publicPath);
+        if (!$resolvedPublic || $resolvedPublic !== $publicPath || !is_dir($resolvedPublic)) {
+            return null;
+        }
+
+        return $resolvedPublic;
+    }
+
+    /**
+     * Create a managed directory only when its direct parent is canonical and
+     * neither the directory entry nor any existing parent is a symlink.
+     */
+    private function ensureManagedDirectory(string $directory, string $parent): bool
+    {
+        if (is_link($directory) || realpath($parent) !== $parent) {
+            return false;
+        }
+
+        if (!is_dir($directory)) {
+            if (file_exists($directory) || !@mkdir($directory, 0750)) {
+                return false;
+            }
+        }
+
+        $resolved = realpath($directory);
+
+        return $resolved !== false
+            && $resolved === $directory
+            && dirname($resolved) === $parent
+            && is_dir($resolved);
     }
 
     /**
@@ -129,7 +286,7 @@ class TenantBrandingService
             $managedTenantId = $scopeTenantId;
         }
 
-        $root = realpath(storage_path('app/public'));
+        $root = $this->existingPublicStorageRoot();
         if (!$root) {
             return null;
         }
@@ -213,7 +370,7 @@ class TenantBrandingService
             return;
         }
 
-        $root = realpath(storage_path('app/public'));
+        $root = $this->existingPublicStorageRoot();
         if (!$root) {
             return;
         }
