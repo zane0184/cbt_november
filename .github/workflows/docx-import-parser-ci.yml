@@ -27,7 +27,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: cbt_docx_ci
+          MYSQL_DATABASE: cbt_ci_docx
         ports:
           - 3306:3306
         options: >-
@@ -46,7 +46,7 @@ jobs:
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: "3306"
-      DB_DATABASE: cbt_docx_ci
+      DB_DATABASE: cbt_ci_docx
       DB_USERNAME: root
       DB_PASSWORD: root
       CACHE_STORE: array
@@ -76,7 +76,7 @@ jobs:
           test "$APP_ENV" = "testing"
           test "$DB_CONNECTION" = "mysql"
           test "$DB_HOST" = "127.0.0.1"
-          test "$DB_DATABASE" = "cbt_docx_ci"
+          test "$DB_DATABASE" = "cbt_ci_docx"
           php -r '
             $pdo = new PDO(
               "mysql:host=" . getenv("DB_HOST") . ";port=" . getenv("DB_PORT") . ";dbname=" . getenv("DB_DATABASE"),
@@ -84,7 +84,7 @@ jobs:
               [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
             );
             $row = $pdo->query("SELECT DATABASE() AS db, VERSION() AS version, @@default_storage_engine AS engine")->fetch(PDO::FETCH_ASSOC);
-            if ($row["db"] !== "cbt_docx_ci" || !str_starts_with($row["version"], "8.") || strtoupper($row["engine"]) !== "INNODB") {
+            if ($row["db"] !== "cbt_ci_docx" || !str_starts_with($row["version"], "8.") || strtoupper($row["engine"]) !== "INNODB") {
               fwrite(STDERR, "Disposable MySQL identity check failed.\\n");
               exit(1);
             }
