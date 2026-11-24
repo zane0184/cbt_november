@@ -271,7 +271,7 @@ class StudentImportTest extends TestCase
                 $this->rombel->id
             );
             $this->fail('The simulated audit failure must abort the import transaction.');
-        } catch (RuntimeException $exception) {
+        } catch (\\RuntimeException $exception) {
             $this->assertSame('Simulated audit storage failure.', $exception->getMessage());
         }
 
