@@ -301,7 +301,7 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $assignments = TeacherSubjectAssignment::query()
             ->where('tenant_id', $tenantId)
-            ->with(['teacherProfile.user', 'subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumVersion'])
+            ->with(['teacher.user', 'subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumVersion'])
             ->orderByDesc('created_at')
             ->paginate(20);
 
