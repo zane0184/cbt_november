@@ -8,8 +8,8 @@ use App\Models\Phase;
 use App\Models\Tenant;
 use App\Services\TenantAcademicBootstrapService;
 use Database\Seeders\DatabaseSeeder;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -34,7 +34,7 @@ class TenantAcademicBootstrapServiceTest extends TestCase
         $this->assertSame(6, $result['academic_year_count']);
         $this->assertSame(12, $result['semester_count']);
 
-        $rows = \Illuminate\Support\Facades\DB::table('grade_levels')
+        $rows = DB::table('grade_levels')
             ->join('phases', function ($join) use ($tenant): void {
                 $join->on('phases.id', '=', 'grade_levels.phase_id')
                     ->where('phases.tenant_id', '=', $tenant->id);
@@ -69,9 +69,9 @@ class TenantAcademicBootstrapServiceTest extends TestCase
         $this->assertSame($first['curriculum_id'], $second['curriculum_id']);
         $this->assertSame($first['phase_ids'], $second['phase_ids']);
         $this->assertSame($first['grade_level_ids'], $second['grade_level_ids']);
-        $this->assertSame(1, \Illuminate\Support\Facades\DB::table('curricula')->where('tenant_id', $tenant->id)->count());
-        $this->assertSame(3, \Illuminate\Support\Facades\DB::table('phases')->where('tenant_id', $tenant->id)->count());
-        $this->assertSame(6, \Illuminate\Support\Facades\DB::table('grade_levels')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(1, DB::table('curricula')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(3, DB::table('phases')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenant->id)->count());
     }
 
     public function test_each_installation_receives_separate_tenant_owned_academic_rows(): void
@@ -85,8 +85,8 @@ class TenantAcademicBootstrapServiceTest extends TestCase
 
         $this->assertNotSame($catalogA['curriculum_id'], $catalogB['curriculum_id']);
         $this->assertNotSame($catalogA['grade_level_ids'][1], $catalogB['grade_level_ids'][1]);
-        $this->assertSame(6, \Illuminate\Support\Facades\DB::table('grade_levels')->where('tenant_id', $tenantA->id)->count());
-        $this->assertSame(6, \Illuminate\Support\Facades\DB::table('grade_levels')->where('tenant_id', $tenantB->id)->count());
+        $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenantA->id)->count());
+        $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenantB->id)->count());
     }
 
     public function test_conflicting_existing_phase_is_rejected_without_overwriting_it(): void
