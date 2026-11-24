@@ -98,6 +98,7 @@ class LoginIdentityPreflightCommand extends Command
                             $counts['employee_identifier tidak sesuai identitas login']++;
                         }
                     }
+                }
             });
 
         DB::table('student_profiles')
@@ -116,7 +117,6 @@ class LoginIdentityPreflightCommand extends Command
                     if (preg_match('/^\d{10}$/D', $nisnRaw) !== 1) {
                         $counts['Siswa tanpa NISN valid 10 digit']++;
                     }
-                }
                 }
             });
 
