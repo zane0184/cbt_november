@@ -53,13 +53,6 @@ class LoginIdentityPreflightCommand extends Command
                         $counts['Status kepegawaian Guru kosong/tidak dikenal']++;
                     }
 
-                    foreach ([$nip, $nik, $nuptk] as $value) {
-                        if ($value === '') {
-                            // NULL is allowed for non-primary optional identifiers; empty strings are not.
-                            continue;
-                        }
-                    }
-
                     if ($row->nip !== null && $nip === '') {
                         $counts['Field identitas Guru berisi string kosong']++;
                     }
