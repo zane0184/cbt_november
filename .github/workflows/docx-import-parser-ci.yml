@@ -112,5 +112,8 @@ jobs:
           set -euo pipefail
           find app database/migrations tests -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
 
+      - name: Run student import acceptance tests on disposable MySQL 8
+        run: php artisan test tests/Feature/StudentImportTest.php --display-warnings
+
       - name: Run complete PHPUnit suite on disposable MySQL 8
         run: php artisan test --display-warnings
