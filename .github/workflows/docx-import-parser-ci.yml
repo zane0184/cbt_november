@@ -5,6 +5,7 @@ on:
     branches:
       - work/docx-import-parser-20261125
       - work/benchmark-cleanup-proof-20261125
+      - work/p0-csv-import-hardening-20261125
   workflow_dispatch:
 
 permissions:
