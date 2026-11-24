@@ -538,14 +538,22 @@ class StudentImportService
 
         // Verify actual cell references even when the dimension attribute exists.
         // A forged small dimension must not hide cells placed outside import limits.
-        preg_match_all('/<c\b[^>]*\br\s*=\s*["\']\$?([A-Z]{1,3})\$?(\d+)["\']/i', $xml, $cells, PREG_SET_ORDER);
-        if (count($cells) > self::MAX_ROWS * self::MAX_CSV_COLUMNS) {
-            throw ValidationException::withMessages(['file' => 'Worksheet XLSX memiliki terlalu banyak cell.']);
-        }
+        $cellPattern = '/<c\b[^>]*\br\s*=\s*["\']\$?([A-Z]{1,3})\$?(\d+)["\']/i';
+        $cellOffset = 0;
+        $cellCount = 0;
+        $xmlLength = strlen($xml);
 
-        foreach ($cells as $cell) {
-            $maxColumn = max($maxColumn, Coordinate::columnIndexFromString(strtoupper($cell[1])));
-            $maxRow = max($maxRow, (int) $cell[2]);
+        // Scan one reference at a time to avoid allocating a large PREG_SET_ORDER result.
+        while ($cellOffset < $xmlLength
+            && preg_match($cellPattern, $xml, $cell, PREG_OFFSET_CAPTURE, $cellOffset) === 1) {
+            $cellCount++;
+            if ($cellCount > self::MAX_ROWS * self::MAX_CSV_COLUMNS) {
+                throw ValidationException::withMessages(['file' => 'Worksheet XLSX memiliki terlalu banyak cell.']);
+            }
+
+            $maxColumn = max($maxColumn, Coordinate::columnIndexFromString(strtoupper($cell[1][0])));
+            $maxRow = max($maxRow, (int) $cell[2][0]);
+            $cellOffset = $cell[0][1] + strlen($cell[0][0]);
         }
 
         if ($maxRow > self::MAX_ROWS + 1) {
