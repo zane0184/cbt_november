@@ -42,11 +42,51 @@ class TenantBrandingService
             throw new RuntimeException('Jenis aset branding tidak didukung.');
         }
 
-        $extension = strtolower((string) $file->guessExtension());
-        if (!in_array($extension, ['png', 'jpg', 'jpeg', 'webp'], true)) {
-            throw new RuntimeException('Format file branding tidak didukung.');
+        if (!Str::isUuid($tenantId)) {
+            throw new RuntimeException('Identitas instalasi branding tidak valid.');
         }
 
+        $maxBytes = $kind === 'favicon' ? 512 * 1024 : 2048 * 1024;
+        $sourcePath = $file->getRealPath();
+        $size = $file->getSize();
+        if (!$sourcePath || !is_file($sourcePath) || !is_readable($sourcePath) || !$size || $size > $maxBytes) {
+            throw new RuntimeException('Ukuran atau sumber file branding tidak valid.');
+        }
+
+        $image = @getimagesize($sourcePath);
+        if ($image === false) {
+            throw new RuntimeException('Konten file branding bukan gambar raster yang valid.');
+        }
+
+        $types = [
+            IMAGETYPE_PNG => ['png', 'image/png'],
+            IMAGETYPE_JPEG => ['jpg', 'image/jpeg'],
+            IMAGETYPE_WEBP => ['webp', 'image/webp'],
+        ];
+        $detected = $types[$image[2]] ?? null;
+        $originalExtension = strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION));
+        $extensionAliases = ['jpeg' => 'jpg'];
+        $normalizedOriginalExtension = $extensionAliases[$originalExtension] ?? $originalExtension;
+
+        if (
+            !$detected
+            || !in_array($originalExtension, ['png', 'jpg', 'jpeg', 'webp'], true)
+            || $normalizedOriginalExtension !== $detected[0]
+            || (new \\finfo(FILEINFO_MIME_TYPE))->file($sourcePath) !== $detected[1]
+        ) {
+            throw new RuntimeException('Ekstensi dan MIME file branding tidak sesuai dengan konten gambar.');
+        }
+
+        [$width, $height] = $image;
+        if ($kind === 'favicon') {
+            if ($width < 32 || $height < 32 || $width > 256 || $height > 256 || $width !== $height) {
+                throw new RuntimeException('Favicon harus persegi dengan ukuran 32–256 piksel.');
+            }
+        } elseif ($width < 64 || $height < 64 || $width > 2000 || $height > 2000) {
+            throw new RuntimeException('Dimensi logo harus berada pada rentang 64–2000 piksel.');
+        }
+
+        $extension = $detected[0];
         $relativePath = sprintf('tenants/%s/branding/%s-%s.%s', $tenantId, $kind, (string) Str::uuid(), $extension);
         $root = storage_path('app/public');
         File::ensureDirectoryExists($root);
