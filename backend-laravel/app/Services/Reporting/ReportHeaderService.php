@@ -41,7 +41,7 @@ class ReportHeaderService
                 }
 
                 return 'data:' . $mime . ';base64,' . base64_encode($content);
-            } catch (\\Throwable) {
+            } catch (\Throwable) {
                 continue;
             }
         }
