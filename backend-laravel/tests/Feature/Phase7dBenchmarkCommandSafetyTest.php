@@ -136,7 +136,8 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
         $originalAfterCallbacks = $afterCallbacksProperty->getValue($gate);
         $policyObservations = [];
         $schemaCountsAtPolicyEvaluation = [];
-        Gate::after(function ($user, string $ability, $result, array $arguments) use (&$policyObservations, &$schemaCountsAtPolicyEvaluation, $control): void {
+        $benchmarkEvidenceAtPolicyEvaluation = [];
+        Gate::after(function ($user, string $ability, $result, array $arguments) use (&$policyObservations, &$schemaCountsAtPolicyEvaluation, &$benchmarkEvidenceAtPolicyEvaluation, $control): void {
             if ($ability === 'viewExamResults') {
                 $policyObservations[] = [
                     'user' => $user,
@@ -148,6 +149,21 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
                     "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME LIKE 'cbt_phase7d_%'"
                 );
                 $schemaCountsAtPolicyEvaluation[] = count($schemasAtDecision);
+
+                $benchmarkConnection = DB::connection('phase7d_benchmark');
+                $exam = $arguments[0] ?? null;
+                $benchmarkEvidenceAtPolicyEvaluation[] = [
+                    'database' => $benchmarkConnection->getDatabaseName(),
+                    'migration_count' => $benchmarkConnection->table('migrations')->count(),
+                    'exam_exists' => $exam instanceof Exam
+                        && $benchmarkConnection->table('exams')->where('id', $exam->getKey())->exists(),
+                    'participant_count' => $exam instanceof Exam
+                        ? $benchmarkConnection->table('exam_participants')->where('exam_id', $exam->getKey())->count()
+                        : 0,
+                    'attempt_count' => $exam instanceof Exam
+                        ? $benchmarkConnection->table('exam_attempts')->where('exam_id', $exam->getKey())->count()
+                        : 0,
+                ];
             }
         });
 
@@ -195,12 +211,16 @@ class Phase7dBenchmarkCommandSafetyTest extends TestCase
 
         $this->assertInstanceOf(\Illuminate\Auth\Access\AuthorizationException::class, $exception);
 
-        $this->assertStringContainsString('Running migrations on isolated MySQL benchmark database...', Artisan::output());
-        $this->assertStringContainsString('Workload seeded in ', Artisan::output());
-
         $this->assertInstanceOf(ExamPolicy::class, Gate::getPolicyFor(Exam::class));
         $this->assertCount(1, $policyObservations, 'The real report authorization must be evaluated exactly once.');
         $this->assertSame([1], $schemaCountsAtPolicyEvaluation, 'The disposable schema must still exist when the real controller policy denies export.');
+        $this->assertCount(1, $benchmarkEvidenceAtPolicyEvaluation);
+        $benchmarkEvidence = $benchmarkEvidenceAtPolicyEvaluation[0];
+        $this->assertSame($schema, $benchmarkEvidence['database']);
+        $this->assertGreaterThan(0, $benchmarkEvidence['migration_count'], 'The disposable schema must have completed migrations before authorization is evaluated.');
+        $this->assertTrue($benchmarkEvidence['exam_exists'], 'The real export authorization must receive an Exam from the seeded workload.');
+        $this->assertSame(100, $benchmarkEvidence['participant_count'], 'The selected benchmark exam must have its 100 seeded participants.');
+        $this->assertSame(100, $benchmarkEvidence['attempt_count'], 'The selected benchmark exam must have its 100 seeded attempts.');
         $observation = $policyObservations[0];
         $this->assertFalse(
             $observation['has_report_view'],
