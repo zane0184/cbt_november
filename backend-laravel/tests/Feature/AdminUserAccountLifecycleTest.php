@@ -309,6 +309,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertSame($beforeScore, (array) DB::table('exam_attempt_scores')->where('attempt_id', $attempt->id)->first());
         $this->assertSame($beforeLease, (array) DB::table('device_leases')->where('exam_attempt_id', $attempt->id)->first());
 
+        $this->flushHeaders();
         $this->actingAs($disabled)->withSession(['account_auth_version' => 1])
             ->get('/student/exams')->assertRedirect('/login');
 
@@ -322,6 +323,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         $this->assertDatabaseHas('student_profiles', ['id' => $profile->id, 'nisn' => '0099887766']);
 
         // The old Web session stays invalid even after the account is reactivated.
+        $this->flushHeaders();
         $this->actingAs($activated)->withSession(['account_auth_version' => 1])
             ->get('/student/exams')->assertRedirect('/login');
     }
@@ -548,7 +550,7 @@ class AdminUserAccountLifecycleTest extends TestCase
 
         $localStudent = $this->makeLocalUser('SISWA', 'non-admin-actor-target');
         $this->actingAs($this->makeLocalUser('GURU', 'unauthorized-deactivator'));
-        Livewire::test(UserManagement::class)->call('deactivateUser', $localStudent->id)->assertForbidden();
+        $this->get('/admin/users')->assertForbidden();
         $this->assertTrue((bool) $localStudent->fresh()->is_active);
     }
 
@@ -592,7 +594,22 @@ class AdminUserAccountLifecycleTest extends TestCase
             ->first(fn ($candidate) => $candidate->getName() === $cookieName);
         $this->assertNotNull($cookie, 'Web login must issue a session cookie.');
 
-        return [$cookieName, $cookie->getValue()];
+        // Browser Set-Cookie values are encrypted. Recover the real session ID,
+        // then replay it with withCookie(), which encrypts it for the next request.
+        $decrypted = app('encrypter')->decrypt($cookie->getValue(), false);
+        $sessionId = \\Illuminate\\Cookie\\CookieValuePrefix::remove(
+            $cookieName,
+            $decrypted,
+            app('encrypter')->getKey()
+        );
+        $this->assertIsString($sessionId);
+        if (config('session.driver') === 'database') {
+            $this->assertDatabaseHas('sessions', ['id' => $sessionId, 'user_id' => $user->id]);
+        } elseif (config('session.driver') === 'file') {
+            $this->assertFileExists(rtrim((string) config('session.files'), '/').'/'.$sessionId);
+        }
+
+        return [$cookieName, $sessionId];
     }
 
     private function assertPersistedWebSessionsAreRevokedForDriver(string $driver): void
@@ -630,7 +647,7 @@ class AdminUserAccountLifecycleTest extends TestCase
         Livewire::test(UserManagement::class)->call('resetUserPassword', $resetTeacher->id);
         Auth::forgetGuards();
 
-        $this->withUnencryptedCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withCookie($cookieName, $resetCookie)->get('/guru/dashboard')->assertRedirect('/login');
 
         // Resetting one account must not invalidate another account's persisted session.
         Auth::forgetGuards();
@@ -641,7 +658,12 @@ class AdminUserAccountLifecycleTest extends TestCase
         Livewire::test(UserManagement::class)->call('deactivateUser', $deactivatedTeacher->id);
         Auth::forgetGuards();
 
-        $this->withUnencryptedCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+        $this->withCookie($cookieName, $deactivateCookie)->get('/guru/dashboard')->assertRedirect('/login');
+
+        // A different account's persisted session must survive deactivation too.
+        Auth::forgetGuards();
+        $this->flushHeaders();
+        $this->withCookie($cookieName, $unrelatedCookie)->get('/guru/dashboard')->assertOk();
 
         Auth::forgetGuards();
         $this->actingAs($this->admin);
