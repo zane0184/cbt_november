@@ -184,3 +184,58 @@ Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implem
 - P1-ID-03B: BLOCKED / NOT STARTED.
 - STOP sebelum P1-ID-03B untuk review koordinator.
 - Langkah berikutnya: pulihkan checkout Git asli + PHP 8.3/Composer/PDO MySQL/MySQL 8 disposable; lalu backup byte-exact dan implementasikan P1-ID-03A saja.
+
+
+---
+
+## ADDENDUM CHECKPOINT — refresh exact HEAD dan audit lengkap P1-ID-03A (24 November 2026)
+
+### AUDIT
+- PR #23 OPEN / DRAFT / NOT MERGED.
+- Branch `work/p1-seven-targets-20261124`; HEAD sebelum checkpoint ini `c9ce69d4f05443ac7e97ff3e89a7f6cb34e5bd39` (commit report audit lanjutan).
+- HEAD yang baru diverifikasi sebelum update report: `3106172e28aacccbc18019eed71374595c97e816`; base `1c33e5d422175f9bd85d206230271a9fe5a4eecd`. Perubahan `c6861410...` ke `3106172e...` hanya dua dokumen.
+- Source aplikasi basis audit `cd2b6ee8ed9d57604a06860e1dee399fb4b2b050`; snapshot distribusi `2f13517217bcdb8ffb591f4df7751bcc4b7354ab`. Snapshot checksum dan tujuh Git blob inti cocok, tetapi tanpa .git dan mengecualikan tests/backup. Tidak dianggap checkout.
+- Workspace kanonis tidak tersedia. PHP lokal 8.4.24; PDO driver kosong; Composer, MySQL, Docker/Podman tidak ada; DNS/HTTPS GitHub terminal gagal. Local lint snapshot 282 file PASS pada PHP 8.4.24 saja.
+- Inventaris app writer: `UserManagement::createUser()` membuat TeacherProfile/StudentProfile setelah validasi role/permission/tenant dan dalam transaksi; `Phase7dBenchmarkCommand::seedWorkload()` membuat fixture Guru tanpa identitas wajib dan NISN `NISN_%03d`; `TeacherProfilePage::savePhone()` hanya forceFill phone melalui TeacherPortalAccess dengan validasi tenant, role, dan cardinality.
+- Model fillable mengizinkan field identitas, tetapi tidak ditemukan app writer identitas lain melalui fill/forceFill/updateOrCreate/firstOrCreate/upsert/insert/query-builder/raw SQL. Profile query builder pada preflight read-only.
+- Factories: 13 file, tanpa TeacherProfileFactory/StudentProfileFactory dan tanpa field identitas. Seeders aktif: lima, tidak menulis profil identitas. DemoDataSeeder/RuntimeTestSeeder tidak ditemukan sebagai file pada tree branch yang diperiksa.
+- Test tree: 77 file PHP. Fixture identitas valid ada pada preflight, AdminUiVerification, WebAdminAuth, StudentWebLogin, StudentExamPortal, ParticipantAuthorizationAndAttemptLimit, dan RombelStudentPivot. Banyak fixture domain lain masih membuat profil tanpa identitas; Phase7DHistorical menggunakan employee_identifier nonnumerik; MediaAuthorization memakai employee_identifier GURU-MEDIA-1/2; AdminUi hidden-serialization fixture menggabungkan NIP+NIK untuk Guru PNS. Rincian file/fungsi ada di report.
+- Audit callsites: 107 AuditService::log pada 33 caller files; dua bypass runtime AuditLog::create pada ExpireExamAttemptsCommand::expireOne dan InstallerService::lockInstaller; satu historical migration insert pada 2026_11_23_130001_consolidate_legacy_local_roles::up. AuditService belum punya recursive PII redactor.
+- Preflight memeriksa format, kategori dasar, blank/whitespace, employee_identifier, dan duplicate per tenant; belum memeriksa seluruh schema columns, tenant-user-profile relation, role/cardinality, profil silang, kategori eksklusif, atau collision lintas kategori. Test preflight hanya tiga metode dan belum membuktikan database immutability.
+
+### DESAIN
+- Perkuat schema guard, relasi tenant, role/cardinality, kategori eksklusif, collision lintas kategori/username, dan output tanpa PII.
+- Test setiap anomali, missing schema, cross-tenant allowance, dan database snapshot before/after.
+- Normalisasi benchmark dan seluruh test fixture; tambah helper identitas valid serta fixture legacy terisolasi; pastikan benchmark cleanup dalam finally.
+- Redactor recursive terpusat untuk audit baru dan dua bypass runtime. Jangan mengubah audit historis.
+- Review mass assignment/authorization. Jangan menghapus fillable tanpa audit seluruh pemanggil.
+- Backup byte-exact per source file sebelum edit.
+
+### IMPLEMENTASI
+- Tidak ada source aplikasi, migration, workflow, dependency, config, atau database diubah.
+- Tidak ada source patch melalui GitHub Contents API.
+- Tidak ada source backup baru karena belum ada source yang diedit.
+- Report diperbarui pada commit `c9ce69d4f05443ac7e97ff3e89a7f6cb34e5bd39`; checkpoint ini diperbarui sebagai dokumentasi saja.
+- Tidak ada migration baru, merge, deployment, atau akses database produksi.
+
+### PENGUJIAN
+- Local PHP lint snapshot: 282 file PASS pada PHP 8.4.24; bukan PHPUnit/PHP 8.3.
+- CI exact SHA `3106172e28aacccbc18019eed71374595c97e816`:
+  - Backend run #45367821198 SUCCESS; PHP 8.3 + disposable MySQL 8; focused 56/225; full PHPUnit 534/2.265; PHP lint app/migrations/tests PASS.
+  - ZIP run #45367821057 SUCCESS untuk archive build/upload saja; artifact #14906229821, 19,768,211 bytes, SHA-256 `344ef163ab435c25915ce88fc93722f503dde586bee4ebb9bff9cd6ce1304169`; final ZIP NOT ACCEPTED.
+- Tidak ada preflight lokal, PHPUnit lokal, benchmark, migration, staging, UAT, atau production DB test.
+
+### STATUS
+- Checkout Git asli/workspace kanonis: BLOCKED.
+- Snapshot distribusi: VERIFIED CHECKSUM / AUDIT ONLY.
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- ZIP final: NOT ACCEPTED; staging NOT VERIFIED; production NOT TOUCHED.
+
+### NEXT ACTION
+1. Pulihkan checkout Git asli beserta tests dan backup; jangan jadikan paket distribusi sebagai checkout.
+2. Siapkan PHP 8.3, Composer lock, PDO MySQL, dan MySQL 8/InnoDB disposable.
+3. Backup byte-exact sebelum tiap source edit.
+4. Implementasikan P1-ID-03A saja dan jalankan focused/full PHPUnit + CI exact SHA.
+5. STOP sebelum P1-ID-03B untuk review koordinator.
