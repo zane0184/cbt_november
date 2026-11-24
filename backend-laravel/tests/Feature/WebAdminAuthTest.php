@@ -256,6 +256,17 @@ class WebAdminAuthTest extends TestCase
         $this->get('/student/exams')->assertForbidden();
     }
 
+    public function test_login_validation_does_not_flash_personal_identifier_into_session(): void
+    {
+        $response = $this->post('/login', [
+            'identifier' => '198001012006041001',
+            'password' => '',
+        ]);
+
+        $response->assertSessionHasErrors('identifier');
+        $this->assertFalse(session()->has('_old_input'));
+    }
+
     public function test_invalid_password_returns_generic_identifier_error(): void
     {
         $response = $this->post('/login', ['identifier' => '198001012006041001', 'password' => 'salah']);
