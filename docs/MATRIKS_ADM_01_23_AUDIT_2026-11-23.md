@@ -8,13 +8,13 @@ Branch audit: `work/solo-web-cbt-completion-20261123-execution`.
 | ID | Requirement / acceptance scope | Area spec | Bukti minimum | Status awal |
 |---|---|---|---|---|
 | ADM-01 | Dashboard data nyata sesuai tahun aktif; tanpa angka dummy; tidak menampilkan kunci/jawaban | §2 | Query/service, scope tahun aktif, empty state, test angka DB dan batas data | NOT VERIFIED |
-| ADM-02 | Profil madrasah lengkap: identitas, NSM/NPSN, alamat, kontak, nama Kamad sebagai data dokumen | §3.1 | Form + policy tenant.manage + validasi + audit + persistence | NOT VERIFIED |
+| ADM-02 | Profil madrasah lengkap: identitas, NSM/NPSN, alamat, kontak, nama Kamad sebagai data dokumen | §3.1 | Form + policy tenant.manage + validasi + audit + persistence | PARTIAL |
 | ADM-03 | Upload/preview/ganti/hapus logo dan favicon aman | §3.2 | MIME/extension/dimension/size, storage privat, authorization download, delete confirmation, tests upload spoof | NOT VERIFIED |
 | ADM-04 | Branding aplikasi/login/footer/media sosial per instalasi | §3.4, §12.2 | Setting model/service, scoped UI, cache invalidation, tests per-install isolation | NOT VERIFIED |
 | ADM-05 | Kop dokumen fleksibel + preview + dipakai cetak | §3.3, §12.3 | Template/settings, render preview, PDF outputs, tests layout/data escaping | NOT VERIFIED |
-| ADM-06 | CRUD Guru, detail, aktif/nonaktif, profile, histori perubahan/penugasan | §4.1 | User/Profile CRUD, policy, transactions, audit, uniqueness, lifecycle tests | NOT VERIFIED |
+| ADM-06 | CRUD Guru, detail, aktif/nonaktif, profile, histori perubahan/penugasan | §4.1 | User/Profile CRUD, policy, transactions, audit, uniqueness, lifecycle tests | PARTIAL |
 | ADM-07 | CRUD Siswa, arsip/lulus/pindah/naik kelas, histori akademik | §4.2 | Profile CRUD, status transitions, history, no destructive deletion tests | NOT VERIFIED |
-| ADM-08 | Akun/akses: username, reset password, revoke sessions, first-login policy bila dipakai | §4.3 | Admin self-escalation denied, hashed password, audit, no secret output, tests | NOT VERIFIED |
+| ADM-08 | Akun/akses: username, reset password, revoke sessions, first-login policy bila dipakai | §4.3 | Admin self-escalation denied, hashed password, audit, no secret output, tests | PARTIAL |
 | ADM-09 | Template + import Guru | §5 | XLSX parser, MIME/size/header/preview/row errors, transaction/idempotency/concurrency | NOT VERIFIED |
 | ADM-10 | Template + import Siswa termasuk NIS/NISN/rombel/tahun | §5 | Duplicate/conflict detection, roster validation, preview/confirm, rollback tests | NOT VERIFIED |
 | ADM-11 | Export Guru terfilter dan diaudit; tanpa credential | §5 | Authorization, filter/pagination, safe columns, audit event, file test | NOT VERIFIED |
@@ -48,7 +48,7 @@ Belum ada baris ADM yang dinyatakan VERIFIED pada pembuatan matriks ini. Pemetaa
 
 ## ADDENDUM STATUS AUDIT TERBARU — 23 NOVEMBER 2026
 
-Matriks ADM-01–ADM-23 tetap menggunakan status **NOT VERIFIED** sampai ada bukti end-to-end. Penambahan atau pengetatan satu controller/API tidak cukup untuk menandai modul Admin selesai.
+Status matriks diperbarui per kebutuhan berdasarkan source dan test yang benar-benar dijalankan. Status **PARTIAL** berarti ada bagian implementasi dan bukti, tetapi seluruh acceptance pada baris tersebut belum terpenuhi. Penambahan satu halaman atau controller tidak cukup untuk menandai modul Admin selesai.
 
 ### Temuan source yang sudah dapat dicatat (parsial, bukan acceptance PASS)
 
@@ -71,10 +71,20 @@ Matriks ADM-01–ADM-23 tetap menggunakan status **NOT VERIFIED** sampai ada buk
 
 | Prioritas | ADM | Tindakan |
 |---|---|---|
-| P0 | ADM-06–ADM-10, ADM-13–ADM-17 | Lengkapi CRUD Guru/Siswa, akun, import, tahun/semester, rombel, mapel, assignment; uji scope, transaksi, uniqueness, audit dan histori. |
+| P0 | ADM-06–ADM-10, ADM-13–ADM-17 | Selesaikan sisa CRUD/detail/profil Guru dan akun; lanjutkan CRUD/arsip Siswa, import/export, tahun/semester, rombel, mapel, assignment; uji scope, transaksi, uniqueness, audit dan histori. |
 | P0 | ADM-18–ADM-19 | Tutup seluruh jalur write legacy; verifikasi registry, registrasi, CP read-only, TP/ATP assignment-scoped dan provenance. |
-| P1 | ADM-02–ADM-05, ADM-23 | Lengkapi identitas, logo/favicon, branding, kop, settings, backup/restore dengan validasi file/storage/policy. |
+| P1 | ADM-02–ADM-05, ADM-23 | Lengkapi sisa profil madrasah, logo/favicon, branding, kop, settings, backup/restore dengan validasi file/storage/policy. |
 | P1 | ADM-11–ADM-12, ADM-21–ADM-22 | Export aman tanpa credential, laporan administratif terfilter, audit log lengkap; Admin tidak mengakses nilai/Attempt/analitik hasil siswa. |
 | BLOCKED | ADM-20 | Tetap fail-closed sampai eligibility ujian pusat ditetapkan kanonis oleh owner; assignment tidak memberi izin operasional CBT. |
 
 Semua status tetap **NOT VERIFIED / PARTIAL** sampai tiap baris mempunyai bukti route/UI → policy → service → persistence → audit → test dan exact CI PASS.
+
+
+## Update status 24 November 2026
+
+- **ADM-02 — PARTIAL:** halaman Profil Madrasah, validasi identitas/NSM/NPSN/jenjang/negeri-swasta/alamat/kontak/Kepala Madrasah, penyimpanan tenant-local, dan audit changed-field names sudah tersedia. Logo, branding, dan kop tidak termasuk ADM-02 dan masih menunggu ADM-03–05.
+- **ADM-06 — PARTIAL:** akun Guru/Siswa dapat dibuat dan ditampilkan; status aktif/nonaktif, pencabutan token/sesi, dan reset password sudah diimplementasikan. Detail/edit profil, riwayat penugasan/perubahan, dan import/export belum lengkap.
+- **ADM-08 — PARTIAL:** reset password, revoke session/token, status akun, dan login terakhir sudah diimplementasikan. Kebijakan first-login password change belum dipakai; pengelolaan username/detail akun dan seluruh negative authorization matrix masih perlu diterima.
+- Bukti ADM-02: `docs/REPORT_ADM_02_TENANT_PROFILE_2026-11-24.md`.
+- Bukti account lifecycle: `docs/REPORT_ADM_ACCOUNT_LIFECYCLE_2026-11-24.md`.
+- Source ADM-02 diuji pada SHA `1e4f2c044609cf11b8a29eb8be381016508cbc98`; Tenant Backend CI #45402844847: 565 PHPUnit passed, 2.456 assertions.
