@@ -8,9 +8,11 @@ use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\TenantBrandingService;
+use App\Services\Reporting\ReportHeaderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -109,7 +111,6 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->actingAs($guru);
         Livewire::test(TenantBrandingAssetsManagement::class)->assertForbidden();
     }
-}
 
     public function test_replacing_app_logo_keeps_old_file_when_document_logo_still_references_it(): void
     {
@@ -169,7 +170,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
         try {
             $migration->down();
             $this->fail('Branding migration rollback must not drop columns without ownership metadata.');
-        } catch (\\LogicException $exception) {
+        } catch (\LogicException $exception) {
             $this->assertStringContainsString('forward-only', $exception->getMessage());
         }
 
@@ -177,3 +178,4 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->assertTrue(Schema::hasColumn('tenants', 'favicon_path'));
     }
 
+}
