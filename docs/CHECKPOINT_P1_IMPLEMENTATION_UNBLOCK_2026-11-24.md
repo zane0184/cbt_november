@@ -140,3 +140,47 @@ Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implem
 3. Implementasikan preflight, test anomali, fixture/benchmark, AuditService PII redaction, writer inventory, dan mass-assignment/authorization.
 4. Jalankan focused/full PHPUnit dan CI pada exact source commit hasil patch.
 5. STOP untuk review koordinator; jangan mulai P1-ID-03B sebelum P1-ID-03A selesai dan disetujui.
+
+
+---
+
+## ADDENDUM CHECKPOINT — refresh HEAD dan audit source P1-ID-03A (24 November 2026)
+
+### AUDIT
+- Branch work/p1-seven-targets-20261124: exact HEAD c6861410df8483d6cfb0c6e5aae8636244cb013b; compare branch ref identik (0 ahead / 0 behind).
+- PR #23 masih terdaftar pada hasil pencarian PR open-only dan judul [DRAFT]; tidak ada merge yang dilakukan. Base work/phpunit-41-root-cause-20261123 / 1c33e5d422175f9bd85d206230271a9fe5a4eecd.
+- Source aplikasi terakhir cd2b6ee8ed9d57604a06860e1dee399fb4b2b050. Deployment snapshot commit 2f13517217bcdb8ffb591f4df7751bcc4b7354ab; compare menunjukkan hanya dua dokumen berubah, bukan source aplikasi.
+- Artifact ZIP build #45363631190 / artifact 14906520236 berhasil diunduh untuk audit read-only. Paket berisi 10.026 entry, manifest commit 2f135172..., PHP 8.3.37, Composer 2.11.2, Laravel 13.42.0. Snapshot ekstraksi /mnt/data/CBT_AUDIT_SNAPSHOT_2f135172/ bukan checkout Git dan tidak dipakai untuk patch.
+- Workspace /mnt/data/CBT_MADRASAH_RECONSTRUCTION/ tidak ada. Git 2.47.3; PHP 8.4.24; PDO drivers kosong; Composer/MySQL/Docker/Podman tidak tersedia; DNS/HTTPS GitHub dari terminal gagal. Checkout asli belum pulih.
+- Pencarian file Project/Library untuk CBT REVISI 6 NOPEMBER 2026.zip tidak menemukan ZIP baseline.
+- Dua writer identitas teridentifikasi dalam app source: UserManagement::createUser() (validasi Admin permission/tenant/role dan transaksi) dan Phase7dBenchmarkCommand::seedWorkload() (fixture invalid: TeacherProfile tanpa status/NIP/NIK/employee_identifier dan NISN NISN_%03d). TeacherProfilePage::savePhone() memakai forceFill hanya untuk phone. Tidak ditemukan writer profile identitas lain atau raw SQL/query-builder write pada source aplikasi yang dipaketkan.
+- Database factories: 13 file, tanpa profile factory atau identity field. Seeders: lima file, tanpa seed identitas Guru/Siswa. Tests tidak termasuk deployment package; preflight test diambil terpisah dan hanya memiliki tiga skenario.
+- Migration tenant integrity mempunyai composite FK User/profile tenant, tetapi tidak ada unique user_id untuk profile cardinality. Preflight belum memeriksa relasi, role/cardinality, kategori silang, collision lintas kategori, schema columns lengkap, dan bukti immutability.
+- Inventory audit: 107 pemanggilan AuditService::log() pada 33 file caller. Dua bypass runtime AuditLog::create() berada pada InstallerService dan ExpireExamAttemptsCommand; migration konsolidasi role memiliki insert historis terpisah. AuditService belum meredaksi old/new payload secara terpusat.
+- HEAD dokumentasi c6861410: workflow runs dan combined status tidak mengembalikan hasil. Jangan klaim CI exact HEAD PASS. CI historis source tree #45363631214 tetap PASS 534/2.265.
+
+### DESAIN
+- Tutup schema/relasi/cardinality/role/kategori/cross-collision preflight dengan output tanpa PII dan tetap read-only.
+- Test setiap anomali, valid cases, cross-tenant allowance, missing schema, serta snapshot DB sebelum/sesudah.
+- Normalisasi benchmark dan uji cleanup pada exception.
+- Implementasikan redactor recursive terpusat untuk audit baru; tangani dua bypass runtime, jangan ubah histori.
+- Selesaikan review mass assignment/authorization dan backup byte-exact sebelum tiap source edit.
+
+### IMPLEMENTASI
+- Tidak ada source, migration, workflow, dependency, konfigurasi, atau database diubah.
+- Tidak ada source edit melalui Contents API.
+- Tidak ada checkout asli atau workspace writable yang pulih.
+- Tidak ada backup source baru.
+- Report dan checkpoint diperbarui sebagai dokumentasi saja.
+
+### PENGUJIAN
+- Audit statis source snapshot dan inventaris pencarian dijalankan.
+- Local PHP lint/Composer/PHPUnit/preflight/benchmark/MySQL: NOT RUN.
+- CI exact HEAD dokumentasi: NO RUN/NO STATUS RETURNED.
+- Tidak ada migration, production DB, staging, deployment, atau merge.
+
+### STATUS / NEXT
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- STOP sebelum P1-ID-03B untuk review koordinator.
+- Langkah berikutnya: pulihkan checkout Git asli + PHP 8.3/Composer/PDO MySQL/MySQL 8 disposable; lalu backup byte-exact dan implementasikan P1-ID-03A saja.
