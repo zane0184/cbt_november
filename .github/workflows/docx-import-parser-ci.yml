@@ -6,6 +6,7 @@ on:
       - work/docx-import-parser-20261125
       - work/benchmark-cleanup-proof-20261125
       - work/p0-csv-row-limit-20261125
+      - work/limited-zip-p0-20261125
   workflow_dispatch:
 
 permissions:
