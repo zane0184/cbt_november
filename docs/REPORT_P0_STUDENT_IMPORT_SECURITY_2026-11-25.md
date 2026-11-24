@@ -81,3 +81,30 @@ Catatan: hasil di atas berasal dari exact source SHA 77e46497d4341078b9310c6454c
 2. Lakukan staging acceptance pada salinan/staging yang terisolasi setelah persetujuan operasional; jangan sentuh database produksi.
 3. Setelah Student Import security diterima, lanjutkan DOCX question parser sesuai owner addendum 25 November: TRUE_FALSE_GROUP tiga stable IDs, scoring proporsional, shared stimulus first-class dan immutable snapshot.
 4. Port Web Siswa runner secara selektif; jangan membawa ExamSession/SessionRoom/session lifecycle dari PR #13.
+
+
+## 7. UPDATE AUDIT — DIVERGENCE SETELAH PR DIBUAT
+
+Setelah PR #24 dibuat, branch integrasi `work/benchmark-cleanup-proof-20261125` bergerak maju secara independen. Source aktual kini memiliki implementasi terpisah:
+- `backend-laravel/app/Services/Import/XlsxPackagePreflight.php`
+- `backend-laravel/app/Services/Import/StudentImportReadFilter.php`
+- `backend-laravel/tests/Feature/StudentImportXlsxPreflightTest.php`
+- perubahan lanjutan pada `StudentImportService.php`.
+
+Head integrasi terbaru yang terverifikasi saat update: `653412daace51fa973c697f98195a9fa8a91219a`.
+Implementasi branch P0 yang dibuat sebelumnya tidak boleh digabungkan langsung karena duplikasi dan divergence.
+
+PR #24 telah diubah judul/body menjadi **SUPERSEDED — DO NOT MERGE** dan tetap DRAFT/OPEN sebagai catatan audit. PR #23 tidak disentuh.
+
+### Temuan tambahan pada source integrasi
+1. XLSX preflight saat ini lebih komprehensif daripada patch branch P0: entry count, expanded size, compression ratio, path safety, symlink, macro/OLE/external relationship, XML DTD/entity, workbook relationship, satu worksheet visible, dimension/cell bounds, formulas, shared strings, styles, dan per-cell byte limit.
+2. CI pada SHA `385e66cacda4b33b1c61ba6abc75a2ad2dd3d44a` gagal pada `StudentImportTest::test_xlsx_worksheet_dimensions_are_rejected_before_php_spreadsheet_load` karena component tidak menerima validation error.
+3. Perbandingan source menunjukkan preflight menggunakan `MAX_ROWS = 5001`, sehingga batas row off-by-one. Commit `653412d` mengubahnya menjadi `5000` dan memulai CI run `45480853326`. Run tersebut masih berjalan pada saat update; hasil final belum boleh diklaim.
+4. Audit source `StudentImportService::readCsv()` menemukan record kosong diproses sebagai row biasa dan jumlah kolom diperiksa sebelum `isBlankRow()` dapat digunakan oleh preview. Blank line CSV berpotensi ditolak walaupun preview memiliki mekanisme skip blank row. Ini perlu dikonfirmasi dengan test regresi dan diperbaiki bila kontrak import memang mengizinkan blank row.
+5. Test saat ini belum mencakup batas CSV yang sudah diterapkan: record 256 KiB, 32 kolom, cell 4 KiB, UTF-8/NUL, total cell, serta blank rows. Tambahkan acceptance tests pada branch integrasi setelah perubahan agent saat ini stabil.
+
+### Keputusan koordinasi
+- Source `work/benchmark-cleanup-proof-20261125` adalah sumber kebenaran integrasi terbaru.
+- Jangan cherry-pick atau merge branch P0 lama.
+- Tunggu CI run `45480853326` pada SHA `653412d`.
+- Setelah branch stabil, buat branch korektif baru dari head integrasi terkini untuk blank-row CSV dan coverage batas CSV; backup source/test terlebih dahulu.
