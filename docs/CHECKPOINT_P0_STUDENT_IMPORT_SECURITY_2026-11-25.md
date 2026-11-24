@@ -65,3 +65,28 @@ Branch integrasi sudah memiliki `XlsxPackagePreflight`, `StudentImportReadFilter
 5. Jalankan CI PHP 8.3/8.4 + MySQL 8 disposable.
 6. Tutup PR #24 hanya setelah rekonsiliasi selesai; jangan merge.
 7. Lanjutkan DOCX parser dan Web Siswa runner setelah P0 import gate lulus.
+
+
+## UPDATE — INTEGRATION CI PASS / CSV FOLLOW-UP
+
+Integration source branch `work/benchmark-cleanup-proof-20261125` @ `653412daace51fa973c697f98195a9fa8a91219a` passed GitHub Actions run `45480853326`:
+- PHP 8.3 + MySQL 8.0.46 InnoDB: StudentImportTest 11/52 assertions; benchmark denial test 1/20; full PHPUnit 606 passed, 1 skipped, 0 failed, 3.058 assertions.
+- PHP 8.4 + MySQL 8.0.46 InnoDB: same results.
+- This is CI verification, not staging/VPS operational acceptance.
+
+CSV blank-row follow-up is being implemented on a separate branch based on the exact integration SHA:
+`work/p0-csv-import-hardening-20261125`.
+Backups of StudentImportService.php, StudentImportTest.php, and docx-import-parser-ci.yml were made before patch and verified byte-identical by Git blob SHA.
+
+CSV follow-up implementation:
+- skip blank physical records before data-row/cell budget accounting;
+- preserve physical record numbers;
+- add 8 tests for blank rows, row numbering, 32-column limit, 256 KiB record limit, 4 KiB cell limit, UTF-8, NUL, and 5,000-row limit;
+- add branch trigger and git diff --check to CI.
+
+CSV follow-up CI:
+- run 45482033725 (commit 25ba5dd): IN PROGRESS.
+- run 45482057434 (head 6232e180d586a9589d93bb61b882a607a69098d0): PENDING.
+Do not mark CSV follow-up complete until latest exact head PHP 8.3/8.4 focused and full suites pass.
+
+PR #24 remains DRAFT/OPEN and explicitly SUPERSEDED — DO NOT MERGE. PR #23 remains unchanged.
