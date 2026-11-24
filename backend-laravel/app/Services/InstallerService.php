@@ -7,6 +7,7 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
