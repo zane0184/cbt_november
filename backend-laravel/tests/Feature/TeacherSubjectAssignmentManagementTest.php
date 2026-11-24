@@ -24,6 +24,7 @@ use App\Services\AcademicYearManagementService;
 use App\Services\TenantAcademicBootstrapService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -174,5 +175,40 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame('MI_1', $assignment->curriculum_context_snapshot['grade']['code']);
         $this->assertSame($subjectNode->id, $assignment->curriculum_context_snapshot['subject']['official_structure_id']);
         $this->assertSame($mapping->id, $mapping->fresh()->id);
+
+        $inactiveTeacherUser = User::create([
+            'tenant_id' => $tenantId,
+            'name' => 'Guru Tidak Aktif',
+            'username' => 'guru.assignment.inactive',
+            'password' => bcrypt('StrongTestPassword123!'),
+        ]);
+        $inactiveTeacherUser->roles()->sync([$guruRole->id]);
+        DB::table('users')->where('id', $inactiveTeacherUser->id)->update(['is_active' => false]);
+
+        $inactiveTeacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
+            'tenant_id' => $tenantId,
+            'user_id' => $inactiveTeacherUser->id,
+            'full_name' => 'Guru Tidak Aktif',
+            'employment_status' => 'PNS',
+            'nip' => '198001012006041002',
+        ]));
+
+        Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->set('selectedTeacherProfileId', (string) $inactiveTeacherProfile->id)
+            ->set('selectedSubjectId', (string) $subject->id)
+            ->set('selectedRombelId', (string) $rombel->id)
+            ->set('selectedSemesterId', (string) $semester->id)
+            ->set('selectedRegistrationId', (string) $registration->id)
+            ->set('startsAt', now()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createAssignment')
+            ->assertHasErrors(['selectedTeacherProfileId']);
+
+        $this->assertDatabaseMissing('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $inactiveTeacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $rombel->id,
+        ]);
     }
 }
