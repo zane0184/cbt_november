@@ -18,6 +18,10 @@ class StudentProfile extends Model
         'birth_place', 'birth_date', 'parent_name', 'phone', 'address'
     ];
 
+    protected $hidden = [
+        'nisn',
+    ];
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
