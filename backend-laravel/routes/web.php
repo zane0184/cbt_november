@@ -13,6 +13,7 @@ use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\CurriculumRegistryManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Admin\TenantProfileManagement;
 
 Route::get('/', function () {
     if (!auth()->check()) {
@@ -74,6 +75,7 @@ Route::middleware(['auth', 'active.user', 'tenant', 'license'])->prefix('student
 Route::middleware(['auth', 'active.user', 'tenant', 'license'])->group(function () {
     // Dedicated Dashboards
     Route::get('/admin/dashboard', Dashboard::class)->name('admin.dashboard');
+    Route::get('/admin/school-profile', TenantProfileManagement::class)->name('admin.school-profile');
 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);

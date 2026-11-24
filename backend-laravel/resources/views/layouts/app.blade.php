@@ -65,6 +65,11 @@
                     <a href="/admin/dashboard" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/dashboard') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                         <span aria-hidden="true">▦</span><span>Dashboard Admin</span>
                     </a>
+                    @if($u->hasPermission('tenant.manage'))
+                        <a href="/admin/school-profile" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/school-profile*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span aria-hidden="true">⌂</span><span>Profil Madrasah</span>
+                        </a>
+                    @endif
                     @if($u->hasPermission('academic.manage'))
                         <a href="/admin/academic" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/academic*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span aria-hidden="true">▤</span><span>Data Akademik & Rombel</span>
@@ -142,6 +147,9 @@
             <nav aria-label="Navigasi mobile" class="max-h-[70vh] space-y-1 overflow-y-auto border-t border-cardBorder py-3 text-sm">
                 @if($isAdmin)
                     <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/dashboard">Dashboard Admin</a>
+                    @if($u->hasPermission('tenant.manage'))
+                        <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/school-profile">Profil Madrasah</a>
+                    @endif
                     @if($u->hasPermission('academic.manage'))
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/academic">Data Akademik & Rombel</a>
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/teacher-assignments">Penugasan Guru</a>
