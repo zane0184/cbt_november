@@ -18,6 +18,14 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 class StudentImportService
 {
     private const MAX_ROWS = 5000;
+    private const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+    private const MAX_CSV_COLUMNS = 32;
+    private const MAX_CSV_RECORD_BYTES = 65536;
+    private const MAX_ZIP_ENTRIES = 256;
+    private const MAX_ZIP_ENTRY_BYTES = 32 * 1024 * 1024;
+    private const MAX_ZIP_TOTAL_EXPANDED_BYTES = 64 * 1024 * 1024;
+    private const MAX_ZIP_COMPRESSION_RATIO = 100;
+    private const MAX_XML_ENTRY_BYTES = 32 * 1024 * 1024;
 
     private const OPTIONAL_HEADERS = [
         'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
