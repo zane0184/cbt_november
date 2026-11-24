@@ -75,6 +75,7 @@ jobs:
             --exclude='.env' \
             --exclude='.git/' \
             --exclude='backup_before_patch/' \
+            --exclude='backups/' \
             --exclude='tests/' \
             --exclude='docs/' \
             --exclude='phpunit.xml' \
@@ -150,6 +151,7 @@ jobs:
           test ! -e backend-laravel/.env
           test ! -d backend-laravel/tests
           test ! -d backend-laravel/backup_before_patch
+          test ! -d backend-laravel/backups
 
           if find backend-laravel \( -type f \( -name '.env' -o -name 'phpunit.xml' -o -name 'phpunit.mysql.xml' -o -name 'phpunit.xml.dist' -o -name '.phpunit.result.cache' \) -o -type d -name '.phpunit.cache' \) | grep -q .; then
             echo 'Forbidden environment/test artifact found in deployment tree.' >&2
@@ -165,7 +167,7 @@ jobs:
           zip -qr "$ARCHIVE" CBT_MADRASAH_WEB_DEPLOYMENT
           unzip -t "$ARCHIVE"
           unzip -Z1 "$ARCHIVE" > "$ARCHIVE.contents.txt"
-          if grep -E '(^|/)backup_before_patch/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/tests/|(^|/)\.env$|(^|/)phpunit\.xml([^/]*$)|(^|/)\.phpunit\.cache/|DemoDataSeeder\.php|RuntimeTestSeeder\.php|phpunit\.mysql\.xml' "$ARCHIVE.contents.txt"; then
+          if grep -E '(^|/)backup_before_patch/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/backups/|^CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/tests/|(^|/)\.env$|(^|/)phpunit\.xml([^/]*$)|(^|/)\.phpunit\.cache/|DemoDataSeeder\.php|RuntimeTestSeeder\.php|phpunit\.mysql\.xml' "$ARCHIVE.contents.txt"; then
             echo 'Archive contains a forbidden path.' >&2
             exit 1
           fi
