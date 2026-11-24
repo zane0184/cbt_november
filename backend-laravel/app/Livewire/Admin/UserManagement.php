@@ -6,6 +6,7 @@ use App\Models\Role;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -133,7 +134,7 @@ class UserManagement extends Component
                 $nuptk = trim((string) $this->nuptk);
                 $nik = trim((string) $this->nik);
                 $employeeIdentifier = in_array($this->employmentStatus, ['PNS', 'PPPK'], true) ? $nip : $nik;
-                TeacherProfile::query()->create([
+                $profile = TeacherProfile::query()->create([
                     'user_id' => $user->id,
                     'full_name' => trim($this->name),
                     'employment_status' => trim((string) $this->employmentStatus) !== '' ? $this->employmentStatus : null,
@@ -142,9 +143,47 @@ class UserManagement extends Component
                     'nik' => $nik !== '' ? $nik : null,
                     'employee_identifier' => $employeeIdentifier !== '' ? $employeeIdentifier : null,
                 ]);
+
+                app(AuditService::class)->log(
+                    'TEACHER_PROFILE_CREATED',
+                    'TeacherProfile',
+                    $profile->id,
+                    null,
+                    [
+                        'user_id' => $user->id,
+                        'employment_status' => $profile->employment_status,
+                        'has_nip' => $nip !== '',
+                        'has_nik' => $nik !== '',
+                        'has_nuptk' => $nuptk !== '',
+                    ]
+                );
             } elseif ($this->selectedRole === 'SISWA') {
-                StudentProfile::query()->create(['user_id' => $user->id, 'full_name' => trim($this->name), 'nisn' => trim($this->nisn)]);
+                $profile = StudentProfile::query()->create([
+                    'user_id' => $user->id,
+                    'full_name' => trim($this->name),
+                    'nisn' => trim($this->nisn),
+                ]);
+
+                app(AuditService::class)->log(
+                    'STUDENT_PROFILE_CREATED',
+                    'StudentProfile',
+                    $profile->id,
+                    null,
+                    ['user_id' => $user->id, 'has_nisn' => trim((string) $this->nisn) !== '']
+                );
             }
+
+            app(AuditService::class)->log(
+                'USER_CREATED',
+                'User',
+                $user->id,
+                null,
+                [
+                    'role' => $role->name,
+                    'profile_type' => $this->selectedRole === 'GURU' ? 'TeacherProfile' : 'StudentProfile',
+                    'profile_id' => $profile->id,
+                ]
+            );
         }, 3);
 
         $createdName = $this->name;
