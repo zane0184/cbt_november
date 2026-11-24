@@ -403,12 +403,16 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
         $otherTenant = Tenant::create(['name' => 'Madrasah Other', 'code' => 'BRAND-B']);
         $role = Role::where('name', 'ADMIN_MADRASAH')->firstOrFail();
+
+        // User creation derives tenant_id from the active installation context;
+        // tenant_id is intentionally not mass assignable on User.
+        $this->setTenantContext((string) $otherTenant->id);
         $otherAdmin = User::create([
-            'tenant_id' => $otherTenant->id,
             'name' => 'Admin Other',
             'email' => 'admin.other-branding@example.test',
             'password' => 'password-admin-other',
         ]);
+        $this->assertSame((string) $otherTenant->id, (string) $otherAdmin->tenant_id);
         $otherAdmin->roles()->sync([$role->id]);
 
         // User B + Context B: direct service use (without a Livewire request)
@@ -429,6 +433,11 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->assertNull($branding->localPath($appLogoPath));
         $this->assertNull($branding->publicUrl($appLogoPath));
         $this->assertNull(app(ReportHeaderService::class)->getLogoDataUri($this->tenant->fresh()));
+
+        // An installation B caller cannot delete an A asset even when the
+        // caller supplies A's tenant UUID explicitly.
+        $branding->deleteManaged($appLogoPath, (string) $this->tenant->id);
+        $this->assertFileExists(storage_path('app/public/' . $appLogoPath));
 
         // User A + Context B is inconsistent and must fail closed.
         $this->actingAs($this->admin, 'web');
@@ -657,29 +666,37 @@ class TenantBrandingAssetsManagementTest extends TestCase
     }
 
 
-    public function test_branding_resolution_is_isolated_between_two_disposable_installation_databases(): void
+    public function test_branding_resolution_isolated_between_two_disposable_installations_with_separate_databases_and_storage_roots(): void
     {
         if (
             !app()->environment('testing')
             || DB::connection()->getDriverName() !== 'mysql'
             || !str_starts_with((string) config('database.connections.mysql.database'), 'cbt_ci_')
         ) {
-            $this->markTestSkipped('Two-installation isolation requires the isolated cbt_ci_* MySQL test database.');
+            $this->markTestSkipped('Two-installation acceptance requires isolated cbt_ci_* MySQL databases.');
         }
-        $databaseA = 'cbt_brand_a_' . strtolower(Str::random(10));
-        $databaseB = 'cbt_brand_b_' . strtolower(Str::random(10));
+
+        $originalDefault = DB::getDefaultConnection();
+        $originalStoragePath = app()->storagePath();
+        $databaseA = 'cbt_install_a_' . strtolower(Str::random(10));
+        $databaseB = 'cbt_install_b_' . strtolower(Str::random(10));
+        $storageA = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cbt-install-a-' . strtolower(Str::random(12));
+        $storageB = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cbt-install-b-' . strtolower(Str::random(12));
         $tenantAId = (string) Str::uuid();
         $tenantBId = (string) Str::uuid();
-        $pathA = 'tenants/' . $tenantAId . '/branding/app-logo-a.png';
-        $pathB = 'tenants/' . $tenantBId . '/branding/app-logo-b.png';
+        $installationAId = (string) Str::uuid();
+        $installationBId = (string) Str::uuid();
         $mysqlConfig = config('database.connections.mysql');
+        $createdA = false;
+        $createdB = false;
+        $branding = app(TenantBrandingService::class);
+        $header = app(ReportHeaderService::class);
 
         config([
             'database.connections.installation_control' => $mysqlConfig,
             'database.connections.installation_a' => array_merge($mysqlConfig, ['database' => $databaseA]),
             'database.connections.installation_b' => array_merge($mysqlConfig, ['database' => $databaseB]),
         ]);
-
         DB::purge('installation_control');
         DB::purge('installation_a');
         DB::purge('installation_b');
@@ -688,19 +705,30 @@ class TenantBrandingAssetsManagementTest extends TestCase
             DB::connection('installation_control')->statement(
                 'CREATE DATABASE ' . $databaseA . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
             );
+            $createdA = true;
             DB::connection('installation_control')->statement(
                 'CREATE DATABASE ' . $databaseB . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
             );
+            $createdB = true;
 
             foreach (['installation_a', 'installation_b'] as $connection) {
                 Schema::connection($connection)->create('local_installation_identities', function (Blueprint $table): void {
                     $table->id();
                     $table->uuid('tenant_id');
+                    $table->uuid('installation_id')->unique();
+                    $table->string('key_id', 80)->unique();
+                    $table->text('public_key');
+                    $table->longText('encrypted_private_key');
+                    $table->char('key_fingerprint', 64);
+                    $table->string('registered_domain', 190);
+                    $table->string('product_code', 64);
+                    $table->string('product_version', 40);
                     $table->timestamps();
                 });
                 Schema::connection($connection)->create('tenants', function (Blueprint $table): void {
                     $table->uuid('id')->primary();
                     $table->string('name');
+                    $table->string('code')->unique();
                     $table->string('logo_path', 500)->nullable();
                     $table->string('document_logo_path', 500)->nullable();
                     $table->string('favicon_path', 500)->nullable();
@@ -711,11 +739,27 @@ class TenantBrandingAssetsManagementTest extends TestCase
 
             DB::connection('installation_a')->table('local_installation_identities')->insert([
                 'tenant_id' => $tenantAId,
+                'installation_id' => $installationAId,
+                'key_id' => 'test-key-a',
+                'public_key' => 'public-key-a',
+                'encrypted_private_key' => 'encrypted-private-key-a',
+                'key_fingerprint' => str_repeat('a', 64),
+                'registered_domain' => 'a.example.test',
+                'product_code' => 'CBT-MADRASAH',
+                'product_version' => 'test',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
             DB::connection('installation_b')->table('local_installation_identities')->insert([
                 'tenant_id' => $tenantBId,
+                'installation_id' => $installationBId,
+                'key_id' => 'test-key-b',
+                'public_key' => 'public-key-b',
+                'encrypted_private_key' => 'encrypted-private-key-b',
+                'key_fingerprint' => str_repeat('b', 64),
+                'registered_domain' => 'b.example.test',
+                'product_code' => 'CBT-MADRASAH',
+                'product_version' => 'test',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -723,74 +767,148 @@ class TenantBrandingAssetsManagementTest extends TestCase
             DB::connection('installation_a')->table('tenants')->insert([
                 'id' => $tenantAId,
                 'name' => 'Instalasi A',
-                'logo_path' => $pathA,
-                'document_logo_path' => $pathA,
+                'code' => 'INSTALL-A',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
             DB::connection('installation_b')->table('tenants')->insert([
                 'id' => $tenantBId,
                 'name' => 'Instalasi B',
-                'logo_path' => $pathB,
-                'document_logo_path' => $pathB,
+                'code' => 'INSTALL-B',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
 
-            foreach ([[$pathA, 'logo-a.png'], [$pathB, 'logo-b.png']] as [$path, $filename]) {
-                File::ensureDirectoryExists(dirname(storage_path('app/public/' . $path)));
-                $image = UploadedFile::fake()->image($filename, 120, 120);
-                File::copy($image->getRealPath(), storage_path('app/public/' . $path));
-            }
-
             Auth::shouldUse('web');
             Auth::guard('web')->forgetUser();
             Auth::guard('sanctum')->forgetUser();
+
+            // Installation A: database A and storage A are selected together.
             config(['database.default' => 'installation_a']);
-            DB::purge('installation_a');
             DB::setDefaultConnection('installation_a');
-            $this->assertSame('installation_a', DB::getDefaultConnection());
-            $this->assertSame($tenantAId, DB::table('local_installation_identities')->value('tenant_id'));
+            DB::purge('installation_a');
+            app()->useStoragePath($storageA);
+            $this->setTenantContext($tenantAId);
+            $this->assertSame($databaseA, DB::connection()->getDatabaseName());
+            $this->assertSame($storageA, app()->storagePath());
+            $this->assertSame($installationAId, DB::table('local_installation_identities')->value('installation_id'));
 
-            $branding = app(TenantBrandingService::class);
-            $header = app(ReportHeaderService::class);
             $tenantA = $branding->currentTenant();
-
             $this->assertNotNull($tenantA);
             $this->assertSame($tenantAId, (string) $tenantA->id);
             $this->assertSame('Instalasi A', $tenantA->name);
-            $this->assertNotNull($branding->localPath($pathA));
-            $this->assertNull($branding->localPath($pathB));
-            $this->assertNotNull($header->getLogoDataUri($tenantA));
 
+            $pathAOld = $branding->storeUpload(
+                UploadedFile::fake()->image('installation-a-old.png', 120, 120),
+                $tenantAId,
+                'app-logo'
+            );
+            DB::table('tenants')->where('id', $tenantAId)->update(['logo_path' => $pathAOld]);
+            $this->assertFileExists(storage_path('app/public/' . $pathAOld));
+            $this->assertNotNull($branding->localPath($pathAOld));
+            $this->assertIsString($header->getLogoDataUri($tenantA));
+
+            $pathANew = $branding->storeUpload(
+                UploadedFile::fake()->image('installation-a-new.png', 140, 140),
+                $tenantAId,
+                'app-logo'
+            );
+            DB::table('tenants')->where('id', $tenantAId)->update(['logo_path' => $pathANew]);
+            $branding->deleteManaged($pathAOld, $tenantAId);
+            $this->assertFileDoesNotExist(storage_path('app/public/' . $pathAOld));
+            $this->assertFileExists(storage_path('app/public/' . $pathANew));
+
+            // Installation B: both the database and storage root change.
             config(['database.default' => 'installation_b']);
-            DB::purge('installation_b');
             DB::setDefaultConnection('installation_b');
-            $this->assertSame('installation_b', DB::getDefaultConnection());
-            $this->assertSame($tenantBId, DB::table('local_installation_identities')->value('tenant_id'));
+            DB::purge('installation_b');
+            app()->useStoragePath($storageB);
             $this->setTenantContext($tenantBId);
-            $tenantB = $branding->currentTenant();
+            $this->assertSame($databaseB, DB::connection()->getDatabaseName());
+            $this->assertSame($storageB, app()->storagePath());
+            $this->assertSame($installationBId, DB::table('local_installation_identities')->value('installation_id'));
+            $this->assertFalse(DB::table('tenants')->where('id', $tenantAId)->exists());
 
+            $tenantB = $branding->currentTenant();
             $this->assertNotNull($tenantB);
             $this->assertSame($tenantBId, (string) $tenantB->id);
             $this->assertSame('Instalasi B', $tenantB->name);
-            $this->assertNotNull($branding->localPath($pathB));
-            $this->assertNull($branding->localPath($pathA));
+
+            $pathBOld = $branding->storeUpload(
+                UploadedFile::fake()->image('installation-b-old.png', 120, 120),
+                $tenantBId,
+                'app-logo'
+            );
+            DB::table('tenants')->where('id', $tenantBId)->update(['logo_path' => $pathBOld]);
+            $this->assertFileExists(storage_path('app/public/' . $pathBOld));
+            $this->assertNotNull($branding->localPath($pathBOld));
+            $this->assertIsString($header->getLogoDataUri($tenantB));
+
+            // B cannot read, replace, or delete A's asset, even if given A's UUID.
+            $this->assertNull($branding->localPath($pathANew, $tenantAId));
+            $this->assertNull($branding->publicUrl($pathANew, $tenantAId));
+            $branding->deleteManaged($pathANew, $tenantAId);
+            $this->assertFileExists($storageA . '/app/public/' . $pathANew);
             $this->assertNull($header->getLogoDataUri($tenantA));
-            $this->assertNotNull($header->getLogoDataUri($tenantB));
-        } finally {
-            DB::setDefaultConnection('mysql');
-            config(['database.default' => 'mysql']);
-            DB::purge('installation_a');
-            DB::purge('installation_b');
 
             try {
-                DB::connection('installation_control')->statement('DROP DATABASE IF EXISTS ' . $databaseA);
-                DB::connection('installation_control')->statement('DROP DATABASE IF EXISTS ' . $databaseB);
-            } finally {
-                DB::purge('installation_control');
-                File::deleteDirectory(storage_path('app/public/tenants/' . $tenantAId));
-                File::deleteDirectory(storage_path('app/public/tenants/' . $tenantBId));
+                $branding->storeUpload(
+                    UploadedFile::fake()->image('cross-installation.png', 120, 120),
+                    $tenantAId,
+                    'app-logo'
+                );
+                $this->fail('Installation B must not upload into installation A.');
+            } catch (\RuntimeException $exception) {
+                $this->assertStringContainsString('tidak sesuai', $exception->getMessage());
+            }
+
+            $pathBNew = $branding->storeUpload(
+                UploadedFile::fake()->image('installation-b-new.png', 140, 140),
+                $tenantBId,
+                'app-logo'
+            );
+            DB::table('tenants')->where('id', $tenantBId)->update(['logo_path' => $pathBNew]);
+            $branding->deleteManaged($pathBOld, $tenantBId);
+            $this->assertFileDoesNotExist($storageB . '/app/public/' . $pathBOld);
+            $this->assertFileExists($storageB . '/app/public/' . $pathBNew);
+
+            // Switch back to A and prove the inverse boundary and independent DB.
+            config(['database.default' => 'installation_a']);
+            DB::setDefaultConnection('installation_a');
+            DB::purge('installation_a');
+            app()->useStoragePath($storageA);
+            $this->setTenantContext($tenantAId);
+            $this->assertSame($databaseA, DB::connection()->getDatabaseName());
+            $this->assertFalse(DB::table('tenants')->where('id', $tenantBId)->exists());
+            $this->assertNotNull($branding->localPath($pathANew, $tenantAId));
+            $this->assertNull($branding->localPath($pathBNew, $tenantBId));
+            $branding->deleteManaged($pathBNew, $tenantBId);
+            $this->assertFileExists($storageB . '/app/public/' . $pathBNew);
+
+            // Delete A's current asset and verify only A's storage is mutated.
+            DB::table('tenants')->where('id', $tenantAId)->update(['logo_path' => null]);
+            $branding->deleteManaged($pathANew, $tenantAId);
+            $this->assertFileDoesNotExist($storageA . '/app/public/' . $pathANew);
+            $this->assertFileExists($storageB . '/app/public/' . $pathBNew);
+        } finally {
+            DB::setDefaultConnection($originalDefault);
+            config(['database.default' => $originalDefault]);
+            DB::purge('installation_a');
+            DB::purge('installation_b');
+            DB::purge('installation_control');
+            app()->useStoragePath($originalStoragePath);
+
+            File::deleteDirectory($storageA);
+            File::deleteDirectory($storageB);
+
+            if ($createdA || $createdB) {
+                $control = DB::connection('mysql');
+                if ($createdA) {
+                    $control->statement('DROP DATABASE IF EXISTS ' . $databaseA);
+                }
+                if ($createdB) {
+                    $control->statement('DROP DATABASE IF EXISTS ' . $databaseB);
+                }
             }
         }
     }
