@@ -47,3 +47,16 @@ Setiap temuan memakai dua dimensi dampak: ZIP uji operasional terbatas dan kelen
 - Temuan route-level masih NOT VERIFIED sampai seluruh controller/action/policy dipetakan dan negative authorization tests dijalankan.
 - Head Agent 1 tetap `a65b4604495e8bcc153bf0e09df12a9efb11543a` saat pemeriksaan ulang; branch audit berada pada `7c3f7798b5b31cd5e3b4ff0e9696f4e2bf25a3ae`.
 - Tidak ada perubahan source aplikasi.
+
+
+## Koreksi prioritas pengguna — 2026-11-25
+- Instruksi terbaru membatasi Agent 2 pada **P0 untuk ZIP SIAP UJI OPERASIONAL TERBATAS**. Audit seluruh fitur CBT final dihentikan sementara; fitur nonkritis cukup dicatat sebagai backlog.
+- Laporan fokus: `docs/ZIP_LIMITED_P0_AUDIT_2026-11-25.md`.
+- Source Agent 1 diverifikasi ulang: branch `work/benchmark-cleanup-proof-20261125` masih pada `a65b4604495e8bcc153bf0e09df12a9efb11543a`.
+- Branch audit sebelum checkpoint ini: `25fa80b587708247a68ab0474cd68ace63340749`; branch audit hanya berisi dokumentasi QA.
+- **Blocker implementasi terkonfirmasi:** (1) instalasi baru tidak menyediakan tahun pelajaran/semester/tingkat kelas pada setup Admin/installer; (2) konten CP resmi belum diimpor/checksum-verified, padahal Bank Soal dan Exam Builder mewajibkan mapping CP/TP.
+- **Release gates belum terverifikasi:** clean-install E2E opt-in pada MySQL disposable; browser E2E alur Admin→Guru→Siswa→Attempt/Answer/Submit/Score; workflow ZIP dijalankan pada SHA final dan hasil ekstraksi diuji.
+- CI Agent 1 run `45482223886`: kedua job PHP 8.3/MySQL 8.0 dan PHP 8.4/MySQL 8.0 sukses; masing-masing full suite 619 passed, 1 skipped (3110 assertions); Student Import acceptance 20 passed (77 assertions). Ini bukti CI Agent 1, bukan tes lokal Agent 2.
+- **Dikeluarkan dari blocker ZIP terbatas:** edit profil, Import Guru massal (Guru bisa dibuat manual), monitoring Admin, penugasan Proktor, DOCX import bila input soal manual/Excel mencukupi, dan Android native (ditunda sampai Juni 2027).
+- Tidak ada source aplikasi, migration, workflow, database, VPS, deployment, atau PR Agent 1 yang diubah.
+- Posisi berikutnya: serahkan daftar dua blocker source dan release gates kepada Agent 1; audit ulang hanya setelah ada commit baru atau bukti E2E/ZIP yang bisa diperiksa.
