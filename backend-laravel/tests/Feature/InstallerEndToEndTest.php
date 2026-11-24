@@ -136,6 +136,9 @@ class InstallerEndToEndTest extends TestCase
             foreach ($gradeRows as $gradeRow) {
                 $this->assertSame($expectedPhase[$gradeRow->code] ?? null, $gradeRow->phase_code);
             }
+            $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $created['tenant_id'])->count());
+            $this->assertSame(12, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->count());
+            $this->assertSame(0, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('is_active', true)->count());
 
             $tenantContext = app(TenantContext::class);
             $previousTenantId = $tenantContext->getTenantId();
@@ -161,7 +164,7 @@ class InstallerEndToEndTest extends TestCase
             $this->assertSame(2, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('academic_year_id', $createdYear->id)->count());
             $this->assertSame(0, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->where('is_active', true)->count());
             $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $created['tenant_id'])->whereIn('name', ['2026/2027', '2027/2028', '2028/2029', '2029/2030', '2030/2031', '2031/2032'])->count());
-            $this->assertSame(12, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->whereIn('academic_year_id', DB::table('academic_years')->select('id')->where('tenant_id', $created['tenant_id']))->count());
+            $this->assertSame(14, DB::table('semesters')->where('tenant_id', $created['tenant_id'])->count());
 
             $ganjilId = DB::table('semesters')
                 ->where('tenant_id', $created['tenant_id'])
