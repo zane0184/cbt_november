@@ -10,8 +10,12 @@ use App\Models\User;
 use App\Services\TenantBrandingService;
 use App\Services\Reporting\ReportHeaderService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Schema;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -411,6 +415,127 @@ class TenantBrandingAssetsManagementTest extends TestCase
         Livewire::test(TenantBrandingAssetsManagement::class)->call('removeAppLogo')->assertHasNoErrors();
         $this->assertNull($this->tenant->fresh()->logo_path);
         $this->assertFileDoesNotExist(storage_path('app/public/' . $newPath));
+    }
+
+
+    public function test_branding_resolution_is_isolated_between_two_disposable_installation_databases(): void
+    {
+        $databaseA = 'cbt_brand_a_' . strtolower(Str::random(10));
+        $databaseB = 'cbt_brand_b_' . strtolower(Str::random(10));
+        $tenantAId = (string) Str::uuid();
+        $tenantBId = (string) Str::uuid();
+        $pathA = 'tenants/' . $tenantAId . '/branding/app-logo-a.png';
+        $pathB = 'tenants/' . $tenantBId . '/branding/app-logo-b.png';
+        $mysqlConfig = config('database.connections.mysql');
+
+        config([
+            'database.connections.installation_control' => $mysqlConfig,
+            'database.connections.installation_a' => array_merge($mysqlConfig, ['database' => $databaseA]),
+            'database.connections.installation_b' => array_merge($mysqlConfig, ['database' => $databaseB]),
+        ]);
+
+        DB::purge('installation_control');
+        DB::purge('installation_a');
+        DB::purge('installation_b');
+
+        try {
+            DB::connection('installation_control')->statement(
+                'CREATE DATABASE ' . $databaseA . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+            );
+            DB::connection('installation_control')->statement(
+                'CREATE DATABASE ' . $databaseB . ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'
+            );
+
+            foreach (['installation_a', 'installation_b'] as $connection) {
+                Schema::connection($connection)->create('local_installation_identities', function (Blueprint $table): void {
+                    $table->id();
+                    $table->uuid('tenant_id');
+                    $table->timestamps();
+                });
+                Schema::connection($connection)->create('tenants', function (Blueprint $table): void {
+                    $table->uuid('id')->primary();
+                    $table->string('name');
+                    $table->string('logo_path', 500)->nullable();
+                    $table->string('document_logo_path', 500)->nullable();
+                    $table->string('favicon_path', 500)->nullable();
+                    $table->softDeletes();
+                    $table->timestamps();
+                });
+            }
+
+            DB::connection('installation_a')->table('local_installation_identities')->insert([
+                'tenant_id' => $tenantAId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::connection('installation_b')->table('local_installation_identities')->insert([
+                'tenant_id' => $tenantBId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            DB::connection('installation_a')->table('tenants')->insert([
+                'id' => $tenantAId,
+                'name' => 'Instalasi A',
+                'logo_path' => $pathA,
+                'document_logo_path' => $pathA,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::connection('installation_b')->table('tenants')->insert([
+                'id' => $tenantBId,
+                'name' => 'Instalasi B',
+                'logo_path' => $pathB,
+                'document_logo_path' => $pathB,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            foreach ([[$pathA, 'logo-a.png'], [$pathB, 'logo-b.png']] as [$path, $filename]) {
+                File::ensureDirectoryExists(dirname(storage_path('app/public/' . $path)));
+                $image = UploadedFile::fake()->image($filename, 120, 120);
+                File::copy($image->getRealPath(), storage_path('app/public/' . $path));
+            }
+
+            Auth::logout();
+            Auth::forgetGuards();
+            config(['database.default' => 'installation_a']);
+
+            $branding = app(TenantBrandingService::class);
+            $header = app(ReportHeaderService::class);
+            $tenantA = $branding->currentTenant();
+
+            $this->assertNotNull($tenantA);
+            $this->assertSame($tenantAId, (string) $tenantA->id);
+            $this->assertSame('Instalasi A', $tenantA->name);
+            $this->assertNotNull($branding->localPath($pathA));
+            $this->assertNull($branding->localPath($pathB));
+            $this->assertNotNull($header->getLogoDataUri($tenantA));
+
+            config(['database.default' => 'installation_b']);
+            $tenantB = $branding->currentTenant();
+
+            $this->assertNotNull($tenantB);
+            $this->assertSame($tenantBId, (string) $tenantB->id);
+            $this->assertSame('Instalasi B', $tenantB->name);
+            $this->assertNotNull($branding->localPath($pathB));
+            $this->assertNull($branding->localPath($pathA));
+            $this->assertNull($header->getLogoDataUri($tenantA));
+            $this->assertNotNull($header->getLogoDataUri($tenantB));
+        } finally {
+            config(['database.default' => 'mysql']);
+            DB::purge('installation_a');
+            DB::purge('installation_b');
+
+            try {
+                DB::connection('installation_control')->statement('DROP DATABASE IF EXISTS ' . $databaseA);
+                DB::connection('installation_control')->statement('DROP DATABASE IF EXISTS ' . $databaseB);
+            } finally {
+                DB::purge('installation_control');
+                File::deleteDirectory(storage_path('app/public/tenants/' . $tenantAId));
+                File::deleteDirectory(storage_path('app/public/tenants/' . $tenantBId));
+            }
+        }
     }
 
 }
