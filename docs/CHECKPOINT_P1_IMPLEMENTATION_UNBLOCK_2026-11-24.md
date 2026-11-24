@@ -277,3 +277,54 @@ Pulihkan checkout/toolchain lokal yang sesuai, tunggu CI exact HEAD, lalu implem
 - P1-ID-03B BLOCKED / NOT STARTED.
 - Pulihkan checkout Git asli + workspace writable + PHP 8.3/Composer/PDO MySQL/MySQL 8 disposable; backup byte-exact sebelum source edit.
 - STOP untuk review koordinator sebelum P1-ID-03B.
+
+
+---
+
+## ADDENDUM CHECKPOINT — cardinality, PII, fixture, workspace (24 November 2026)
+
+### AUDIT
+- Branch aktual sebelum addendum: 8ef06d1f800e9f3f9a197afe3be41c2f361d352c. Dibandingkan dengan HEAD instruksi 3106172e..., ada 5 commit dokumentasi, 0 source commit; PR #23 OPEN/DRAFT/NOT MERGED, base 1c33e5d422175f9bd85d206230271a9fe5a4eecd.
+- Source audit tetap exact SHA cd2b6ee8ed9d57604a06860e1dee399fb4b2b050. Tests/factories/seeders/benchmark diambil langsung dari Git tree/blob SHA ini.
+- 65 migration PHP diperiksa. Users table memiliki deleted_at, tetapi User model tidak memakai SoftDeletes. TeacherProfile/StudentProfile memakai SoftDeletes. User relations hasOne, tetapi tidak ada UNIQUE(user_id) pada kedua tabel. Composite tenant FK dan candidate key (id,tenant_id) tidak menegakkan cardinality.
+- Profile FK awal cascade kemudian diubah menjadi composite tenant FK ON DELETE RESTRICT oleh 210002 (Guru) dan 230003 (Siswa). Down migration mengembalikan FK sederhana ON DELETE CASCADE.
+- Unique index login identity tenant-scoped tidak menyertakan deleted_at; profil soft-deleted tetap mencadangkan identifier non-null. Kondisi data legacy aktual belum diperiksa.
+- Tidak ditemukan profile history table. Belum diputuskan apakah satu user boleh memiliki row profile historis atau hanya satu row sepanjang masa. Jangan membuat UNIQUE(user_id) sebelum keputusan lifecycle soft delete/restore.
+- AuditService: 107 callsites / 33 caller files. Dua direct runtime AuditLog::create berada di InstallerService dan ExpireExamAttemptsCommand; satu insert historical ada pada migration consolidate_legacy_local_roles. AuditService belum meredaksi payload.
+- Risiko audit utama: Exam.toArray dapat mencatat token ujian; ExamQuestionScore.toArray dapat mencatat student_id/grader_id/evaluated_answer_snapshot/feedback; TeacherProfilePage mencatat phone; ExamAttemptController mencatat device_fingerprint dan exception message; MediaController mencatat original_name; proctor/scoring reason adalah free text; IP/user-agent ikut disimpan.
+- UserManagement::createUser memiliki authorization gate dan transaksi create User/Profile, tetapi tidak mencatat event audit create akun/profil.
+- Test tree exact source SHA: 84 entry (75 PHP, 2 MJS, 7 direktori); seluruh 75 PHP dan 2 MJS dipindai. Ada 31 TeacherProfile::create pada 20 file dan 37 StudentProfile::create pada 26 file; 27 file/concern memiliki referensi profil. Tidak ditemukan test cardinality user_id/soft-delete restore lifecycle.
+- 13 factories dan 5 seeders diperiksa; tidak ada profile factory atau login identity values. Benchmark SQLite membuat Guru tanpa status/NIP/NIK/employee_identifier dan NISN dengan pola NISN_%03d; cleanup bukan finally.
+- Identitas test: kategori PNS/PPPK/HONORER; NIP/NIK/NISN/NUPTK synthetic values dicatat di report. Legacy NIS, placeholder employee_identifier, negative category/format cases, dan proktor operational fixtures dipisahkan dari canonical login fixtures; belum dinormalisasi.
+- Workspace /mnt/data/CBT_MADRASAH_RECONSTRUCTION tidak ada; checkout .git dan baseline ZIP tidak ditemukan di /mnt/data. PHP 8.4.24, PDO driver kosong, PHP 8.3/Composer/MySQL/Docker/Podman tidak tersedia; DNS/HTTPS GitHub terminal gagal. Snapshot deployment tetap read-only, bukan checkout.
+- Workflow runs/combined status exact HEAD 8ef06d1f... tidak mengembalikan hasil. CI historis #45369049022 PASS hanya pada SHA 2598af967b22a8fa032cc910bb32230804a15390; angka assertion final tidak tersedia di report.
+
+### DESAIN
+- Tentukan profil one-row-ever vs one-active-with-history sebelum unique constraint.
+- Rancang preflight read-only untuk duplicate user_id aktif/semua row, dual profile, role/profile mismatch, tenant mismatch, orphan, restore collision, soft-delete, dan index/FK aktual.
+- Bandingkan unique user_id sederhana dengan generated nullable active_user_id di MySQL 8 dan partial unique index SQLite jika histori profil harus dipertahankan. Jangan gunakan UNIQUE(user_id,deleted_at) sebagai jaminan satu row aktif.
+- Siapkan test MySQL 8 dan SQLite untuk duplicate, soft delete/recreate, restore, hard delete, tenant FK, cross-profile, rollback dan recovery sebelum migration.
+- Audit redaction recursive dengan allowlist event payload, alias/nested keys, token, phone/email, device fingerprint, answer snapshot, free-text reason, filename, IP/user-agent. Jangan rewrite histori.
+- Pisahkan canonical, relational, negative, dan legacy fixtures; normalisasi hanya setelah tujuan test ditentukan.
+- Pulihkan checkout Git asli dan toolchain PHP 8.3 sebelum source edit.
+
+### IMPLEMENTASI
+- Tidak ada source, migration, dependency, workflow, konfigurasi, atau database diubah.
+- Tidak ada source backup baru.
+- Tidak ada migration dibuat/dijalankan, deployment, atau merge.
+- Report/checkpoint diperbarui append-only; P1-ID-03A tetap belum selesai.
+
+### PENGUJIAN
+- Static audit 65 migrations, 75 PHP tests + 2 MJS, 13 factories, 5 seeders, benchmark, 107 AuditService calls, 2 runtime bypasses, 1 historical migration insert.
+- PHPUnit, PHP lint, Composer, preflight, benchmark, MySQL 8/SQLite, DB cardinality query, migration test: NOT RUN.
+- Current HEAD CI: NO RUN/NO STATUS RETURNED.
+- Production/staging: NOT TOUCHED.
+
+### STATUS / NEXT
+- P1-ID-03A PARTIAL / NOT COMPLETE.
+- Cardinality AUDIT COMPLETE; business rule and DB data preflight pending.
+- PII callsite inventory complete; redactor not implemented.
+- Fixture audit complete for tracked tests/factories/seeders/benchmark; no normalization performed.
+- Workspace recovery BLOCKED.
+- P1-ID-03B BLOCKED / NOT STARTED.
+- STOP sebelum migration atau P1-ID-03B untuk review koordinator.
