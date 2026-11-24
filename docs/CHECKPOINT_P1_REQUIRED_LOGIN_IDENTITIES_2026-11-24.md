@@ -72,3 +72,29 @@ Dokumen:
 | Produksi/deployment | BLOCKED |
 
 Jangan merge PR #23, menjalankan migration produksi, mengubah database produksi, deployment, atau menyatakan siap distribusi tanpa persetujuan owner dan bukti acceptance.
+
+
+---
+
+## Addendum checkpoint — refinement 24 November 2026
+
+Source HEAD terakhir yang diaudit sebelum dokumen addendum: `84745e2f34df3e6248e3b1dd9fdc662e5d1d9798`.
+
+Tambahan setelah laporan awal:
+- Migration kini menolak whitespace-padded identifier sebelum DDL dan memvalidasi struktur index unique yang sudah ada.
+- Read-only preflight mendeteksi whitespace pada NIP/NIK/NUPTK/NISN tanpa menampilkan nilai.
+- Test DB unique kini mencakup NIP, NIK, NUPTK, NISN.
+- Test API mencakup Honorer NIK dan penolakan username Guru; test Web mencakup PPPK NIP.
+- Backup manifest berisi 21 snapshot; 21/21 SHA blob cocok.
+
+Dokumen tambahan: `docs/ADDENDUM_P1_REQUIRED_LOGIN_IDENTITIES_REFINEMENT_2026-11-24.md`.
+
+Status tetap:
+- Source dan test tertulis.
+- Exact-HEAD PHP lint/PHPUnit/MySQL 8/InnoDB belum terverifikasi.
+- Migration dan command preflight belum dijalankan terhadap database proyek.
+- Tidak ada perubahan database produksi/staging.
+- PR #23 tetap OPEN/DRAFT, tidak merge.
+- ZIP belum siap distribusi.
+
+Pekerjaan berikutnya: dapatkan bukti exact-HEAD CI, jalankan pengujian MySQL disposable, lalu audit jalur update/import dan integrasi portal lainnya.
