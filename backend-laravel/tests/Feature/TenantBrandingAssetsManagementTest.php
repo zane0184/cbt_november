@@ -722,7 +722,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                 'app-logo'
             );
             $this->fail('A user outside the local installation identity must not upload branding.');
-        } catch (\\RuntimeException $exception) {
+        } catch (\RuntimeException $exception) {
             $this->assertStringContainsString('tidak sesuai', $exception->getMessage());
         }
     }
