@@ -227,6 +227,23 @@ class TenantBrandingAssetsManagementTest extends TestCase
         ] as $path) {
             $this->assertNull($branding->localPath($path), 'Unsafe path was accepted: ' . $path);
         }
+
+        $otherTenantId = (string) Str::uuid();
+        $otherPath = 'tenants/' . $otherTenantId . '/branding/real-logo.png';
+        $aliasPath = 'tenants/' . $this->tenant->id . '/branding/aliased-logo.png';
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $otherPath)));
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $aliasPath)));
+        File::copy(
+            UploadedFile::fake()->image('real-logo.png', 120, 120)->getRealPath(),
+            storage_path('app/public/' . $otherPath)
+        );
+        symlink(
+            storage_path('app/public/' . $otherPath),
+            storage_path('app/public/' . $aliasPath)
+        );
+
+        $this->assertNull($branding->localPath($aliasPath), 'A symlink into another tenant branding directory must be rejected.');
+        File::deleteDirectory(storage_path('app/public/tenants/' . $otherTenantId));
     }
 
     public function test_branding_service_rejects_invalid_image_content_and_oversized_uploads(): void
