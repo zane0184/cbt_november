@@ -102,6 +102,19 @@ class InstallerEndToEndTest extends TestCase
             $this->assertSame(1, DB::table('curricula')->where('tenant_id', $tenantId)->where('code', 'KURIKULUM_MERDEKA')->count());
             $this->assertSame(3, DB::table('phases')->where('tenant_id', $tenantId)->count());
             $this->assertSame(6, DB::table('grade_levels')->where('tenant_id', $tenantId)->count());
+            $this->assertDatabaseHas('multi_curriculum_versions', [
+                'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+                'version_code' => 'KMA-1503-2025',
+                'verification_status' => 'METADATA_VERIFIED',
+            ]);
+            $this->assertDatabaseHas('curriculum_reference_sources', [
+                'tenant_id' => \\App\\Models\\Tenant::SYSTEM_TENANT_ID,
+                'document_number' => 'Kepdirjen Pendis 9941 Tahun 2025',
+                'verification_status' => 'PENDING',
+            ]);
+            $this->assertSame(0, DB::table('multi_learning_outcomes')
+                ->where('tenant_id', \\App\\Models\\Tenant::SYSTEM_TENANT_ID)
+                ->count(), 'Installer must not fabricate official CP content.');
             $this->assertDatabaseHas('grade_levels', ['tenant_id' => $tenantId, 'code' => 'MI_1', 'level' => 1]);
             $this->assertDatabaseHas('grade_levels', ['tenant_id' => $tenantId, 'code' => 'MI_6', 'level' => 6]);
 
