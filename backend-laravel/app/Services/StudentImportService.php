@@ -577,7 +577,7 @@ class StudentImportService
             }
 
             rewind($handle);
-            $headerRow = fgetcsv($handle, self::MAX_CSV_RECORD_BYTES + 1, $delimiter, '"', '');
+            $headerRow = fgetcsv($handle, self::MAX_CSV_RECORD_BYTES + 2, $delimiter, '"', '');
             if (!is_array($headerRow)) {
                 throw ValidationException::withMessages(['file' => 'Header CSV tidak dapat dibaca.']);
             }
@@ -617,7 +617,7 @@ class StudentImportService
     private function assertCsvRecordBounds(array $values, ?int $expectedColumns, string $recordLabel): void
     {
         if (count($values) > self::MAX_CSV_COLUMNS
-            || ($expectedColumns !== null && count($values) > $expectedColumns)) {
+            || ($expectedColumns !== null && count($values) !== $expectedColumns)) {
             throw ValidationException::withMessages(['file' => "Jumlah kolom CSV pada {$recordLabel} tidak konsisten atau melebihi batas."]);
         }
 
