@@ -636,3 +636,245 @@ Pulihkan checkout Git asli dan workspace writable lengkap beserta tests/backups,
 - Staging/ZIP acceptance: NOT VERIFIED / NOT ACCEPTED.
 - Production database: NOT TOUCHED.
 - STOP sebelum P1-ID-03B untuk review koordinator.
+
+
+---
+
+## ADDENDUM — Audit cardinality, AuditLog PII, dan fixture repository-wide (24 November 2026)
+
+### Metadata dan exact SHA
+
+- Repository: zane0184/cbt_november.
+- Branch: work/p1-seven-targets-20261124.
+- HEAD aktual sebelum addendum ini: 8ef06d1f800e9f3f9a197afe3be41c2f361d352c.
+- HEAD yang diberikan pada instruksi: 3106172e28aacccbc18019eed71374595c97e816.
+- Compare 3106172e... ke 8ef06d1f...: 5 commit ahead, 0 behind. File yang berubah hanya dokumentasi: ADDENDUM_RECOVERY_COORDINATION_REFRESH_2026-11-24.md, CHECKPOINT_P1_IMPLEMENTATION_UNBLOCK_2026-11-24.md, RECOVERY_COORDINATION_CORRECTION_2026-11-24.md, dan REPORT_P1_IMPLEMENTATION_UNBLOCK_2026-11-24.md. Tidak ada source aplikasi atau migration berubah pada rentang tersebut.
+- Source aplikasi yang diaudit: cd2b6ee8ed9d57604a06860e1dee399fb4b2b050. Compare source tersebut ke HEAD 8ef06d1f... hanya menunjukkan empat file dokumentasi di atas; source aplikasi tidak berubah.
+- PR #23: OPEN / DRAFT / NOT MERGED. Base branch work/phpunit-41-root-cause-20261123, base SHA 1c33e5d422175f9bd85d206230271a9fe5a4eecd.
+- Semua test/factory/seeder/benchmark di bawah diambil dari Git tree/blob pada exact source SHA cd2b6ee8..., bukan dari deployment ZIP. Deployment snapshot hanya digunakan untuk pemeriksaan silang source aplikasi yang sama; tidak digunakan untuk mengambil test fixture.
+
+### AUDIT 1 — seluruh migration users, profiles, tenant, dan foreign key
+
+Git tree exact source SHA memuat 65 migration PHP; seluruh 65 file diperiksa untuk referensi users, teacher_profiles, student_profiles, tenant_id, softDeletes/deleted_at, foreign key, unique/index, dan operasi drop/rename. Migration yang membentuk atau mengubah lifecycle identitas:
+
+| Migration | Blob SHA | Temuan |
+|---|---|---|
+| 0000_01_01_000000_create_tenants_table.php | fe8ec739a98e4e0447a2abb57b37c1d188cd59b3 | Tenant memiliki SoftDeletes dan kode unik. |
+| 0001_01_01_000000_create_users_table.php | c63a5c360243211eb84d5c27c974ac4f0be5ec5b | users.id UUID; tenant_id FK ke tenants ON DELETE CASCADE; deleted_at tersedia; unique awal (tenant_id,email). |
+| 2024_01_01_000001_create_profiles_tables.php | 6731605480aeb104d3e12db6cfef5903bff54262 | teacher_profiles dan student_profiles masing-masing memiliki user_id FK users ON DELETE CASCADE, tenant_id FK tenants ON DELETE CASCADE, dan softDeletes. Tidak ada UNIQUE(user_id). |
+| 2026_11_07_210002_harden_teacher_assignment_tenant_foreign_keys.php | 53d8a59807ff72a53cbbc65948f6f402b26a5887 | Menambahkan candidate key users(id,tenant_id) dan teacher_profiles(id,tenant_id); mengganti FK teacher_profiles(user_id) menjadi composite (user_id,tenant_id) -> users(id,tenant_id), ON DELETE RESTRICT. Tidak menambah UNIQUE(user_id). Down mengembalikan FK user_id sederhana ON DELETE CASCADE. |
+| 2026_11_09_230003_harden_rombel_student_tenant_integrity.php | 0e93869da9834fc6a15d547ffc4242ec4277410e | Menambahkan candidate key student_profiles(id,tenant_id), mengganti FK profil ke User menjadi composite (user_id,tenant_id), ON DELETE RESTRICT, dan mengikat pivot rombel_student ke tenant. Tidak menambah UNIQUE(user_id). Down mengembalikan FK sederhana ON DELETE CASCADE. |
+| 2026_11_09_230004_harden_rombel_teacher_tenant_integrity.php | 9d32b137565bf124bf89d6e8a40e4ba7899d7a18 | Mengikat rombels.teacher_id + tenant_id ke teacher_profiles(id,tenant_id), ON DELETE RESTRICT. Ini menjaga tenant assignment, bukan cardinality profil per user. |
+| 2026_11_11_000003_add_login_identity_fields.php | 03c8a08046357fd2138b2c0135fe8812315bcaf6 | Menambah username pada users, backfill username, unique (tenant_id,username), email menjadi nullable, dan index tenant/NIK. Tidak mengubah user_id profile cardinality. |
+| 2026_11_24_160001_add_teacher_employment_status.php | 3284e6b050f2678fa455d91bcb40e43ea2947736 | Menambah employment_status nullable dan index tenant/status pada teacher_profiles. Tidak mengubah user_id cardinality. |
+| 2026_11_24_170001_enforce_tenant_login_identity_uniques.php | 11eb38296af04769562738f6fae491b0a36a019e | Menambah unique tenant-scoped pada teacher NIP/NIK/NUPTK dan student NISN. Tidak menambah UNIQUE(user_id), dan index identitas tidak mengecualikan deleted_at. |
+
+Blob model pada exact source SHA:
+- app/Models/User.php: dec82ba26e785708945bdea1bc0e34a1ed20458d.
+- app/Models/TeacherProfile.php: 192d9804d4e926e7827d6a379542825da3fc80d0.
+- app/Models/StudentProfile.php: 95ce4b3033b6cc4406a42e2e4a6045cff01218b8.
+
+Temuan model dan lifecycle:
+1. User::teacherProfile() dan User::studentProfile() didefinisikan hasOne(). TeacherProfile dan StudentProfile menggunakan SoftDeletes. Namun tidak ada migration yang memberi UNIQUE(user_id) pada salah satu tabel profil. Relasi hasOne adalah kontrak ORM, bukan constraint cardinality database.
+2. Tidak ada database constraint yang mencegah satu user memiliki beberapa teacher_profiles, beberapa student_profiles, atau sekaligus satu profil Guru dan satu profil Siswa. Composite FK hanya menjamin user_id dan tenant_id menunjuk ke User dalam tenant yang sama.
+3. Migration users memiliki deleted_at, tetapi model User tidak menggunakan trait SoftDeletes dan tidak ditemukan global scope deleted_at. Sebaliknya, kedua model profil menggunakan SoftDeletes. Secara statis ini berarti deleted_at pada users tidak otomatis memberi perilaku soft delete Eloquent; pemanggilan delete() pada User berpotensi menjadi hard delete. Karena FK profil yang aktif saat ini ON DELETE RESTRICT, hard delete User yang masih memiliki baris profil dapat ditolak database. Ini adalah implikasi schema/model yang belum diuji runtime.
+4. Soft-deleted profile tidak dihapus dari tabel dan tetap menjadi target FK. Query Eloquent biasa pada profil mengecualikan row deleted_at, sehingga satu User dapat tampak tidak memiliki profil lalu dibuatkan profil baru; tanpa UNIQUE(user_id), beberapa row profil dapat tersimpan.
+5. Unique index tenant-scoped pada NIP/NIK/NUPTK/NISN tidak memasukkan deleted_at. Dengan demikian identitas non-null pada profil soft-deleted tetap dicadangkan oleh unique index. Ini bisa merupakan kebijakan anti-reuse yang disengaja, tetapi belum ada keputusan tertulis apakah identitas boleh dipakai ulang setelah profil dihapus.
+6. Candidate key (id,tenant_id) pada User/Profile tidak sama dengan unique user_id. Tidak ditemukan tabel history profile terpisah.
+7. Tidak ada query terhadap database legacy aktual dalam audit ini. Karena itu jumlah user yang memiliki duplikat profile, cross-role profile, row orphan, atau row soft-deleted tidak diketahui dan tidak boleh diasumsikan nol.
+
+Kesimpulan cardinality:
+- Desain saat ini mengisyaratkan satu profil melalui hasOne, tetapi database belum menegakkannya.
+- Menambah UNIQUE(user_id) langsung belum aman sebelum keputusan apakah profil soft-deleted adalah riwayat yang harus dipertahankan atau row yang dapat dipulihkan.
+- Belum dibuat migration apa pun.
+
+### DESAIN 1 — keputusan cardinality dan rancangan verifikasi sebelum migration
+
+Keputusan yang perlu disahkan sebelum implementasi:
+1. Aturan bisnis: apakah satu akun hanya boleh memiliki satu row profil sepanjang masa, atau satu profil aktif dengan beberapa versi historis?
+2. Apakah restore profil soft-deleted harus mengembalikan row lama? Apakah profil baru boleh dibuat setelah profil lama di-soft-delete?
+3. Apakah NIP/NIK/NISN yang pernah dipakai profil soft-deleted tetap dicadangkan selamanya? Unique index sekarang membuatnya tetap tercadangkan.
+4. Bagaimana lifecycle penghapusan User: soft delete melalui trait SoftDeletes, atau hard delete hanya setelah arsip/histori dipindahkan?
+5. Apakah role Guru/Siswa dan tipe profile harus saling eksklusif untuk seluruh masa akun, atau dapat berubah dengan histori?
+
+Rancangan preflight read-only sebelum migration:
+- Hitung duplikat teacher_profiles.user_id dan student_profiles.user_id, dipisah antara deleted_at IS NULL dan semua row.
+- Hitung User yang memiliki lebih dari satu profil aktif, lebih dari satu profil historis, atau kedua tipe profil sekaligus.
+- Periksa kesesuaian role User dengan jenis profil, termasuk user tanpa role, multi-role, dan role yang tidak sesuai.
+- Periksa tenant_id User vs profil, orphan user_id, tenant/profile mismatch, serta status deleted_at pada User dan profil.
+- Periksa restore collision: profil deleted yang jika dipulihkan akan bentrok dengan profil aktif atau unique identity index.
+- Periksa FK dan unique index aktual melalui information_schema untuk MySQL dan PRAGMA index_list/foreign_key_list untuk SQLite.
+- Output hanya hitungan dan kategori; jangan mencetak NIP/NIK/NISN mentah.
+
+Alternatif desain yang perlu dibandingkan, bukan langsung dipilih:
+- Jika tidak ada histori profil: UNIQUE(user_id) sederhana dapat cocok, tetapi restore/recreate harus memakai row lama dan kebijakan penghapusan harus jelas.
+- Jika histori profil dipertahankan: tegakkan satu profil aktif per user dengan strategi yang kompatibel per DB. MySQL 8 dapat menggunakan generated nullable active_user_id yang bernilai user_id hanya ketika deleted_at IS NULL, lalu unique index; SQLite dapat menggunakan partial unique index WHERE deleted_at IS NULL. Jangan menggunakan UNIQUE(user_id,deleted_at) sebagai asumsi satu row aktif karena NULL pada unique index dapat mengizinkan beberapa row aktif.
+- Untuk eksklusivitas Guru/Siswa lintas dua tabel, unique index per tabel tidak cukup. Pertimbangkan satu registry/profile discriminator per User atau validasi domain transaction + preflight; pilihan harus sesuai kebutuhan histori dan role.
+- Selaraskan User model dan users.deleted_at: aktifkan SoftDeletes hanya jika itu memang lifecycle yang disetujui, kemudian uji dampaknya pada Sanctum/session, relasi, audit, dan FK. Jangan menambah trait hanya untuk menutupi mismatch tanpa test.
+
+Test wajib sebelum persetujuan migration:
+- MySQL 8/InnoDB dan SQLite dengan foreign key enforcement aktif.
+- satu profil aktif per user; duplicate active profile ditolak.
+- profile historis soft-deleted + profile aktif baru sesuai aturan yang dipilih.
+- restore profil lama dengan/ tanpa collision.
+- user memiliki kedua jenis profile; role/profile mismatch.
+- tenant mismatch dan orphan FK ditolak.
+- hard delete User dengan profil aktif maupun soft-deleted.
+- unique login identity pada row aktif dan soft-deleted.
+- migration fresh, upgrade dari fixture legacy, rollback, serta recovery dari kegagalan DDL.
+- Rencana rollback harus mengembalikan index/column/constraint tanpa menghapus histori; sebelum migration diperlukan full backup database dan snapshot metadata constraint. Perhatikan DDL MySQL dapat implicit commit sehingga rollback tidak boleh diasumsikan atomik.
+
+### AUDIT 2 — AuditService 107 callsites dan payload
+
+AuditService source blob e968cc401cdd8b04ab1322171d5f475332a55372 meneruskan oldValues/newValues langsung ke AuditLog::create(), tanpa sanitizer atau redactor. Inventory static exact source tree menemukan 107 pemanggilan di 33 caller files. Payload shape yang ditemukan meliputi model toArray(), snapshot variabel, literal metadata, validated subset, report filters, dan exception message. Tidak ditemukan penggunaan request->all() sebagai payload audit pada 107 callsite; ada validated subset dan filter yang dipilih secara eksplisit.
+
+Matriks caller, fungsi/event, payload, dan risiko:
+
+| Caller file | Jumlah | Fungsi / event | Bentuk payload old/new | Risiko PII / catatan |
+|---|---:|---|---|---|
+| Http/Controllers/Api/V1/AnalyticsController.php | 6 | examSummary/ANALYTICS_VIEW; examDistribution/ANALYTICS_VIEW; examItems/ITEM_ANALYSIS_VIEW; rombelExamAnalytics/ANALYTICS_VIEW; studentAnalytics/ANALYTICS_VIEW; subjectAnalytics/ANALYTICS_VIEW | metadata ID atau tidak ada old/new | Rendah langsung; studentAnalytics memakai entity User ID yang dapat ditautkan. |
+| Http/Controllers/Api/V1/AssessmentController.php | 1 | destroy/DELETE | Assessment.toArray() pada old_values | Snapshot model luas; created_by dan context snapshot perlu allowlist. |
+| Http/Controllers/Api/V1/CurriculumAnalyticsController.php | 4 | studentAnalytics/ANALYTICS_CURRICULUM_STUDENT_VIEW; rombelAnalytics/ANALYTICS_CURRICULUM_ROMBEL_VIEW; subjectAnalytics/ANALYTICS_CURRICULUM_SUBJECT_VIEW; tpAnalytics/ANALYTICS_CURRICULUM_TP_VIEW | Tidak mengirim old/new | Rendah langsung; event akses analytics dan entity IDs tetap linkable. |
+| Http/Controllers/Api/V1/CurriculumController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | Curriculum.toArray() dan snapshot old | Snapshot model luas; perlu allowlist. |
+| Http/Controllers/Api/V1/ElementController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | Element.toArray() dan snapshot old | Snapshot model luas; perlu allowlist. |
+| Http/Controllers/Api/V1/ExamAnswerController.php | 1 | update/SAVE_ANSWER | Metadata attempt_id, snapshot_id, state, revision_number | Payload yang dicatat hanya state/revision, bukan answer_payload atau isi jawaban. |
+| Http/Controllers/Api/V1/ExamAttemptController.php | 4 | store/START_ATTEMPT (2 event); submit/EXPIRE_ATTEMPT atau SUBMIT_ATTEMPT; submit/SCORING_BLOCKED | Metadata attempt; device_fingerprint; exception message | Tinggi: fingerprint perangkat mentah; exception message berpotensi membawa detail sensitif/SQL. |
+| Http/Controllers/Api/V1/ExamController.php | 13 | store/CREATE; update/UPDATE; addQuestions/ADD_QUESTIONS; assignRombel/ASSIGN_ROMBEL; generateToken/ROTATE_EXAM_TOKEN; lock/PUBLISH_EXAM; removeQuestion/REMOVE_QUESTION; reorderQuestions/REORDER_QUESTIONS; bulkRemoveQuestions/BULK_REMOVE_QUESTIONS; close/CLOSE_EXAM; archive/ARCHIVE; publishResults/PUBLISH_EXAM_RESULTS atau UNPUBLISH_EXAM_RESULTS; destroy/DELETE | Tiga event CRUD mengirim Exam.toArray(); event lain metadata/token_present | Tinggi: Exam.toArray() memuat field token karena model Exam tidak mendefinisikan hidden untuk token. Event ROTATE_EXAM_TOKEN sendiri hanya menyimpan boolean token_present, bukan token mentah. |
+| Http/Controllers/Api/V1/ExamParticipantController.php | 2 | store/ADD_PARTICIPANT; destroy/REMOVE_PARTICIPANT | user_id pada metadata | Sedang: internal User ID dapat ditautkan ke siswa. |
+| Http/Controllers/Api/V1/GradeLevelController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | GradeLevel.toArray() dan snapshot old | Snapshot model luas; umumnya data akademik dan ID. |
+| Http/Controllers/Api/V1/LearningObjectiveController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | LearningObjective.toArray() dan snapshot old | Snapshot model luas; perlu allowlist. |
+| Http/Controllers/Api/V1/LearningOutcomeController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | LearningOutcome.toArray(), termasuk currentVersion pada update | Snapshot konten akademik dan metadata; periksa nested version. |
+| Http/Controllers/Api/V1/LearningPathController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | LearningPath.toArray(), termasuk currentVersion pada update | Snapshot konten akademik dan metadata; periksa nested version. |
+| Http/Controllers/Api/V1/MediaController.php | 4 | store/UPLOAD_MEDIA; attachToQuestionVersion/ATTACH_QUESTION_VERSION_MEDIA; detachFromQuestionVersion/DETACH_QUESTION_VERSION_MEDIA; destroy/DELETE_MEDIA | Metadata media/owner dan original_name | Sedang: nama file bebas dapat memuat nama siswa, nomor, atau data pribadi. |
+| Http/Controllers/Api/V1/PhaseController.php | 3 | store/CREATE; update/UPDATE; destroy/DELETE | Phase.toArray() dan snapshot old | Snapshot model luas; perlu allowlist. |
+| Http/Controllers/Api/V1/QuestionController.php | 6 | store/CREATE_QUESTION; update/CREATE_VERSION; update/UPDATE_DRAFT; publish/PUBLISH_QUESTION; import/IMPORT_QUESTIONS; destroy/ARCHIVE_QUESTION | Question.toArray() pada create; sisanya metadata | Question.toArray() memiliki owner_user_id/created_by/updated_by yang linkable; payload import hanya counts, bukan row error. |
+| Http/Controllers/Api/V1/QuestionPublicationController.php | 2 | store/SHARE; destroy/UNSHARE | Validated share_scope dan publication metadata | Rendah langsung; ID publikasi/tenant tetap linkable. |
+| Http/Controllers/Api/V1/ReportController.php | 10 | examResults/REPORT_VIEW; examSummary/REPORT_VIEW; studentResults/REPORT_VIEW; exportExcel/REPORT_EXPORT_EXCEL; exportPdf/REPORT_EXPORT_PDF; exportStudentPdf/REPORT_EXPORT_PDF; exportSummaryPdf/REPORT_EXPORT_PDF; rombelReport/REPORT_VIEW; subjectReport/REPORT_VIEW; questionReport/REPORT_VIEW | Metadata dan filters status, grading_status, rombel_id | Rendah langsung berdasarkan field yang dipilih; rombel_id adalah ID internal, bukan NISN/NIP/NIK. |
+| Http/Controllers/Api/V1/ScoringController.php | 4 | score/SCORE_ATTEMPT; updateManualScore/UPDATE_MANUAL_SCORE; finalize/FINALIZE_SCORE; recalculate/RECALCULATE_SCORE | updateManualScore mengirim ExamQuestionScore.toArray() sebelum/sesudah | Tinggi: model berisi student_id, grader_id, evaluated_answer_snapshot, feedback, dan skor. Ini data asesmen siswa yang sensitif. |
+| Http/Controllers/Api/V1/TeacherSubjectAssignmentController.php | 3 | store/TEACHER_ASSIGNMENT_CREATE; update/TEACHER_ASSIGNMENT_UPDATE; destroy/TEACHER_ASSIGNMENT_DEACTIVATE | TeacherSubjectAssignment.toArray() dan snapshot old | Sedang: teacher_profile_id, created_by, dan curriculum context snapshot adalah ID/konteks yang dapat ditautkan. |
+| Livewire/Admin/CurriculumRegistryManagement.php | 4 | registerVersion/CURRICULUM_VERSION_REREGISTERED; registerVersion/CURRICULUM_VERSION_REGISTERED; mapSubject/CURRICULUM_SUBJECT_MAPPED; retireMapping/CURRICULUM_SUBJECT_MAPPING_RETIRED | Snapshot status/tanggal dan metadata ID | Rendah langsung; batasi snapshot pada field yang diperlukan. |
+| Livewire/Admin/ExamManagement.php | 3 | saveExam/EXAM_CREATED atau EXAM_UPDATED; generateToken/ROTATE_EXAM_TOKEN; lockExam/PUBLISH_EXAM | Metadata assessment/assignment/question IDs, token_present boolean, status | Rendah untuk payload saat ini; token mentah tidak dimasukkan pada event rotate. |
+| Livewire/Admin/QuestionBank.php | 3 | saveQuestion/CREATE_QUESTION atau UPDATE_QUESTION; publishQuestion/PUBLISH_QUESTION; deleteQuestion/ARCHIVE_QUESTION | Snapshot kode soal, subject/status/version IDs | Rendah langsung; pastikan tidak memperluas ke isi soal/answer key. |
+| Livewire/Admin/StudentRombelManagement.php | 1 | addStudentToRombel/STUDENT_ADDED_TO_ROMBEL | student_profile_id, student_user_id, rombel_id, academic_year_id | Sedang: User ID siswa linkable. |
+| Livewire/Admin/TeacherSubjectAssignmentManagement.php | 1 | createAssignment/TEACHER_SUBJECT_ASSIGNMENT_CREATED | teacher_profile_id dan academic context IDs | Rendah–sedang: ID profil guru linkable. |
+| Livewire/Teacher/ResultList.php | 1 | toggleResultPublication/PUBLISH_EXAM_RESULTS atau UNPUBLISH_EXAM_RESULTS | show_result boolean | Rendah. |
+| Livewire/Teacher/TeacherMaterialManagement.php | 4 | createMaterial/TEACHER_MATERIAL_CREATED; createTopic/TEACHER_MATERIAL_TOPIC_CREATED; publishMaterial/TEACHER_MATERIAL_PUBLISHED; publishTopic/TEACHER_MATERIAL_TOPIC_PUBLISHED | Material/topic IDs, code, status snapshots | Rendah langsung; metadata akademik. |
+| Livewire/Teacher/TeacherProfilePage.php | 1 | savePhone/TEACHER_PROFILE_PHONE_UPDATED | old phone dan new phone | Tinggi: nomor telepon guru disimpan mentah di old_values/new_values. |
+| Services/ExamProctorAssignmentService.php | 1 | revoke/EXAM_PROCTOR_ASSIGNMENT_REVOKE | Snapshot termasuk proctor_user_id dan revoke_reason | Sedang–tinggi: alasan bebas 10–1.000 karakter dapat berisi PII. |
+| Services/ScoringService.php | 2 | scoreAttempt/SCORE_ATTEMPT atau RECALCULATE_SCORE; reopenAttempt/REOPEN_SCORE | Metadata skor, snapshot old/new, reason | Sedang: nilai akademik dan alasan bebas dapat mengandung data pribadi. |
+| Services/TeacherPortal/AssessmentCurriculumMappingService.php | 1 | sync/ASSESSMENT_CURRICULUM_MAPPED | teacher assignment, CP/outcome/material IDs | Rendah langsung; nested arrays berisi ID. |
+| Services/TeacherPortal/QuestionVersionCurriculumMappingService.php | 1 | sync/QUESTION_VERSION_CURRICULUM_MAPPED | assignment, CP/outcome/material IDs dan mapping count | Rendah langsung; nested arrays berisi ID. |
+| Services/TeacherPortal/TeacherLearningOutcomeService.php | 3 | createTp/TEACHER_LEARNING_OUTCOME_CREATED; createAtp/TEACHER_LEARNING_OUTCOME_CREATED; publish/TEACHER_LEARNING_OUTCOME_PUBLISHED | outcome code/type, parent IDs, assignment IDs, status snapshot | Rendah langsung; batasi snapshot pada metadata. |
+
+Dua bypass runtime AuditLog::create() yang tidak melewati AuditService:
+- app/Services/InstallerService.php, fungsi finalisasi PRE_ACTIVATION: payload berisi tenant/admin/installation/license IDs, mode, tanggal pre-activation, migration_count, dan schema fingerprint. Tidak tampak secret private key, tetapi tetap perlu satu sanitizer/contract audit yang sama.
+- app/Console/Commands/ExpireExamAttemptsCommand.php, fungsi expire attempt: payload status, expires_at, processed_at, score_id, dan scoring_skipped_reason. Tidak tampak PII langsung.
+
+Migration historis dipisahkan dari writer runtime:
+- database/migrations/2026_11_23_130001_consolidate_legacy_local_roles.php melakukan DB::table('audit_logs')->insert() untuk event LEGACY_ROLE_ACCESS_RETIRED. Payload mencatat role name/id dan flag migrasi; entity_id adalah User ID. Ini insert historis satu kali, bukan writer runtime; jangan mengubah histori/migration lama tanpa rencana khusus.
+
+Temuan lintas payload:
+- Exam model memiliki token pada fillable dan tidak mendefinisikan hidden untuk token. ExamController CRUD yang mengirim Exam.toArray() berpotensi menyimpan token ujian mentah.
+- ExamQuestionScore.toArray() dapat menyimpan evaluated_answer_snapshot, feedback, student_id, dan grader_id.
+- TeacherProfilePage menyimpan nomor telepon lama/baru.
+- ExamAttemptController menyimpan device_fingerprint mentah dan exception message.
+- MediaController menyimpan original_name; ExamProctorAssignmentService menyimpan revoke_reason; ScoringService menyimpan reason. Semua string bebas perlu dianggap berpotensi memuat PII.
+- AuditService juga selalu menyimpan Request::ip() dan Request::userAgent(); IP dan user-agent adalah metadata perangkat/jaringan yang dapat ditautkan.
+- UserManagement::createUser() membuat User, role, dan profile dalam transaksi serta memiliki authorization gate, tetapi tidak memanggil AuditService atau AuditLog. Event pembuatan akun/profil belum tercatat dalam audit.
+- Tidak ada redaksi terpusat. Hidden pada model tidak cukup karena AuditService menerima array eksplisit dan toArray() dari model lain.
+
+### DESAIN 2 — rekomendasi perlindungan AuditLog
+
+1. Terapkan sanitizer recursive pada satu boundary audit terpusat untuk seluruh audit baru, termasuk nested arrays, model toArray(), alias field, dan string metadata.
+2. Gunakan allowlist payload per event sebagai lapisan utama. Jangan menyimpan seluruh toArray() model secara default.
+3. Redact/mask kunci sensitif case-insensitive dan canonicalized: nip, nik, nisn, nuptk, employee_identifier, nis, phone, email, address, parent_name, password, token, secret, authorization, cookie, device_fingerprint, answer_payload, evaluated_answer_snapshot, dan field alias identifier.
+4. Jangan simpan token ujian mentah; simpan status boolean seperti token_present atau fingerprint token dengan keyed HMAC bila benar-benar diperlukan untuk korelasi.
+5. Jangan simpan device_fingerprint mentah; gunakan keyed HMAC/pseudonym yang tidak dapat dibalik dari log. Jangan mencatat exception getMessage() mentah; gunakan exception class + stable error code.
+6. Masking nomor telepon/email dan sanitasi filename/revoke_reason/reason harus dilakukan sebelum persist. Batasi panjang string dan cegah payload nested yang tak terduga.
+7. Tinjau retensi IP/user-agent, user_id/entity_id, dan audit data asesmen siswa; jangan menganggap ID pseudonim otomatis anonim.
+8. Arahkan dua bypass runtime ke sanitizer/contract yang sama. Jangan rewrite historical audit rows atau migration historis.
+9. Tambahkan test untuk nested arrays, key alias, mixed case, toArray, string bebas, token, phone/email, device fingerprint, dan bukti payload yang disimpan sudah tersanitasi.
+
+### AUDIT 3 — seluruh test, factory, seeder, fixture, benchmark
+
+Git tree tests pada exact source SHA cd2b6ee8... memiliki 84 entry: 75 file PHP, 2 file MJS, dan 7 direktori. Semua 75 blob PHP serta dua file MJS diambil dan dipindai; tidak ada file fixture data non-code tambahan pada tests tree. Hasil:
+- 31 pemanggilan langsung TeacherProfile::create() pada 20 file PHP test.
+- 37 pemanggilan langsung StudentProfile::create() pada 26 file PHP test.
+- 27 file/concern test berbeda mempunyai referensi atau fixture TeacherProfile/StudentProfile.
+- Pemanggilan tersebut mayoritas adalah relational/workflow fixtures, bukan test login identity. Banyak profile sengaja hanya memiliki user_id/full_name agar test ujian, assignment, proktor operasional, monitoring, dan kurikulum dapat membangun relasi.
+- Tidak ditemukan test yang membuktikan unique cardinality user_id untuk teacher_profiles/student_profiles, soft-delete/recreate/restore lifecycle, atau user hard-delete terhadap FK profile.
+
+Nilai identitas literal dan kategori yang ditemukan pada test:
+- NIP: 198001012006041001; 198001012006041002; 198001012006041003; 198765432100000001; 199001012021041001. Negative fixture: ' 19800101200604100' (spasi depan dan panjang tidak valid).
+- NIK: 3171000000000001; 3171000000000002; 3171000000000003; 3171000000000004; 3171000000000005. Negative fixture: 317100000000000 (15 digit).
+- NISN: 0087654321; 0000000123; 0001234567; 0001234568; 0098765432; 1000000001; 1000000002; 2000000001; 1234567890; 9000000001; 9000000002.
+- NUPTK: 1234567890123456; 1234567890123457.
+- Kategori Guru eksplisit yang dipakai: PNS, PPPK, HONORER. Banyak relational fixtures tidak mengisi employment_status/NIP/NIK.
+- Negative/intentional fixture: AdminUiVerificationTest menggunakan profil berstatus PNS dengan NIP dan NIK sekaligus untuk menguji serialization/hidden. Itu bukan contoh identitas valid; jangan normalisasi sebelum tujuan test dipisahkan.
+- LoginIdentityPreflightCommandTest sengaja membuat Guru legacy dengan employment_status/NIP/NIK null dan Guru dengan NIP whitespace untuk menguji preflight.
+- StudentWebLoginTest dan WebAdminAuthTest memakai NISN 0001234567; AdminUiVerificationTest juga memakai beberapa NISN dengan leading zero.
+- Legacy field NIS, bukan NISN, masih dipakai oleh test lain: ANS- + random 8 chars, NIS-A1, NIS-A2, NIS-B1, '123', dan '12345'. Field NIS tidak boleh diperlakukan sebagai fallback login NISN.
+- employee_identifier noncanonical pada relational fixtures: GURU-MEDIA-1, GURU-MEDIA-2, dan GURU-A-001. Ini bukan NIP/NIK dan belum boleh diganti tanpa memahami fungsi test.
+- ProctorAssignmentSecurityTest membuat TeacherProfile untuk akun dengan role PROKTOR tanpa employment_status/NIP/NIK. Ini fixture penugasan operasional; jangan menganggapnya sebagai keputusan portal Proktor permanen atau mengubahnya tanpa memahami test.
+- AdminUiVerificationTest juga memiliki negative cases untuk Guru tanpa NIP/NIK, kategori silang, dan panjang format invalid. Negative fixtures harus tetap ada sebagai negative tests, bukan dinormalisasi menjadi data valid.
+
+Factories dan seeders pada exact source SHA:
+- 13 database factories dan 5 seeders diambil dari GitHub. Tidak ditemukan TeacherProfileFactory/StudentProfileFactory atau nilai NIP/NIK/NISN/NUPTK pada factory/seeder. UserFactory juga tidak mengisi identitas login.
+- Phase7dBenchmarkCommand.php blob 335e126e9fef534094eb737c69165e60cbac8e6a adalah satu-satunya benchmark profile writer yang ditemukan.
+- Benchmark memakai SQLite terisolasi, tetapi cleanup file database berada setelah operasi benchmark dan bukan dalam finally. Jika migrate/seed/benchmark melempar exception sebelum cleanup, file database dapat tertinggal.
+- Benchmark TeacherProfile dibuat hanya dengan tenant_id, user_id, full_name; tidak ada employment_status, NIP/NIK, atau employee_identifier.
+- Benchmark StudentProfile mengisi NIS sprintf('NIS_%03d', $s) dan NISN sprintf('NISN_%03d', $s), bukan 10 digit numerik. Nilai NISN benchmark tidak sesuai kontrak login final.
+- Benchmark tidak dijalankan pada audit ini. Tidak ada fixture yang dinormalisasi.
+
+### DESAIN 3 — klasifikasi fixture sebelum normalisasi
+
+- Pisahkan canonical identity fixtures untuk test login/validasi dari relational fixtures untuk test domain lain.
+- Negative fixtures (wrong category, length invalid, whitespace, null legacy) harus dipertahankan dan diberi nama/tujuan test eksplisit.
+- Relational fixtures yang tidak membutuhkan login tidak boleh otomatis diberi NIP/NIK/NISN palsu sebelum memastikan apakah preflight dijalankan pada database test tersebut.
+- Legacy NIS dan employee_identifier placeholder bukan login identifier; tentukan apakah field itu tetap dibutuhkan untuk kompatibilitas data lama.
+- Benchmark harus menggunakan identitas sintetis valid, unik, string fixed-length, dan kategori employment_status eksplisit; cleanup database SQLite harus berada di finally. Ini rekomendasi, belum implementasi.
+
+### AUDIT 4 — pemulihan workspace
+
+- /mnt/data/CBT_MADRASAH_RECONSTRUCTION/ tidak ditemukan.
+- Tidak ditemukan direktori .git atau checkout Git CBT pada /mnt/data.
+- ZIP baseline CBT REVISI 6 NOPEMBER 2026.zip tidak ditemukan di /mnt/data; pencarian Project/Library sebelumnya juga tidak menemukan file baseline tersebut.
+- Deployment snapshot /mnt/data/CBT_AUDIT_SNAPSHOT_2f135172/ tetap bukan checkout Git; tidak memiliki .git dan tidak digunakan untuk patch.
+- Git CLI tersedia. PHP lokal 8.4.24, bukan PHP 8.3. Tidak tersedia binary php8.3, Composer, MySQL client/server, Docker/Podman; PDO driver kosong.
+- DNS/HTTPS terminal ke github.com gagal dengan Could not resolve host: github.com.
+- GitHub connector dapat membaca tree/blob/workflow tetapi tidak memberi writable checkout atau binary source checkout dengan metadata Git.
+- Tidak dibuat repository sintetis, tidak dibuat working tree dari snapshot, dan tidak ada source diubah melalui GitHub Contents API.
+
+### IMPLEMENTASI
+
+- Tidak ada source aplikasi, migration, dependency, workflow, konfigurasi, atau database yang diubah.
+- Tidak ada migration cardinality dibuat.
+- Tidak ada source backup baru karena tidak ada source edit.
+- Hanya dokumen report/checkpoint diperbarui secara append-only.
+- P1-ID-03A belum selesai; audit ini bukan bukti implementasi.
+
+### PENGUJIAN
+
+- Audit statis migration: 65 file pada exact source SHA; tidak ada test/runtime DB dijalankan.
+- Audit statis tests: 75 PHP + 2 MJS pada exact source SHA; semua blob diambil dan dipindai. Test tidak dijalankan ulang pada audit ini.
+- Audit statis factories/seeders: 13 factories + 5 seeders.
+- Audit statis AuditService: 107 callsites / 33 caller files; 2 runtime bypass; 1 historical migration insert.
+- Tidak menjalankan PHP lint, Composer, PHPUnit, preflight, benchmark, MySQL 8, SQLite migration test, atau database cardinality query.
+- Workflow runs dan combined status untuk HEAD 8ef06d1f... tidak mengembalikan run/status. Jangan klaim CI PASS pada exact HEAD tersebut.
+- Bukti CI terdahulu yang tercatat dalam recovery: run #45369049022 SUCCESS pada exact SHA 2598af967b22a8fa032cc910bb32230804a15390; report sebelumnya tidak menyediakan angka assertion final. Itu bukan exact HEAD saat ini dan tidak membuktikan P1-ID-03A selesai.
+- ZIP workflow #45369048969 pada SHA 2598 SUCCESS hanya untuk build/archive; ZIP final tetap NOT ACCEPTED.
+- Workspace lokal PHPUnit/Composer/MySQL tidak tersedia. Produksi, staging, migration, deployment, dan merge tidak disentuh.
+
+### STATUS
+
+- Current branch HEAD sebelum addendum ini: 8ef06d1f800e9f3f9a197afe3be41c2f361d352c.
+- Source aplikasi terakhir yang diaudit: cd2b6ee8ed9d57604a06860e1dee399fb4b2b050.
+- P1-ID-03A: PARTIAL / NOT COMPLETE.
+- Cardinality design: AUDIT COMPLETE / BUSINESS RULE NOT DECIDED / NO MIGRATION.
+- Audit PII: INVENTORY COMPLETE FOR 107 CALLSITES / CENTRAL REDACTION NOT IMPLEMENTED.
+- Test fixture audit: 75 PHP + 2 MJS scanned / NO NORMALIZATION.
+- Workspace checkout: BLOCKED.
+- P1-ID-03B: BLOCKED / NOT STARTED.
+- PR #23: OPEN / DRAFT / NOT MERGED.
+- Production database: NOT TOUCHED.
+- STOP sebelum migration atau P1-ID-03B untuk review koordinator.
