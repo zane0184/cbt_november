@@ -45,9 +45,9 @@ class TenantAcademicBootstrapServiceTest extends TestCase
             ->get();
 
         $this->assertCount(6, $rows);
-        $this->assertSame(6, \\Illuminate\\Support\\Facades\\DB::table('academic_years')->where('tenant_id', $tenant->id)->count());
-        $this->assertSame(12, \\Illuminate\\Support\\Facades\\DB::table('semesters')->where('tenant_id', $tenant->id)->count());
-        $this->assertSame(0, \\Illuminate\\Support\\Facades\\DB::table('semesters')->where('tenant_id', $tenant->id)->where('is_active', true)->count());
+        $this->assertSame(6, DB::table('academic_years')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(12, DB::table('semesters')->where('tenant_id', $tenant->id)->count());
+        $this->assertSame(0, DB::table('semesters')->where('tenant_id', $tenant->id)->where('is_active', true)->count());
         $this->assertSame([
             ['MI_1', 1, 'FASE_A'],
             ['MI_2', 2, 'FASE_A'],
