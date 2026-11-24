@@ -307,7 +307,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                         'app-logo'
                     );
                     $this->fail('Upload must reject a symlinked branding directory.');
-                } catch (\\RuntimeException $exception) {
+                } catch (\RuntimeException $exception) {
                     $this->assertStringContainsString('Direktori branding', $exception->getMessage());
                 }
                 $redirectEntriesAfter = array_values(array_diff(scandir($redirectDirectory), ['.', '..']));
@@ -329,7 +329,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
                             'app-logo'
                         );
                         $this->fail('Upload must reject a symlinked public storage root.');
-                    } catch (\\RuntimeException $exception) {
+                    } catch (\RuntimeException $exception) {
                         $this->assertStringContainsString('storage', strtolower($exception->getMessage()));
                     }
                     $this->assertSame(
