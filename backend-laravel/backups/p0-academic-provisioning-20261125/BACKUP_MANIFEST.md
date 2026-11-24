@@ -14,5 +14,6 @@
 | `backend-laravel/database/seeders/CurriculumReferenceSourceSeeder.php` | `e2e75d34f2fbca683841190ff36ff143aec82aa5` | `52623adc0c7377abe6e833f0f7457438381bfa95beb80fb08b5ea7e923a30291` | `backend-laravel/backups/p0-academic-provisioning-20261125/CurriculumReferenceSourceSeeder.php.before` |
 | `backend-laravel/database/seeders/CurriculumRegistryBootstrapSeeder.php` | `e7cd1e94144b6d7bbad7e54f42a1f87a80af531d` | `5011fc437eebbbf707f1864dd6eecf21b5fdf43dff9061de5861010f5f98aea0` | `backend-laravel/backups/p0-academic-provisioning-20261125/CurriculumRegistryBootstrapSeeder.php.before` |
 | `backend-laravel/database/seeders/AssessmentTaxonomySeeder.php` | `e61f199f85859f160db0f80d5d0b765df373f232` | `bb4d5705dacbe10f1f8164eb74aaa5d67e94dc0b6d2da211e2b694e285d34cea` | `backend-laravel/backups/p0-academic-provisioning-20261125/AssessmentTaxonomySeeder.php.before` |
+| `backend-laravel/app/Services/Licensing/InstallationIdentityService.php` | `66115b340189581b34bcf027f73c1049281560e5` | `86d72d1e5af210855000ede57b8f046d39d4c0f06632e75ba04721e2fc1ab449` | `backend-laravel/backups/p0-academic-provisioning-20261125/InstallationIdentityService.php.before` |
 
 Backups are retained in the controlled repository and must be excluded from distribution ZIPs.
