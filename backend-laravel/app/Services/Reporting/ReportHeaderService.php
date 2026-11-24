@@ -1,9 +1,9 @@
 <?php
 
-namespace App\\Services\\Reporting;
+namespace App\Services\Reporting;
 
-use App\\Models\\Tenant;
-use App\\Services\\TenantBrandingService;
+use App\Models\Tenant;
+use App\Services\TenantBrandingService;
 
 class ReportHeaderService
 {
