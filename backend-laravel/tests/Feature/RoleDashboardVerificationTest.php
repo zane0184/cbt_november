@@ -102,7 +102,7 @@ class RoleDashboardVerificationTest extends TestCase
         $this->get('/proktor/dashboard')->assertNotFound();
         $this->get('/proktor/assignments')->assertNotFound();
 
-        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertOk();
+        $this->actingAs($this->adminA)->get('/admin/dashboard')->assertOk()->assertSee('Madrasah Demo A');
         $this->actingAs($this->guruA)->get('/admin/dashboard')->assertForbidden();
         $this->actingAs($this->siswaA)->get('/admin/dashboard')->assertForbidden();
 
