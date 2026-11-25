@@ -51,3 +51,7 @@ Backup sumber utama juga tercatat di `MANIFEST.md`.
 
 - `tenant-backend-ci.yml.before-source-branch-ci` — workflow sebelum mengaktifkan CI pada source branch aktif.
 - `ADDITIONAL_BACKUPS.md.before-source-branch-ci` — indeks sebelum mencatat backup workflow source branch.
+
+- `REPORT_IMPLEMENTASI_IMPORT_GURU_2026-11-26.md.before-live-source-checkpoint` — laporan sebelum pembaruan checkpoint source terkini.
+- `CHECKPOINT_IMPORT_GURU_2026-11-26.md.before-live-source-checkpoint` — checkpoint sebelum pembaruan source terkini.
+- `ADDITIONAL_BACKUPS.md.before-live-source-checkpoint` — indeks backup sebelum catatan checkpoint source terkini.
