@@ -311,6 +311,22 @@ class TeacherImportTest extends TestCase
             'identifier' => '199001012026041101',
             'password' => $result['credentials'][0]['password'],
         ])->assertRedirect('/guru/dashboard');
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => '199001012026041101',
+            'password' => $result['credentials'][0]['password'],
+            'device_name' => 'teacher-android-test',
+        ])->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.roles.0', 'GURU');
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => '3171010101900002',
+            'password' => $result['credentials'][1]['password'],
+            'device_name' => 'teacher-honorer-android-test',
+        ])->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.roles.0', 'GURU');
     }
 
 }
