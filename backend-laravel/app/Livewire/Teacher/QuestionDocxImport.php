@@ -168,7 +168,7 @@ class QuestionDocxImport extends Component
     {
         $this->authorizeAccess();
         $this->validate([
-            'file' => ['required', 'file', 'mimes:docx', 'max:10240'],
+            'file' => ['required', 'file', 'extensions:docx', 'max:10240'],
             'selectedAssignmentId' => ['required', 'uuid'],
             'selectedCpIds' => ['nullable', 'array'],
             'selectedCpIds.*' => ['required', 'uuid', 'distinct'],
