@@ -201,7 +201,7 @@ class TeacherLearningOutcomeService
                 ->where('outcome_type', 'TP')
                 ->where('is_current', true)
                 ->whereIn('status', ['DRAFT', 'PUBLISHED'])
-                ->with('structureMappings')
+                ->with(['structureMappings', 'parentCp.source'])
                 ->lockForUpdate()
                 ->firstOrFail();
 
@@ -209,6 +209,20 @@ class TeacherLearningOutcomeService
                 || $parentTp->multi_curriculum_version_id !== $registration->multi_curriculum_version_id) {
                 throw ValidationException::withMessages([
                     'parentTpId' => 'TP induk tidak berasal dari versi kurikulum yang dipatok pada penugasan ini.',
+                ]);
+            }
+
+            $parentCp = $parentTp->parentCp;
+            if (!$parentCp
+                || !$parentCp->is_official
+                || $parentCp->is_editable
+                || !$parentCp->source
+                || $parentCp->source->verification_status !== 'ARTIFACT_CHECKSUM_VERIFIED'
+                || !$parentCp->source->checksum_sha256
+                || !$parentCp->source_checksum
+                || !hash_equals((string) $parentCp->source->checksum_sha256, (string) $parentCp->source_checksum)) {
+                throw ValidationException::withMessages([
+                    'parentTpId' => 'CP induk belum terverifikasi melalui checksum artefak resmi. ATP belum dapat dibuat.',
                 ]);
             }
 
