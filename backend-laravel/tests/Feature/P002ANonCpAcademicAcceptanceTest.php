@@ -320,6 +320,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
         ]);
 
         $parentTp = $this->createPendingParentTp($chain, $pendingCp);
+        $this->actingAs($teacher);
         $beforeOutcomeCount = TenantLearningOutcome::query()->where('tenant_id', $this->tenant->id)->count();
 
         try {
