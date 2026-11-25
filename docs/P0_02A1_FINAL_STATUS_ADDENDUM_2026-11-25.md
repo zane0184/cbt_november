@@ -97,7 +97,7 @@ Seluruh backup di atas memiliki salinan `.before`; pasangan source/backup diperi
 
 ## 5. KEPUTUSAN DAN LANGKAH BERIKUTNYA
 
-**P0-02A.1 — PASS pada regression gate PHP 8.3/8.4 + MySQL 8.0/InnoDB.**  
+**P0-02A.1 — PASS pada regression gate PHP 8.3/8.4 + MySQL 8.0/InnoDB.**
 **P0-02A Non-CP Academic Acceptance — PASS pada feature/installer acceptance database disposable.**
 
 Tahap berikutnya:
