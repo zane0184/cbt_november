@@ -48,7 +48,7 @@ class TeacherImport extends Component
         ];
     }
 
-    public function import(): void
+    public function import()
     {
         $this->authorizeImport();
         $this->validate(['file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240']]);
@@ -59,9 +59,11 @@ class TeacherImport extends Component
             auth()->user()->id
         );
         $this->reset(['file', 'previewRows', 'summary']);
-        $message = $result['imported'].' akun Guru berhasil diimpor. Password awal dibuat acak; gunakan Reset Password di Manajemen Pengguna untuk menerbitkan kredensial.';
-        $this->dispatch('notify', ['type' => 'success', 'message' => $message]);
-        session()->flash('message', $message);
+        session()->flash('import_credentials', $result['credentials']);
+        session()->flash('import_credentials_label', 'Guru');
+        session()->flash('import_batch_id', $result['batch_id']);
+        session()->flash('message', $result['imported'].' akun Guru berhasil diimpor. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.'); 
+        return redirect('/admin/users');
     }
 
     public function downloadXlsxTemplate()
