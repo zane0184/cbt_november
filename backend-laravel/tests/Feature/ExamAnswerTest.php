@@ -456,6 +456,37 @@ class ExamAnswerTest extends TestCase
         ])->assertStatus(422)->assertJsonPath('code', 'ATTEMPT_EXPIRED');
     }
 
+    public function test_grouped_true_false_accepts_only_boolean_answers_for_known_statement_ids(): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $this->snapshot->update([
+            'metadata' => [
+                'question_type' => 'TRUE_FALSE_GROUP',
+                'statement_items' => [
+                    ['id' => 'sa', 'text' => 'Pernyataan A', 'is_true' => true],
+                    ['id' => 'sb', 'text' => 'Pernyataan B', 'is_true' => false],
+                    ['id' => 'sc', 'text' => 'Pernyataan C', 'is_true' => true],
+                ],
+            ],
+        ]);
+
+        $url = "/api/v1/exams/{$this->exam->id}/attempts/{$this->attempt->id}/answers/{$this->snapshot->id}";
+        $valid = $this->putJson($url, [
+            'client_request_id' => (string) Str::uuid(),
+            'answer_payload' => ['statement_answers' => ['sa' => true, 'sb' => false]],
+            'answer_state' => 'ANSWERED',
+        ]);
+        $valid->assertStatus(200);
+
+        $invalid = $this->putJson($url, [
+            'client_request_id' => (string) Str::uuid(),
+            'base_revision' => 1,
+            'answer_payload' => ['statement_answers' => ['unknown-statement' => true]],
+            'answer_state' => 'ANSWERED',
+        ]);
+        $invalid->assertStatus(422);
+    }
+
     public function test_all_question_types_payload_validation()
     {
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
