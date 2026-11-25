@@ -193,7 +193,7 @@ class ExamListContractTest extends TestCase
             ->assertJsonMissingPath('data.snapshots');
     }
 
-    public function test_admin_cannot_read_generic_exam_api(): void
+    public function test_admin_can_read_exam_register_without_token_or_mutation_access(): void
     {
         $context = app(TenantContext::class);
         $context->setTenantId($this->tenant->id);
@@ -209,8 +209,15 @@ class ExamListContractTest extends TestCase
         $context->setTenantId(null);
 
         $this->actingAs($admin, 'sanctum');
-        $this->getJson('/api/v1/exams')->assertForbidden();
-        $this->getJson('/api/v1/exams/' . $exam->id)->assertForbidden();
+        $this->getJson('/api/v1/exams')
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.token');
+        $this->getJson('/api/v1/exams/' . $exam->id)
+            ->assertOk()
+            ->assertJsonMissingPath('data.token')
+            ->assertJsonMissingPath('data.snapshots');
+        $this->putJson('/api/v1/exams/' . $exam->id, ['title' => 'Admin must not edit'])
+            ->assertForbidden();
     }
 
     public function test_tenant_isolation_remains_active()
