@@ -478,11 +478,11 @@ class ExamSnapshotService
                         'role' => $asset->pivot->role,
                         'mime_type' => $asset->mime_type,
                     ])->all(),
-                    'metadata' => [
+                    'metadata' => array_merge($version->metadata ?? [], [
                         'difficulty' => $version->difficulty,
                         'cognitive_level' => $version->cognitive_level,
                         'question_type' => $version->question_type,
-                    ],
+                    ]),
                     'curriculum_context_snapshot' => $questionContext,
                 ]);
 
