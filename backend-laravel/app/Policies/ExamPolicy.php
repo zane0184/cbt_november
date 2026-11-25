@@ -10,7 +10,7 @@ class ExamPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasExactlyOneOfRoles(['ADMIN_MADRASAH', 'GURU', 'SISWA']);
+        return $user->hasExactlyOneOfRoles(['GURU', 'SISWA']);
     }
 
     public function view(User $user, Exam $exam): bool
@@ -21,12 +21,6 @@ class ExamPolicy
 
         if ($user->hasExactRole('GURU')) {
             return TeacherAccess::canManageExam($user, $exam);
-        }
-
-        // Admin may view only the tenant's exam register; operational actions
-        // remain separately authorized and are never implied by this read access.
-        if ($user->hasExactRole('ADMIN_MADRASAH')) {
-            return true;
         }
 
         if ($user->hasExactRole('SISWA')) {
