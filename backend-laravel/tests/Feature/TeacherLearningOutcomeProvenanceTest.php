@@ -122,7 +122,7 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
     /** @test */
     public function atp_creation_rejects_pending_cp_without_partial_rows(): void
     {
-        $this->context['cp']->update(['verification_status' => 'PENDING']);
+        $this->context['cp']->source->update(['verification_status' => 'PENDING']);
         $this->assertAtpRejectedWithoutPartialRows();
     }
 
