@@ -151,6 +151,22 @@ class ExamManagementHardeningTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->teacher->id,
         ]);
+        foreach ([
+            ['A', 'Mitokondria', true],
+            ['B', 'Ribosom', false],
+            ['C', 'Nukleus', false],
+            ['D', 'Membran sel', false],
+        ] as $index => [$key, $content, $correct]) {
+            \\App\\Models\\QuestionOption::create([
+                'tenant_id' => $this->tenant->id,
+                'question_version_id' => $this->questionVersion1->id,
+                'option_key' => $key,
+                'content' => $content,
+                'is_correct' => $correct,
+                'score_weight' => $correct ? 1 : 0,
+                'sequence' => $index,
+            ]);
+        }
         $this->canonicalContext = $this->createCanonicalCurriculumContext($this->assignment, $this->teacher);
         $this->mapQuestionVersionToCanonicalCurriculum($this->questionVersion1, $this->canonicalContext);
         $q1->update(['current_version_id' => $this->questionVersion1->id]);
@@ -174,6 +190,20 @@ class ExamManagementHardeningTest extends TestCase
             'status' => 'PUBLISHED',
             'created_by' => $this->teacher->id,
         ]);
+        foreach ([
+            ['A', 'BENAR', true],
+            ['B', 'SALAH', false],
+        ] as $index => [$key, $content, $correct]) {
+            \\App\\Models\\QuestionOption::create([
+                'tenant_id' => $this->tenant->id,
+                'question_version_id' => $this->questionVersion2->id,
+                'option_key' => $key,
+                'content' => $content,
+                'is_correct' => $correct,
+                'score_weight' => $correct ? 1 : 0,
+                'sequence' => $index,
+            ]);
+        }
         $this->mapQuestionVersionToCanonicalCurriculum($this->questionVersion2, $this->canonicalContext);
         $q2->update(['current_version_id' => $this->questionVersion2->id]);
 

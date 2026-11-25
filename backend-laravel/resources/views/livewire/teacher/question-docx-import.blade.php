@@ -48,7 +48,7 @@
                 <label for="docx-file" class="mb-2 block text-sm font-semibold text-slate-700">Dokumen soal (.docx)</label>
                 <div class="rounded-2xl border-2 border-dashed border-indigo-200 bg-indigo-50/40 p-5 transition hover:border-indigo-400">
                     <input id="docx-file" type="file" wire:model="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" class="block w-full text-sm text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-600 file:px-4 file:py-2.5 file:text-sm file:font-bold file:text-white hover:file:bg-indigo-700">
-                    <p class="mt-3 text-xs leading-5 text-slate-500">Dokumen boleh berisi soal dan kunci jawaban saja. Kisi-kisi, identitas penyusun, dan halaman administrasi tidak wajib.</p>
+                    <p class="mt-3 text-xs leading-5 text-slate-500">Dokumen boleh berisi soal dan pilihan tanpa kunci jawaban atau bobot nilai. Jika bagian kunci ada, sistem mengabaikannya. Kisi-kisi dan halaman administrasi tidak wajib.</p>
                 </div>
                 @error('file') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                 <div wire:loading wire:target="file" class="mt-2 text-xs font-semibold text-indigo-700">Mengunggah dokumen…</div>
@@ -111,7 +111,7 @@
                 <div>
                     <div class="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600">Langkah 3</div>
                     <h2 class="text-xl font-extrabold text-slate-900">Preview hasil pembacaan</h2>
-                    <p class="mt-1 text-sm text-slate-500">Periksa semua soal dan kunci. Kamu dapat mengoreksi teks, opsi, dan kunci sebelum disimpan.</p>
+                    <p class="mt-1 text-sm text-slate-500">Periksa isi soal, pilihan, stimulus, dan jenis soal. Kunci jawaban serta bobot nilai dilengkapi setelah soal masuk Bank Soal.</p>
                 </div>
                 <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <div class="rounded-xl bg-slate-50 px-4 py-3"><div class="text-[11px] font-semibold uppercase text-slate-500">Total</div><div class="text-2xl font-extrabold text-slate-900">{{ $summary['total'] ?? 0 }}</div></div>
@@ -180,7 +180,7 @@
 
                     <div>
                         <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Teks soal</label>
-                        <textarea wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
+                        <textarea dir="auto" wire:model="questions.{{ $index }}.stem rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-2">
@@ -197,7 +197,7 @@
                     @if(!empty($question['stimulus']['content']))
                         <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
                             <div class="mb-1 text-xs font-bold uppercase text-blue-700">Stimulus bersama · {{ $question['stimulus']['id'] }}</div>
-                            <textarea wire:model="questions.{{ $index }}.stimulus.content" rows="3" class="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 focus:border-blue-500 focus:outline-none">{{ $question['stimulus']['content'] }}</textarea>
+                            <textarea dir="auto" wire:model="questions.{{ $index }}.stimulus.content rows="3" class="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 focus:border-blue-500 focus:outline-none">{{ $question['stimulus']['content'] }}</textarea>
                         </div>
                     @endif
 
@@ -207,7 +207,7 @@
                             @foreach($question['options'] as $optionIndex => $option)
                                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
                                     <span class="text-sm font-extrabold text-slate-600">{{ $option['option_key'] }}.</span>
-                                    <input type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                    <input dir="auto" type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                 </div>
                             @endforeach
                         </div>
@@ -229,7 +229,7 @@
                                 <div class="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[1fr_auto] md:items-center">
                                     <div>
                                         <div class="mb-1 text-xs font-bold text-slate-500">Pernyataan {{ $statementIndex + 1 }}</div>
-                                        <input type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                        <input dir="auto" type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                     </div>
                                     @if(count($question['statements']) > 3)
                                         <button type="button" wire:click="removeGroupedStatement({{ $index }}, {{ $statementIndex }})" class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700">Hapus</button>

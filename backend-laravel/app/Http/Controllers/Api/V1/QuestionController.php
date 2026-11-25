@@ -346,6 +346,23 @@ class QuestionController extends Controller
             if ($current->question_type === 'SHORT_ANSWER') {
                 abort(422, 'SHORT_ANSWER belum didukung sampai accepted answers masuk ke immutable snapshot dan scoring teruji.');
             }
+            if ((float) $current->default_points <= 0) {
+                abort(422, 'Bobot nilai belum ditentukan. Lengkapi bobot pada editor Bank Soal sebelum menerbitkan.');
+            }
+            if (in_array($current->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+                $options = $current->options;
+                $optionCount = $options->count();
+                $correctCount = $options->filter(fn ($option) => (bool) $option->is_correct)->count();
+                $validKeys = match ($current->question_type) {
+                    'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
+                    'MULTIPLE_RESPONSE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount >= 1,
+                    'TRUE_FALSE' => $optionCount === 2 && $correctCount === 1,
+                    default => false,
+                };
+                if (!$validKeys) {
+                    abort(422, 'Kunci jawaban belum lengkap atau tidak sesuai jenis soal. Lengkapi melalui editor Bank Soal.');
+                }
+            }
             if ($current->question_type === 'TRUE_FALSE_GROUP') {
                 $items = $current->metadata['statement_items'] ?? [];
                 $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);

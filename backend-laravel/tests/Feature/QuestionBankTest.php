@@ -624,15 +624,25 @@ class QuestionBankTest extends TestCase
             ->where('question_type', 'TRUE_FALSE_GROUP')
             ->firstOrFail();
         $this->assertCount(3, $groupVersion->metadata['statement_items']);
+        $this->assertSame([null, null, null], array_column($groupVersion->metadata['statement_items'], 'is_true'));
+        $this->assertSame(0.0, (float) $groupVersion->default_points);
         $this->assertSame('PROPORTIONAL_PER_STATEMENT_V1', $groupVersion->metadata['statement_scoring']);
         $this->assertTrue((bool) $groupVersion->is_current);
         $this->assertSame('DRAFT', $groupVersion->status);
+
+        $this->postJson('/api/v1/questions/' . $groupVersion->question_id . '/publish')->assertStatus(422);
+        $groupVersion->update(['default_points' => 10]);
+        $this->postJson('/api/v1/questions/' . $groupVersion->question_id . '/publish')->assertStatus(422);
 
         Livewire::test(QuestionBank::class)
             ->call('openEditModal', $groupVersion->question_id)
             ->assertSet('questionType', 'TRUE_FALSE_GROUP')
             ->assertSet('groupStatements.0.text', '2 merupakan bilangan genap.')
+            ->set('defaultPoints', 10)
             ->set('groupStatements.0.text', 'Dua adalah bilangan genap.')
+            ->set('groupStatements.0.is_true', '1')
+            ->set('groupStatements.1.is_true', '0')
+            ->set('groupStatements.2.is_true', '1')
             ->call('saveQuestion')
             ->assertHasNoErrors();
 

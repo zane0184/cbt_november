@@ -119,7 +119,7 @@
                             @foreach(($q->currentVersion->metadata['statement_items'] ?? []) as $statement)
                                 <div class="flex items-start justify-between gap-3 text-xs">
                                     <span class="text-slate-700">{{ $statement['text'] ?? '' }}</span>
-                                    <strong class="shrink-0 text-indigo-800">{{ ($statement['is_true'] ?? false) ? 'BENAR' : 'SALAH' }}</strong>
+                                    <strong class="shrink-0 text-indigo-800">{{ is_bool($statement['is_true'] ?? null) ? ($statement['is_true'] ? 'BENAR' : 'SALAH') : 'BELUM DIISI' }}</strong>
                                 </div>
                             @endforeach
                             <p class="text-[10px] text-indigo-700">Skor proporsional: sepertiga poin untuk setiap pernyataan benar.</p>
@@ -301,7 +301,7 @@
 
                     <div>
                         <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Isi / Pertanyaan (Stem) — Mendukung Teks Arab & Harakat</label>
-                        <textarea wire:model="stem" rows="3" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-sans" placeholder="Tuliskan butir soal di sini..."></textarea>
+                        <textarea dir="auto" wire:model="stem rows="3" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none font-sans" placeholder="Tuliskan butir soal di sini..."></textarea>
                         @error('stem') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                     </div>
 
@@ -313,21 +313,21 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 <div>
                                     <span class="text-[10px] font-bold text-textSecondary uppercase">Opsi A</span>
-                                    <input wire:model="optionA" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionA type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                     @error('optionA') <span class="text-red-500 text-xs block mt-0.5">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-bold text-textSecondary uppercase">Opsi B</span>
-                                    <input wire:model="optionB" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionB type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                     @error('optionB') <span class="text-red-500 text-xs block mt-0.5">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-bold text-textSecondary uppercase">Opsi C (Opsional)</span>
-                                    <input wire:model="optionC" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionC type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                 </div>
                                 <div>
                                     <span class="text-[10px] font-bold text-textSecondary uppercase">Opsi D (Opsional)</span>
-                                    <input wire:model="optionD" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionD type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                 </div>
                             </div>
 
@@ -358,7 +358,7 @@
                                             Benar
                                         </label>
                                     </div>
-                                    <input wire:model="optionA" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionA type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                     @error('optionA') <span class="text-red-500 text-xs block">{{ $message }}</span> @enderror
                                 </div>
 
@@ -370,7 +370,7 @@
                                             Benar
                                         </label>
                                     </div>
-                                    <input wire:model="optionB" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionB type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                     @error('optionB') <span class="text-red-500 text-xs block">{{ $message }}</span> @enderror
                                 </div>
 
@@ -382,7 +382,7 @@
                                             Benar
                                         </label>
                                     </div>
-                                    <input wire:model="optionC" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionC type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                 </div>
 
                                 <div class="bg-white p-3 rounded-xl border border-cardBorder space-y-1">
@@ -393,7 +393,7 @@
                                             Benar
                                         </label>
                                     </div>
-                                    <input wire:model="optionD" type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
+                                    <input dir="auto" wire:model="optionD type="text" class="w-full border border-cardBorder rounded-lg px-3 py-1.5 text-sm">
                                 </div>
                             </div>
                             @error('correctOptions') <span class="text-red-500 text-xs block font-bold mt-1">{{ $message }}</span> @enderror
@@ -458,7 +458,7 @@
                                     <div>
                                         <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Pernyataan {{ $idx + 1 }}</label>
                                         <input type="hidden" wire:model="groupStatements.{{ $idx }}.id">
-                                        <textarea wire:model="groupStatements.{{ $idx }}.text" rows="2" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"></textarea>
+                                        <textarea dir="auto" wire:model="groupStatements.{{ $idx }}.text rows="2" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"></textarea>
                                         @error('groupStatements.'.$idx.'.text') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
@@ -476,7 +476,7 @@
                     @elseif($questionType === 'ESSAY')
                         <div class="space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                             <label class="block text-xs font-bold text-amber-900 uppercase mb-1">Pedoman Penskoran / Rubrik Jawaban Uraian</label>
-                            <textarea wire:model="explanation" rows="3" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none" placeholder="Tuliskan pedoman penskoran atau kriteria jawaban benar untuk korektor..."></textarea>
+                            <textarea dir="auto" wire:model="explanation rows="3" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none" placeholder="Tuliskan pedoman penskoran atau kriteria jawaban benar untuk korektor..."></textarea>
                         </div>
                     @endif
 
@@ -484,7 +484,7 @@
                     @if($questionType !== 'ESSAY')
                         <div>
                             <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Pembahasan Soal (Opsional)</label>
-                            <textarea wire:model="explanation" rows="2" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Penjelasan / alasan kunci jawaban..."></textarea>
+                            <textarea dir="auto" wire:model="explanation rows="2" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Penjelasan / alasan kunci jawaban..."></textarea>
                         </div>
                     @endif
 
