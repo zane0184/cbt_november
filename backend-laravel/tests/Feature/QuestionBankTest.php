@@ -439,6 +439,11 @@ class QuestionBankTest extends TestCase
 
         $this->assertCount(2, $leftOptions);
         $this->assertCount(2, $rightOptions);
+
+        $this->questionBankComponent()
+            ->call('publishQuestion', $question->id)
+            ->assertStatus(422);
+        $this->assertSame('DRAFT', $question->fresh()->status);
     }
 
     public function test_web_admin_cp_and_tp_cross_tenant_rejection()

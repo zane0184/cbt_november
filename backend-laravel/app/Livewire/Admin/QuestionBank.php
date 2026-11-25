@@ -618,6 +618,9 @@ class QuestionBank extends Component
             Gate::authorize('publish', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            if ($version->question_type === 'MATCHING') {
+                abort(422, 'MATCHING belum dapat dipublikasikan sampai runtime E2E dan kontrak scoring terverifikasi.');
+            }
             if ($version->question_type === 'TRUE_FALSE_GROUP') {
                 $items = $version->metadata['statement_items'] ?? [];
                 $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);

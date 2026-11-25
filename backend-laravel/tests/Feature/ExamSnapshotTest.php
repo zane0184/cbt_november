@@ -379,6 +379,48 @@ class ExamSnapshotTest extends TestCase
         ]);
     }
 
+    public function test_exam_rejects_matching_until_runtime_e2e_and_scoring_are_verified()
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'Q-MATCHING-BLOCKED',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MATCHING',
+            'stem' => 'Pasangkan istilah dengan maknanya.',
+            'status' => 'PUBLISHED',
+            'is_current' => true,
+            'metadata' => [
+                'matching_pairs' => [
+                    ['left' => 'Red', 'right' => 'Merah'],
+                    ['left' => 'Blue', 'right' => 'Biru'],
+                ],
+            ],
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_version_id' => $version->id,
+        ]);
+    }
+
     public function test_exam_snapshot_media_remains_intact_when_original_media_deleted()
     {
         $media = MediaAsset::create([

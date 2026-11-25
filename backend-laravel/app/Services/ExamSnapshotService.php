@@ -375,6 +375,9 @@ class ExamSnapshotService
                 if ($version->question_type === 'SHORT_ANSWER') {
                     abort(422, 'SHORT_ANSWER belum dapat dimasukkan ke ujian sampai accepted answers tersimpan di immutable snapshot dan scoring teruji.');
                 }
+                if ($version->question_type === 'MATCHING') {
+                    abort(422, 'MATCHING belum dapat dimasukkan ke ujian sampai runtime E2E dan kontrak scoring terverifikasi.');
+                }
                 if ($version->question_type === 'TRUE_FALSE_GROUP') {
                     $items = $version->metadata['statement_items'] ?? [];
                     $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);
