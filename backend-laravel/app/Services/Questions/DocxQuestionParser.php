@@ -320,6 +320,18 @@ class DocxQuestionParser
                 } elseif ($stimulus !== null) {
                     $stimulus['unsupported_blocks'] = array_merge($stimulus['unsupported_blocks'] ?? [], $blockUnsupported);
                     $stimulus['unsupported_features'] = array_merge($stimulus['unsupported_features'] ?? [], $blockUnsupportedFeatures);
+                } elseif ($rawQuestions !== []) {
+                    // Word commonly places floating media/formulas after the answer-key paragraph.
+                    // Attach a contiguous trailing unsupported block to the last completed question.
+                    $lastIndex = array_key_last($rawQuestions);
+                    $rawQuestions[$lastIndex]['unsupported_blocks'] = array_merge(
+                        $rawQuestions[$lastIndex]['unsupported_blocks'] ?? [],
+                        $blockUnsupported
+                    );
+                    $rawQuestions[$lastIndex]['unsupported_features'] = array_merge(
+                        $rawQuestions[$lastIndex]['unsupported_features'] ?? [],
+                        $blockUnsupportedFeatures
+                    );
                 }
             }
 
@@ -333,7 +345,7 @@ class DocxQuestionParser
                     $active = null;
                 }
                 $answerSection = true;
-                $stimulus = null;
+                // An answer-key section closes question parsing, not the shared reading stimulus.
                 continue;
             }
 
