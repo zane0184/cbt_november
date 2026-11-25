@@ -79,7 +79,7 @@ class WebAdminAuthTest extends TestCase
             'encrypted_private_key' => 'test-encrypted-private-key',
             'key_fingerprint' => str_repeat('b', 64),
             'registered_domain' => 'cbt.test',
-            'product_code' => 'CBT_MADRASAH',
+            'product_code' => (string) config('license.product_code', 'CBT-MI'),
             'product_version' => 'test',
         ]);
 
