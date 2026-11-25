@@ -553,6 +553,8 @@ class QuestionBankTest extends TestCase
         $this->actingAs($this->userA);
 
         $upload = $this->makeDocxQuestionUpload([
+            'STIMULUS [BACAAN-A]: Bacaan untuk dua soal pertama.',
+            'Paragraf kedua stimulus yang tetap terhubung.',
             'SOAL 1. [PG] Berapakah hasil 4 + 5?',
             'A. 7',
             'B. 8',
@@ -565,6 +567,7 @@ class QuestionBankTest extends TestCase
             'C. 4',
             'D. 5',
             'KUNCI: A, C',
+            'AKHIR STIMULUS',
             'SOAL 3. [B/S] Tentukan benar atau salah setiap pernyataan.',
             'a. 2 merupakan bilangan genap.',
             'b. 5 lebih besar daripada 9.',
@@ -601,6 +604,21 @@ class QuestionBankTest extends TestCase
             'question_type' => 'MULTIPLE_RESPONSE',
             'status' => 'DRAFT',
         ]);
+
+        $firstStimulusVersion = QuestionVersion::query()
+            ->where('metadata->source_question_number', 1)
+            ->firstOrFail();
+        $secondStimulusVersion = QuestionVersion::query()
+            ->where('metadata->source_question_number', 2)
+            ->firstOrFail();
+        $this->assertSame(
+            $firstStimulusVersion->metadata['shared_stimulus']['group_id'],
+            $secondStimulusVersion->metadata['shared_stimulus']['group_id']
+        );
+        $this->assertSame(
+            $firstStimulusVersion->metadata['shared_stimulus']['content_sha256'],
+            $secondStimulusVersion->metadata['shared_stimulus']['content_sha256']
+        );
 
         $groupVersion = QuestionVersion::query()
             ->where('question_type', 'TRUE_FALSE_GROUP')
