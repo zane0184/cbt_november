@@ -215,6 +215,7 @@ class TeacherImportService
                 ]);
 
                 $role = Role::query()->where('name', 'GURU')->firstOrFail();
+                $credentials = [];
                 foreach ($preview['rows'] as $row) {
                     $data = $row['data'];
                     $identityColumn = $data['employment_status'] === 'HONORER' ? 'nik' : 'nip';
@@ -238,10 +239,11 @@ class TeacherImportService
                         ]);
                     }
 
+                    $temporaryPassword = Str::random(24);
                     $user = User::query()->create([
                         'name' => $data['name'],
                         'email' => $data['email'],
-                        'password' => Hash::make(Str::random(48)),
+                        'password' => Hash::make($temporaryPassword),
                     ]);
                     $user->roles()->sync([$role->id]);
 
@@ -256,6 +258,13 @@ class TeacherImportService
                         'gender' => $data['gender'],
                         'phone' => $data['phone'],
                     ]);
+
+                    $credentials[] = [
+                        'name' => $data['name'],
+                        'login_identifier' => $data['employee_identifier'],
+                        'identifier_type' => $data['employment_status'] === 'HONORER' ? 'NIK' : 'NIP',
+                        'password' => $temporaryPassword,
+                    ];
                 }
 
                 DB::table('teacher_import_batches')->where('id', $batchId)->update([
@@ -270,7 +279,7 @@ class TeacherImportService
                     'imported_rows' => $preview['total'],
                 ]);
 
-                return ['batch_id' => $batchId, 'imported' => $preview['total']];
+                return ['batch_id' => $batchId, 'imported' => $preview['total'], 'credentials' => $credentials];
             }, 3);
         } finally {
             $context->setTenantId($previousTenant);
