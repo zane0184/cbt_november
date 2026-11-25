@@ -1,0 +1,571 @@
+<?php
+
+namespace App\Services\Questions;
+
+use DOMDocument;
+use DOMElement;
+use DOMNode;
+use Illuminate\Validation\ValidationException;
+use ZipArchive;
+
+class DocxQuestionParser
+{
+    private const MAX_FILE_BYTES = 10 * 1024 * 1024;
+    private const MAX_XML_BYTES = 20 * 1024 * 1024;
+    private const MAX_QUESTIONS = 500;
+
+    public function parse(string $path): array
+    {
+        if (!is_file($path) || filesize($path) < 1 || filesize($path) > self::MAX_FILE_BYTES) {
+            throw ValidationException::withMessages(['docx' => 'File DOCX kosong atau melebihi batas 10 MB.']);
+        }
+
+        $zip = new ZipArchive();
+        if ($zip->open($path) !== true) {
+            throw ValidationException::withMessages(['docx' => 'File bukan paket DOCX yang valid atau rusak.']);
+        }
+
+        try {
+            $xml = $this->validatePackage($zip);
+            $blocks = $this->readOrderedBlocks($xml);
+        } finally {
+            $zip->close();
+        }
+
+        return $this->buildQuestions($blocks, hash_file('sha256', $path));
+    }
+
+    /**
+     * Validate the OOXML package before parsing any document part.
+     * No package entry is extracted to the filesystem.
+     */
+    private function validatePackage(ZipArchive $zip): string
+    {
+        if ($zip->numFiles < 3 || $zip->numFiles > 500) {
+            throw ValidationException::withMessages(['docx' => 'Paket Word memiliki jumlah bagian yang tidak wajar.']);
+        }
+
+        $requiredEntries = ['[Content_Types].xml', '_rels/.rels', 'word/document.xml'];
+        $foundEntries = [];
+        $totalUncompressedBytes = 0;
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $stat = $zip->statIndex($index);
+            if (!is_array($stat)) {
+                throw ValidationException::withMessages(['docx' => 'Struktur ZIP DOCX tidak dapat diverifikasi.']);
+            }
+
+            $name = (string) ($stat['name'] ?? '');
+            $normalizedName = str_replace('\\', '/', $name);
+            if ($name === ''
+                || str_contains($name, "\0")
+                || str_starts_with($normalizedName, '/')
+                || preg_match('#(^|/)\.\.?(/|$)#', $normalizedName) === 1) {
+                throw ValidationException::withMessages(['docx' => 'Paket Word mengandung nama bagian yang tidak aman.']);
+            }
+
+            $entrySize = (int) ($stat['size'] ?? 0);
+            $compressedSize = (int) ($stat['comp_size'] ?? 0);
+            $totalUncompressedBytes += $entrySize;
+            if ($entrySize > self::MAX_XML_BYTES || $totalUncompressedBytes > 30 * 1024 * 1024) {
+                throw ValidationException::withMessages(['docx' => 'Isi paket Word melebihi batas keamanan pemrosesan.']);
+            }
+            if ($entrySize > 0 && ($compressedSize < 1 || ($entrySize / $compressedSize) > 100)) {
+                throw ValidationException::withMessages(['docx' => 'Rasio kompresi DOCX melebihi batas keamanan.']);
+            }
+
+            $lowerName = strtolower($normalizedName);
+            if (str_starts_with($lowerName, 'word/embeddings/')
+                || str_starts_with($lowerName, 'word/activex/')
+                || str_contains($lowerName, 'vbaproject')
+                || preg_match('~oleobject[^/]*\.bin$~i', $lowerName) === 1) {
+                throw ValidationException::withMessages(['docx' => 'DOCX dengan embedded OLE, ActiveX, atau macro tidak diizinkan.']);
+            }
+
+            $foundEntries[$normalizedName] = true;
+            if (str_ends_with(strtolower($normalizedName), '.rels')) {
+                $this->validateRelationships($zip, $index);
+            }
+        }
+
+        foreach ($requiredEntries as $requiredEntry) {
+            if (!isset($foundEntries[$requiredEntry])) {
+                throw ValidationException::withMessages(['docx' => 'Paket Word tidak memiliki struktur OOXML wajib.']);
+            }
+        }
+
+        $contentTypes = $zip->getFromName('[Content_Types].xml');
+        $documentXml = $zip->getFromName('word/document.xml');
+        if (!is_string($contentTypes) || !is_string($documentXml)
+            || strlen($contentTypes) > self::MAX_XML_BYTES
+            || strlen($documentXml) > self::MAX_XML_BYTES) {
+            throw ValidationException::withMessages(['docx' => 'Struktur dokumen Word tidak ditemukan atau terlalu besar.']);
+        }
+
+        $this->assertSafeXml($contentTypes);
+        $this->assertSafeXml($documentXml);
+        if (preg_match('/<(?:[A-Za-z0-9_]+:)?(?:altChunk|object|OLEObject|control)\b/i', $documentXml) === 1) {
+            throw ValidationException::withMessages(['docx' => 'DOCX dengan konten aktif atau embedded object tidak diizinkan.']);
+        }
+
+        return $documentXml;
+    }
+
+    private function validateRelationships(ZipArchive $zip, int $index): void
+    {
+        $xml = $zip->getFromIndex($index);
+        if (!is_string($xml) || strlen($xml) > 1024 * 1024) {
+            throw ValidationException::withMessages(['docx' => 'Bagian relasi DOCX tidak valid atau terlalu besar.']);
+        }
+        $this->assertSafeXml($xml);
+        $document = new DOMDocument();
+        if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+            throw ValidationException::withMessages(['docx' => 'Bagian relasi DOCX tidak dapat dibaca.']);
+        }
+        $xpath = new \DOMXPath($document);
+        foreach ($xpath->query('//*[local-name()="Relationship"]') as $relationship) {
+            if (strcasecmp($relationship->getAttribute('TargetMode'), 'External') === 0) {
+                throw ValidationException::withMessages(['docx' => 'Relasi eksternal dalam DOCX tidak diizinkan.']);
+            }
+        }
+    }
+
+    private function assertSafeXml(string $xml): void
+    {
+        if (preg_match('/<!DOCTYPE|<!ENTITY/i', $xml) === 1) {
+            throw ValidationException::withMessages(['docx' => 'Deklarasi DTD atau ENTITY dalam DOCX tidak diizinkan.']);
+        }
+    }
+
+    private function readOrderedBlocks(string $xml): array
+    {
+        $previous = libxml_use_internal_errors(true);
+        try {
+            $this->assertSafeXml($xml);
+            $document = new DOMDocument();
+            if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+                throw ValidationException::withMessages(['docx' => 'XML dokumen Word tidak dapat dibaca.']);
+            }
+
+            $xpath = new \DOMXPath($document);
+            $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+            $xpath->registerNamespace('m', 'http://schemas.openxmlformats.org/officeDocument/2006/math');
+            $body = $xpath->query('/w:document/w:body')->item(0);
+            if (!$body) {
+                throw ValidationException::withMessages(['docx' => 'Bagian isi dokumen Word tidak ditemukan.']);
+            }
+
+            $blocks = [];
+            $sequence = 0;
+            $tableSequence = 0;
+            foreach ($body->childNodes as $node) {
+                if (!$node instanceof DOMElement) {
+                    continue;
+                }
+
+                if ($node->localName === 'p') {
+                    $text = $this->paragraphText($node, $xpath);
+                    $hasMedia = $xpath->query('.//w:drawing | .//w:pict', $node)->length > 0;
+                    $hasMath = $xpath->query('.//m:oMath | .//m:oMathPara', $node)->length > 0;
+                    if (trim($text) !== '' || $hasMedia || $hasMath) {
+                        $blocks[] = [
+                            'text' => $text,
+                            'has_media' => $hasMedia,
+                            'has_math' => $hasMath,
+                            'locator' => ['sequence' => ++$sequence, 'kind' => 'paragraph'],
+                        ];
+                    }
+                    continue;
+                }
+
+                if ($node->localName === 'tbl') {
+                    $tableIndex = ++$tableSequence;
+                    $rows = $xpath->query('./w:tr', $node);
+                    foreach ($rows as $rowIndex => $row) {
+                        $cells = $xpath->query('./w:tc', $row);
+                        foreach ($cells as $cellIndex => $cell) {
+                            $paragraphs = $xpath->query('.//w:p', $cell);
+                            foreach ($paragraphs as $paragraphIndex => $paragraph) {
+                                $text = $this->paragraphText($paragraph, $xpath);
+                                $hasMedia = $xpath->query('.//w:drawing | .//w:pict', $paragraph)->length > 0;
+                                $hasMath = $xpath->query('.//m:oMath | .//m:oMathPara', $paragraph)->length > 0;
+                                if (trim($text) === '' && !$hasMedia && !$hasMath) {
+                                    continue;
+                                }
+                                $blocks[] = [
+                                    'text' => $text,
+                                    'has_media' => $hasMedia,
+                                    'has_math' => $hasMath,
+                                    'locator' => [
+                                        'sequence' => ++$sequence,
+                                        'kind' => 'table-cell',
+                                        'table' => $tableIndex,
+                                        'row' => $rowIndex + 1,
+                                        'cell' => $cellIndex + 1,
+                                        'paragraph' => $paragraphIndex + 1,
+                                    ],
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return $blocks;
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+    }
+
+    private function paragraphText(DOMNode $paragraph, \DOMXPath $xpath): string
+    {
+        $parts = [];
+        foreach ($paragraph->childNodes as $node) {
+            if ($node instanceof DOMElement && $node->localName === 'r') {
+                foreach ($node->childNodes as $runNode) {
+                    if (!$runNode instanceof DOMElement) {
+                        continue;
+                    }
+                    if ($runNode->localName === 't') {
+                        $parts[] = $runNode->textContent;
+                    } elseif ($runNode->localName === 'tab') {
+                        $parts[] = "\t";
+                    } elseif ($runNode->localName === 'br' || $runNode->localName === 'cr') {
+                        $parts[] = "\n";
+                    }
+                }
+            } elseif ($node instanceof DOMElement && $node->localName === 'hyperlink') {
+                $parts[] = $node->textContent;
+            }
+        }
+
+        return $this->normalizeText(implode('', $parts));
+    }
+
+    private function normalizeText(string $text): string
+    {
+        $text = str_replace(["\u{00A0}", "\r"], [' ', "\n"], $text);
+        $text = preg_replace('/[ \t]+/u', ' ', $text) ?? $text;
+        return trim($text);
+    }
+
+    private function buildQuestions(array $blocks, string $fileHash): array
+    {
+        $rawQuestions = [];
+        $answerSection = false;
+        $active = null;
+        $stimulus = null;
+        $excluded = [];
+        $warnings = [];
+
+        foreach ($blocks as $block) {
+            $text = trim($block['text']);
+            $blockUnsupported = [];
+            $blockUnsupportedFeatures = [];
+            if (!empty($block['has_media'])) {
+                $blockUnsupported[] = 'Dokumen memuat gambar/diagram pada blok ini; import media belum diaktifkan dan item harus ditinjau manual.';
+                $blockUnsupportedFeatures[] = 'IMAGE_OR_DIAGRAM';
+            }
+            if (!empty($block['has_math'])) {
+                $blockUnsupported[] = 'Dokumen memuat objek formula matematika Word pada blok ini; konversi formula belum diaktifkan.';
+                $blockUnsupportedFeatures[] = 'WORD_MATH';
+            }
+            $isQuestionStart = preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text) === 1;
+            $isStimulusStart = preg_match('/^STIMULUS(?:\\s*\\[[A-Z0-9_-]+\\])?\\s*:/iu', $text) === 1;
+            if (($block['locator']['kind'] ?? null) === 'table-cell') {
+                if ($active !== null) {
+                    $active['has_table_content'] = true;
+                } elseif ($stimulus !== null) {
+                    $stimulus['has_table_content'] = true;
+                }
+            }
+            if ($blockUnsupported !== [] && !$isQuestionStart && !$isStimulusStart) {
+                if ($active !== null) {
+                    $active['unsupported_blocks'] = array_merge($active['unsupported_blocks'] ?? [], $blockUnsupported);
+                    $active['unsupported_features'] = array_merge($active['unsupported_features'] ?? [], $blockUnsupportedFeatures);
+                } elseif ($stimulus !== null) {
+                    $stimulus['unsupported_blocks'] = array_merge($stimulus['unsupported_blocks'] ?? [], $blockUnsupported);
+                    $stimulus['unsupported_features'] = array_merge($stimulus['unsupported_features'] ?? [], $blockUnsupportedFeatures);
+                }
+            }
+            if ($text === '') {
+                continue;
+            }
+
+            if (preg_match('/^(?:KUNCI\s*JAWABAN|DAFTAR\s*JAWABAN|ANSWER\s*KEY)\s*:?\s*$/iu', $text)) {
+                if ($active !== null) {
+                    $rawQuestions[] = $active;
+                    $active = null;
+                }
+                $answerSection = true;
+                continue;
+            }
+
+            if (preg_match('/^(?:AKHIR\s+STIMULUS|END\s+STIMULUS)\s*$/iu', $text)) {
+                $stimulus = null;
+                continue;
+            }
+
+            if (preg_match('/^(?:STIMULUS)(?:\s*\[([A-Z0-9_-]+)\])?\s*:?\s*(.*)$/iu', $text, $match)) {
+                if ($active !== null) {
+                    $rawQuestions[] = $active;
+                    $active = null;
+                }
+                $stimulus = [
+                    'id' => strtoupper($match[1] ?? ('STIMULUS-' . ($block['locator']['sequence'] ?? count($rawQuestions) + 1))),
+                    'content' => trim($match[2] ?? ''),
+                    'source' => $block['locator'],
+                    'unsupported_blocks' => $blockUnsupported,
+                    'unsupported_features' => $blockUnsupportedFeatures,
+                ];
+                continue;
+            }
+
+            if ($answerSection) {
+                // Answer-key rows are ignored. Only an explicit SOAL heading resumes parsing.
+                if (preg_match('/^SOAL\s+\d{1,3}\s*[.):]/iu', $text) === 1) {
+                    $answerSection = false;
+                } else {
+                    continue;
+                }
+            }
+
+            if (preg_match('/^(?:SOAL\s+)?(\d{1,3})\s*[.):]\s*(.*)$/iu', $text, $match)) {
+                if ($active !== null) {
+                    $rawQuestions[] = $active;
+                }
+                $header = trim($match[2]);
+                $hint = null;
+                if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
+                    $hint = strtoupper(preg_replace('/\s+/', ' ', $typeMatch[1]));
+                    $header = trim(str_replace($typeMatch[0], '', $header));
+                }
+                // Strip inline answer-key annotations; the Teacher fills keys later.
+                $header = trim(preg_replace('/(?:KUNCI|JAWABAN)\s*[:=]\s*.+$/iu', '', $header));
+                $active = [
+                    'number' => (int) $match[1],
+                    'stem_parts' => $header !== '' ? [$header] : [],
+                    'options' => [],
+                    'statements' => [],
+                    'hint' => $hint,
+                    'locator' => $block['locator'],
+                    'stimulus' => $stimulus,
+                    'unsupported_blocks' => $blockUnsupported,
+                    'unsupported_features' => $blockUnsupportedFeatures,
+                    'has_table_content' => ($block['locator']['kind'] ?? null) === 'table-cell',
+                ];
+                $answerSection = false;
+                continue;
+            }
+
+            if ($active === null) {
+                if ($stimulus !== null && !preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text)) {
+                    $stimulus['content'] = trim($stimulus['content'] . "\n" . $text);
+                    continue;
+                }
+                if (preg_match('/^(?:KISI[- ]KISI|IDENTITAS PENYUSUN|LEMBAR PENGESAHAN|CAPAIAN PEMBELAJARAN|TUJUAN PEMBELAJARAN)\b/iu', $text)) {
+                    $excluded[] = ['text' => mb_substr($text, 0, 180), 'locator' => $block['locator'], 'reason' => 'Konten administrasi/kisi-kisi tidak diimpor sebagai soal.'];
+                }
+                continue;
+            }
+
+            if (preg_match('/^(?:KUNCI|JAWABAN)\s*[:=]\s*.+$/iu', $text)) {
+                continue;
+            }
+
+            if (preg_match('/^([a-c])\s*[.)=:]\s*(.+)$/iu', $text, $statementMatch)
+                && ($active['hint'] && !str_contains($active['hint'], 'TUNGGAL') && (str_contains($active['hint'], 'B/S') || str_contains($active['hint'], 'BENAR/SALAH') || str_contains($active['hint'], 'BS')))) {
+                $active['statements'][] = [
+                    'id' => 's' . strtolower($statementMatch[1]),
+                    'text' => trim($statementMatch[2]),
+                ];
+                continue;
+            }
+
+            if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $text, $optionMatch)) {
+                $active['options'][] = [
+                    'option_key' => strtoupper($optionMatch[1]),
+                    'content' => trim($optionMatch[2]),
+                ];
+                continue;
+            }
+
+            $active['stem_parts'][] = $text;
+        }
+
+        if ($active !== null) {
+            $rawQuestions[] = $active;
+        }
+
+        if (count($rawQuestions) > self::MAX_QUESTIONS) {
+            throw ValidationException::withMessages(['docx' => 'Maksimal 500 soal dalam satu dokumen DOCX.']);
+        }
+
+        $questions = [];
+        foreach ($rawQuestions as $raw) {
+            $number = $raw['number'];
+            $type = $this->resolveType($raw);
+            $stem = trim(implode("\n", $raw['stem_parts']));
+            $errors = [];
+            $warningsForQuestion = [];
+            foreach (($raw['unsupported_blocks'] ?? []) as $unsupportedBlock) {
+                $errors[] = $unsupportedBlock;
+            }
+            foreach (($raw['stimulus']['unsupported_blocks'] ?? []) as $unsupportedStimulusBlock) {
+                $errors[] = 'Stimulus bersama belum dapat diimpor penuh: ' . $unsupportedStimulusBlock;
+            }
+            if (!empty($raw['has_table_content']) || !empty($raw['stimulus']['has_table_content']) || (($raw['stimulus']['source']['kind'] ?? null) === 'table-cell')) {
+                $warningsForQuestion[] = 'Konten berasal dari tabel Word. Sistem membaca urutan teks per sel; periksa kembali susunan tabel pada preview.';
+            }
+
+            if ($stem === '') {
+                $errors[] = 'Teks soal belum ditemukan.';
+            }
+            if (trim((string) ($raw['hint'] ?? '')) === ''
+                && in_array($type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE'], true)) {
+                $errors[] = 'Jenis PG atau PGK belum dapat dipastikan dari struktur dokumen. Periksa jenis soal pada preview.';
+            }
+
+
+            if ($type === 'TRUE_FALSE') {
+                $raw['options'] = [
+                    ['option_key' => 'A', 'content' => 'BENAR', 'is_correct' => false],
+                    ['option_key' => 'B', 'content' => 'SALAH', 'is_correct' => false],
+                ];
+            }
+
+            if ($type === 'MULTIPLE_CHOICE' || $type === 'MULTIPLE_RESPONSE') {
+                if (count($raw['options']) < 2 || count($raw['options']) > 4) {
+                    $errors[] = 'Pilihan ganda harus memiliki 2 sampai 4 opsi A-D.';
+                }
+                $keys = array_column($raw['options'], 'option_key');
+                if (count($keys) !== count(array_unique($keys))) {
+                    $errors[] = 'Label opsi duplikat.';
+                }
+            } elseif ($type === 'TRUE_FALSE_GROUP') {
+                if (count($raw['statements']) !== 3) {
+                    $errors[] = 'Benar/Salah kelompok wajib memiliki tepat tiga pernyataan berlabel a, b, c.';
+                }
+                // The parser deliberately leaves grouped truth values unset.
+                foreach ($raw['statements'] as &$statement) {
+                    $statement['is_true'] = null;
+                }
+                unset($statement);
+
+            } elseif ($type === 'TRUE_FALSE') {
+            } elseif ($type === 'ESSAY') {
+                if ($raw['options'] !== []) {
+                    $errors[] = 'Soal uraian tidak boleh memiliki opsi pilihan ganda.';
+                }
+            } else {
+                $errors[] = 'Jenis soal belum didukung untuk import otomatis. Pilih tipe PG, PGK, atau Benar/Salah.';
+            }
+
+            if (count($raw['options']) > 0 && $type === 'TRUE_FALSE_GROUP') {
+                $warningsForQuestion[] = 'Opsi pilihan ganda diabaikan karena item terdeteksi sebagai kelompok Benar/Salah.';
+            }
+
+            $blockedFeatures = array_values(array_unique(array_merge(
+                $raw['unsupported_features'] ?? [],
+                $raw['stimulus']['unsupported_features'] ?? []
+            )));
+            $questions[] = [
+                'source_number' => $number,
+                'blocked_features' => $blockedFeatures,
+                'question_type' => $type,
+                'stem' => $stem,
+                'options' => array_map(function (array $option): array {
+                    return [
+                        'option_key' => $option['option_key'],
+                        'content' => $option['content'],
+                        'is_correct' => false,
+                    ];
+                }, $raw['options']),
+                'statements' => $raw['statements'],
+                'difficulty' => 'MEDIUM',
+                'stimulus' => $raw['stimulus'],
+                'source_locator' => $raw['locator'],
+                'errors' => array_values(array_unique($errors)),
+                'warnings' => $warningsForQuestion,
+                'status' => $errors === [] ? 'READY' : 'NEEDS_REVIEW',
+            ];
+        }
+
+        return [
+            'file_sha256' => $fileHash,
+            'total' => count($questions),
+            'valid' => count(array_filter($questions, fn (array $question) => $question['status'] === 'READY')),
+            'invalid' => count(array_filter($questions, fn (array $question) => $question['status'] !== 'READY')),
+            'questions' => $questions,
+            'blocked_source_numbers' => array_values(array_unique(array_map(
+                fn (array $question): int => (int) $question['source_number'],
+                array_filter($questions, fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
+            ))),
+            'excluded_content' => $excluded,
+            'warnings' => $warnings,
+        ];
+    }
+
+    private function resolveType(array $raw): string
+    {
+        $hint = strtoupper((string) ($raw['hint'] ?? ''));
+        if ($hint !== '') {
+            if (str_contains($hint, 'B/S TUNGGAL') || str_contains($hint, 'BENAR/SALAH TUNGGAL')) {
+                return 'TRUE_FALSE';
+            }
+            if (str_contains($hint, 'B/S') || str_contains($hint, 'BENAR/SALAH') || $hint === 'BS') {
+                return 'TRUE_FALSE_GROUP';
+            }
+            if (str_contains($hint, 'PGK') || str_contains($hint, 'KOMPLEKS')) {
+                return 'MULTIPLE_RESPONSE';
+            }
+            if ($hint === 'PG' || str_contains($hint, 'PILIHAN GANDA')) {
+                return 'MULTIPLE_CHOICE';
+            }
+            if (str_contains($hint, 'MATCH') || str_contains($hint, 'JODOHKAN')) {
+                return 'MATCHING';
+            }
+            if (str_contains($hint, 'ESSAY') || str_contains($hint, 'URAIAN')) {
+                return 'ESSAY';
+            }
+            if (str_contains($hint, 'ISIAN') || str_contains($hint, 'SHORT ANSWER')) {
+                return 'SHORT_ANSWER';
+            }
+            if (str_contains($hint, 'LENGKAPI')) {
+                return 'FILL_BLANK';
+            }
+            if (str_contains($hint, 'URUT')) {
+                return 'ORDERING';
+            }
+
+            return 'UNSUPPORTED';
+        }
+
+        // Without an explicit marker, PG and PGK cannot safely be distinguished.
+        return 'MULTIPLE_CHOICE';
+    }
+
+    private function answerTokens(string $answer): array
+    {
+        $answer = trim($answer);
+        if ($answer === '') {
+            return [];
+        }
+
+        preg_match_all('/\b(?:BENAR|SALAH|TRUE|FALSE|[A-D]|B|S)\b/iu', $answer, $matches);
+        return array_map(
+            fn (string $token): string => strtoupper($token),
+            $matches[0] ?? []
+        );
+    }
+
+    private function booleanToken(string $token): ?bool
+    {
+        return match (strtoupper(trim($token))) {
+            'B', 'BENAR', 'TRUE' => true,
+            'S', 'SALAH', 'FALSE' => false,
+            default => null,
+        };
+    }
+}

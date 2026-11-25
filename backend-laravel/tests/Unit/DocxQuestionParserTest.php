@@ -96,6 +96,102 @@ class DocxQuestionParserTest extends TestCase
         }
     }
 
+
+    public function test_reads_checkbox_pgk_true_false_table_shared_stimulus_and_subject_sections(): void
+    {
+        $p = static function (string $text): string {
+            $escaped = htmlspecialchars($text, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+            return '<w:p><w:r><w:t xml:space="preserve">' . $escaped . '</w:t></w:r></w:p>';
+        };
+        $cell = static fn (string $text): string => '<w:tc>' . $p($text) . '</w:tc>';
+        $row = static fn (array $cells): string => '<w:tr>' . implode('', array_map($cell, $cells)) . '</w:tr>';
+
+        $body = $p('MATEMATIKA KELAS 6')
+            . $p('Bacalah teks berikut untuk menjawab soal 1 sampai 3.')
+            . $p('Ali membaca buku di perpustakaan.')
+            . $p('1. [PG] Apa yang dibaca Ali? A. Buku B. Majalah C. Koran D. Komik')
+            . $p('2. [PGK] Pilih pernyataan yang benar.')
+            . $p('☐ Ali membaca buku.')
+            . $p('☐ Ali pergi ke pasar.')
+            . $p('☐ Ali berada di perpustakaan.')
+            . $p('3. [B/S] Tentukan benar atau salah.')
+            . '<w:tbl>'
+            . $row(['Pernyataan', 'Benar', 'Salah'])
+            . $row(['Buku adalah bacaan.', '☐', '☐'])
+            . $row(['2 adalah bilangan genap.', '☐', '☐'])
+            . $row(['Matahari terbit dari barat.', '☐', '☐'])
+            . '</w:tbl>'
+            . $p('C. Kunci Jawaban Matematika')
+            . $p('1. A')
+            . $p('2. A dan C')
+            . $p('3. B, S, B')
+            . $p('BAHASA INDONESIA KELAS 6')
+            . $p('1. [PG] Apa gagasan utama bacaan?')
+            . $p('A. Membaca buku')
+            . $p('B. Bermain bola');
+
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            . '<w:body>' . $body . '<w:sectPr/></w:body></w:document>';
+        $path = $this->makeDocxFromXml($xml);
+
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $this->assertSame(4, $result['total']);
+            $this->assertSame(4, $result['valid']);
+            $this->assertTrue($result['requires_section_split']);
+            $this->assertSame([
+                ['title' => 'MATEMATIKA KELAS 6', 'count' => 3],
+                ['title' => 'BAHASA INDONESIA KELAS 6', 'count' => 1],
+            ], $result['sections']);
+            $questions = $result['questions'];
+            $this->assertSame('MULTIPLE_CHOICE', $questions[0]['question_type']);
+            $this->assertSame(['Buku', 'Majalah', 'Koran', 'Komik'], array_column($questions[0]['options'], 'content'));
+            $this->assertSame('MULTIPLE_RESPONSE', $questions[1]['question_type']);
+            $this->assertCount(3, $questions[1]['options']);
+            $this->assertSame([false, false, false], array_column($questions[1]['options'], 'is_correct'));
+            $this->assertSame('TRUE_FALSE_GROUP', $questions[2]['question_type']);
+            $this->assertSame(['Buku adalah bacaan.', '2 adalah bilangan genap.', 'Matahari terbit dari barat.'], array_column($questions[2]['statements'], 'text'));
+            $this->assertSame([null, null, null], array_column($questions[2]['statements'], 'is_true'));
+            $this->assertCount(4, $questions[2]['table_rows']);
+            $this->assertSame($questions[0]['stimulus']['id'], $questions[1]['stimulus']['id']);
+            $this->assertSame($questions[0]['stimulus']['id'], $questions[2]['stimulus']['id']);
+            $this->assertStringContainsString('Ali membaca buku', $questions[0]['stimulus']['content']);
+            $this->assertSame('BAHASA INDONESIA KELAS 6', $questions[3]['source_section']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
+
+    public function test_does_not_assume_every_pgk_table_is_a_list_of_options(): void
+    {
+        $p = static function (string $text): string {
+            $escaped = htmlspecialchars($text, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+            return '<w:p><w:r><w:t xml:space="preserve">' . $escaped . '</w:t></w:r></w:p>';
+        };
+        $cell = static fn (string $text): string => '<w:tc>' . $p($text) . '</w:tc>';
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+            . $p('SOAL 1. [PGK] Perhatikan tabel jumlah siswa berikut.')
+            . '<w:tbl><w:tr>' . $cell('Kelas') . $cell('Jumlah siswa') . '</w:tr>'
+            . '<w:tr>' . $cell('VI-A') . $cell('20') . '</w:tr></w:tbl>'
+            . '<w:sectPr/></w:body></w:document>';
+        $path = $this->makeDocxFromXml($xml);
+
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $question = $result['questions'][0];
+            $this->assertSame('MULTIPLE_RESPONSE', $question['question_type']);
+            $this->assertSame([], $question['options']);
+            $this->assertSame('NEEDS_REVIEW', $question['status']);
+            $this->assertCount(2, $question['table_rows']);
+            $this->assertStringContainsString('Struktur tabel belum', implode(' ', $question['errors']));
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_keeps_shared_stimulus_group_identity_across_questions(): void
     {
         $path = $this->makeDocx([
@@ -133,6 +229,9 @@ class DocxQuestionParserTest extends TestCase
             'SOAL 2. [MATCHING] Pasangkan istilah dengan artinya.',
             'A. Istilah satu',
             'B. Istilah dua',
+            'SOAL 3. [LENGKAPI] Lengkapi kalimat berikut.',
+            'SOAL 4. [URUT] Urutkan langkah berikut.',
+            'SOAL 5. Pertanyaan tanpa penanda jenis.',
             'KUNCI: A, B',
         ]);
 
@@ -142,6 +241,10 @@ class DocxQuestionParserTest extends TestCase
             $this->assertSame('READY', $result['questions'][0]['status']);
             $this->assertSame('MATCHING', $result['questions'][1]['question_type']);
             $this->assertSame('NEEDS_REVIEW', $result['questions'][1]['status']);
+            $this->assertSame('UNSUPPORTED', $result['questions'][2]['question_type']);
+            $this->assertSame('UNSUPPORTED', $result['questions'][3]['question_type']);
+            $this->assertSame('UNSUPPORTED', $result['questions'][4]['question_type']);
+            $this->assertSame('NEEDS_REVIEW', $result['questions'][4]['status']);
         } finally {
             @unlink($path);
         }

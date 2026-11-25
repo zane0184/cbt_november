@@ -125,6 +125,18 @@
                 Import DOCX hanya memindahkan isi soal, pilihan, pernyataan, dan stimulus. Kunci jawaban serta bobot nilai tidak dibaca atau ditebak; Guru melengkapinya setelah soal masuk Bank Soal.
             </div>
 
+            @if($requiresSectionSplit)
+                <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
+                    <p class="font-bold">Dokumen memuat beberapa bagian mata pelajaran.</p>
+                    <p class="mt-1 text-xs leading-5">Satu proses impor hanya boleh ditujukan ke satu penugasan. Pisahkan dokumen berdasarkan bagian mata pelajaran agar soal tidak tercampur.</p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5 text-xs">
+                        @foreach($sections as $section)
+                            <li>{{ $section['title'] }} — {{ $section['count'] }} soal</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             @foreach($questions as $index => $question)
                 <article wire:key="docx-question-{{ $index }}" class="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -132,6 +144,9 @@
                             <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-sm font-extrabold text-indigo-700">{{ $index + 1 }}</span>
                             <div>
                                 <h3 class="font-bold text-slate-900">Nomor sumber {{ $question['source_number'] }}</h3>
+                                @if(!empty($question['source_section']))
+                                    <p class="mt-0.5 text-[11px] text-slate-500">Bagian sumber: {{ $question['source_section'] }}</p>
+                                @endif
                                 <select wire:model="questions.{{ $index }}.question_type" aria-label="Jenis soal nomor sumber {{ $question['source_number'] }}" class="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
                                     <option value="MULTIPLE_CHOICE">Pilihan Ganda (PG)</option>
                                     <option value="MULTIPLE_RESPONSE">Pilihan Ganda Kompleks (PGK)</option>
@@ -180,7 +195,7 @@
 
                     <div>
                         <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Teks soal</label>
-                        <textarea dir="auto" wire:model="questions.{{ $index }}.stem rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
+                        <textarea dir="auto" wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-2">
@@ -197,8 +212,23 @@
                     @if(!empty($question['stimulus']['content']))
                         <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
                             <div class="mb-1 text-xs font-bold uppercase text-blue-700">Stimulus bersama · {{ $question['stimulus']['id'] }}</div>
-                            <textarea dir="auto" wire:model="questions.{{ $index }}.stimulus.content rows="3" class="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 focus:border-blue-500 focus:outline-none">{{ $question['stimulus']['content'] }}</textarea>
+                            <textarea dir="auto" wire:model="questions.{{ $index }}.stimulus.content" rows="3" class="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 focus:border-blue-500 focus:outline-none">{{ $question['stimulus']['content'] }}</textarea>
                         </div>
+                    @endif
+
+                    @if(!empty($question['table_rows']))
+                        <details class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <summary class="cursor-pointer text-xs font-bold text-slate-700">Struktur tabel Word terdeteksi ({{ count($question['table_rows']) }} baris)</summary>
+                            <div class="mt-3 space-y-2">
+                                @foreach($question['table_rows'] as $tableRow)
+                                    <div class="grid gap-2 rounded-lg border border-slate-200 bg-white p-2" style="grid-template-columns: repeat({{ max(1, count($tableRow)) }}, minmax(0, 1fr));">
+                                        @foreach($tableRow as $cell)
+                                            <div dir="auto" class="break-words text-xs text-slate-700">{{ $cell !== '' ? $cell : '—' }}</div>
+                                        @endforeach
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
                     @endif
 
                     @if(in_array($question['question_type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true))
@@ -207,7 +237,7 @@
                             @foreach($question['options'] as $optionIndex => $option)
                                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
                                     <span class="text-sm font-extrabold text-slate-600">{{ $option['option_key'] }}.</span>
-                                    <input dir="auto" type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                    <input dir="auto" type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                 </div>
                             @endforeach
                         </div>
@@ -229,7 +259,7 @@
                                 <div class="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[1fr_auto] md:items-center">
                                     <div>
                                         <div class="mb-1 text-xs font-bold text-slate-500">Pernyataan {{ $statementIndex + 1 }}</div>
-                                        <input dir="auto" type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                        <input dir="auto" type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                     </div>
                                     @if(count($question['statements']) > 3)
                                         <button type="button" wire:click="removeGroupedStatement({{ $index }}, {{ $statementIndex }})" class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700">Hapus</button>
@@ -268,9 +298,15 @@
                     <p class="font-bold text-slate-900">Langkah 4 · Simpan sebagai draf Bank Soal</p>
                     <p class="mt-1 text-xs leading-5 text-slate-600">Validasi akhir akan dijalankan kembali. Soal yang disimpan tetap DRAFT; penerbitan dilakukan terpisah oleh Guru.</p>
                 </div>
-                <button type="button" wire:click="importDrafts" wire:loading.attr="disabled" class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
-                    Simpan Soal Valid sebagai Draf
-                </button>
+                @if($requiresSectionSplit)
+                    <button type="button" disabled class="rounded-xl bg-slate-300 px-6 py-3 text-sm font-extrabold text-slate-600 cursor-not-allowed">
+                        Pisahkan dokumen per mata pelajaran
+                    </button>
+                @else
+                    <button type="button" wire:click="importDrafts" wire:loading.attr="disabled" class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
+                        Simpan Soal Valid sebagai Draf
+                    </button>
+                @endif
             </div>
         </section>
     @endif

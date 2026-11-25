@@ -22,6 +22,8 @@ class QuestionDocxImport extends Component
     public array $questions = [];
     public array $excludedContent = [];
     public array $summary = [];
+    public array $sections = [];
+    public bool $requiresSectionSplit = false;
     public ?string $previewHash = null;
     public bool $hasPreview = false;
 
@@ -155,6 +157,8 @@ class QuestionDocxImport extends Component
             return $question;
         }, $result['questions']);
         $this->excludedContent = $result['excluded_content'] ?? [];
+        $this->sections = $result['sections'] ?? [];
+        $this->requiresSectionSplit = (bool) ($result['requires_section_split'] ?? false);
         $this->summary = [
             'total' => $result['total'],
             'valid' => $result['valid'],
@@ -187,6 +191,10 @@ class QuestionDocxImport extends Component
             'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
             'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
             'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
+            'questions.*.source_section' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'questions.*.table_rows' => ['sometimes', 'array', 'max:100'],
+            'questions.*.table_rows.*' => ['array', 'max:20'],
+            'questions.*.table_rows.*.*' => ['nullable', 'string', 'max:12000'],
             'questions.*.mapping_cp_ids' => ['sometimes', 'array'],
             'questions.*.mapping_cp_ids.*' => ['required', 'uuid', 'distinct'],
             'questions.*.mapping_outcome_ids' => ['sometimes', 'array'],
@@ -205,6 +213,12 @@ class QuestionDocxImport extends Component
         // Re-parse the server-held upload at confirmation time. Unsupported
         // embedded content must never disappear silently during draft save.
         $freshParse = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
+        if (!empty($freshParse['requires_section_split'])) {
+            $sectionNames = collect($freshParse['sections'] ?? [])->pluck('title')->implode(', ');
+            throw ValidationException::withMessages([
+                'docx' => 'Dokumen memuat beberapa bagian mata pelajaran: ' . $sectionNames . '. Satu proses impor hanya boleh untuk satu penugasan. Pisahkan dokumen per mata pelajaran sebelum impor.',
+            ]);
+        }
         $blockedSourceNumbers = array_fill_keys($freshParse['blocked_source_numbers'] ?? [], true);
         foreach ($this->questions as $questionRow) {
             if (($questionRow['included'] ?? true)
@@ -231,7 +245,7 @@ class QuestionDocxImport extends Component
             $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.'
         );
 
-        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
+        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
     }
 
     public function downloadTemplate()

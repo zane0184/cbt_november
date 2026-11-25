@@ -122,6 +122,8 @@ class DocxQuestionDraftImporter
                     'source_file_sha256' => $fileSha256,
                     'source_question_number' => (int) ($row['source_number'] ?? 0),
                     'source_locator' => $row['source_locator'] ?? [],
+                    'source_section' => $row['source_section'] ?? null,
+                    'source_tables' => array_values($row['table_rows'] ?? []),
                     'answer_key_status' => 'PENDING_TEACHER',
                     'score_weight_status' => 'PENDING_TEACHER',
                 ];
