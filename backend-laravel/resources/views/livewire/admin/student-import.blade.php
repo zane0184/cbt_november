@@ -31,6 +31,7 @@
             <input type="file" wire:model="file" accept=".xlsx,.csv,.txt" class="w-full border border-cardBorder rounded-xl px-4 py-3 text-sm">
             @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
             <p class="text-xs text-textSecondary mt-2">Kolom wajib: <strong>nama</strong> dan <strong>nisn</strong>. NISN harus berupa teks 10 digit agar angka nol di depan tidak hilang. Template XLSX sudah mengatur kolom NISN, tanggal lahir, dan telepon sebagai teks. Kolom opsional: jenis_kelamin (L/P), tempat_lahir, tanggal_lahir (YYYY-MM-DD), nama_orang_tua, telepon, alamat.</p>
+            <p class="text-xs text-textSecondary mt-1">Template XLSX hanya memiliki satu worksheet Data Siswa agar lolos pemeriksaan keamanan file. Jangan menambahkan sheet lain; petunjuk pengisian tersedia di halaman ini.</p>
             <p class="text-xs text-textSecondary mt-1">Setelah import berhasil, identitas login dan password awal ditampilkan satu kali pada halaman Daftar Pengguna. Unduh Daftar Akun (.xlsx) sebelum menutup tampilan; password tidak dapat ditampilkan kembali.</p>
         </div>
 
