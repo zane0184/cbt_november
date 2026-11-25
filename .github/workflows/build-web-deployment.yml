@@ -12,6 +12,7 @@ on:
       - '.github/workflows/build-web-deployment.yml'
       - 'backend-laravel/**'
       - 'docs/**'
+      - '.github/scripts/**'
   workflow_dispatch:
 
 permissions:
