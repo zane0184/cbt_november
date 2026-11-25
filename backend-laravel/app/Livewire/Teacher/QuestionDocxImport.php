@@ -82,11 +82,19 @@ class QuestionDocxImport extends Component
             $this->questions[$index]['options'] = [];
         }
 
-        if ($value === 'TRUE_FALSE_GROUP' && count($this->questions[$index]['statements'] ?? []) !== 3) {
-            $this->questions[$index]['statements'] = [
-                ['id' => 's1', 'text' => '', 'is_true' => false],
-                ['id' => 's2', 'text' => '', 'is_true' => false],
-                ['id' => 's3', 'text' => '', 'is_true' => false],
+        if ($value === 'TRUE_FALSE_GROUP') {
+            $statements = array_values($this->questions[$index]['statements'] ?? []);
+            while (count($statements) < 3) {
+                $next = count($statements) + 1;
+                $statements[] = ['id' => 's' . $next, 'text' => '', 'is_true' => false];
+            }
+            $this->questions[$index]['statements'] = array_slice($statements, 0, 3);
+        }
+
+        if (in_array($value, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE'], true) && empty($this->questions[$index]['options'])) {
+            $this->questions[$index]['options'] = [
+                ['option_key' => 'A', 'content' => '', 'is_correct' => false],
+                ['option_key' => 'B', 'content' => '', 'is_correct' => false],
             ];
         }
 
