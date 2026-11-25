@@ -44,6 +44,14 @@ class ExamController extends Controller
 
         $paginator = $query->paginate($request->get('per_page', 15));
 
+        // The token is operational data for the owning Guru, not a field that
+        // should be disclosed by the generic student exam-list endpoint.
+        if ($request->user()->hasExactRole('SISWA')) {
+            $paginator->getCollection()->each(
+                fn (Exam $listedExam) => $listedExam->makeHidden(['token'])
+            );
+        }
+
         return response()->json([
             'success' => true,
             'data' => $paginator->items(),
@@ -101,67 +109,25 @@ class ExamController extends Controller
 
         $data = $exam->load(['assessment']);
 
-        if (auth()->user()->hasRole('SISWA')) {
-            // Students may see exam metadata before the schedule, but question
-            // snapshots are released only while the server says the exam is ongoing.
-            if ($exam->canStartAttempt()) {
-                $data->load('snapshots');
-            }
-
-            $latestAttempt = \App\Models\ExamAttempt::where('exam_id', $exam->id)
-                ->whereHas('participant', function($q) {
-                    $q->where('user_id', auth()->id());
+        if (auth()->user()->hasExactRole('SISWA')) {
+            $latestAttempt = \\App\\Models\\ExamAttempt::where('exam_id', $exam->id)
+                ->whereHas('participant', function ($query) {
+                    $query->where('user_id', auth()->id());
                 })
                 ->latest()
                 ->first();
 
+            // This endpoint is metadata-only. Question snapshots are released
+            // exclusively by execution after full admission, a valid Attempt,
+            // and the current device lease have been verified.
+            $data->makeHidden(['token']);
+            $data->unsetRelation('snapshots');
             $data = $data->toArray();
-
-            // Security: Sanitize snapshots in relationships
-            if (isset($data['snapshots'])) {
-                foreach ($data['snapshots'] as &$snapshot) {
-                    unset($snapshot['snapshot_explanation']);
-
-                    if (isset($snapshot['metadata']) && is_array($snapshot['metadata'])) {
-                        unset($snapshot['metadata']['accepted_answers']);
-                        unset($snapshot['metadata']['rubric']);
-                        unset($snapshot['metadata']['answer_key']);
-                        unset($snapshot['metadata']['scoring_guide']);
-                        if (isset($snapshot['metadata']['statement_items']) && is_array($snapshot['metadata']['statement_items'])) {
-                            $snapshot['metadata']['statement_items'] = array_map(function ($item) {
-                                if (is_array($item)) {
-                                    unset($item['is_true']);
-                                }
-                                return $item;
-                            }, $snapshot['metadata']['statement_items']);
-                        }
-                    }
-
-                    $qType = $snapshot['metadata']['question_type'] ?? null;
-                    if (in_array($qType, ['SHORT_ANSWER', 'ESSAY'])) {
-                        $snapshot['snapshot_options'] = [];
-                    } elseif (isset($snapshot['snapshot_options']) && is_array($snapshot['snapshot_options'])) {
-                        $snapshot['snapshot_options'] = array_map(function($opt) {
-                            unset($opt['is_correct']);
-                            unset($opt['score_weight']);
-                            if (isset($opt['option_key']) && $opt['option_key'] !== null && $opt['option_key'] !== '') {
-                                $opt['option_key'] = 'LEFT';
-                            }
-                            if (isset($opt['matching_key']) && $opt['matching_key'] !== null && $opt['matching_key'] !== '') {
-                                $opt['matching_key'] = 'RIGHT';
-                            }
-                            return $opt;
-                        }, $snapshot['snapshot_options']);
-                    }
-                }
-            }
-
-            $data['my_latest_attempt_id'] = $latestAttempt ? $latestAttempt->id : null;
-            $data['my_latest_attempt_status'] = $latestAttempt ? $latestAttempt->status : null;
+            $data['my_latest_attempt_id'] = $latestAttempt?->id;
+            $data['my_latest_attempt_status'] = $latestAttempt?->status;
 
             return response()->json(['success' => true, 'data' => $data]);
         }
-
         return response()->json(['success' => true, 'data' => $data]);
     }
 
