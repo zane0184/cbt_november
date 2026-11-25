@@ -189,9 +189,9 @@ class DocxQuestionParser
                 }
                 $header = trim($match[2]);
                 $hint = null;
-                if (preg_match('/\[(PGK|PG\s*KOMPLEKS|PILIHAN\s+GANDA\s+KOMPLEKS|PG|PILIHAN\s+GANDA|B\/S|BENAR\/SALAH|BS|ESSAY|URAIAN)\]/iu', $header, $typeMatch)) {
-                    $hint = strtoupper(preg_replace('/\s+/', ' ', $typeMatch[1]));
-                    $header = trim(str_replace($typeMatch[0], '', $header));
+                if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
+                if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
+                if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
                 }
                 $inlineKey = null;
                 if (preg_match('/(?:KUNCI|JAWABAN)\s*[:=]\s*(.+)$/iu', $header, $keyMatch)) {
