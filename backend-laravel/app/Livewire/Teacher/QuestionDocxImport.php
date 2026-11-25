@@ -143,6 +143,8 @@ class QuestionDocxImport extends Component
         $result = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
         $this->questions = array_map(function (array $question): array {
             $question['included'] = true;
+            $question['points'] = $question['points'] ?? 1;
+            $question['difficulty'] = $question['difficulty'] ?? 'MEDIUM';
             if (($question['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
                 $question['statements'] = array_map(function (array $statement): array {
                     $statement['is_true'] = array_key_exists('is_true', $statement)
