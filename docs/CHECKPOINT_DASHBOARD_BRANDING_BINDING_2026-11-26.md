@@ -1,18 +1,14 @@
 # Checkpoint Binding Branding Dashboard — 2026-11-26
 
 - Branch: `fix/madrasah-branding-dashboard-20261126`
-- PR: #29, Draft, base `audit/profile-login-branding-20261126`
-- Parent contains login branding work from PR #28.
-- Patch: sidebar and top navbar read the current tenant's short name/name and logo from `TenantBrandingService`.
-- Regression coverage added: Admin dashboard name + logo; login name/short name + logo + favicon tests already exist in `WebAdminAuthTest.php`.
-- Cache review: branding is resolved per layout render; each newly stored asset receives a UUID filename.
-- Backups:
-  - `docs/backup_before_patch/DASHBOARD_BRANDING_20261126/app.blade.php.before`
-  - `docs/backup_before_patch/DASHBOARD_BRANDING_20261126/RoleDashboardVerificationTest.php.before`
-  - `docs/backup_before_patch/DASHBOARD_BRANDING_20261126/RoleDashboardVerificationTest.php.before_logo_test`
-- Verification: source, tests, and backups fetched back successfully; static assertions confirmed.
-- PHPUnit/CI: not run; local environment lacks Composer and cannot reach GitHub; no workflow run/status exists for this branch.
-- VPS/browser: not tested; no deployment performed.
-- Operator: legacy component exists but no active route; no Operator portal is added because agreed architecture has only Super Admin, Admin Madrasah, and Guru portals.
-- Database/schema/migration/production config: untouched.
-- Not yet merged/deployed and not claimed runtime-complete.
+- PR #29: Draft, belum merge/deploy; branch induk memuat perubahan PR #28.
+- Implementasi: sidebar dan navbar layout bersama memakai short_name/name dan logo dari TenantBrandingService.
+- Test terarah: `RoleDashboardVerificationTest::test_admin_dashboard_renders_latest_madrasah_name_and_logo`.
+- Cakupan: hanya Dashboard Admin, nama resmi, nama singkat, URL logo. Tidak menjalankan suite penuh.
+- Perintah: dari `backend-laravel/`, jalankan `php artisan test --filter=test_admin_dashboard_renders_latest_madrasah_name_and_logo`.
+- Pemeriksaan statis source/layout/service/route/test selesai.
+- PHPUnit terarah BELUM dieksekusi: Composer, vendor/, dan checkout workspace tidak tersedia pada runner ini; koneksi langsung GitHub gagal DNS.
+- Workflow CI existing tidak dipakai karena menjalankan test luas, tidak sesuai scope.
+- DB/schema/migration/service branding/tenant identity/production config tidak diubah.
+- Operator route tidak ada dan portal Operator tidak ditambahkan.
+- Berikutnya: jalankan satu test terarah pada checkout dengan dependensi terpasang; bila PASS, lakukan pemeriksaan browser Admin setelah perubahan profil.
