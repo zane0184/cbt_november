@@ -214,7 +214,7 @@ class DocxQuestionParser
 
             if ($active === null) {
                 if ($stimulus !== null && !preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text)) {
-                    $stimulus['content'] = trim($stimulus['content'] . "\\n" . $text);
+                    $stimulus['content'] = trim($stimulus['content'] . "\n" . $text);
                     continue;
                 }
                 if (preg_match('/^(?:KISI[- ]KISI|IDENTITAS PENYUSUN|LEMBAR PENGESAHAN|CAPAIAN PEMBELAJARAN|TUJUAN PEMBELAJARAN)\b/iu', $text)) {
