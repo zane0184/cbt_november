@@ -78,7 +78,7 @@ class TeacherImportTest extends TestCase
             ->assertSet('summary.valid', 2)
             ->call('import')
             ->assertHasNoErrors()
-            ->assertSee('2 akun Guru berhasil diimpor');
+            ->assertRedirect('/admin/users');
 
         $asn = TeacherProfile::query()->where('nip', '199001012026041001')->firstOrFail();
         $honorer = TeacherProfile::query()->where('nik', '3171010101900001')->firstOrFail();
@@ -278,7 +278,7 @@ class TeacherImportTest extends TestCase
         ]);
 
         $csv = "nama,status_kepegawaian,nip,nik\n"
-            ."Guru ASN Kredensial,PNS,199001012026041101,,\n"
+            ."Guru ASN Kredensial,PNS,199001012026041101,\n"
             ."Guru Honorer Kredensial,HONORER,,3171010101900002\n";
         $file = UploadedFile::fake()->createWithContent('guru.csv', $csv);
         $result = app(TeacherImportService::class)->import(
