@@ -123,7 +123,7 @@ class AcademicManagement extends Component
 
     public function render()
     {
-        $rombels = Rombel::with(['academicYear', 'gradeLevel'])
+        $rombels = Rombel::with(['academicYear', 'gradeLevel'])->withCount('students')
             ->when($this->search, fn($q) => $q->where('name', 'like', '%' . $this->search . '%'))
             ->latest()
             ->paginate(15);
