@@ -283,19 +283,19 @@ class DocxQuestionParser
                 continue;
             }
 
-            if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $text, $optionMatch)) {
-                $active['options'][] = [
-                    'option_key' => strtoupper($optionMatch[1]),
-                    'content' => trim($optionMatch[2]),
-                ];
-                continue;
-            }
-
             if (preg_match('/^([a-c])\s*[.)=:]\s*(.+)$/iu', $text, $statementMatch)
                 && ($active['hint'] && !str_contains($active['hint'], 'TUNGGAL') && (str_contains($active['hint'], 'B/S') || str_contains($active['hint'], 'BENAR/SALAH') || str_contains($active['hint'], 'BS')))) {
                 $active['statements'][] = [
                     'id' => 's' . strtolower($statementMatch[1]),
                     'text' => trim($statementMatch[2]),
+                ];
+                continue;
+            }
+
+            if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $text, $optionMatch)) {
+                $active['options'][] = [
+                    'option_key' => strtoupper($optionMatch[1]),
+                    'content' => trim($optionMatch[2]),
                 ];
                 continue;
             }
