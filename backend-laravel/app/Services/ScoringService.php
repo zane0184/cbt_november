@@ -314,6 +314,29 @@ class ScoringService
         return $this->persistQuestionScore($snapshot, $attempt, $awardedScore, $scoringStatus, $answer, $version);
     }
 
+    protected function evaluateTrueFalseGroup(ExamQuestionSnapshot $snapshot, array $payload, float $maxScore): float
+    {
+        $items = $snapshot->metadata['statement_items'] ?? [];
+        $answers = $payload['statement_answers'] ?? [];
+        if (count($items) !== 3 || !is_array($answers)) {
+            throw new \\DomainException('Scoring blocked: grouped true/false snapshot contract is malformed.');
+        }
+
+        $correct = 0;
+        foreach ($items as $item) {
+            $id = $item['id'] ?? null;
+            if (!is_string($id) || !is_bool($item['is_true'] ?? null)) {
+                throw new \\DomainException('Scoring blocked: grouped true/false statement metadata is malformed.');
+            }
+            if (array_key_exists($id, $answers) && is_bool($answers[$id]) && $answers[$id] === $item['is_true']) {
+                $correct++;
+            }
+        }
+
+        // Owner-approved policy: equal proportional credit for each of exactly three statements.
+        return round(($maxScore * $correct) / 3, 2);
+    }
+
     protected function evaluateMultipleChoice(ExamQuestionSnapshot $snapshot, array $payload): bool
     {
         $selectedOptionId = $payload['selected_option_id'] ?? null;
