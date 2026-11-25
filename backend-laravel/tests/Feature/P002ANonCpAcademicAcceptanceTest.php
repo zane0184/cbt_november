@@ -380,7 +380,9 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             );
             $this->fail('TP creation must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('checksum', strtolower(implode(' ', $exception->errors()['parentCpId'] ?? [])));
+            $errors = $exception->errors()['parentCpId'] ?? [];
+            $this->assertNotEmpty($errors);
+            $this->assertSame('CP_SOURCE_UNVERIFIED', explode(':', $errors[0], 2)[0]);
         }
 
         $this->assertSame($beforeOutcomeCount, TenantLearningOutcome::query()
@@ -397,7 +399,9 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             );
             $this->fail('ATP creation must reject a TP whose parent CP is PENDING.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('checksum', strtolower(implode(' ', $exception->errors()['parentTpId'] ?? [])));
+            $errors = $exception->errors()['parentTpId'] ?? [];
+            $this->assertNotEmpty($errors);
+            $this->assertSame('CP_SOURCE_UNVERIFIED', explode(':', $errors[0], 2)[0]);
         }
 
         $this->assertSame($beforeOutcomeCount, TenantLearningOutcome::query()
@@ -407,7 +411,9 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             app(TeacherLearningOutcomeService::class)->publish($parentTp->id);
             $this->fail('TP publication must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('provenance checksum', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
+            $errors = $exception->errors()['outcome'] ?? [];
+            $this->assertNotEmpty($errors);
+            $this->assertSame('CP_SOURCE_UNVERIFIED', explode(':', $errors[0], 2)[0]);
         }
 
         $this->assertDatabaseHas('tenant_learning_outcomes', [
@@ -443,7 +449,9 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             app(TeacherLearningOutcomeService::class)->publish($parentAtp->id);
             $this->fail('ATP publication must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('provenance checksum', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
+            $errors = $exception->errors()['outcome'] ?? [];
+            $this->assertNotEmpty($errors);
+            $this->assertSame('CP_SOURCE_UNVERIFIED', explode(':', $errors[0], 2)[0]);
         }
 
         $this->assertDatabaseHas('tenant_learning_outcomes', [
