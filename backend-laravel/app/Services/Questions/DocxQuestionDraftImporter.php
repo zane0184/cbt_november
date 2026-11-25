@@ -21,6 +21,7 @@ class DocxQuestionDraftImporter
         'MULTIPLE_RESPONSE',
         'TRUE_FALSE',
         'TRUE_FALSE_GROUP',
+        'ESSAY',
     ];
 
     public function import(
@@ -113,6 +114,10 @@ class DocxQuestionDraftImporter
                     'source_question_number' => (int) ($row['source_number'] ?? 0),
                     'source_locator' => $row['source_locator'] ?? [],
                 ];
+
+                if (($row['question_type'] ?? null) === 'ESSAY') {
+                    $metadata['grading_mode'] = 'MANUAL_REVIEW';
+                }
 
                 if (($row['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
                     $metadata['statement_items'] = array_values($row['statements']);
@@ -231,6 +236,13 @@ class DocxQuestionDraftImporter
                 if (trim((string) ($statement['text'] ?? '')) === '' || !is_bool($statement['is_true'] ?? null)) {
                     throw ValidationException::withMessages(['docx' => $prefix . 'setiap pernyataan Benar/Salah harus memiliki teks dan kunci boolean.']);
                 }
+            }
+            return;
+        }
+
+        if ($type === 'ESSAY') {
+            if (($row['options'] ?? []) !== []) {
+                throw ValidationException::withMessages(['docx' => $prefix . 'soal uraian tidak boleh memiliki opsi pilihan ganda.']);
             }
             return;
         }
