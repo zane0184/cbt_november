@@ -3,6 +3,7 @@
 namespace App\Services\TeacherPortal;
 
 use App\Models\LearningOutcomeStructureMapping;
+use App\Models\CurriculumReferenceSource;
 use App\Models\MultiCurriculumStructure;
 use App\Models\MultiLearningOutcome;
 use App\Models\TeacherSubjectAssignment;
@@ -66,27 +67,14 @@ class TeacherLearningOutcomeService
                 ]);
             }
 
-            $cp = MultiLearningOutcome::query()
-                ->where('tenant_id', $registration->curriculum_owner_id)
-                ->where('multi_curriculum_version_id', $registration->multi_curriculum_version_id)
-                ->where('multi_curriculum_structure_id', $subjectStructureId)
-                ->whereKey($parentCpId)
-                ->where('outcome_type', 'CP')
-                ->where('status', 'ACTIVE')
-                ->where('is_official', true)
-                ->where('is_editable', false)
-                ->with('source')
-                ->firstOrFail();
-
-            if (!$cp->source
-                || $cp->source->verification_status !== 'ARTIFACT_CHECKSUM_VERIFIED'
-                || !$cp->source->checksum_sha256
-                || !$cp->source_checksum
-                || !hash_equals((string) $cp->source->checksum_sha256, (string) $cp->source_checksum)) {
-                throw ValidationException::withMessages([
-                    'parentCpId' => 'CP induk belum terverifikasi melalui checksum artefak resmi. TP belum dapat dibuat.',
-                ]);
-            }
+            $cp = $this->resolveVerifiedOfficialCp(
+                $registration->curriculum_owner_id,
+                $registration->multi_curriculum_version_id,
+                $subjectStructureId,
+                $parentCpId,
+                'parentCpId',
+                'TP'
+            );
 
             $code = strtoupper(trim($code));
             if (TenantLearningOutcome::query()
@@ -169,6 +157,7 @@ class TeacherLearningOutcomeService
     ): TenantLearningOutcome {
         $user = auth()->user();
         $profile = app(TeacherPortalAccess::class)->profile($user);
+        abort_unless($user->hasPermission('curriculum.manage'), 403, 'Akun Guru tidak memiliki izin mengembangkan TP/ATP.');
         $tenantId = (string) $user->tenant_id;
 
         return DB::transaction(function () use (
@@ -193,38 +182,41 @@ class TeacherLearningOutcomeService
                 ->firstOrFail();
 
             $registration = $this->resolveRegistration($assignment, $tenantId);
+            $subjectStructureId = $assignment->curriculum_context_snapshot['subject']['official_structure_id'] ?? null;
+
+            if (!$subjectStructureId) {
+                throw ValidationException::withMessages([
+                    'assignment' => 'Snapshot penugasan tidak memiliki pemetaan mata pelajaran resmi.',
+                ]);
+            }
+
             $parentTp = TenantLearningOutcome::query()
                 ->where('tenant_id', $tenantId)
                 ->where('tenant_curriculum_registration_id', $registration->id)
                 ->where('teacher_subject_assignment_id', $assignment->id)
+                ->where('curriculum_owner_id', $registration->curriculum_owner_id)
+                ->where('multi_curriculum_version_id', $registration->multi_curriculum_version_id)
+                ->where('multi_curriculum_structure_id', $subjectStructureId)
+                ->where('subject_id', $assignment->subject_id)
+                ->where('academic_year_id', $assignment->academic_year_id)
+                ->where('semester_id', $assignment->semester_id)
+                ->whereNotNull('parent_cp_id')
                 ->whereKey($parentTpId)
                 ->where('outcome_type', 'TP')
                 ->where('is_current', true)
                 ->whereIn('status', ['DRAFT', 'PUBLISHED'])
-                ->with(['structureMappings', 'parentCp.source'])
+                ->with('structureMappings')
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($parentTp->curriculum_owner_id !== $registration->curriculum_owner_id
-                || $parentTp->multi_curriculum_version_id !== $registration->multi_curriculum_version_id) {
-                throw ValidationException::withMessages([
-                    'parentTpId' => 'TP induk tidak berasal dari versi kurikulum yang dipatok pada penugasan ini.',
-                ]);
-            }
-
-            $parentCp = $parentTp->parentCp;
-            if (!$parentCp
-                || !$parentCp->is_official
-                || $parentCp->is_editable
-                || !$parentCp->source
-                || $parentCp->source->verification_status !== 'ARTIFACT_CHECKSUM_VERIFIED'
-                || !$parentCp->source->checksum_sha256
-                || !$parentCp->source_checksum
-                || !hash_equals((string) $parentCp->source->checksum_sha256, (string) $parentCp->source_checksum)) {
-                throw ValidationException::withMessages([
-                    'parentTpId' => 'CP induk belum terverifikasi melalui checksum artefak resmi. ATP belum dapat dibuat.',
-                ]);
-            }
+            $parentCp = $this->resolveVerifiedOfficialCp(
+                $registration->curriculum_owner_id,
+                $registration->multi_curriculum_version_id,
+                $subjectStructureId,
+                $parentTp->parent_cp_id,
+                'parentTpId',
+                'ATP'
+            );
 
             $code = strtoupper(trim($code));
             if (TenantLearningOutcome::query()
@@ -251,7 +243,7 @@ class TeacherLearningOutcomeService
                 'teacher_subject_assignment_id' => $assignment->id,
                 'academic_year_id' => $assignment->academic_year_id,
                 'semester_id' => $assignment->semester_id,
-                'parent_cp_id' => $parentTp->parent_cp_id,
+                'parent_cp_id' => $parentCp->id,
                 'parent_tp_id' => $parentTp->id,
                 'outcome_type' => 'ATP',
                 'code' => $code,
@@ -307,6 +299,7 @@ class TeacherLearningOutcomeService
     {
         $user = auth()->user();
         $profile = app(TeacherPortalAccess::class)->profile($user);
+        abort_unless($user->hasPermission('curriculum.manage'), 403, 'Akun Guru tidak memiliki izin mengembangkan TP/ATP.');
         $tenantId = (string) $user->tenant_id;
 
         return DB::transaction(function () use ($user, $profile, $tenantId, $outcomeId): TenantLearningOutcome {
@@ -318,19 +311,74 @@ class TeacherLearningOutcomeService
                     ->whereDate('starts_at', '<=', now()->toDateString())
                     ->whereDate('ends_at', '>=', now()->toDateString()))
                 ->whereKey($outcomeId)
-                ->with('parentCp.source', 'structureMappings.structure.source')
+                ->whereIn('outcome_type', ['TP', 'ATP'])
+                ->with(['assignment', 'parentTp', 'structureMappings.structure.source'])
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if (!$outcome->parentCp
-                || !$outcome->parentCp->source
-                || $outcome->parentCp->source->verification_status !== 'ARTIFACT_CHECKSUM_VERIFIED'
-                || !$outcome->parentCp->source_checksum
-                || !hash_equals((string) $outcome->parentCp->source->checksum_sha256, (string) $outcome->parentCp->source_checksum)) {
+            $assignment = $outcome->assignment;
+            if (!$assignment
+                || (string) $assignment->tenant_id !== $tenantId
+                || (string) $assignment->teacher_profile_id !== (string) $profile->id
+                || (string) $outcome->tenant_curriculum_registration_id !== (string) $assignment->tenant_curriculum_registration_id
+                || (string) $outcome->multi_curriculum_version_id !== (string) $assignment->multi_curriculum_version_id
+                || (string) $outcome->curriculum_owner_id !== (string) $assignment->curriculum_owner_id
+                || (string) $outcome->subject_id !== (string) $assignment->subject_id
+                || (string) $outcome->academic_year_id !== (string) $assignment->academic_year_id
+                || (string) $outcome->semester_id !== (string) $assignment->semester_id) {
                 throw ValidationException::withMessages([
-                    'outcome' => 'CP induk belum terverifikasi; TP/ATP tidak dapat dipublikasikan.',
+                    'outcome' => 'Konteks penugasan TP/ATP tidak konsisten.',
                 ]);
             }
+
+            if ($outcome->outcome_type === 'TP' && $outcome->parent_tp_id !== null) {
+                throw ValidationException::withMessages([
+                    'outcome' => 'TP induk memiliki relasi parent TP yang tidak sah.',
+                ]);
+            }
+
+            if ($outcome->outcome_type === 'ATP') {
+                $parentTp = TenantLearningOutcome::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('tenant_curriculum_registration_id', $assignment->tenant_curriculum_registration_id)
+                    ->where('teacher_subject_assignment_id', $assignment->id)
+                    ->where('parent_cp_id', $outcome->parent_cp_id)
+                    ->where('outcome_type', 'TP')
+                    ->where('is_current', true)
+                    ->whereIn('status', ['DRAFT', 'PUBLISHED'])
+                    ->whereKey($outcome->parent_tp_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$parentTp
+                    || (string) $parentTp->curriculum_owner_id !== (string) $outcome->curriculum_owner_id
+                    || (string) $parentTp->multi_curriculum_version_id !== (string) $outcome->multi_curriculum_version_id
+                    || (string) $parentTp->multi_curriculum_structure_id !== (string) $outcome->multi_curriculum_structure_id
+                    || (string) $parentTp->subject_id !== (string) $outcome->subject_id
+                    || (string) $parentTp->academic_year_id !== (string) $outcome->academic_year_id
+                    || (string) $parentTp->semester_id !== (string) $outcome->semester_id) {
+                    throw ValidationException::withMessages([
+                        'outcome' => 'Relasi TP induk pada ATP tidak konsisten.',
+                    ]);
+                }
+            }
+
+            $registration = $this->resolveRegistration($assignment, $tenantId);
+            $subjectStructureId = $assignment->curriculum_context_snapshot['subject']['official_structure_id'] ?? null;
+            if (!$subjectStructureId || (string) $outcome->multi_curriculum_structure_id !== (string) $subjectStructureId) {
+                throw ValidationException::withMessages([
+                    'outcome' => 'Struktur mata pelajaran pada TP/ATP tidak cocok dengan snapshot penugasan.',
+                ]);
+            }
+
+            $verifiedCp = $this->resolveVerifiedOfficialCp(
+                $registration->curriculum_owner_id,
+                $registration->multi_curriculum_version_id,
+                $subjectStructureId,
+                $outcome->parent_cp_id,
+                'outcome',
+                'publikasi TP/ATP'
+            );
 
             if ($outcome->structureMappings->isEmpty()) {
                 throw ValidationException::withMessages([
@@ -351,6 +399,61 @@ class TeacherLearningOutcomeService
 
             return $outcome->fresh(['parentCp', 'structureMappings.structure']);
         }, 3);
+    }
+
+    private function resolveVerifiedOfficialCp(
+        string $ownerId,
+        string $versionId,
+        string $structureId,
+        ?string $cpId,
+        string $errorKey,
+        string $action
+    ): MultiLearningOutcome {
+        $failure = fn () => ValidationException::withMessages([
+            $errorKey => "CP induk belum memenuhi provenance artefak resmi terverifikasi. {$action} tidak dapat dilanjutkan.",
+        ]);
+
+        if (!$cpId) {
+            throw $failure();
+        }
+
+        $cp = MultiLearningOutcome::query()
+            ->where('tenant_id', $ownerId)
+            ->where('multi_curriculum_version_id', $versionId)
+            ->where('multi_curriculum_structure_id', $structureId)
+            ->whereKey($cpId)
+            ->where('outcome_type', 'CP')
+            ->where('status', 'ACTIVE')
+            ->where('verification_status', 'ARTIFACT_CHECKSUM_VERIFIED')
+            ->where('is_official', true)
+            ->where('is_editable', false)
+            ->lockForUpdate()
+            ->first();
+
+        if (!$cp || !$cp->source_id) {
+            throw $failure();
+        }
+
+        $source = CurriculumReferenceSource::query()
+            ->where('tenant_id', $ownerId)
+            ->whereKey($cp->source_id)
+            ->lockForUpdate()
+            ->first();
+
+        $sourceChecksum = (string) ($source?->checksum_sha256 ?? '');
+        $cpChecksum = (string) ($cp->source_checksum ?? '');
+
+        if (!$source
+            || $source->verification_status !== 'ARTIFACT_CHECKSUM_VERIFIED'
+            || preg_match('/\\A[a-f0-9]{64}\\z/i', $sourceChecksum) !== 1
+            || preg_match('/\\A[a-f0-9]{64}\\z/i', $cpChecksum) !== 1
+            || !hash_equals($sourceChecksum, $cpChecksum)) {
+            throw $failure();
+        }
+
+        $cp->setRelation('source', $source);
+
+        return $cp;
     }
 
     private function resolveRegistration(TeacherSubjectAssignment $assignment, string $tenantId): TenantCurriculumRegistration
