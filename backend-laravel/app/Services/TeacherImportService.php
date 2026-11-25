@@ -378,7 +378,7 @@ class TeacherImportService
             $reader = IOFactory::createReader('Xlsx');
             $reader->setReadDataOnly(true);
             $reader->setLoadSheetsOnly([$sheetName]);
-            $reader->setReadFilter(new StudentImportReadFilter(self::MAX_ROWS + 1, self::MAX_COLUMNS));
+            $reader->setReadFilter(new StudentImportReadFilter(self::MAX_ROWS + 1, XlsxPackagePreflight::MAX_COLUMNS));
             $spreadsheet = $reader->load($path);
             $sheet = $spreadsheet->getSheetByName($sheetName);
             if (!$sheet) {
