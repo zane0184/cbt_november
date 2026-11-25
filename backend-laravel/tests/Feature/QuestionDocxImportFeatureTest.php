@@ -160,8 +160,9 @@ class QuestionDocxImportFeatureTest extends TestCase
 
     public function test_same_docx_cannot_be_imported_twice_into_the_same_assignment(): void
     {
+        $sameDocxBytes = $this->makeDocxBytes();
         $first = Livewire::test(QuestionDocxImport::class)
-            ->set('file', $this->uploadedDocx())
+            ->set('file', $this->uploadedDocx($sameDocxBytes))
             ->set('selectedAssignmentId', $this->assignment->id)
             ->call('preview')
             ->set('selectedCpIds', [$this->curriculumContext['cp']->id])
@@ -170,7 +171,7 @@ class QuestionDocxImportFeatureTest extends TestCase
         $first->assertHasNoErrors();
 
         Livewire::test(QuestionDocxImport::class)
-            ->set('file', $this->uploadedDocx())
+            ->set('file', $this->uploadedDocx($sameDocxBytes))
             ->set('selectedAssignmentId', $this->assignment->id)
             ->call('preview')
             ->set('selectedCpIds', [$this->curriculumContext['cp']->id])
@@ -182,7 +183,12 @@ class QuestionDocxImportFeatureTest extends TestCase
         $this->assertDatabaseCount('question_docx_import_batches', 1);
     }
 
-    private function uploadedDocx(): UploadedFile
+    private function uploadedDocx(?string $bytes = null): UploadedFile
+    {
+        return UploadedFile::fake()->createWithContent('soal.docx', $bytes ?? $this->makeDocxBytes());
+    }
+
+    private function makeDocxBytes(): string
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-docx-feature-');
         $zip = new ZipArchive();
@@ -208,6 +214,8 @@ class QuestionDocxImportFeatureTest extends TestCase
         $bytes = file_get_contents($path);
         @unlink($path);
 
-        return UploadedFile::fake()->createWithContent('soal.docx', $bytes);
+        return $bytes;
     }
+
+
 }
