@@ -82,7 +82,7 @@ class StudentImport extends Component
         $this->previewHash = $result['file_sha256'];
     }
 
-    public function import(): void
+    public function import()
     {
         $this->authorizeImport();
         $this->validate($this->validationRules());
@@ -120,11 +120,11 @@ class StudentImport extends Component
         );
 
         $this->reset(['file', 'selectedRombelId', 'previewRows', 'summary', 'previewHash']);
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => $imported['imported'] . ' akun Siswa berhasil diimpor.',
-        ]);
-        session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor. Password awal dibuat acak; gunakan fitur Reset Password untuk menerbitkan kredensial kepada Siswa.');
+        session()->flash('import_credentials', $imported['credentials']);
+        session()->flash('import_credentials_label', 'Siswa');
+        session()->flash('import_batch_id', $imported['batch_id']);
+        session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.');
+        return redirect('/admin/users');
     }
 
     public function downloadXlsxTemplate()
@@ -164,34 +164,6 @@ class StudentImport extends Component
         $sheet->freezePane('A2');
         $sheet->setAutoFilter('A1:H2');
 
-        $instructions = $spreadsheet->createSheet();
-        $instructions->setTitle('Petunjuk');
-        $rows = [
-            ['PETUNJUK TEMPLATE IMPORT SISWA'],
-            ['Kolom', 'Ketentuan'],
-            ['nama', 'Wajib diisi, maksimal 255 karakter.'],
-            ['nisn', 'Wajib tepat 10 digit dan harus berupa teks. Jangan ubah menjadi angka.'],
-            ['jenis_kelamin', 'Opsional: L atau P.'],
-            ['tempat_lahir', 'Opsional, maksimal 100 karakter.'],
-            ['tanggal_lahir', 'Opsional dengan format teks YYYY-MM-DD.'],
-            ['nama_orang_tua', 'Opsional, maksimal 255 karakter.'],
-            ['telepon', 'Opsional, maksimal 40 karakter; simpan sebagai teks.'],
-            ['alamat', 'Opsional, maksimal 2.000 karakter.'],
-            ['Catatan', 'Hapus atau ganti baris Contoh Nama pada sheet Data Siswa sebelum mengunggah.'],
-            ['Catatan', 'Pilih Rombel tujuan, unggah file, lalu periksa Preview sebelum konfirmasi.'],
-            ['Keamanan', 'Import hanya diproses jika seluruh baris valid. NISN duplikat ditolak.'],
-        ];
-        foreach ($rows as $rowIndex => $row) {
-            foreach ($row as $columnIndex => $value) {
-                $cell = Coordinate::stringFromColumnIndex($columnIndex + 1) . ($rowIndex + 1);
-                $instructions->setCellValue($cell, $value);
-            }
-        }
-        $instructions->getStyle('A1:B2')->getFont()->setBold(true);
-        $instructions->getColumnDimension('A')->setWidth(24);
-        $instructions->getColumnDimension('B')->setWidth(100);
-        $instructions->getStyle('A1:B13')->getAlignment()->setWrapText(true);
-        $instructions->freezePane('A3');
 
         return response()->streamDownload(
             function () use ($spreadsheet): void {

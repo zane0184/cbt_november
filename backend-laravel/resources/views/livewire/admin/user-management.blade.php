@@ -1,11 +1,42 @@
 <div class="space-y-6">
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div><h1 class="text-2xl font-bold text-navy-900">Manajemen Pengguna & Akun</h1><p class="text-xs text-textSecondary mt-1">Identitas login: Admin menggunakan username, Guru menggunakan NIP/NIK, dan Siswa menggunakan NISN.</p></div>
-        <a href="{{ route('admin.students.import') }}" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs">Import Siswa XLSX/CSV</a><button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs">+ Tambah Pengguna</button>
+        <a href="{{ route('admin.students.import') }}" class="bg-blue-700 hover:bg-blue-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs">Import Siswa XLSX/CSV</a><a href="{{ route('admin.teachers.import') }}" class="bg-indigo-700 hover:bg-indigo-800 text-white font-bold px-4 py-2.5 rounded-xl text-xs">Import Guru XLSX/CSV</a><button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs">+ Tambah Pengguna</button>
     </div>
     @if (session()->has('message'))<div class="bg-emerald-50 border-l-4 border-emerald-600 text-emerald-800 p-4 rounded-xl text-sm">{{ session('message') }}</div>@endif
+    @if($showImportCredentials && count($importCredentials))
+        <section class="bg-white border-2 border-emerald-200 rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-5 bg-emerald-50/70 border-b border-emerald-100 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-bold text-emerald-900">Kredensial awal {{ $importCredentialsLabel }} berhasil dibuat</h2>
+                    <p class="text-xs text-emerald-800 mt-1">Simpan atau unduh file Excel ini sekarang. Password hanya ditampilkan satu kali dan tidak dapat dipulihkan setelah daftar ini ditutup.</p>
+                    <p class="text-xs text-emerald-800 mt-1">Login menggunakan NIP untuk Guru PNS/PPPK, NIK untuk Guru Honorer, dan NISN untuk Siswa.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" wire:click="downloadImportCredentialsXlsx" class="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-bold">Unduh Daftar Akun (.xlsx)</button>
+                    <button type="button" wire:click="clearImportCredentials" wire:confirm="Tutup daftar password sekali tampil? Pastikan file Excel sudah disimpan." class="px-4 py-2.5 rounded-xl border border-emerald-300 bg-white text-emerald-900 text-sm font-semibold">Tutup & Hapus Tampilan</button>
+                </div>
+            </div>
+            <div class="max-h-[480px] overflow-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="sticky top-0 bg-gray-50 z-10"><tr><th class="px-4 py-3 text-left">Nama</th><th class="px-4 py-3 text-left">Identitas Login</th><th class="px-4 py-3 text-left">Jenis</th><th class="px-4 py-3 text-left">Password Awal</th></tr></thead>
+                    <tbody class="divide-y divide-cardBorder">
+                        @foreach($importCredentials as $credential)
+                            <tr>
+                                <td class="px-4 py-3 font-semibold">{{ $credential['name'] }}</td>
+                                <td class="px-4 py-3 font-mono">{{ $credential['login_identifier'] }}</td>
+                                <td class="px-4 py-3">{{ $credential['identifier_type'] }}</td>
+                                <td class="px-4 py-3 font-mono select-all">{{ $credential['password'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+            <div class="px-5 py-3 bg-amber-50 border-t border-amber-100 text-xs text-amber-900">Peringatan: jangan bagikan file atau password melalui grup publik. Berikan kredensial kepada pemilik akun melalui kanal yang aman.</div>
+        </section>
+    @endif
     <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
-        <div class="p-4 md:p-6 border-b border-cardBorder bg-gray-50/50 flex flex-col md:flex-row gap-3"><input wire:model.live="search" type="text" placeholder="Cari nama, username, atau email..." class="border border-cardBorder rounded-xl px-4 py-2 text-sm flex-1"><select wire:model.live="roleFilter" class="border border-cardBorder rounded-xl px-4 py-2 text-sm md:w-56"><option value="">Semua Peran</option><option value="ADMIN_MADRASAH">Admin Madrasah</option><option value="GURU">Guru</option><option value="SISWA">Siswa</option></select></div>
+        <div class="p-4 md:p-6 border-b border-cardBorder bg-gray-50/50 flex flex-col md:flex-row gap-3"><input wire:model.live="search" type="text" placeholder="Cari nama, identitas login (NIP/NIK/NISN), username, atau email..." class="border border-cardBorder rounded-xl px-4 py-2 text-sm flex-1"><select wire:model.live="roleFilter" class="border border-cardBorder rounded-xl px-4 py-2 text-sm md:w-56"><option value="">Semua Peran</option><option value="ADMIN_MADRASAH">Admin Madrasah</option><option value="GURU">Guru</option><option value="SISWA">Siswa</option></select></div>
         <div class="overflow-x-auto"><table class="min-w-full divide-y divide-cardBorder"><thead class="bg-gray-50"><tr><th class="px-6 py-3 text-left text-xs font-bold uppercase">Nama & Kontak</th><th class="px-6 py-3 text-left text-xs font-bold uppercase">Identitas Login</th><th class="px-6 py-3 text-left text-xs font-bold uppercase">Peran</th><th class="px-6 py-3 text-left text-xs font-bold uppercase">Status Akun</th><th class="px-6 py-3 text-left text-xs font-bold uppercase">Login Terakhir</th><th class="px-6 py-3 text-left text-xs font-bold uppercase">Dibuat</th><th class="px-6 py-3 text-left text-xs font-bold uppercase">Aksi</th></tr></thead><tbody class="bg-white divide-y divide-cardBorder">
         @forelse($users as $user)<tr class="hover:bg-gray-50"><td class="px-6 py-4"><div class="text-sm font-bold text-navy-900">{{ $user->name }}</div><div class="text-xs text-textSecondary">{{ $user->email ?: 'Email belum diisi' }}</div></td><td class="px-6 py-4 text-xs"><div>Username akun (bukan login Guru/Siswa): <strong>{{ $user->username ?: '—' }}</strong></div>@if($user->teacherProfile)<div>NIP: {{ $user->teacherProfile->nip ? str_repeat('•', max(0, strlen($user->teacherProfile->nip) - 4)).substr($user->teacherProfile->nip, -4) : '—' }} · NIK: {{ $user->teacherProfile->nik ? str_repeat('•', max(0, strlen($user->teacherProfile->nik) - 4)).substr($user->teacherProfile->nik, -4) : '—' }}</div>@elseif($user->studentProfile)<div>NISN: <strong>{{ $user->studentProfile->nisn ? str_repeat('•', max(0, strlen($user->studentProfile->nisn) - 4)).substr($user->studentProfile->nisn, -4) : '—' }}</strong></div>@endif</td><td class="px-6 py-4">@foreach($user->roles as $role)<span class="px-2.5 py-1 text-xs font-bold rounded-md border bg-blue-50 text-blue-700 border-blue-200">{{ $role->name }}</span>@endforeach</td><td class="px-6 py-4 text-xs">@if($user->is_active)<span class="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold">Aktif</span>@else<span class="px-2 py-1 rounded-lg bg-red-50 text-red-700 font-bold">Nonaktif</span>@endif</td><td class="px-6 py-4 text-xs font-mono">{{ $user->last_login_at?->format('Y-m-d H:i') ?: 'Belum pernah' }}</td><td class="px-6 py-4 text-xs font-mono">{{ $user->created_at?->format('Y-m-d H:i') ?: '—' }}</td><td class="px-6 py-4 text-xs"><div class="flex flex-wrap gap-2">@if($user->roles->count() === 1 && in_array($user->roles->first()->name, ['GURU', 'SISWA'], true))<button type="button" wire:click="resetUserPassword('{{ $user->id }}')" wire:confirm="Reset password akun {{ $user->name }}? Password baru hanya ditampilkan sekali." class="px-2.5 py-1 rounded-lg border border-blue-200 text-blue-700">Reset password</button>@if($user->is_active)<button type="button" wire:click="deactivateUser('{{ $user->id }}')" wire:confirm="Nonaktifkan akun {{ $user->name }}? Sesi dan token aktif akan dicabut." class="px-2.5 py-1 rounded-lg border border-red-200 text-red-700">Nonaktifkan</button>@else<button type="button" wire:click="activateUser('{{ $user->id }}')" wire:confirm="Aktifkan kembali akun {{ $user->name }}?" class="px-2.5 py-1 rounded-lg border border-emerald-200 text-emerald-700">Aktifkan</button>@endif @else<span class="text-textSecondary">—</span>@endif</div></td></tr>
         @empty<tr><td colspan="7" class="px-6 py-12 text-center text-textSecondary text-sm">Tidak ada data pengguna.</td></tr>@endforelse

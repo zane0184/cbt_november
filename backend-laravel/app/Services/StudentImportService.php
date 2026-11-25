@@ -231,6 +231,7 @@ class StudentImportService
 
                 $studentRole = Role::query()->where('name', 'SISWA')->firstOrFail();
                 $imported = 0;
+                $credentials = [];
 
                 foreach ($preview['rows'] as $row) {
                     $data = $row['data'];
@@ -246,9 +247,10 @@ class StudentImportService
                         ]);
                     }
 
+                    $temporaryPassword = Str::random(24);
                     $user = User::query()->create([
                         'name' => $data['name'],
-                        'password' => Hash::make(Str::random(48)),
+                        'password' => Hash::make($temporaryPassword),
                     ]);
                     $user->roles()->sync([$studentRole->id]);
 
@@ -265,6 +267,12 @@ class StudentImportService
                     ]);
 
                     $rombel->students()->attach($profile->id);
+                    $credentials[] = [
+                        'name' => $data['name'],
+                        'login_identifier' => $data['nisn'],
+                        'identifier_type' => 'NISN',
+                        'password' => $temporaryPassword,
+                    ];
                     $imported++;
                 }
 
@@ -289,7 +297,7 @@ class StudentImportService
                     ]
                 );
 
-                return ['batch_id' => $batchId, 'imported' => $imported];
+                return ['batch_id' => $batchId, 'imported' => $imported, 'credentials' => $credentials];
             }, 3);
         } finally {
             $context->setTenantId($previousTenant);

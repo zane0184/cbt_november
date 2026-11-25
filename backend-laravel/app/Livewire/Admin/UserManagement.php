@@ -11,6 +11,10 @@ use App\Services\UserAccountService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -34,10 +38,24 @@ class UserManagement extends Component
     public ?string $oneTimePassword = null;
     public ?string $oneTimePasswordFor = null;
     public bool $showOneTimePasswordModal = false;
+    public array $importCredentials = [];
+    public ?string $importCredentialsLabel = null;
+    public ?string $importBatchId = null;
+    public bool $showImportCredentials = false;
 
     public function mount(): void
     {
         $this->authorizeUserManagement();
+        $credentials = session()->pull('import_credentials', []);
+        if (is_array($credentials) && $credentials !== []) {
+            $this->importCredentials = $credentials;
+            $this->importCredentialsLabel = session()->pull('import_credentials_label', 'Akun');
+            $this->importBatchId = session()->pull('import_batch_id');
+            $this->roleFilter = $this->importCredentialsLabel === 'Guru' ? 'GURU' : 'SISWA';
+            $this->showImportCredentials = true;
+        } else {
+            session()->forget(['import_credentials_label', 'import_batch_id']);
+        }
     }
 
     public function updatedEmploymentStatus($value): void
@@ -239,6 +257,60 @@ class UserManagement extends Component
         $this->showOneTimePasswordModal = false;
     }
 
+    public function downloadImportCredentialsXlsx()
+    {
+        $this->authorizeUserManagement();
+        abort_unless($this->showImportCredentials && $this->importCredentials !== [], 404);
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Kredensial');
+        $headers = ['nama', 'identitas_login', 'jenis_identitas', 'password_awal'];
+        foreach ($headers as $index => $header) {
+            $sheet->setCellValue(Coordinate::stringFromColumnIndex($index + 1).'1', $header);
+        }
+
+        foreach ($this->importCredentials as $index => $credential) {
+            $row = $index + 2;
+            $values = [
+                (string) ($credential['name'] ?? ''),
+                (string) ($credential['login_identifier'] ?? ''),
+                (string) ($credential['identifier_type'] ?? ''),
+                (string) ($credential['password'] ?? ''),
+            ];
+            foreach ($values as $columnIndex => $value) {
+                $cell = Coordinate::stringFromColumnIndex($columnIndex + 1).$row;
+                $sheet->setCellValueExplicit($cell, $value, DataType::TYPE_STRING);
+            }
+        }
+
+        $lastRow = count($this->importCredentials) + 1;
+        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:D'.$lastRow)->getNumberFormat()->setFormatCode('@');
+        foreach (['A' => 30, 'B' => 24, 'C' => 20, 'D' => 28] as $column => $width) {
+            $sheet->getColumnDimension($column)->setWidth($width);
+        }
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:D'.$lastRow);
+
+        $label = strtolower((string) $this->importCredentialsLabel) === 'guru' ? 'guru' : 'siswa';
+        return response()->streamDownload(function () use ($spreadsheet): void {
+            (new Xlsx($spreadsheet))->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, 'kredensial-import-'.$label.'.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function clearImportCredentials(): void
+    {
+        $this->authorizeUserManagement();
+        $this->importCredentials = [];
+        $this->importCredentialsLabel = null;
+        $this->importBatchId = null;
+        $this->showImportCredentials = false;
+    }
+
     public function updatingSearch(): void { $this->resetPage(); }
     public function updatingRoleFilter(): void { $this->resetPage(); }
 
@@ -250,7 +322,12 @@ class UserManagement extends Component
                 $query->where(function ($sub): void {
                     $sub->where('name', 'like', '%'.$this->search.'%')
                         ->orWhere('username', 'like', '%'.$this->search.'%')
-                        ->orWhere('email', 'like', '%'.$this->search.'%');
+                        ->orWhere('email', 'like', '%'.$this->search.'%')
+                        ->orWhereHas('teacherProfile', fn ($profile) => $profile
+                            ->where('nip', 'like', '%'.$this->search.'%')
+                            ->orWhere('nik', 'like', '%'.$this->search.'%'))
+                        ->orWhereHas('studentProfile', fn ($profile) => $profile
+                            ->where('nisn', 'like', '%'.$this->search.'%'));
                 });
             })
             ->when($this->roleFilter, fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', $this->roleFilter)))

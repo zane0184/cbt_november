@@ -14,6 +14,7 @@ on:
       - work/solo-web-cbt-role-rbac-20261123
       - work/phpunit-41-root-cause-20261123
       - work/p1-seven-targets-20261124
+      - feature/admin-teacher-import-20261126-r1
   pull_request:
     branches:
       - main
@@ -25,10 +26,11 @@ permissions:
 
 concurrency:
   group: tenant-backend-ci-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref == 'refs/heads/feature/admin-teacher-import-20261126-r1' }}
 
 jobs:
   benchmark-mysql-pdf:
+    if: github.ref != 'refs/heads/feature/admin-teacher-import-20261126-r1'
     name: Disposable MySQL benchmark and PDF Policy verification
     runs-on: ubuntu-latest
     timeout-minutes: 25
