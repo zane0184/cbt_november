@@ -45,7 +45,7 @@ Tidak ada migration, perubahan database produksi, deployment VPS, atau perubahan
 - Outer dan inner ZIP: `unzip -t` PASS.
 - SHA256SUMS deployment: 8.690 entri diperiksa, 0 kegagalan.
 - Pemeriksaan isi paket: method `downloadXlsxTemplate` dan label `Unduh Template XLSX` ditemukan di source yang dikemas.
-- DOCX Import Parser CI run `45573588695` masih berstatus pending tanpa job yang berjalan saat laporan ini ditulis. Oleh sebab itu PHP lint, PHPUnit acceptance test, dan full suite untuk commit ini **belum boleh dinyatakan PASS**.
+- DOCX Import Parser CI run `45573505811` pada commit `8eef083db46ed82ab3520d67f42701b053b1ab3b` menjalankan dua job PHP 8.3 dan PHP 8.4 dengan MySQL 8.0/InnoDB. PHP lint, Composer validation, clean-install installer E2E, Student Import acceptance tests, dan benchmark cleanup denial-path test seluruhnya berstatus **success** pada kedua job. Full PHPUnit suite masih berstatus **in_progress** saat laporan ini diperbarui; hasil akhir suite belum boleh dinyatakan PASS.
 - Browser E2E/live UI dan hasil pemasangan VPS belum dijalankan.
 
 ## BATASAN / PEKERJAAN LANJUTAN
