@@ -232,7 +232,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
         $this->assertFalse($foreignProfile->rombels()->whereKey($chain['rombel']->id)->exists());
         $this->assertDatabaseMissing('rombel_student', [
             'tenant_id' => $this->tenant->id,
-            'student_profile_id' => $foreignProfile->id,
+            'student_id' => $foreignProfile->id,
             'rombel_id' => $chain['rombel']->id,
         ]);
 
