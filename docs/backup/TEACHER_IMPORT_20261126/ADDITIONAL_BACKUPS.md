@@ -44,3 +44,7 @@ Semua salinan di bawah dibuat sebelum file sumber terkait diubah. File baru (ser
 - `ADDITIONAL_BACKUPS.md.before-complete-backup-index` — salinan indeks backup sebelum daftar ini diperluas.
 
 Backup sumber utama juga tercatat di `MANIFEST.md`.
+
+- `REPORT_IMPLEMENTASI_IMPORT_GURU_2026-11-26.md.before-post-merge-update` — laporan sebelum diperbarui setelah PR #27 merged.
+- `CHECKPOINT_IMPORT_GURU_2026-11-26.md.before-post-merge-update` — checkpoint sebelum diperbarui setelah PR #27 merged.
+- `ADDITIONAL_BACKUPS.md.before-post-merge-update` — indeks backup sebelum penambahan catatan pasca-merge.

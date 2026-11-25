@@ -1,36 +1,36 @@
-# Checkpoint — Import Guru dan Kredensial Import
+# Checkpoint — Import Guru dan Kredensial Otomatis
 Tanggal: 2026-11-26
 
+## Posisi source
 - Repository: `zane0184/cbt_november`.
-- Branch implementasi: `feature/admin-teacher-import-20261126-r1`.
-- PR: [#27 — Import Guru Web Admin](https://github.com/zane0184/cbt_november/pull/27), sebelumnya draft/open dan belum merge saat checkpoint ini disusun.
-- Source target branch terakhir diperiksa: `work/guru-docx-import-e2e-20261125` @ `2dd2baaa891e01d2595df4f4aa586c1c9254f301`. Upstream bergerak 4 commit sejak common base branch fitur; perubahan non-overlap pada DOCX/Question Bank. Koreksi syntax test upstream diselaraskan ke branch fitur.
-- Head branch fitur yang diuji: `4533367434593304a700f66c855d603af5370cc5`.
+- Source branch: `work/guru-docx-import-e2e-20261125`.
+- PR #27: **merged** — https://github.com/zane0184/cbt_november/pull/27
+- Merge commit/source head saat checkpoint: `99da122eeb7081bd82ac8b6e26c3558c07a528d1`.
+- Feature branch: `feature/admin-teacher-import-20261126-r1` (sudah diintegrasikan melalui PR #27).
 
-## Status pekerjaan
-- Import Guru: service, komponen, view, route, migration batch, dan feature test tersedia.
-- Import Guru: PNS/PPPK login memakai NIP 18 digit; Honorer memakai NIK 16 digit; NUPTK opsional.
-- Import Siswa: alur impor dipertahankan; hasil kredensial dikembalikan oleh service setelah batch sukses.
-- Kedua service membuat password acak 24 karakter dan hanya menyimpan hash di database.
-- Setelah impor, Admin diarahkan ke `/admin/users`; panel sekali tampil memuat nama, identitas login, jenis identitas, dan password awal.
-- Halaman otomatis memfilter GURU/SISWA sesuai batch, dapat mencari NIP/NIK/NISN, dan mengunduh kredensial dalam format XLSX saja.
-- Menutup panel menghapus kredensial dari state Livewire. Password plaintext tidak disimpan permanen dan tidak bisa dipulihkan; gunakan Reset Password jika daftar sudah ditutup.
-- Template Import Siswa kini satu worksheet Data Siswa agar cocok dengan XlsxPackagePreflight; petunjuk pengisian ada di halaman impor.
-- Template input tetap mendukung XLSX dan CSV; file hasil unduhan kredensial wajib XLSX.
-- Backup seluruh file yang diedit tersedia di `docs/backup/TEACHER_IMPORT_20261126/`.
-- Migration batch Guru belum dijalankan di VPS/database produksi.
-- Tidak ada perubahan CBT Engine atau kurikulum.
+## Status implementasi
+- Import Guru sudah ditambahkan pada Web Admin Madrasah.
+- Guru PNS/PPPK menggunakan NIP 18 digit untuk login; Guru Honorer menggunakan NIK 16 digit; NUPTK opsional.
+- Import Siswa yang ada dipertahankan; service sekarang mengembalikan kredensial hasil impor.
+- Password awal acak 24 karakter; database hanya menyimpan hash.
+- Setelah impor sukses, Admin diarahkan ke Manajemen Pengguna dan melihat daftar akun batch beserta identitas login serta password awal satu kali.
+- Unduhan daftar akun wajib XLSX: `nama`, `identitas_login`, `jenis_identitas`, `password_awal`.
+- Halaman otomatis memfilter GURU/SISWA sesuai hasil impor dan pencarian mencakup NIP/NIK/NISN.
+- Menutup panel/sesi menghapus akses ke password awal. Jika diperlukan, gunakan Reset Password.
+- Template Import Siswa sekarang satu worksheet Data Siswa agar sesuai `XlsxPackagePreflight`.
+- Backup sebelum setiap perubahan tersedia di `docs/backup/TEACHER_IMPORT_20261126/`.
 
 ## Pengujian
-- GitHub Actions [Tenant Backend CI run #2305](https://github.com/zane0184/cbt_november/actions/runs/45709784302) pada SHA `4533367434593304a700f66c855d603af5370cc5`: **success**.
+- GitHub Actions Tenant Backend CI run #2307: SUCCESS.
+- SHA yang diuji: `c16cec6b6e5a2c30320236906d6fc8edd2ec85f6`.
 - PHP lint: PASS.
-- Pemeriksaan migration/login identity pada MySQL 8.0.46 disposable: PASS.
-- PHPUnit lengkap: **678 passed, 3.564 assertions, 187,57 detik**.
-- Test menguji login Web/API untuk NISN, NIP, NIK; Hash password; tampilan daftar kredensial; unduhan XLSX; dan template Import Siswa satu worksheet.
-- Tidak ada test pada database produksi atau VPS pada tahap ini.
+- Migration/login identity MySQL 8.0.46 disposable: PASS.
+- PHPUnit: **681 passed, 3.598 assertions, 206,43 detik**.
+- Tes mencakup login Web dan API untuk NISN/NIP/NIK, hash password, panel kredensial, ekspor XLSX, dan template satu worksheet.
+- Tidak ada migration atau test pada database produksi/VPS.
 
-## Langkah berikutnya
-1. Segarkan metadata PR #27 terhadap source branch terkini dan pastikan mergeability.
-2. Tandai PR siap review dan integrasikan perubahan source jika tidak ada konflik.
-3. Setelah merge, migration `teacher_import_batches` tetap memerlukan backup produksi, preflight, dan persetujuan sebelum dijalankan pada VPS.
-4. Admin Madrasah dapat menguji impor nyata setelah source dan migration terpasang; gunakan kredensial XLSX hasil impor untuk uji login Web/Android.
+## Batasan dan langkah berikutnya
+1. Source sudah merged; fitur baru belum dipasang ke VPS melalui tahap deployment terkontrol.
+2. Migration `2026_11_26_010001_create_teacher_import_batches_table.php` belum dijalankan pada VPS/produksi. Sebelum menjalankan: rencana migration, backup terverifikasi, preflight, dan persetujuan eksplisit.
+3. Setelah source dan migration terpasang, Admin Madrasah dapat melakukan uji impor nyata Guru dan Siswa lalu menggunakan XLSX untuk login Web/API/Android.
+4. Tidak perlu mengulang pengujian instalasi VPS yang sudah pengguna nyatakan berhasil; fokus berikutnya adalah memasang perubahan fitur baru dan validasi fungsinya.
