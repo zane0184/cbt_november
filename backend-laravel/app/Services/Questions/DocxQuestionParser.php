@@ -339,7 +339,7 @@ class DocxQuestionParser
                 continue;
             }
 
-            if (preg_match('/^(?:[A-Z0-9][.)]\s*)?(?:KUNCI(?:\s+JAWABAN)?|DAFTAR\s+JAWABAN|JAWABAN(?:\s+SOAL)?|ANSWER\s+KEY)\b.*$/iu', $primaryText)) {
+            if (preg_match('/^(?:[A-Z0-9][.)]\s*)?(?:KUNCI(?:\s+JAWABAN)?|DAFTAR\s+JAWABAN|JAWABAN\s+SOAL|ANSWER\s+KEY)\b.*$/iu', $primaryText)) {
                 if ($active !== null) {
                     $rawQuestions[] = $active;
                     $active = null;
