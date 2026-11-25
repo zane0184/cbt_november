@@ -546,6 +546,92 @@ class QuestionBankTest extends TestCase
 
         $response->assertStatus(422);
     }
+    public function test_teacher_can_import_docx_preview_map_and_save_pg_pgk_and_grouped_true_false_as_drafts(): void
+    {
+        $this->actingAs($this->userA);
+
+        $upload = $this->makeDocxQuestionUpload([
+            'SOAL 1. [PG] Berapakah hasil 4 + 5?',
+            'A. 7',
+            'B. 8',
+            'C. 9',
+            'D. 10',
+            'KUNCI: C',
+            'SOAL 2. [PGK] Pilih semua bilangan genap.',
+            'A. 2',
+            'B. 3',
+            'C. 4',
+            'D. 5',
+            'KUNCI: A, C',
+            'SOAL 3. [B/S] Tentukan benar atau salah setiap pernyataan.',
+            'a. 2 merupakan bilangan genap.',
+            'b. 5 lebih besar daripada 9.',
+            'c. 10 habis dibagi 2.',
+            'KUNCI: B, S, B',
+        ]);
+
+        Livewire::test(QuestionDocxImport::class)
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->set('selectedCpIds', [$this->canonicalContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->canonicalContext['tp']->id])
+            ->set('file', $upload)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('Preview hasil pembacaan')
+            ->assertSee('TRUE_FALSE_GROUP')
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('3 soal berhasil disimpan sebagai DRAFT');
+
+        $this->assertDatabaseCount('questions', 3);
+        $this->assertDatabaseCount('question_docx_import_batches', 1);
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenantA->id,
+            'subject_id' => $this->subjectA->id,
+            'status' => 'DRAFT',
+        ]);
+
+        $this->assertDatabaseHas('question_versions', [
+            'question_type' => 'MULTIPLE_CHOICE',
+            'status' => 'DRAFT',
+        ]);
+        $this->assertDatabaseHas('question_versions', [
+            'question_type' => 'MULTIPLE_RESPONSE',
+            'status' => 'DRAFT',
+        ]);
+
+        $groupVersion = QuestionVersion::query()
+            ->where('question_type', 'TRUE_FALSE_GROUP')
+            ->firstOrFail();
+        $this->assertCount(3, $groupVersion->metadata['statement_items']);
+        $this->assertSame('PROPORTIONAL_PER_STATEMENT_V1', $groupVersion->metadata['statement_scoring']);
+        $this->assertTrue((bool) $groupVersion->is_current);
+        $this->assertSame('DRAFT', $groupVersion->status);
+    }
+
+    private function makeDocxQuestionUpload(array $lines): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'cbt-question-docx-');
+        $paragraphs = '';
+        foreach ($lines as $line) {
+            $escaped = htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+            $paragraphs .= '<w:p><w:r><w:t xml:space="preserve">' . $escaped . '</w:t></w:r></w:p>';
+        }
+
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
+            . '<w:body>' . $paragraphs . '<w:sectPr/></w:body></w:document>';
+        $zip = new ZipArchive();
+        $this->assertSame(true, $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true);
+        $zip->addFromString('word/document.xml', $xml);
+        $zip->close();
+
+        $bytes = file_get_contents($path);
+        @unlink($path);
+
+        return UploadedFile::fake()->createWithContent('soal-uji.docx', $bytes);
+    }
+
     private function questionBankComponent()
     {
         return Livewire::test(QuestionBank::class)
