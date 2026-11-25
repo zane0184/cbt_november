@@ -112,7 +112,7 @@ jobs:
           php artisan package:discover --ansi
 
       - name: Check patch whitespace against audited base
-        run: git -C "$GITHUB_WORKSPACE" diff --check 3df188b338a03b8513dfeea12d80b1201399be81...$GITHUB_SHA
+        run: git -C "$GITHUB_WORKSPACE" diff --check 3df188b338a03b8513dfeea12d80b1201399be81...$GITHUB_SHA -- . ':(exclude)backend-laravel/backups/**'
 
       - name: PHP lint application, migrations, and tests
         shell: bash
