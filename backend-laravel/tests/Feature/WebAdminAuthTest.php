@@ -102,13 +102,25 @@ class WebAdminAuthTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertOk();
-        $response->assertSee('CBT MADRASAH');
+        $response->assertSee('Madrasah Uji');
+        $response->assertDontSee('>CBT MADRASAH</h1>', false);
         $response->assertSee('Masuk ke CBT Madrasah');
         $response->assertSee('Username Admin / NIP / NIK / NISN');
         $response->assertSee('Siswa: NISN');
         $response->assertSee('name="identifier"', false);
         $response->assertSee('name="password"', false);
         $response->assertDontSee('name="tenant_code"', false);
+    }
+
+    public function test_login_heading_uses_madrasah_short_name_when_configured(): void
+    {
+        $this->tenant->update(['short_name' => 'MIN 15 Jakarta Selatan']);
+
+        $response = $this->get('/login');
+
+        $response->assertOk();
+        $response->assertSee('MIN 15 Jakarta Selatan');
+        $response->assertDontSee('>CBT MADRASAH</h1>', false);
     }
 
     public function test_legacy_platform_super_admin_login_is_rejected_from_tenant_cbt(): void
