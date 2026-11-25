@@ -89,3 +89,46 @@ Run #114: https://github.com/zane0184/cbt_november/actions/runs/45521595664
 
 ### Agent 2 actions
 Only this checkpoint and the independent audit report were updated on the audit branch. No Agent 1 source/workflow, merge, migration, production database, VPS or deployment changes. No tests were executed by Agent 2.
+
+
+---
+
+## FOLLOW-UP CHECKPOINT — ATP PROVENANCE & ZIP ARCHIVE
+Tanggal: 25 November 2026
+
+### Exact refs
+- Agent 1 ZIP P0 HEAD: `c0d7b4f4805cafa4db35253b5291216cdef6a94c`.
+- Source/test commit pada Run #142: `1a9fffeb85f7efbdcc10446a064786749218a63e`.
+- Perubahan setelah Run #142 hanya satu dokumentasi backup manifest; source/test sama pada HEAD c0d7.
+- Service blob: `3e1a484aec0a212234e866c04bfde3d2789d2aa6`.
+- Provenance regression test blob: `58343c391e239f8724af382c2669c66768f03890`.
+- Acceptance test blob: `9d51e8c99e998afe8941f49ee0ac9c4874dd1b21`.
+- ZIP workflow blob: `c2ea4c907001ce7f12aa347f354f8099dffa07e`.
+- Agent 2 audit branch base: `27b2eb829d56084a9ab552da322c42d851969a74`.
+
+### ATP provenance
+- Source flow diperiksa: TeacherLearning Livewire → createTp/createAtp/publish service; helper `resolveVerifiedOfficialCp()` dipanggil pada ketiga operasi.
+- Helper memeriksa CP ACTIVE, official, immutable, ARTIFACT_CHECKSUM_VERIFIED; source row terkunci dan statusnya harus verified; source checksum dan CP checksum harus 64-char hex serta sama dengan hash_equals.
+- Regression tests tersedia untuk CP PENDING, source checksum null/mismatch, CP checksum mismatch, CP berubah INACTIVE, source berubah PENDING, parent CP invalid, positive synthetic fixture, dan direct service permission denial.
+- Negative tests memeriksa tidak ada row ATP/mapping/audit parsial.
+- Positive synthetic fixture bukan bukti CP resmi.
+- Coverage gaps: source missing/tenant mismatch, owner/version/subject mismatch, malformed checksum format, dan variasi status sumber invalid belum terlihat.
+- Run #142 (`45534390278`) exact SHA `1a9fff`: PHP 8.3 dan 8.4/MySQL 8 InnoDB masih IN_PROGRESS saat audit; belum ada hasil test atau artifact.
+- Run #143 (`45534521144`) exact SHA c0d7: PENDING; commit hanya manifest dokumentasi.
+- Status: **SOURCE REVIEW PASS WITH COVERAGE GAPS; REGRESSION TEST NOT VERIFIED**.
+
+### ZIP archive
+- Workflow packaging exact HEAD c0d7 masih blob lama c2ea4c9.
+- Tidak exclude/guard `backups/`; hanya mengecualikan `backup_before_patch/`.
+- Belum ada guard generik untuk `.env.*`, database dumps, private keys/credentials, generic logs/cache/temp.
+- Hanya `unzip -t` dan grep denylist terbatas; tidak ada extract ke folder kosong dan full `sha256sum -c` atas semua file.
+- Branch ZIP P0 tidak tercantum pada push trigger packaging; workflow_dispatch tersedia tetapi tidak ada run packaging exact HEAD yang ditemukan.
+- Tidak ada ZIP artifact exact HEAD yang dapat diperiksa.
+- Status: **FAIL P0 / NOT VERIFIED**.
+
+### Kesimpulan
+- P0-01 tetap PASS/CLOSED dari Run #114; tidak diulang.
+- P0-02A belum PASS karena CI run untuk test ATP/acceptance belum selesai.
+- CP resmi tetap BLOCKED.
+- ZIP belum siap uji operasional terbatas; archive guard, artifact exact HEAD, extract/checksum, README artifact, dan browser E2E masih belum terbukti.
+- Agent 2 hanya memperbarui laporan/checkpoint. Tidak ada source Agent 1, workflow, migration, database, merge, VPS, atau deployment yang diubah.
