@@ -322,7 +322,7 @@ class DocxQuestionParserTest extends TestCase
     public function test_inline_media_and_word_math_mark_questions_as_blocked(): void
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
             . '<w:body><w:p><w:r><w:t>SOAL 1. [PG] Hitung hasil berikut.</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>A. 2</w:t></w:r></w:p><w:p><w:r><w:t>B. 3</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>KUNCI: A</w:t></w:r></w:p>'
