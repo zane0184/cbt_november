@@ -23,6 +23,7 @@ Route::middleware(['auth', 'active.user', 'tenant', 'license', EnsureTeacherPort
         Route::get('/kurikulum', TeacherLearning::class)->name('curriculum');
         Route::get('/profil', TeacherProfilePage::class)->name('profile');
         Route::get('/bank-soal', QuestionBank::class)->name('questions.index');
+        Route::get('/bank-soal/import-docx', QuestionDocxImport::class)->name('questions.import-docx');
         Route::get('/asesmen', ExamManagement::class)->name('exams.index');
         Route::post('/bank-soal/{question}/versions/{version}/media', [TeacherQuestionMediaController::class, 'storeAndAttach'])->name('questions.media.store');
         Route::delete('/bank-soal/{question}/versions/{version}/media/{media}', [TeacherQuestionMediaController::class, 'detach'])->name('questions.media.detach');
