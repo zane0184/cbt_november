@@ -67,6 +67,37 @@ class QuestionDocxImport extends Component
         $this->selectedOutcomeIds = [];
     }
 
+    public function updated(string $propertyName, mixed $value): void
+    {
+        if (!preg_match('/^questions\\.(\\d+)\\.question_type$/', $propertyName, $match)) {
+            return;
+        }
+
+        $index = (int) $match[1];
+        if (!isset($this->questions[$index])) {
+            return;
+        }
+
+        if (in_array($value, ['ESSAY', 'TRUE_FALSE_GROUP'], true)) {
+            $this->questions[$index]['options'] = [];
+        }
+
+        if ($value === 'TRUE_FALSE_GROUP' && count($this->questions[$index]['statements'] ?? []) !== 3) {
+            $this->questions[$index]['statements'] = [
+                ['id' => 's1', 'text' => '', 'is_true' => false],
+                ['id' => 's2', 'text' => '', 'is_true' => false],
+                ['id' => 's3', 'text' => '', 'is_true' => false],
+            ];
+        }
+
+        if ($value === 'TRUE_FALSE' && empty($this->questions[$index]['options'])) {
+            $this->questions[$index]['options'] = [
+                ['option_key' => 'A', 'content' => 'BENAR', 'is_correct' => false],
+                ['option_key' => 'B', 'content' => 'SALAH', 'is_correct' => false],
+            ];
+        }
+    }
+
     public function preview(): void
     {
         $this->authorizeAccess();
