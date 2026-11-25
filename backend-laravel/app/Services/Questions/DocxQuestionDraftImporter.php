@@ -91,8 +91,8 @@ class DocxQuestionDraftImporter
 
             foreach ($ready as $index => $row) {
                 $this->validateQuestion($row, $index + 1);
-                $effectiveCpIds = array_values(array_unique($row['mapping_cp_ids'] ?? $cpIds));
-                $effectiveOutcomeIds = array_values(array_unique($row['mapping_outcome_ids'] ?? $outcomeIds));
+                $effectiveCpIds = array_values(array_unique(!empty($row['mapping_cp_ids']) ? $row['mapping_cp_ids'] : $cpIds));
+                $effectiveOutcomeIds = array_values(array_unique(!empty($row['mapping_outcome_ids']) ? $row['mapping_outcome_ids'] : $outcomeIds));
                 if ($effectiveCpIds === [] || $effectiveOutcomeIds === []) {
                     throw ValidationException::withMessages([
                         'docx' => 'Setiap soal yang disertakan wajib memiliki minimal satu CP dan satu TP/ATP. Atur pemetaan default atau pemetaan khusus pada kartu soal.',
@@ -104,8 +104,8 @@ class DocxQuestionDraftImporter
             $importedIds = [];
 
             foreach ($ready as $row) {
-                $questionCpIds = array_values(array_unique($row['mapping_cp_ids'] ?? $cpIds));
-                $questionOutcomeIds = array_values(array_unique($row['mapping_outcome_ids'] ?? $outcomeIds));
+                $questionCpIds = array_values(array_unique(!empty($row['mapping_cp_ids']) ? $row['mapping_cp_ids'] : $cpIds));
+                $questionOutcomeIds = array_values(array_unique(!empty($row['mapping_outcome_ids']) ? $row['mapping_outcome_ids'] : $outcomeIds));
                 $question = Question::query()->create([
                     'tenant_id' => $tenantId,
                     'owner_type' => 'SUBJECT',
