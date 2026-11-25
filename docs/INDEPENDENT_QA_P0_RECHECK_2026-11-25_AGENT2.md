@@ -559,3 +559,103 @@ Dua fokus wajib audit berikutnya:
 - Hanya addendum laporan/checkpoint pada branch audit independen.
 - Tidak ada source/workflow Agent 1, test Agent 1, branch Agent 1, migration, database, merge, PR, VPS, atau deployment yang diubah.
 - Tidak menjalankan test atau build ZIP dari sisi Agent 2.
+
+
+---
+
+# ADDENDUM REKONSILIASI FAKTUAL — P0-02A.1 / PACKAGING
+Tanggal: 25 November 2026 (WIB)
+Mode: audit independen read-only; sumber bukti GitHub branch, compare commit, workflow run, job summaries/log, checkpoint Agent 1, dan workflow packaging.
+
+## 1. Koreksi identitas dan status branch Agent 1
+
+- Branch kandidat ZIP P0: `work/limited-zip-p0-20261125`.
+- HEAD terbaru yang direkonsiliasi: `7a89acf5e1ea9227f12b48a1f13e5d69ff0dcd05`.
+- Source/test commit yang diuji Run #182: `185f6d515bc92beb08bff8dc8b2c2c91d96458dd`.
+- Compare GitHub `185f6d5... → 7a89acf...`: status ahead, **9 commits**, behind 0. File changes yang dilaporkan compare hanya dokumentasi/manifest backup dan `.gitattributes`; tidak ada source aplikasi atau test yang berubah. Dengan demikian hasil Run #182 berlaku untuk source dan test pada HEAD 7a89acf, tetapi bukan bukti packaging workflow/ZIP pada HEAD tersebut.
+
+## 2. AUDIT — Run #182 dan checkpoint Agent 1
+
+Run #182, ID `45538552057`, workflow DOCX Import Parser CI:
+https://github.com/zane0184/cbt_november/actions/runs/45538552057
+
+- Status run: `completed`; conclusion: `success`.
+- Tested SHA: `185f6d515bc92beb08bff8dc8b2c2c91d96458dd`.
+- Job PHP 8.3.37 / MySQL 8.0 InnoDB: `completed / success`.
+- Job PHP 8.4.28 / MySQL 8.0 InnoDB: `completed / success`.
+- Kedua job menyelesaikan checkout exact pushed commit, verifikasi source dan DB disposable, Composer/dependency, PHP lint, clean-install Installer E2E, Student Import acceptance, benchmark cleanup denial-path, dan full PHPUnit.
+
+Hasil log full PHPUnit:
+
+| Matriks | Full PHPUnit | Assertions | Durasi |
+|---|---:|---:|---:|
+| PHP 8.3.37 + MySQL 8.0 InnoDB | **643 passed, 1 skipped, 0 failed** | 3.327 | 120,49 detik |
+| PHP 8.4.28 + MySQL 8.0 InnoDB | **643 passed, 1 skipped, 0 failed** | 3.327 | 194,72 detik |
+
+Acceptance terpisah pada kedua job:
+- Installer E2E: 1 passed (27 assertions).
+- Student Import acceptance: 22 passed (87 assertions).
+- Benchmark cleanup denial-path: 1 passed (20 assertions).
+- Kelas `TeacherLearningOutcomeProvenanceTest` dan `P002ANonCpAcademicAcceptanceTest` dinyatakan PASS pada kedua matriks oleh checkpoint Agent 1.
+- **Satu SKIPPED per matriks tetap dicatat sebagai SKIPPED**, bukan PASS. Ringkasan log tidak memberikan nama/alasan skip.
+- Daftar artifact Run #182 kosong; workflow ini bukan build ZIP.
+
+Checkpoint Agent 1 yang dibaca pada exact HEAD 7a89acf:
+- `docs/P0_02A1_AUDIT_HARDENING_CHECKPOINT_2026-11-25.md` (Git blob `6c69648c0a15cebd6f44f29071b146be7f44ca96`).
+- `docs/P0_02A1_FINAL_STATUS_ADDENDUM_2026-11-25.md` (Git blob `2cd4ebfbb9712285f10d0139a0cf5830c3e0e2eb`).
+
+Checkpoint Agent 1 mendukung status P0-02A.1 regression gate PASS dan P0-02A Non-CP Academic Acceptance PASS. Checkpoint juga menyebut satu skipped, tanpa nama/alasan skip. Bukti tersebut tidak membuktikan ketersediaan artefak CP resmi.
+
+**Keputusan independen yang direkonsiliasi: P0-02A.1 regression gate = PASS.** Run #142 yang lebih lama dan gagal tidak boleh dipakai untuk menahan status ini; Run #182 pada source/test SHA yang lebih baru menutup regression gate, dan sembilan commit dokumentasi setelahnya tidak mengubah source/test.
+
+## 3. Status CP resmi
+
+**CP resmi = BLOCKED.**
+- Source resmi Pendis 9941/2025 tetap PENDING.
+- Positive ATP test menggunakan fixture sintetis test-only; bukan dokumen CP resmi.
+- BSKAP/BKPDM/Pendis masih memerlukan bukti bytes asli, provenance/tanda tangan bila relevan, checksum SHA-256 yang dihitung dari bytes yang sama, dan verifikasi cakupan dokumen sebelum status verified atau import.
+
+## 4. AUDIT — packaging workflow dan ZIP
+
+Pada exact HEAD `7a89acf...`, file `.github/workflows/build-web-deployment.yml` masih memiliki Git blob SHA `c2ea4c907001ce7f12aa347f354f8099dffa07e`.
+
+Temuan yang masih aktif:
+- Trigger `push.branches` belum mencantumkan `work/limited-zip-p0-20261125`.
+- rsync mengecualikan `backup_before_patch/`, tetapi tidak mengecualikan semua `backups/`.
+- Guard tidak menolak semua `.env*` secara rekursif dengan allowlist hanya `.env.example`.
+- Belum ada denylist generik menyeluruh untuk database dump/SQLite, private key/certificate, credential/token, log/cache/session/temp/swap/crash, dan file backup.
+- Pemeriksaan arsip masih terbatas pada daftar pola dan `unzip -t`; belum mengekstrak ke direktori kosong dan memverifikasi seluruh checksum file hasil ekstraksi dengan `sha256sum -c`.
+- README belum diverifikasi dari hasil ekstraksi ZIP yang sebenarnya.
+- Artifact listing Run #182 kosong dan run tersebut bukan workflow packaging.
+
+**Packaging workflow = FAIL P0.**
+**ZIP exact HEAD 7a89acf = BELUM DIVERIFIKASI / belum ada artifact yang dapat diperiksa.**
+**Clean extraction + checksum semua file = BELUM DIVERIFIKASI.**
+**README dari paket hasil ekstraksi = BELUM DIVERIFIKASI.**
+**Browser E2E menggunakan backend Laravel/MySQL nyata dari hasil ekstraksi = BELUM DIVERIFIKASI.**
+
+## 5. DESAIN / acceptance lanjutan
+
+Untuk mengubah status packaging menjadi PASS, Agent 1 harus memperbaiki workflow, menjalankannya pada exact HEAD kandidat, dan menghasilkan artifact yang dapat diaudit. Auditor harus menerima bukti artifact ID, ukuran, SHA-256, file count, isi arsip, hasil denylist scan, ekstraksi ke direktori kosong, checksum semua file, struktur Laravel, README, dan browser E2E ke backend nyata. `unzip -t` saja tidak cukup.
+
+## 6. IMPLEMENTASI Agent 2
+
+- Hanya addendum laporan dan checkpoint audit independen yang diperbarui.
+- Tidak mengubah source, test, workflow, backup, atau branch Agent 1.
+- Tidak melakukan merge, migration, akses database produksi, VPS, deployment, atau build Gradle.
+- Agent 2 tidak menjalankan ulang PHPUnit; hasil test di atas berasal dari log GitHub Actions Run #182.
+
+## 7. STATUS GATE TERKINI
+
+| Gate | Status |
+|---|---|
+| P0-02A.1 regression gate | **PASS** — Run #182; source/test SHA 185f6d5, berlaku pada HEAD 7a89acf karena 9 commit setelahnya hanya dokumentasi/manifest dan .gitattributes |
+| CP resmi | **BLOCKED** |
+| Packaging workflow | **FAIL P0** |
+| ZIP artifact exact HEAD 7a89acf | **NOT VERIFIED** |
+| Clean extraction + full checksums | **NOT VERIFIED** |
+| README hasil ekstraksi | **NOT VERIFIED** |
+| Browser E2E dari ZIP dengan backend nyata | **NOT VERIFIED** |
+| ZIP siap uji operasional terbatas | **TIDAK** |
+
+---

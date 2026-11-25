@@ -132,3 +132,36 @@ Tanggal: 25 November 2026
 - CP resmi tetap BLOCKED.
 - ZIP belum siap uji operasional terbatas; archive guard, artifact exact HEAD, extract/checksum, README artifact, dan browser E2E masih belum terbukti.
 - Agent 2 hanya memperbarui laporan/checkpoint. Tidak ada source Agent 1, workflow, migration, database, merge, VPS, atau deployment yang diubah.
+
+
+---
+
+## RECONCILIATION CHECKPOINT — 25 NOVEMBER 2026 (Run #182)
+
+### Exact refs
+- Agent 1 ZIP P0 HEAD saat rekonsiliasi: `7a89acf5e1ea9227f12b48a1f13e5d69ff0dcd05`.
+- Source/test SHA yang diuji Run #182: `185f6d515bc92beb08bff8dc8b2c2c91d96458dd`.
+- Compare source/test SHA ke HEAD: 9 commits tambahan; file yang berubah hanya `.gitattributes` serta dokumentasi/manifest backup. Tidak ada source aplikasi/test berubah.
+- Agent 2 branch sebelum update: `40d02d63c5e2fb70b7731a96b55f2b828aa547e9`.
+
+### P0-02A.1 regression gate — PASS
+Run #182 ID `45538552057`: https://github.com/zane0184/cbt_november/actions/runs/45538552057
+- Run completed / success.
+- PHP 8.3.37 + MySQL 8.0 InnoDB: job PASS; full PHPUnit 643 passed, 1 skipped, 0 failed (3.327 assertions).
+- PHP 8.4.28 + MySQL 8.0 InnoDB: job PASS; full PHPUnit 643 passed, 1 skipped, 0 failed (3.327 assertions).
+- Installer E2E: 1 passed / 27 assertions pada masing-masing matriks.
+- Student Import: 22 passed / 87 assertions pada masing-masing matriks.
+- Benchmark cleanup denial-path: 1 passed / 20 assertions pada masing-masing matriks.
+- Regression class TeacherLearningOutcomeProvenanceTest dan P002ANonCpAcademicAcceptanceTest: PASS menurut log/checkpoint Agent 1.
+- Satu skipped per matriks dicatat apa adanya; nama/alasan tidak tampak di ringkasan log.
+- Run #142 gagal pada commit lama dan telah disusul Run #182; Run #142 bukan blocker aktif P0-02A.1.
+
+### Status lain
+- CP resmi: **BLOCKED**; positive test fixture bersifat synthetic, bukan artefak resmi.
+- Packaging workflow: **FAIL P0**; blob `c2ea4c907001ce7f12aa347f354f8099dffa07e` masih sama. Branch ZIP P0 tidak ada di push trigger; exclusion/denylist belum lengkap; tidak ada clean extraction + checksum verification.
+- ZIP exact HEAD 7a89acf: **NOT VERIFIED**; artifact listing Run #182 kosong dan bukan workflow packaging.
+- Browser E2E dari ZIP ke backend Laravel/MySQL nyata: **NOT VERIFIED**.
+- Keputusan release: **BELUM SIAP UJI OPERASIONAL TERBATAS**.
+
+### Tindakan Agent 2
+Hanya laporan dan checkpoint Agent 2 yang diperbarui. Tidak ada perubahan pada branch Agent 1, source, test, workflow, backup, migration, database, merge, VPS, atau deployment. Agent 2 tidak menjalankan ulang test; hasil berasal dari Run #182 dan checkpoint Agent 1 yang dibaca pada HEAD 7a89acf.
