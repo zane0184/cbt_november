@@ -588,6 +588,11 @@ class StudentImportTest extends TestCase
             ->assertSee($credential['password'])
             ->call('downloadImportCredentialsXlsx')
             ->assertFileDownloaded('kredensial-import-siswa.xlsx');
+
+        $this->post('/login', [
+            'identifier' => '0007654321',
+            'password' => $credential['password'],
+        ])->assertRedirect('/student/exams');
     }
 
 }
