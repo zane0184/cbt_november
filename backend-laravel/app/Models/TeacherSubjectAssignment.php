@@ -38,6 +38,11 @@ class TeacherSubjectAssignment extends Model
         return $this->belongsTo(TeacherProfile::class, 'teacher_profile_id');
     }
 
+    public function teacherProfile(): BelongsTo
+    {
+        return $this->teacher();
+    }
+
     public function subject(): BelongsTo
     {
         return $this->belongsTo(Subject::class);
