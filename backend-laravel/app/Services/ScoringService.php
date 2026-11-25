@@ -326,7 +326,7 @@ class ScoringService
         foreach ($items as $item) {
             $id = $item['id'] ?? null;
             if (!is_string($id) || !is_bool($item['is_true'] ?? null)) {
-                throw new \\DomainException('Scoring blocked: grouped true/false statement metadata is malformed.');
+                throw new \DomainException('Scoring blocked: grouped true/false statement metadata is malformed.');
             }
             if (array_key_exists($id, $answers) && is_bool($answers[$id]) && $answers[$id] === $item['is_true']) {
                 $correct++;
