@@ -99,9 +99,9 @@ class QuestionDocxImport extends Component
         $this->validate([
             'file' => ['required', 'file', 'mimes:docx', 'max:10240'],
             'selectedAssignmentId' => ['required', 'uuid'],
-            'selectedCpIds' => ['required', 'array', 'min:1'],
+            'selectedCpIds' => ['nullable', 'array'],
             'selectedCpIds.*' => ['required', 'uuid', 'distinct'],
-            'selectedOutcomeIds' => ['required', 'array', 'min:1'],
+            'selectedOutcomeIds' => ['nullable', 'array'],
             'selectedOutcomeIds.*' => ['required', 'uuid', 'distinct'],
         ]);
 
