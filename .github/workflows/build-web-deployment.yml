@@ -61,6 +61,8 @@ jobs:
           php artisan route:list --path=install --json > "$RUNNER_TEMP/installer-routes.json"
           php -r '$routes = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR); $uris = array_column($routes, "uri"); foreach (["install/authorize", "install/requirements", "install/database/test", "install/migrations/run", "install/admin/save", "install/complete"] as $required) { if (!in_array($required, $uris, true)) { fwrite(STDERR, "Missing installer route: {$required}" . PHP_EOL); exit(1); } }' "$RUNNER_TEMP/installer-routes.json"
           test -f vendor/autoload.php
+          # Composer may generate Laravel bootstrap cache files; keep only the tracked placeholder.
+          find bootstrap/cache -mindepth 1 -maxdepth 1 -type f ! -name '.gitignore' -delete
 
       - name: Assemble clean standalone deployment tree
         shell: bash
@@ -86,6 +88,7 @@ jobs:
             --exclude='**/backup/***' \
             --exclude='**/backups/***' \
             --exclude='**/backup_before_patch/***' \
+            --exclude='**/*[bB][aA][cC][kK][uU][pP]*/***' \
             --exclude='**/*.before' \
             --exclude='**/*.bak' \
             --exclude='**/*.backup' \
@@ -187,76 +190,9 @@ jobs:
           test ! -d backend-laravel/tests
 
           # Fail closed on forbidden files, paths, symlinks, nested archives, and embedded high-confidence secrets.
-          python3 - "$STAGE" <<'PY'
-          import re, sys
-          from pathlib import Path
-
-          root = Path(sys.argv[1])
-          forbidden_dirs = {"backup", "backups", "backup_before_patch", "tests", ".git", ".phpunit.cache"}
-          forbidden_suffixes = {
-              ".before", ".bak", ".backup", ".orig", ".old", ".swp", ".swo", ".tmp", ".temp",
-              ".log", ".sql", ".dump", ".sqlite", ".sqlite3", ".db", ".ibd",
-              ".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".crt", ".cer",
-              ".zip", ".tar", ".gz", ".tgz", ".7z", ".rar", ".core", ".dmp"
-          }
-          forbidden_names = {
-              ".npmrc", ".pypirc", ".netrc", "id_rsa", "id_ed25519", "authorized_keys",
-              "credentials", "secrets.json", "secrets.yml", "secrets.yaml"
-          }
-          secret_patterns = [
-              re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
-              re.compile(rb"-----BEGIN CERTIFICATE-----"),
-              re.compile(rb"(?im)^[ \t]*(?:APP_KEY|CBT_INSTALLER_BOOTSTRAP_TOKEN|DB_PASSWORD|REDIS_PASSWORD|MAIL_PASSWORD|AWS_SECRET_ACCESS_KEY)[ \t]*=[ \t]*\"?([A-Za-z0-9+/=_-]{16,})\"?[ \t]*(?:#.*)?$"),
-              re.compile(rb"(?im)^[ \t]*(?:[A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|API_KEY|ACCESS_KEY)[A-Z0-9_]*)[ \t]*[:=][ \t]*\"?([A-Za-z0-9/+_.=-]{20,})\"?[ \t]*(?:#.*)?$"),
-              re.compile(rb"\bAKIA[0-9A-Z]{16}\b"),
-              re.compile(rb"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
-              re.compile(rb"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
-              re.compile(rb"\bsk_live_[A-Za-z0-9]{16,}\b"),
-              re.compile(rb"(?i)Authorization\s*:\s*Bearer\s+[A-Za-z0-9._~+/=-]{20,}")
-          ]
-          errors, seen = [], {}
-          for item in root.rglob("*"):
-              rel = item.relative_to(root).as_posix()
-              folded = rel.casefold()
-              if folded in seen and seen[folded] != rel:
-                  errors.append(f"case-collision: {seen[folded]} <> {rel}")
-              seen[folded] = rel
-              if item.is_symlink():
-                  errors.append(f"symlink: {rel}")
-                  continue
-              if not item.is_file():
-                  continue
-              parts = [part.casefold() for part in rel.split("/")]
-              name = parts[-1]
-              if any(part in forbidden_dirs for part in parts):
-                  errors.append(f"forbidden directory path: {rel}")
-              if rel != "backend-laravel/.env.example" and (name == ".env" or name.startswith(".env.")):
-                  errors.append(f"environment file: {rel}")
-              if name in forbidden_names or Path(name).suffix.casefold() in forbidden_suffixes:
-                  errors.append(f"forbidden file type/name: {rel}")
-              runtime_prefixes = (
-                  "backend-laravel/storage/logs/",
-                  "backend-laravel/storage/reports/",
-                  "backend-laravel/storage/framework/cache/",
-                  "backend-laravel/storage/framework/sessions/",
-                  "backend-laravel/storage/framework/views/",
-                  "backend-laravel/storage/app/private/",
-              )
-              if rel.startswith(runtime_prefixes) and name != ".gitignore":
-                  errors.append(f"runtime data: {rel}")
-              if rel.startswith("backend-laravel/bootstrap/cache/") and name != ".gitignore":
-                  errors.append(f"generated bootstrap cache: {rel}")
-              data = item.read_bytes()
-              for pattern in secret_patterns:
-                  if pattern.search(data):
-                      errors.append(f"embedded secret pattern: {rel}")
-                      break
-          if errors:
-              for error in errors:
-                  print(error, file=sys.stderr)
-              raise SystemExit("Staging security audit failed.")
-          print(f"Staging security audit PASS: {sum(1 for p in root.rglob('*') if p.is_file())} files checked.")
-          PY
+          # Exercise the exact staging and ZIP scanner implementations against positive and negative fixtures.
+          python3 .github/scripts/verify_web_package.py self-test
+          python3 .github/scripts/verify_web_package.py staging "$STAGE"
 
           find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           test -s SHA256SUMS.txt
@@ -267,70 +203,7 @@ jobs:
           unzip -t "$ARCHIVE"
 
           # Inspect every ZIP entry, including hidden files and normalized/case-colliding paths.
-          python3 - "$ARCHIVE" <<'PY'
-          import re, stat, sys, zipfile
-          from pathlib import PurePosixPath
-
-          archive = sys.argv[1]
-          forbidden_suffixes = {
-              ".before", ".bak", ".backup", ".orig", ".old", ".swp", ".swo", ".tmp", ".temp",
-              ".log", ".sql", ".dump", ".sqlite", ".sqlite3", ".db", ".ibd",
-              ".pem", ".key", ".p12", ".pfx", ".jks", ".keystore", ".crt", ".cer",
-              ".zip", ".tar", ".gz", ".tgz", ".7z", ".rar", ".core", ".dmp"
-          }
-          forbidden_dirs = {"backup", "backups", "backup_before_patch", "tests", ".git", ".phpunit.cache"}
-          secret_patterns = [
-              re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
-              re.compile(rb"-----BEGIN CERTIFICATE-----"),
-              re.compile(rb"(?im)^[ \t]*(?:APP_KEY|CBT_INSTALLER_BOOTSTRAP_TOKEN|DB_PASSWORD|REDIS_PASSWORD|MAIL_PASSWORD|AWS_SECRET_ACCESS_KEY)[ \t]*=[ \t]*\"?([A-Za-z0-9+/=_-]{16,})\"?[ \t]*(?:#.*)?$"),
-              re.compile(rb"(?im)^[ \t]*(?:[A-Z0-9_]*(?:PASSWORD|SECRET|TOKEN|API_KEY|ACCESS_KEY)[A-Z0-9_]*)[ \t]*[:=][ \t]*\"?([A-Za-z0-9/+_.=-]{20,})\"?[ \t]*(?:#.*)?$"),
-              re.compile(rb"\bAKIA[0-9A-Z]{16}\b"),
-              re.compile(rb"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
-              re.compile(rb"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
-              re.compile(rb"\bsk_live_[A-Za-z0-9]{16,}\b"),
-              re.compile(rb"(?i)Authorization\s*:\s*Bearer\s+[A-Za-z0-9._~+/=-]{20,}")
-          ]
-          errors, seen = [], {}
-          with zipfile.ZipFile(archive) as zf:
-              infos = zf.infolist()
-              for info in infos:
-                  name = info.filename
-                  if name.startswith("/") or "\\" in name:
-                      errors.append(f"absolute/backslash path: {name}")
-                  parts = PurePosixPath(name).parts
-                  if ".." in parts or not parts or parts[0] != "CBT_MADRASAH_WEB_DEPLOYMENT":
-                      errors.append(f"path traversal or unexpected root: {name}")
-                  folded = name.rstrip("/").casefold()
-                  if folded in seen:
-                      errors.append(f"duplicate/case-collision: {seen[folded]} <> {name}")
-                  seen[folded] = name
-                  mode = (info.external_attr >> 16) & 0o170000
-                  if mode == stat.S_IFLNK:
-                      errors.append(f"symlink entry: {name}")
-                  lower_parts = [p.casefold() for p in parts]
-                  if any(p in forbidden_dirs for p in lower_parts):
-                      errors.append(f"forbidden directory: {name}")
-                  suffix = PurePosixPath(name).suffix.casefold()
-                  base = PurePosixPath(name).name.casefold()
-                  if suffix in forbidden_suffixes:
-                      errors.append(f"forbidden file suffix: {name}")
-                  if base == ".env" or (base.startswith(".env.") and name != "CBT_MADRASAH_WEB_DEPLOYMENT/backend-laravel/.env.example"):
-                      errors.append(f"environment file: {name}")
-                  if info.is_dir():
-                      continue
-                  data = zf.read(info)
-                  for pattern in secret_patterns:
-                      if pattern.search(data):
-                          errors.append(f"embedded secret pattern: {name}")
-                          break
-              if not any(i.filename == "CBT_MADRASAH_WEB_DEPLOYMENT/SHA256SUMS.txt" for i in infos):
-                  errors.append("SHA256SUMS.txt missing from archive")
-          if errors:
-              for error in errors:
-                  print(error, file=sys.stderr)
-              raise SystemExit("ZIP security audit failed.")
-          print(f"ZIP security audit PASS: {len(infos)} entries inspected.")
-          PY
+          python3 .github/scripts/verify_web_package.py zip "$ARCHIVE"
 
           # Extract into a new, empty directory and verify every manifest entry plus full file-set coverage.
           EXTRACT_ROOT="$RUNNER_TEMP/CBT_MADRASAH_WEB_DEPLOYMENT_EXTRACTED"
