@@ -10,18 +10,17 @@ Halaman login sebelumnya sudah mengambil tenant, logo aplikasi, dan favicon mela
 
 ## File
 - Diubah: `backend-laravel/resources/views/auth/login.blade.php`
-- Test: `backend-laravel/tests/Feature/WebAdminAuthTest.php`
+- Test: `backend-laravel/tests/Feature/WebAdminAuthTest.php` (nama madrasah, logo dan favicon login; fixture product code diperbaiki)
 - Backup: `docs/backup_before_patch/LOGIN_BRANDING_20261126/`
 
 ## Status pengujian
 - Perubahan source dibaca ulang dari GitHub: PASS.
-- PHPUnit/CI: belum ada hasil.
+- PHPUnit/CI: belum ada hasil; regression test tambahan belum dinyatakan PASS.
 - VPS: tidak diuji ulang dan tidak diperlukan untuk tahap source.
 - Logo/favicon runtime: belum diklaim selesai; service existing dipertahankan.
 
 ## Berikutnya
-1. Jalankan CI/test terkait login.
-2. Tambahkan/konfirmasi regression test logo dan favicon login dengan file branding yang sah.
-3. Periksa sinkronisasi layout authenticated: heading sidebar juga masih literal `CBT MADRASAH`, sehingga perlu ditangani sebagai cakupan branding terpisah bila target owner mencakup seluruh portal.
-4. Jangan merge sebelum CI dan review diff.
-5. Jangan mengubah VPS. ZIP disiapkan setelah rangkaian perbaikan fitur selesai.
+1. Jalankan CI/test terkait login dan tinjau hasilnya.
+2. Jika ada kegagalan, perbaiki hanya dalam lingkup profil/login.
+3. Jangan merge sebelum CI dan review diff.
+4. Jangan mengubah VPS atau membuat ZIP.
