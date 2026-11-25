@@ -262,6 +262,7 @@
                                 <option value="MULTIPLE_CHOICE">Pilihan Ganda (MC)</option>
                                 <option value="MULTIPLE_RESPONSE">Pilihan Ganda Kompleks (PG Kompleks)</option>
                                 <option value="TRUE_FALSE">Benar / Salah</option>
+                                <option value="TRUE_FALSE_GROUP">Benar / Salah — 3 Pernyataan</option>
                                 <option value="MATCHING">Menjodohkan (Matching)</option>
                                 <option value="ESSAY">Uraian / Esai</option>
                                 @if($questionType === 'SHORT_ANSWER')
@@ -421,6 +422,28 @@
                                     <span class="text-xs font-bold text-navy-900">SALAH (Opsi B)</span>
                                 </label>
                             </div>
+                        </div>
+                    @elseif($questionType === 'TRUE_FALSE_GROUP')
+                        <div class="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4">
+                            <div>
+                                <label class="block text-xs font-bold uppercase text-indigo-900">Tiga Pernyataan Benar / Salah</label>
+                                <p class="mt-1 text-xs leading-5 text-indigo-700">Setiap pernyataan memiliki kunci Benar atau Salah. Nilai diberikan proporsional per pernyataan (1/3 dari poin maksimal).</p>
+                            </div>
+                            @foreach($groupStatements as $idx => $statement)
+                                <div class="grid gap-3 rounded-xl border border-indigo-100 bg-white p-3 md:grid-cols-[1fr_auto] md:items-center">
+                                    <div>
+                                        <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Pernyataan {{ $idx + 1 }}</label>
+                                        <input type="hidden" wire:model="groupStatements.{{ $idx }}.id">
+                                        <textarea wire:model="groupStatements.{{ $idx }}.text" rows="2" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"></textarea>
+                                        @error('groupStatements.'.$idx.'.text') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror
+                                    </div>
+                                    <label class="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
+                                        <input type="checkbox" wire:model="groupStatements.{{ $idx }}.is_true" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                        Kunci: Benar
+                                    </label>
+                                </div>
+                            @endforeach
+                            @error('groupStatements') <span class="block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
                         </div>
                     @elseif($questionType === 'ESSAY')
                         <div class="space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
