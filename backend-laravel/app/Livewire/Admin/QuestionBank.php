@@ -618,6 +618,17 @@ class QuestionBank extends Component
             Gate::authorize('publish', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            if ($version->question_type === 'TRUE_FALSE_GROUP') {
+                $items = $version->metadata['statement_items'] ?? [];
+                $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);
+                $validItems = count($items) === 3
+                    && count(array_unique($ids)) === 3
+                    && !in_array('', $ids, true)
+                    && collect($items)->every(fn ($item) => is_array($item)
+                        && trim((string) ($item['text'] ?? '')) !== ''
+                        && is_bool($item['is_true'] ?? null));
+                abort_if(!$validItems, 422, 'Soal Benar/Salah kelompok wajib memiliki tepat tiga pernyataan valid sebelum diterbitkan.');
+            }
 
             $cpMappings = QuestionVersionCurriculumMapping::query()
                 ->where('tenant_id', auth()->user()->tenant_id)
