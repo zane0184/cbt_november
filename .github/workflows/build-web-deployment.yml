@@ -206,7 +206,7 @@ jobs:
           secret_patterns = [
               re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
               re.compile(rb"-----BEGIN CERTIFICATE-----"),
-              re.compile(rb"(?im)^\s*(?:APP_KEY|CBT_INSTALLER_BOOTSTRAP_TOKEN|DB_PASSWORD|REDIS_PASSWORD|MAIL_PASSWORD|AWS_SECRET_ACCESS_KEY)\s*=\s*"?([A-Za-z0-9+/=_-]{16,})"?\s*(?:#.*)?$"),
+              re.compile(rb"(?im)^\s*(?:APP_KEY|CBT_INSTALLER_BOOTSTRAP_TOKEN|DB_PASSWORD|REDIS_PASSWORD|MAIL_PASSWORD|AWS_SECRET_ACCESS_KEY)\s*=\s*\"?([A-Za-z0-9+/=_-]{16,})\"?\s*(?:#.*)?$"),
               re.compile(rb"\bAKIA[0-9A-Z]{16}\b"),
               re.compile(rb"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
               re.compile(rb"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
@@ -281,7 +281,7 @@ jobs:
           secret_patterns = [
               re.compile(rb"-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"),
               re.compile(rb"-----BEGIN CERTIFICATE-----"),
-              re.compile(rb"(?im)^\s*(?:APP_KEY|CBT_INSTALLER_BOOTSTRAP_TOKEN|DB_PASSWORD|REDIS_PASSWORD|MAIL_PASSWORD|AWS_SECRET_ACCESS_KEY)\s*=\s*"?([A-Za-z0-9+/=_-]{16,})"?\s*(?:#.*)?$"),
+              re.compile(rb"(?im)^\s*(?:APP_KEY|CBT_INSTALLER_BOOTSTRAP_TOKEN|DB_PASSWORD|REDIS_PASSWORD|MAIL_PASSWORD|AWS_SECRET_ACCESS_KEY)\s*=\s*\"?([A-Za-z0-9+/=_-]{16,})\"?\s*(?:#.*)?$"),
               re.compile(rb"\bAKIA[0-9A-Z]{16}\b"),
               re.compile(rb"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
               re.compile(rb"\bxox[baprs]-[A-Za-z0-9-]{10,}\b"),
