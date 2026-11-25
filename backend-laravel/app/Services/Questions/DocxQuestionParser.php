@@ -176,6 +176,22 @@ class DocxQuestionParser
 
         foreach ($blocks as $block) {
             $text = trim($block['text']);
+            $blockUnsupported = [];
+            if (!empty($block['has_media'])) {
+                $blockUnsupported[] = 'Dokumen memuat gambar/diagram pada blok ini; import media belum diaktifkan dan item harus ditinjau manual.';
+            }
+            if (!empty($block['has_math'])) {
+                $blockUnsupported[] = 'Dokumen memuat objek formula matematika Word pada blok ini; konversi formula belum diaktifkan.';
+            }
+            $isQuestionStart = preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text) === 1;
+            $isStimulusStart = preg_match('/^STIMULUS(?:\\s*\\[[A-Z0-9_-]+\\])?\\s*:/iu', $text) === 1;
+            if ($blockUnsupported !== [] && !$isQuestionStart && !$isStimulusStart) {
+                if ($active !== null) {
+                    $active['unsupported_blocks'] = array_merge($active['unsupported_blocks'] ?? [], $blockUnsupported);
+                } elseif ($stimulus !== null) {
+                    $stimulus['unsupported_blocks'] = array_merge($stimulus['unsupported_blocks'] ?? [], $blockUnsupported);
+                }
+            }
             if ($text === '') {
                 continue;
             }
@@ -196,6 +212,7 @@ class DocxQuestionParser
                     'id' => strtoupper($match[1] ?? ('STIMULUS-' . ($block['locator']['sequence'] ?? count($rawQuestions) + 1))),
                     'content' => trim($match[2] ?? ''),
                     'source' => $block['locator'],
+                    'unsupported_blocks' => $blockUnsupported,
                 ];
                 continue;
             }
@@ -229,6 +246,7 @@ class DocxQuestionParser
                     'answer' => $inlineKey,
                     'locator' => $block['locator'],
                     'stimulus' => $stimulus,
+                    'unsupported_blocks' => $blockUnsupported,
                 ];
                 $answerSection = false;
                 continue;
@@ -286,6 +304,12 @@ class DocxQuestionParser
             $stem = trim(implode("\n", $raw['stem_parts']));
             $errors = [];
             $warningsForQuestion = [];
+            foreach (($raw['unsupported_blocks'] ?? []) as $unsupportedBlock) {
+                $errors[] = $unsupportedBlock;
+            }
+            foreach (($raw['stimulus']['unsupported_blocks'] ?? []) as $unsupportedStimulusBlock) {
+                $errors[] = 'Stimulus bersama belum dapat diimpor penuh: ' . $unsupportedStimulusBlock;
+            }
 
             if ($stem === '') {
                 $errors[] = 'Teks soal belum ditemukan.';
