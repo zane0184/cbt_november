@@ -181,7 +181,7 @@ class QuestionDocxImportFeatureTest extends TestCase
             ->assertHasNoErrors()
             ->assertSee('1 soal berhasil disimpan sebagai DRAFT');
 
-        $question = \\App\\Models\\Question::query()
+        $question = \App\Models\Question::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('created_by', $this->teacher->id)
             ->firstOrFail();
@@ -190,7 +190,7 @@ class QuestionDocxImportFeatureTest extends TestCase
 
         $this->assertSame($arabicStem, $version->fresh()->stem);
         $this->assertSame([$arabicOptionA, $arabicOptionB], $options->pluck('content')->all());
-        $this->assertSame($arabicStem, \\App\\Models\\QuestionVersion::query()->findOrFail($version->id)->stem);
+        $this->assertSame($arabicStem, \App\Models\QuestionVersion::query()->findOrFail($version->id)->stem);
     }
 
     public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
