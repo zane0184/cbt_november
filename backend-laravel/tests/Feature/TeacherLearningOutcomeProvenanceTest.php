@@ -22,7 +22,9 @@ use App\Models\TenantLearningOutcome;
 use App\Models\User;
 use App\Services\TeacherPortal\TeacherLearningOutcomeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Concerns\CreatesCanonicalCurriculumContext;
 use Tests\TestCase;
@@ -123,28 +125,28 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
     public function atp_creation_rejects_pending_cp_without_partial_rows(): void
     {
         $this->context['cp']->source->update(['verification_status' => 'PENDING']);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_SOURCE_UNVERIFIED');
     }
 
     /** @test */
     public function atp_creation_rejects_source_without_checksum_without_partial_rows(): void
     {
         $this->context['cp']->source->update(['checksum_sha256' => null]);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_CHECKSUM_MISMATCH');
     }
 
     /** @test */
     public function atp_creation_rejects_mismatched_source_checksum_without_partial_rows(): void
     {
         $this->context['cp']->source->update(['checksum_sha256' => str_repeat('b', 64)]);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_CHECKSUM_MISMATCH');
     }
 
     /** @test */
     public function atp_creation_rejects_mismatched_cp_checksum_without_partial_rows(): void
     {
         $this->context['cp']->update(['source_checksum' => str_repeat('c', 64)]);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_CHECKSUM_MISMATCH');
     }
 
     /** @test */
@@ -152,11 +154,11 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
     {
         $this->assertSame('ARTIFACT_CHECKSUM_VERIFIED', $this->context['cp']->verification_status);
         $this->context['cp']->update(['status' => 'INACTIVE']);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_NOT_ACTIVE');
 
         $this->context['cp']->update(['status' => 'ACTIVE']);
         $this->context['cp']->source->update(['verification_status' => 'PENDING']);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_SOURCE_UNVERIFIED');
     }
 
     /** @test */
@@ -190,7 +192,7 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
         // Composite owner/version FK remains valid, but the CP does not belong
         // to the subject structure pinned by this teacher assignment.
         $this->context['tp']->update(['parent_cp_id' => $otherCp->id]);
-        $this->assertAtpRejectedWithoutPartialRows();
+        $this->assertAtpRejectedWithoutPartialRows('CP_PARENT_RELATION_INVALID');
     }
 
     /** @test */
@@ -220,8 +222,16 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             'outcome_type' => 'ATP',
             'status' => 'DRAFT',
         ]);
-        $this->assertGreaterThan(0, LearningOutcomeStructureMapping::query()
-            ->where('tenant_learning_outcome_id', $atp->id)->count());
+        $atpMappings = LearningOutcomeStructureMapping::query()
+            ->where('tenant_learning_outcome_id', $atp->id)
+            ->get();
+        $this->assertGreaterThan(0, $atpMappings->count());
+        foreach ($atpMappings as $mapping) {
+            $this->assertSame((string) $this->assignment->id, (string) $mapping->teacher_subject_assignment_id);
+            $this->assertSame((string) $this->context['registration']->id, (string) $mapping->tenant_curriculum_registration_id);
+            $this->assertSame((string) $this->context['version']->id, (string) $mapping->multi_curriculum_version_id);
+            $this->assertSame(Tenant::SYSTEM_TENANT_ID, $mapping->curriculum_owner_id);
+        }
         $this->assertDatabaseHas('audit_logs', [
             'tenant_id' => $this->tenant->id,
             'action' => 'TEACHER_LEARNING_OUTCOME_CREATED',
@@ -239,6 +249,25 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
         $this->actingAs($this->teacher);
 
         try {
+            app(TeacherLearningOutcomeService::class)->createTp(
+                $this->assignment->id,
+                $this->context['cp']->id,
+                'TP-NO-PERMISSION',
+                'TP tanpa permission',
+                'Deskripsi uji penolakan permission langsung di service.',
+                [],
+                [],
+                [],
+                [],
+                []
+            );
+            $this->fail('Direct createTp service call must enforce curriculum.manage.');
+        } catch (HttpException $exception) {
+            $this->assertSame(403, $exception->getStatusCode());
+            $this->assertStringStartsWith('CURRICULUM_PERMISSION_DENIED', $exception->getMessage());
+        }
+
+        try {
             app(TeacherLearningOutcomeService::class)->createAtp(
                 $this->assignment->id,
                 $this->context['tp']->id,
@@ -250,6 +279,7 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             $this->fail('Direct service call must enforce curriculum.manage.');
         } catch (HttpException $exception) {
             $this->assertSame(403, $exception->getStatusCode());
+            $this->assertStringStartsWith('CURRICULUM_PERMISSION_DENIED', $exception->getMessage());
         }
 
         try {
@@ -257,6 +287,7 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             $this->fail('Direct publish service call must enforce curriculum.manage.');
         } catch (HttpException $exception) {
             $this->assertSame(403, $exception->getStatusCode());
+            $this->assertStringStartsWith('CURRICULUM_PERMISSION_DENIED', $exception->getMessage());
         }
 
         $this->assertSame(0, TenantLearningOutcome::query()
@@ -265,7 +296,85 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             ->count());
     }
 
-    private function assertAtpRejectedWithoutPartialRows(): void
+    /** @test */
+    public function atp_mapping_insert_failure_rolls_back_atp_mappings_and_audit_log(): void
+    {
+        $beforeAtp = TenantLearningOutcome::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('outcome_type', 'ATP')
+            ->count();
+        $beforeMappings = LearningOutcomeStructureMapping::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->count();
+        $beforeAudit = \Illuminate\Support\Facades\DB::table('audit_logs')
+            ->where('tenant_id', $this->tenant->id)
+            ->count();
+
+        $eventName = 'eloquent.creating: ' . LearningOutcomeStructureMapping::class;
+        $mappingInserts = 0;
+        Event::listen($eventName, function (LearningOutcomeStructureMapping $mapping) use (&$mappingInserts): void {
+            if (isset($mapping->metadata['inherited_from_tp_id'])) {
+                $mappingInserts++;
+                if ($mappingInserts === 2) {
+                    throw new RuntimeException('P0-02A.1 injected second ATP mapping insert failure.');
+                }
+            }
+        });
+
+        try {
+            app(TeacherLearningOutcomeService::class)->createAtp(
+                $this->assignment->id,
+                $this->context['tp']->id,
+                'ATP-ROLLBACK-TEST',
+                'ATP rollback test',
+                'Uji rollback ketika insert mapping kedua gagal.',
+                1
+            );
+            $this->fail('Injected mapping failure must abort ATP creation.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('P0-02A.1 injected second ATP mapping insert failure.', $exception->getMessage());
+        } finally {
+            Event::forget($eventName);
+        }
+
+        $this->assertSame(2, $mappingInserts);
+        $this->assertSame($beforeAtp, TenantLearningOutcome::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('outcome_type', 'ATP')
+            ->count());
+        $this->assertSame($beforeMappings, LearningOutcomeStructureMapping::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->count());
+        $this->assertSame($beforeAudit, \Illuminate\Support\Facades\DB::table('audit_logs')
+            ->where('tenant_id', $this->tenant->id)
+            ->count());
+    }
+
+    /** @test */
+    public function publish_rechecks_cp_provenance_after_tp_was_created(): void
+    {
+        $this->context['tp']->update(['status' => 'DRAFT']);
+        $this->context['cp']->update(['status' => 'INACTIVE']);
+        $beforeAudit = \Illuminate\Support\Facades\DB::table('audit_logs')
+            ->where('tenant_id', $this->tenant->id)
+            ->count();
+
+        try {
+            app(TeacherLearningOutcomeService::class)->publish($this->context['tp']->id);
+            $this->fail('Publishing a TP must recheck its CP provenance.');
+        } catch (ValidationException $exception) {
+            $errors = $exception->errors()['outcome'] ?? [];
+            $this->assertNotEmpty($errors);
+            $this->assertSame('CP_NOT_ACTIVE', explode(':', $errors[0], 2)[0]);
+        }
+
+        $this->assertSame('DRAFT', $this->context['tp']->fresh()->status);
+        $this->assertSame($beforeAudit, \Illuminate\Support\Facades\DB::table('audit_logs')
+            ->where('tenant_id', $this->tenant->id)
+            ->count());
+    }
+
+    private function assertAtpRejectedWithoutPartialRows(string $expectedCode): void
     {
         $beforeAtp = TenantLearningOutcome::query()
             ->where('tenant_id', $this->tenant->id)
@@ -289,7 +398,9 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             );
             $this->fail('ATP creation must reject an invalid parent CP provenance.');
         } catch (ValidationException $exception) {
-            $this->assertNotEmpty($exception->errors()['parentTpId'] ?? []);
+            $errors = $exception->errors()['parentTpId'] ?? [];
+            $this->assertNotEmpty($errors);
+            $this->assertSame($expectedCode, explode(':', $errors[0], 2)[0]);
         }
 
         $this->assertSame($beforeAtp, TenantLearningOutcome::query()
