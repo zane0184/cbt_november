@@ -27,7 +27,7 @@ Pastikan versi PHP CLI yang dipakai saat menjalankan perintah sama dengan versi 
 1. Buat website/subdomain di aaPanel dan aktifkan SSL/HTTPS.
 2. Buat satu database MySQL kosong khusus untuk instalasi madrasah tersebut dan satu user database khusus. Jangan memakai database produksi lain atau database milik madrasah lain.
 3. Berikan hak yang diperlukan aplikasi untuk membuat dan mengubah tabel/index/foreign key pada database CBT tersebut.
-4. Ekstrak ZIP. Folder aplikasi berada di `backend-laravel/`.
+4. **Ekstraksi melalui Windows Explorer:** buka File Explorer, klik kanan file ZIP, pilih **Extract All...**, tentukan folder tujuan yang kosong, lalu pilih **Extract**. Jangan menjalankan aplikasi langsung dari dalam ZIP dan jangan mengekstrak di atas instalasi lama. Setelah ekstraksi, pastikan folder `backend-laravel/` dan file `README_PEMASANGAN.md` berada pada root hasil ekstraksi.
 5. Atur document root Nginx ke folder `backend-laravel/public`, bukan ke root project. Pertahankan konfigurasi PHP-FPM yang dibuat aaPanel.
 6. Salin `.env.example` menjadi `.env`. Jangan pernah menyalin `.env` dari instalasi madrasah lain.
 7. Isi `APP_URL` dengan URL HTTPS madrasah, pastikan `APP_ENV=production` dan `APP_DEBUG=false`.
