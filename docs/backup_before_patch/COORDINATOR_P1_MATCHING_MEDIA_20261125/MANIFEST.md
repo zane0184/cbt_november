@@ -15,4 +15,6 @@ Semua backup dibuat dari source aktual pada HEAD di atas, sebelum perubahan file
 | `backend-laravel/app/Http/Controllers/Api/V1/MediaController.php` | `backend-laravel/backups/coordinator-p1-matching-media-20261125/MediaController.php.before` | 18956 | `225438f9de60020fa0473a419f7f2d61fd4f00aff37e8f4351c96de2ec66d5a4` | `850034595f901e063119a831ffabea1b574d13d9` | `850034595f901e063119a831ffabea1b574d13d9` |
 | `backend-laravel/tests/Feature/ExamSessionHardeningTest.php` | `backend-laravel/backups/coordinator-p1-matching-media-20261125/ExamSessionHardeningTest.php.before` | 15233 | `fd289ef19b1b8624ded9acbe43fec50efd61fbe0bace2e529ba0a07ae800e617` | `eb86364f927fadc9aa1ebfb268e4711a3e5ba34b` | `eb86364f927fadc9aa1ebfb268e4711a3e5ba34b` |
 
+| `backend-laravel/tests/Feature/Security/AnswerKeyLeakageTest.php` | `backend-laravel/backups/coordinator-p1-matching-media-20261125/AnswerKeyLeakageTest.php.before` | 18744 | `5713045dca6aca0d8fd8efa6487fb1fae47136b985463aa419d4f9aa72b9e279` | `3ca11bd83ac60ed662379c4dd4c69e21410b4025` | `3ca11bd83ac60ed662379c4dd4c69e21410b4025` |
+
 Backup disimpan di branch implementasi. Folder backup wajib dikecualikan dari ZIP distribusi.
