@@ -227,7 +227,14 @@
                                         <div class="mb-1 text-xs font-bold text-slate-500">Pernyataan {{ $statementIndex + 1 }}</div>
                                         <input type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                     </div>
-                                    <label class="inline-flex items-center gap-2 text-xs font-semibold text-slate-700"><input type="checkbox" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.is_true" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"> Kunci: Benar</label>
+                                    <div>
+                                        <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Kunci jawaban</label>
+                                        <select wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.is_true" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none">
+                                            <option value="">Pilih Benar / Salah</option>
+                                            <option value="1">Benar</option>
+                                            <option value="0">Salah</option>
+                                        </select>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
