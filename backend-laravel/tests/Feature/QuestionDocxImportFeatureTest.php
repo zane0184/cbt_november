@@ -159,6 +159,40 @@ class QuestionDocxImportFeatureTest extends TestCase
     }
 
 
+    public function test_arabic_text_and_harakat_survive_docx_preview_import_and_mysql_round_trip(): void
+    {
+        $arabicStem = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+        $arabicOptionA = 'جَوَابٌ أَوَّلُ';
+        $arabicOptionB = 'جَوَابٌ ثَانٍ';
+        $bytes = $this->makeDocxBytes(true, false, $arabicStem, $arabicOptionA, $arabicOptionB);
+
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx($bytes))
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('hasPreview', true)
+            ->assertSet('questions.0.stem', $arabicStem)
+            ->assertSet('questions.0.options.0.content', $arabicOptionA)
+            ->assertSet('questions.0.options.1.content', $arabicOptionB)
+            ->set('selectedCpIds', [$this->curriculumContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->curriculumContext['tp']->id])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal berhasil disimpan sebagai DRAFT');
+
+        $question = \\App\\Models\\Question::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('created_by', $this->teacher->id)
+            ->firstOrFail();
+        $version = $question->currentVersion()->firstOrFail();
+        $options = $version->options()->orderBy('sequence')->get();
+
+        $this->assertSame($arabicStem, $version->fresh()->stem);
+        $this->assertSame([$arabicOptionA, $arabicOptionB], $options->pluck('content')->all());
+        $this->assertSame($arabicStem, \\App\\Models\\QuestionVersion::query()->findOrFail($version->id)->stem);
+    }
+
     public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
     {
         $bytes = $this->makeDocxBytes(false);
@@ -233,7 +267,7 @@ class QuestionDocxImportFeatureTest extends TestCase
         return UploadedFile::fake()->createWithContent('soal.docx', $bytes ?? $this->makeDocxBytes());
     }
 
-    private function makeDocxBytes(bool $includeAnswerKey = true, bool $includeSecondSubject = false): string
+    private function makeDocxBytes(bool $includeAnswerKey = true, bool $includeSecondSubject = false, string $stem = 'Ibu kota Indonesia adalah ....', string $optionA = 'Bandung', string $optionB = 'Jakarta'): string
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-docx-feature-');
         $zip = new ZipArchive();
@@ -244,9 +278,9 @@ class QuestionDocxImportFeatureTest extends TestCase
         $document = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
             . ($includeSecondSubject ? '<w:p><w:r><w:t>MATEMATIKA KELAS 6</w:t></w:r></w:p>' : '')
-            . '<w:p><w:r><w:t>SOAL 1. [PG] Ibu kota Indonesia adalah ....</w:t></w:r></w:p>'
-            . '<w:p><w:r><w:t>A. Bandung</w:t></w:r></w:p>'
-            . '<w:p><w:r><w:t>B. Jakarta</w:t></w:r></w:p>'
+            . '<w:p><w:r><w:t>SOAL 1. [PG] ' . htmlspecialchars($stem, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '</w:t></w:r></w:p>'
+            . '<w:p><w:r><w:t>A. ' . htmlspecialchars($optionA, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '</w:t></w:r></w:p>'
+            . '<w:p><w:r><w:t>B. ' . htmlspecialchars($optionB, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '</w:t></w:r></w:p>'
             . ($includeAnswerKey ? '<w:p><w:r><w:t>KUNCI: B</w:t></w:r></w:p>' : '')
             . ($includeSecondSubject
                 ? '<w:p><w:r><w:t>BAHASA INDONESIA KELAS 6</w:t></w:r></w:p>'
