@@ -115,6 +115,27 @@ class DocxQuestionParserTest extends TestCase
         }
     }
 
+    public function test_downloaded_word_template_is_a_valid_docx_and_parses_end_to_end(): void
+    {
+        $response = app(\App\Services\Questions\DocxQuestionTemplate::class)->download();
+        $path = $response->getFile()->getPathname();
+
+        try {
+            $zip = new ZipArchive();
+            $this->assertTrue($zip->open($path) === true);
+            $this->assertNotFalse($zip->locateName('word/document.xml'));
+            $zip->close();
+
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $this->assertSame(5, $result['total']);
+            $this->assertSame(5, $result['valid']);
+            $this->assertSame('ESSAY', $result['questions'][3]['question_type']);
+            $this->assertSame('BACAAN-A', $result['questions'][4]['stimulus']['id']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_rejects_non_docx_or_corrupt_archive(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-invalid-docx-');
