@@ -38,7 +38,6 @@ class DocxQuestionTemplate
             'c. 10 dapat dibagi 2 tanpa sisa.',
             'KUNCI: B, S, B',
             '',
-            'KUNCI JAWABAN (alternatif, jika kunci tidak ditulis setelah tiap soal):',
             'KUNCI JAWABAN',
             '1. C',
             '2. A, C',
