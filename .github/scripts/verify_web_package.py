@@ -135,10 +135,11 @@ def scan_zip(archive: Path) -> list[str]:
             has_manifest = False
             for info in infos:
                 name = info.filename
-                raw_parts = name.split("/")
+                normalized_name = name[:-1] if info.is_dir() and name.endswith("/") else name
+                raw_parts = normalized_name.split("/")
                 if name.startswith("/") or "\\" in name or re.match(r"^[A-Za-z]:", name):
                     errors.append(f"absolute/backslash path: {name}")
-                if any(part in ("", ".", "..") for part in raw_parts if part != "" or not name.endswith("/")):
+                if any(part in ("", ".", "..") for part in raw_parts):
                     errors.append(f"non-canonical or traversal path: {name}")
                 parts = PurePosixPath(name).parts
                 if not parts or parts[0] != PACKAGE_ROOT or ".." in parts:
@@ -268,13 +269,27 @@ def self_test() -> None:
         ]
         for index, (name, data) in enumerate(structural):
             bad_zip = base / f"structural-{index}.zip"
-            extras = [(name, data)]
             if index == 2:
-                extras.append((name, b"two"))
+                extras = [(name, data), (name, b"duplicate exact entry")]
+            elif index == 3:
+                extras = [
+                    (f"{PACKAGE_ROOT}/duplicate.txt", b"lowercase"),
+                    (f"{PACKAGE_ROOT}/DUPLICATE.txt", data),
+                ]
+            else:
+                extras = [(name, data)]
             make_zip(valid, bad_zip, extras)
             if not scan_zip(bad_zip):
                 raise SystemExit(f"ZIP structural negative fixture unexpectedly accepted: {name}")
             negative += 1
+
+        empty_backup_zip = base / "empty-backup-directory.zip"
+        with zipfile.ZipFile(empty_backup_zip, "w") as zf:
+            zf.writestr(f"{PACKAGE_ROOT}/SHA256SUMS.txt", "fixture manifest\\n")
+            zf.writestr(f"{PACKAGE_ROOT}/nested/BACKUP-BEFORE-PATCH/", "")
+        if not scan_zip(empty_backup_zip):
+            raise SystemExit("Empty backup directory fixture unexpectedly accepted")
+        negative += 1
 
         symlink_zip = base / "symlink.zip"
         with zipfile.ZipFile(symlink_zip, "w") as zf:
