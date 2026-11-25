@@ -138,6 +138,11 @@ jobs:
           CBT_INSTALLER_E2E_DB_PASSWORD: root
         run: php artisan test tests/Feature/InstallerEndToEndTest.php --display-warnings
 
+      - name: Print bounded installer migration diagnostic when clean-install E2E fails
+        if: failure()
+        run: |
+          if [ -f storage/logs/laravel.log ]; then tail -c 5000 storage/logs/laravel.log; else echo "No Laravel log file was created."; fi
+
       - name: Run student import acceptance tests on disposable MySQL 8
         run: php artisan test tests/Feature/StudentImportTest.php --display-warnings
 
