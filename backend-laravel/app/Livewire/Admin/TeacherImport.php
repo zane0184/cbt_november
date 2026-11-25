@@ -85,34 +85,6 @@ class TeacherImport extends Component
         $sheet->freezePane('A2');
         $sheet->setAutoFilter('A1:H1');
 
-        $instructions = $spreadsheet->createSheet();
-        $instructions->setTitle('Petunjuk');
-        $rows = [
-            ['PETUNJUK TEMPLATE IMPORT GURU'],
-            ['Kolom', 'Ketentuan'],
-            ['nama', 'Wajib diisi, maksimal 255 karakter.'],
-            ['status_kepegawaian', 'Wajib: PNS, PPPK, atau HONORER.'],
-            ['nip', 'Wajib tepat 18 digit untuk PNS/PPPK; kosongkan untuk HONORER. Simpan sebagai teks.'],
-            ['nik', 'Wajib tepat 16 digit untuk HONORER; kosongkan untuk PNS/PPPK. Simpan sebagai teks.'],
-            ['nuptk', 'Opsional; jika diisi harus tepat 16 digit.'],
-            ['jenis_kelamin', 'Opsional: L atau P.'],
-            ['telepon', 'Opsional, maksimal 40 karakter.'],
-            ['email', 'Opsional, harus unik di instalasi madrasah.'],
-            ['Login', 'PNS/PPPK login dengan NIP; HONORER login dengan NIK. NUPTK bukan identitas login.'],
-            ['Password', 'Password awal dibuat acak. Admin menerbitkan kredensial melalui Reset Password setelah import.'],
-            ['Proses', 'Unggah XLSX/CSV, buat preview, perbaiki seluruh error, lalu konfirmasi import. Maksimal 5.000 baris.'],
-        ];
-        foreach ($rows as $rowIndex => $row) {
-            foreach ($row as $columnIndex => $value) {
-                $instructions->setCellValue(Coordinate::stringFromColumnIndex($columnIndex + 1).($rowIndex + 1), $value);
-            }
-        }
-        $instructions->getStyle('A1:B2')->getFont()->setBold(true);
-        $instructions->getColumnDimension('A')->setWidth(26);
-        $instructions->getColumnDimension('B')->setWidth(100);
-        $instructions->getStyle('A1:B13')->getAlignment()->setWrapText(true);
-        $instructions->freezePane('A3');
-
         return response()->streamDownload(function () use ($spreadsheet): void {
             (new Xlsx($spreadsheet))->save('php://output');
             $spreadsheet->disconnectWorksheets();
