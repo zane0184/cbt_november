@@ -1,5 +1,5 @@
 # P0-02A.1 — Audit & Hardening CP Provenance pada ATP
-Tanggal: 2026-11-25  
+Tanggal: 2026-11-25
 Status: **REGRESSION GATE PASS (PHP 8.3 dan PHP 8.4 / MySQL 8.0 InnoDB)**
 
 ## 1. Ringkasan keputusan
@@ -114,8 +114,8 @@ Backup bytes berada di direktori `backend-laravel/backup_before_patch/` dengan n
 ## 5. PENGUJIAN
 
 ### Run final
-GitHub Actions Run **#182**, ID `45538552057`  
-Commit diuji: `185f6d515bc92beb08bff8dc8b2c2c91d96458dd`  
+GitHub Actions Run **#182**, ID `45538552057`
+Commit diuji: `185f6d515bc92beb08bff8dc8b2c2c91d96458dd`
 URL: https://github.com/zane0184/cbt_november/actions/runs/45538552057
 
 | Pemeriksaan | PHP 8.3 / MySQL 8.0 InnoDB | PHP 8.4 / MySQL 8.0 InnoDB |
