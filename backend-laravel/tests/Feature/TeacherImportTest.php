@@ -16,6 +16,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class TeacherImportTest extends TestCase
@@ -92,6 +95,42 @@ class TeacherImportTest extends TestCase
         $this->assertDatabaseHas('audit_logs', [
             'tenant_id' => $this->tenant->id,
             'action' => 'TEACHER_IMPORT_BATCH_COMPLETED',
+        ]);
+    }
+
+    public function test_single_sheet_xlsx_template_format_can_be_previewed_and_imported(): void
+    {
+        $this->actingAs($this->admin);
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Data Guru');
+        $sheet->fromArray(['nama', 'status_kepegawaian', 'nip', 'nik', 'nuptk'], null, 'A1');
+        $sheet->setCellValue('A2', 'Guru XLSX');
+        $sheet->setCellValue('B2', 'PNS');
+        $sheet->setCellValueExplicit('C2', '019001012026041001', DataType::TYPE_STRING);
+        $sheet->setCellValue('D2', null);
+        $sheet->setCellValueExplicit('E2', '1234567890123456', DataType::TYPE_STRING);
+        $path = tempnam(sys_get_temp_dir(), 'teacher-import-').'.xlsx';
+        (new Xlsx($spreadsheet))->save($path);
+        $xlsx = file_get_contents($path);
+        @unlink($path);
+        $spreadsheet->disconnectWorksheets();
+
+        $file = UploadedFile::fake()->createWithContent('guru.xlsx', $xlsx);
+        Livewire::test(TeacherImport::class)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('Guru XLSX')
+            ->assertSee('019001012026041001')
+            ->assertSet('summary.valid', 1)
+            ->call('import')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('teacher_profiles', [
+            'tenant_id' => $this->tenant->id,
+            'nip' => '019001012026041001',
+            'nuptk' => '1234567890123456',
         ]);
     }
 
