@@ -48,3 +48,44 @@ Tidak ada patch source, migration, merge, deployment, atau perubahan database ol
 - Tidak ada source aplikasi yang diubah.
 
 - Run #45498672360 menggunakan CBT_LICENSE_TEST_BYPASS=true; hasilnya bukan bukti aktivasi lisensi produksi tanpa bypass.
+
+
+---
+
+## RECONCILIATION UPDATE — 25 NOVEMBER 2026
+
+### Exact refs
+- Agent 1 ZIP P0 HEAD: `52f34ee2be7d346c1e1eaba276285badc75dac7f`.
+- Agent 1 academic provisioning HEAD: `ba136c2c2eeff377f621b240e54f3a6a2ff8dd7e`.
+- Agent 2 audit branch before this update: `46ead67f8886f87271d34a4b4191ac8810aa8bbb`.
+- P0-01 tested commit: `150b5ffec865230038aae37e0c9a1c94f151ed8d`, ancestor of ZIP P0 HEAD. ZIP P0 is one documentation-only commit beyond it.
+
+### P0-01 — PASS / CLOSED
+Run #114: https://github.com/zane0184/cbt_november/actions/runs/45521595664
+- PHP 8.3 / MySQL 8.0 InnoDB: SUCCESS.
+- PHP 8.4 / MySQL 8.0 InnoDB: SUCCESS.
+- Both jobs checked out exact commit `150b5ff`.
+- Full PHPUnit on each matrix: 628 passed, 1 skipped, 3,143 assertions, zero failures.
+- Installer E2E, Student Import acceptance, benchmark denial-path, lint and dependency checks passed.
+- Run #109 and three Installer test failures are SUPERSEDED. Do not ask Agent 1 to repeat P0-01.
+
+### Academic provisioning reconciliation
+- Minimum bootstrapper `TenantAcademicBootstrapper` exists on ZIP P0 and is covered by P0-01 clean-install test.
+- Extended `TenantAcademicBootstrapService`, six-year catalog, semester management service/UI and associated tests remain on separate `work/p0-academic-provisioning-20261125`.
+- Branches are diverged: 106 commits on provisioning-only side and 27 on ZIP-only side from merge-base `a65b460`. No merge performed.
+- Do not claim extended provisioning has been integrated into ZIP P0.
+
+### P0-02 / P0-02A / CP
+- Agent 1 P0-02 source audit: COMPLETE.
+- P0-02A Non-CP Academic Acceptance: NOT RUN / NOT VERIFIED.
+- Independent P0-02A acceptance matrix is documented in the main report addendum: Admin/Guru/Siswa flow, real backend, tenant/RBAC negative tests, idempotency/transactions/concurrency/audit, DB postconditions, and strict CP fail-closed behavior.
+- CP official artifacts remain BLOCKED until original bytes, official provenance/signature, SHA-256 and document coverage are independently verified.
+
+### Packaging and release blockers
+- ZIP P0 workflow still omits `backups/` from rsync excludes and archive deny checks.
+- No comprehensive guard yet for `.env.*`, database dumps, private keys/credentials, generic logs/cache/temp artifacts.
+- No exact-HEAD ZIP artifact, clean extraction + full checksum verification, or real-backend browser E2E evidence.
+- Therefore ZIP is **NOT READY** for limited operational testing.
+
+### Agent 2 actions
+Only this checkpoint and the independent audit report were updated on the audit branch. No Agent 1 source/workflow, merge, migration, production database, VPS or deployment changes. No tests were executed by Agent 2.
