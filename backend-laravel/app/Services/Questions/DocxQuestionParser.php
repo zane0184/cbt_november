@@ -372,6 +372,10 @@ class DocxQuestionParser
                 if ($value === null) {
                     $errors[] = 'Soal Benar/Salah tunggal memerlukan kunci BENAR atau SALAH.';
                 }
+            } elseif ($type === 'ESSAY') {
+                if ($raw['options'] !== []) {
+                    $errors[] = 'Soal uraian tidak boleh memiliki opsi pilihan ganda.';
+                }
             } else {
                 $errors[] = 'Jenis soal belum didukung untuk import otomatis. Pilih tipe PG, PGK, atau Benar/Salah.';
             }
