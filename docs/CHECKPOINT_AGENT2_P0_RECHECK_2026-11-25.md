@@ -3,7 +3,7 @@
 ## Posisi audit
 - Repository: zane0184/cbt_november
 - Branch audit independen: audit/independent-qa-admin-guru-siswa-20261125
-- HEAD audit setelah laporan: c92c46b802c943d12db17944e6c26ff66b421ed1
+- HEAD audit setelah laporan dan addendum sumber CP: 7d29604964b69c6635d82a840682fa171e3fb863
 - HEAD Agent 1 ZIP P0: ef8350814258354e1efe03bfcccd81f580ab2008
 - HEAD Agent 1 provisioning akademik: ba136c2c2eeff377f621b240e54f3a6a2ff8dd7e
 - Laporan lengkap: docs/INDEPENDENT_QA_P0_RECHECK_2026-11-25_AGENT2.md
@@ -40,3 +40,9 @@
 5. Lanjutkan browser E2E pada hasil ekstraksi.
 
 Tidak ada patch source, migration, merge, deployment, atau perubahan database oleh Agent 2.
+
+
+## Pembaruan dokumentasi
+- Laporan utama diperbarui dengan URL sumber publik BSKAP 046, BKPDM 020, dan salinan pihak ketiga Kepdirjen Pendis 9941.
+- Commit laporan/addendum: 7d29604964b69c6635d82a840682fa171e3fb863.
+- Tidak ada source aplikasi yang diubah.
