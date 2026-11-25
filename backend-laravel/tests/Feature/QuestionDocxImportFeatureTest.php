@@ -186,6 +186,23 @@ class QuestionDocxImportFeatureTest extends TestCase
         $this->assertSame(0, $version->options()->where('is_correct', true)->count());
     }
 
+
+    public function test_multi_subject_docx_is_previewed_but_blocked_from_single_assignment_import(): void
+    {
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx($this->makeDocxBytes(true, true)))
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('requiresSectionSplit', true)
+            ->assertSee('Dokumen memuat beberapa bagian mata pelajaran')
+            ->call('importDrafts')
+            ->assertHasErrors('docx');
+
+        $this->assertDatabaseCount('questions', 0);
+        $this->assertDatabaseCount('question_docx_import_batches', 0);
+    }
+
     public function test_same_docx_cannot_be_imported_twice_into_the_same_assignment(): void
     {
         $sameDocxBytes = $this->makeDocxBytes();
@@ -216,7 +233,7 @@ class QuestionDocxImportFeatureTest extends TestCase
         return UploadedFile::fake()->createWithContent('soal.docx', $bytes ?? $this->makeDocxBytes());
     }
 
-    private function makeDocxBytes(bool $includeAnswerKey = true): string
+    private function makeDocxBytes(bool $includeAnswerKey = true, bool $includeSecondSubject = false): string
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-docx-feature-');
         $zip = new ZipArchive();
@@ -226,10 +243,17 @@ class QuestionDocxImportFeatureTest extends TestCase
 
         $document = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+            . ($includeSecondSubject ? '<w:p><w:r><w:t>MATEMATIKA KELAS 6</w:t></w:r></w:p>' : '')
             . '<w:p><w:r><w:t>SOAL 1. [PG] Ibu kota Indonesia adalah ....</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>A. Bandung</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>B. Jakarta</w:t></w:r></w:p>'
             . ($includeAnswerKey ? '<w:p><w:r><w:t>KUNCI: B</w:t></w:r></w:p>' : '')
+            . ($includeSecondSubject
+                ? '<w:p><w:r><w:t>BAHASA INDONESIA KELAS 6</w:t></w:r></w:p>'
+                    . '<w:p><w:r><w:t>SOAL 1. [PG] Gagasan utama bacaan adalah ....</w:t></w:r></w:p>'
+                    . '<w:p><w:r><w:t>A. Membaca buku</w:t></w:r></w:p>'
+                    . '<w:p><w:r><w:t>B. Bermain bola</w:t></w:r></w:p>'
+                : '')
             . '<w:sectPr/></w:body></w:document>';
         $contentTypes = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
         $relationships = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
