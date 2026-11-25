@@ -7,6 +7,7 @@ use App\Livewire\Teacher\TeacherLearning;
 use App\Livewire\Teacher\TeacherMaterialManagement;
 use App\Livewire\Teacher\TeacherProfilePage;
 use App\Livewire\Admin\QuestionBank;
+use App\Livewire\Teacher\QuestionDocxImport;
 use App\Livewire\Admin\ExamManagement;
 use App\Http\Controllers\Teacher\TeacherQuestionMediaController;
 use App\Http\Controllers\Api\V1\MediaController;
