@@ -107,6 +107,8 @@ class QuestionDocxImport extends Component
             'questions.*.included' => ['sometimes', 'boolean'],
             'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
             'questions.*.stem' => ['required', 'string', 'max:12000'],
+            'questions.*.points' => ['required', 'numeric', 'min:0.5', 'max:100'],
+            'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
             'questions.*.options' => ['sometimes', 'array', 'max:4'],
             'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
             'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
