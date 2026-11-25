@@ -20,6 +20,8 @@ use App\Models\Question;
 use App\Models\QuestionVersion;
 use App\Models\MediaAsset;
 use App\Livewire\Admin\QuestionBank;
+use App\Livewire\Teacher\QuestionDocxImport;
+use ZipArchive;
 use App\Services\ExcelQuestionImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
