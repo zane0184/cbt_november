@@ -51,6 +51,7 @@ class UserManagement extends Component
             $this->importCredentials = $credentials;
             $this->importCredentialsLabel = session()->pull('import_credentials_label', 'Akun');
             $this->importBatchId = session()->pull('import_batch_id');
+            $this->roleFilter = $this->importCredentialsLabel === 'Guru' ? 'GURU' : 'SISWA';
             $this->showImportCredentials = true;
         } else {
             session()->forget(['import_credentials_label', 'import_batch_id']);
@@ -321,7 +322,12 @@ class UserManagement extends Component
                 $query->where(function ($sub): void {
                     $sub->where('name', 'like', '%'.$this->search.'%')
                         ->orWhere('username', 'like', '%'.$this->search.'%')
-                        ->orWhere('email', 'like', '%'.$this->search.'%');
+                        ->orWhere('email', 'like', '%'.$this->search.'%')
+                        ->orWhereHas('teacherProfile', fn ($profile) => $profile
+                            ->where('nip', 'like', '%'.$this->search.'%')
+                            ->orWhere('nik', 'like', '%'.$this->search.'%'))
+                        ->orWhereHas('studentProfile', fn ($profile) => $profile
+                            ->where('nisn', 'like', '%'.$this->search.'%'));
                 });
             })
             ->when($this->roleFilter, fn ($query) => $query->whereHas('roles', fn ($roleQuery) => $roleQuery->where('name', $this->roleFilter)))
