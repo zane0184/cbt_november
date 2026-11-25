@@ -21,7 +21,7 @@ FORBIDDEN_SUFFIXES = {
     ".keystore", ".crt", ".cer", ".der", ".zip", ".tar", ".gz", ".tgz", ".7z",
     ".rar", ".bz2", ".xz", ".zst", ".core", ".dmp",
 }
-FORBIDDEN_DIRS = {".git", ".phpunit.cache", "tests"}
+FORBIDDEN_DIRS = {".git", ".phpunit.cache", "test", "tests", "fixture", "fixtures"}
 FORBIDDEN_NAMES = {
     ".npmrc", ".pypirc", ".netrc", "id_rsa", "id_ed25519", "authorized_keys",
     "credentials", "credentials.json", "secrets.json", "secrets.yml", "secrets.yaml",
@@ -69,7 +69,7 @@ def is_forbidden_dir(name: str) -> bool:
 def check_file(rel: str, data: bytes, env_example: str, errors: list[str]) -> None:
     path = PurePosixPath(rel)
     name = path.name.casefold()
-    if name == ".env" or (name.startswith(".env.") and rel != env_example):
+    if name.startswith(".env") and rel != env_example:
         errors.append(f"environment file: {rel}")
     if name in FORBIDDEN_NAMES:
         errors.append(f"forbidden credential filename: {rel}")
@@ -240,6 +240,13 @@ def self_test() -> None:
             ("BACKUPS/database.sql", b"-- synthetic database dump\n"),
             ("nested/backups_before_patch/archive.zip", b"synthetic nested archive\n"),
             (".env.production", b"APP_ENV=production\n"),
+            (".env_local", b"APP_ENV=local\\n"),
+            (".ENV-*", b"APP_ENV=secret\\n"),
+            (".ENV", b"APP_KEY=synthetic_secret_value_123456\\n"),
+            (".Env.production", b"APP_ENV=production\\n"),
+            ("config/.env.example", b"APP_KEY=\\n"),
+            ("backend-laravel/.ENV.example", b"APP_KEY=\\n"),
+            ("backend-laravel/.env.example.extra", b"APP_KEY=\\n"),
             ("secrets/private.pem", b"-----BEGIN PRIVATE KEY-----\nSYNTHETIC\n-----END PRIVATE KEY-----\n"),
             ("config/token.txt", b"CBT_INSTALLER_BOOTSTRAP_TOKEN=synthetic_token_value_0123456789\n"),
         ]
@@ -256,6 +263,24 @@ def self_test() -> None:
             if not stage_bad or not zip_bad:
                 raise SystemExit(
                     f"Negative fixture unexpectedly accepted: {rel}; "
+                    f"staging={stage_bad}; zip={zip_bad}"
+                )
+            negative += 1
+
+        # Test and fixture directory names are denied case-insensitively at any depth.
+        for directory in ("test", "tests", "Test", "Tests", "fixture", "fixtures", "Fixtures"):
+            case_root = base / f"directory-case-{negative}"
+            shutil.copytree(valid, case_root)
+            target = case_root / "backend-laravel/vendor/example/package" / directory / "payload.php"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text("<?php\\n// synthetic fixture\\n", encoding="utf-8")
+            stage_bad = scan_staging(case_root)
+            case_zip = base / f"directory-case-{negative}.zip"
+            make_zip(case_root, case_zip)
+            zip_bad = scan_zip(case_zip)
+            if not stage_bad or not zip_bad:
+                raise SystemExit(
+                    f"Forbidden directory fixture unexpectedly accepted: {directory}; "
                     f"staging={stage_bad}; zip={zip_bad}"
                 )
             negative += 1
@@ -301,9 +326,19 @@ def self_test() -> None:
         if not scan_zip(symlink_zip):
             raise SystemExit("ZIP symlink fixture unexpectedly accepted")
         negative += 1
+        staging_symlink_root = base / "staging-symlink"
+        shutil.copytree(valid, staging_symlink_root)
+        (staging_symlink_root / "backend-laravel/app/link.php").symlink_to(
+            staging_symlink_root / "backend-laravel/app/Example.php"
+        )
+        if not scan_staging(staging_symlink_root):
+            raise SystemExit("Staging symlink fixture unexpectedly accepted")
+        negative += 1
+
     print(f"Scanner fixture suite PASS: {positive} positive fixture; {negative} negative fixtures.")
-    print("Both staging and ZIP scanners rejected all seven required malicious content fixtures.")
-    print("ZIP structural checks rejected traversal, duplicate/case collision, and symlink fixtures.")
+    print("Exact allowlist PASS: only backend-laravel/.env.example is accepted.")
+    print("Environment and test/fixture directory variants rejected in staging and ZIP.")
+    print("Traversal, duplicate/case collision, and staging/ZIP symlink fixtures rejected.")
 
 
 def main() -> None:

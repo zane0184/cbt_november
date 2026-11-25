@@ -77,7 +77,7 @@ jobs:
 
           rsync -a --delete \
             --include='/.env.example' \
-            --exclude='.env' \
+            --filter='-i **/.env*' \
             --exclude='.env.*' \
             --exclude='**/.env' \
             --exclude='**/.env.*' \
@@ -118,7 +118,14 @@ jobs:
             --exclude='**/.DS_Store' \
             --exclude='**/Thumbs.db' \
             --exclude='**/desktop.ini' \
-            --exclude='tests/' \
+            --filter='-i **/test/' \
+            --filter='-i **/test/***' \
+            --filter='-i **/tests/' \
+            --filter='-i **/tests/***' \
+            --filter='-i **/fixture/' \
+            --filter='-i **/fixture/***' \
+            --filter='-i **/fixtures/' \
+            --filter='-i **/fixtures/***' \
             --exclude='docs/' \
             --exclude='phpunit.xml' \
             --exclude='phpunit.mysql.xml' \
@@ -164,6 +171,15 @@ jobs:
           cp docs/PANDUAN_INSTALASI_WEB_CBT_MANDIRI.md "$STAGE/README_PEMASANGAN.md"
           cp docs/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md "$STAGE/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md"
           cp backend-laravel/DISTRIBUTION_EXCLUSIONS.md "$STAGE/CATATAN_EKSKLUSI_DISTRIBUSI.md"
+          # Rebuild the production autoloader from the exact staged tree after test/fixture paths are excluded.
+          # No test/fixture dependency exception is permitted; Laravel boot and installer routes must still pass.
+          (
+            cd "$STAGE/backend-laravel"
+            composer dump-autoload --no-dev --optimize --no-interaction
+            php artisan --version
+            php artisan route:list --path=install --json > "$RUNNER_TEMP/staged-installer-routes.json"
+            php -r '$routes = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR); $uris = array_column($routes, "uri"); foreach (["install/authorize", "install/requirements", "install/database/test", "install/migrations/run", "install/admin/save", "install/complete"] as $required) { if (!in_array($required, $uris, true)) { fwrite(STDERR, "Missing staged installer route: {$required}" . PHP_EOL); exit(1); } }' "$RUNNER_TEMP/staged-installer-routes.json"
+          )
 
           cat > "$STAGE/PACKAGE_MANIFEST.txt" <<EOF
           CBT MADRASAH — STANDALONE WEB DEPLOYMENT PACKAGE
