@@ -1,7 +1,7 @@
 # Checkpoint — Import Guru Web Admin
 Tanggal: 2026-11-26
 
-- Source dasar terbaru: `work/guru-docx-import-e2e-20261125` @ `bc3d9a497a2775fcbeda9deed57ee05bcf53e2e8`.
+- Source branch PR terbaru: `work/guru-docx-import-e2e-20261125` @ `c6ce755f1ae9f65ed838817d06316ea4232c3b10`; satu commit setelah base awal hanya mengubah test Exam Management dan backup, tidak beririsan dengan file Import Guru. PR dinyatakan mergeable.
 - Branch implementasi aktif: `feature/admin-teacher-import-20261126-r1`.
 - Snapshot awal b451 tertinggal dua commit; PR #26 ditutup dan tidak digunakan. Dua commit terbaru dipertahankan dalam base baru.
 - Status: implementasi awal Import Guru tersedia pada branch fitur; belum merge, belum diuji runtime.
