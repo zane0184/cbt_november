@@ -82,7 +82,7 @@ class StudentImport extends Component
         $this->previewHash = $result['file_sha256'];
     }
 
-    public function import(): void
+    public function import()
     {
         $this->authorizeImport();
         $this->validate($this->validationRules());
@@ -120,11 +120,11 @@ class StudentImport extends Component
         );
 
         $this->reset(['file', 'selectedRombelId', 'previewRows', 'summary', 'previewHash']);
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => $imported['imported'] . ' akun Siswa berhasil diimpor.',
-        ]);
-        session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor. Password awal dibuat acak; gunakan fitur Reset Password untuk menerbitkan kredensial kepada Siswa.');
+        session()->flash('import_credentials', $imported['credentials']);
+        session()->flash('import_credentials_label', 'Siswa');
+        session()->flash('import_batch_id', $imported['batch_id']);
+        session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.');
+        return redirect('/admin/users');
     }
 
     public function downloadXlsxTemplate()
