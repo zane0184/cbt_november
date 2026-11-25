@@ -266,6 +266,7 @@ class TeacherLearningOutcomeService
                 LearningOutcomeStructureMapping::query()->create([
                     'tenant_id' => $tenantId,
                     'tenant_learning_outcome_id' => $atp->id,
+                    'teacher_subject_assignment_id' => $assignment->id,
                     'tenant_curriculum_registration_id' => $registration->id,
                     'multi_curriculum_version_id' => $registration->multi_curriculum_version_id,
                     'curriculum_owner_id' => $registration->curriculum_owner_id,
