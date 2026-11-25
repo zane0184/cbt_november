@@ -62,8 +62,8 @@
         <aside class="space-y-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div>
                 <div class="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600">Langkah 2</div>
-                <h2 class="text-lg font-bold text-slate-900">Pemetaan kurikulum</h2>
-                <p class="mt-1 text-sm leading-5 text-slate-500">Setiap versi soal wajib memiliki CP resmi dan TP/ATP terpublikasi pada penugasan yang dipilih.</p>
+                <h2 class="text-lg font-bold text-slate-900">Pemetaan default kurikulum</h2>
+                <p class="mt-1 text-sm leading-5 text-slate-500">Pilihan di sini menjadi default untuk semua soal. Kamu dapat mengganti CP dan TP/ATP secara khusus pada setiap kartu soal.</p>
             </div>
 
             @if($selectedAssignment)
@@ -72,7 +72,7 @@
                     <p class="mt-1 text-xs text-slate-500">{{ $curriculumContext['assignment']['phase'] ?? '-' }} · {{ $curriculumContext['assignment']['grade'] ?? '-' }} · {{ $curriculumContext['assignment']['official_subject'] ?? $selectedAssignment->subject?->name }}</p>
                 </div>
                 <div>
-                    <h3 class="mb-2 text-sm font-bold text-slate-800">CP resmi</h3>
+                    <h3 class="mb-2 text-sm font-bold text-slate-800">CP resmi · default</h3>
                     <div class="max-h-48 space-y-2 overflow-y-auto pr-1">
                         @forelse($cpOptions as $cp)
                             <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-xs transition hover:border-indigo-300 hover:bg-indigo-50/40">
@@ -86,7 +86,7 @@
                     @error('selectedCpIds') <p class="mt-1 text-xs text-rose-600">{{ $message }}</p> @enderror
                 </div>
                 <div>
-                    <h3 class="mb-2 text-sm font-bold text-slate-800">TP/ATP terpublikasi</h3>
+                    <h3 class="mb-2 text-sm font-bold text-slate-800">TP/ATP terpublikasi · default</h3>
                     <div class="max-h-48 space-y-2 overflow-y-auto pr-1">
                         @forelse($outcomes as $outcome)
                             <label class="flex cursor-pointer items-start gap-2 rounded-xl border border-slate-200 p-3 text-xs transition hover:border-emerald-300 hover:bg-emerald-50/40">
@@ -144,6 +144,35 @@
                             Sertakan dalam import
                         </label>
                     </div>
+
+                    <details class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <summary class="cursor-pointer text-xs font-bold text-slate-700">Pemetaan kurikulum khusus untuk soal ini (opsional)</summary>
+                        <p class="mt-2 text-[11px] leading-5 text-slate-500">Jika tidak memilih apa pun, sistem menggunakan pemetaan default di atas. Jika memilih di sini, pilihan khusus ini menggantikan default untuk soal ini.</p>
+                        <div class="mt-3 grid gap-4 md:grid-cols-2">
+                            <div>
+                                <p class="mb-2 text-xs font-bold text-indigo-800">CP resmi</p>
+                                <div class="max-h-44 space-y-2 overflow-y-auto">
+                                    @foreach($cpOptions as $cp)
+                                        <label class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                                            <input type="checkbox" wire:model="questions.{{ $index }}.mapping_cp_ids" value="{{ $cp['id'] }}" class="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                                            <span class="text-slate-700">{{ $cp['code'] }} — {{ $cp['title'] }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                            <div>
+                                <p class="mb-2 text-xs font-bold text-emerald-800">TP/ATP terpublikasi</p>
+                                <div class="max-h-44 space-y-2 overflow-y-auto">
+                                    @foreach($outcomes as $outcome)
+                                        <label class="flex items-start gap-2 rounded-lg border border-slate-200 bg-white p-2 text-xs">
+                                            <input type="checkbox" wire:model="questions.{{ $index }}.mapping_outcome_ids" value="{{ $outcome['id'] }}" class="mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                            <span class="text-slate-700">{{ $outcome['outcome_type'] }} · {{ $outcome['code'] }} — {{ $outcome['title'] }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </details>
 
                     <div>
                         <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Teks soal</label>
