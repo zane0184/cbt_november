@@ -91,12 +91,21 @@ class DocxQuestionDraftImporter
 
             foreach ($ready as $index => $row) {
                 $this->validateQuestion($row, $index + 1);
+                $effectiveCpIds = array_values(array_unique($row['mapping_cp_ids'] ?? $cpIds));
+                $effectiveOutcomeIds = array_values(array_unique($row['mapping_outcome_ids'] ?? $outcomeIds));
+                if ($effectiveCpIds === [] || $effectiveOutcomeIds === []) {
+                    throw ValidationException::withMessages([
+                        'docx' => 'Setiap soal yang disertakan wajib memiliki minimal satu CP dan satu TP/ATP. Atur pemetaan default atau pemetaan khusus pada kartu soal.',
+                    ]);
+                }
             }
 
             $mappingService = app(QuestionVersionCurriculumMappingService::class);
             $importedIds = [];
 
             foreach ($ready as $row) {
+                $questionCpIds = array_values(array_unique($row['mapping_cp_ids'] ?? $cpIds));
+                $questionOutcomeIds = array_values(array_unique($row['mapping_outcome_ids'] ?? $outcomeIds));
                 $question = Question::query()->create([
                     'tenant_id' => $tenantId,
                     'owner_type' => 'SUBJECT',
@@ -169,8 +178,8 @@ class DocxQuestionDraftImporter
                 $mappingService->sync(
                     $version,
                     (string) $assignment->id,
-                    $cpIds,
-                    $outcomeIds,
+                    $questionCpIds,
+                    $questionOutcomeIds,
                     $materialId,
                     $topicId
                 );
@@ -187,8 +196,8 @@ class DocxQuestionDraftImporter
                         'teacher_subject_assignment_id' => $assignment->id,
                         'source_file_sha256' => $fileSha256,
                         'source_question_number' => (int) ($row['source_number'] ?? 0),
-                        'cp_mapping_count' => count($cpIds),
-                        'outcome_mapping_count' => count($outcomeIds),
+                        'cp_mapping_count' => count($questionCpIds),
+                        'outcome_mapping_count' => count($questionOutcomeIds),
                     ]
                 );
             }
