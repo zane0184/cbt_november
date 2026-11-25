@@ -13,6 +13,8 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class WebAdminAuthTest extends TestCase
@@ -121,6 +123,28 @@ class WebAdminAuthTest extends TestCase
         $response->assertOk();
         $response->assertSee('MIN 15 Jakarta Selatan');
         $response->assertDontSee('>CBT MADRASAH</h1>', false);
+    }
+
+    public function test_login_page_uses_current_installation_logo_and_favicon(): void
+    {
+        $logoPath = 'tenants/' . $this->tenant->id . '/branding/app-logo-login-test.png';
+        $faviconPath = 'tenants/' . $this->tenant->id . '/branding/favicon-login-test.png';
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $logoPath)));
+        $logo = UploadedFile::fake()->image('login-logo.png', 128, 128);
+        $favicon = UploadedFile::fake()->image('login-favicon.png', 64, 64);
+        File::copy($logo->getRealPath(), storage_path('app/public/' . $logoPath));
+        File::copy($favicon->getRealPath(), storage_path('app/public/' . $faviconPath));
+        $this->tenant->forceFill([
+            'logo_path' => $logoPath,
+            'favicon_path' => $faviconPath,
+        ])->save();
+
+        $response = $this->get('/login');
+
+        $response->assertOk();
+        $response->assertSee('storage/' . $logoPath);
+        $response->assertSee('storage/' . $faviconPath);
+        $response->assertSee('type="image/png"', false);
     }
 
     public function test_legacy_platform_super_admin_login_is_rejected_from_tenant_cbt(): void
