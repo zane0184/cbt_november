@@ -11,13 +11,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class QuestionVersion extends Model
 {
+    protected $casts = [
+        'metadata' => 'array',
+    ];
     use HasUuids, TenantScoped;
 
     protected $fillable = [
         'question_id', 'major_version', 'minor_version', 'question_type',
         'stem', 'explanation', 'difficulty', 'cognitive_level',
         'estimated_time', 'default_points', 'element_id',
-        'learning_outcome_id', 'learning_objective_id', 'status', 'is_current', 'created_by'
+        'learning_outcome_id', 'learning_objective_id', 'metadata', 'status', 'is_current', 'created_by'
     ];
 
     public function question(): BelongsTo
