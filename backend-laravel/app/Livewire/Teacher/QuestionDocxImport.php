@@ -185,7 +185,7 @@ class QuestionDocxImport extends Component
             'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
             'questions.*.options.*.is_correct' => ['sometimes', 'boolean'],
             'questions.*.statements' => ['sometimes', 'array', 'max:3'],
-            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40'],
+            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
             'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
             'questions.*.statements.*.is_true' => ['required', 'boolean'],
             'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
