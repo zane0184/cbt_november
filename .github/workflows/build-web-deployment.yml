@@ -77,7 +77,8 @@ jobs:
 
           rsync -a --delete \
             --include='/.env.example' \
-            --filter='-i **/.env*' \
+            --exclude='.[eE][nN][vV]*' \
+            --exclude='**/.[eE][nN][vV]*' \
             --exclude='.env.*' \
             --exclude='**/.env' \
             --exclude='**/.env.*' \
@@ -118,14 +119,22 @@ jobs:
             --exclude='**/.DS_Store' \
             --exclude='**/Thumbs.db' \
             --exclude='**/desktop.ini' \
-            --filter='-i **/test/' \
-            --filter='-i **/test/***' \
-            --filter='-i **/tests/' \
-            --filter='-i **/tests/***' \
-            --filter='-i **/fixture/' \
-            --filter='-i **/fixture/***' \
-            --filter='-i **/fixtures/' \
-            --filter='-i **/fixtures/***' \
+            --exclude='[tT][eE][sS][tT]/' \
+            --exclude='**/[tT][eE][sS][tT]/' \
+            --exclude='[tT][eE][sS][tT]/***' \
+            --exclude='**/[tT][eE][sS][tT]/***' \
+            --exclude='[tT][eE][sS][tT][sS]/' \
+            --exclude='**/[tT][eE][sS][tT][sS]/' \
+            --exclude='[tT][eE][sS][tT][sS]/***' \
+            --exclude='**/[tT][eE][sS][tT][sS]/***' \
+            --exclude='[fF][iI][xX][tT][uU][rR][eE]/' \
+            --exclude='**/[fF][iI][xX][tT][uU][rR][eE]/' \
+            --exclude='[fF][iI][xX][tT][uU][rR][eE]/***' \
+            --exclude='**/[fF][iI][xX][tT][uU][rR][eE]/***' \
+            --exclude='[fF][iI][xX][tT][uU][rR][eE][sS]/' \
+            --exclude='**/[fF][iI][xX][tT][uU][rR][eE][sS]/' \
+            --exclude='[fF][iI][xX][tT][uU][rR][eE][sS]/***' \
+            --exclude='**/[fF][iI][xX][tT][uU][rR][eE][sS]/***' \
             --exclude='docs/' \
             --exclude='phpunit.xml' \
             --exclude='phpunit.mysql.xml' \
