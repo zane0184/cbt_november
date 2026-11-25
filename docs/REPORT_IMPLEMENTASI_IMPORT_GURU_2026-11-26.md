@@ -2,7 +2,7 @@
 Tanggal: 2026-11-26
 
 ## Ringkasan
-Implementasi Import Guru dibuat pada branch `feature/admin-teacher-import-20261126-r1`, berbasis source kerja TERBARU `work/guru-docx-import-e2e-20261125` @ `bc3d9a497a2775fcbeda9deed57ee05bcf53e2e8`. Branch fitur sebelumnya #26 dibuat dari snapshot yang tertinggal dua commit; branch tersebut tidak digunakan sebagai dasar integrasi dan PR #26 ditutup sebagai superseded. Perubahan fitur dipindahkan secara selektif ke branch baru sehingga dua commit terbaru tetap dipertahankan.
+Implementasi Import Guru dibuat pada branch `feature/admin-teacher-import-20261126-r1`, dibuat dari source `work/guru-docx-import-e2e-20261125` @ `bc3d9a497a2775fcbeda9deed57ee05bcf53e2e8`; target PR telah diperbarui ke head branch terbaru @ `c6ce755f1ae9f65ed838817d06316ea4232c3b10` setelah satu commit upstream non-overlap masuk. Branch fitur sebelumnya #26 dibuat dari snapshot yang tertinggal dua commit; branch tersebut tidak digunakan sebagai dasar integrasi dan PR #26 ditutup sebagai superseded. Perubahan fitur dipindahkan secara selektif ke branch baru sehingga dua commit terbaru tetap dipertahankan.
 
 ## AUDIT
 - Pada source base terbaru tidak ditemukan komponen, service, route, view, migration batch, atau feature test khusus Import Guru.
@@ -41,7 +41,7 @@ Migration menambahkan tabel `teacher_import_batches`, dengan unique idempotency 
 ## PENGUJIAN
 - Feature tests ditambahkan untuk template XLSX, preview dan import PNS/Honorer, validasi identitas, duplikasi, idempotensi, akses non-Admin, pemanggilan service langsung, rollback ketika audit gagal, dan round-trip XLSX satu worksheet.
 - Pemeriksaan GitHub mengonfirmasi file route, tombol, component, service, migration, view, dan test berada pada branch fitur.
-- Perbandingan source dilakukan terhadap base terbaru `bc3d9a497a2775fcbeda9deed57ee05bcf53e2e8`, bukan snapshot lama.
+- Perbandingan source dilakukan terhadap base PR terbaru `c6ce755f1ae9f65ed838817d06316ea4232c3b10` (branch fitur tertinggal satu commit non-overlap; PR terdeteksi mergeable), bukan snapshot lama.
 - **Belum dijalankan:** PHPUnit, PHP lint, GitHub Actions, browser test, dan uji instalasi VPS. Fitur belum boleh dinyatakan lulus atau siap produksi.
 - Tidak ada migration yang dijalankan pada database produksi.
 
