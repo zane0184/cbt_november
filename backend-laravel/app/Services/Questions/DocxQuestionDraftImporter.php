@@ -226,6 +226,12 @@ class DocxQuestionDraftImporter
         $prefix = 'Soal ' . $index . ': ';
         $type = $row['question_type'] ?? '';
 
+        if (($row['blocked_features'] ?? []) !== []) {
+            throw ValidationException::withMessages([
+                'docx' => $prefix . 'memuat gambar, diagram, atau rumus Word yang belum dapat disimpan dengan aman. Hapus konten tersebut dari dokumen sumber lalu unggah ulang.',
+            ]);
+        }
+
         if (!in_array($type, self::IMPORTABLE_TYPES, true)) {
             throw ValidationException::withMessages([
                 'docx' => $prefix . 'jenis soal belum didukung untuk penyimpanan otomatis.',

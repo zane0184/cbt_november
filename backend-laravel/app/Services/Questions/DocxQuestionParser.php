@@ -26,24 +26,7 @@ class DocxQuestionParser
         }
 
         try {
-            if ($zip->numFiles < 1 || $zip->numFiles > 500) {
-                throw ValidationException::withMessages(['docx' => 'Paket Word memiliki jumlah bagian yang tidak wajar.']);
-            }
-            $totalUncompressedBytes = 0;
-            for ($index = 0; $index < $zip->numFiles; $index++) {
-                $stat = $zip->statIndex($index);
-                $entrySize = (int) ($stat['size'] ?? 0);
-                $totalUncompressedBytes += $entrySize;
-                if ($entrySize > self::MAX_XML_BYTES || $totalUncompressedBytes > 30 * 1024 * 1024) {
-                    throw ValidationException::withMessages(['docx' => 'Isi paket Word melebihi batas keamanan pemrosesan.']);
-                }
-            }
-
-            $xml = $zip->getFromName('word/document.xml');
-            if (!is_string($xml) || strlen($xml) > self::MAX_XML_BYTES) {
-                throw ValidationException::withMessages(['docx' => 'Struktur dokumen Word tidak ditemukan atau terlalu besar.']);
-            }
-
+            $xml = $this->validatePackage($zip);
             $blocks = $this->readOrderedBlocks($xml);
         } finally {
             $zip->close();
@@ -52,10 +35,113 @@ class DocxQuestionParser
         return $this->buildQuestions($blocks, hash_file('sha256', $path));
     }
 
+    /**
+     * Validate the OOXML package before parsing any document part.
+     * No package entry is extracted to the filesystem.
+     */
+    private function validatePackage(ZipArchive $zip): string
+    {
+        if ($zip->numFiles < 3 || $zip->numFiles > 500) {
+            throw ValidationException::withMessages(['docx' => 'Paket Word memiliki jumlah bagian yang tidak wajar.']);
+        }
+
+        $requiredEntries = ['[Content_Types].xml', '_rels/.rels', 'word/document.xml'];
+        $foundEntries = [];
+        $totalUncompressedBytes = 0;
+
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $stat = $zip->statIndex($index);
+            if (!is_array($stat)) {
+                throw ValidationException::withMessages(['docx' => 'Struktur ZIP DOCX tidak dapat diverifikasi.']);
+            }
+
+            $name = (string) ($stat['name'] ?? '');
+            $normalizedName = str_replace('\\', '/', $name);
+            if ($name === ''
+                || str_contains($name, "\0")
+                || str_starts_with($normalizedName, '/')
+                || preg_match('#(^|/)\.\.?(/|$)#', $normalizedName) === 1) {
+                throw ValidationException::withMessages(['docx' => 'Paket Word mengandung nama bagian yang tidak aman.']);
+            }
+
+            $entrySize = (int) ($stat['size'] ?? 0);
+            $compressedSize = (int) ($stat['comp_size'] ?? 0);
+            $totalUncompressedBytes += $entrySize;
+            if ($entrySize > self::MAX_XML_BYTES || $totalUncompressedBytes > 30 * 1024 * 1024) {
+                throw ValidationException::withMessages(['docx' => 'Isi paket Word melebihi batas keamanan pemrosesan.']);
+            }
+            if ($entrySize > 0 && ($compressedSize < 1 || ($entrySize / $compressedSize) > 100)) {
+                throw ValidationException::withMessages(['docx' => 'Rasio kompresi DOCX melebihi batas keamanan.']);
+            }
+
+            $lowerName = strtolower($normalizedName);
+            if (str_starts_with($lowerName, 'word/embeddings/')
+                || str_starts_with($lowerName, 'word/activex/')
+                || str_contains($lowerName, 'vbaproject')
+                || preg_match('/oleobject[^/]*\.bin$/i', $lowerName) === 1) {
+                throw ValidationException::withMessages(['docx' => 'DOCX dengan embedded OLE, ActiveX, atau macro tidak diizinkan.']);
+            }
+
+            $foundEntries[$normalizedName] = true;
+            if (str_ends_with(strtolower($normalizedName), '.rels')) {
+                $this->validateRelationships($zip, $index);
+            }
+        }
+
+        foreach ($requiredEntries as $requiredEntry) {
+            if (!isset($foundEntries[$requiredEntry])) {
+                throw ValidationException::withMessages(['docx' => 'Paket Word tidak memiliki struktur OOXML wajib.']);
+            }
+        }
+
+        $contentTypes = $zip->getFromName('[Content_Types].xml');
+        $documentXml = $zip->getFromName('word/document.xml');
+        if (!is_string($contentTypes) || !is_string($documentXml)
+            || strlen($contentTypes) > self::MAX_XML_BYTES
+            || strlen($documentXml) > self::MAX_XML_BYTES) {
+            throw ValidationException::withMessages(['docx' => 'Struktur dokumen Word tidak ditemukan atau terlalu besar.']);
+        }
+
+        $this->assertSafeXml($contentTypes);
+        $this->assertSafeXml($documentXml);
+        if (preg_match('/<(?:[A-Za-z0-9_]+:)?(?:altChunk|object|OLEObject|control)\b/i', $documentXml) === 1) {
+            throw ValidationException::withMessages(['docx' => 'DOCX dengan konten aktif atau embedded object tidak diizinkan.']);
+        }
+
+        return $documentXml;
+    }
+
+    private function validateRelationships(ZipArchive $zip, int $index): void
+    {
+        $xml = $zip->getFromIndex($index);
+        if (!is_string($xml) || strlen($xml) > 1024 * 1024) {
+            throw ValidationException::withMessages(['docx' => 'Bagian relasi DOCX tidak valid atau terlalu besar.']);
+        }
+        $this->assertSafeXml($xml);
+        $document = new DOMDocument();
+        if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+            throw ValidationException::withMessages(['docx' => 'Bagian relasi DOCX tidak dapat dibaca.']);
+        }
+        $xpath = new \DOMXPath($document);
+        foreach ($xpath->query('//*[local-name()="Relationship"]') as $relationship) {
+            if (strcasecmp($relationship->getAttribute('TargetMode'), 'External') === 0) {
+                throw ValidationException::withMessages(['docx' => 'Relasi eksternal dalam DOCX tidak diizinkan.']);
+            }
+        }
+    }
+
+    private function assertSafeXml(string $xml): void
+    {
+        if (preg_match('/<!DOCTYPE|<!ENTITY/i', $xml) === 1) {
+            throw ValidationException::withMessages(['docx' => 'Deklarasi DTD atau ENTITY dalam DOCX tidak diizinkan.']);
+        }
+    }
+
     private function readOrderedBlocks(string $xml): array
     {
         $previous = libxml_use_internal_errors(true);
         try {
+            $this->assertSafeXml($xml);
             $document = new DOMDocument();
             if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
                 throw ValidationException::withMessages(['docx' => 'XML dokumen Word tidak dapat dibaca.']);
@@ -177,11 +263,14 @@ class DocxQuestionParser
         foreach ($blocks as $block) {
             $text = trim($block['text']);
             $blockUnsupported = [];
+            $blockUnsupportedFeatures = [];
             if (!empty($block['has_media'])) {
                 $blockUnsupported[] = 'Dokumen memuat gambar/diagram pada blok ini; import media belum diaktifkan dan item harus ditinjau manual.';
+                $blockUnsupportedFeatures[] = 'IMAGE_OR_DIAGRAM';
             }
             if (!empty($block['has_math'])) {
                 $blockUnsupported[] = 'Dokumen memuat objek formula matematika Word pada blok ini; konversi formula belum diaktifkan.';
+                $blockUnsupportedFeatures[] = 'WORD_MATH';
             }
             $isQuestionStart = preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text) === 1;
             $isStimulusStart = preg_match('/^STIMULUS(?:\\s*\\[[A-Z0-9_-]+\\])?\\s*:/iu', $text) === 1;
@@ -195,8 +284,10 @@ class DocxQuestionParser
             if ($blockUnsupported !== [] && !$isQuestionStart && !$isStimulusStart) {
                 if ($active !== null) {
                     $active['unsupported_blocks'] = array_merge($active['unsupported_blocks'] ?? [], $blockUnsupported);
+                    $active['unsupported_features'] = array_merge($active['unsupported_features'] ?? [], $blockUnsupportedFeatures);
                 } elseif ($stimulus !== null) {
                     $stimulus['unsupported_blocks'] = array_merge($stimulus['unsupported_blocks'] ?? [], $blockUnsupported);
+                    $stimulus['unsupported_features'] = array_merge($stimulus['unsupported_features'] ?? [], $blockUnsupportedFeatures);
                 }
             }
             if ($text === '') {
@@ -227,6 +318,7 @@ class DocxQuestionParser
                     'content' => trim($match[2] ?? ''),
                     'source' => $block['locator'],
                     'unsupported_blocks' => $blockUnsupported,
+                    'unsupported_features' => $blockUnsupportedFeatures,
                 ];
                 continue;
             }
@@ -261,6 +353,7 @@ class DocxQuestionParser
                     'locator' => $block['locator'],
                     'stimulus' => $stimulus,
                     'unsupported_blocks' => $blockUnsupported,
+                    'unsupported_features' => $blockUnsupportedFeatures,
                     'has_table_content' => ($block['locator']['kind'] ?? null) === 'table-cell',
                 ];
                 $answerSection = false;
@@ -406,8 +499,13 @@ class DocxQuestionParser
                 $warningsForQuestion[] = 'Opsi pilihan ganda diabaikan karena item terdeteksi sebagai kelompok Benar/Salah.';
             }
 
+            $blockedFeatures = array_values(array_unique(array_merge(
+                $raw['unsupported_features'] ?? [],
+                $raw['stimulus']['unsupported_features'] ?? []
+            )));
             $questions[] = [
                 'source_number' => $number,
+                'blocked_features' => $blockedFeatures,
                 'question_type' => $type,
                 'stem' => $stem,
                 'options' => array_map(function (array $option) use ($answerTokens): array {
@@ -435,6 +533,10 @@ class DocxQuestionParser
             'valid' => count(array_filter($questions, fn (array $question) => $question['status'] === 'READY')),
             'invalid' => count(array_filter($questions, fn (array $question) => $question['status'] !== 'READY')),
             'questions' => $questions,
+            'blocked_source_numbers' => array_values(array_unique(array_map(
+                fn (array $question): int => (int) $question['source_number'],
+                array_filter($questions, fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
+            ))),
             'excluded_content' => $excluded,
             'warnings' => $warnings,
         ];

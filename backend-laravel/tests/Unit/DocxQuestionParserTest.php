@@ -149,25 +149,96 @@ class DocxQuestionParserTest extends TestCase
         }
     }
 
-    private function makeDocx(array $lines): string
+
+    public function test_rejects_external_relationships(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'cbt-docx-parser-');
+        $externalRelationships = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://example.invalid/" TargetMode="External"/></Relationships>';
+        $path = $this->makeDocx(['SOAL 1. [PG] Contoh soal.', 'A. Benar', 'B. Salah', 'KUNCI: A'], [
+            'word/_rels/document.xml.rels' => $externalRelationships,
+        ]);
+        try {
+            $this->expectException(ValidationException::class);
+            app(DocxQuestionParser::class)->parse($path);
+        } finally { @unlink($path); }
+    }
+
+    public function test_rejects_embedded_ole_objects(): void
+    {
+        $path = $this->makeDocx(['SOAL 1. [PG] Contoh soal.', 'A. Benar', 'B. Salah', 'KUNCI: A'], [
+            'word/embeddings/oleObject1.bin' => 'embedded payload',
+        ]);
+        try {
+            $this->expectException(ValidationException::class);
+            app(DocxQuestionParser::class)->parse($path);
+        } finally { @unlink($path); }
+    }
+
+    public function test_rejects_extreme_zip_compression_ratio(): void
+    {
+        $path = $this->makeDocx(['SOAL 1. [PG] Contoh soal.', 'A. Benar', 'B. Salah', 'KUNCI: A'], [
+            'custom/repetitive.txt' => str_repeat('A', 300000),
+        ]);
+        try {
+            $this->expectException(ValidationException::class);
+            app(DocxQuestionParser::class)->parse($path);
+        } finally { @unlink($path); }
+    }
+
+    public function test_inline_media_and_word_math_mark_questions_as_blocked(): void
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">'
+            . '<w:body><w:p><w:r><w:t>SOAL 1. [PG] Hitung hasil berikut.</w:t></w:r></w:p>'
+            . '<w:p><w:r><w:t>A. 2</w:t></w:r></w:p><w:p><w:r><w:t>B. 3</w:t></w:r></w:p>'
+            . '<w:p><w:r><w:t>KUNCI: A</w:t></w:r></w:p><w:p><w:r><w:drawing/></w:r></w:p>'
+            . '<w:p><m:oMath><m:r><m:t>x+1</m:t></m:r></m:oMath></w:p><w:sectPr/></w:body></w:document>';
+        $path = $this->makeDocxFromXml($xml);
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $this->assertSame([1], $result['blocked_source_numbers']);
+            $this->assertContains('IMAGE_OR_DIAGRAM', $result['questions'][0]['blocked_features']);
+            $this->assertContains('WORD_MATH', $result['questions'][0]['blocked_features']);
+        } finally { @unlink($path); }
+    }
+
+    public function test_preserves_arabic_text_and_harakat(): void
+    {
+        $arabic = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ';
+        $path = $this->makeDocx(['SOAL 1. [PG] ' . $arabic, 'A. Jawaban satu', 'B. Jawaban dua', 'KUNCI: A']);
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $this->assertSame($arabic, $result['questions'][0]['stem']);
+            $this->assertSame('READY', $result['questions'][0]['status']);
+        } finally { @unlink($path); }
+    }
+
+    private function makeDocx(array $lines, array $extraEntries = []): string
+    {
         $paragraphs = '';
         foreach ($lines as $line) {
             $escaped = htmlspecialchars($line, ENT_XML1 | ENT_COMPAT, 'UTF-8');
             $paragraphs .= '<w:p><w:r><w:t xml:space="preserve">' . $escaped . '</w:t></w:r></w:p>';
         }
-
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
             . '<w:body>' . $paragraphs . '<w:sectPr/></w:body></w:document>';
+        return $this->makeDocxFromXml($xml, $extraEntries);
+    }
+
+    private function makeDocxFromXml(string $xml, array $extraEntries = []): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'cbt-docx-parser-');
         $zip = new ZipArchive();
         if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             throw new \RuntimeException('Cannot create DOCX test fixture.');
         }
+        $zip->addFromString('[Content_Types].xml', '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+        $zip->addFromString('_rels/.rels', '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
         $zip->addFromString('word/document.xml', $xml);
+        foreach ($extraEntries as $name => $content) { $zip->addFromString($name, $content); }
         $zip->close();
-
         return $path;
     }
+
+
 }

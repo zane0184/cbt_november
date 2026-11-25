@@ -206,6 +206,19 @@ class QuestionDocxImport extends Component
             throw ValidationException::withMessages(['docx' => 'File berubah setelah preview. Unggah ulang dan buat preview baru.']);
         }
 
+        // Re-parse the server-held upload at confirmation time. Unsupported
+        // embedded content must never disappear silently during draft save.
+        $freshParse = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
+        $blockedSourceNumbers = array_fill_keys($freshParse['blocked_source_numbers'] ?? [], true);
+        foreach ($this->questions as $questionRow) {
+            if (($questionRow['included'] ?? true)
+                && isset($blockedSourceNumbers[(int) ($questionRow['source_number'] ?? 0)])) {
+                throw ValidationException::withMessages([
+                    'docx' => 'Ada soal terpilih yang memuat gambar, diagram, atau rumus Word yang belum didukung. Hapus konten tersebut dari dokumen sumber lalu unggah ulang.',
+                ]);
+            }
+        }
+
         $assignmentRow = $this->selectedAssignmentRow();
         abort_unless($assignmentRow, 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
 
