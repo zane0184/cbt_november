@@ -127,6 +127,14 @@ class ExamController extends Controller
                         unset($snapshot['metadata']['rubric']);
                         unset($snapshot['metadata']['answer_key']);
                         unset($snapshot['metadata']['scoring_guide']);
+                        if (isset($snapshot['metadata']['statement_items']) && is_array($snapshot['metadata']['statement_items'])) {
+                            $snapshot['metadata']['statement_items'] = array_map(function ($item) {
+                                if (is_array($item)) {
+                                    unset($item['is_true']);
+                                }
+                                return $item;
+                            }, $snapshot['metadata']['statement_items']);
+                        }
                     }
 
                     $qType = $snapshot['metadata']['question_type'] ?? null;
