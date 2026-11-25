@@ -26,6 +26,19 @@ class DocxQuestionParser
         }
 
         try {
+            if ($zip->numFiles < 1 || $zip->numFiles > 500) {
+                throw ValidationException::withMessages(['docx' => 'Paket Word memiliki jumlah bagian yang tidak wajar.']);
+            }
+            $totalUncompressedBytes = 0;
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $stat = $zip->statIndex($index);
+                $entrySize = (int) ($stat['size'] ?? 0);
+                $totalUncompressedBytes += $entrySize;
+                if ($entrySize > self::MAX_XML_BYTES || $totalUncompressedBytes > 30 * 1024 * 1024) {
+                    throw ValidationException::withMessages(['docx' => 'Isi paket Word melebihi batas keamanan pemrosesan.']);
+                }
+            }
+
             $xml = $zip->getFromName('word/document.xml');
             if (!is_string($xml) || strlen($xml) > self::MAX_XML_BYTES) {
                 throw ValidationException::withMessages(['docx' => 'Struktur dokumen Word tidak ditemukan atau terlalu besar.']);
@@ -50,6 +63,7 @@ class DocxQuestionParser
 
             $xpath = new \DOMXPath($document);
             $xpath->registerNamespace('w', 'http://schemas.openxmlformats.org/wordprocessingml/2006/main');
+            $xpath->registerNamespace('m', 'http://schemas.openxmlformats.org/officeDocument/2006/math');
             $body = $xpath->query('/w:document/w:body')->item(0);
             if (!$body) {
                 throw ValidationException::withMessages(['docx' => 'Bagian isi dokumen Word tidak ditemukan.']);
@@ -65,8 +79,15 @@ class DocxQuestionParser
 
                 if ($node->localName === 'p') {
                     $text = $this->paragraphText($node, $xpath);
-                    if (trim($text) !== '') {
-                        $blocks[] = ['text' => $text, 'locator' => ['sequence' => ++$sequence, 'kind' => 'paragraph']];
+                    $hasMedia = $xpath->query('.//w:drawing | .//w:pict', $node)->length > 0;
+                    $hasMath = $xpath->query('.//m:oMath | .//m:oMathPara', $node)->length > 0;
+                    if (trim($text) !== '' || $hasMedia || $hasMath) {
+                        $blocks[] = [
+                            'text' => $text,
+                            'has_media' => $hasMedia,
+                            'has_math' => $hasMath,
+                            'locator' => ['sequence' => ++$sequence, 'kind' => 'paragraph'],
+                        ];
                     }
                     continue;
                 }
@@ -78,23 +99,24 @@ class DocxQuestionParser
                         $cells = $xpath->query('./w:tc', $row);
                         foreach ($cells as $cellIndex => $cell) {
                             $paragraphs = $xpath->query('.//w:p', $cell);
-                            $parts = [];
-                            foreach ($paragraphs as $paragraph) {
-                                $part = trim($this->paragraphText($paragraph, $xpath));
-                                if ($part !== '') {
-                                    $parts[] = $part;
+                            foreach ($paragraphs as $paragraphIndex => $paragraph) {
+                                $text = $this->paragraphText($paragraph, $xpath);
+                                $hasMedia = $xpath->query('.//w:drawing | .//w:pict', $paragraph)->length > 0;
+                                $hasMath = $xpath->query('.//m:oMath | .//m:oMathPara', $paragraph)->length > 0;
+                                if (trim($text) === '' && !$hasMedia && !$hasMath) {
+                                    continue;
                                 }
-                            }
-                            $text = trim(implode("\n", $parts));
-                            if ($text !== '') {
                                 $blocks[] = [
                                     'text' => $text,
+                                    'has_media' => $hasMedia,
+                                    'has_math' => $hasMath,
                                     'locator' => [
                                         'sequence' => ++$sequence,
                                         'kind' => 'table-cell',
                                         'table' => $tableIndex,
                                         'row' => $rowIndex + 1,
                                         'cell' => $cellIndex + 1,
+                                        'paragraph' => $paragraphIndex + 1,
                                     ],
                                 ];
                             }
