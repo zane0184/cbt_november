@@ -185,8 +185,12 @@ class DocxQuestionParser
             }
             $isQuestionStart = preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text) === 1;
             $isStimulusStart = preg_match('/^STIMULUS(?:\\s*\\[[A-Z0-9_-]+\\])?\\s*:/iu', $text) === 1;
-            if (($block['locator']['kind'] ?? null) === 'table-cell' && $active !== null) {
-                $active['has_table_content'] = true;
+            if (($block['locator']['kind'] ?? null) === 'table-cell') {
+                if ($active !== null) {
+                    $active['has_table_content'] = true;
+                } elseif ($stimulus !== null) {
+                    $stimulus['has_table_content'] = true;
+                }
             }
             if ($blockUnsupported !== [] && !$isQuestionStart && !$isStimulusStart) {
                 if ($active !== null) {
@@ -216,7 +220,6 @@ class DocxQuestionParser
                     'content' => trim($match[2] ?? ''),
                     'source' => $block['locator'],
                     'unsupported_blocks' => $blockUnsupported,
-                    'has_table_content' => ($block['locator']['kind'] ?? null) === 'table-cell',
                 ];
                 continue;
             }
@@ -251,6 +254,7 @@ class DocxQuestionParser
                     'locator' => $block['locator'],
                     'stimulus' => $stimulus,
                     'unsupported_blocks' => $blockUnsupported,
+                    'has_table_content' => ($block['locator']['kind'] ?? null) === 'table-cell',
                 ];
                 $answerSection = false;
                 continue;
@@ -314,7 +318,7 @@ class DocxQuestionParser
             foreach (($raw['stimulus']['unsupported_blocks'] ?? []) as $unsupportedStimulusBlock) {
                 $errors[] = 'Stimulus bersama belum dapat diimpor penuh: ' . $unsupportedStimulusBlock;
             }
-            if (!empty($raw['has_table_content']) || (($raw['stimulus']['source']['kind'] ?? null) === 'table-cell')) {
+            if (!empty($raw['has_table_content']) || !empty($raw['stimulus']['has_table_content']) || (($raw['stimulus']['source']['kind'] ?? null) === 'table-cell')) {
                 $warningsForQuestion[] = 'Konten berasal dari tabel Word. Sistem membaca urutan teks per sel; periksa kembali susunan tabel pada preview.';
             }
 
