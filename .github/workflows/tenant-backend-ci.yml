@@ -7,6 +7,7 @@ on:
       - work/schema-dump-export-20261119
       - fix/web-portal-usability-rbac-20261120
       - work/web-admin-implementation-20261123
+      - work/guru-docx-import-e2e-20261125
       - work/solo-web-cbt-completion-20261123
       - work/solo-web-cbt-ci-repair-20261123
       - work/solo-web-cbt-next-20261123
@@ -15,6 +16,7 @@ on:
       - work/phpunit-41-root-cause-20261123
       - work/p1-seven-targets-20261124
       - feature/admin-teacher-import-20261126-r1
+      - work/guru-docx-import-e2e-20261125
   pull_request:
     branches:
       - main
@@ -26,11 +28,11 @@ permissions:
 
 concurrency:
   group: tenant-backend-ci-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref == 'refs/heads/feature/admin-teacher-import-20261126-r1' }}
+  cancel-in-progress: ${{ github.ref == 'refs/heads/feature/admin-teacher-import-20261126-r1' || github.ref == 'refs/heads/work/guru-docx-import-e2e-20261125' }}
 
 jobs:
   benchmark-mysql-pdf:
-    if: github.ref != 'refs/heads/feature/admin-teacher-import-20261126-r1'
+    if: github.ref != 'refs/heads/feature/admin-teacher-import-20261126-r1' && github.ref != 'refs/heads/work/guru-docx-import-e2e-20261125'
     name: Disposable MySQL benchmark and PDF Policy verification
     runs-on: ubuntu-latest
     timeout-minutes: 25
