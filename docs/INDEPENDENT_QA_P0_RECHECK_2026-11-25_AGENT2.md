@@ -429,3 +429,133 @@ Status packaging tetap **FAIL P0 / NOT VERIFIED**, bukan sekadar warning.
 - Hanya menambahkan addendum laporan dan checkpoint pada branch audit independen.
 - Tidak mengubah source Agent 1, workflow Agent 1, migration, database, PR, VPS, atau deployment.
 - Tidak menjalankan PHPUnit, Gradle, migration, browser test, atau operasi database. Bukti pengujian yang dicatat berasal dari GitHub Actions Agent 1.
+
+
+---
+
+# ADDENDUM — ATP PROVENANCE & ZIP ARCHIVE FOLLOW-UP
+Tanggal pemeriksaan: 25 November 2026
+Mode: read-only; pemeriksaan GitHub exact commit, source, test, workflow, run status, dan artifact listing.
+
+## 1. Exact source refs dan CI
+
+- Branch Agent 1 ZIP P0: `work/limited-zip-p0-20261125`.
+- Exact HEAD pada pemeriksaan: `c0d7b4f4805cafa4db35253b5291216cdef6a94c`.
+- Commit source/test yang sedang diuji Run #142: `1a9fffeb85f7efbdcc10446a064786749218a63e`.
+- Perbandingan `1a9fff` → `c0d7b4`: satu commit tambahan dan satu file dokumentasi backup manifest saja; tidak ada source/test berubah setelah SHA yang sedang diuji.
+- Service blob: `3e1a484aec0a212234e866c04bfde3d2789d2aa6`.
+- Regression test blob: `58343c391e239f8724af382c2669c66768f03890`.
+- Acceptance test blob: `9d51e8c99e998afe8941f49ee0ac9c4874dd1b21`.
+- Workflow build ZIP blob: `c2ea4c907001ce7f12aa347f354f8099dffa07e`.
+
+Run #142: https://github.com/zane0184/cbt_november/actions/runs/45534390278
+- Tested exact SHA: `1a9fffeb85f7efbdcc10446a064786749218a63e`.
+- Job PHP 8.3 / MySQL 8.0 InnoDB: IN_PROGRESS pada pemeriksaan.
+- Job PHP 8.4 / MySQL 8.0 InnoDB: IN_PROGRESS pada pemeriksaan.
+- Conclusion: belum tersedia; tidak ada angka pass/fail yang dapat disahkan.
+- Artifact list: kosong.
+
+Run #143: https://github.com/zane0184/cbt_november/actions/runs/45534521144
+- Exact SHA: `c0d7b4f4805cafa4db35253b5291216cdef6a94c`.
+- Trigger commit hanya menambahkan `docs/backup/P0_02A_ACTIVE_STATUS_TEST_20261125/MANIFEST.md`.
+- Status pending pada pemeriksaan; belum ada hasil.
+- Karena perubahan setelah Run #142 hanya dokumentasi, source/test yang diperiksa pada Run #142 identik dengan source/test pada HEAD saat ini. Namun CI exact HEAD c0d7 tetap belum selesai.
+
+## 2. AUDIT — TeacherLearningOutcomeService::createAtp()
+
+### Source flow yang diperiksa
+
+Pada `TeacherLearningOutcomeService::createAtp()`:
+1. Memerlukan user terautentikasi, profil Guru, dan permission `curriculum.manage`.
+2. Mengunci assignment aktif milik Guru pada tenant yang sama dan tanggal penugasan yang berlaku.
+3. Memvalidasi registrasi kurikulum serta official subject structure dari assignment snapshot.
+4. Mengambil TP induk berdasarkan tenant, registrasi, assignment, owner, versi, struktur mapel, mapel, tahun pelajaran, semester, parent CP tidak null, status TP DRAFT/PUBLISHED, dan `is_current=true`; row dikunci.
+5. Memanggil `resolveVerifiedOfficialCp()` menggunakan owner, versi, subject structure, dan `parentTp->parent_cp_id`.
+6. Baru setelah validasi provenance lulus, membuat ATP, menyalin mapping TP, dan menulis audit log; seluruh proses berada dalam transaksi DB.
+
+Helper `resolveVerifiedOfficialCp()`:
+- mensyaratkan CP ada, tenant/owner, versi, struktur mapel, `outcome_type=CP`, `status=ACTIVE`, `verification_status=ARTIFACT_CHECKSUM_VERIFIED`, `is_official=true`, dan `is_editable=false`;
+- mengunci row CP;
+- mensyaratkan source_id dan mengambil row sumber dalam tenant/owner yang sama dengan `lockForUpdate()`;
+- mensyaratkan status sumber `ARTIFACT_CHECKSUM_VERIFIED`;
+- mensyaratkan source checksum dan CP source_checksum masing-masing berbentuk 64 karakter hex;
+- membandingkan checksum dengan `hash_equals()`;
+- menolak dengan ValidationException sebelum row ATP, mapping, atau audit baru dibuat bila gate gagal.
+
+### Jalur pemanggilan yang ditemukan
+
+- `TeacherLearning::createTp()` → `TeacherLearningOutcomeService::createTp()`.
+- `TeacherLearning::createAtp()` → `TeacherLearningOutcomeService::createAtp()`.
+- `TeacherLearning::publish()` → `TeacherLearningOutcomeService::publish()`.
+- Di dalam service, helper CP yang sama dipanggil oleh `createTp()`, `createAtp()`, dan `publish()`; jadi validasi CP tidak hanya dilakukan ketika ATP dibuat, tetapi diulang ketika TP/ATP dipublikasikan.
+- Question Bank dan service pemetaan kurikulum asesmen memiliki pemeriksaan provenance CP tersendiri. Pemeriksaan itu bukan pemanggilan `createAtp()` dan tetap harus diuji melalui acceptance question/assessment terpisah.
+
+### Regression test yang ditemukan pada exact source
+
+`TeacherLearningOutcomeProvenanceTest` mencakup:
+- CP berstatus PENDING → create ATP ditolak.
+- Source checksum kosong → ditolak.
+- Source checksum tidak cocok → ditolak.
+- CP source_checksum tidak cocok → ditolak.
+- CP yang sebelumnya verified diubah menjadi INACTIVE → ditolak.
+- Setelah CP diaktifkan kembali, source yang sebelumnya verified diubah menjadi PENDING → ditolak.
+- TP tanpa parent CP yang valid → ditolak.
+- Positive control dengan provenance fixture sintetis yang checksum-nya konsisten → ATP dibuat.
+- Pemanggilan langsung service tanpa permission `curriculum.manage` → 403.
+
+Setiap negative helper assertion membandingkan jumlah ATP, mapping, dan audit log sebelum/sesudah, sehingga menguji tidak adanya row parsial. Positive fixture secara eksplisit ditandai test-only; ini bukan bukti CP resmi.
+
+`P002ANonCpAcademicAcceptanceTest` juga menguji CP sumber Pendis 9941 yang tetap PENDING: create TP, create ATP, publish TP, publish ATP, dan alur Question Bank ditolak; test memeriksa row outcome tetap tidak bertambah atau tetap DRAFT. Fixture CP adalah placeholder test-only yang tertaut ke source row PENDING, bukan konten CP resmi.
+
+### Kekurangan coverage yang masih terlihat
+
+- Belum terlihat kasus khusus source row hilang/soft-deleted, source_id menunjuk tenant lain, CP owner/version/subject structure mismatch, atau checksum format salah selain null/mismatch.
+- Status sumber yang berubah diuji ke PENDING; belum ada variasi status invalid lain secara terpisah.
+- Positive path menggunakan synthetic verified fixture; tidak boleh ditafsirkan sebagai validasi dokumen CP nyata.
+- Source review dan keberadaan test bukan bukti test tersebut telah lulus dijalankan.
+
+**Status independen createAtp saat ini: SOURCE REVIEW PASS WITH COVERAGE GAPS; REGRESSION TEST RESULT NOT VERIFIED.** Jangan menaikkannya menjadi PASS sampai Run #142/143 selesai dan log membuktikan test yang relevan lulus pada MySQL 8/InnoDB PHP 8.3 dan 8.4.
+
+## 3. AUDIT — packaging workflow dan ZIP exact HEAD
+
+Workflow `.github/workflows/build-web-deployment.yml` pada HEAD c0d7 masih blob `c2ea4c9...`, identik dengan workflow yang sebelumnya diperiksa. Tidak ada archive guard fix pada commit baru.
+
+Temuan aktual:
+- rsync mengecualikan `.env` persis dan `backup_before_patch/`, tetapi tidak mengecualikan `backups/`.
+- Guard hanya menolak `.env` persis; belum ada denylist rekursif `.env.*` dengan allowlist `.env.example`.
+- Tidak ada guard generik untuk database dumps/SQLite files, private key/certificate/credential, log di semua lokasi, cache umum, temp/swap/crash files, atau backup dengan pola nama lain.
+- Guard archive melakukan `unzip -t`, membuat contents list, lalu grep pola terbatas (backup_before_patch, tests, .env persis, beberapa PHPUnit/demo files). Ia tidak memeriksa semua kategori file terlarang.
+- Workflow membuat `SHA256SUMS.txt` di stage tree dan checksum ZIP, tetapi tidak mengekstrak ZIP ke direktori kosong lalu menjalankan `sha256sum -c` atas manifest hasil ekstraksi.
+- Workflow memeriksa keberadaan README hasil salinan dan panduan aktivasi; pemeriksaan ini hanya saat build stage, bukan inspeksi isi README pada artifact yang sudah diekstrak.
+- Branch `work/limited-zip-p0-20261125` tidak ada dalam daftar trigger `push.branches` workflow packaging. `workflow_dispatch` tersedia, tetapi tidak ada run packaging yang dapat diverifikasi pada exact HEAD.
+- Tidak ada ZIP artifact pada Run #142; workflow tersebut adalah DOCX Import Parser CI, bukan package build. Tidak ada artifact ZIP exact HEAD yang tersedia pada listing yang diperiksa.
+
+**Status packaging: FAIL P0 / NOT VERIFIED.** Workflow belum diperbaiki dan belum dijalankan untuk menghasilkan ZIP exact HEAD. Karena tidak ada ZIP artifact, auditor tidak dapat mengklaim telah memeriksa daftar file arsip, ekstraksi bersih, checksum seluruh file, struktur paket, atau README hasil ekstraksi.
+
+### Kriteria wajib ketika ZIP exact HEAD tersedia
+
+1. Cocokkan metadata ZIP dengan exact source SHA, branch, waktu build, dan artifact run.
+2. Periksa daftar isi arsip secara rekursif untuk menolak:
+   - `backups/`, `backup_before_patch/`, `*.before`, backup manifest internal;
+   - semua `.env*` selain `.env.example`;
+   - `.sql`, `.dump`, `.sqlite`, `.db` serta dump terkompresi;
+   - `.pem`, `.key`, `.p12`, `.pfx`, private certificates, credential/token files;
+   - log, cache, session, compiled views, temp/swap/crash files, PHPUnit cache, tests/fixtures/debug output, dan artefak build yang tidak dibutuhkan.
+3. Ekstrak ke direktori kosong baru (bukan menimpa folder lama).
+4. Jalankan verifikasi checksum seluruh file hasil ekstraksi terhadap `SHA256SUMS.txt`; pastikan manifest tidak meng-hash dirinya sendiri dan tidak ada file yang tertinggal/tidak tercatat.
+5. Verifikasi struktur Laravel lengkap: artisan, composer.json/lock, vendor/autoload, .env.example, migrations, routes, config, resources, storage writable placeholders, serta tidak ada source test/backup/secrets.
+6. Baca README hasil ekstraksi dan pastikan langkah Windows Explorer, penempatan .env milik pengguna dari backup pribadi, ekstraksi, kebutuhan PHP/MySQL, pembukaan/pemasangan, dan peringatan bahwa paket bukan persetujuan produksi dinyatakan jelas.
+7. Simpan bukti artifact ID, ukuran, SHA-256 ZIP, contents list, hasil scan denylist, hasil extract, hasil `sha256sum -c`, jumlah file, dan inspeksi README.
+8. Lakukan browser E2E ke backend Laravel nyata dari hasil ekstraksi; jangan mengganti dengan mock API.
+
+## 4. DESAIN / acceptance tambahan
+
+Dua fokus wajib audit berikutnya:
+- ATP provenance: uji source code, jalur Livewire → service, helper CP, status CP/source, checksum format/mismatch, owner/version/subject mismatch, source missing/tenant mismatch, permission bypass langsung, dan rollback/no-partial-state. Gunakan MySQL 8/InnoDB disposable.
+- ZIP: audit exact workflow dan artifact hasil build setelah guard fix; jangan menganggap lulus dari YAML, manifest build-stage, atau `unzip -t` saja.
+
+## 5. IMPLEMENTASI Agent 2
+
+- Hanya addendum laporan/checkpoint pada branch audit independen.
+- Tidak ada source/workflow Agent 1, test Agent 1, branch Agent 1, migration, database, merge, PR, VPS, atau deployment yang diubah.
+- Tidak menjalankan test atau build ZIP dari sisi Agent 2.
