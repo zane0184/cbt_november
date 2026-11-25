@@ -13,4 +13,6 @@ Backup dibuat sebelum perubahan source. Backup berisi salinan UTF-8 byte-equival
 
 | `.github/workflows/docx-import-parser-ci.yml` | `.github/backups/coordinator-web-cbt-p0-20261125/docx-import-parser-ci.yml.before` | 5883 | `5e499184df178ef4dfbe73b2bf6e561944d2050add8cd1c04de899eb4bb5e4ef` | `d1740f8160b1c8c06041867e8a6da547c2014187` | `07ecc399d8619decac6b13e4b310aa90a5b20ce3` |
 
+| `backend-laravel/tests/Feature/Security/AnswerKeyLeakageTest.php` | `backend-laravel/backups/coordinator-web-cbt-p0-20261125/AnswerKeyLeakageTest.php.before` | 19227 | `3d396bc21b3911865dd6cda49db78ca5152288b67dd7da238876a50a819a6f35` | `0a0ad3559981a3176a58c21b48bc5869e1812c04` | `568f1301dcbea512fe16258e0e8b1abf26374abd` |
+
 Tidak ada file source yang diubah sebelum seluruh backup di atas dibuat.
