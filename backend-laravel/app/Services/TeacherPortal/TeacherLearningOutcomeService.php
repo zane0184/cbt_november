@@ -411,7 +411,7 @@ class TeacherLearningOutcomeService
         string $action
     ): MultiLearningOutcome {
         $failure = fn () => ValidationException::withMessages([
-            $errorKey => "CP induk belum memenuhi provenance artefak resmi terverifikasi. {$action} tidak dapat dilanjutkan.",
+            $errorKey => "CP induk belum memenuhi provenance checksum SHA-256 artefak resmi terverifikasi. {$action} tidak dapat dilanjutkan.",
         ]);
 
         if (!$cpId) {
