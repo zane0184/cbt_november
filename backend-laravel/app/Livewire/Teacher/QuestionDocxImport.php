@@ -103,6 +103,23 @@ class QuestionDocxImport extends Component
             'selectedCpIds.*' => ['required', 'uuid', 'distinct'],
             'selectedOutcomeIds' => ['nullable', 'array'],
             'selectedOutcomeIds.*' => ['required', 'uuid', 'distinct'],
+            'questions' => ['required', 'array', 'min:1'],
+            'questions.*.included' => ['sometimes', 'boolean'],
+            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
+            'questions.*.stem' => ['required', 'string', 'max:12000'],
+            'questions.*.options' => ['sometimes', 'array', 'max:4'],
+            'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
+            'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
+            'questions.*.options.*.is_correct' => ['sometimes', 'boolean'],
+            'questions.*.statements' => ['sometimes', 'array', 'max:3'],
+            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40'],
+            'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
+            'questions.*.statements.*.is_true' => ['sometimes', 'boolean'],
+            'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
+            'questions.*.mapping_cp_ids' => ['sometimes', 'array'],
+            'questions.*.mapping_cp_ids.*' => ['required', 'uuid', 'distinct'],
+            'questions.*.mapping_outcome_ids' => ['sometimes', 'array'],
+            'questions.*.mapping_outcome_ids.*' => ['required', 'uuid', 'distinct'],
         ]);
 
         if (!$this->hasPreview || !$this->previewHash) {
