@@ -237,7 +237,7 @@ class DocxQuestionParser
             }
 
             if (preg_match('/^([a-c])\s*[.)=:]\s*(.+)$/iu', $text, $statementMatch)
-                && ($active['hint'] && (str_contains($active['hint'], 'B/S') || str_contains($active['hint'], 'BENAR/SALAH') || str_contains($active['hint'], 'BS')))) {
+                && ($active['hint'] && !str_contains($active['hint'], 'TUNGGAL') && (str_contains($active['hint'], 'B/S') || str_contains($active['hint'], 'BENAR/SALAH') || str_contains($active['hint'], 'BS')))) {
                 $active['statements'][] = [
                     'id' => 's' . strtolower($statementMatch[1]),
                     'text' => trim($statementMatch[2]),
@@ -375,17 +375,36 @@ class DocxQuestionParser
     private function resolveType(array $raw, ?string $answer): string
     {
         $hint = strtoupper((string) ($raw['hint'] ?? ''));
-        if (str_contains($hint, 'B/S TUNGGAL') || str_contains($hint, 'BENAR/SALAH TUNGGAL')) {
-            return 'TRUE_FALSE';
-        }
-        if (str_contains($hint, 'B/S') || str_contains($hint, 'BENAR/SALAH') || str_contains($hint, 'BS')) {
-            return 'TRUE_FALSE_GROUP';
-        }
-        if (str_contains($hint, 'PGK') || str_contains($hint, 'KOMPLEKS')) {
-            return 'MULTIPLE_RESPONSE';
-        }
-        if (str_contains($hint, 'PG') || str_contains($hint, 'PILIHAN GANDA')) {
-            return 'MULTIPLE_CHOICE';
+        if ($hint !== '') {
+            if (str_contains($hint, 'B/S TUNGGAL') || str_contains($hint, 'BENAR/SALAH TUNGGAL')) {
+                return 'TRUE_FALSE';
+            }
+            if (str_contains($hint, 'B/S') || str_contains($hint, 'BENAR/SALAH') || $hint === 'BS') {
+                return 'TRUE_FALSE_GROUP';
+            }
+            if (str_contains($hint, 'PGK') || str_contains($hint, 'KOMPLEKS')) {
+                return 'MULTIPLE_RESPONSE';
+            }
+            if ($hint === 'PG' || str_contains($hint, 'PILIHAN GANDA')) {
+                return 'MULTIPLE_CHOICE';
+            }
+            if (str_contains($hint, 'MATCH') || str_contains($hint, 'JODOHKAN')) {
+                return 'MATCHING';
+            }
+            if (str_contains($hint, 'ESSAY') || str_contains($hint, 'URAIAN')) {
+                return 'ESSAY';
+            }
+            if (str_contains($hint, 'ISIAN') || str_contains($hint, 'SHORT ANSWER')) {
+                return 'SHORT_ANSWER';
+            }
+            if (str_contains($hint, 'LENGKAPI')) {
+                return 'FILL_BLANK';
+            }
+            if (str_contains($hint, 'URUT')) {
+                return 'ORDERING';
+            }
+
+            return 'UNSUPPORTED';
         }
 
         $tokens = $this->answerTokens((string) $answer);
