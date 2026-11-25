@@ -106,6 +106,30 @@ class QuestionDocxImport extends Component
         }
     }
 
+    public function addGroupedStatement(int $questionIndex): void
+    {
+        if (!isset($this->questions[$questionIndex]) || count($this->questions[$questionIndex]['statements'] ?? []) >= 3) {
+            return;
+        }
+        $next = count($this->questions[$questionIndex]['statements'] ?? []) + 1;
+        $this->questions[$questionIndex]['statements'][] = [
+            'id' => 's' . $next,
+            'text' => '',
+            'is_true' => '',
+        ];
+    }
+
+    public function removeGroupedStatement(int $questionIndex, int $statementIndex): void
+    {
+        if (!isset($this->questions[$questionIndex]['statements'])
+            || count($this->questions[$questionIndex]['statements']) <= 3
+            || !isset($this->questions[$questionIndex]['statements'][$statementIndex])) {
+            return;
+        }
+        unset($this->questions[$questionIndex]['statements'][$statementIndex]);
+        $this->questions[$questionIndex]['statements'] = array_values($this->questions[$questionIndex]['statements']);
+    }
+
     public function preview(): void
     {
         $this->authorizeAccess();
