@@ -300,9 +300,11 @@ class InstallerService
 
                 $this->stateStore->write(array_merge($state, ['state' => 'SCHEMA_MIGRATING', 'last_error_code' => null]));
                 $exitCode = null;
+                $diagnosticOutput = '';
                 try {
                     $exitCode = Artisan::call('migrate', ['--force' => true]);
                     $output = Artisan::output();
+                    $diagnosticOutput .= $output;
                     if ($exitCode !== 0) {
                         throw new RuntimeException('MIGRATION_EXIT_' . $exitCode);
                     }
@@ -311,6 +313,7 @@ class InstallerService
                     // creates the reserved System Tenant and official metadata registries;
                     // it does not create demo madrasahs, users, or CP content.
                     $seedExitCode = Artisan::call('db:seed', ['--force' => true]);
+                    $diagnosticOutput .= "\n" . Artisan::output();
                     if ($seedExitCode !== 0) {
                         throw new RuntimeException('REFERENCE_CATALOG_SEED_EXIT_' . $seedExitCode);
                     }
@@ -343,7 +346,9 @@ class InstallerService
                     ]));
                     Log::error('CBT installer migration failed; manual recovery required.', [
                         'exception' => get_class($exception),
+                        'exception_code' => $exception->getCode(),
                         'exit_code' => $exitCode,
+                        'artisan_output_tail' => substr($diagnosticOutput, -4000),
                     ]);
                     return ['success' => false, 'message' => 'Migrasi gagal atau tidak lengkap. Database mungkin berada pada kondisi parsial; installer tidak akan mengulang atau menghapus tabel otomatis. Lakukan pemeriksaan dan recovery terisolasi.'];
                 }
