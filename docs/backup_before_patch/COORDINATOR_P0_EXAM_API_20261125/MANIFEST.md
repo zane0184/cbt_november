@@ -11,4 +11,6 @@ Backup dibuat sebelum perubahan source. Backup berisi salinan UTF-8 byte-equival
 | `backend-laravel/app/Policies/ExamPolicy.php` | `backend-laravel/backups/coordinator-web-cbt-p0-20261125/ExamPolicy.php.before` | 7016 | `57f689d697bae0d20bb41f9b7ebf32cb5b2cd82a40086abe85dd05dd72e73d05` | `b2be589419b935a2f5e15dfe3985aaa212e55d71` | `3d5876fcfb0c296d24cca60380cd656b5522269e` |
 | `backend-laravel/tests/Feature/ExamListContractTest.php` | `backend-laravel/backups/coordinator-web-cbt-p0-20261125/ExamListContractTest.php.before` | 7933 | `c2820118d3ce573e87ff9ba68ef0db3a55dbcc6ea0612741ba2d8753e27cfd41` | `3e9897eaba0d9cecb4c623366008c93b60bf0f8f` | `aa2a8fc18c2721504be4070c71c4278bd550b02a` |
 
+| `.github/workflows/docx-import-parser-ci.yml` | `.github/backups/coordinator-web-cbt-p0-20261125/docx-import-parser-ci.yml.before` | 5883 | `5e499184df178ef4dfbe73b2bf6e561944d2050add8cd1c04de899eb4bb5e4ef` | `d1740f8160b1c8c06041867e8a6da547c2014187` | `07ecc399d8619decac6b13e4b310aa90a5b20ce3` |
+
 Tidak ada file source yang diubah sebelum seluruh backup di atas dibuat.
