@@ -627,6 +627,17 @@ class QuestionBankTest extends TestCase
         $this->assertSame('PROPORTIONAL_PER_STATEMENT_V1', $groupVersion->metadata['statement_scoring']);
         $this->assertTrue((bool) $groupVersion->is_current);
         $this->assertSame('DRAFT', $groupVersion->status);
+
+        $publishResponse = $this->postJson('/api/v1/questions/' . $groupVersion->question_id . '/publish');
+        $publishResponse->assertOk();
+        $this->assertDatabaseHas('questions', [
+            'id' => $groupVersion->question_id,
+            'status' => 'PUBLISHED',
+        ]);
+        $this->assertDatabaseHas('question_versions', [
+            'id' => $groupVersion->id,
+            'status' => 'PUBLISHED',
+        ]);
     }
 
     private function makeDocxQuestionUpload(array $lines): UploadedFile
