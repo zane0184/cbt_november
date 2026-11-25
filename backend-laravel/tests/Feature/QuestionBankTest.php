@@ -583,7 +583,7 @@ class QuestionBankTest extends TestCase
             ->call('preview')
             ->assertHasNoErrors()
             ->assertSee('Preview hasil pembacaan')
-            ->assertSee('TRUE_FALSE_GROUP')
+            ->assertSee('Benar/Salah 3 pernyataan')
             ->call('importDrafts')
             ->assertHasNoErrors()
             ->assertSee('3 soal berhasil disimpan sebagai DRAFT');
