@@ -640,6 +640,40 @@ class QuestionBankTest extends TestCase
         ]);
     }
 
+    public function test_grouped_true_false_cannot_be_published_without_exactly_three_stable_statement_ids(): void
+    {
+        $this->actingAs($this->userA);
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'status' => 'DRAFT',
+            'created_by' => $this->userA->id,
+        ]);
+        $version = $question->versions()->create([
+            'tenant_id' => $this->tenantA->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'TRUE_FALSE_GROUP',
+            'stem' => 'Tentukan benar atau salah.',
+            'metadata' => [
+                'statement_items' => [
+                    ['id' => 'sa', 'text' => 'Pernyataan A', 'is_true' => true],
+                    ['id' => 'sb', 'text' => 'Pernyataan B', 'is_true' => false],
+                ],
+            ],
+            'status' => 'DRAFT',
+            'is_current' => true,
+            'created_by' => $this->userA->id,
+        ]);
+
+        $this->postJson('/api/v1/questions/' . $question->id . '/publish')
+            ->assertStatus(422);
+
+        $this->assertDatabaseHas('questions', ['id' => $question->id, 'status' => 'DRAFT']);
+        $this->assertDatabaseHas('question_versions', ['id' => $version->id, 'status' => 'DRAFT']);
+    }
+
     private function makeDocxQuestionUpload(array $lines): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-question-docx-');
