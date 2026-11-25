@@ -511,9 +511,31 @@ class InstallerService
                 'INSTALL_SYSTEM_TENANT_MISSING_OR_INVALID' => 'System Tenant referensi tidak ditemukan atau identitasnya tidak valid. Instalasi dihentikan.',
                 default => 'Gagal membuat tenant dan Admin Madrasah. Tidak ada akun existing yang akan diperbarui.',
             };
-            Log::error('CBT installer tenant/admin creation failed.', ['exception' => get_class($exception)]);
+            Log::error('CBT installer tenant/admin creation failed.', [
+                'exception' => get_class($exception),
+                'diagnostic_code' => $this->safeInstallerDiagnosticCode($exception),
+            ]);
             return ['success' => false, 'message' => $message];
         }
+    }
+
+    /**
+     * Return only allowlisted diagnostic identifiers. Exception messages and
+     * request/database data are deliberately excluded from installer logs.
+     */
+    private function safeInstallerDiagnosticCode(Throwable $exception): string
+    {
+        if (! ($exception instanceof RuntimeException)) {
+            return 'UNCLASSIFIED';
+        }
+
+        return match ($exception->getMessage()) {
+            'Verified KMA 1503/2025 phase registry is unavailable.' => 'ACADEMIC_REGISTRY_VERSION_MISSING',
+            'KMA 1503/2025 phase registry is incomplete or ambiguous.' => 'ACADEMIC_REGISTRY_PHASES_INVALID',
+            'KMA 1503/2025 MI grade registry is incomplete or ambiguous.' => 'ACADEMIC_REGISTRY_GRADES_INVALID',
+            'Tenant context mismatch during academic bootstrap.' => 'TENANT_CONTEXT_MISMATCH',
+            default => 'UNCLASSIFIED',
+        };
     }
 
     public function currentState(): string

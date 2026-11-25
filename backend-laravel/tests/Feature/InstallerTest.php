@@ -8,9 +8,11 @@ use App\Models\Tenant;
 use App\Models\User;
 use App\Services\InstallerService;
 use App\Services\InstallerStateStore;
+use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\SystemTenantSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class InstallerTest extends TestCase
@@ -181,7 +183,27 @@ class InstallerTest extends TestCase
 
     public function test_admin_creation_assigns_only_admin_madrasah_role(): void
     {
-        SystemTenantSeeder::seed();
+        // Mirror the production installer's db:seed lifecycle, not only the
+        // reserved System Tenant row: the official curriculum registry is a
+        // required input to tenant academic provisioning.
+        $this->seed(DatabaseSeeder::class);
+        $this->assertDatabaseHas('multi_curriculum_versions', [
+            'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+            'version_code' => 'KMA-1503-2025',
+            'status' => 'ACTIVE',
+            'is_official' => true,
+            'is_editable' => false,
+        ]);
+        $this->assertDatabaseHas('multi_curriculum_structures', [
+            'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+            'code' => 'FASE_A',
+            'node_type' => 'PHASE',
+        ]);
+        $this->assertDatabaseHas('multi_curriculum_structures', [
+            'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+            'code' => 'MI_1',
+            'node_type' => 'GRADE_LEVEL',
+        ]);
         $mysql = config('database.connections.mysql');
         $fingerprint = hash('sha256', json_encode([
             'host' => trim((string) ($mysql['host'] ?? '127.0.0.1')),
@@ -225,6 +247,53 @@ class InstallerTest extends TestCase
         $this->assertFalse($guruRole->permissions->contains('name', 'curriculum.registry.manage'));
         $this->assertFalse($guruRole->permissions->contains('name', 'academic.manage'));
         $this->assertCount(0, $siswaRole->permissions);
+    }
+
+    public function test_missing_official_registry_emits_only_safe_diagnostic_code_and_rolls_back(): void
+    {
+        // Deliberately seed only the System Tenant to exercise the missing
+        // registry failure path without exposing the exception message.
+        SystemTenantSeeder::seed();
+        $mysql = config('database.connections.mysql');
+        $fingerprint = hash('sha256', json_encode([
+            'host' => trim((string) ($mysql['host'] ?? '127.0.0.1')),
+            'port' => (int) ($mysql['port'] ?? 3306),
+            'database' => trim((string) ($mysql['database'] ?? 'forge')),
+            'username' => (string) ($mysql['username'] ?? 'forge'),
+        ], JSON_THROW_ON_ERROR));
+
+        app(InstallerStateStore::class)->synchronized(function () use ($fingerprint): void {
+            app(InstallerStateStore::class)->write([
+                'state' => 'SCHEMA_READY',
+                'db_fingerprint' => $fingerprint,
+                'migration_count' => 1,
+            ]);
+        });
+
+        Log::spy();
+        $result = app(InstallerService::class)->createInitialDataAndAdmin([
+            'madrasah_name' => 'MIN Registry Missing',
+            'madrasah_code' => 'MINREGISTRYMISSING',
+            'admin_name' => 'Admin Registry Missing',
+            'admin_username' => 'admin.registry.missing',
+            'admin_email' => 'registry-missing@min.test',
+            'admin_password' => 'RegistryMissingPassword123!',
+        ]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(
+            'Gagal membuat tenant dan Admin Madrasah. Tidak ada akun existing yang akan diperbarui.',
+            $result['message']
+        );
+        $this->assertDatabaseMissing('tenants', ['code' => 'MINREGISTRYMISSING']);
+        $this->assertDatabaseMissing('users', ['email' => 'registry-missing@min.test']);
+
+        Log::shouldHaveReceived('error')->once()->withArgs(
+            fn ($message, $context): bool => $message === 'CBT installer tenant/admin creation failed.'
+                && ($context['exception'] ?? null) === \RuntimeException::class
+                && ($context['diagnostic_code'] ?? null) === 'ACADEMIC_REGISTRY_VERSION_MISSING'
+                && count($context) === 2
+        );
     }
 
     public function test_admin_creation_recovers_a_committed_pair_when_state_checkpoint_was_lost(): void
