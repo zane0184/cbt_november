@@ -29,8 +29,8 @@ class TeacherLearningOutcomeService
         array $graduateDimensionIds
     ): TenantLearningOutcome {
         $user = auth()->user();
-        $profile = app(TeacherPortalAccess::class)->profile($user);
         $this->assertCurriculumPermission($user);
+        $profile = app(TeacherPortalAccess::class)->profile($user);
         $tenantId = (string) $user->tenant_id;
 
         return DB::transaction(function () use (
@@ -156,8 +156,8 @@ class TeacherLearningOutcomeService
         int $sequenceNumber
     ): TenantLearningOutcome {
         $user = auth()->user();
-        $profile = app(TeacherPortalAccess::class)->profile($user);
         $this->assertCurriculumPermission($user);
+        $profile = app(TeacherPortalAccess::class)->profile($user);
         $tenantId = (string) $user->tenant_id;
 
         return DB::transaction(function () use (
@@ -309,8 +309,8 @@ class TeacherLearningOutcomeService
     public function publish(string $outcomeId): TenantLearningOutcome
     {
         $user = auth()->user();
-        $profile = app(TeacherPortalAccess::class)->profile($user);
         $this->assertCurriculumPermission($user);
+        $profile = app(TeacherPortalAccess::class)->profile($user);
         $tenantId = (string) $user->tenant_id;
 
         return DB::transaction(function () use ($user, $profile, $tenantId, $outcomeId): TenantLearningOutcome {
@@ -356,9 +356,7 @@ class TeacherLearningOutcomeService
             }
 
             if ($outcome->outcome_type === 'TP' && $outcome->parent_tp_id !== null) {
-                throw ValidationException::withMessages([
-                    'outcome' => 'TP induk memiliki relasi parent TP yang tidak sah.',
-                ]);
+                $this->reject('CP_PARENT_RELATION_INVALID', 'TP induk memiliki relasi parent TP yang tidak sah.', 'outcome');
             }
 
             if ($outcome->outcome_type === 'ATP') {
@@ -381,9 +379,7 @@ class TeacherLearningOutcomeService
                     || (string) $parentTp->subject_id !== (string) $outcome->subject_id
                     || (string) $parentTp->academic_year_id !== (string) $outcome->academic_year_id
                     || (string) $parentTp->semester_id !== (string) $outcome->semester_id) {
-                    throw ValidationException::withMessages([
-                        'outcome' => 'Relasi TP induk pada ATP tidak konsisten.',
-                    ]);
+                    $this->reject('CP_PARENT_RELATION_INVALID', 'Relasi TP induk pada ATP tidak konsisten.', 'outcome');
                 }
             }
 
