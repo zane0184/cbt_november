@@ -6,6 +6,9 @@
             <p class="text-xs text-textSecondary mt-1">Kelola butir soal pilihan ganda, pilihan ganda kompleks, benar/salah, menjodohkan, dan uraian/esai</p>
         </div>
         <div class="flex flex-wrap gap-2">
+            <a href="/guru/bank-soal/import-docx" class="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-bold text-indigo-800 transition hover:bg-indigo-100">
+                <span aria-hidden="true">⇧</span> Import Soal Word (.docx)
+            </a>
             @can('create', \App\Models\Question::class)
                 <button wire:click="openCreateModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
                     <span>+</span> Buat Soal Baru
