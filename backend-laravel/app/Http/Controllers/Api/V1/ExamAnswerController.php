@@ -465,6 +465,21 @@ class ExamAnswerController extends Controller
                     abort(422, 'Invalid option selected.');
                 }
                 break;
+            case 'TRUE_FALSE_GROUP':
+                $statementItems = $metadata['statement_items'] ?? [];
+                if (count($statementItems) !== 3 || !isset($payload['statement_answers']) || !is_array($payload['statement_answers']) || $payload['statement_answers'] === []) {
+                    abort(422, 'Jawaban Benar/Salah kelompok harus memuat jawaban untuk pernyataan yang tersedia.');
+                }
+                $statementIds = array_map(fn ($item) => (string) ($item['id'] ?? ''), $statementItems);
+                if (count(array_unique($statementIds)) !== 3 || in_array('', $statementIds, true)) {
+                    abort(422, 'Snapshot pernyataan Benar/Salah kelompok tidak valid.');
+                }
+                foreach ($payload['statement_answers'] as $statementId => $value) {
+                    if (!is_string($statementId) || !in_array($statementId, $statementIds, true) || !is_bool($value)) {
+                        abort(422, 'Jawaban pernyataan Benar/Salah kelompok tidak valid.');
+                    }
+                }
+                break;
             case 'MULTIPLE_RESPONSE':
                 if (!isset($payload['selected_option_ids']) || !is_array($payload['selected_option_ids'])) {
                     abort(422, 'Invalid options format.');
