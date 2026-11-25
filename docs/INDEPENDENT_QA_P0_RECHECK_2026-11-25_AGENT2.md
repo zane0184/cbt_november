@@ -244,3 +244,188 @@ Catatan: PDF BSKAP 046 dapat dibaca dari domain resmi dan cakupan SD/MI serta fa
 ## 10. CATATAN LINGKUNGAN CI P0 AKADEMIK
 
 Log Run 45498672360 memperlihatkan environment test menggunakan CBT_LICENSE_TEST_BYPASS=true. Karena itu, hasil 190 passed membuktikan suite provisioning/installer yang dijalankan pada lingkungan CI disposable, tetapi **bukan** bukti bahwa aktivasi lisensi Publisher/Tenant tanpa bypass telah berhasil pada runtime. Jalur lisensi tetap memerlukan test tersendiri pada environment staging yang sah.
+
+
+---
+
+# ADDENDUM — INDEPENDENT QA RECONCILIATION UPDATE
+Tanggal audit: 25 November 2026 (WIB)
+Status: READ-ONLY — tidak ada perubahan source Agent 1, merge, migration, database produksi, atau deployment.
+
+## A. Identitas branch dan exact SHA yang diverifikasi
+
+| Area | Branch / ref | Exact HEAD / commit | Hasil |
+|---|---|---|---|
+| Agent 1 — kandidat ZIP P0 | `work/limited-zip-p0-20261125` | `52f34ee2be7d346c1e1eaba276285badc75dac7f` | HEAD terkonfirmasi |
+| Agent 1 — provisioning akademik lanjutan | `work/p0-academic-provisioning-20261125` | `ba136c2c2eeff377f621b240e54f3a6a2ff8dd7e` | HEAD terkonfirmasi |
+| Agent 2 — audit independen sebelum update ini | `audit/independent-qa-admin-guru-siswa-20261125` | `46ead67f8886f87271d34a4b4191ac8810aa8bbb` | HEAD terkonfirmasi |
+| P0-01 Installer/System Tenant | commit | `150b5ffec865230038aae37e0c9a1c94f151ed8d` | Ancestor branch ZIP P0; diuji Run #114 |
+
+Perbandingan commit membuktikan branch ZIP P0 berada tepat satu commit setelah `150b5ff`; satu-satunya file pada commit tambahan itu adalah `docs/P0_02_AUDIT_AKADEMIK_CP_PROVENANCE_2026-11-25.md`. Dengan demikian tidak ada perubahan source aplikasi setelah commit P0-01 yang diuji Run #114 pada HEAD ZIP P0 saat ini.
+
+Branch Agent 1 untuk provisioning akademik lanjutan tetap terpisah dan divergen dari branch ZIP P0. Perbandingan ref terbaru menunjukkan 106 commit hanya pada sisi provisioning dan 27 commit hanya pada sisi ZIP P0 dari merge-base `a65b4604495e8bcc153bf0e09df12a9efb11543a`. Tidak ada merge yang diasumsikan atau dilakukan oleh Agent 2.
+
+## B. AUDIT — Run #114 dan status P0-01
+
+GitHub Actions Run #114:
+`https://github.com/zane0184/cbt_november/actions/runs/45521595664`
+
+Dua job yang diperiksa langsung:
+- PHP 8.3 / MySQL 8.0 InnoDB — SUCCESS.
+- PHP 8.4 / MySQL 8.0 InnoDB — SUCCESS.
+
+Log kedua job menunjukkan checkout exact SHA `150b5ffec865230038aae37e0c9a1c94f151ed8d`, bukan branch tip yang bergerak. Kedua job berhasil pada:
+- checkout dan verifikasi exact source/disposable MySQL identity;
+- Composer lock/dependency validation;
+- PHP lint;
+- clean-install Installer E2E pada database disposable terpisah;
+- Student Import acceptance;
+- benchmark cleanup denial-path;
+- complete PHPUnit suite.
+
+Ringkasan full PHPUnit pada masing-masing PHP matrix:
+- 628 passed;
+- 1 skipped;
+- 3.143 assertions;
+- tidak ada test failed.
+
+**Keputusan P0-01: PASS / CLOSED.** Installer/System Tenant fixture correction, clean-install E2E, dan full PHPUnit PHP 8.3/8.4 telah memperoleh bukti CI. Run #109 dan tiga Installer test yang gagal di dalamnya adalah hasil historis yang **SUPERSEDED** oleh Run #114. Jangan meminta Agent 1 mengulang P0-01 dan jangan mencatat Run #109 sebagai CI terbaru atau blocker aktif.
+
+Batas: Run #114 membuktikan test di lingkungan CI disposable. Ini bukan bukti browser E2E dengan backend nyata, deployment VPS, aktivasi lisensi Publisher tanpa bypass, atau uji operasional madrasah.
+
+## C. AUDIT — rekonsiliasi source provisioning akademik
+
+Penting membedakan dua lapisan berikut.
+
+### C1. Provisioning minimum P0-01 — SUDAH ADA di branch ZIP P0
+
+Pada branch ZIP P0, `InstallerService` memanggil `TenantAcademicBootstrapper`. Source tersebut menyediakan katalog lokal minimum:
+- Kurikulum Merdeka;
+- Fase A/B/C;
+- tingkat MI 1–6 dengan relasi fase;
+- tahun pelajaran berjalan;
+- semester Ganjil/Genap;
+- satu semester aktif berdasarkan bulan.
+
+Bootstrapper memvalidasi tenant context dan registry fase/kelas pada System Tenant serta tidak membuat konten CP/TP fiktif. File `TenantAcademicBootstrapper.php` ada pada branch ZIP P0 (blob `de00f7c9beeb4fbbd8c31b105c8bf844b78e59d5`). Ini adalah provisioning minimum yang sudah tercakup dalam PASS P0-01.
+
+### C2. Provisioning akademik lanjutan — MASIH DI BRANCH TERPISAH
+
+Branch `work/p0-academic-provisioning-20261125` memiliki implementasi tambahan yang tidak ditemukan pada branch ZIP P0:
+- `TenantAcademicBootstrapService.php` untuk katalog enam tahun pelajaran 2026/2027–2031/2032 dan semester Ganjil/Genap yang tidak diaktifkan otomatis;
+- `AcademicYearManagementService.php` untuk pembuatan tahun pelajaran dan aktivasi semester oleh Admin;
+- perubahan UI `AcademicManagement.php` dan Blade;
+- perubahan installer, installation identity, teacher-subject assignment, serta test terkait.
+
+File `TenantAcademicBootstrapService.php` tidak ditemukan pada branch ZIP P0, sedangkan `TenantAcademicBootstrapper.php` yang berbeda tetap ada di branch ZIP P0. Jadi, provisioning minimum P0-01 sudah terintegrasi; **fitur kalender akademik lanjutan dan pengelolaan aktivasi semester dari branch provisioning belum terintegrasi ke kandidat ZIP P0**. Jangan menyebut seluruh implementasi provisioning dari branch terpisah sudah ada di ZIP P0. Rekonsiliasi tetap menjadi keputusan/pekerjaan Agent 1, bukan tindakan Agent 2.
+
+Bukti CI branch provisioning sebelumnya tetap terbatas pada Run `45498672360`, commit `61de22182c9804df4d8749c901069a11046024dc`, PHP 8.3, 190 passed (935 assertions). Itu bukan pengganti Run #114 dan bukan full matrix PHP 8.3/8.4 untuk branch ZIP P0.
+
+## D. AUDIT — P0-02 dan P0-02A
+
+Laporan Agent 1 `docs/P0_02_AUDIT_AKADEMIK_CP_PROVENANCE_2026-11-25.md` pada branch ZIP P0 menyatakan audit source akademik P0-02 selesai. Status ini berarti pemeriksaan source dan identifikasi gap selesai, bukan bahwa penerimaan operasional akademik telah lulus.
+
+**P0-02A Non-CP Academic Acceptance: NOT RUN / NOT VERIFIED.** Tidak ditemukan bukti run acceptance P0-02A. Jangan menganggap source audit, unit/feature tests terpisah, atau Run #114 sebagai pengganti acceptance ini.
+
+### Kriteria audit independen untuk P0-02A
+
+P0-02A dapat dinilai PASS hanya jika seluruh bukti berikut tersedia pada exact SHA kandidat ZIP P0, memakai MySQL 8/InnoDB disposable dan data uji non-produksi:
+
+1. **Setup dan tenant boundary**
+   - Installer membuat tepat satu tenant madrasah lokal beserta satu Admin; reserved System Tenant tetap terpisah sebagai registry internal.
+   - Katalog lokal yang diperlukan tersedia; tidak ada demo tenant/user atau data lintas tenant.
+   - Semua aksi diuji dengan tenant context yang eksplisit dan tenant kedua sebagai negative control.
+
+2. **Alur Admin — backend nyata**
+   - Admin membuat Guru dan Siswa; role, permission, profil, identifier, status aktif/nonaktif, dan tenant_id sesuai.
+   - Admin membuat Rombel, mapel, serta penempatan Siswa; foreign key/pivot mengarah ke tenant dan Rombel yang benar.
+   - Admin mendaftarkan metadata versi kurikulum dan mapping mapel yang memang non-CP, lalu membuat penugasan Guru pada mapel/Rombel/semester yang sah.
+   - Tidak ada CP/TP buatan atau perubahan status provenance untuk meloloskan alur.
+
+3. **Alur Guru**
+   - Guru hanya melihat/mengelola assignment yang ditugaskan kepadanya dan data tenant sendiri.
+   - Pembuatan/akses bank soal non-CP mengikuti policy/permission yang berlaku; jika publikasi mensyaratkan CP/TP resmi, sistem harus menolak secara fail-closed dan menjelaskan prasyaratnya.
+   - Tidak ada bypass langsung melalui pemanggilan service/Livewire action.
+
+4. **Alur Siswa**
+   - Siswa yang dibuat dapat ditemukan pada Rombel yang benar, autentikasi memakai identifier yang benar, dan tidak dapat melihat akun/rombel/ujian tenant lain.
+   - Bila skenario ujian non-CP memang diizinkan oleh desain aplikasi, jalankan sampai Attempt/Answer/Submit/Score; bila policy saat ini tetap mewajibkan CP/TP, catat sebagai blocked-by-policy dan jangan menyiasatinya.
+
+5. **Keamanan, integritas, dan transaksi**
+   - Negative test: permission denied, role salah, tenant mismatch, assignment lintas Guru/rombel/semester, akun nonaktif/soft-deleted, fase/kelas tidak cocok, Rombel nonaktif, referensi akademik tidak ada/diarsipkan.
+   - Uji duplikasi/idempotensi, dua request bersamaan pada MySQL, unique/composite FK, rollback ketika salah satu tahap gagal, dan tidak ada row parsial.
+   - Audit log mencatat actor, tenant, aksi, target, hasil; tidak memuat password, token rahasia, atau payload sensitif.
+   - Pemeriksaan langsung database disposable memastikan seluruh row terkait konsisten dan tidak ada orphan/cross-tenant row.
+
+6. **CP fail-closed tetap terjaga**
+   - Kepdirjen Pendis 9941/2025 tetap `PENDING`; tidak ada CP resmi selectable/imported dan tidak ada checksum yang dipalsukan.
+   - Pembuatan TP/ATP, publikasi TP/ATP, dan publikasi soal yang membutuhkan CP resmi ditolak tanpa membuat row parsial.
+   - Fixture CP sintetis yang dipakai oleh test suite tidak boleh dihitung sebagai bukti CP resmi atau sebagai kelulusan P0-02A.
+
+7. **Kualitas bukti**
+   - Sertakan exact SHA, workflow/run URL, PHP/MySQL matrix, test command/step, total passed/failed/skipped/assertions, log yang relevan, dan hasil DB postcondition.
+   - Untuk klaim browser E2E, gunakan browser nyata yang berinteraksi dengan backend Laravel dan database disposable; runner dengan mock API tidak cukup.
+   - Pisahkan hasil test otomatis dari uji browser dan uji operasional madrasah.
+
+Satu sub-gate gagal atau tidak memiliki bukti berarti P0-02A tetap NOT VERIFIED/FAIL sesuai jenis temuan. Acceptance ini tidak boleh mengubah CP gate menjadi PASS.
+
+## E. AUDIT — CP resmi tetap BLOCKED
+
+Status CP tidak berubah:
+- BSKAP 046/H/KR/2025: metadata/URL resmi diketahui, tetapi bytes artefak asli belum diarsipkan dan SHA-256 independen belum diverifikasi.
+- Kepdirjen Pendis 9941/2025: salinan mirror pihak ketiga bukan bukti provenance final; byte asli dan validasi tanda tangan/provenance/checksum belum ada.
+- BKPDM 020/2026: siaran pers yang diperiksa bukan naskah keputusan lengkap beserta lampiran yang diperlukan.
+- `cp_content_imported=false` dan `artifact_checksum_verified=false` tetap harus dipertahankan sampai gate sah dipenuhi.
+
+CP hanya dapat dibuka setelah file bytes asli dari penerbit/host resmi, identitas dokumen dan lampiran lengkap, provenance/signature yang dapat diverifikasi, SHA-256 hasil hitung atas bytes yang sama, serta cakupan mapel/fase/kelas diperiksa. Jangan mengimpor CP atau menandai sumber verified sebelum itu.
+
+## F. AUDIT — workflow packaging ZIP dan archive guard
+
+Workflow `.github/workflows/build-web-deployment.yml` pada branch ZIP P0 saat ini diperiksa langsung (blob `c2ea4c907001ce7f12aa347f354f8099dffa07e3`).
+
+Temuan:
+- `rsync` mengecualikan `.env` persis, `backup_before_patch/`, tests, dan beberapa direktori Laravel runtime.
+- **Tidak mengecualikan `backups/`** dan tidak ada assertion archive untuk `backend-laravel/backups/`. Dengan adanya backup internal pada source tree yang sudah dicatat dalam audit sebelumnya, risiko backup masuk ke ZIP tetap P0.
+- Guard hanya menolak nama `.env` persis. Belum ada pemeriksaan rekursif `.env.*` dengan allowlist eksplisit `.env.example`.
+- Tidak ada deny rule generik untuk database dump (`.sql`, `.dump`, `.sqlite`, `.db` dan variasi terkompresi), private key/certificate/credential (`.pem`, `.key`, `.p12`, `.pfx`, dan pola terkait), atau file secret lain.
+- Log Laravel dan direktori storage logs/cache/session/views/private tertentu dikecualikan; tetapi tidak ada guard generik untuk log di lokasi lain, cache umum, temp/swap/editor files, crash dump, dan artefak sementara.
+- Archive guard memeriksa beberapa path spesifik dan menjalankan `unzip -t`; belum ada ekstraksi ke direktori kosong lalu `sha256sum -c SHA256SUMS.txt` atas seluruh file hasil ekstraksi.
+- ZIP, hash arsip, dan contents list baru akan menjadi bukti setelah workflow dijalankan pada exact commit kandidat. Belum ada artifact ZIP yang diverifikasi pada exact HEAD branch ZIP P0.
+- Trigger push workflow yang diperiksa tidak mencantumkan branch `work/limited-zip-p0-20261125`; `workflow_dispatch` tersedia, tetapi tidak ada bukti workflow packaging telah dijalankan untuk exact HEAD ini.
+
+Kategori wajib untuk hardening guard sebelum acceptance:
+1. backup internal seluruh kedalaman: `backups/`, `backup_before_patch/`, `*.before`, backup manifests yang tidak ditujukan untuk distribusi;
+2. environment/secrets: semua `.env*` kecuali `.env.example`, credential/config secret, private key/certificate;
+3. database: SQL/dump/SQLite/DB files, compressed dumps;
+4. runtime/debug: log, cache, session, compiled views, temp, swap, crash dump, test/report/debug artifacts;
+5. source control/build: `.git/`, test suite/fixture sensitif, PHPUnit cache, generated build files yang tidak dibutuhkan;
+6. arsip: periksa daftar isi ZIP terhadap denylist, ekstrak ke direktori baru, verifikasi seluruh SHA-256 manifest, jumlah/struktur file, README, konfigurasi, dan ketiadaan seluruh kategori terlarang.
+
+Status packaging tetap **FAIL P0 / NOT VERIFIED**, bukan sekadar warning.
+
+## G. Status reconciliation dan keputusan release
+
+| Gate | Status setelah update | Catatan |
+|---|---|---|
+| P0-01 Installer/System Tenant + full PHPUnit | **PASS / CLOSED** | Run #114, exact SHA 150b5, PHP 8.3 & 8.4 |
+| Run #109 | **SUPERSEDED** | Riwayat kegagalan lama, bukan blocker aktif |
+| P0-02 audit akademik source | **AUDIT COMPLETE** | Source review selesai; tidak berarti acceptance lulus |
+| P0-02A Non-CP Academic Acceptance | **NOT RUN / NOT VERIFIED** | Kriteria independen ditetapkan di atas |
+| Provisioning minimum di ZIP P0 | **PASS** | TenantAcademicBootstrapper tersedia dan P0-01 CI lulus |
+| Provisioning akademik lanjutan | **SEPARATE BRANCH** | TenantAcademicBootstrapService/UI masih pada branch provisioning |
+| CP resmi/provenance/checksum | **BLOCKED** | Byte asli/provenance/hash/cakupan belum lengkap |
+| ZIP backup exclusion/archive guard | **FAIL P0** | backups tidak dikecualikan/ditolak |
+| .env.* / DB dump / private key / generic log-cache-temp guard | **NOT VERIFIED** | Belum ada denylist menyeluruh |
+| ZIP exact HEAD artifact | **NOT VERIFIED** | Belum ada artifact exact SHA |
+| Clean extraction + full checksum | **NOT VERIFIED** | unzip -t saja tidak cukup |
+| Browser E2E backend nyata | **NOT VERIFIED** | Belum ada bukti |
+| Uji operasional madrasah | **NOT VERIFIED** | Belum ada bukti |
+| Android native / Device Lease | **DEFERRED** | Sesuai keputusan owner sampai Juni 2027 |
+
+**Kesimpulan: BELUM SIAP dinyatakan ZIP SIAP UJI OPERASIONAL TERBATAS.** P0-01 sudah ditutup; blocker aktif sekarang adalah P0-02A, CP resmi, rekonsiliasi source akademik yang memang diperlukan untuk scope ZIP, hardening packaging, artifact exact commit, ekstraksi/checksum, dan browser E2E.
+
+## H. Implementasi Agent 2
+
+- Hanya menambahkan addendum laporan dan checkpoint pada branch audit independen.
+- Tidak mengubah source Agent 1, workflow Agent 1, migration, database, PR, VPS, atau deployment.
+- Tidak menjalankan PHPUnit, Gradle, migration, browser test, atau operasi database. Bukti pengujian yang dicatat berasal dari GitHub Actions Agent 1.
