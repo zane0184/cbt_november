@@ -147,6 +147,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
         foreach ([
             'TEACHER_PROFILE_CREATED',
             'STUDENT_PROFILE_CREATED',
+            'STUDENT_ADDED_TO_ROMBEL',
             'USER_CREATED',
             'CURRICULUM_VERSION_REGISTERED',
             'CURRICULUM_SUBJECT_MAPPED',
@@ -196,6 +197,20 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'username' => 'guru.duplicate.nip',
         ]);
+
+        Livewire::test(UserManagement::class)
+            ->set('name', 'Siswa Duplikat NISN')
+            ->set('username', 'siswa.duplicate.nisn')
+            ->set('password', 'Acceptance-Password-2026')
+            ->set('selectedRole', 'SISWA')
+            ->set('nisn', '0001234567')
+            ->call('createUser')
+            ->assertHasErrors(['nisn']);
+
+        $this->assertDatabaseMissing('users', [
+            'tenant_id' => $this->tenant->id,
+            'username' => 'siswa.duplicate.nisn',
+        ]);
     }
 
     /** @test */
@@ -236,18 +251,21 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             'rombel_id' => $chain['rombel']->id,
         ]);
 
-        $limitedRole = Role::create(['name' => 'ADMIN_P0_02A_LIMITED', 'label' => 'Admin terbatas P0-02A']);
-        $limitedAdmin = User::create([
-            'tenant_id' => $this->tenant->id,
-            'name' => 'Admin Tanpa Registry',
-            'username' => 'admin.limited.p002a',
-            'password' => bcrypt('Acceptance-Password-2026'),
-        ]);
-        $limitedAdmin->roles()->sync([$limitedRole->id]);
+        $adminRole = Role::query()->where('name', 'ADMIN_MADRASAH')->firstOrFail();
+        $registryPermission = Permission::query()->where('name', 'curriculum.registry.manage')->firstOrFail();
+        $academicPermission = Permission::query()->where('name', 'academic.manage')->firstOrFail();
 
-        $this->actingAs($limitedAdmin);
+        $adminRole->permissions()->detach($registryPermission->id);
+        $this->admin->unsetRelation('roles');
+        $this->actingAs($this->admin);
         Livewire::test(CurriculumRegistryManagement::class)->assertForbidden();
+        $adminRole->permissions()->syncWithoutDetaching([$registryPermission->id]);
+
+        $adminRole->permissions()->detach($academicPermission->id);
+        $this->admin->unsetRelation('roles');
+        $this->actingAs($this->admin);
         Livewire::test(TeacherSubjectAssignmentManagement::class)->assertForbidden();
+        $adminRole->permissions()->syncWithoutDetaching([$academicPermission->id]);
     }
 
     /** @test */
@@ -338,7 +356,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             );
             $this->fail('TP creation must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('checksum', strtolower($exception->getMessage()));
+            $this->assertStringContainsString('checksum', strtolower(implode(' ', $exception->errors()['parentCpId'] ?? [])));
         }
 
         $this->assertSame($beforeOutcomeCount, TenantLearningOutcome::query()
@@ -355,7 +373,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             );
             $this->fail('ATP creation must reject a TP whose parent CP is PENDING.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('checksum', strtolower($exception->getMessage()));
+            $this->assertStringContainsString('checksum', strtolower(implode(' ', $exception->errors()['parentTpId'] ?? [])));
         }
 
         $this->assertSame($beforeOutcomeCount, TenantLearningOutcome::query()
@@ -365,11 +383,47 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             app(TeacherLearningOutcomeService::class)->publish($parentTp->id);
             $this->fail('TP publication must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('belum terverifikasi', strtolower($exception->getMessage()));
+            $this->assertStringContainsString('belum terverifikasi', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
         }
 
         $this->assertDatabaseHas('tenant_learning_outcomes', [
             'id' => $parentTp->id,
+            'status' => 'DRAFT',
+        ]);
+
+        $parentAtp = TenantLearningOutcome::create([
+            'tenant_id' => $this->tenant->id,
+            'tenant_curriculum_registration_id' => $chain['registration']->id,
+            'multi_curriculum_version_id' => $chain['version']->id,
+            'curriculum_owner_id' => Tenant::SYSTEM_TENANT_ID,
+            'subject_id' => $chain['subject']->id,
+            'multi_curriculum_structure_id' => $chain['subjectStructure']->id,
+            'teacher_subject_assignment_id' => $assignment->id,
+            'academic_year_id' => $assignment->academic_year_id,
+            'semester_id' => $assignment->semester_id,
+            'parent_cp_id' => $pendingCp->id,
+            'parent_tp_id' => $parentTp->id,
+            'outcome_type' => 'ATP',
+            'code' => 'ATP-TEST-PENDING',
+            'title' => 'ATP fixture untuk CP PENDING',
+            'description' => 'Test-only ATP; bukan konten akademik resmi.',
+            'sequence_number' => 1,
+            'version_code' => '1',
+            'is_current' => true,
+            'status' => 'DRAFT',
+            'author_user_id' => $teacher->id,
+            'metadata' => ['test_fixture_only' => true],
+        ]);
+
+        try {
+            app(TeacherLearningOutcomeService::class)->publish($parentAtp->id);
+            $this->fail('ATP publication must reject a PENDING CP.');
+        } catch (ValidationException $exception) {
+            $this->assertStringContainsString('belum terverifikasi', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
+        }
+
+        $this->assertDatabaseHas('tenant_learning_outcomes', [
+            'id' => $parentAtp->id,
             'status' => 'DRAFT',
         ]);
 
@@ -552,12 +606,21 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
         Livewire::test(CurriculumRegistryManagement::class)
             ->call('registerVersion', $version->id)
             ->assertHasNoErrors();
+        Livewire::test(CurriculumRegistryManagement::class)
+            ->call('registerVersion', $version->id)
+            ->assertHasNoErrors();
         $registration = TenantCurriculumRegistration::query()
             ->where('tenant_id', $this->tenant->id)
             ->where('multi_curriculum_version_id', $version->id)
             ->where('status', 'ACTIVE')
             ->firstOrFail();
 
+        Livewire::test(CurriculumRegistryManagement::class)
+            ->set('selectedRegistrationId', $registration->id)
+            ->set('selectedSubjectId', $subject->id)
+            ->set('selectedStructureId', $subjectStructure->id)
+            ->call('mapSubject')
+            ->assertHasNoErrors();
         Livewire::test(CurriculumRegistryManagement::class)
             ->set('selectedRegistrationId', $registration->id)
             ->set('selectedSubjectId', $subject->id)
