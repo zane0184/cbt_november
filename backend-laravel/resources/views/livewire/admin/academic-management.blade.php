@@ -56,23 +56,27 @@
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Nama Rombel</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Tingkat Kelas</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Tahun Akademik</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Jumlah Siswa</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-bold text-textSecondary uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-cardBorder">
                         @forelse($rombels as $rombel)
                             <tr class="hover:bg-gray-50/80 transition">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900">{{ $rombel->name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900"><a href="{{ route('admin.academic.rombels.show', $rombel->id) }}" class="text-emerald-700 hover:text-emerald-800 hover:underline">{{ $rombel->name }}</a></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-textSecondary font-medium">{{ $rombel->gradeLevel->name ?? '-' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-textSecondary font-mono">{{ $rombel->academicYear->name ?? '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-navy-900">{{ $rombel->students_count }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         {{ $rombel->status }}
                                     </span>
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-xs"><a href="{{ route('admin.academic.rombels.show', $rombel->id) }}" class="font-bold text-emerald-700 hover:underline">Lihat Siswa &rarr;</a></td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada data rombel.</td></tr>
+                            <tr><td colspan="6" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada data rombel.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
