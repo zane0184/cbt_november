@@ -608,6 +608,14 @@ class StudentImportTest extends TestCase
             'identifier' => '0007654321',
             'password' => $credential['password'],
         ])->assertRedirect('/student/exams');
+
+        $this->postJson('/api/v1/auth/login', [
+            'identifier' => '0007654321',
+            'password' => $credential['password'],
+            'device_name' => 'student-android-test',
+        ])->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.user.roles.0', 'SISWA');
     }
 
 }
