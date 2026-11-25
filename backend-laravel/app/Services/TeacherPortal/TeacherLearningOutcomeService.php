@@ -424,7 +424,6 @@ class TeacherLearningOutcomeService
             ->whereKey($cpId)
             ->where('outcome_type', 'CP')
             ->where('status', 'ACTIVE')
-            ->where('verification_status', 'ARTIFACT_CHECKSUM_VERIFIED')
             ->where('is_official', true)
             ->where('is_editable', false)
             ->lockForUpdate()
