@@ -193,7 +193,6 @@ class QuestionDocxImportFeatureTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'name' => 'Matematika',
             'code' => 'MTK',
-            'is_active' => true,
         ]);
         $mathAssignment = $this->assignment->replicate();
         $mathAssignment->subject_id = $mathSubject->id;
@@ -204,7 +203,6 @@ class QuestionDocxImportFeatureTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'name' => 'Bahasa Indonesia',
             'code' => 'BINDO',
-            'is_active' => true,
         ]);
         $bahasaAssignment = $this->assignment->replicate();
         $bahasaAssignment->subject_id = $bahasaSubject->id;
