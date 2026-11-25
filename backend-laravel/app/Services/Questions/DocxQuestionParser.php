@@ -204,8 +204,11 @@ class DocxQuestionParser
             }
 
             if (preg_match('/^(?:KUNCI\s*JAWABAN|DAFTAR\s*JAWABAN|ANSWER\s*KEY)\s*:?\s*$/iu', $text)) {
+                if ($active !== null) {
+                    $rawQuestions[] = $active;
+                    $active = null;
+                }
                 $answerSection = true;
-                $active = null;
                 continue;
             }
 
@@ -215,6 +218,10 @@ class DocxQuestionParser
             }
 
             if (preg_match('/^(?:STIMULUS)(?:\s*\[([A-Z0-9_-]+)\])?\s*:?\s*(.*)$/iu', $text, $match)) {
+                if ($active !== null) {
+                    $rawQuestions[] = $active;
+                    $active = null;
+                }
                 $stimulus = [
                     'id' => strtoupper($match[1] ?? ('STIMULUS-' . ($block['locator']['sequence'] ?? count($rawQuestions) + 1))),
                     'content' => trim($match[2] ?? ''),
@@ -236,8 +243,8 @@ class DocxQuestionParser
                 $header = trim($match[2]);
                 $hint = null;
                 if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
-                if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
-                if (preg_match('/\[([A-Z0-9_ \/-]{2,40})\]/iu', $header, $typeMatch)) {
+                    $hint = strtoupper(preg_replace('/\s+/', ' ', $typeMatch[1]));
+                    $header = trim(str_replace($typeMatch[0], '', $header));
                 }
                 $inlineKey = null;
                 if (preg_match('/(?:KUNCI|JAWABAN)\s*[:=]\s*(.+)$/iu', $header, $keyMatch)) {
