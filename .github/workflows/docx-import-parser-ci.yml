@@ -8,6 +8,7 @@ on:
       - work/p0-csv-row-limit-20261125
       - work/limited-zip-p0-20261125
       - work/guru-docx-import-e2e-20261125
+      - work/coordinator-web-cbt-p0-20261125
       - work/ui-import-improvements-20261125
   workflow_dispatch:
 
