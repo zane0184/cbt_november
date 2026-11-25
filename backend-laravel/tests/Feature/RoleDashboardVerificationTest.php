@@ -16,6 +16,8 @@ use App\Policies\ExamPolicy;
 use App\Policies\QuestionPolicy;
 use App\Services\RolePermissionBootstrapper;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 class RoleDashboardVerificationTest extends TestCase
@@ -110,6 +112,27 @@ class RoleDashboardVerificationTest extends TestCase
         $this->actingAs($this->legacyKamad)->get('/admin/dashboard')->assertForbidden();
         $this->actingAs($this->legacyProktor)->get('/admin/dashboard')->assertForbidden();
         $this->actingAs($this->multiRoleAdminA)->get('/admin/dashboard')->assertForbidden();
+    }
+
+    public function test_admin_dashboard_renders_latest_madrasah_name_and_logo(): void
+    {
+        $logoPath = 'tenants/' . $this->tenantA->id . '/branding/dashboard-logo-test.png';
+        File::ensureDirectoryExists(dirname(storage_path('app/public/' . $logoPath)));
+        $logo = UploadedFile::fake()->image('dashboard-logo.png', 128, 128);
+        File::copy($logo->getRealPath(), storage_path('app/public/' . $logoPath));
+
+        $this->tenantA->forceFill([
+            'name' => 'Madrasah Dashboard Terbaru',
+            'short_name' => 'MIN Dashboard',
+            'logo_path' => $logoPath,
+        ])->save();
+
+        $this->actingAs($this->adminA)
+            ->get('/admin/dashboard')
+            ->assertOk()
+            ->assertSee('Madrasah Dashboard Terbaru')
+            ->assertSee('MIN Dashboard')
+            ->assertSee('storage/' . $logoPath);
     }
 
     public function test_guru_portal_requires_exact_guru_role_and_profile(): void
