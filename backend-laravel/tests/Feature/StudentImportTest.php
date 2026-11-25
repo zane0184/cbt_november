@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Contexts\TenantContext;
 use App\Services\AuditService;
 use App\Services\StudentImportService;
+use App\Services\LoginIdentityResolver;
 use App\Livewire\Admin\StudentImport;
+use App\Livewire\Admin\UserManagement;
 use App\Models\AcademicYear;
+use App\Models\LocalInstallationIdentity;
 use App\Models\Curriculum;
 use App\Models\GradeLevel;
 use App\Models\Permission;
@@ -19,6 +22,7 @@ use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\UploadedFile;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
@@ -542,6 +546,48 @@ class StudentImportTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
         app(StudentImportService::class)->import([], $this->tenant->id, $otherUser->id, $this->rombel->id);
+    }
+
+    public function test_student_import_creates_login_ready_account_and_one_time_xlsx_credentials(): void
+    {
+        $this->actingAs($this->admin);
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => (string) \Illuminate\Support\Str::uuid(),
+            'key_id' => 'test-key-student',
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => str_repeat('a', 64),
+            'registered_domain' => 'test.example',
+            'product_code' => 'CBT-TEST-STUDENT',
+            'product_version' => '1.0.0',
+        ]);
+
+        $file = UploadedFile::fake()->createWithContent('siswa.csv', "nama,nisn\nSiswa Kredensial,0007654321\n");
+        $preview = app(StudentImportService::class)->preview(
+            $file->getRealPath(), 'csv', $this->tenant->id, $this->rombel->id
+        );
+        $result = app(StudentImportService::class)->import(
+            $preview, $this->tenant->id, $this->admin->id, $this->rombel->id
+        );
+
+        $credential = $result['credentials'][0];
+        $profile = StudentProfile::query()->where('nisn', '0007654321')->firstOrFail();
+        $this->assertSame('0007654321', $credential['login_identifier']);
+        $this->assertSame('NISN', $credential['identifier_type']);
+        $this->assertSame($profile->user_id, app(LoginIdentityResolver::class)->resolve('0007654321')?->id);
+        $this->assertTrue(Hash::check($credential['password'], $profile->user->password));
+        $this->assertNotSame($credential['password'], $profile->user->password);
+
+        session()->flash('import_credentials', $result['credentials']);
+        session()->flash('import_credentials_label', 'Siswa');
+        session()->flash('import_batch_id', $result['batch_id']);
+        Livewire::test(UserManagement::class)
+            ->assertSee('Kredensial awal Siswa berhasil dibuat')
+            ->assertSee('0007654321')
+            ->assertSee($credential['password'])
+            ->call('downloadImportCredentialsXlsx')
+            ->assertFileDownloaded('kredensial-import-siswa.xlsx');
     }
 
 }
