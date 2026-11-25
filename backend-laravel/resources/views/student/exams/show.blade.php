@@ -745,6 +745,10 @@
         el('question-announcement').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
         el('question-points').textContent = `${question.points ?? 0} poin`;
         el('question-stem').textContent = question.snapshot_stem || '';
+        const stimulusArea = el('question-stimulus');
+        const stimulusText = metadata.shared_stimulus?.content || '';
+        stimulusArea.textContent = stimulusText;
+        stimulusArea.classList.toggle('hidden', !stimulusText);
         const mediaArea = el('question-media');
         state.mediaRenderVersion++;
         revokeMediaObjectUrls();
@@ -756,6 +760,45 @@
             options.forEach(option => inputArea.appendChild(createOptionControl(question, option, 'radio', payload.selected_option_id)));
         } else if (type === 'MULTIPLE_RESPONSE') {
             options.forEach(option => inputArea.appendChild(createOptionControl(question, option, 'checkbox', payload.selected_option_ids || [])));
+        } else if (type === 'TRUE_FALSE_GROUP') {
+            const statements = Array.isArray(metadata.statement_items) ? metadata.statement_items : [];
+            const priorAnswers = payload.statement_answers || {};
+            if (statements.length !== 3) {
+                const note = document.createElement('p');
+                note.className = 'rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900';
+                note.textContent = 'Struktur soal Benar/Salah kelompok tidak lengkap. Hubungi Guru sebelum mengirim ujian.';
+                inputArea.appendChild(note);
+            } else {
+                statements.forEach((statement, index) => {
+                    const fieldset = document.createElement('fieldset');
+                    fieldset.dir = 'auto';
+                    fieldset.className = 'rounded-xl border border-slate-200 p-4';
+                    const legend = document.createElement('legend');
+                    legend.className = 'mb-3 font-semibold';
+                    legend.textContent = `Pernyataan ${index + 1}. ${statement.text || ''}`;
+                    fieldset.appendChild(legend);
+                    [['Benar', true], ['Salah', false]].forEach(([labelText, booleanValue]) => {
+                        const label = document.createElement('label');
+                        label.className = 'mr-5 inline-flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2';
+                        const input = document.createElement('input');
+                        input.type = 'radio';
+                        input.name = `tf-group-${question.id}-${statement.id}`;
+                        input.value = booleanValue ? 'true' : 'false';
+                        input.checked = priorAnswers[String(statement.id)] === booleanValue;
+                        input.addEventListener('change', () => {
+                            const existingPayload = currentPayload(question) || {};
+                            const statementAnswers = { ...(existingPayload.statement_answers || {}) };
+                            statementAnswers[String(statement.id)] = booleanValue;
+                            queueSave(question, { statement_answers: statementAnswers });
+                        });
+                        const textNode = document.createElement('span');
+                        textNode.textContent = labelText;
+                        label.append(input, textNode);
+                        fieldset.appendChild(label);
+                    });
+                    inputArea.appendChild(fieldset);
+                });
+            }
         } else if (type === 'ESSAY') {
             const textarea = document.createElement('textarea'); textarea.dir = 'auto'; textarea.rows = type === 'ESSAY' ? 8 : 3; textarea.maxLength = 20000;
             textarea.setAttribute('aria-label', `${type === 'ESSAY' ? 'Jawaban uraian' : 'Jawaban singkat'} untuk soal ${state.current + 1}`);
