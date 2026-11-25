@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Services\AuditService;
+use App\Services\Import\XlsxPackagePreflight;
 use App\Services\StudentImportService;
 use App\Services\LoginIdentityResolver;
 use App\Livewire\Admin\StudentImport;
@@ -77,6 +78,20 @@ class StudentImportTest extends TestCase
         Livewire::test(StudentImport::class)
             ->call('downloadXlsxTemplate')
             ->assertFileDownloaded('template-import-siswa.xlsx');
+
+        $response = app(StudentImport::class)->downloadXlsxTemplate();
+        ob_start();
+        $response->sendContent();
+        $xlsxContent = ob_get_clean();
+        $path = tempnam(sys_get_temp_dir(), 'student-template-');
+        $this->assertNotFalse($path);
+
+        try {
+            file_put_contents($path, (string) $xlsxContent);
+            $this->assertSame('Data Siswa', app(XlsxPackagePreflight::class)->inspect($path));
+        } finally {
+            @unlink($path);
+        }
     }
 
     public function test_admin_can_preview_and_import_csv_preserving_leading_zero_nisn_and_audit_batch(): void
