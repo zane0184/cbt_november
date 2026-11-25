@@ -157,7 +157,7 @@ class ExamManagementHardeningTest extends TestCase
             ['C', 'Nukleus', false],
             ['D', 'Membran sel', false],
         ] as $index => [$key, $content, $correct]) {
-            \\App\\Models\\QuestionOption::create([
+            \App\Models\QuestionOption::create([
                 'tenant_id' => $this->tenant->id,
                 'question_version_id' => $this->questionVersion1->id,
                 'option_key' => $key,
@@ -194,7 +194,7 @@ class ExamManagementHardeningTest extends TestCase
             ['A', 'BENAR', true],
             ['B', 'SALAH', false],
         ] as $index => [$key, $content, $correct]) {
-            \\App\\Models\\QuestionOption::create([
+            \App\Models\QuestionOption::create([
                 'tenant_id' => $this->tenant->id,
                 'question_version_id' => $this->questionVersion2->id,
                 'option_key' => $key,
