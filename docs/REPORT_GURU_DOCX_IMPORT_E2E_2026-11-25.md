@@ -83,7 +83,6 @@ Langkah CI yang berhasil:
 
 Pengujian tambahan:
 - ZIP deployment dapat diuji dan checksum manifest diverifikasi pada proses packaging.
-- PHP lint lokal untuk file aplikasi utama juga lulus.
 - Browser E2E visual dan pemasangan di VPS belum dijalankan.
 
 ## BATASAN YANG DISENGAJA
