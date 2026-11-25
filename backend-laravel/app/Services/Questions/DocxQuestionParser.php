@@ -57,6 +57,7 @@ class DocxQuestionParser
 
             $blocks = [];
             $sequence = 0;
+            $tableSequence = 0;
             foreach ($body->childNodes as $node) {
                 if (!$node instanceof DOMElement) {
                     continue;
@@ -71,7 +72,7 @@ class DocxQuestionParser
                 }
 
                 if ($node->localName === 'tbl') {
-                    $tableIndex = count(array_filter($blocks, fn (array $block) => ($block['locator']['kind'] ?? '') === 'table-cell')) + 1;
+                    $tableIndex = ++$tableSequence;
                     $rows = $xpath->query('./w:tr', $node);
                     foreach ($rows as $rowIndex => $row) {
                         $cells = $xpath->query('./w:tc', $row);
@@ -232,7 +233,7 @@ class DocxQuestionParser
             }
 
             if (preg_match('/^([a-c])\s*[.)=:]\s*(.+)$/iu', $text, $statementMatch)
-                && ($active['hint'] && str_contains($active['hint'], 'B/S'))) {
+                && ($active['hint'] && (str_contains($active['hint'], 'B/S') || str_contains($active['hint'], 'BENAR/SALAH') || str_contains($active['hint'], 'BS')))) {
                 $active['statements'][] = [
                     'id' => 's' . strtolower($statementMatch[1]),
                     'text' => trim($statementMatch[2]),
