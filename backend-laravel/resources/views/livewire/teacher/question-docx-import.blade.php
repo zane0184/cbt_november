@@ -220,20 +220,30 @@
 
                     @if($question['question_type'] === 'TRUE_FALSE_GROUP')
                         <div class="space-y-3">
-                            <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Tiga pernyataan dan kunci Benar/Salah</div>
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Tiga pernyataan dan kunci Benar/Salah</div>
+                                @if(count($question['statements']) < 3)
+                                    <button type="button" wire:click="addGroupedStatement({{ $index }})" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-800">+ Tambah pernyataan</button>
+                                @endif
+                            </div>
                             @foreach($question['statements'] as $statementIndex => $statement)
                                 <div class="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[1fr_auto] md:items-center">
                                     <div>
                                         <div class="mb-1 text-xs font-bold text-slate-500">Pernyataan {{ $statementIndex + 1 }}</div>
                                         <input type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                     </div>
-                                    <div>
-                                        <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Kunci jawaban</label>
-                                        <select wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.is_true" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none">
-                                            <option value="">Pilih Benar / Salah</option>
-                                            <option value="1">Benar</option>
-                                            <option value="0">Salah</option>
-                                        </select>
+                                    <div class="flex items-end gap-2">
+                                        <div>
+                                            <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Kunci jawaban</label>
+                                            <select wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.is_true" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none">
+                                                <option value="">Pilih Benar / Salah</option>
+                                                <option value="1">Benar</option>
+                                                <option value="0">Salah</option>
+                                            </select>
+                                        </div>
+                                        @if(count($question['statements']) > 3)
+                                            <button type="button" wire:click="removeGroupedStatement({{ $index }}, {{ $statementIndex }})" class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700">Hapus</button>
+                                        @endif
                                     </div>
                                 </div>
                             @endforeach
