@@ -1,4 +1,0 @@
-Backup dibuat sebelum patch; sumber byte-identik dengan blob pada HEAD 510132243b3821670ae8772d59730105809572fa
-
-.github/scripts/verify_web_package.py -> .github/backups/agent1-scanner-repair-20261125/verify_web_package.py.before | bytes=15243 | git_blob_sha1=e7f52546295e69d7e0c57e15193945a5f6cd3462 | sha256=25b36c2c90cd11cfe8c769825232080d479f6507bf3ac8bd9c36aad15d53ab21
-.github/workflows/build-web-deployment.yml -> .github/backups/agent1-scanner-repair-20261125/build-web-deployment.yml.before | bytes=13122 | git_blob_sha1=ffdeab9c05eb74a30e593edd0ae85a1ece7321ff | sha256=ea86a01d025f06cb0bca876f182a770b6b7f44ad60e9d67c456a1cd08163e0c0

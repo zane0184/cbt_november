@@ -78,7 +78,7 @@ class DocxQuestionParser
             if (str_starts_with($lowerName, 'word/embeddings/')
                 || str_starts_with($lowerName, 'word/activex/')
                 || str_contains($lowerName, 'vbaproject')
-                || preg_match('/oleobject[^/]*\.bin$/i', $lowerName) === 1) {
+                || preg_match('~oleobject[^/]*\.bin$~i', $lowerName) === 1) {
                 throw ValidationException::withMessages(['docx' => 'DOCX dengan embedded OLE, ActiveX, atau macro tidak diizinkan.']);
             }
 

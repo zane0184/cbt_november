@@ -1,4 +1,0 @@
-# Byte-exact backup snapshots intentionally preserve original bytes, including historical trailing whitespace.
-# Exclude backup payloads from diff whitespace checks; active source and documentation remain checked.
-docs/backup/** -whitespace
-backend-laravel/backup_before_patch/** -whitespace
