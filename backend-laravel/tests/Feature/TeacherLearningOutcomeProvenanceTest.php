@@ -240,6 +240,62 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
     }
 
     /** @test */
+    public function tp_service_persists_assignment_scoped_framework_mappings_and_allows_atp_creation(): void
+    {
+        // The CP is a synthetic, checksum-consistent PHPUnit fixture only.
+        // This test exercises the TP -> ATP service path, not official CP availability.
+        $pmOlah = MultiCurriculumStructure::query()
+            ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
+            ->where('multi_curriculum_version_id', $this->context['version']->id)
+            ->where('node_type', 'PM_OLAH')
+            ->where('status', 'ACTIVE')
+            ->where('is_official', true)
+            ->where('is_editable', false)
+            ->firstOrFail();
+
+        $tp = app(TeacherLearningOutcomeService::class)->createTp(
+            $this->assignment->id,
+            $this->context['cp']->id,
+            'TP-SERVICE-MAPPING-CHAIN',
+            'TP dibuat melalui service',
+            'Regression test untuk mapping TP yang terikat pada assignment.',
+            [$this->context['framework']['PANCA_CINTA']->id],
+            [$this->context['framework']['PM_PRINCIPLE']->id],
+            [$pmOlah->id],
+            [],
+            [$this->context['framework']['DIMENSI_PROFIL_LULUSAN']->id]
+        );
+
+        $tpMappings = LearningOutcomeStructureMapping::query()
+            ->where('tenant_learning_outcome_id', $tp->id)
+            ->get();
+
+        $this->assertCount(4, $tpMappings);
+        foreach ($tpMappings as $mapping) {
+            $this->assertSame($this->assignment->id, $mapping->teacher_subject_assignment_id);
+        }
+
+        $atp = app(TeacherLearningOutcomeService::class)->createAtp(
+            $this->assignment->id,
+            $tp->id,
+            'ATP-SERVICE-MAPPING-CHAIN',
+            'ATP dibuat melalui service',
+            'Regression test untuk pewarisan mapping TP ke ATP.',
+            1
+        );
+
+        $this->assertSame($tp->id, $atp->parent_tp_id);
+        $this->assertSame($this->context['cp']->id, $atp->parent_cp_id);
+        $this->assertSame($tpMappings->count(), LearningOutcomeStructureMapping::query()
+            ->where('tenant_learning_outcome_id', $atp->id)
+            ->count());
+        $this->assertSame(4, LearningOutcomeStructureMapping::query()
+            ->where('tenant_learning_outcome_id', $atp->id)
+            ->where('teacher_subject_assignment_id', $this->assignment->id)
+            ->count());
+    }
+
+    /** @test */
     public function create_atp_and_publish_require_curriculum_manage_permission_when_service_is_called_directly(): void
     {
         $role = Role::query()->where('name', 'GURU')->firstOrFail();
