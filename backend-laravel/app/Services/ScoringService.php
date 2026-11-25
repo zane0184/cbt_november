@@ -285,6 +285,10 @@ class ScoringService
                 $awardedScore = $this->evaluateMultipleChoice($snapshot, $payload) ? $maxScore : 0;
                 break;
 
+            case 'TRUE_FALSE_GROUP':
+                $awardedScore = $this->evaluateTrueFalseGroup($snapshot, $payload, $maxScore);
+                break;
+
             case 'MULTIPLE_RESPONSE':
                 $awardedScore = $this->evaluateMultipleResponse($snapshot, $payload, $maxScore);
                 break;
