@@ -325,14 +325,27 @@ class DocxQuestionParserTest extends TestCase
             . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math">'
             . '<w:body><w:p><w:r><w:t>SOAL 1. [PG] Hitung hasil berikut.</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>A. 2</w:t></w:r></w:p><w:p><w:r><w:t>B. 3</w:t></w:r></w:p>'
-            . '<w:p><w:r><w:t>KUNCI: A</w:t></w:r></w:p><w:p><w:r><w:drawing/></w:r></w:p>'
+            . '<w:p><w:r><w:t>KUNCI: A</w:t></w:r></w:p>'
+            . '<w:p><w:r><w:drawing><a:blip r:embed="rIdImage1"/></w:drawing></w:r></w:p>'
             . '<w:p><m:oMath><m:r><m:t>x+1</m:t></m:r></m:oMath></w:p><w:sectPr/></w:body></w:document>';
-        $path = $this->makeDocxFromXml($xml);
+        $relationships = '<?xml version="1.0" encoding="UTF-8"?>'
+            . '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            . '<Relationship Id="rIdImage1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/image1.png"/>'
+            . '</Relationships>';
+        $path = $this->makeDocxFromXml($xml, [
+            'word/_rels/document.xml.rels' => $relationships,
+            'word/media/image1.png' => "fixture-image-bytes",
+        ]);
         try {
             $result = app(DocxQuestionParser::class)->parse($path);
             $this->assertSame([1], $result['blocked_source_numbers']);
             $this->assertContains('IMAGE_OR_DIAGRAM', $result['questions'][0]['blocked_features']);
             $this->assertContains('WORD_MATH', $result['questions'][0]['blocked_features']);
+            $this->assertSame(['IMAGE_REFERENCE', 'WORD_MATH_OMML'], array_column($result['questions'][0]['source_fragments'], 'kind'));
+            $this->assertSame('rIdImage1', $result['questions'][0]['source_fragments'][0]['relationship_id']);
+            $this->assertTrue($result['questions'][0]['source_fragments'][0]['relationship_resolved']);
+            $this->assertStringContainsString('<m:oMath', $result['questions'][0]['source_fragments'][1]['xml']);
+            $this->assertNotEmpty($result['questions'][0]['source_fragments'][1]['xml_sha256']);
         } finally { @unlink($path); }
     }
 
