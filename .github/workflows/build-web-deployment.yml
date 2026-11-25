@@ -148,6 +148,11 @@ jobs:
             --exclude='bootstrap/cache/events.php' \
             backend-laravel/ "$STAGE/backend-laravel/"
 
+          # The Composer/Laravel bootstrap may leave generated cache files in the source tree.
+          # Remove generated staging cache only; the final scanner still rejects any remainder.
+          find "$STAGE/backend-laravel/bootstrap/cache" -type f ! -name '.gitignore' -delete
+          find "$STAGE/backend-laravel/bootstrap/cache" -mindepth 1 -type d -empty -delete
+
           mkdir -p \
             "$STAGE/backend-laravel/storage/app/private" \
             "$STAGE/backend-laravel/storage/framework/cache/data" \
