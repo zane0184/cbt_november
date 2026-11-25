@@ -163,6 +163,35 @@ class DocxQuestionParserTest extends TestCase
         }
     }
 
+
+    public function test_does_not_assume_every_pgk_table_is_a_list_of_options(): void
+    {
+        $p = static function (string $text): string {
+            $escaped = htmlspecialchars($text, ENT_XML1 | ENT_COMPAT, 'UTF-8');
+            return '<w:p><w:r><w:t xml:space="preserve">' . $escaped . '</w:t></w:r></w:p>';
+        };
+        $cell = static fn (string $text): string => '<w:tc>' . $p($text) . '</w:tc>';
+        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+            . $p('SOAL 1. [PGK] Perhatikan tabel jumlah siswa berikut.')
+            . '<w:tbl><w:tr>' . $cell('Kelas') . $cell('Jumlah siswa') . '</w:tr>'
+            . '<w:tr>' . $cell('VI-A') . $cell('20') . '</w:tr></w:tbl>'
+            . '<w:sectPr/></w:body></w:document>';
+        $path = $this->makeDocxFromXml($xml);
+
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $question = $result['questions'][0];
+            $this->assertSame('MULTIPLE_RESPONSE', $question['question_type']);
+            $this->assertSame([], $question['options']);
+            $this->assertSame('NEEDS_REVIEW', $question['status']);
+            $this->assertCount(2, $question['table_rows']);
+            $this->assertStringContainsString('Struktur tabel belum', implode(' ', $question['errors']));
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_keeps_shared_stimulus_group_identity_across_questions(): void
     {
         $path = $this->makeDocx([
@@ -200,6 +229,9 @@ class DocxQuestionParserTest extends TestCase
             'SOAL 2. [MATCHING] Pasangkan istilah dengan artinya.',
             'A. Istilah satu',
             'B. Istilah dua',
+            'SOAL 3. [LENGKAPI] Lengkapi kalimat berikut.',
+            'SOAL 4. [URUT] Urutkan langkah berikut.',
+            'SOAL 5. Pertanyaan tanpa penanda jenis.',
             'KUNCI: A, B',
         ]);
 
@@ -209,6 +241,10 @@ class DocxQuestionParserTest extends TestCase
             $this->assertSame('READY', $result['questions'][0]['status']);
             $this->assertSame('MATCHING', $result['questions'][1]['question_type']);
             $this->assertSame('NEEDS_REVIEW', $result['questions'][1]['status']);
+            $this->assertSame('UNSUPPORTED', $result['questions'][2]['question_type']);
+            $this->assertSame('UNSUPPORTED', $result['questions'][3]['question_type']);
+            $this->assertSame('UNSUPPORTED', $result['questions'][4]['question_type']);
+            $this->assertSame('NEEDS_REVIEW', $result['questions'][4]['status']);
         } finally {
             @unlink($path);
         }

@@ -285,7 +285,7 @@ class DocxQuestionParser
             $questionPattern = '/^(?:(?:SOAL|NOMOR)\s+)?(?:\((\d{1,3})\)|(\d{1,3})\s*[.):=-])\s*(.*)$/iu';
             $questionMatch = [];
             $isQuestionStart = $isTableRow
-                ? ($active === null && preg_match('/^(?:(?:SOAL|NOMOR)\s+)?(?:\(\d{1,3}\)|\d{1,3}\s*[.):=-]).*\[(?:PG|PGK|B\/S|BENAR\/SALAH|ESSAY|URAIAN)/iu', $primaryText) === 1)
+                ? ($active === null && preg_match('/^(?:(?:SOAL|NOMOR)\s+)?(?:\(\d{1,3}\)|\d{1,3}\s*[.):=-]).*\[(?:PGK?|B\/S|BENAR\/SALAH|ESSAY|URAIAN|MATCH(?:ING)?|MENJODOHKAN|ISIAN|SHORT\s*ANSWER|LENGKAPI|URUT|SEBAB(?:-AKIBAT)?)/iu', $primaryText) === 1)
                 : preg_match($questionPattern, $primaryText, $questionMatch) === 1;
 
             $sectionTitle = $this->detectSubjectSection($primaryText);
@@ -327,7 +327,9 @@ class DocxQuestionParser
                 continue;
             }
 
-            if (preg_match('/^(?:[A-Z0-9][.)]\s*)?(?:KUNCI(?:\s+JAWABAN)?|DAFTAR\s+JAWABAN|JAWABAN(?:\s+SOAL)?|ANSWER\s+KEY)\b.*$/iu', $primaryText)) {
+            $isAnswerKeyHeading = preg_match('/^(?:[A-Z0-9][.)]\s*)?(?:KUNCI\s+JAWABAN|DAFTAR\s+JAWABAN|JAWABAN\s+SOAL|ANSWER\s+KEY)\b.*$/iu', $primaryText) === 1
+                || preg_match('/^(?:[A-Z0-9][.)]\s*)?KUNCI\s*:?$/iu', $primaryText) === 1;
+            if ($isAnswerKeyHeading) {
                 if ($active !== null) {
                     $rawQuestions[] = $active;
                     $active = null;
@@ -691,6 +693,26 @@ class DocxQuestionParser
 
     private function extractTableOptions(array $cells, ?string $hint): array
     {
+        $normalizedHint = mb_strtoupper((string) $hint);
+        $isChoiceType = $normalizedHint === 'PG'
+            || $this->isMultipleResponseHint($normalizedHint)
+            || str_contains($normalizedHint, 'PILIHAN GANDA');
+        if (!$isChoiceType) {
+            return [];
+        }
+
+        $hasExplicitOptionMarkers = false;
+        foreach ($cells as $cell) {
+            $value = trim((string) $cell);
+            if (preg_match('/^(?:[☐□☑✓]\s*\S|[A-D]\s*[.)=:]\s*\S)/iu', $value) === 1) {
+                $hasExplicitOptionMarkers = true;
+                break;
+            }
+        }
+        if (!$hasExplicitOptionMarkers) {
+            return [];
+        }
+
         $options = [];
         foreach ($cells as $cell) {
             $value = trim((string) $cell);
@@ -698,21 +720,22 @@ class DocxQuestionParser
                 continue;
             }
             if (preg_match('/^[☐□☑✓]\s*(.+)$/u', $value, $checkboxMatch) === 1) {
-                $value = trim($checkboxMatch[1]);
-            }
-            if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $value, $optionMatch) === 1) {
-                $key = strtoupper($optionMatch[1]);
-                $content = trim($optionMatch[2]);
-            } elseif ($this->isMultipleResponseHint($hint)) {
-                $key = chr(65 + count($options));
-                $content = $value;
-            } else {
+                $content = trim($checkboxMatch[1]);
+                if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $content, $labelMatch) === 1) {
+                    $options[] = ['option_key' => strtoupper($labelMatch[1]), 'content' => trim($labelMatch[2])];
+                } elseif ($content !== '') {
+                    $options[] = ['option_key' => chr(65 + count($options)), 'content' => $content];
+                }
                 continue;
             }
-            if ($content !== '') {
-                $options[] = ['option_key' => $key, 'content' => $content];
+            if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $value, $optionMatch) === 1) {
+                $options[] = [
+                    'option_key' => strtoupper($optionMatch[1]),
+                    'content' => trim($optionMatch[2]),
+                ];
             }
         }
+
         return $options;
     }
 
@@ -761,18 +784,15 @@ class DocxQuestionParser
             if (str_contains($hint, 'ISIAN') || str_contains($hint, 'SHORT ANSWER')) {
                 return 'SHORT_ANSWER';
             }
-            if (str_contains($hint, 'LENGKAPI')) {
-                return 'FILL_BLANK';
-            }
-            if (str_contains($hint, 'URUT')) {
-                return 'ORDERING';
+            if (str_contains($hint, 'LENGKAPI') || str_contains($hint, 'URUT')) {
+                return 'UNSUPPORTED';
             }
 
             return 'UNSUPPORTED';
         }
 
-        // Without an explicit marker, PG and PGK cannot safely be distinguished.
-        return 'MULTIPLE_CHOICE';
+        // Without an explicit marker, do not guess PG, PGK, or another question type.
+        return 'UNSUPPORTED';
     }
 
     private function answerTokens(string $answer): array
