@@ -14,9 +14,12 @@ return new class extends Migration
 
         Schema::create('question_docx_import_batches', function (Blueprint $table): void {
             $table->uuid('id')->primary();
-            $table->foreignUuid('tenant_id')->constrained('tenants')->cascadeOnDelete();
-            $table->foreignUuid('uploaded_by')->constrained('users')->cascadeOnDelete();
-            $table->foreignUuid('teacher_subject_assignment_id')->constrained('teacher_subject_assignments')->cascadeOnDelete();
+            $table->foreignUuid('tenant_id');
+            $table->foreign('tenant_id', 'qdib_tenant_fk')->references('id')->on('tenants')->cascadeOnDelete();
+            $table->foreignUuid('uploaded_by');
+            $table->foreign('uploaded_by', 'qdib_uploader_fk')->references('id')->on('users')->cascadeOnDelete();
+            $table->foreignUuid('teacher_subject_assignment_id');
+            $table->foreign('teacher_subject_assignment_id', 'qdib_assignment_fk')->references('id')->on('teacher_subject_assignments')->cascadeOnDelete();
             $table->char('file_sha256', 64);
             $table->unsignedInteger('imported_count');
             $table->timestamps();
