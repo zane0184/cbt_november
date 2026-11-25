@@ -407,7 +407,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             app(TeacherLearningOutcomeService::class)->publish($parentTp->id);
             $this->fail('TP publication must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('belum terverifikasi', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
+            $this->assertStringContainsString('provenance checksum', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
         }
 
         $this->assertDatabaseHas('tenant_learning_outcomes', [
@@ -443,7 +443,7 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             app(TeacherLearningOutcomeService::class)->publish($parentAtp->id);
             $this->fail('ATP publication must reject a PENDING CP.');
         } catch (ValidationException $exception) {
-            $this->assertStringContainsString('belum terverifikasi', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
+            $this->assertStringContainsString('provenance checksum', strtolower(implode(' ', $exception->errors()['outcome'] ?? [])));
         }
 
         $this->assertDatabaseHas('tenant_learning_outcomes', [
