@@ -699,6 +699,10 @@ class QuestionBankTest extends TestCase
             . '<w:body>' . $paragraphs . '<w:sectPr/></w:body></w:document>';
         $zip = new ZipArchive();
         $this->assertSame(true, $zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) === true);
+        $contentTypes = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+        $relationships = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+        $zip->addFromString('[Content_Types].xml', $contentTypes);
+        $zip->addFromString('_rels/.rels', $relationships);
         $zip->addFromString('word/document.xml', $xml);
         $zip->close();
 
