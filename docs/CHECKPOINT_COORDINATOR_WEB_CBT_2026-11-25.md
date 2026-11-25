@@ -17,7 +17,7 @@ Tanggal: 25 November 2026 (WIB)
 3. Memeriksa route, policy, controller, model, Livewire, Blade, seeder, dan test terkait.
 4. Mengonfirmasi full CI pada SHA `f42bcb2`: PHP 8.3 + MySQL 8.0/InnoDB dan PHP 8.4 + MySQL 8.0/InnoDB; masing-masing 657 passed, 1 skipped, 3.404 assertions.
 5. Mengonfirmasi Student Import dan P0-02A non-CP academic acceptance test lulus pada CI.
-6. Menemukan blocker baru P0 pada generic Exam API: Admin masih dapat membaca daftar/detail Exam; response Siswa menyerialisasi token; `ExamController::show()` melepas snapshot berdasarkan jadwal tanpa admission lengkap.
+6. Menemukan blocker P0 pada Student Exam API: response Siswa menyerialisasi token dan `ExamController::show()` melepas snapshot berdasarkan jadwal tanpa admission lengkap. Admin read-only exam register dipertahankan sesuai `RoleDashboardVerificationTest`; token generic Admin harus di-redact sampai workflow central exam memiliki marker/permission khusus.
 7. Menemukan mismatch lain: MATCHING masih aktif meski harus diblokir; media aktif-attempt setelah Exam ditutup berpotensi ditolak; trusted platform credential Android-browser/iOS-Web belum ada.
 8. Menyimpan laporan audit di GitHub.
 
