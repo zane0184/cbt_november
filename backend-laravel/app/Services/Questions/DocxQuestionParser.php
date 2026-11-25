@@ -375,8 +375,11 @@ class DocxQuestionParser
     private function resolveType(array $raw, ?string $answer): string
     {
         $hint = strtoupper((string) ($raw['hint'] ?? ''));
+        if (str_contains($hint, 'B/S TUNGGAL') || str_contains($hint, 'BENAR/SALAH TUNGGAL')) {
+            return 'TRUE_FALSE';
+        }
         if (str_contains($hint, 'B/S') || str_contains($hint, 'BENAR/SALAH') || str_contains($hint, 'BS')) {
-            return count($raw['statements']) === 3 ? 'TRUE_FALSE_GROUP' : 'TRUE_FALSE';
+            return 'TRUE_FALSE_GROUP';
         }
         if (str_contains($hint, 'PGK') || str_contains($hint, 'KOMPLEKS')) {
             return 'MULTIPLE_RESPONSE';
