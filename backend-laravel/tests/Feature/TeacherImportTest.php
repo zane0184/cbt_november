@@ -306,6 +306,11 @@ class TeacherImportTest extends TestCase
             ->assertSee('3171010101900002')
             ->call('downloadImportCredentialsXlsx')
             ->assertFileDownloaded('kredensial-import-guru.xlsx');
+
+        $this->post('/login', [
+            'identifier' => '199001012026041101',
+            'password' => $result['credentials'][0]['password'],
+        ])->assertRedirect('/guru/dashboard');
     }
 
 }
