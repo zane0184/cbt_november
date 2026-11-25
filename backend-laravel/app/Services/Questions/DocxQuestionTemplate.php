@@ -13,6 +13,7 @@ class DocxQuestionTemplate
 
         $lines = [
             'TEMPLATE IMPORT SOAL CBT MADRASAH',
+            'Catatan: Template ini contoh struktur, bukan kewajiban format dokumen. Dokumen Word biasa dapat diunggah. Struktur ambigu atau tipe yang belum didukung akan ditandai untuk ditinjau.',
             'Petunjuk: Ganti contoh di bawah dengan soal Guru. Simpan sebagai Microsoft Word Document (.docx).',
             'Gunakan satu nomor untuk satu soal. Jangan menaruh tabel kisi-kisi sebagai isi soal.',
             'Tipe yang dapat disimpan: PG, PGK, Benar/Salah 3 pernyataan, dan Uraian (penilaian manual).',
@@ -37,23 +38,20 @@ class DocxQuestionTemplate
             'c. 10 dapat dibagi 2 tanpa sisa.',
             'KUNCI: B, S, B',
             '',
-            'SOAL 4. [ESSAY] Jelaskan mengapa kita perlu menjaga kebersihan lingkungan.',
-            '',
-            'FORMAT KUNCI DI AKHIR DOKUMEN (alternatif):',
+            'KUNCI JAWABAN (alternatif, jika kunci tidak ditulis setelah tiap soal):',
             'KUNCI JAWABAN',
             '1. C',
             '2. A, C',
             '3. B, S, B',
             '',
-            'STIMULUS BERSAMA (opsional):',
+            'SOAL 4. [ESSAY] Jelaskan mengapa kita perlu menjaga kebersihan lingkungan.',
+            '',
             'STIMULUS [BACAAN-A]: Tuliskan bacaan atau stimulus di sini.',
             'SOAL 5. [PG] Pertanyaan yang menggunakan stimulus di atas.',
             'A. Pilihan A',
             'B. Pilihan B',
             'KUNCI: A',
             'AKHIR STIMULUS',
-            '',
-            'Catatan: Template ini contoh struktur, bukan kewajiban format dokumen. Dokumen Word biasa dapat diunggah. Struktur ambigu atau tipe yang belum didukung akan ditandai untuk ditinjau dan tidak akan disimpan diam-diam.',
         ];
 
         $paragraphs = '';
