@@ -191,8 +191,8 @@ jobs:
 
           # Fail closed on forbidden files, paths, symlinks, nested archives, and embedded high-confidence secrets.
           # Exercise the exact staging and ZIP scanner implementations against positive and negative fixtures.
-          python3 .github/scripts/verify_web_package.py self-test
-          python3 .github/scripts/verify_web_package.py staging "$STAGE"
+          python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" self-test
+          python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" staging "$STAGE"
 
           find . -type f ! -name 'SHA256SUMS.txt' -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS.txt
           test -s SHA256SUMS.txt
@@ -203,7 +203,7 @@ jobs:
           unzip -t "$ARCHIVE"
 
           # Inspect every ZIP entry, including hidden files and normalized/case-colliding paths.
-          python3 .github/scripts/verify_web_package.py zip "$ARCHIVE"
+          python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" zip "$ARCHIVE"
 
           # Extract into a new, empty directory and verify every manifest entry plus full file-set coverage.
           EXTRACT_ROOT="$RUNNER_TEMP/CBT_MADRASAH_WEB_DEPLOYMENT_EXTRACTED"
