@@ -235,6 +235,13 @@ class DocxQuestionDraftImporter
         if (trim((string) ($row['stem'] ?? '')) === '') {
             throw ValidationException::withMessages(['docx' => $prefix . 'teks soal wajib diisi.']);
         }
+        $points = (float) ($row['points'] ?? 1);
+        if ($points < 0.5 || $points > 100) {
+            throw ValidationException::withMessages(['docx' => $prefix . 'poin harus berada pada rentang 0,5 sampai 100.']);
+        }
+        if (!in_array($row['difficulty'] ?? 'MEDIUM', ['EASY', 'MEDIUM', 'HARD'], true)) {
+            throw ValidationException::withMessages(['docx' => $prefix . 'tingkat kesulitan tidak valid.']);
+        }
 
         if ($type === 'TRUE_FALSE_GROUP') {
             $statements = $row['statements'] ?? [];
