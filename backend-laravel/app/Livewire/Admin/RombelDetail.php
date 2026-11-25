@@ -1,10 +1,10 @@
 <?php
 
-namespace App\\Livewire\\Admin;
+namespace App\Livewire\Admin;
 
-use App\\Models\\Rombel;
-use Livewire\\Component;
-use Livewire\\WithPagination;
+use App\Models\Rombel;
+use Livewire\Component;
+use Livewire\WithPagination;
 
 class RombelDetail extends Component
 {
