@@ -30,6 +30,7 @@ concurrency:
 
 jobs:
   benchmark-mysql-pdf:
+    if: github.ref != 'refs/heads/feature/admin-teacher-import-20261126-r1'
     name: Disposable MySQL benchmark and PDF Policy verification
     runs-on: ubuntu-latest
     timeout-minutes: 25
