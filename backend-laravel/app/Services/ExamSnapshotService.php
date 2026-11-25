@@ -375,6 +375,19 @@ class ExamSnapshotService
                 if ($version->question_type === 'SHORT_ANSWER') {
                     abort(422, 'SHORT_ANSWER belum dapat dimasukkan ke ujian sampai accepted answers tersimpan di immutable snapshot dan scoring teruji.');
                 }
+                if ($version->question_type === 'TRUE_FALSE_GROUP') {
+                    $items = $version->metadata['statement_items'] ?? [];
+                    $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);
+                    $validItems = count($items) === 3
+                        && count(array_unique($ids)) === 3
+                        && !in_array('', $ids, true)
+                        && collect($items)->every(fn ($item) => is_array($item)
+                            && trim((string) ($item['text'] ?? '')) !== ''
+                            && is_bool($item['is_true'] ?? null));
+                    if (!$validItems) {
+                        abort(422, 'Snapshot Benar/Salah kelompok tidak valid: wajib tepat tiga pernyataan dan kunci boolean.');
+                    }
+                }
 
                 $cpMappings = $version->curriculumMappings
                     ->where('teacher_subject_assignment_id', $assignment->id)
