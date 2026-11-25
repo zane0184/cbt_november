@@ -417,6 +417,58 @@ class ScoringEngineTest extends TestCase
         $this->assertEquals(100, $score->percentage);
     }
 
+    public function test_three_statement_true_false_uses_proportional_partial_scoring(): void
+    {
+        $question = Question::create(['tenant_id' => $this->tenant->id, 'created_by' => $this->teacher->id]);
+        $version = $question->versions()->create([
+            'tenant_id' => $this->tenant->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'TRUE_FALSE_GROUP',
+            'stem' => 'Tentukan benar atau salah.',
+            'metadata' => [
+                'statement_items' => [
+                    ['id' => 'sa', 'text' => 'Pernyataan A', 'is_true' => true],
+                    ['id' => 'sb', 'text' => 'Pernyataan B', 'is_true' => false],
+                    ['id' => 'sc', 'text' => 'Pernyataan C', 'is_true' => true],
+                ],
+                'statement_scoring' => 'PROPORTIONAL_PER_STATEMENT_V1',
+            ],
+            'created_by' => $this->teacher->id,
+        ]);
+
+        $snapshot = $this->createSnapshot([
+            'id' => (string) Str::uuid(),
+            'tenant_id' => $this->tenant->id,
+            'source_question_id' => $question->id,
+            'source_question_version_id' => $version->id,
+            'snapshot_stem' => $version->stem,
+            'snapshot_options' => [],
+            'points' => 12,
+            'metadata' => array_merge($version->metadata, ['question_type' => 'TRUE_FALSE_GROUP']),
+        ]);
+
+        ExamAttemptAnswer::create([
+            'tenant_id' => $this->tenant->id,
+            'exam_id' => $this->exam->id,
+            'exam_attempt_id' => $this->attempt->id,
+            'exam_question_snapshot_id' => $snapshot->id,
+            'student_id' => $this->student->id,
+            'answer_payload' => ['statement_answers' => ['sa' => true, 'sb' => false, 'sc' => false]],
+            'answer_state' => 'ANSWERED',
+        ]);
+
+        $score = app(ScoringService::class)->scoreAttempt($this->attempt);
+        $this->assertEquals(8.00, (float) $score->raw_score);
+        $this->assertEquals(66.67, round((float) $score->percentage, 2));
+        $this->assertDatabaseHas('exam_question_scores', [
+            'attempt_id' => $this->attempt->id,
+            'snapshot_id' => $snapshot->id,
+            'awarded_score' => 8.00,
+            'max_score' => 12.00,
+        ]);
+    }
+
     public function test_essay_requires_manual_review_and_prevents_finalization()
     {
         $q = Question::create(['tenant_id' => $this->tenant->id, 'created_by' => $this->teacher->id]);
