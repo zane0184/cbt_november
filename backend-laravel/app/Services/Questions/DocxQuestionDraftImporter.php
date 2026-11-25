@@ -248,6 +248,10 @@ class DocxQuestionDraftImporter
             if (count($statements) !== 3) {
                 throw ValidationException::withMessages(['docx' => $prefix . 'Benar/Salah kelompok wajib tepat tiga pernyataan.']);
             }
+            $statementIds = array_map(fn (array $statement): string => trim((string) ($statement['id'] ?? '')), $statements);
+            if (in_array('', $statementIds, true) || count(array_unique($statementIds)) !== 3) {
+                throw ValidationException::withMessages(['docx' => $prefix . 'Setiap pernyataan wajib memiliki ID stabil yang unik.']);
+            }
             foreach ($statements as $statement) {
                 if (trim((string) ($statement['text'] ?? '')) === '' || !is_bool($statement['is_true'] ?? null)) {
                     throw ValidationException::withMessages(['docx' => $prefix . 'setiap pernyataan Benar/Salah harus memiliki teks dan kunci boolean.']);
