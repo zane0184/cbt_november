@@ -213,6 +213,10 @@ class DocxQuestionParser
             }
 
             if ($active === null) {
+                if ($stimulus !== null && !preg_match('/^(?:SOAL\\s+)?\\d{1,3}\\s*[.):]/iu', $text)) {
+                    $stimulus['content'] = trim($stimulus['content'] . "\\n" . $text);
+                    continue;
+                }
                 if (preg_match('/^(?:KISI[- ]KISI|IDENTITAS PENYUSUN|LEMBAR PENGESAHAN|CAPAIAN PEMBELAJARAN|TUJUAN PEMBELAJARAN)\b/iu', $text)) {
                     $excluded[] = ['text' => mb_substr($text, 0, 180), 'locator' => $block['locator'], 'reason' => 'Konten administrasi/kisi-kisi tidak diimpor sebagai soal.'];
                 }
@@ -266,6 +270,14 @@ class DocxQuestionParser
             }
 
             $answerTokens = $this->answerTokens((string) $answerText);
+
+            if ($type === 'TRUE_FALSE') {
+                $boolean = $this->booleanToken($answerTokens[0] ?? '');
+                $raw['options'] = [
+                    ['option_key' => 'A', 'content' => 'BENAR', 'is_correct' => $boolean === true],
+                    ['option_key' => 'B', 'content' => 'SALAH', 'is_correct' => $boolean === false],
+                ];
+            }
 
             if ($type === 'MULTIPLE_CHOICE' || $type === 'MULTIPLE_RESPONSE') {
                 if (count($raw['options']) < 2 || count($raw['options']) > 4) {
@@ -334,7 +346,7 @@ class DocxQuestionParser
                     return [
                         'option_key' => $option['option_key'],
                         'content' => $option['content'],
-                        'is_correct' => in_array($option['option_key'], $answerTokens, true),
+                        'is_correct' => array_key_exists('is_correct', $option) ? (bool) $option['is_correct'] : in_array($option['option_key'], $answerTokens, true),
                     ];
                 }, $raw['options']),
                 'statements' => $raw['statements'],
