@@ -75,7 +75,8 @@ class QuestionBank extends Component
     public $editingQuestionVersionStatus = null;
 
     public $questionCode = '';
-    public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, MATCHING, ESSAY
+    public $questionType = 'MULTIPLE_CHOICE'; // MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, TRUE_FALSE_GROUP, MATCHING, ESSAY
+    public array $groupStatements = [];
     public $selectedSubjectId = '';
     public $selectedAssignmentId = '';
     public array $selectedCpIds = [];
@@ -105,13 +106,18 @@ class QuestionBank extends Component
     public function openCreateModal()
     {
         Gate::authorize('create', Question::class);
-        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'editingQuestionVersionStatus', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'selectedSubjectId', 'selectedAssignmentId', 'selectedCpIds', 'selectedOutcomeIds', 'selectedMaterialId', 'selectedMaterialTopicId']);
+        $this->reset(['editingQuestionId', 'editingQuestionVersionId', 'editingQuestionVersionStatus', 'questionCode', 'stem', 'explanation', 'optionA', 'optionB', 'optionC', 'optionD', 'correctOptions', 'matchingPairs', 'groupStatements', 'selectedSubjectId', 'selectedAssignmentId', 'selectedCpIds', 'selectedOutcomeIds', 'selectedMaterialId', 'selectedMaterialTopicId']);
         $this->questionType = 'MULTIPLE_CHOICE';
         $this->correctOption = 'A';
         $this->correctOptions = [];
         $this->matchingPairs = [
             ['left' => '', 'right' => ''],
             ['left' => '', 'right' => ''],
+        ];
+        $this->groupStatements = [
+            ['id' => 'sa', 'text' => '', 'is_true' => false],
+            ['id' => 'sb', 'text' => '', 'is_true' => false],
+            ['id' => 'sc', 'text' => '', 'is_true' => false],
         ];
         $this->defaultPoints = 10.0;
         $this->resetValidation();
@@ -185,6 +191,19 @@ class QuestionBank extends Component
                 }
                 $this->matchingPairs = $pairs;
             }
+
+            if ($this->questionType === 'TRUE_FALSE_GROUP') {
+                $this->groupStatements = array_values($version->metadata['statement_items'] ?? []);
+                while (count($this->groupStatements) < 3) {
+                    $index = count($this->groupStatements);
+                    $this->groupStatements[] = [
+                        'id' => 's' . ($index + 1),
+                        'text' => '',
+                        'is_true' => false,
+                    ];
+                }
+                $this->groupStatements = array_slice($this->groupStatements, 0, 3);
+            }
         }
 
         $this->resetValidation();
@@ -237,6 +256,12 @@ class QuestionBank extends Component
             if (empty($this->correctOptions)) {
                 $this->correctOptions = ['A'];
             }
+        } elseif ($value === 'TRUE_FALSE_GROUP') {
+            $this->groupStatements = [
+                ['id' => 'sa', 'text' => '', 'is_true' => false],
+                ['id' => 'sb', 'text' => '', 'is_true' => false],
+                ['id' => 'sc', 'text' => '', 'is_true' => false],
+            ];
         } elseif ($value === 'MATCHING') {
             if (count($this->matchingPairs) < 2) {
                 $this->matchingPairs = [
@@ -252,11 +277,30 @@ class QuestionBank extends Component
         return $this->saveQuestion();
     }
 
+    private function currentQuestionMetadata(array $existingMetadata = []): array
+    {
+        if ($this->questionType === 'TRUE_FALSE_GROUP') {
+            $existingMetadata['statement_items'] = array_map(
+                fn (array $statement): array => [
+                    'id' => trim((string) $statement['id']),
+                    'text' => trim((string) $statement['text']),
+                    'is_true' => (bool) $statement['is_true'],
+                ],
+                array_values($this->groupStatements)
+            );
+            $existingMetadata['statement_scoring'] = 'PROPORTIONAL_PER_STATEMENT_V1';
+        } else {
+            unset($existingMetadata['statement_items'], $existingMetadata['statement_scoring']);
+        }
+
+        return $existingMetadata;
+    }
+
     public function saveQuestion()
     {
         $this->validate([
             'questionCode' => 'required|string|max:50',
-            'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,MATCHING,ESSAY',
+            'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,MATCHING,ESSAY',
             'selectedAssignmentId' => 'required|uuid',
             'selectedSubjectId' => 'required|exists:subjects,id',
             'selectedCpIds' => 'required|array|min:1',
@@ -268,6 +312,15 @@ class QuestionBank extends Component
             'stem' => 'required|string',
             'defaultPoints' => 'required|numeric|min:0.5',
         ]);
+
+        if ($this->questionType === 'TRUE_FALSE_GROUP') {
+            $this->validate([
+                'groupStatements' => 'required|array|size:3',
+                'groupStatements.*.id' => 'required|string|max:40|distinct',
+                'groupStatements.*.text' => 'required|string|max:12000',
+                'groupStatements.*.is_true' => 'required|boolean',
+            ]);
+        }
 
         $user = auth()->user();
         $tenantId = $user->tenant_id ?? null;
