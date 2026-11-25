@@ -106,6 +106,26 @@
                         </div>
                     @endif
 
+                    @if(!empty($q->currentVersion->metadata['shared_stimulus']['content']))
+                        <div class="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs text-slate-700">
+                            <span class="mb-1 block font-bold text-blue-800">Stimulus bersama · {{ $q->currentVersion->metadata['shared_stimulus']['source_group_key'] ?? 'Kelompok' }}</span>
+                            {!! nl2br(e($q->currentVersion->metadata['shared_stimulus']['content'])) !!}
+                        </div>
+                    @endif
+
+                    @if(($q->currentVersion->question_type ?? '') === 'TRUE_FALSE_GROUP')
+                        <div class="space-y-2 rounded-xl border border-indigo-200 bg-indigo-50/50 p-3">
+                            <span class="block text-xs font-bold text-indigo-900">Benar / Salah · 3 Pernyataan</span>
+                            @foreach(($q->currentVersion->metadata['statement_items'] ?? []) as $statement)
+                                <div class="flex items-start justify-between gap-3 text-xs">
+                                    <span class="text-slate-700">{{ $statement['text'] ?? '' }}</span>
+                                    <strong class="shrink-0 text-indigo-800">{{ ($statement['is_true'] ?? false) ? 'BENAR' : 'SALAH' }}</strong>
+                                </div>
+                            @endforeach
+                            <p class="text-[10px] text-indigo-700">Skor proporsional: sepertiga poin untuk setiap pernyataan benar.</p>
+                        </div>
+                    @endif
+
                     @if($q->currentVersion->options && $q->currentVersion->options->count() > 0)
                         @if(($q->currentVersion->question_type ?? '') === 'MATCHING')
                             <div class="space-y-1.5 pt-1">
