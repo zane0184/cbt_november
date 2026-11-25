@@ -240,20 +240,14 @@ class AnswerKeyLeakageTest extends TestCase
         }
     }
 
-    public function test_student_show_does_not_leak_answer_key()
+    public function test_student_show_is_metadata_only_before_admission()
     {
         $this->actingAs($this->student, 'sanctum');
 
         $response = $this->getJson("/api/v1/exams/{$this->exam->id}");
-        $response->assertStatus(200);
-
-        $snapshots = $response->json('data.snapshots');
-        foreach ($snapshots as $q) {
-            foreach ($q['snapshot_options'] as $option) {
-                $this->assertArrayNotHasKey('is_correct', $option);
-                $this->assertArrayNotHasKey('score_weight', $option);
-            }
-        }
+        $response->assertStatus(200)
+            ->assertJsonMissingPath('data.token')
+            ->assertJsonMissingPath('data.snapshots');
     }
 
     public function test_guru_can_see_answer_key_in_preview()
@@ -444,13 +438,9 @@ class AnswerKeyLeakageTest extends TestCase
         }
 
         $showResponse = $this->getJson("/api/v1/exams/{$this->exam->id}");
-        $showResponse->assertStatus(200);
-        foreach ($showResponse->json('data.snapshots') as $studentSnapshot) {
-            $this->assertArrayNotHasKey('snapshot_explanation', $studentSnapshot);
-            $studentMetadata = $studentSnapshot['metadata'] ?? [];
-            $this->assertArrayNotHasKey('accepted_answers', $studentMetadata);
-            $this->assertArrayNotHasKey('rubric', $studentMetadata);
-        }
+        $showResponse->assertStatus(200)
+            ->assertJsonMissingPath('data.token')
+            ->assertJsonMissingPath('data.snapshots');
     }
 }
 
