@@ -153,6 +153,102 @@ class ExamSnapshotTest extends TestCase
 
     }
 
+    public function test_grouped_true_false_and_shared_stimulus_are_copied_to_immutable_exam_snapshot(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'SUBJECT',
+            'question_code' => 'Q-GROUP-TF',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $metadata = [
+            'statement_items' => [
+                ['id' => 'sa', 'text' => 'Dua adalah bilangan genap.', 'is_true' => true],
+                ['id' => 'sb', 'text' => 'Lima lebih besar dari sembilan.', 'is_true' => false],
+                ['id' => 'sc', 'text' => 'Sepuluh habis dibagi dua.', 'is_true' => true],
+            ],
+            'statement_scoring' => 'PROPORTIONAL_PER_STATEMENT_V1',
+            'shared_stimulus' => [
+                'group_id' => 'stable-group-a',
+                'source_group_key' => 'BACAAN-A',
+                'version' => 1,
+                'content' => 'Bacaan yang digunakan oleh beberapa soal.',
+                'content_sha256' => hash('sha256', 'Bacaan yang digunakan oleh beberapa soal.'),
+            ],
+        ];
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'TRUE_FALSE_GROUP',
+            'stem' => 'Tentukan benar atau salah.',
+            'metadata' => $metadata,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+        $response->assertOk();
+
+        $snapshot = $this->exam->snapshots()->where('source_question_version_id', $version->id)->firstOrFail();
+        $this->assertSame('TRUE_FALSE_GROUP', $snapshot->metadata['question_type']);
+        $this->assertCount(3, $snapshot->metadata['statement_items']);
+        $this->assertSame('stable-group-a', $snapshot->metadata['shared_stimulus']['group_id']);
+        $this->assertSame($metadata['statement_items'], $snapshot->metadata['statement_items']);
+    }
+
+    public function test_exam_snapshot_rejects_malformed_grouped_true_false_metadata(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'SUBJECT',
+            'question_code' => 'Q-GROUP-TF-BAD',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'TRUE_FALSE_GROUP',
+            'stem' => 'Tentukan benar atau salah.',
+            'metadata' => [
+                'statement_items' => [
+                    ['id' => 'sa', 'text' => 'Pernyataan satu.', 'is_true' => true],
+                    ['id' => 'sb', 'text' => 'Pernyataan dua.', 'is_true' => false],
+                ],
+            ],
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_version_id' => $version->id,
+        ]);
+    }
+
     public function test_exam_snapshot_remains_immutable_when_bank_question_changes()
     {
         // 1. Create Question V1
