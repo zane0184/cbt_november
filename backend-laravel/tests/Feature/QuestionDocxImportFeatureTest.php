@@ -187,20 +187,69 @@ class QuestionDocxImportFeatureTest extends TestCase
     }
 
 
-    public function test_multi_subject_docx_is_previewed_but_blocked_from_single_assignment_import(): void
+    public function test_multi_subject_docx_can_be_imported_section_by_section_to_separate_assignments(): void
     {
+        $mathSubject = Subject::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Matematika',
+            'code' => 'MTK',
+            'is_active' => true,
+        ]);
+        $mathAssignment = $this->assignment->replicate();
+        $mathAssignment->subject_id = $mathSubject->id;
+        $mathAssignment->save();
+        $mathContext = $this->createCanonicalCurriculumContext($mathAssignment, $this->teacher);
+
+        $bahasaSubject = Subject::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'name' => 'Bahasa Indonesia',
+            'code' => 'BINDO',
+            'is_active' => true,
+        ]);
+        $bahasaAssignment = $this->assignment->replicate();
+        $bahasaAssignment->subject_id = $bahasaSubject->id;
+        $bahasaAssignment->save();
+        $bahasaContext = $this->createCanonicalCurriculumContext($bahasaAssignment, $this->teacher);
+
+        $bytes = $this->makeDocxBytes(true, true);
+
         Livewire::test(QuestionDocxImport::class)
-            ->set('file', $this->uploadedDocx($this->makeDocxBytes(true, true)))
-            ->set('selectedAssignmentId', $this->assignment->id)
+            ->set('file', $this->uploadedDocx($bytes))
             ->call('preview')
             ->assertHasNoErrors()
             ->assertSet('requiresSectionSplit', true)
-            ->assertSee('Dokumen memuat beberapa bagian mata pelajaran')
+            ->assertSet('selectedSection', 'MATEMATIKA KELAS 6')
+            ->set('selectedAssignmentId', $mathAssignment->id)
+            ->set('selectedCpIds', [$mathContext['cp']->id])
+            ->set('selectedOutcomeIds', [$mathContext['tp']->id])
             ->call('importDrafts')
-            ->assertHasErrors('docx');
+            ->assertHasNoErrors();
 
-        $this->assertDatabaseCount('questions', 0);
-        $this->assertDatabaseCount('question_docx_import_batches', 0);
+        $this->assertDatabaseCount('questions', 1);
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenant->id,
+            'teacher_subject_assignment_id' => $mathAssignment->id,
+            'status' => 'DRAFT',
+        ]);
+
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx($bytes))
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedSection', 'BAHASA INDONESIA KELAS 6')
+            ->set('selectedAssignmentId', $bahasaAssignment->id)
+            ->set('selectedCpIds', [$bahasaContext['cp']->id])
+            ->set('selectedOutcomeIds', [$bahasaContext['tp']->id])
+            ->call('importDrafts')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseCount('questions', 2);
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenant->id,
+            'teacher_subject_assignment_id' => $bahasaAssignment->id,
+            'status' => 'DRAFT',
+        ]);
+        $this->assertDatabaseCount('question_docx_import_batches', 2);
     }
 
     public function test_same_docx_cannot_be_imported_twice_into_the_same_assignment(): void

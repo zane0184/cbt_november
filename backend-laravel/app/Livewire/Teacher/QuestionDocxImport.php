@@ -24,6 +24,7 @@ class QuestionDocxImport extends Component
     public array $summary = [];
     public array $sections = [];
     public bool $requiresSectionSplit = false;
+    public ?string $selectedSection = null;
     public ?string $previewHash = null;
     public bool $hasPreview = false;
 
@@ -65,6 +66,13 @@ class QuestionDocxImport extends Component
 
     public function updatedSelectedAssignmentId(): void
     {
+        $this->selectedCpIds = [];
+        $this->selectedOutcomeIds = [];
+    }
+
+    public function updatedSelectedSection(): void
+    {
+        $this->selectedAssignmentId = '';
         $this->selectedCpIds = [];
         $this->selectedOutcomeIds = [];
     }
@@ -137,10 +145,8 @@ class QuestionDocxImport extends Component
         $this->authorizeAccess();
         $this->validate([
             'file' => ['required', 'file', 'extensions:docx', 'max:10240'],
-            'selectedAssignmentId' => ['required', 'uuid'],
+            'selectedAssignmentId' => ['nullable', 'uuid'],
         ]);
-
-        abort_unless($this->selectedAssignmentRow(), 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
 
         $result = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
         $this->questions = array_map(function (array $question): array {
@@ -159,6 +165,12 @@ class QuestionDocxImport extends Component
         $this->excludedContent = $result['excluded_content'] ?? [];
         $this->sections = $result['sections'] ?? [];
         $this->requiresSectionSplit = (bool) ($result['requires_section_split'] ?? false);
+        $this->selectedSection = $this->sections[0]['title'] ?? null;
+        if ($this->requiresSectionSplit) {
+            $this->selectedAssignmentId = '';
+            $this->selectedCpIds = [];
+            $this->selectedOutcomeIds = [];
+        }
         $this->summary = [
             'total' => $result['total'],
             'valid' => $result['valid'],
@@ -213,27 +225,66 @@ class QuestionDocxImport extends Component
         // Re-parse the server-held upload at confirmation time. Unsupported
         // embedded content must never disappear silently during draft save.
         $freshParse = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
-        if (!empty($freshParse['requires_section_split'])) {
-            $sectionNames = collect($freshParse['sections'] ?? [])->pluck('title')->implode(', ');
+        $freshSections = collect($freshParse['sections'] ?? []);
+        $requiresSectionSelection = (bool) ($freshParse['requires_section_split'] ?? false);
+
+        if ($requiresSectionSelection
+            && !$freshSections->contains(fn (array $section): bool => ($section['title'] ?? null) === $this->selectedSection)) {
             throw ValidationException::withMessages([
-                'docx' => 'Dokumen memuat beberapa bagian mata pelajaran: ' . $sectionNames . '. Satu proses impor hanya boleh untuk satu penugasan. Pisahkan dokumen per mata pelajaran sebelum impor.',
+                'selectedSection' => 'Pilih satu bagian mata pelajaran yang benar-benar terdeteksi pada dokumen.',
             ]);
         }
-        $blockedSourceNumbers = array_fill_keys($freshParse['blocked_source_numbers'] ?? [], true);
-        foreach ($this->questions as $questionRow) {
-            if (($questionRow['included'] ?? true)
-                && isset($blockedSourceNumbers[(int) ($questionRow['source_number'] ?? 0)])) {
-                throw ValidationException::withMessages([
-                    'docx' => 'Ada soal terpilih yang memuat gambar, diagram, atau rumus Word yang belum didukung. Hapus konten tersebut dari dokumen sumber lalu unggah ulang.',
-                ]);
-            }
+
+        $allowedSequences = collect($freshParse['questions'] ?? [])
+            ->filter(fn (array $question): bool => !$requiresSectionSelection
+                || ($question['source_section'] ?? null) === $this->selectedSection)
+            ->map(fn (array $question): ?int => isset($question['source_locator']['sequence'])
+                ? (int) $question['source_locator']['sequence']
+                : null)
+            ->filter(fn (?int $sequence): bool => $sequence !== null)
+            ->values()
+            ->all();
+
+        $questionsForImport = array_values(array_filter(
+            $this->questions,
+            fn (array $question): bool => in_array(
+                (int) ($question['source_locator']['sequence'] ?? 0),
+                $allowedSequences,
+                true
+            )
+        ));
+
+        if ($questionsForImport === []) {
+            throw ValidationException::withMessages([
+                'docx' => 'Tidak ada soal pada bagian dokumen yang dipilih.',
+            ]);
+        }
+
+        $selectedSequences = array_map(
+            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0),
+            array_filter($questionsForImport, fn (array $question): bool => ($question['included'] ?? true) === true)
+        );
+        if ($selectedSequences === []) {
+            throw ValidationException::withMessages([
+                'docx' => 'Pilih minimal satu soal pada bagian dokumen yang dipilih.',
+            ]);
+        }
+
+        $blockedSequences = collect($freshParse['questions'] ?? [])
+            ->filter(fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
+            ->map(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0))
+            ->all();
+        if (array_intersect($blockedSequences, $selectedSequences) !== []) {
+            throw ValidationException::withMessages([
+                'docx' => 'Ada soal terpilih yang memuat gambar, diagram, atau rumus Word yang belum didukung. Konten tersebut tidak boleh dihilangkan diam-diam.',
+            ]);
         }
 
         $assignmentRow = $this->selectedAssignmentRow();
         abort_unless($assignmentRow, 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
 
         $result = app(DocxQuestionDraftImporter::class)->import(
-            $this->questions,
+            $questionsForImport,
             $this->previewHash,
             $this->selectedAssignmentId,
             $this->selectedCpIds,
@@ -245,7 +296,7 @@ class QuestionDocxImport extends Component
             $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.'
         );
 
-        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
+        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'selectedSection', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
     }
 
     public function downloadTemplate()

@@ -30,7 +30,7 @@
             <div>
                 <div class="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600">Langkah 1</div>
                 <h2 class="text-lg font-bold text-slate-900">Pilih dokumen dan penugasan</h2>
-                <p class="mt-1 text-sm text-slate-500">File harus berupa Microsoft Word .docx, maksimal 10 MB.</p>
+                <p class="mt-1 text-sm text-slate-500">Unggah dokumen Word .docx maksimal 10 MB. Penugasan dapat dipilih setelah preview dibaca.</p>
             </div>
 
             <div>
@@ -126,18 +126,21 @@
             </div>
 
             @if($requiresSectionSplit)
-                <div class="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
-                    <p class="font-bold">Dokumen memuat beberapa bagian mata pelajaran.</p>
-                    <p class="mt-1 text-xs leading-5">Satu proses impor hanya boleh ditujukan ke satu penugasan. Pisahkan dokumen berdasarkan bagian mata pelajaran agar soal tidak tercampur.</p>
-                    <ul class="mt-2 list-disc space-y-1 pl-5 text-xs">
+                <div class="rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
+                    <label for="docx-section" class="block font-bold">Bagian mata pelajaran yang akan diimpor</label>
+                    <select id="docx-section" wire:model.live="selectedSection" class="mt-2 w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm text-slate-800">
+                        <option value="">Pilih bagian dokumen</option>
                         @foreach($sections as $section)
-                            <li>{{ $section['title'] }} — {{ $section['count'] }} soal</li>
+                            <option value="{{ $section['title'] }}">{{ $section['title'] }} — {{ $section['count'] }} soal</option>
                         @endforeach
-                    </ul>
+                    </select>
+                    @error('selectedSection') <p class="mt-1 text-xs text-rose-700">{{ $message }}</p> @enderror
+                    <p class="mt-2 text-xs leading-5">Setiap bagian diimpor ke penugasan Guru yang sesuai. Pilih bagian, lalu pilih penugasan dan pemetaan kurikulum. Soal dari bagian lain tidak akan ikut diimpor.</p>
                 </div>
             @endif
 
             @foreach($questions as $index => $question)
+                @if(!$requiresSectionSplit || (($question['source_section'] ?? null) === $selectedSection))
                 <article wire:key="docx-question-{{ $index }}" class="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
                         <div class="flex items-center gap-3">
@@ -280,6 +283,7 @@
                     @endif
                     <div class="text-[11px] text-slate-400">Sumber: {{ $question['source_locator']['kind'] ?? 'dokumen' }} · blok {{ $question['source_locator']['sequence'] ?? '-' }}</div>
                 </article>
+                @endif
             @endforeach
 
             @if(count($excludedContent) > 0)
@@ -298,15 +302,9 @@
                     <p class="font-bold text-slate-900">Langkah 4 · Simpan sebagai draf Bank Soal</p>
                     <p class="mt-1 text-xs leading-5 text-slate-600">Validasi akhir akan dijalankan kembali. Soal yang disimpan tetap DRAFT; penerbitan dilakukan terpisah oleh Guru.</p>
                 </div>
-                @if($requiresSectionSplit)
-                    <button type="button" disabled class="rounded-xl bg-slate-300 px-6 py-3 text-sm font-extrabold text-slate-600 cursor-not-allowed">
-                        Pisahkan dokumen per mata pelajaran
-                    </button>
-                @else
-                    <button type="button" wire:click="importDrafts" wire:loading.attr="disabled" class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-wait disabled:opacity-60">
-                        Simpan Soal Valid sebagai Draf
-                    </button>
-                @endif
+                <button type="button" wire:click="importDrafts" wire:loading.attr="disabled" @if(!$selectedAssignmentId || ($requiresSectionSplit && !$selectedSection)) disabled @endif class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
+                    {{ $requiresSectionSplit ? 'Simpan bagian terpilih sebagai DRAFT' : 'Simpan Soal Valid sebagai Draf' }}
+                </button>
             </div>
         </section>
     @endif
