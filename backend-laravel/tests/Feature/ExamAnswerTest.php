@@ -456,6 +456,28 @@ class ExamAnswerTest extends TestCase
         ])->assertStatus(422)->assertJsonPath('code', 'ATTEMPT_EXPIRED');
     }
 
+    public function test_student_execution_payload_hides_grouped_true_false_answer_keys(): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
+        $this->snapshot->update([
+            'metadata' => [
+                'question_type' => 'TRUE_FALSE_GROUP',
+                'statement_items' => [
+                    ['id' => 'sa', 'text' => 'Pernyataan A', 'is_true' => true],
+                    ['id' => 'sb', 'text' => 'Pernyataan B', 'is_true' => false],
+                    ['id' => 'sc', 'text' => 'Pernyataan C', 'is_true' => true],
+                ],
+            ],
+        ]);
+
+        $response = $this->getJson("/api/v1/exams/{$this->exam->id}/execution");
+        $response->assertOk()
+            ->assertJsonPath('data.questions.0.metadata.statement_items.0.text', 'Pernyataan A')
+            ->assertJsonMissingPath('data.questions.0.metadata.statement_items.0.is_true')
+            ->assertJsonMissingPath('data.questions.0.metadata.statement_items.1.is_true')
+            ->assertJsonMissingPath('data.questions.0.metadata.statement_items.2.is_true');
+    }
+
     public function test_grouped_true_false_accepts_only_boolean_answers_for_known_statement_ids(): void
     {
         $this->withHeader('Authorization', 'Bearer '.$this->apiToken);
