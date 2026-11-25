@@ -183,6 +183,30 @@ class P002ANonCpAcademicAcceptanceTest extends TestCase
             ->where('rombel_id', $chain['rombel']->id)
             ->count());
 
+        $chain['teacher']->forceFill(['is_active' => false])->save();
+        Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->set('selectedTeacherProfileId', $chain['teacherProfile']->id)
+            ->set('selectedSubjectId', $chain['subject']->id)
+            ->set('selectedRombelId', $chain['rombel']->id)
+            ->set('selectedSemesterId', $chain['semester']->id)
+            ->set('selectedRegistrationId', $chain['registration']->id)
+            ->set('startsAt', now()->subDay()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createAssignment')
+            ->assertHasErrors(['selectedTeacherProfileId']);
+        $chain['teacher']->forceFill(['is_active' => true, 'deleted_at' => now()])->save();
+        Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->set('selectedTeacherProfileId', $chain['teacherProfile']->id)
+            ->set('selectedSubjectId', $chain['subject']->id)
+            ->set('selectedRombelId', $chain['rombel']->id)
+            ->set('selectedSemesterId', $chain['semester']->id)
+            ->set('selectedRegistrationId', $chain['registration']->id)
+            ->set('startsAt', now()->subDay()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createAssignment')
+            ->assertHasErrors(['selectedTeacherProfileId']);
+        $chain['teacher']->forceFill(['deleted_at' => null])->save();
+
         Livewire::test(UserManagement::class)
             ->set('name', 'Guru Duplikat NIP')
             ->set('username', 'guru.duplicate.nip')
