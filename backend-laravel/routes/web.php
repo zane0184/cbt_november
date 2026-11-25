@@ -7,6 +7,7 @@ use App\Livewire\Teacher\ResultList;
 use App\Livewire\Teacher\ResultDetail;
 use App\Livewire\Admin\UserManagement;
 use App\Livewire\Admin\StudentImport;
+use App\Livewire\Admin\TeacherImport;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
@@ -83,6 +84,7 @@ Route::middleware(['auth', 'active.user', 'tenant', 'license'])->group(function 
     // Admin Operational Routes
     Route::get('/admin/users', UserManagement::class);
     Route::get('/admin/students/import', StudentImport::class)->name('admin.students.import');
+    Route::get('/admin/teachers/import', TeacherImport::class)->name('admin.teachers.import');
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
     Route::get('/admin/teacher-assignments', TeacherSubjectAssignmentManagement::class)->name('admin.teacher-assignments');
