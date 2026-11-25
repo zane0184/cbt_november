@@ -4,7 +4,10 @@
             <h1 class="text-2xl font-bold text-navy-900">Import Data Siswa</h1>
             <p class="text-sm text-textSecondary mt-1">Unggah XLSX atau CSV, periksa seluruh baris, lalu konfirmasi penyimpanan ke Rombel yang dipilih.</p>
         </div>
-        <button type="button" wire:click="downloadCsvTemplate" class="px-4 py-2.5 rounded-xl bg-navy-900 text-white text-sm font-bold">Unduh Template CSV</button>
+        <div class="flex flex-wrap gap-2">
+            <button type="button" wire:click="downloadXlsxTemplate" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold shadow-sm">Unduh Template XLSX</button>
+            <button type="button" wire:click="downloadCsvTemplate" class="px-4 py-2.5 rounded-xl border border-cardBorder bg-white text-navy-900 text-sm font-semibold hover:bg-gray-50">Template CSV (alternatif)</button>
+        </div>
     </div>
 
     @if (session()->has('message'))
@@ -27,7 +30,7 @@
             <label class="block text-sm font-semibold mb-2">File Siswa (XLSX/CSV, maksimal 10 MB)</label>
             <input type="file" wire:model="file" accept=".xlsx,.csv,.txt" class="w-full border border-cardBorder rounded-xl px-4 py-3 text-sm">
             @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            <p class="text-xs text-textSecondary mt-2">Kolom wajib: <strong>nama</strong> dan <strong>nisn</strong>. NISN harus berupa teks 10 digit agar angka nol di depan tidak hilang. Kolom opsional: jenis_kelamin (L/P), tempat_lahir, tanggal_lahir (YYYY-MM-DD), nama_orang_tua, telepon, alamat.</p>
+            <p class="text-xs text-textSecondary mt-2">Kolom wajib: <strong>nama</strong> dan <strong>nisn</strong>. NISN harus berupa teks 10 digit agar angka nol di depan tidak hilang. Template XLSX sudah mengatur kolom NISN, tanggal lahir, dan telepon sebagai teks. Kolom opsional: jenis_kelamin (L/P), tempat_lahir, tanggal_lahir (YYYY-MM-DD), nama_orang_tua, telepon, alamat.</p>
             <p class="text-xs text-textSecondary mt-1">Setiap akun Siswa memperoleh password acak. Admin dapat menerbitkan password melalui fitur Reset Password setelah import.</p>
         </div>
 
