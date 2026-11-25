@@ -253,7 +253,6 @@ class DocxQuestionParser
     private function buildQuestions(array $blocks, string $fileHash): array
     {
         $rawQuestions = [];
-        $answerKeys = [];
         $answerSection = false;
         $active = null;
         $stimulus = null;
@@ -323,9 +322,13 @@ class DocxQuestionParser
                 continue;
             }
 
-            if ($answerSection && preg_match('/^(?:NO\.?\s*)?(\d{1,3})\s*[.):=-]\s*(.+)$/iu', $text, $match)) {
-                $answerKeys[(int) $match[1]] = trim($match[2]);
-                continue;
+            if ($answerSection) {
+                // Answer-key rows are ignored. Only an explicit SOAL heading resumes parsing.
+                if (preg_match('/^SOAL\s+\d{1,3}\s*[.):]/iu', $text) === 1) {
+                    $answerSection = false;
+                } else {
+                    continue;
+                }
             }
 
             if (preg_match('/^(?:SOAL\s+)?(\d{1,3})\s*[.):]\s*(.*)$/iu', $text, $match)) {
@@ -338,18 +341,14 @@ class DocxQuestionParser
                     $hint = strtoupper(preg_replace('/\s+/', ' ', $typeMatch[1]));
                     $header = trim(str_replace($typeMatch[0], '', $header));
                 }
-                $inlineKey = null;
-                if (preg_match('/(?:KUNCI|JAWABAN)\s*[:=]\s*(.+)$/iu', $header, $keyMatch)) {
-                    $inlineKey = trim($keyMatch[1]);
-                    $header = trim(preg_replace('/(?:KUNCI|JAWABAN)\s*[:=]\s*.+$/iu', '', $header));
-                }
+                // Strip inline answer-key annotations; the Teacher fills keys later.
+                $header = trim(preg_replace('/(?:KUNCI|JAWABAN)\s*[:=]\s*.+$/iu', '', $header));
                 $active = [
                     'number' => (int) $match[1],
                     'stem_parts' => $header !== '' ? [$header] : [],
                     'options' => [],
                     'statements' => [],
                     'hint' => $hint,
-                    'answer' => $inlineKey,
                     'locator' => $block['locator'],
                     'stimulus' => $stimulus,
                     'unsupported_blocks' => $blockUnsupported,
@@ -371,8 +370,7 @@ class DocxQuestionParser
                 continue;
             }
 
-            if (preg_match('/^(?:KUNCI|JAWABAN)\s*[:=]\s*(.+)$/iu', $text, $keyMatch)) {
-                $active['answer'] = trim($keyMatch[1]);
+            if (preg_match('/^(?:KUNCI|JAWABAN)\s*[:=]\s*.+$/iu', $text)) {
                 continue;
             }
 
@@ -407,8 +405,7 @@ class DocxQuestionParser
         $questions = [];
         foreach ($rawQuestions as $raw) {
             $number = $raw['number'];
-            $answerText = $raw['answer'] ?? $answerKeys[$number] ?? null;
-            $type = $this->resolveType($raw, $answerText);
+            $type = $this->resolveType($raw);
             $stem = trim(implode("\n", $raw['stem_parts']));
             $errors = [];
             $warningsForQuestion = [];
@@ -425,14 +422,16 @@ class DocxQuestionParser
             if ($stem === '') {
                 $errors[] = 'Teks soal belum ditemukan.';
             }
+            if (trim((string) ($raw['hint'] ?? '')) === ''
+                && in_array($type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE'], true)) {
+                $errors[] = 'Jenis PG atau PGK belum dapat dipastikan dari struktur dokumen. Periksa jenis soal pada preview.';
+            }
 
-            $answerTokens = $this->answerTokens((string) $answerText);
 
             if ($type === 'TRUE_FALSE') {
-                $boolean = $this->booleanToken($answerTokens[0] ?? '');
                 $raw['options'] = [
-                    ['option_key' => 'A', 'content' => 'BENAR', 'is_correct' => $boolean === true],
-                    ['option_key' => 'B', 'content' => 'SALAH', 'is_correct' => $boolean === false],
+                    ['option_key' => 'A', 'content' => 'BENAR', 'is_correct' => false],
+                    ['option_key' => 'B', 'content' => 'SALAH', 'is_correct' => false],
                 ];
             }
 
@@ -444,55 +443,23 @@ class DocxQuestionParser
                 if (count($keys) !== count(array_unique($keys))) {
                     $errors[] = 'Label opsi duplikat.';
                 }
-                if ($answerTokens === []) {
-                    $errors[] = 'Kunci jawaban tidak ditemukan.';
-                }
-                $allowed = array_column($raw['options'], 'option_key');
-                foreach ($answerTokens as $token) {
-                    if (!in_array($token, $allowed, true)) {
-                        $errors[] = "Kunci jawaban {$token} tidak cocok dengan opsi yang tersedia.";
-                    }
-                }
-                if ($type === 'MULTIPLE_CHOICE' && count($answerTokens) !== 1) {
-                    $errors[] = 'PG harus memiliki tepat satu kunci jawaban.';
-                }
             } elseif ($type === 'TRUE_FALSE_GROUP') {
                 if (count($raw['statements']) !== 3) {
                     $errors[] = 'Benar/Salah kelompok wajib memiliki tepat tiga pernyataan berlabel a, b, c.';
                 }
-                if (count($answerTokens) !== 3) {
-                    $errors[] = 'Kunci Benar/Salah kelompok wajib memuat tiga nilai Benar/Salah.';
+                // The parser deliberately leaves grouped truth values unset.
+                foreach ($raw['statements'] as &$statement) {
+                    $statement['is_true'] = null;
                 }
-                $normalized = [];
-                foreach ($answerTokens as $token) {
-                    $value = $this->booleanToken($token);
-                    if ($value === null) {
-                        $errors[] = 'Kunci Benar/Salah hanya menerima B/S, BENAR/SALAH, atau TRUE/FALSE.';
-                    } else {
-                        $normalized[] = $value;
-                    }
-                }
-                if (count($normalized) === 3) {
-                    foreach ($raw['statements'] as $index => &$statement) {
-                        $statement['is_true'] = $normalized[$index];
-                    }
-                    unset($statement);
-                }
+                unset($statement);
+
             } elseif ($type === 'TRUE_FALSE') {
-                $value = $this->booleanToken($answerTokens[0] ?? '');
-                if ($value === null) {
-                    $errors[] = 'Soal Benar/Salah tunggal memerlukan kunci BENAR atau SALAH.';
-                }
             } elseif ($type === 'ESSAY') {
                 if ($raw['options'] !== []) {
                     $errors[] = 'Soal uraian tidak boleh memiliki opsi pilihan ganda.';
                 }
             } else {
                 $errors[] = 'Jenis soal belum didukung untuk import otomatis. Pilih tipe PG, PGK, atau Benar/Salah.';
-            }
-
-            if ($type === 'MULTIPLE_RESPONSE' && $answerTokens === []) {
-                $errors[] = 'PG Kompleks memerlukan satu atau lebih kunci jawaban.';
             }
 
             if (count($raw['options']) > 0 && $type === 'TRUE_FALSE_GROUP') {
@@ -508,16 +475,14 @@ class DocxQuestionParser
                 'blocked_features' => $blockedFeatures,
                 'question_type' => $type,
                 'stem' => $stem,
-                'options' => array_map(function (array $option) use ($answerTokens): array {
+                'options' => array_map(function (array $option): array {
                     return [
                         'option_key' => $option['option_key'],
                         'content' => $option['content'],
-                        'is_correct' => array_key_exists('is_correct', $option) ? (bool) $option['is_correct'] : in_array($option['option_key'], $answerTokens, true),
+                        'is_correct' => false,
                     ];
                 }, $raw['options']),
                 'statements' => $raw['statements'],
-                'answer_tokens' => $answerTokens,
-                'points' => 1,
                 'difficulty' => 'MEDIUM',
                 'stimulus' => $raw['stimulus'],
                 'source_locator' => $raw['locator'],
@@ -542,7 +507,7 @@ class DocxQuestionParser
         ];
     }
 
-    private function resolveType(array $raw, ?string $answer): string
+    private function resolveType(array $raw): string
     {
         $hint = strtoupper((string) ($raw['hint'] ?? ''));
         if ($hint !== '') {
@@ -577,11 +542,7 @@ class DocxQuestionParser
             return 'UNSUPPORTED';
         }
 
-        $tokens = $this->answerTokens((string) $answer);
-        if (count($tokens) > 1) {
-            return 'MULTIPLE_RESPONSE';
-        }
-
+        // Without an explicit marker, PG and PGK cannot safely be distinguished.
         return 'MULTIPLE_CHOICE';
     }
 

@@ -38,7 +38,39 @@ class DocxQuestionParserTest extends TestCase
             $this->assertSame('MULTIPLE_CHOICE', $result['questions'][0]['question_type']);
             $this->assertSame('MULTIPLE_RESPONSE', $result['questions'][1]['question_type']);
             $this->assertSame('TRUE_FALSE_GROUP', $result['questions'][2]['question_type']);
-            $this->assertSame([true, false, true], array_column($result['questions'][2]['statements'], 'is_true'));
+            $this->assertSame([null, null, null], array_column($result['questions'][2]['statements'], 'is_true'));
+        } finally {
+            @unlink($path);
+        }
+    }
+
+
+    public function test_questions_without_answer_keys_are_ready_as_content_only_drafts(): void
+    {
+        $path = $this->makeDocx([
+            'SOAL 1. [PG] Ibu kota Indonesia adalah ....',
+            'A. Bandung',
+            'B. Jakarta',
+            'SOAL 2. [PGK] Pilih bilangan genap.',
+            'A. 2',
+            'B. 3',
+            'C. 4',
+            'SOAL 3. [B/S] Tentukan benar atau salah.',
+            'a. 2 adalah bilangan genap.',
+            'b. 5 lebih besar daripada 9.',
+            'c. 10 habis dibagi 2.',
+        ]);
+
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $this->assertSame(3, $result['total']);
+            $this->assertSame(3, $result['valid']);
+            $this->assertSame('MULTIPLE_CHOICE', $result['questions'][0]['question_type']);
+            $this->assertSame('MULTIPLE_RESPONSE', $result['questions'][1]['question_type']);
+            $this->assertSame('TRUE_FALSE_GROUP', $result['questions'][2]['question_type']);
+            $this->assertSame([false, false], array_column($result['questions'][0]['options'], 'is_correct'));
+            $this->assertSame([false, false, false], array_column($result['questions'][1]['options'], 'is_correct'));
+            $this->assertSame([null, null, null], array_column($result['questions'][2]['statements'], 'is_true'));
         } finally {
             @unlink($path);
         }
@@ -58,7 +90,7 @@ class DocxQuestionParserTest extends TestCase
             $result = app(DocxQuestionParser::class)->parse($path);
             $this->assertSame(1, $result['total']);
             $this->assertSame(1, $result['valid']);
-            $this->assertTrue($result['questions'][0]['options'][1]['is_correct']);
+            $this->assertFalse($result['questions'][0]['options'][1]['is_correct']);
         } finally {
             @unlink($path);
         }

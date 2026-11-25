@@ -370,6 +370,24 @@ class ExamSnapshotService
                     ->lockForUpdate()
                     ->firstOrFail();
 
+                if ((float) $version->default_points <= 0) {
+                    abort(422, 'Snapshot diblokir: bobot nilai soal belum ditentukan oleh Guru.');
+                }
+                if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+                    $options = $version->options;
+                    $optionCount = $options->count();
+                    $correctCount = $options->filter(fn ($option) => (bool) $option->is_correct)->count();
+                    $validKeys = match ($version->question_type) {
+                        'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
+                        'MULTIPLE_RESPONSE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount >= 1,
+                        'TRUE_FALSE' => $optionCount === 2 && $correctCount === 1,
+                        default => false,
+                    };
+                    if (!$validKeys) {
+                        abort(422, 'Snapshot diblokir: kunci jawaban soal belum lengkap atau tidak valid.');
+                    }
+                }
+
                 // Fail closed for legacy SHORT_ANSWER rows: accepted answers are not
                 // yet captured in the immutable snapshot and cannot be scored safely.
                 if ($version->question_type === 'SHORT_ANSWER') {

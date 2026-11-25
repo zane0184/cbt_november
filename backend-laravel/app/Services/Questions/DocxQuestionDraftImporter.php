@@ -122,6 +122,8 @@ class DocxQuestionDraftImporter
                     'source_file_sha256' => $fileSha256,
                     'source_question_number' => (int) ($row['source_number'] ?? 0),
                     'source_locator' => $row['source_locator'] ?? [],
+                    'answer_key_status' => 'PENDING_TEACHER',
+                    'score_weight_status' => 'PENDING_TEACHER',
                 ];
 
                 if (($row['question_type'] ?? null) === 'ESSAY') {
@@ -129,8 +131,16 @@ class DocxQuestionDraftImporter
                 }
 
                 if (($row['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
-                    $metadata['statement_items'] = array_values($row['statements']);
+                    $metadata['statement_items'] = array_map(
+                        fn (array $statement): array => [
+                            'id' => (string) $statement['id'],
+                            'text' => trim((string) $statement['text']),
+                            'is_true' => null,
+                        ],
+                        array_values($row['statements'])
+                    );
                     $metadata['statement_scoring'] = 'PROPORTIONAL_PER_STATEMENT_V1';
+                    $metadata['answer_key_status'] = 'PENDING_TEACHER';
                 }
 
                 if (!empty($row['stimulus']['content'])) {
@@ -155,7 +165,8 @@ class DocxQuestionDraftImporter
                     'explanation' => null,
                     'metadata' => $metadata,
                     'difficulty' => $row['difficulty'] ?? 'MEDIUM',
-                    'default_points' => (float) ($row['points'] ?? 1),
+                    // Zero is a DRAFT sentinel until the Teacher assigns score weight.
+                    'default_points' => 0.00,
                     'status' => 'DRAFT',
                     'is_current' => true,
                     'created_by' => $user->id,
@@ -169,8 +180,9 @@ class DocxQuestionDraftImporter
                             'option_key' => $option['option_key'],
                             'content' => trim((string) $option['content']),
                             'sequence' => $sequence + 1,
-                            'is_correct' => (bool) ($option['is_correct'] ?? false),
-                            'score_weight' => (bool) ($option['is_correct'] ?? false) ? 1 : 0,
+                            // Import never reads or infers answer keys.
+                            'is_correct' => false,
+                            'score_weight' => 0,
                         ]);
                     }
                 }
@@ -241,10 +253,6 @@ class DocxQuestionDraftImporter
         if (trim((string) ($row['stem'] ?? '')) === '') {
             throw ValidationException::withMessages(['docx' => $prefix . 'teks soal wajib diisi.']);
         }
-        $points = (float) ($row['points'] ?? 1);
-        if ($points < 0.5 || $points > 100) {
-            throw ValidationException::withMessages(['docx' => $prefix . 'poin harus berada pada rentang 0,5 sampai 100.']);
-        }
         if (!in_array($row['difficulty'] ?? 'MEDIUM', ['EASY', 'MEDIUM', 'HARD'], true)) {
             throw ValidationException::withMessages(['docx' => $prefix . 'tingkat kesulitan tidak valid.']);
         }
@@ -259,8 +267,8 @@ class DocxQuestionDraftImporter
                 throw ValidationException::withMessages(['docx' => $prefix . 'Setiap pernyataan wajib memiliki ID stabil yang unik.']);
             }
             foreach ($statements as $statement) {
-                if (trim((string) ($statement['text'] ?? '')) === '' || !is_bool($statement['is_true'] ?? null)) {
-                    throw ValidationException::withMessages(['docx' => $prefix . 'setiap pernyataan Benar/Salah harus memiliki teks dan kunci boolean.']);
+                if (trim((string) ($statement['text'] ?? '')) === '') {
+                    throw ValidationException::withMessages(['docx' => $prefix . 'setiap pernyataan Benar/Salah harus memiliki teks.']);
                 }
             }
             return;
@@ -275,9 +283,8 @@ class DocxQuestionDraftImporter
 
         if ($type === 'TRUE_FALSE') {
             $options = $row['options'] ?? [];
-            if (count($options) !== 2
-                || count(array_filter($options, fn (array $option) => (bool) ($option['is_correct'] ?? false))) !== 1) {
-                throw ValidationException::withMessages(['docx' => $prefix . 'Benar/Salah tunggal wajib memiliki satu kunci benar.']);
+            if (count($options) !== 2) {
+                throw ValidationException::withMessages(['docx' => $prefix . 'Benar/Salah tunggal wajib memiliki opsi Benar dan Salah.']);
             }
             return;
         }
@@ -288,7 +295,6 @@ class DocxQuestionDraftImporter
         }
 
         $keys = [];
-        $correct = 0;
         foreach ($options as $option) {
             $key = strtoupper(trim((string) ($option['option_key'] ?? '')));
             if (!in_array($key, ['A', 'B', 'C', 'D'], true)
@@ -297,12 +303,7 @@ class DocxQuestionDraftImporter
                 throw ValidationException::withMessages(['docx' => $prefix . 'label opsi harus unik A-D dan isi opsi wajib lengkap.']);
             }
             $keys[$key] = true;
-            $correct += (bool) ($option['is_correct'] ?? false) ? 1 : 0;
         }
 
-        if (($type === 'MULTIPLE_CHOICE' && $correct !== 1)
-            || ($type === 'MULTIPLE_RESPONSE' && $correct < 1)) {
-            throw ValidationException::withMessages(['docx' => $prefix . 'jumlah kunci jawaban tidak sesuai dengan tipe soal.']);
-        }
     }
 }

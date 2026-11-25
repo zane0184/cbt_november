@@ -292,7 +292,10 @@
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Poin Default</label>
-                            <input wire:model="defaultPoints" type="number" step="0.5" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <input wire:model="defaultPoints" type="number" min="0.5" step="0.5" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            @if((float) $defaultPoints <= 0)
+                                <span class="mt-1 block text-xs font-semibold text-amber-700">Bobot belum ditetapkan. Isi sebelum menyimpan atau menerbitkan.</span>
+                            @endif
                         </div>
                     </div>
 
@@ -331,7 +334,8 @@
                             <div class="pt-2">
                                 <label class="block text-xs font-bold text-emerald-800 uppercase mb-1">Kunci Jawaban Benar</label>
                                 <select wire:model="correctOption" class="w-36 border border-cardBorder rounded-lg px-3 py-1.5 text-sm font-bold text-emerald-900 bg-white">
-                                    <option value="A">Opsi A</option>
+                                    <option value="">Pilih kunci jawaban...</option>
+                                <option value="A">Opsi A</option>
                                     <option value="B">Opsi B</option>
                                     <option value="C">Opsi C</option>
                                     <option value="D">Opsi D</option>
@@ -457,10 +461,14 @@
                                         <textarea wire:model="groupStatements.{{ $idx }}.text" rows="2" class="w-full rounded-lg border border-cardBorder px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none"></textarea>
                                         @error('groupStatements.'.$idx.'.text') <span class="mt-1 block text-xs text-red-600">{{ $message }}</span> @enderror
                                     </div>
-                                    <label class="inline-flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-800">
-                                        <input type="checkbox" wire:model="groupStatements.{{ $idx }}.is_true" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                                        Kunci: Benar
-                                    </label>
+                                    <div>
+                                        <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Kunci jawaban</label>
+                                        <select wire:model="groupStatements.{{ $idx }}.is_true" class="rounded-lg border border-cardBorder bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                                            <option value="">Pilih Benar / Salah</option>
+                                            <option value="1">Benar</option>
+                                            <option value="0">Salah</option>
+                                        </select>
+                                    </div>
                                 </div>
                             @endforeach
                             @error('groupStatements') <span class="block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror

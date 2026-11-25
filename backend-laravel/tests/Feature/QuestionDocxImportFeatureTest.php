@@ -158,6 +158,34 @@ class QuestionDocxImportFeatureTest extends TestCase
         ]);
     }
 
+
+    public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
+    {
+        $bytes = $this->makeDocxBytes(false);
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx($bytes))
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSet('summary.total', 1)
+            ->assertSet('summary.valid', 1)
+            ->set('selectedCpIds', [$this->curriculumContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->curriculumContext['tp']->id])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal berhasil disimpan sebagai DRAFT');
+
+        $question = \App\Models\Question::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('created_by', $this->teacher->id)
+            ->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('DRAFT', $version->status);
+        $this->assertSame('0.00', number_format((float) $version->default_points, 2, '.', ''));
+        $this->assertSame(0, $version->options()->where('is_correct', true)->count());
+    }
+
     public function test_same_docx_cannot_be_imported_twice_into_the_same_assignment(): void
     {
         $sameDocxBytes = $this->makeDocxBytes();
@@ -188,7 +216,7 @@ class QuestionDocxImportFeatureTest extends TestCase
         return UploadedFile::fake()->createWithContent('soal.docx', $bytes ?? $this->makeDocxBytes());
     }
 
-    private function makeDocxBytes(): string
+    private function makeDocxBytes(bool $includeAnswerKey = true): string
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-docx-feature-');
         $zip = new ZipArchive();
@@ -201,7 +229,7 @@ class QuestionDocxImportFeatureTest extends TestCase
             . '<w:p><w:r><w:t>SOAL 1. [PG] Ibu kota Indonesia adalah ....</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>A. Bandung</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>B. Jakarta</w:t></w:r></w:p>'
-            . '<w:p><w:r><w:t>KUNCI: B</w:t></w:r></w:p>'
+            . ($includeAnswerKey ? '<w:p><w:r><w:t>KUNCI: B</w:t></w:r></w:p>' : '')
             . '<w:sectPr/></w:body></w:document>';
         $contentTypes = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
         $relationships = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';

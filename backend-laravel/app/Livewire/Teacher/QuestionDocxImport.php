@@ -143,11 +143,10 @@ class QuestionDocxImport extends Component
         $result = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
         $this->questions = array_map(function (array $question): array {
             $question['included'] = true;
-            $question['points'] = $question['points'] ?? 1;
             $question['difficulty'] = $question['difficulty'] ?? 'MEDIUM';
             if (($question['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
                 $question['statements'] = array_map(function (array $statement): array {
-                    $statement['is_true'] = array_key_exists('is_true', $statement)
+                    $statement['is_true'] = is_bool($statement['is_true'] ?? null)
                         ? ($statement['is_true'] ? '1' : '0')
                         : '';
                     return $statement;
@@ -180,16 +179,13 @@ class QuestionDocxImport extends Component
             'questions.*.included' => ['sometimes', 'boolean'],
             'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
             'questions.*.stem' => ['required', 'string', 'max:12000'],
-            'questions.*.points' => ['required', 'numeric', 'min:0.5', 'max:100'],
             'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
             'questions.*.options' => ['sometimes', 'array', 'max:4'],
             'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
             'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
-            'questions.*.options.*.is_correct' => ['sometimes', 'boolean'],
             'questions.*.statements' => ['sometimes', 'array', 'max:3'],
             'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
             'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
-            'questions.*.statements.*.is_true' => ['required', 'boolean'],
             'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
             'questions.*.mapping_cp_ids' => ['sometimes', 'array'],
             'questions.*.mapping_cp_ids.*' => ['required', 'uuid', 'distinct'],
@@ -221,20 +217,6 @@ class QuestionDocxImport extends Component
 
         $assignmentRow = $this->selectedAssignmentRow();
         abort_unless($assignmentRow, 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
-
-        foreach ($this->questions as &$questionRow) {
-            if (($questionRow['included'] ?? true) && ($questionRow['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
-                foreach ($questionRow['statements'] as &$statementRow) {
-                    $normalizedBoolean = filter_var($statementRow['is_true'] ?? null, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                    if ($normalizedBoolean === null) {
-                        throw ValidationException::withMessages(['docx' => 'Pilih kunci Benar atau Salah untuk setiap pernyataan dalam soal kelompok.']);
-                    }
-                    $statementRow['is_true'] = $normalizedBoolean;
-                }
-                unset($statementRow);
-            }
-        }
-        unset($questionRow);
 
         $result = app(DocxQuestionDraftImporter::class)->import(
             $this->questions,

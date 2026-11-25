@@ -169,7 +169,7 @@ class QuestionBank extends Component
                         ->toArray();
                 } else {
                     $correct = $version->options->firstWhere('is_correct', true);
-                    $this->correctOption = $correct ? $correct->option_key : 'A';
+                    $this->correctOption = $correct ? $correct->option_key : '';
                 }
             } elseif ($this->questionType === 'MATCHING') {
                 $leftOptions = $version->options->filter(fn($o) => !empty($o->option_key) && empty($o->matching_key));
@@ -199,7 +199,7 @@ class QuestionBank extends Component
                     $this->groupStatements[] = [
                         'id' => 's' . ($index + 1),
                         'text' => '',
-                        'is_true' => false,
+                        'is_true' => null,
                     ];
                 }
                 $this->groupStatements = array_slice($this->groupStatements, 0, 3);
@@ -258,9 +258,9 @@ class QuestionBank extends Component
             }
         } elseif ($value === 'TRUE_FALSE_GROUP') {
             $this->groupStatements = [
-                ['id' => 'sa', 'text' => '', 'is_true' => false],
-                ['id' => 'sb', 'text' => '', 'is_true' => false],
-                ['id' => 'sc', 'text' => '', 'is_true' => false],
+                ['id' => 'sa', 'text' => '', 'is_true' => null],
+                ['id' => 'sb', 'text' => '', 'is_true' => null],
+                ['id' => 'sc', 'text' => '', 'is_true' => null],
             ];
         } elseif ($value === 'MATCHING') {
             if (count($this->matchingPairs) < 2) {
@@ -618,6 +618,19 @@ class QuestionBank extends Component
             Gate::authorize('publish', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            abort_if((float) $version->default_points <= 0, 422, 'Bobot nilai belum ditentukan. Lengkapi bobot pada editor Bank Soal sebelum menerbitkan.');
+            if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+                $options = $version->options;
+                $optionCount = $options->count();
+                $correctCount = $options->filter(fn ($option) => (bool) $option->is_correct)->count();
+                $validKeys = match ($version->question_type) {
+                    'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
+                    'MULTIPLE_RESPONSE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount >= 1,
+                    'TRUE_FALSE' => $optionCount === 2 && $correctCount === 1,
+                    default => false,
+                };
+                abort_if(!$validKeys, 422, 'Kunci jawaban belum lengkap atau tidak sesuai jenis soal. Lengkapi melalui editor Bank Soal.');
+            }
             if ($version->question_type === 'TRUE_FALSE_GROUP') {
                 $items = $version->metadata['statement_items'] ?? [];
                 $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);

@@ -121,6 +121,10 @@
                 </div>
             </div>
 
+            <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-5 text-amber-900">
+                Import DOCX hanya memindahkan isi soal, pilihan, pernyataan, dan stimulus. Kunci jawaban serta bobot nilai tidak dibaca atau ditebak; Guru melengkapinya setelah soal masuk Bank Soal.
+            </div>
+
             @foreach($questions as $index => $question)
                 <article wire:key="docx-question-{{ $index }}" class="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
                     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
@@ -181,10 +185,6 @@
 
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
-                            <label class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Poin maksimal</label>
-                            <input type="number" min="0.5" max="100" step="0.5" wire:model="questions.{{ $index }}.points" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
-                        </div>
-                        <div>
                             <label class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Tingkat kesulitan</label>
                             <select wire:model="questions.{{ $index }}.difficulty" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                 <option value="EASY">Mudah</option>
@@ -203,12 +203,11 @@
 
                     @if(in_array($question['question_type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true))
                         <div class="space-y-2">
-                            <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Opsi dan kunci jawaban</div>
+                            <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Pilihan jawaban</div>
                             @foreach($question['options'] as $optionIndex => $option)
                                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
                                     <span class="text-sm font-extrabold text-slate-600">{{ $option['option_key'] }}.</span>
                                     <input type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
-                                    <label class="inline-flex items-center gap-2 text-xs font-semibold text-emerald-700"><input type="checkbox" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.is_correct" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"> Kunci benar</label>
                                 </div>
                             @endforeach
                         </div>
@@ -221,7 +220,7 @@
                     @if($question['question_type'] === 'TRUE_FALSE_GROUP')
                         <div class="space-y-3">
                             <div class="flex flex-wrap items-center justify-between gap-2">
-                                <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Tiga pernyataan dan kunci Benar/Salah</div>
+                                <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Tiga pernyataan</div>
                                 @if(count($question['statements']) < 3)
                                     <button type="button" wire:click="addGroupedStatement({{ $index }})" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-800">+ Tambah pernyataan</button>
                                 @endif
@@ -232,19 +231,9 @@
                                         <div class="mb-1 text-xs font-bold text-slate-500">Pernyataan {{ $statementIndex + 1 }}</div>
                                         <input type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
                                     </div>
-                                    <div class="flex items-end gap-2">
-                                        <div>
-                                            <label class="mb-1 block text-[10px] font-bold uppercase text-slate-500">Kunci jawaban</label>
-                                            <select wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.is_true" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 focus:border-indigo-500 focus:outline-none">
-                                                <option value="">Pilih Benar / Salah</option>
-                                                <option value="1">Benar</option>
-                                                <option value="0">Salah</option>
-                                            </select>
-                                        </div>
-                                        @if(count($question['statements']) > 3)
-                                            <button type="button" wire:click="removeGroupedStatement({{ $index }}, {{ $statementIndex }})" class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700">Hapus</button>
-                                        @endif
-                                    </div>
+                                    @if(count($question['statements']) > 3)
+                                        <button type="button" wire:click="removeGroupedStatement({{ $index }}, {{ $statementIndex }})" class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700">Hapus</button>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
