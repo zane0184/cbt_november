@@ -179,6 +179,21 @@
                         <textarea wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
                     </div>
 
+                    <div class="grid gap-3 sm:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Poin maksimal</label>
+                            <input type="number" min="0.5" max="100" step="0.5" wire:model="questions.{{ $index }}.points" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="mb-1 block text-xs font-bold uppercase tracking-wide text-slate-500">Tingkat kesulitan</label>
+                            <select wire:model="questions.{{ $index }}.difficulty" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                <option value="EASY">Mudah</option>
+                                <option value="MEDIUM">Sedang</option>
+                                <option value="HARD">Sulit</option>
+                            </select>
+                        </div>
+                    </div>
+
                     @if(!empty($question['stimulus']['content']))
                         <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
                             <div class="mb-1 text-xs font-bold uppercase text-blue-700">Stimulus bersama · {{ $question['stimulus']['id'] }}</div>
