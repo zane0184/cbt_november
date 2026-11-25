@@ -66,6 +66,15 @@ class StudentImportTest extends TestCase
         ]);
     }
 
+    public function test_admin_can_download_xlsx_template_for_student_import(): void
+    {
+        $this->actingAs($this->admin);
+
+        Livewire::test(StudentImport::class)
+            ->call('downloadXlsxTemplate')
+            ->assertFileDownloaded('template-import-siswa.xlsx');
+    }
+
     public function test_admin_can_preview_and_import_csv_preserving_leading_zero_nisn_and_audit_batch(): void
     {
         $this->actingAs($this->admin);
