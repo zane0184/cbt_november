@@ -628,6 +628,17 @@ class QuestionBankTest extends TestCase
         $this->assertTrue((bool) $groupVersion->is_current);
         $this->assertSame('DRAFT', $groupVersion->status);
 
+        Livewire::test(QuestionBank::class)
+            ->call('openEditModal', $groupVersion->question_id)
+            ->assertSet('questionType', 'TRUE_FALSE_GROUP')
+            ->assertSet('groupStatements.0.text', '2 merupakan bilangan genap.')
+            ->set('groupStatements.0.text', 'Dua adalah bilangan genap.')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $groupVersion->refresh();
+        $this->assertSame('Dua adalah bilangan genap.', $groupVersion->metadata['statement_items'][0]['text']);
+
         $publishResponse = $this->postJson('/api/v1/questions/' . $groupVersion->question_id . '/publish');
         $publishResponse->assertOk();
         $this->assertDatabaseHas('questions', [
