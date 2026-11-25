@@ -46,7 +46,10 @@ class ExamController extends Controller
 
         // The token is operational data for the owning Guru, not a field that
         // should be disclosed by the generic student exam-list endpoint.
-        if ($request->user()->hasExactRole('SISWA')) {
+        if ($request->user()->hasExactRole('SISWA') || $request->user()->hasExactRole('ADMIN_MADRASAH')) {
+            // Siswa must enter the token supplied by the madrasah. Admin receives
+            // a read-only exam register; token disclosure belongs to a separately
+            // authorized central-exam workflow, which remains fail-closed for now.
             $paginator->getCollection()->each(
                 fn (Exam $listedExam) => $listedExam->makeHidden(['token'])
             );
@@ -128,6 +131,16 @@ class ExamController extends Controller
 
             return response()->json(['success' => true, 'data' => $data]);
         }
+
+        if (auth()->user()->hasExactRole('ADMIN_MADRASAH')) {
+            // Admin may inspect the local exam register but cannot access the
+            // token or question snapshot through this generic read endpoint.
+            $data->makeHidden(['token']);
+            $data->unsetRelation('snapshots');
+
+            return response()->json(['success' => true, 'data' => $data->toArray()]);
+        }
+
         return response()->json(['success' => true, 'data' => $data]);
     }
 
