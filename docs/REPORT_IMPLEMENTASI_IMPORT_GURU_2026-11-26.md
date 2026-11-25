@@ -1,49 +1,59 @@
-# Laporan Implementasi — Import Guru Web Admin
+# Laporan Implementasi — Import Guru, Kredensial Sekali Tampil, dan Ekspor XLSX
 Tanggal: 2026-11-26
 
 ## Ringkasan
-Implementasi Import Guru dibuat pada branch `feature/admin-teacher-import-20261126-r1`, dibuat dari source `work/guru-docx-import-e2e-20261125` @ `bc3d9a497a2775fcbeda9deed57ee05bcf53e2e8`; target PR telah diperbarui ke head branch terbaru @ `c6ce755f1ae9f65ed838817d06316ea4232c3b10` setelah satu commit upstream non-overlap masuk. Branch fitur sebelumnya #26 dibuat dari snapshot yang tertinggal dua commit; branch tersebut tidak digunakan sebagai dasar integrasi dan PR #26 ditutup sebagai superseded. Perubahan fitur dipindahkan secara selektif ke branch baru sehingga dua commit terbaru tetap dipertahankan.
+Pekerjaan pada branch `feature/admin-teacher-import-20261126-r1`, PR #27. Cakupan diperluas dari penambahan Import Guru menjadi penyelesaian alur kredensial Import Guru dan Import Siswa. Setelah impor sukses, Admin diarahkan ke halaman Manajemen Pengguna; halaman tersebut menampilkan daftar akun yang baru dibuat beserta identitas login dan password awal, serta menyediakan unduhan kredensial hanya dalam format XLSX.
+
+Source branch target bergerak dari common base `bc3d9a497a2775fcbeda9deed57ee05bcf53e2e8` dengan tiga commit tambahan yang hanya menyentuh parser/import DOCX, view Bank Soal/Guru, test DOCX/Exam, dan backup. Tidak ada file overlap dengan file utama Import Guru/Import Siswa/Manajemen Pengguna. Perbandingan terbaru harus diperiksa lagi sebelum merge.
 
 ## AUDIT
-- Pada source base terbaru tidak ditemukan komponen, service, route, view, migration batch, atau feature test khusus Import Guru.
-- Import Siswa memiliki pola preview, validasi, transaksi batch, idempotensi, audit log, dan pembatasan akses Admin Madrasah.
-- Pembuatan akun Guru manual pada `UserManagement` menetapkan aturan identitas: PNS/PPPK memakai NIP 18 digit; Honorer memakai NIK 16 digit; NUPTK opsional 16 digit.
-- `TeacherProfile` memiliki kolom `employment_status`, `nip`, `nik`, `nuptk`, `employee_identifier`, `gender`, dan `phone`. Constraint login identity dan unique tenant-scoped sudah tersedia pada source base.
-- Pemeriksa paket XLSX yang ada hanya menerima satu worksheet. Template Guru dibuat satu worksheet dan parser XLSX membaca kolom sampai batas pemeriksa agar kolom ekstra dapat ditolak, bukan diabaikan.
+- Source Import Siswa sebelumnya sudah membuat password acak dan menyimpannya dalam hash, tetapi tidak mengembalikan password awal kepada Admin. Admin hanya diberi arahan melakukan Reset Password satu akun demi satu akun.
+- Source login resmi menggunakan NISN untuk Siswa, NIP 18 digit untuk Guru PNS/PPPK, dan NIK 16 digit untuk Guru Honorer. `LoginIdentityResolver` mengikat identitas ke tenant instalasi lokal; username bukan fallback login Guru/Siswa.
+- Password hash tidak dapat dibaca kembali. Karena itu, kredensial plaintext hanya boleh tersedia pada hasil transaksi dan sesi Admin sekali tampil, bukan disimpan permanen di tabel atau audit log.
+- Manajemen Pengguna sebelumnya menampilkan data Guru/Siswa, tetapi pencarian belum mencakup NIP/NIK/NISN.
 
 ## DESAIN
-- Fitur ditempatkan di Manajemen Pengguna melalui tombol Import Guru XLSX/CSV, sejajar dengan Import Siswa.
-- Kolom: `nama`, `status_kepegawaian`, `nip`, `nik`, `nuptk`, `jenis_kelamin`, `telepon`, `email`.
-- Preview wajib sebelum konfirmasi. Semua baris harus valid; satu kesalahan membatalkan seluruh batch.
-- Setiap baris membuat akun role tepat `GURU` dan satu `TeacherProfile`. Password awal dibuat acak dan tidak diekspor; Admin menerbitkan kredensial melalui Reset Password.
-- Maksimal 5.000 baris dan 10 MiB per file. XLSX memakai preflight paket yang ada; CSV/XLSX menolak kolom tak dikenal, identitas duplikat, format identitas salah, dan formula XLSX.
-- Isolasi mengikuti model satu instalasi/database per madrasah dan tenant context. Tidak ada koneksi akademik lintas madrasah, perubahan CBT Engine, atau perubahan kurikulum.
+- Setelah batch berhasil, setiap service mengembalikan daftar kredensial sekali tampil: nama, identitas login, jenis identitas, dan password awal.
+- Password awal dibuat acak 24 karakter; database hanya menyimpan hash password. Kredensial tidak dicatat ke audit log.
+- Komponen Import Guru/Siswa melakukan redirect ke `/admin/users` dengan flash session untuk menampilkan kredensial pada halaman daftar pengguna.
+- Halaman Manajemen Pengguna otomatis memfilter role sesuai hasil impor (GURU atau SISWA), menampilkan semua kredensial batch dalam tabel yang dapat digulir, dan menyediakan tombol **Unduh Daftar Akun (.xlsx)**.
+- XLSX memuat kolom `nama`, `identitas_login`, `jenis_identitas`, `password_awal`; nilai ditulis sebagai teks agar NIP/NIK/NISN dan password tidak berubah format.
+- Tombol tutup menghapus tampilan kredensial dari state Livewire. Setelah ditutup atau sesi berakhir, password awal tidak dapat dipulihkan; Admin dapat menggunakan fitur Reset Password yang sudah ada untuk membuat password baru.
+- Pencarian Manajemen Pengguna mencakup nama, username, email, NIP, NIK, dan NISN.
+- Format unduhan daftar kredensial hanya XLSX. CSV tetap dapat diterima sebagai format file masukan bila Admin memilihnya; bukan sebagai format hasil unduhan kredensial.
 
 ## IMPLEMENTASI
-File source baru:
+File baru:
 - `backend-laravel/app/Services/TeacherImportService.php`
 - `backend-laravel/app/Livewire/Admin/TeacherImport.php`
 - `backend-laravel/resources/views/livewire/admin/teacher-import.blade.php`
 - `backend-laravel/database/migrations/2026_11_26_010001_create_teacher_import_batches_table.php`
 - `backend-laravel/tests/Feature/TeacherImportTest.php`
 
-File source yang diubah:
-- `backend-laravel/routes/web.php`: route bernama `admin.teachers.import`.
-- `backend-laravel/resources/views/livewire/admin/user-management.blade.php`: tombol Import Guru.
+File diubah:
+- `backend-laravel/routes/web.php` — route Import Guru.
+- `backend-laravel/resources/views/livewire/admin/user-management.blade.php` — tombol Import Guru dan panel hasil kredensial.
+- `backend-laravel/app/Services/TeacherImportService.php` — password awal dan hasil kredensial.
+- `backend-laravel/app/Livewire/Admin/TeacherImport.php` — redirect setelah impor.
+- `backend-laravel/app/Services/StudentImportService.php` — hasil kredensial Siswa.
+- `backend-laravel/app/Livewire/Admin/StudentImport.php` — redirect setelah impor.
+- `backend-laravel/resources/views/livewire/admin/student-import.blade.php` — petunjuk hasil kredensial.
+- `backend-laravel/app/Livewire/Admin/UserManagement.php` — tampilan state sekali tampil, ekspor XLSX, hapus tampilan, filter role, pencarian identitas.
+- `backend-laravel/tests/Feature/StudentImportTest.php` dan `TeacherImportTest.php` — tes kredensial, login, dan ekspor XLSX.
+- `.github/workflows/tenant-backend-ci.yml` — trigger CI ditambahkan untuk branch fitur ini agar test suite backend MySQL 8 berjalan.
 
-Backup file asli:
-- `docs/backup/TEACHER_IMPORT_20261126/web.php.before`
-- `docs/backup/TEACHER_IMPORT_20261126/user-management.blade.php.before`
-- Manifest: `docs/backup/TEACHER_IMPORT_20261126/MANIFEST.md`
+Backup sebelum perubahan tersimpan di `docs/backup/TEACHER_IMPORT_20261126/`, termasuk file service, Livewire, view, test, workflow, laporan, dan checkpoint. Manifest awal: `docs/backup/TEACHER_IMPORT_20261126/MANIFEST.md`; backup lanjutan memakai suffix `before-one-time-credentials`, `before-login-credential-tests`, `before-web-login-assertions`, `before-search-and-filter-ux`, dan `before-final-credential-docs`.
 
-Migration menambahkan tabel `teacher_import_batches`, dengan unique idempotency key per instalasi, foreign key uploader dan tenant. Migration hanya ditambahkan ke source; belum dijalankan pada VPS atau database produksi.
+Migration `teacher_import_batches` hanya ditambahkan pada source. Tidak dijalankan pada VPS atau database produksi. Tidak ada perubahan CBT Engine atau model kurikulum.
 
 ## PENGUJIAN
-- Feature tests ditambahkan untuk template XLSX, preview dan import PNS/Honorer, validasi identitas, duplikasi, idempotensi, akses non-Admin, pemanggilan service langsung, rollback ketika audit gagal, dan round-trip XLSX satu worksheet.
-- Pemeriksaan GitHub mengonfirmasi file route, tombol, component, service, migration, view, dan test berada pada branch fitur.
-- Perbandingan source dilakukan terhadap base PR terbaru `c6ce755f1ae9f65ed838817d06316ea4232c3b10` (branch fitur tertinggal satu commit non-overlap; PR terdeteksi mergeable), bukan snapshot lama.
-- **Belum dijalankan:** PHPUnit, PHP lint, GitHub Actions, browser test, dan uji instalasi VPS. Fitur belum boleh dinyatakan lulus atau siap produksi.
-- Tidak ada migration yang dijalankan pada database produksi.
+- Ditambahkan tes bahwa kredensial Siswa mengarah ke user yang benar melalui `LoginIdentityResolver`, password cocok dengan hash database, dan login Web berhasil menuju portal Siswa.
+- Ditambahkan tes bahwa kredensial Guru ASN (NIP) dan Honorer (NIK) mengarah ke akun yang benar, password cocok dengan hash database, dan login Web Guru berhasil.
+- Ditambahkan tes unduhan `kredensial-import-siswa.xlsx` dan `kredensial-import-guru.xlsx` dari halaman Manajemen Pengguna.
+- Tes yang sudah ada untuk preview, validasi, role, tenant, duplikasi, idempotensi, audit rollback, dan template XLSX tetap dipertahankan.
+- GitHub Actions `Tenant Backend CI` telah dipicu untuk branch fitur. Hasil final run harus dibaca sebelum fitur dinyatakan lulus; status PASS belum boleh diklaim sebelum job selesai.
+- PHPUnit dan PHP lint belum dinyatakan lulus pada saat laporan ini ditulis.
+- Tidak ada pengujian terhadap database produksi dan tidak ada migration produksi yang dijalankan.
 
 ## STATUS DAN LANGKAH BERIKUTNYA
-Status: implementasi awal tersedia di branch fitur baru; PR draft menunggu review dan CI. Setelah CI hijau, lakukan review keamanan dan uji manual pada database disposable. Deployment/VPS hanya setelah persetujuan terpisah, backup produksi, dan preflight.
+Status: implementasi kredensial sekali tampil dan XLSX sudah masuk ke branch fitur; PR #27 tetap draft dan belum merge. Lanjutkan dengan membaca hasil CI MySQL 8, memperbaiki kegagalan bila ada, memeriksa diff final terhadap source branch terkini, lalu memperbarui checkpoint. Jangan menyatakan fitur selesai sebelum CI dan alur redirect/tampilan/XLSX/login terbukti lulus.
