@@ -135,7 +135,7 @@
                                     <option value="TRUE_FALSE_GROUP">Benar/Salah 3 pernyataan</option>
                                     <option value="MATCHING" disabled>Menjodohkan — belum diaktifkan</option>
                                     <option value="SHORT_ANSWER" disabled>Isian singkat — belum diaktifkan</option>
-                                    <option value="ESSAY" disabled>Uraian — belum diaktifkan</option>
+                                    <option value="ESSAY">Uraian / Esai (penilaian manual)</option>
                                 </select>
                             </div>
                         </div>
@@ -168,6 +168,10 @@
                                 </div>
                             @endforeach
                         </div>
+                    @endif
+
+                    @if($question['question_type'] === 'ESSAY')
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-800">Soal uraian akan disimpan sebagai DRAFT dengan penilaian manual oleh Guru. Sistem tidak akan membuat kunci otomatis.</div>
                     @endif
 
                     @if($question['question_type'] === 'TRUE_FALSE_GROUP')
