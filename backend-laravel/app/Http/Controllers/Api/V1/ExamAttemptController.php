@@ -401,6 +401,14 @@ class ExamAttemptController extends Controller
                 unset($metadata['rubric']);
                 unset($metadata['answer_key']);
                 unset($metadata['scoring_guide']);
+                if (isset($metadata['statement_items']) && is_array($metadata['statement_items'])) {
+                    $metadata['statement_items'] = array_map(function ($item) {
+                        if (is_array($item)) {
+                            unset($item['is_true']);
+                        }
+                        return $item;
+                    }, $metadata['statement_items']);
+                }
 
                 $qType = $metadata['question_type'] ?? null;
                 if (in_array($qType, ['SHORT_ANSWER', 'ESSAY'])) {
