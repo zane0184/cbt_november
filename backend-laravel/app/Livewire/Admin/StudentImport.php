@@ -8,6 +8,10 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class StudentImport extends Component
 {
@@ -121,6 +125,83 @@ class StudentImport extends Component
             'message' => $imported['imported'] . ' akun Siswa berhasil diimpor.',
         ]);
         session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor. Password awal dibuat acak; gunakan fitur Reset Password untuk menerbitkan kredensial kepada Siswa.');
+    }
+
+    public function downloadXlsxTemplate()
+    {
+        $this->authorizeImport();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Data Siswa');
+
+        $headers = [
+            'nama', 'nisn', 'jenis_kelamin', 'tempat_lahir',
+            'tanggal_lahir', 'nama_orang_tua', 'telepon', 'alamat',
+        ];
+        foreach ($headers as $index => $header) {
+            $column = Coordinate::stringFromColumnIndex($index + 1);
+            $sheet->setCellValue($column . '1', $header);
+        }
+
+        $sheet->setCellValue('A2', 'Contoh Nama');
+        $sheet->setCellValueExplicit('B2', '0001234567', DataType::TYPE_STRING);
+        $sheet->setCellValue('C2', 'L');
+        $sheet->setCellValue('D2', 'Jakarta');
+        $sheet->setCellValueExplicit('E2', '2015-01-31', DataType::TYPE_STRING);
+        $sheet->setCellValue('F2', 'Nama Orang Tua');
+        $sheet->setCellValueExplicit('G2', '081234567890', DataType::TYPE_STRING);
+        $sheet->setCellValue('H2', 'Alamat Siswa');
+
+        $sheet->getStyle('A1:H1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:H1')->getAlignment()->setHorizontal('center');
+        $sheet->getStyle('B2:B5001')->getNumberFormat()->setFormatCode('@');
+        $sheet->getStyle('E2:E5001')->getNumberFormat()->setFormatCode('@');
+        $sheet->getStyle('G2:G5001')->getNumberFormat()->setFormatCode('@');
+        foreach (['A' => 28, 'B' => 16, 'C' => 18, 'D' => 20, 'E' => 18, 'F' => 28, 'G' => 20, 'H' => 42] as $column => $width) {
+            $sheet->getColumnDimension($column)->setWidth($width);
+        }
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:H2');
+
+        $instructions = $spreadsheet->createSheet();
+        $instructions->setTitle('Petunjuk');
+        $rows = [
+            ['PETUNJUK TEMPLATE IMPORT SISWA'],
+            ['Kolom', 'Ketentuan'],
+            ['nama', 'Wajib diisi, maksimal 255 karakter.'],
+            ['nisn', 'Wajib tepat 10 digit dan harus berupa teks. Jangan ubah menjadi angka.'],
+            ['jenis_kelamin', 'Opsional: L atau P.'],
+            ['tempat_lahir', 'Opsional, maksimal 100 karakter.'],
+            ['tanggal_lahir', 'Opsional dengan format teks YYYY-MM-DD.'],
+            ['nama_orang_tua', 'Opsional, maksimal 255 karakter.'],
+            ['telepon', 'Opsional, maksimal 40 karakter; simpan sebagai teks.'],
+            ['alamat', 'Opsional, maksimal 2.000 karakter.'],
+            ['Catatan', 'Hapus atau ganti baris Contoh Nama pada sheet Data Siswa sebelum mengunggah.'],
+            ['Catatan', 'Pilih Rombel tujuan, unggah file, lalu periksa Preview sebelum konfirmasi.'],
+            ['Keamanan', 'Import hanya diproses jika seluruh baris valid. NISN duplikat ditolak.'],
+        ];
+        foreach ($rows as $rowIndex => $row) {
+            foreach ($row as $columnIndex => $value) {
+                $cell = Coordinate::stringFromColumnIndex($columnIndex + 1) . ($rowIndex + 1);
+                $instructions->setCellValue($cell, $value);
+            }
+        }
+        $instructions->getStyle('A1:B2')->getFont()->setBold(true);
+        $instructions->getColumnDimension('A')->setWidth(24);
+        $instructions->getColumnDimension('B')->setWidth(100);
+        $instructions->getStyle('A1:B13')->getAlignment()->setWrapText(true);
+        $instructions->freezePane('A3');
+
+        return response()->streamDownload(
+            function () use ($spreadsheet): void {
+                $writer = new Xlsx($spreadsheet);
+                $writer->save('php://output');
+                $spreadsheet->disconnectWorksheets();
+            },
+            'template-import-siswa.xlsx',
+            ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+        );
     }
 
     public function downloadCsvTemplate()
