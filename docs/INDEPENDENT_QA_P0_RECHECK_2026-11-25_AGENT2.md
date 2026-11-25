@@ -239,3 +239,8 @@ Jangan menyatakan siap produksi, siap seluruh madrasah, siap Android Studio, ata
 - Halaman rujukan Pendis yang dicatat dalam audit sebelumnya: https://pendis.kemenag.go.id/read/keputusan-direktur-jenderal-pendidikan-islam-nomor-9941-tahun-2025-tentang-capaian-pembelajaran-mata-pelajaran-pendidikan-agama-islam-dan-bahasa-arab-pada-madrasah
 
 Catatan: PDF BSKAP 046 dapat dibaca dari domain resmi dan cakupan SD/MI serta fase A/B/C terkonfirmasi. Bytes PDF belum tersedia untuk penghitungan SHA-256 independen. PDF Kepdirjen Pendis 9941 yang terbaca berasal dari mirror pihak ketiga; pernyataan tanda tangan elektronik BSrE di dalam dokumen belum diverifikasi secara kriptografis. PDF unduhan BKPDM 020 yang diperiksa adalah siaran pers dua halaman, bukan naskah keputusan. Status CP tetap BLOCKED.
+
+
+## 10. CATATAN LINGKUNGAN CI P0 AKADEMIK
+
+Log Run 45498672360 memperlihatkan environment test menggunakan CBT_LICENSE_TEST_BYPASS=true. Karena itu, hasil 190 passed membuktikan suite provisioning/installer yang dijalankan pada lingkungan CI disposable, tetapi **bukan** bukti bahwa aktivasi lisensi Publisher/Tenant tanpa bypass telah berhasil pada runtime. Jalur lisensi tetap memerlukan test tersendiri pada environment staging yang sah.
