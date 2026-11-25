@@ -4,17 +4,21 @@ namespace Tests\Feature;
 
 use App\Contexts\TenantContext;
 use App\Livewire\Admin\TeacherImport;
+use App\Livewire\Admin\UserManagement;
 use App\Models\Permission;
+use App\Models\LocalInstallationIdentity;
 use App\Models\Role;
 use App\Models\TeacherProfile;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\TeacherImportService;
+use App\Services\LoginIdentityResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -258,4 +262,50 @@ class TeacherImportTest extends TestCase
         $this->assertDatabaseCount('teacher_import_batches', 0);
         $this->assertDatabaseCount('users', 1);
     }
+    public function test_teacher_import_creates_nip_and_nik_login_accounts_with_one_time_xlsx_credentials(): void
+    {
+        $this->actingAs($this->admin);
+        LocalInstallationIdentity::create([
+            'tenant_id' => $this->tenant->id,
+            'installation_id' => (string) \Illuminate\Support\Str::uuid(),
+            'key_id' => 'test-key-teacher',
+            'public_key' => 'test-public-key',
+            'encrypted_private_key' => 'test-encrypted-private-key',
+            'key_fingerprint' => str_repeat('b', 64),
+            'registered_domain' => 'test.example',
+            'product_code' => 'CBT-TEST-TEACHER',
+            'product_version' => '1.0.0',
+        ]);
+
+        $csv = "nama,status_kepegawaian,nip,nik\n"
+            ."Guru ASN Kredensial,PNS,199001012026041101,,\n"
+            ."Guru Honorer Kredensial,HONORER,,3171010101900002\n";
+        $file = UploadedFile::fake()->createWithContent('guru.csv', $csv);
+        $result = app(TeacherImportService::class)->import(
+            $file->getRealPath(), 'csv', $this->tenant->id, $this->admin->id
+        );
+
+        $asn = TeacherProfile::query()->where('nip', '199001012026041101')->firstOrFail();
+        $honorer = TeacherProfile::query()->where('nik', '3171010101900002')->firstOrFail();
+        $this->assertSame('199001012026041101', $result['credentials'][0]['login_identifier']);
+        $this->assertSame('NIP', $result['credentials'][0]['identifier_type']);
+        $this->assertSame('3171010101900002', $result['credentials'][1]['login_identifier']);
+        $this->assertSame('NIK', $result['credentials'][1]['identifier_type']);
+        $this->assertSame($asn->user_id, app(LoginIdentityResolver::class)->resolve('199001012026041101')?->id);
+        $this->assertSame($honorer->user_id, app(LoginIdentityResolver::class)->resolve('3171010101900002')?->id);
+        $this->assertTrue(Hash::check($result['credentials'][0]['password'], $asn->user->password));
+        $this->assertTrue(Hash::check($result['credentials'][1]['password'], $honorer->user->password));
+
+        session()->flash('import_credentials', $result['credentials']);
+        session()->flash('import_credentials_label', 'Guru');
+        session()->flash('import_batch_id', $result['batch_id']);
+        Livewire::test(UserManagement::class)
+            ->assertSee('Kredensial awal Guru berhasil dibuat')
+            ->assertSee('199001012026041101')
+            ->assertSee($result['credentials'][0]['password'])
+            ->assertSee('3171010101900002')
+            ->call('downloadImportCredentialsXlsx')
+            ->assertFileDownloaded('kredensial-import-guru.xlsx');
+    }
+
 }
