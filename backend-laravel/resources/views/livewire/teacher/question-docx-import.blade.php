@@ -128,7 +128,15 @@
                             <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-sm font-extrabold text-indigo-700">{{ $index + 1 }}</span>
                             <div>
                                 <h3 class="font-bold text-slate-900">Nomor sumber {{ $question['source_number'] }}</h3>
-                                <p class="text-xs text-slate-500">{{ str_replace('_', ' ', $question['question_type']) }}</p>
+                                <select wire:model="questions.{{ $index }}.question_type" aria-label="Jenis soal nomor sumber {{ $question['source_number'] }}" class="mt-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-slate-700">
+                                    <option value="MULTIPLE_CHOICE">Pilihan Ganda (PG)</option>
+                                    <option value="MULTIPLE_RESPONSE">Pilihan Ganda Kompleks (PGK)</option>
+                                    <option value="TRUE_FALSE">Benar/Salah tunggal</option>
+                                    <option value="TRUE_FALSE_GROUP">Benar/Salah 3 pernyataan</option>
+                                    <option value="MATCHING" disabled>Menjodohkan — belum diaktifkan</option>
+                                    <option value="SHORT_ANSWER" disabled>Isian singkat — belum diaktifkan</option>
+                                    <option value="ESSAY" disabled>Uraian — belum diaktifkan</option>
+                                </select>
                             </div>
                         </div>
                         <label class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
@@ -145,7 +153,7 @@
                     @if(!empty($question['stimulus']['content']))
                         <div class="rounded-xl border border-blue-200 bg-blue-50 p-4">
                             <div class="mb-1 text-xs font-bold uppercase text-blue-700">Stimulus bersama · {{ $question['stimulus']['id'] }}</div>
-                            <p class="whitespace-pre-wrap text-sm leading-6 text-slate-700">{{ $question['stimulus']['content'] }}</p>
+                            <textarea wire:model="questions.{{ $index }}.stimulus.content" rows="3" class="w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 focus:border-blue-500 focus:outline-none">{{ $question['stimulus']['content'] }}</textarea>
                         </div>
                     @endif
 
