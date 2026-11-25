@@ -151,7 +151,8 @@ def scan_zip(archive: Path) -> list[str]:
                 mode = (info.external_attr >> 16) & 0o170000
                 if mode == stat.S_IFLNK:
                     errors.append(f"symlink entry: {name}")
-                if any(is_forbidden_dir(part) for part in parts[:-1] if part):
+                directory_parts = parts if info.is_dir() else parts[:-1]
+                if any(is_forbidden_dir(part) for part in directory_parts if part):
                     errors.append(f"forbidden directory path: {name}")
                 if info.is_dir():
                     continue
