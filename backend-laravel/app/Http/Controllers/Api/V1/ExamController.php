@@ -110,7 +110,7 @@ class ExamController extends Controller
         $data = $exam->load(['assessment']);
 
         if (auth()->user()->hasExactRole('SISWA')) {
-            $latestAttempt = \\App\\Models\\ExamAttempt::where('exam_id', $exam->id)
+            $latestAttempt = \App\Models\ExamAttempt::where('exam_id', $exam->id)
                 ->whereHas('participant', function ($query) {
                     $query->where('user_id', auth()->id());
                 })
