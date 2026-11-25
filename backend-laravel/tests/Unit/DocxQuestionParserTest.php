@@ -94,6 +94,27 @@ class DocxQuestionParserTest extends TestCase
         }
     }
 
+    public function test_essay_is_recognized_as_manual_review_and_unsupported_types_fail_closed(): void
+    {
+        $path = $this->makeDocx([
+            'SOAL 1. [ESSAY] Jelaskan proses terjadinya hujan.',
+            'SOAL 2. [MATCHING] Pasangkan istilah dengan artinya.',
+            'A. Istilah satu',
+            'B. Istilah dua',
+            'KUNCI: A, B',
+        ]);
+
+        try {
+            $result = app(DocxQuestionParser::class)->parse($path);
+            $this->assertSame('ESSAY', $result['questions'][0]['question_type']);
+            $this->assertSame('READY', $result['questions'][0]['status']);
+            $this->assertSame('MATCHING', $result['questions'][1]['question_type']);
+            $this->assertSame('NEEDS_REVIEW', $result['questions'][1]['status']);
+        } finally {
+            @unlink($path);
+        }
+    }
+
     public function test_rejects_non_docx_or_corrupt_archive(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-invalid-docx-');
