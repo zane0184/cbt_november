@@ -319,7 +319,7 @@ class ScoringService
         $items = $snapshot->metadata['statement_items'] ?? [];
         $answers = $payload['statement_answers'] ?? [];
         if (count($items) !== 3 || !is_array($answers)) {
-            throw new \\DomainException('Scoring blocked: grouped true/false snapshot contract is malformed.');
+            throw new \DomainException('Scoring blocked: grouped true/false snapshot contract is malformed.');
         }
 
         $correct = 0;
