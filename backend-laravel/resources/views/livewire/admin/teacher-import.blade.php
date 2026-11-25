@@ -17,7 +17,7 @@
 
     <div class="bg-blue-50 border border-blue-200 text-blue-900 rounded-xl p-4 text-sm space-y-1">
         <p><strong>Ketentuan identitas login Guru:</strong> PNS/PPPK wajib menggunakan NIP 18 digit, sedangkan Honorer wajib menggunakan NIK 16 digit. NUPTK hanya data tambahan.</p>
-        <p>Password awal dibuat acak dan tidak ditampilkan pada file. Setelah import, Admin menerbitkan password melalui fitur Reset Password di Manajemen Pengguna.</p>
+        <p>Setelah import berhasil, identitas login dan password awal ditampilkan satu kali pada halaman Daftar Pengguna. Unduh Daftar Akun (.xlsx) sebelum menutup tampilan; password tidak dapat ditampilkan kembali.</p>
     </div>
 
     <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm space-y-4">
