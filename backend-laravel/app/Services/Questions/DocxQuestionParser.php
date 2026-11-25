@@ -630,7 +630,7 @@ class DocxQuestionParser
         }
         $requiresSectionSplit = count($sections) > 1;
         if ($requiresSectionSplit) {
-            $warnings[] = 'Dokumen memuat beberapa bagian mata pelajaran. Pisahkan per bagian agar soal tidak tercampur ke satu penugasan.';
+            $warnings[] = 'Dokumen memuat beberapa bagian mata pelajaran. Pilih bagian dan penugasan yang sesuai pada tahap preview.';
         }
 
         return [
@@ -645,6 +645,10 @@ class DocxQuestionParser
                 fn (array $question): int => (int) $question['source_number'],
                 array_filter($questions, fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
             ))),
+            'blocked_source_sequences' => array_values(array_unique(array_map(
+                fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0),
+                array_filter($questions, fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
+            ))),
             'excluded_content' => $excluded,
             'warnings' => $warnings,
         ];
@@ -653,10 +657,23 @@ class DocxQuestionParser
     private function detectSubjectSection(string $text): ?string
     {
         $value = mb_strtoupper(trim(preg_replace('/\s+/u', ' ', $text) ?? $text));
-        $value = preg_replace('/^[A-Z0-9][.)]\s*/u', '', $value) ?? $value;
+
         if (preg_match('/^MATA PELAJARAN\s*[:=]\s*(.+)$/u', $value, $match) === 1) {
-            return trim($match[1]);
+            $value = trim($match[1]);
         }
+
+        // Common madrasah abbreviations are normalized before stripping list prefixes.
+        if (preg_match('/^B\.\s*INDO(?:NESIA)?(\s+KELAS\s+[1-6])?$/u', $value, $match) === 1) {
+            return 'BAHASA INDONESIA' . ($match[1] ?? '');
+        }
+        if (preg_match('/^B\.\s*ARAB(\s+KELAS\s+[1-6])?$/u', $value, $match) === 1) {
+            return 'BAHASA ARAB' . ($match[1] ?? '');
+        }
+        if (preg_match('/^(?:MTK|MAT|MATH)(\s+KELAS\s+[1-6])?$/u', $value, $match) === 1) {
+            return 'MATEMATIKA' . ($match[1] ?? '');
+        }
+
+        $value = preg_replace('/^[A-Z0-9][.)]\s*/u', '', $value) ?? $value;
         $subjects = [
             'MATEMATIKA', 'BAHASA INDONESIA', 'BAHASA ARAB', 'IPAS', 'IPA', 'IPS',
             'PENDIDIKAN AGAMA ISLAM', 'AL-QURAN HADIS', 'QURAN HADIS', 'AKIDAH AKHLAK',
@@ -668,6 +685,7 @@ class DocxQuestionParser
                 return $value;
             }
         }
+
         return null;
     }
 

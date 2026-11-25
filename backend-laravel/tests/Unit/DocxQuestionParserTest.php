@@ -106,7 +106,7 @@ class DocxQuestionParserTest extends TestCase
         $cell = static fn (string $text): string => '<w:tc>' . $p($text) . '</w:tc>';
         $row = static fn (array $cells): string => '<w:tr>' . implode('', array_map($cell, $cells)) . '</w:tr>';
 
-        $body = $p('MATEMATIKA KELAS 6')
+        $body = $p('MTK Kelas 6')
             . $p('Bacalah teks berikut untuk menjawab soal 1 sampai 3.')
             . $p('Ali membaca buku di perpustakaan.')
             . $p('1. [PG] Apa yang dibaca Ali? A. Buku B. Majalah C. Koran D. Komik')
@@ -125,7 +125,7 @@ class DocxQuestionParserTest extends TestCase
             . $p('1. A')
             . $p('2. A dan C')
             . $p('3. B, S, B')
-            . $p('BAHASA INDONESIA KELAS 6')
+            . $p('B. Indo Kelas 6')
             . $p('1. [PG] Apa gagasan utama bacaan?')
             . $p('A. Membaca buku')
             . $p('B. Bermain bola');

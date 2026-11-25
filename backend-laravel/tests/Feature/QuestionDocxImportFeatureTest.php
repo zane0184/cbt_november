@@ -292,13 +292,13 @@ class QuestionDocxImportFeatureTest extends TestCase
 
         $document = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
-            . ($includeSecondSubject ? '<w:p><w:r><w:t>MATEMATIKA KELAS 6</w:t></w:r></w:p>' : '')
+            . ($includeSecondSubject ? '<w:p><w:r><w:t>MTK Kelas 6</w:t></w:r></w:p>' : '')
             . '<w:p><w:r><w:t>SOAL 1. [PG] Ibu kota Indonesia adalah ....</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>A. Bandung</w:t></w:r></w:p>'
             . '<w:p><w:r><w:t>B. Jakarta</w:t></w:r></w:p>'
             . ($includeAnswerKey ? '<w:p><w:r><w:t>KUNCI: B</w:t></w:r></w:p>' : '')
             . ($includeSecondSubject
-                ? '<w:p><w:r><w:t>BAHASA INDONESIA KELAS 6</w:t></w:r></w:p>'
+                ? '<w:p><w:r><w:t>B. Indo Kelas 6</w:t></w:r></w:p>'
                     . '<w:p><w:r><w:t>SOAL 1. [PG] Gagasan utama bacaan adalah ....</w:t></w:r></w:p>'
                     . '<w:p><w:r><w:t>A. Membaca buku</w:t></w:r></w:p>'
                     . '<w:p><w:r><w:t>B. Bermain bola</w:t></w:r></w:p>'

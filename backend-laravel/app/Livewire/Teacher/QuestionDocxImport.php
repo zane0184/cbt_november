@@ -193,24 +193,6 @@ class QuestionDocxImport extends Component
             'selectedOutcomeIds.*' => ['required', 'uuid', 'distinct'],
             'questions' => ['required', 'array', 'min:1'],
             'questions.*.included' => ['sometimes', 'boolean'],
-            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
-            'questions.*.stem' => ['required', 'string', 'max:12000'],
-            'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
-            'questions.*.options' => ['sometimes', 'array', 'max:4'],
-            'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
-            'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
-            'questions.*.statements' => ['sometimes', 'array', 'max:3'],
-            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
-            'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
-            'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
-            'questions.*.source_section' => ['sometimes', 'nullable', 'string', 'max:120'],
-            'questions.*.table_rows' => ['sometimes', 'array', 'max:100'],
-            'questions.*.table_rows.*' => ['array', 'max:20'],
-            'questions.*.table_rows.*.*' => ['nullable', 'string', 'max:12000'],
-            'questions.*.mapping_cp_ids' => ['sometimes', 'array'],
-            'questions.*.mapping_cp_ids.*' => ['required', 'uuid', 'distinct'],
-            'questions.*.mapping_outcome_ids' => ['sometimes', 'array'],
-            'questions.*.mapping_outcome_ids.*' => ['required', 'uuid', 'distinct'],
         ]);
 
         if (!$this->hasPreview || !$this->previewHash) {
@@ -251,18 +233,41 @@ class QuestionDocxImport extends Component
                 (int) ($question['source_locator']['sequence'] ?? 0),
                 $allowedSequences,
                 true
-            )
+            ) && (bool) ($question['included'] ?? true)
         ));
 
         if ($questionsForImport === []) {
             throw ValidationException::withMessages([
-                'docx' => 'Tidak ada soal pada bagian dokumen yang dipilih.',
+                'docx' => 'Pilih minimal satu soal pada bagian dokumen yang dipilih.',
             ]);
         }
 
+        validator(['questions' => $questionsForImport], [
+            'questions' => ['required', 'array', 'min:1'],
+            'questions.*.source_number' => ['required', 'integer', 'min:1'],
+            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
+            'questions.*.stem' => ['required', 'string', 'max:12000'],
+            'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
+            'questions.*.options' => ['sometimes', 'array', 'max:4'],
+            'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
+            'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
+            'questions.*.statements' => ['sometimes', 'array', 'max:3'],
+            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
+            'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
+            'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
+            'questions.*.source_section' => ['sometimes', 'nullable', 'string', 'max:120'],
+            'questions.*.table_rows' => ['sometimes', 'array', 'max:100'],
+            'questions.*.table_rows.*' => ['array', 'max:20'],
+            'questions.*.table_rows.*.*' => ['nullable', 'string', 'max:12000'],
+            'questions.*.mapping_cp_ids' => ['sometimes', 'array'],
+            'questions.*.mapping_cp_ids.*' => ['required', 'uuid', 'distinct'],
+            'questions.*.mapping_outcome_ids' => ['sometimes', 'array'],
+            'questions.*.mapping_outcome_ids.*' => ['required', 'uuid', 'distinct'],
+        ])->validate();
+
         $selectedSequences = array_map(
             fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0),
-            array_filter($questionsForImport, fn (array $question): bool => ($question['included'] ?? true) === true)
+            $questionsForImport
         );
         if ($selectedSequences === []) {
             throw ValidationException::withMessages([
