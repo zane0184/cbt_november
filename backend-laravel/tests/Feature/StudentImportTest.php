@@ -95,7 +95,7 @@ class StudentImportTest extends TestCase
             ->assertSee('0001234567')
             ->call('import')
             ->assertHasNoErrors()
-            ->assertSee('1 akun Siswa berhasil diimpor');
+            ->assertRedirect('/admin/users');
 
         $profile = StudentProfile::query()->where('nisn', '0001234567')->firstOrFail();
         $this->assertSame('0001234567', $profile->nisn);
