@@ -9,7 +9,7 @@ Basis source: `work/guru-docx-rich-content-20261126`
 - Logo aplikasi tersimpan pada `tenants.logo_path`; favicon pada `tenants.favicon_path`.
 - Halaman login sudah memanggil `TenantBrandingService::currentTenant()`, membaca logo aplikasi, favicon, dan nama tenant. Jadi jalur pembacaan profil tidak perlu dibuat ulang.
 - Temuan UI yang terkonfirmasi: heading utama login masih literal `CBT MADRASAH`, sehingga nama madrasah tidak menggantikan judul utama meskipun subjudul dan title browser sudah dinamis.
-- Service branding memakai `LocalInstallationIdentity` dan pemeriksaan product code sebagai batas instalasi. Mekanisme fail-closed ini dipertahankan; tidak dilemahkan untuk memaksa logo tampil.
+- Service branding memakai `LocalInstallationIdentity` dan pemeriksaan product code sebagai batas instalasi. Mekanisme fail-closed ini dipertahankan; tidak dilemahkan untuk memaksa logo tampil. Audit test juga menemukan fixture `WebAdminAuthTest` sebelumnya mengisi product code `CBT_MADRASAH`, sedangkan konfigurasi default menggunakan `CBT-MI`; kondisi ini membuat tenant branding tidak dapat di-resolve pada test login. Fixture diperbaiki agar mengikuti konfigurasi, bukan mengubah validasi keamanan produksi.
 
 ## DESAIN
 - Heading utama login memakai `short_name` bila terisi, lalu `name`, lalu fallback `CBT MADRASAH`.
@@ -22,6 +22,8 @@ Basis source: `work/guru-docx-rich-content-20261126`
 - Heading login sekarang dinamis mengikuti nama singkat/nama resmi.
 - File test diubah: `backend-laravel/tests/Feature/WebAdminAuthTest.php`.
 - Ditambahkan regression test untuk nama resmi dan nama singkat madrasah.
+- Ditambahkan regression test agar logo aplikasi dan favicon tenant yang tersimpan benar-benar muncul pada HTML login.
+- Fixture identitas instalasi pada test login diselaraskan dengan `config('license.product_code')` agar test memvalidasi identitas instalasi yang sah.
 - Backup byte-for-byte sebelum perubahan:
   - `docs/backup_before_patch/LOGIN_BRANDING_20261126/login.blade.php.before`
   - `docs/backup_before_patch/LOGIN_BRANDING_20261126/WebAdminAuthTest.php.before`
@@ -29,7 +31,7 @@ Basis source: `work/guru-docx-rich-content-20261126`
 
 ## PENGUJIAN
 - Source hasil perubahan dibaca ulang dari branch GitHub dan perubahan heading serta test terkonfirmasi.
-- PHPUnit/CI belum dijalankan atau belum ada hasil yang dapat diklaim pada saat laporan ini dibuat.
+- PHPUnit/CI belum dijalankan atau belum ada hasil yang dapat diklaim pada saat laporan ini dibuat. Perubahan test yang baru ditambahkan belum boleh dianggap PASS sampai CI selesai.
 - Belum ada klaim fitur logo/fav icon lulus runtime. Source login memang sudah memanggil service untuk keduanya; pemeriksaan lanjutan perlu memastikan regression test mencakup asset logo dan favicon yang valid serta fallback identitas.
 - VPS tidak diuji ulang, sesuai instruksi owner.
 
