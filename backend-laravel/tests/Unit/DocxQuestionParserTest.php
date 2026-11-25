@@ -206,7 +206,7 @@ class DocxQuestionParserTest extends TestCase
         try {
             $result = app(DocxQuestionParser::class)->parse($path);
             $this->assertSame('ESSAY', $result['questions'][0]['question_type']);
-            $this->assertSame('READY', $result['questions'][0]['status']);
+            $this->assertSame('READY', $result['questions'][0]['status'], 'Parser errors: ' . implode(' | ', $result['questions'][0]['errors'] ?? []));
             $this->assertSame('MATCHING', $result['questions'][1]['question_type']);
             $this->assertSame('NEEDS_REVIEW', $result['questions'][1]['status']);
         } finally {
