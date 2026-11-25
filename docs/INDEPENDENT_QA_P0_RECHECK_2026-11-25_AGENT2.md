@@ -228,3 +228,14 @@ Jangan menyatakan siap produksi, siap seluruh madrasah, siap Android Studio, ata
 - File utama diperiksa: InstallerService.php, TenantAcademicBootstrapper.php, InstallerEndToEndTest.php, InstallerTest.php, SystemTenantSeeder.php, DatabaseSeeder.php, CurriculumReferenceSourceSeeder.php, CurriculumRegistryBootstrapSeeder.php, TeacherLearningOutcomeService.php, QuestionBank.php, ExamManagement.php, build-web-deployment.yml, DISTRIBUTION_EXCLUSIONS.md.
 - Temuan terbuka: Installer full suite, CP artifact, branch divergence, ZIP backup/security guards, exact artifact, extraction checksum, browser E2E.
 - Tugas berikutnya: tunggu commit/CI baru Agent 1; audit ulang exact SHA dan artifact. Jangan mengulang test atau patch yang sudah terbukti.
+
+
+## 9. SUMBER PUBLIK CP YANG DIPERIKSA
+
+- PDF resmi BSKAP 046/H/KR/2025: https://kurikulum.kemendikdasmen.go.id/file/1753929861_manage_file.pdf
+- Siaran pers resmi BKPDM 020/2026: https://www.kemendikdasmen.go.id/siaran-pers/15636-capaian-pembelajaran-baru-telah-terbit-yang-berubah-hanya-mata-pelajaran-agama-dan-budi-pekerti
+- Lampiran unduhan pada halaman tersebut (PDF siaran pers, bukan keputusan lengkap): https://www.kemendikdasmen.go.id/download/file/1933
+- Salinan PDF Kepdirjen Pendis 9941/2025 pada situs pihak ketiga: https://min2sbb.sch.id/wp-content/uploads/2025/12/SK-Dirjen-Pendis-9941-2025-CP-PAI-dan-Bahasa-Arab.pdf
+- Halaman rujukan Pendis yang dicatat dalam audit sebelumnya: https://pendis.kemenag.go.id/read/keputusan-direktur-jenderal-pendidikan-islam-nomor-9941-tahun-2025-tentang-capaian-pembelajaran-mata-pelajaran-pendidikan-agama-islam-dan-bahasa-arab-pada-madrasah
+
+Catatan: PDF BSKAP 046 dapat dibaca dari domain resmi dan cakupan SD/MI serta fase A/B/C terkonfirmasi. Bytes PDF belum tersedia untuk penghitungan SHA-256 independen. PDF Kepdirjen Pendis 9941 yang terbaca berasal dari mirror pihak ketiga; pernyataan tanda tangan elektronik BSrE di dalam dokumen belum diverifikasi secara kriptografis. PDF unduhan BKPDM 020 yang diperiksa adalah siaran pers dua halaman, bukan naskah keputusan. Status CP tetap BLOCKED.
