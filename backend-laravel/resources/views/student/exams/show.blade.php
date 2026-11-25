@@ -115,6 +115,7 @@
                 <div class="question-card rounded-2xl bg-white p-4 shadow-sm sm:p-5">
                     <div class="mb-4 flex items-center justify-between gap-2"><span id="question-number" class="text-sm font-semibold text-blue-700"></span><span id="question-points" class="shrink-0 text-xs text-slate-500"></span></div>
                     <div id="question-media" class="question-copy-protected mb-5 space-y-3"></div>
+                    <div id="question-stimulus" class="question-copy-protected mb-5 hidden rounded-xl border border-blue-200 bg-blue-50 p-4 text-base leading-relaxed text-slate-800"></div>
                     <div id="question-stem" dir="auto" class="question-copy-protected mb-6 whitespace-pre-wrap text-lg leading-relaxed"></div>
                     <div id="question-input" class="question-copy-protected space-y-3"></div>
                     <div class="mt-8 flex justify-between gap-3"><button id="previous-button" class="flex-1 rounded-xl border border-slate-300 px-3 py-3 font-semibold sm:flex-none sm:px-4">Sebelumnya</button><button id="next-button" class="flex-1 rounded-xl bg-blue-700 px-3 py-3 font-semibold text-white sm:flex-none sm:px-5">Berikutnya</button></div>
