@@ -7,6 +7,7 @@ use App\Models\Curriculum;
 use App\Models\CurriculumReferenceSource;
 use App\Models\GradeLevel;
 use App\Models\LearningOutcomeStructureMapping;
+use App\Models\MultiCurriculumStructure;
 use App\Models\MultiLearningOutcome;
 use App\Models\Phase;
 use App\Models\Permission;
@@ -20,7 +21,6 @@ use App\Models\Tenant;
 use App\Models\TenantLearningOutcome;
 use App\Models\User;
 use App\Services\TeacherPortal\TeacherLearningOutcomeService;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -160,10 +160,37 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
     }
 
     /** @test */
-    public function atp_creation_rejects_tp_without_a_valid_parent_cp_relation(): void
+    public function atp_creation_rejects_tp_linked_to_a_cp_from_another_subject_structure(): void
     {
-        $this->context['tp']->update(['parent_cp_id' => null]);
-        $this->assertAtpRejectedWithoutPartialRows(true);
+        $otherSubjectStructure = MultiCurriculumStructure::query()
+            ->where('tenant_id', Tenant::SYSTEM_TENANT_ID)
+            ->where('multi_curriculum_version_id', $this->context['version']->id)
+            ->where('node_type', 'SUBJECT')
+            ->where('id', '!=', $this->context['subject_structure']->id)
+            ->firstOrFail();
+
+        $source = $this->context['cp']->source;
+        $otherCp = MultiLearningOutcome::create([
+            'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+            'multi_curriculum_structure_id' => $otherSubjectStructure->id,
+            'multi_curriculum_version_id' => $this->context['version']->id,
+            'code' => 'TEST-CP-WRONG-SUBJECT-STRUCTURE',
+            'outcome_type' => 'CP',
+            'description' => 'Test-only CP row for wrong-structure relation rejection.',
+            'status' => 'ACTIVE',
+            'source_id' => $source->id,
+            'source_locator' => 'P0-02A.1 wrong-structure test fixture',
+            'verification_status' => 'ARTIFACT_CHECKSUM_VERIFIED',
+            'source_checksum' => $source->checksum_sha256,
+            'is_official' => true,
+            'is_editable' => false,
+            'metadata' => ['test_fixture_only' => true, 'not_official_cp_content' => true],
+        ]);
+
+        // Composite owner/version FK remains valid, but the CP does not belong
+        // to the subject structure pinned by this teacher assignment.
+        $this->context['tp']->update(['parent_cp_id' => $otherCp->id]);
+        $this->assertAtpRejectedWithoutPartialRows();
     }
 
     /** @test */
@@ -238,7 +265,7 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             ->count());
     }
 
-    private function assertAtpRejectedWithoutPartialRows(bool $expectMissingRelation = false): void
+    private function assertAtpRejectedWithoutPartialRows(): void
     {
         $beforeAtp = TenantLearningOutcome::query()
             ->where('tenant_id', $this->tenant->id)
@@ -263,8 +290,6 @@ class TeacherLearningOutcomeProvenanceTest extends TestCase
             $this->fail('ATP creation must reject an invalid parent CP provenance.');
         } catch (ValidationException $exception) {
             $this->assertNotEmpty($exception->errors()['parentTpId'] ?? []);
-        } catch (ModelNotFoundException $exception) {
-            $this->assertTrue($expectMissingRelation, 'Unexpected missing parent TP relation.');
         }
 
         $this->assertSame($beforeAtp, TenantLearningOutcome::query()
