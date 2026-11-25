@@ -14,7 +14,7 @@ class QuestionController extends Controller
 {
     private const ALLOWED_TYPES = [
         'MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE',
-        'MATCHING', 'ESSAY'
+        'MATCHING', 'ESSAY', 'TRUE_FALSE_GROUP'
     ];
 
     public function __construct(protected AuditService $auditService)
@@ -346,6 +346,19 @@ class QuestionController extends Controller
             if ($current->question_type === 'SHORT_ANSWER') {
                 abort(422, 'SHORT_ANSWER belum didukung sampai accepted answers masuk ke immutable snapshot dan scoring teruji.');
             }
+            if ($current->question_type === 'TRUE_FALSE_GROUP') {
+                $items = $current->metadata['statement_items'] ?? [];
+                $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);
+                $validItems = count($items) === 3
+                    && count(array_unique($ids)) === 3
+                    && !in_array('', $ids, true)
+                    && collect($items)->every(fn ($item) => is_array($item)
+                        && trim((string) ($item['text'] ?? '')) !== ''
+                        && is_bool($item['is_true'] ?? null));
+                if (!$validItems) {
+                    abort(422, 'Soal Benar/Salah kelompok harus memiliki tepat tiga pernyataan ber-ID stabil dan kunci boolean sebelum diterbitkan.');
+                }
+            }
 
             $current->update(['status' => 'PUBLISHED']);
             $lockedQuestion->update(['status' => 'PUBLISHED']);
@@ -427,6 +440,11 @@ class QuestionController extends Controller
         $fail = function (string $message): never {
             throw \Illuminate\Validation\ValidationException::withMessages(['options' => $message]);
         };
+
+        if ($questionType === 'TRUE_FALSE_GROUP') {
+            if ($options !== []) $fail('Soal Benar/Salah kelompok menyimpan tiga pernyataan pada metadata versi, bukan opsi pilihan ganda.');
+            return;
+        }
 
         if (in_array($questionType, ['SHORT_ANSWER', 'ESSAY'], true)) {
             if ($options !== []) $fail('Soal jawaban singkat/esai tidak boleh memiliki opsi pilihan.');
