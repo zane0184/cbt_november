@@ -110,3 +110,10 @@ Pengguna melampirkan dua PDF. Keduanya telah diperiksa dari byte file yang termo
 - Dataset staging diberi addendum yang menautkan dokumen transkripsi proses, commit `b28b79869e3dc31155f0f267256adaf32fd91fa5`.
 - Source aplikasi, schema, migration, database, deployment tidak diubah. Tidak ada acceptance test dijalankan.
 - Pekerjaan berikutnya: proofread seluruh baris Pemahaman Konsep terhadap render halaman, transkripsi manual pola kalimat Arab, lalu bentuk JSON/CSV dengan provenance per record dan buat importer dry-run.
+
+
+## Addendum 6 — kontrak staging JSON (26 November 2026)
+- JSON Schema untuk record CP MI dibuat di `docs/schemas/cp-mi-staging.schema.json`, commit `0837666512d40c2e5b52c95d4e577dd21d475847`.
+- Schema mewajibkan source hash, halaman PDF, mapel, fase, rentang kelas, elemen, deskripsi sumber, status keaslian, dan status QA.
+- Validasi schema terhadap seluruh record belum dijalankan karena dataset masih berupa tabel Markdown dan transkripsi Arab/pemeriksaan visual belum final. Belum ada importer.
+- Kontrak import desain tersedia di `docs/CP_MI_IMPORT_CONTRACT_DESIGN.md`.
