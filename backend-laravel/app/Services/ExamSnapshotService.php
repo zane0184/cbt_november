@@ -377,6 +377,20 @@ class ExamSnapshotService
                 if ((float) $version->default_points <= 0) {
                     abort(422, 'Snapshot diblokir: bobot nilai soal belum ditentukan oleh Guru.');
                 }
+
+                $supportedQuestionTypes = [
+                    'MC',
+                    'MULTIPLE_CHOICE',
+                    'MULTIPLE_RESPONSE',
+                    'TRUE_FALSE',
+                    'TF',
+                    'TRUE_FALSE_GROUP',
+                    'MATCHING',
+                    'ESSAY',
+                ];
+                if (!in_array($version->question_type, $supportedQuestionTypes, true)) {
+                    abort(422, 'Snapshot diblokir: tipe soal belum didukung oleh alur jawaban dan penilaian CBT.');
+                }
                 if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
                     $options = $version->options;
                     $optionCount = $options->count();
