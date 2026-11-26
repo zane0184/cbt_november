@@ -38,7 +38,7 @@ class TeacherSubjectAssignmentManagement extends Component
         abort_unless($user && $user->tenant_id && (bool) $user->is_active && count($roles) === 1, 403, 'Akses penugasan ditolak. Akun harus aktif dan memiliki tepat satu role portal.');
 
         if ($roles[0] === 'GURU') {
-            app(\\App\\Support\\Security\\TeacherPortalAccess::class)->profile($user);
+            app(\App\Support\Security\TeacherPortalAccess::class)->profile($user);
             return;
         }
 
@@ -58,7 +58,7 @@ class TeacherSubjectAssignmentManagement extends Component
     private function authenticatedTeacherProfile(): TeacherProfile
     {
         abort_unless($this->isTeacherUser(), 403, 'Aksi ini hanya tersedia untuk Guru.');
-        return app(\\App\\Support\\Security\\TeacherPortalAccess::class)->profile(auth()->user());
+        return app(\App\Support\Security\TeacherPortalAccess::class)->profile(auth()->user());
     }
 
     private function activeCurriculumRegistration(string $tenantId): ?TenantCurriculumRegistration
