@@ -296,6 +296,7 @@
                                 </div>
                                 @error('selectedOutcomeIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
+                            @if($selectedCpIds !== [] && $selectedOutcomeIds !== [])
                             <div class="grid gap-3 md:grid-cols-2">
                                 <div>
                                     <label class="mb-1 block text-xs font-bold text-navy-900">Materi (opsional)</label>
@@ -318,6 +319,9 @@
                                     @error('selectedMaterialTopicId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 </div>
                             </div>
+                            @else
+                                <p class="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">Materi dan topik hanya dapat ditautkan jika CP dan TP/ATP dipetakan.</p>
+                            @endif
                             @else
                                 <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Soal dapat disimpan dan diterbitkan sebagai soal umum tanpa CP/TP/ATP. Pemetaan kurikulum, materi, dan topik hanya tersedia bagi akun yang memiliki kewenangan pengelolaan kurikulum.</p>
                             @endif
