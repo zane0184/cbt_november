@@ -344,3 +344,29 @@ Tanggal: 27 November 2026
 - Satu hardening khusus manual save telah ditambahkan: kode soal duplikat kini harus tertangkap sebagai validation error.
 - Belum ada bukti runtime bahwa kedua tombol Simpan telah berhasil pada server madrasah.
 - PR #44 tetap DRAFT dan tidak di-merge/deploy.
+
+
+## I. HARDENING TAMBAHAN — NORMALISASI TEKS OPSI SIMPAN MANUAL
+
+### AUDIT
+- Form manual sebelumnya memeriksa opsi A/B sebagai required string, sedangkan opsi C/D opsional.
+- Nilai yang hanya berisi spasi dapat lolos validasi string. Khusus C/D, pemeriksaan non-empty dapat menganggap string spasi sebagai nilai sehingga opsi kosong berpotensi tersimpan.
+- Stem dan teks opsi juga belum dinormalisasi secara konsisten sebelum disimpan.
+
+### DESAIN
+- Trim question code, stem, explanation, dan teks opsi A-D sebelum validasi.
+- Trim pasangan MATCHING sebelum pemeriksaan isi.
+- Opsi A/B yang menjadi kosong setelah trim harus gagal validasi required.
+- Opsi C/D yang kosong setelah trim diperlakukan sebagai opsi tidak dipilih dan tidak disimpan.
+
+### IMPLEMENTASI
+- QuestionBank.php blob sebelum af65f5298f982dc97edb28dd064fd29056d8290c, sesudah ba86aa0b898127a43ac7e82f7af2927321f4b01d, commit 1d63e04e18f6a3ee99f4602dd275feef3e382258.
+- Backup: backend-laravel/backups/question-save-nullable-assignment-dates-20261127/QuestionBank.php.pre-option-normalization.
+- Regression tests: test_manual_question_save_trims_option_text_and_drops_whitespace_only_optional_options dan test_manual_question_save_rejects_whitespace_only_required_option.
+- QuestionBankTest.php blob sebelum d97ed924a450f364368a452ecf432c269e8af253, sesudah bdb47f642dcfd0a648e618aef49614eeb18463ba, commit 5a5b281494007d2db82ba7eedf3926b5b68be7b7.
+- Backup: backend-laravel/backups/question-save-nullable-assignment-dates-20261127/QuestionBankTest.php.pre-option-normalization.
+- Tidak ada perubahan DOCX, schema, migration, database, atau deployment.
+
+### PENGUJIAN
+- Regression tests ditulis tetapi belum dijalankan.
+- Tidak ada klaim runtime save berhasil.
