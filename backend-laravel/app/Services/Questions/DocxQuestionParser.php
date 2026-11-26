@@ -245,6 +245,7 @@ class DocxQuestionParser
                             'text' => $text,
                             'has_media' => $hasMedia,
                             'has_math' => $hasMath,
+                            'text_direction' => $this->detectTextDirection($node, $xpath, $text),
                             'source_fragments' => $sourceFragments,
                             'locator' => ['sequence' => ++$sequence, 'kind' => 'paragraph'],
                         ];
@@ -275,6 +276,14 @@ class DocxQuestionParser
                             $cells[] = trim(implode("\n", $paragraphTexts));
                         }
                         $rowText = implode(' | ', $cells);
+                        $rowXml = $row->ownerDocument?->saveXML($row) ?: '';
+                        if ($rowXml !== '') {
+                            $rowSourceFragments[] = [
+                                'kind' => 'WORD_TABLE_ROW_OOXML',
+                                'xml' => $rowXml,
+                                'xml_sha256' => hash('sha256', $rowXml),
+                            ];
+                        }
                         if (trim($rowText) === '' && !$rowHasMedia && !$rowHasMath) {
                             continue;
                         }
@@ -283,6 +292,8 @@ class DocxQuestionParser
                             'cells' => $cells,
                             'has_media' => $rowHasMedia,
                             'has_math' => $rowHasMath,
+                            'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
+                            'text_direction' => $this->detectTextDirection($row, $xpath, $rowText),
                             'source_fragments' => $rowSourceFragments,
                             'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
                             'locator' => [
@@ -307,6 +318,14 @@ class DocxQuestionParser
     private function extractSourceFragments(DOMElement $node, \DOMXPath $xpath, array $relationships): array
     {
         $fragments = [];
+        $paragraphXml = $node->ownerDocument?->saveXML($node) ?: '';
+        if ($paragraphXml !== '') {
+            $fragments[] = [
+                'kind' => 'WORD_PARAGRAPH_OOXML',
+                'xml' => $paragraphXml,
+                'xml_sha256' => hash('sha256', $paragraphXml),
+            ];
+        }
 
         foreach ($xpath->query('.//w:drawing | .//w:pict', $node) as $mediaNode) {
             $relationshipId = null;
@@ -345,7 +364,7 @@ class DocxQuestionParser
     private function paragraphText(DOMNode $paragraph, \DOMXPath $xpath): string
     {
         $nodes = $xpath->query(
-            './/w:t[not(ancestor::w:del)] | .//w:tab[not(ancestor::w:del)] | .//w:br[not(ancestor::w:del)] | .//w:cr[not(ancestor::w:del)] | .//w:sym[not(ancestor::w:del)]',
+            './/w:t[not(ancestor::w:del)] | .//m:t | .//w:tab[not(ancestor::w:del)] | .//w:br[not(ancestor::w:del)] | .//w:cr[not(ancestor::w:del)] | .//w:sym[not(ancestor::w:del)]',
             $paragraph
         );
         $parts = [];
@@ -365,6 +384,16 @@ class DocxQuestionParser
             }
         }
         return $this->normalizeText(implode('', $parts));
+    }
+
+    private function detectTextDirection(DOMNode $node, \\DOMXPath $xpath, string $text): string
+    {
+        if ($xpath->query('.//w:bidi | .//w:rtl', $node)->length > 0
+            || preg_match('/[\\x{0590}-\\x{08FF}]/u', $text) === 1) {
+            return 'rtl';
+        }
+
+        return 'auto';
     }
 
     private function normalizeText(string $text): string
@@ -393,14 +422,35 @@ class DocxQuestionParser
 
             $blockUnsupported = [];
             $blockUnsupportedFeatures = [];
+            $blockWarnings = [];
             $blockSourceFragments = array_values($block['source_fragments'] ?? []);
             if (!empty($block['has_media'])) {
-                $blockUnsupported[] = 'Dokumen memuat gambar/diagram pada blok ini; import media belum diaktifkan dan item harus ditinjau manual.';
-                $blockUnsupportedFeatures[] = 'IMAGE_OR_DIAGRAM';
+                $imageFragments = array_values(array_filter(
+                    $blockSourceFragments,
+                    fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'IMAGE_REFERENCE'
+                ));
+                $supportedImages = $imageFragments !== [];
+                foreach ($imageFragments as $imageFragment) {
+                    $target = (string) ($imageFragment['target'] ?? '');
+                    $extension = strtolower(pathinfo($target, PATHINFO_EXTENSION));
+                    if (empty($imageFragment['relationship_resolved'])
+                        || !in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
+                        $supportedImages = false;
+                        break;
+                    }
+                }
+                if (!$supportedImages) {
+                    $blockUnsupported[] = 'Gambar DOCX tidak memiliki relasi internal yang valid atau formatnya tidak didukung (hanya JPEG/PNG).';
+                    $blockUnsupportedFeatures[] = 'IMAGE_OR_DIAGRAM';
+                } else {
+                    $blockWarnings[] = 'Gambar terdeteksi dan akan diekstrak sebagai media privat tenant.';
+                }
             }
             if (!empty($block['has_math'])) {
-                $blockUnsupported[] = 'Dokumen memuat objek formula matematika Word pada blok ini; konversi formula belum diaktifkan.';
-                $blockUnsupportedFeatures[] = 'WORD_MATH';
+                $blockWarnings[] = 'Rumus Word dipertahankan sebagai teks fallback dan sumber OMML; periksa kembali bentuk rumus sebelum menerbitkan soal.';
+            }
+            if (!empty($block['has_nested_table'])) {
+                $blockWarnings[] = 'Tabel bersarang dipertahankan sebagai sumber OOXML dan teks sel; periksa tata letak pada preview.';
             }
 
             $questionPattern = '/^(?:(?:SOAL|NOMOR)\s+)?(?:\((\d{1,3})\)|(\d{1,3})\s*[.):=-])\s*(.*)$/iu';
@@ -439,10 +489,12 @@ class DocxQuestionParser
                     $active['unsupported_blocks'] = array_merge($active['unsupported_blocks'] ?? [], $blockUnsupported);
                     $active['unsupported_features'] = array_merge($active['unsupported_features'] ?? [], $blockUnsupportedFeatures);
                     $active['source_fragments'] = array_merge($active['source_fragments'] ?? [], $blockSourceFragments);
+                    $active['source_warnings'] = array_merge($active['source_warnings'] ?? [], $blockWarnings);
                 } elseif ($stimulus !== null) {
                     $stimulus['unsupported_blocks'] = array_merge($stimulus['unsupported_blocks'] ?? [], $blockUnsupported);
                     $stimulus['unsupported_features'] = array_merge($stimulus['unsupported_features'] ?? [], $blockUnsupportedFeatures);
                     $stimulus['source_fragments'] = array_merge($stimulus['source_fragments'] ?? [], $blockSourceFragments);
+                    $stimulus['source_warnings'] = array_merge($stimulus['source_warnings'] ?? [], $blockWarnings);
                 } elseif ($rawQuestions !== []) {
                     // Word commonly places floating media/formulas after the answer-key paragraph.
                     // Attach a contiguous trailing unsupported block to the last completed question.
@@ -458,6 +510,10 @@ class DocxQuestionParser
                     $rawQuestions[$lastIndex]['source_fragments'] = array_merge(
                         $rawQuestions[$lastIndex]['source_fragments'] ?? [],
                         $blockSourceFragments
+                    );
+                    $rawQuestions[$lastIndex]['source_warnings'] = array_merge(
+                        $rawQuestions[$lastIndex]['source_warnings'] ?? [],
+                        $blockWarnings
                     );
                 }
             }
@@ -493,6 +549,7 @@ class DocxQuestionParser
                     'unsupported_blocks' => $blockUnsupported,
                     'unsupported_features' => $blockUnsupportedFeatures,
                     'source_fragments' => $blockSourceFragments,
+                    'source_warnings' => $blockWarnings,
                     'table_rows' => [],
                 ];
                 continue;
@@ -553,6 +610,7 @@ class DocxQuestionParser
                     'unsupported_blocks' => $blockUnsupported,
                     'unsupported_features' => $blockUnsupportedFeatures,
                     'source_fragments' => $blockSourceFragments,
+                    'source_warnings' => $blockWarnings,
                     'has_table_content' => $isTableRow,
                 ];
                 if ($isTableRow) {
@@ -677,7 +735,10 @@ class DocxQuestionParser
             $type = $this->resolveType($raw);
             $stem = trim(implode("\n", $raw['stem_parts']));
             $errors = [];
-            $warningsForQuestion = [];
+            $warningsForQuestion = array_values(array_unique(array_merge(
+                $raw['source_warnings'] ?? [],
+                $raw['stimulus']['source_warnings'] ?? []
+            )));
             foreach (($raw['unsupported_blocks'] ?? []) as $unsupportedBlock) {
                 $errors[] = $unsupportedBlock;
             }
@@ -743,6 +804,15 @@ class DocxQuestionParser
                     $raw['source_fragments'] ?? [],
                     $raw['stimulus']['source_fragments'] ?? []
                 )),
+                'media_count' => count(array_filter(
+                    array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
+                    fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'IMAGE_REFERENCE'
+                )),
+                'math_count' => count(array_filter(
+                    array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
+                    fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML'
+                )),
+                'text_direction' => preg_match('/[\\x{0590}-\\x{08FF}]/u', $stem) === 1 ? 'rtl' : 'auto',
                 'blocked_features' => $blockedFeatures,
                 'question_type' => $type,
                 'stem' => $stem,
