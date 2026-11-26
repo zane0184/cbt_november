@@ -145,6 +145,12 @@ class DocxQuestionDraftImporter
                     'preview_runs' => array_values($row['rich_paragraphs'] ?? []),
                     'mathml_fragments' => array_values($row['mathml_fragments'] ?? []),
                     'table_structure' => array_values($row['table_structure'] ?? []),
+                    'requires_manual_review' => (int) ($row['math_count'] ?? 0) > 0
+                        || (int) ($row['nested_table_count'] ?? 0) > 0
+                        || count(array_filter(
+                            $row['mathml_fragments'] ?? [],
+                            fn (array $fragment): bool => ($fragment['supported'] ?? false) !== true
+                        )) > 0,
                     'math_omml' => array_values(array_map(
                         fn (array $fragment): array => [
                             'xml' => (string) ($fragment['xml'] ?? ''),
