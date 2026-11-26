@@ -523,10 +523,12 @@ class DocxQuestionParser
                 }
             }
             if (!empty($block['has_math'])) {
-                $blockWarnings[] = 'Rumus Word dipertahankan sebagai teks fallback dan sumber OMML; periksa kembali bentuk rumus sebelum menerbitkan soal.';
+                $blockUnsupported[] = 'Rumus Word dipertahankan sebagai sumber OMML dan teks fallback. Soal ditandai PERLU DITINJAU agar Guru memeriksa bentuk rumus sebelum menerbitkan.';
+                $blockWarnings[] = 'Periksa kembali susunan pecahan, akar, pangkat, indeks, dan simbol rumus terhadap dokumen Word asli.';
             }
             if (!empty($block['has_nested_table'])) {
-                $blockWarnings[] = 'Tabel bersarang dipertahankan sebagai sumber OOXML dan teks sel; periksa tata letak pada preview.';
+                $blockUnsupported[] = 'Tabel bersarang disimpan sebagai sumber OOXML dan teks sel ringkas. Periksa kembali tata letak tabel sebelum menerbitkan.';
+                $blockWarnings[] = 'Preview meratakan teks sel; struktur tabel bersarang asli tetap tersimpan pada metadata versi soal.';
             }
 
             $questionPattern = '/^(?:(?:SOAL|NOMOR)\s+)?(?:\((\d{1,3})\)|(\d{1,3})\s*[.):=-])\s*(.*)$/iu';
