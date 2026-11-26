@@ -49,7 +49,7 @@ class QuestionDocxImport extends Component
             && $user->hasPermission('question.view')
             && $user->hasPermission('question.manage'),
             403,
-            'Import soal DOCX memerlukan akun Guru, penugasan aktif, serta kewenangan Bank Soal dan Kurikulum.'
+            'Import soal DOCX memerlukan akun Guru, penugasan aktif, serta kewenangan melihat dan mengelola Bank Soal.'
         );
 
         app(TeacherPortalAccess::class)->profile($user);
