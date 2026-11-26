@@ -99,7 +99,7 @@ class CurriculumReferenceSourceSeeder extends Seeder
                     'issuer' => 'Badan Kebijakan Pendidikan Dasar dan Menengah, Kemendikdasmen',
                     'document_number' => 'Keputusan Kepala BKPDM 020 Tahun 2026',
                     'title' => 'Perubahan atas Keputusan Kepala BSKAP 046/H/KR/2025 tentang Capaian Pembelajaran',
-                    'document_version' => '2026-06-11',
+                    'document_version' => '2026-06-23',
                     'published_at' => '2026-06-11',
                     'effective_from' => '2026-06-11',
                     'source_uri' => 'https://cdn.schoolpro.id/documents/1782087907907-48baee9c9a6c43c280955078b534442c.pdf',
