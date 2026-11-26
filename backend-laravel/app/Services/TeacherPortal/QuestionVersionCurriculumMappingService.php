@@ -93,22 +93,22 @@ class QuestionVersionCurriculumMappingService
                 ->firstOrFail();
 
             if (!$isMapped) {
+                // NOT_MAPPED is a version-wide state. Remove every mapping row
+                // for this tenant/version, including any legacy rows attached to
+                // another assignment, so publication cannot see a mixed state.
                 QuestionVersionCurriculumMapping::query()
                     ->where('tenant_id', $tenantId)
                     ->where('question_version_id', $version->id)
-                    ->where('teacher_subject_assignment_id', $assignment->id)
                     ->delete();
 
                 QuestionVersionTenantOutcomeMapping::query()
                     ->where('tenant_id', $tenantId)
                     ->where('question_version_id', $version->id)
-                    ->where('teacher_subject_assignment_id', $assignment->id)
                     ->delete();
 
                 QuestionVersionStructureMapping::query()
                     ->where('tenant_id', $tenantId)
                     ->where('question_version_id', $version->id)
-                    ->where('teacher_subject_assignment_id', $assignment->id)
                     ->delete();
 
                 app(AuditService::class)->log(
