@@ -412,7 +412,7 @@ class DocxQuestionParser
                 continue;
             }
 
-            $xpath = new \\DOMXPath($document);
+            $xpath = new \DOMXPath($document);
             $xpath->registerNamespace('w', $wordNamespace);
             $xpath->registerNamespace('m', 'http://schemas.openxmlformats.org/officeDocument/2006/math');
             $paragraphNode = $xpath->query('//*[local-name()="p"]')->item(0);
@@ -425,9 +425,9 @@ class DocxQuestionParser
                 $parts = [];
                 foreach ($xpath->query('.//w:t | .//m:t | .//w:tab | .//w:br | .//w:cr', $run) as $textNode) {
                     if ($textNode->localName === 'tab') {
-                        $parts[] = "\\t";
+                        $parts[] = "\t";
                     } elseif ($textNode->localName === 'br' || $textNode->localName === 'cr') {
-                        $parts[] = "\\n";
+                        $parts[] = "\n";
                     } else {
                         $parts[] = $textNode->textContent;
                     }
