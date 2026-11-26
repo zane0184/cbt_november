@@ -792,6 +792,17 @@ class QuestionBank extends Component
                 }
             }
 
+            $versionMetadata = $version->metadata ?? [];
+            $mappingMetadata = $versionMetadata['curriculum_mapping'] ?? [];
+            $versionMetadata['curriculum_mapping'] = array_merge(
+                is_array($mappingMetadata) ? $mappingMetadata : [],
+                [
+                    'status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
+                    'resolved_at' => now()->toISOString(),
+                ]
+            );
+            $version->update(['metadata' => $versionMetadata]);
+
             $oldValues = [
                 'question_status' => $lockedQuestion->status,
                 'version_status' => $version->status,
@@ -809,6 +820,7 @@ class QuestionBank extends Component
                     'question_status' => 'PUBLISHED',
                     'version_status' => 'PUBLISHED',
                     'question_version_id' => $version->id,
+                    'curriculum_mapping_status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
                 ]
             );
         });
