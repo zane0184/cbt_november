@@ -294,11 +294,47 @@ class QuestionBankTest extends TestCase
 
         $this->questionBankComponent()
             ->call('gotoPage', 2)
-            ->set('subjectFilter', $this->subjectA->id)
+            ->set('assignmentFilter', $this->assignment->id)
             ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1)
             ->call('gotoPage', 2)
             ->set('statusFilter', 'PUBLISHED')
             ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1);
+    }
+
+    public function test_question_bank_assignment_filter_shows_subject_grade_rombel_and_scopes_questions(): void
+    {
+        $this->actingAs($this->userA);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'question_code' => 'ASSIGNMENT-FILTER-01',
+            'status' => 'DRAFT',
+            'created_by' => $this->userA->id,
+        ]);
+
+        $question->versions()->create([
+            'tenant_id' => $this->tenantA->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Soal untuk penugasan Matematika kelas 4A',
+            'metadata' => [
+                'curriculum_mapping' => [
+                    'status' => 'NOT_MAPPED',
+                    'teacher_subject_assignment_id' => (string) $this->assignment->id,
+                ],
+            ],
+            'status' => 'DRAFT',
+            'is_current' => true,
+            'created_by' => $this->userA->id,
+        ]);
+
+        Livewire::test(QuestionBank::class)
+            ->assertSee('Matematika · Kelas 4 · 4A')
+            ->set('assignmentFilter', $this->assignment->id)
+            ->assertViewHas('questions', fn ($questions) => $questions->contains('id', $question->id));
     }
 
     public function test_web_admin_create_and_update_multiple_response_question()
