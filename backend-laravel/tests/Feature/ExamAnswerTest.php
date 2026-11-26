@@ -516,6 +516,7 @@ class ExamAnswerTest extends TestCase
         $types = [
             'MULTIPLE_RESPONSE' => ['selected_option_ids' => []],
             'TRUE_FALSE' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
+            'TF' => ['selected_option_id' => $this->snapshot->snapshot_options[0]['id']],
             'SHORT_ANSWER' => ['text' => 'hello'],
             'ESSAY' => ['text' => 'essay content']
         ];
