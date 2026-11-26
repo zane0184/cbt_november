@@ -247,3 +247,44 @@ P2 — Scoring:
 7. Buat checkpoint baru setelah patch dan static review.
 
 PR #44 tetap Draft dan tidak di-merge. Tidak ada klaim siap produksi/distribusi dari audit ini.
+
+
+---
+
+## G. AUDIT & IMPLEMENTASI TAMBAHAN — TOMBOL SIMPAN BANK SOAL / IMPORT DOCX
+
+Tanggal: 27 November 2026
+
+### AUDIT
+- Klarifikasi pengguna: halaman Bank Soal dan halaman Import DOCX dapat dibuka; kegagalan hanya terjadi saat penyimpanan. Audit diarahkan ke jalur save, bukan route/middleware/render.
+- Kedua jalur penyimpanan memanggil `QuestionVersionCurriculumMappingService::sync()`:
+  - `QuestionBank::saveQuestion()` untuk simpan manual.
+  - `DocxQuestionDraftImporter::import()` untuk simpan hasil DOCX, termasuk saat pemetaan CP dan TP/ATP kosong (NOT_MAPPED).
+- Di dalam `sync()`, query penugasan sebelumnya memakai `whereDate('starts_at', '<=', today)` dan `whereDate('ends_at', '>=', today)`.
+- `TeacherSubjectAssignment::scopeActiveForDate()` secara eksplisit mendukung tanggal mulai/akhir NULL (open-ended), tetapi query di mapping service tidak. Akibatnya, penugasan ACTIVE yang tanggalnya NULL lolos dari pemilihan assignment di halaman/importer tetapi gagal ditemukan saat proses save.
+- Ini adalah akar masalah statis yang dapat menjelaskan kedua tombol Simpan gagal. Belum ada bukti runtime yang mengonfirmasi data penugasan aktual menggunakan tanggal NULL; karena itu status temuan: **bug source teridentifikasi, runtime belum diverifikasi**.
+
+### DESAIN
+- Gunakan satu scope kanonis `activeForDate()` untuk validasi assignment pada mapping service, agar syarat aktif dan dukungan tanggal NULL konsisten dengan pemanggil lainnya.
+- Pertahankan validasi tenant, teacher_profile_id, status aktif, curriculum registration, subject, serta validasi CP/TP lengkap atau kosong. Jangan melonggarkan otorisasi atau integritas mapping.
+
+### IMPLEMENTASI
+- File diubah: `backend-laravel/app/Services/TeacherPortal/QuestionVersionCurriculumMappingService.php`
+- Perubahan: mengganti dua predicate tanggal non-null dengan `->activeForDate()`.
+- Backup source byte-for-byte: `backend-laravel/backups/question-save-nullable-assignment-dates-20261127/QuestionVersionCurriculumMappingService.php`
+- Source blob sebelum: `2d2aa64e666d98d90c6276d16a4cf6c735be415c`
+- Source blob sesudah: `bcb9a2722c013b9216b6663f7693b58f2d310e16`
+- Commit patch: `e1a58e7a0bec8990bb5cfa006d43747ee00000d0`
+- Tidak ada perubahan route, tampilan, database, migration, VPS, atau data produksi.
+
+### PENGUJIAN
+- Fetch ulang source setelah update: PASS (perubahan terkonfirmasi di GitHub).
+- PHPUnit/CI/browser/runtime: TIDAK DIJALANKAN sesuai instruksi pengguna.
+- Belum dapat menyatakan tombol Simpan sudah berhasil di lingkungan madrasah sampai uji runtime diizinkan.
+- Regression test untuk assignment ACTIVE dengan starts_at dan/atau ends_at NULL masih perlu ditambahkan; tidak dijalankan.
+
+### NEXT
+1. Audit seluruh jalur save manual dan DOCX untuk prasyarat lain yang masih berbeda antara form dan service.
+2. Tambahkan regression tests untuk tanggal NULL dan tanggal di luar masa aktif (ditulis saja, tidak dijalankan).
+3. Uji kedua alur save pada lingkungan terisolasi saat izin pengujian berubah.
+4. PR #44 tetap DRAFT, jangan merge/deploy tanpa instruksi eksplisit.
