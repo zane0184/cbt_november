@@ -81,3 +81,6 @@ Pengguna melampirkan dua PDF. Keduanya telah diperiksa dari byte file yang termo
 - Belum ada import data, perubahan source, migration, akses DB, deployment, atau pengujian aplikasi. Belum ada transkripsi CP penuh. Tidak mengklaim validasi tanda tangan atau keaslian digital final.
 
 **Tahap saat ini:** AUDIT SUMBER DOKUMEN selesai untuk penerimaan, identitas, hash dan indeks halaman awal. Berikutnya: transkripsi CP MI per fase/elemen dari 9941 dengan verifikasi visual, menyimpan provenance; setelah itu desain importer dry-run dan uji terisolasi. Jangan mulai seed produksi.
+
+
+- Indeks halaman sumber CP MI dibuat di `docs/CP_9941_MI_SOURCE_INDEX.md` (commit `664e12cf1ab7ae196f2cc87c61c4371f2543a5ef`). Indeks mencatat halaman PDF per mapel, identitas dokumen, hash sumber, serta aturan provenance dan ekstraksi.
