@@ -391,14 +391,14 @@ class ExamSnapshotService
                 if (!in_array($version->question_type, $supportedQuestionTypes, true)) {
                     abort(422, 'Snapshot diblokir: tipe soal belum didukung oleh alur jawaban dan penilaian CBT.');
                 }
-                if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+                if (in_array($version->question_type, ['MC', 'MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE', 'TF'], true)) {
                     $options = $version->options;
                     $optionCount = $options->count();
                     $correctCount = $options->filter(fn ($option) => (bool) $option->is_correct)->count();
                     $validKeys = match ($version->question_type) {
-                        'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
+                        'MC', 'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
                         'MULTIPLE_RESPONSE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount >= 1,
-                        'TRUE_FALSE' => $optionCount === 2 && $correctCount === 1,
+                        'TRUE_FALSE', 'TF' => $optionCount === 2 && $correctCount === 1,
                         default => false,
                     };
                     if (!$validKeys) {
