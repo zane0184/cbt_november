@@ -46,3 +46,14 @@ Hanya memperbaiki CP/TP/ATP pada Web Admin, Guru, Siswa dan integrasi backend. A
 - Jangan mengubah status CP PENDING atau mengisi CP sintetis untuk membuat UI tampak penuh.
 
 **Status checkpoint: AUDIT SELESAI — IMPLEMENTASI CP OFFICIAL BLOCKED OLEH ARTEFAK SUMBER — ADMIN LEGACY VIEW GAP TERIDENTIFIKASI — BELUM END-TO-END.**
+
+
+## Addendum — penelusuran sumber publik (26 November 2026)
+Atas arahan koordinator, penelusuran tidak berhenti pada file yang tidak ada di repo. Manifest sumber publik dibuat pada `docs/CP_TP_SOURCE_RECOVERY_MANIFEST_2026-11-26.md` (commit `8c64f2b784210d1de23331c2ce574fe3fcf9b1e5`).
+
+Temuan tambahan:
+- PDF salinan BSKAP 046/H/KR/2025 Lampiran II SD/MI ditemukan pada host publik; masih perlu diunduh, hash, dan cross-check.
+- Siaran pers resmi Kemendikdasmen 23 Juni 2026 mengonfirmasi BKPDM 020/2026 hanya mengubah CP Agama dan Budi Pekerti. Naskah keputusan dan lampirannya tetap harus diperoleh dan diverifikasi.
+- Salinan isi Kepdirjen Pendis 9941/2025 dan folder unduh PDF/DOCX lampiran ditemukan melalui sumber pihak ketiga. Status tetap `UNVERIFIED_COPY` sampai tanda tangan, nomor, lampiran MI, bytes, dan hash dicocokkan dengan sumber resmi.
+- Belum ada dataset CP yang diimport, tidak ada file aplikasi yang diubah, tidak ada migration/DB/production action, dan belum ada test baru.
+- Langkah berikutnya adalah akuisisi artefak PDF, verifikasi hash/provenance, ekstraksi teks persis beserta nomor halaman, lalu importer idempoten + acceptance test disposable. Jangan mengisi registry dengan data sintetis.
