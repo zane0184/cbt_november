@@ -12,7 +12,6 @@ use App\Models\TenantLearningOutcome;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
-use App\Models\Subject;
 use App\Support\Security\TeacherAccess;
 use App\Support\Security\TeacherPortalAccess;
 use App\Services\AuditService;
@@ -29,7 +28,7 @@ class QuestionBank extends Component
     use WithPagination;
 
     public $search = '';
-    public $subjectFilter = '';
+    public $assignmentFilter = '';
     public $statusFilter = '';
 
     public function boot(): void
@@ -992,7 +991,7 @@ class QuestionBank extends Component
         $this->resetPage();
     }
 
-    public function updatingSubjectFilter()
+    public function updatingAssignmentFilter()
     {
         $this->resetPage();
     }
@@ -1072,7 +1071,16 @@ class QuestionBank extends Component
                         ->whereIn('subject_id', $teacherSubjectIds ?? []);
                 });
             })
-            ->when($this->subjectFilter, fn ($q) => $q->where('subject_id', $this->subjectFilter))
+            ->when($this->assignmentFilter, function ($q) {
+                $assignmentId = $this->assignmentFilter;
+                $q->where(function ($assignmentScope) use ($assignmentId): void {
+                    $assignmentScope->whereHas('currentVersion', function ($versionQuery) use ($assignmentId): void {
+                        $versionQuery->where('metadata->curriculum_mapping->teacher_subject_assignment_id', $assignmentId)
+                            ->orWhereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery->where('teacher_subject_assignment_id', $assignmentId))
+                            ->orWhereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery->where('teacher_subject_assignment_id', $assignmentId));
+                    });
+                });
+            })
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, function ($q) {
                 $q->where(function ($searchQuery) {
@@ -1084,12 +1092,6 @@ class QuestionBank extends Component
             })
             ->latest()
             ->paginate(12);
-
-        $subjects = Subject::query()
-            ->where('tenant_id', $user->tenant_id)
-            ->whereIn('id', $teacherSubjectIds)
-            ->orderBy('name')
-            ->get();
 
         $editingVersionMedia = collect();
         if ($this->editingQuestionId && $this->editingQuestionVersionId) {
@@ -1105,7 +1107,6 @@ class QuestionBank extends Component
 
         return view('livewire.admin.question-bank', [
             'questions' => $questions,
-            'subjects' => $subjects,
             'assignmentRows' => $assignmentRows,
             'selectedAssignment' => $selectedAssignment,
             'curriculumContext' => $curriculumContext,
