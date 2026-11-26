@@ -44,6 +44,7 @@ final class DocxQuestionMediaExtractor
                     continue;
                 }
 
+                $seenTargets = [];
                 foreach (($question['source_fragments'] ?? []) as $fragment) {
                     if (($fragment['kind'] ?? null) !== 'IMAGE_REFERENCE') {
                         continue;
@@ -58,6 +59,11 @@ final class DocxQuestionMediaExtractor
                             'docx' => 'Relasi gambar DOCX tidak aman atau tidak dapat diverifikasi. Periksa dokumen sumber.',
                         ]);
                     }
+
+                    if (isset($seenTargets[$target])) {
+                        continue;
+                    }
+                    $seenTargets[$target] = true;
 
                     if (!isset($uniquePayloads[$target])) {
                         $bytes = $zip->getFromName($target);
