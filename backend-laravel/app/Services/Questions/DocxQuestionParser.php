@@ -463,7 +463,7 @@ class DocxQuestionParser
         return $paragraphs;
     }
 
-    private function wordToggleEnabled(?DOMNode $node, string $wordNamespace): bool
+    private function wordToggleEnabled(?DOMElement $node, string $wordNamespace): bool
     {
         if (!$node) {
             return false;
@@ -510,6 +510,7 @@ class DocxQuestionParser
                     $target = (string) ($imageFragment['target'] ?? '');
                     $extension = strtolower(pathinfo($target, PATHINFO_EXTENSION));
                     if (empty($imageFragment['relationship_resolved'])
+                        || !str_starts_with($target, 'word/media/')
                         || !in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
                         $supportedImages = false;
                         break;
