@@ -276,6 +276,7 @@ class CurriculumRegistryManagement extends Component
                         'code' => $localCode,
                         'name' => $node->title,
                         'short_name' => $this->officialSubjectShortName($officialCode, $node->title),
+                        'subject_category' => $officialCode === 'MUATAN_LOKAL' ? 'MULOK' : 'WAJIB',
                         'status' => 'ACTIVE',
                     ]);
                     $subjectsCreated++;
