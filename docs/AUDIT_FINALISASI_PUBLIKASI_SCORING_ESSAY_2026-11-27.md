@@ -288,3 +288,59 @@ Tanggal: 27 November 2026
 2. Tambahkan regression tests untuk tanggal NULL dan tanggal di luar masa aktif (ditulis saja, tidak dijalankan).
 3. Uji kedua alur save pada lingkungan terisolasi saat izin pengujian berubah.
 4. PR #44 tetap DRAFT, jangan merge/deploy tanpa instruksi eksplisit.
+
+
+## H. AUDIT LANJUTAN — SELURUH JALUR SIMPAN BANK SOAL DAN DOCX
+
+Tanggal: 27 November 2026
+
+### AUDIT
+1. **Manual save (QuestionBank::saveQuestion)**
+   - Validasi jenis soal dibatasi pada MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, TRUE_FALSE_GROUP, MATCHING, ESSAY; SHORT_ANSWER tetap tidak diaktifkan.
+   - MC/MR memeriksa kunci menunjuk opsi yang terisi; TRUE_FALSE memakai dua opsi baku; TRUE_FALSE_GROUP memerlukan tepat tiga pernyataan; MATCHING memerlukan minimal dua pasangan lengkap; ESSAY mewajibkan rubrik/pedoman penskoran.
+   - Pembuatan/perubahan Question, QuestionVersion, opsi, pemetaan, metadata, dan audit berada dalam satu transaksi. Kegagalan mapping me-rollback penulisan manual sehingga tidak meninggalkan soal setengah tersimpan.
+   - TenantScoped mengisi tenant_id saat create dan fail-closed tanpa konteks tenant. Migration memiliki composite foreign keys untuk question/version/options.
+   - Temuan tambahan: migration memiliki unique key (tenant_id, question_code), tetapi form belum memvalidasi keunikan sebelum transaksi. Kode duplikat dapat menjadi database exception, bukan error form yang ramah.
+
+2. **DOCX save (QuestionDocxImport::importDrafts → DocxQuestionDraftImporter::import)**
+   - File harus lolos validasi ekstensi/ukuran, preview hash harus sama, dan file diparse ulang pada saat konfirmasi.
+   - Source identity, media references, blocked features, dan parser review reasons berasal dari hasil parse ulang; Livewire hanya memasok field yang memang dapat diedit Guru.
+   - Assignment diperiksa ulang dalam transaksi dengan tenant, teacher profile, status, activeForDate, dan subject scope.
+   - Isi DOCX yang sama pada assignment yang sama ditolak oleh pemeriksaan batch dan unique constraint idempotensi.
+   - Gambar hanya JPEG/PNG, dibatasi 2 MB per gambar, 8 MB total, 20 attachment, 25 juta piksel; relasi harus berada di word/media/ dan tervalidasi.
+   - File gambar ditulis ke private tenant storage. Jika transaksi gagal, importer menghapus file yang telah dibuat; media record dan pivot dibuat dalam transaksi yang sama.
+   - Opsi hasil import tidak menebak answer key; jawaban benar dan bobot nilai tetap menunggu verifikasi Guru.
+   - Kegagalan validasi pemetaan lengkap ditandai PENDING_TEACHER; pemetaan kosong menjadi NOT_MAPPED. Keduanya tidak boleh dicampur.
+
+3. **Schema**
+   - Migration 2026_11_07_210001_create_teacher_subject_assignments_table.php mengizinkan starts_at dan ends_at NULL.
+   - TeacherSubjectAssignment::scopeActiveForDate() mendukung tanggal terbuka.
+   - Karena itu, penggunaan scope kanonis pada mapping service memang diperlukan dan sesuai schema.
+
+### DESAIN
+- Pertahankan semua gate validasi dan security checks yang sudah ada.
+- Tambahkan validasi kode soal unik per tenant, setelah normalisasi uppercase/trim, dan abaikan record yang sedang diedit.
+- Tambahkan regression test untuk duplikasi kode agar gagal sebagai validation error sebelum query insert.
+- Tidak ada perubahan pada DOCX parser/media rules dari audit ini karena belum ditemukan bukti source bug tambahan yang perlu patch.
+
+### IMPLEMENTASI
+- Tambahan pada QuestionBank.php: normalisasi kode soal dan Rule::unique('questions','question_code')->where(tenant_id)->ignore(editingQuestionId).
+- Backup: backend-laravel/backups/question-save-nullable-assignment-dates-20261127/QuestionBank.php.
+- Blob sebelum: 7897fb8bcd9bcceefc776c0b9674b243cc527ff9.
+- Blob sesudah: af65f5298f982dc97edb28dd064fd29056d8290c.
+- Commit: 2124ef9d92cbe90132cf712fe8984dbe38c09072.
+- Tambahan test test_manual_question_save_rejects_duplicate_question_code_with_validation_error pada tests/Feature/QuestionBankTest.php.
+- Backup test tersedia di folder backup tahap ini; test blob sebelum bd5d5dc9903e93abb03300383528a270ea8675b0, sesudah d97ed924a450f364368a452ecf432c269e8af253, commit 21382203f5ac1f967512f4bdc9d8a4a172e2accd.
+- Regression tests tanggal terbuka pada manual dan DOCX tetap tersedia dari commit sebelumnya.
+- Tidak ada migration/schema/database/production changes.
+
+### PENGUJIAN
+- Fetch source dan migration GitHub: PASS sebagai pemeriksaan keberadaan/perubahan.
+- PHPUnit, CI, runtime Livewire, browser, database integration, dan upload DOCX: TIDAK DIJALANKAN sesuai instruksi.
+- Regression tests yang ditambahkan belum dijalankan; hasil fungsional belum diklaim.
+
+### STATUS DAN NEXT
+- Satu akar masalah bersama untuk kedua jalur telah diperbaiki: predicate tanggal assignment yang tidak menerima NULL.
+- Satu hardening khusus manual save telah ditambahkan: kode soal duplikat kini harus tertangkap sebagai validation error.
+- Belum ada bukti runtime bahwa kedua tombol Simpan telah berhasil pada server madrasah.
+- PR #44 tetap DRAFT dan tidak di-merge/deploy.
