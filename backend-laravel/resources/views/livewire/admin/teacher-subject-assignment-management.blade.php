@@ -51,7 +51,7 @@
                 <select wire:model="selectedSemesterId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
                     <option value="">Pilih semester...</option>
                     @foreach($semesters as $semester)
-                        <option value="{{ $semester->id }}">{{ $semester->name }}</option>
+                        <option value="{{ $semester->id }}">Semester {{ $semester->term === 'GANJIL' ? 'Ganjil' : 'Genap' }} — {{ $semester->academicYear?->name ?? 'Tahun ajaran tidak tersedia' }}</option>
                     @endforeach
                 </select>
                 @error('selectedSemesterId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
