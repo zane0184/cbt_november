@@ -330,7 +330,9 @@ class DocxQuestionDraftImporter
                 'question_ids' => $importedIds,
                 'batch_sha256' => $fileSha256,
             ];
-            }, 3);
+            // File writes occur inside this transaction; disable automatic closure retries
+            // so a rolled-back attempt cannot leave unreferenced files after a later retry.
+            }, 1);
         } catch (\Throwable $exception) {
             foreach ($storedPaths as $storedPath) {
                 Storage::disk('local')->delete($storedPath);
