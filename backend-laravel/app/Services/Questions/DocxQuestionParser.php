@@ -565,8 +565,28 @@ class DocxQuestionParser
 
             $xml = (string) $fragment['xml'];
             $this->assertSafeXml($xml);
+
+            // saveXML() on a paragraph child omits namespace declarations inherited
+            // from w:document. Re-wrap the trusted fragment with the OOXML namespaces
+            // it may use before parsing it as a standalone XML document.
+            $wrappedXml = '<cbt-root'
+                . ' xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
+                . ' xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"'
+                . ' xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+                . ' xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"'
+                . ' xmlns:v="urn:schemas-microsoft-com:vml">'
+                . $xml
+                . '</cbt-root>';
+
             $document = new DOMDocument();
-            if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+            $previousLibxmlState = libxml_use_internal_errors(true);
+            try {
+                $loaded = $document->loadXML($wrappedXml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT);
+            } finally {
+                libxml_clear_errors();
+                libxml_use_internal_errors($previousLibxmlState);
+            }
+            if (!$loaded) {
                 continue;
             }
 
