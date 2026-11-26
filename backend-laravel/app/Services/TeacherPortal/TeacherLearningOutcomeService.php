@@ -76,6 +76,8 @@ class TeacherLearningOutcomeService
                 'TP'
             );
 
+            $this->assertCpMatchesAssignmentPhase($cp, $assignment, $subjectStructureId, 'parentCpId');
+
             $code = strtoupper(trim($code));
             if (TenantLearningOutcome::query()
                 ->where('tenant_id', $tenantId)
@@ -221,6 +223,8 @@ class TeacherLearningOutcomeService
                 'parentTpId',
                 'ATP'
             );
+
+            $this->assertCpMatchesAssignmentPhase($parentCp, $assignment, $subjectStructureId, 'parentTpId');
 
             $code = strtoupper(trim($code));
             if (TenantLearningOutcome::query()
@@ -400,6 +404,8 @@ class TeacherLearningOutcomeService
                 'publikasi TP/ATP'
             );
 
+            $this->assertCpMatchesAssignmentPhase($verifiedCp, $assignment, $subjectStructureId, 'outcome');
+
             $this->resolveConsistentFrameworkMappings($outcome, $assignment, $registration, $tenantId);
 
             $before = $outcome->only(['status', 'is_current']);
@@ -415,6 +421,52 @@ class TeacherLearningOutcomeService
 
             return $outcome->fresh(['parentCp', 'structureMappings.structure']);
         }, 3);
+    }
+
+    private function assertCpMatchesAssignmentPhase(
+        MultiLearningOutcome $cp,
+        TeacherSubjectAssignment $assignment,
+        string $subjectStructureId,
+        string $errorKey
+    ): void {
+        $subject = MultiCurriculumStructure::query()
+            ->where('tenant_id', $cp->tenant_id)
+            ->where('multi_curriculum_version_id', $cp->multi_curriculum_version_id)
+            ->whereKey($subjectStructureId)
+            ->where('node_type', 'SUBJECT')
+            ->with('parent')
+            ->first();
+
+        $phaseCode = strtoupper((string) ($subject?->parent?->code ?? ''));
+        $phaseCode = str_replace('FASE_', '', $phaseCode);
+
+        $snapshot = $assignment->curriculum_context_snapshot ?? [];
+        $gradeNumber = (int) (
+            data_get($snapshot, 'grade.level')
+            ?? data_get($snapshot, 'grade.grade_number')
+            ?? 0
+        );
+
+        if ($gradeNumber < 1) {
+            $assignment->loadMissing('rombel.gradeLevel');
+            $gradeNumber = (int) ($assignment->rombel?->gradeLevel?->level ?? 0);
+        }
+
+        $metadata = $cp->metadata ?? [];
+        $cpPhase = strtoupper((string) ($metadata['phase'] ?? ''));
+        $cpGrades = array_map('intval', (array) ($metadata['grade_levels'] ?? []));
+
+        if (!$subject
+            || !$phaseCode
+            || $gradeNumber < 1
+            || $cpPhase !== $phaseCode
+            || !in_array($gradeNumber, $cpGrades, true)) {
+            $this->reject(
+                'CP_PHASE_GRADE_MISMATCH',
+                'CP tidak sesuai dengan fase dan kelas pada penugasan Guru. TP/ATP tidak dapat dibuat atau dipublikasikan.',
+                $errorKey
+            );
+        }
     }
 
     private function assertCurriculumPermission($user): void
