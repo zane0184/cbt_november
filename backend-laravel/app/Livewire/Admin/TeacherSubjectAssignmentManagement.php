@@ -77,7 +77,7 @@ class TeacherSubjectAssignmentManagement extends Component
                 || $teacher->user->tenant_id !== $tenantId
                 || $teacher->user->roles->count() !== 1
                 || !$teacher->user->roles->contains('name', 'GURU')
-                || !$teacher->user->is_active
+                || !(bool) $teacher->user->is_active
                 || $teacher->user->deleted_at !== null) {
                 throw ValidationException::withMessages([
                     'selectedTeacherProfileId' => 'Penugasan hanya dapat diberikan kepada akun Guru aktif dengan tepat satu role GURU.',
@@ -301,7 +301,7 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $assignments = TeacherSubjectAssignment::query()
             ->where('tenant_id', $tenantId)
-            ->with(['teacherProfile.user', 'subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumVersion'])
+            ->with(['teacher.user', 'subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumVersion'])
             ->orderByDesc('created_at')
             ->paginate(20);
 

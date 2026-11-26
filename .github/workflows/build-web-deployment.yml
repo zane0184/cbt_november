@@ -9,12 +9,16 @@ on:
       - work/p1-seven-targets-20261124
       - work/limited-zip-p0-20261125
       - work/guru-docx-import-e2e-20261125
+      - work/combined-feature-completion-20261126
       - work/ui-import-improvements-20261125
     paths:
       - '.github/workflows/build-web-deployment.yml'
       - 'backend-laravel/**'
       - 'docs/**'
       - '.github/scripts/**'
+  pull_request:
+    branches:
+      - work/guru-docx-import-e2e-20261125
   workflow_dispatch:
 
 permissions:

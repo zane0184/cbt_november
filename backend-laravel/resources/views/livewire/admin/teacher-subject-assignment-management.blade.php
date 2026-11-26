@@ -105,7 +105,7 @@
                 <tbody class="divide-y divide-cardBorder">
                     @forelse($assignments as $assignment)
                         <tr>
-                            <td class="px-4 py-3 font-semibold text-navy-900">{{ $assignment->teacherProfile?->full_name }}</td>
+                            <td class="px-4 py-3 font-semibold text-navy-900">{{ $assignment->teacher?->full_name }}</td>
                             <td class="px-4 py-3">
                                 <p class="font-semibold text-navy-900">{{ $assignment->subject?->name }}</p>
                                 <p class="text-xs text-textSecondary">{{ $assignment->rombel?->name }} · {{ $assignment->rombel?->gradeLevel?->name }}</p>

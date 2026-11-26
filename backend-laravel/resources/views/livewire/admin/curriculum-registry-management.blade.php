@@ -57,9 +57,16 @@
     </section>
 
     <section class="rounded-2xl border border-cardBorder bg-white p-5 shadow-sm space-y-4">
-        <div>
-            <h2 class="text-lg font-bold text-navy-900">Pemetaan mata pelajaran madrasah</h2>
-            <p class="mt-1 text-xs text-textSecondary">Hubungkan mata pelajaran lokal ke node mata pelajaran pada versi kurikulum yang telah didaftarkan. Pemetaan ini menjadi konteks resmi bagi penugasan Guru.</p>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+                <h2 class="text-lg font-bold text-navy-900">Pemetaan mata pelajaran madrasah</h2>
+                <p class="mt-1 text-xs text-textSecondary">Sinkronkan katalog mapel resmi ke instalasi ini, lalu kelola pemetaan dan penyesuaian lokal tanpa mengubah registry pusat.</p>
+            </div>
+            @if($selectedRegistration && $selectedRegistration->status === 'ACTIVE')
+                <button type="button" wire:click="syncOfficialSubjects" wire:confirm="Sinkronkan mata pelajaran resmi ke katalog lokal madrasah? Nama mapel lokal yang sudah ada dan histori pemetaan nonaktif tidak akan ditimpa." wire:loading.attr="disabled" class="inline-flex items-center justify-center rounded-xl bg-emerald-700 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50">
+                    Sinkronkan Mapel Resmi
+                </button>
+            @endif
         </div>
 
         @if($registrations->where('status', 'ACTIVE')->isNotEmpty())
