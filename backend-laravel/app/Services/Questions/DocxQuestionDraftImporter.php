@@ -41,10 +41,9 @@ class DocxQuestionDraftImporter
             $user
             && $user->tenant_id
             && $user->hasExactRole('GURU')
-            && $user->hasPermission('question.manage')
-            && $user->hasPermission('curriculum.manage'),
+            && $user->hasPermission('question.manage'),
             403,
-            'Hanya Guru dengan penugasan dan kewenangan pengelolaan soal serta kurikulum yang dapat mengimpor DOCX.'
+            'Hanya Guru dengan penugasan aktif dan kewenangan pengelolaan soal yang dapat mengimpor DOCX.'
         );
 
         $profile = app(TeacherPortalAccess::class)->profile($user);
