@@ -204,6 +204,40 @@ class QuestionDocxImportFeatureTest extends TestCase
         ]);
     }
 
+    public function test_partial_per_question_mapping_override_does_not_mix_with_batch_default(): void
+    {
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx())
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedCpIds', [$this->curriculumContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->curriculumContext['tp']->id])
+            ->set('questions.0.mapping_cp_ids', [$this->curriculumContext['cp']->id])
+            ->set('questions.0.mapping_outcome_ids', [])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal masih menunggu pemetaan CP dan TP/ATP resmi');
+
+        $question = \\App\\Models\\Question::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('created_by', $this->teacher->id)
+            ->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('PENDING_TEACHER', $version->metadata['curriculum_mapping']['status']);
+        $this->assertSame([$this->curriculumContext['cp']->id], $version->metadata['curriculum_mapping']['requested_cp_ids']);
+        $this->assertSame([], $version->metadata['curriculum_mapping']['requested_outcome_ids']);
+        $this->assertDatabaseMissing('question_version_curriculum_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseMissing('question_version_tenant_outcome_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+    }
+
     public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
     {
         $bytes = $this->makeDocxBytes(false);
