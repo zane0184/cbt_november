@@ -396,6 +396,27 @@ class DocxQuestionParser
         return 'auto';
     }
 
+    private function buildMathMlFragments(array $fragments): array
+    {
+        $mathFragments = array_values(array_filter(
+            $fragments,
+            fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML'
+        ));
+        $converter = app(OmmlToMathMlConverter::class);
+
+        return array_map(function (array $fragment) use ($converter): array {
+            $converted = $converter->convert((string) ($fragment['xml'] ?? ''));
+
+            return [
+                'mathml' => $converted['mathml'],
+                'fallback_text' => $converted['fallback_text'],
+                'supported' => $converted['supported'],
+                'unsupported_nodes' => $converted['unsupported_nodes'],
+                'source_sha256' => (string) ($fragment['xml_sha256'] ?? ''),
+            ];
+        }, $mathFragments);
+    }
+
     private function extractRichParagraphs(array $fragments): array
     {
         $paragraphs = [];
@@ -893,6 +914,10 @@ class DocxQuestionParser
                     $raw['stimulus']['source_fragments'] ?? []
                 )),
                 'rich_paragraphs' => $this->extractRichParagraphs(array_merge(
+                    $raw['source_fragments'] ?? [],
+                    $raw['stimulus']['source_fragments'] ?? []
+                )),
+                'mathml_fragments' => $this->buildMathMlFragments(array_merge(
                     $raw['source_fragments'] ?? [],
                     $raw['stimulus']['source_fragments'] ?? []
                 )),
