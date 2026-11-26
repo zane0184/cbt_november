@@ -8,6 +8,7 @@ use App\Services\Questions\DocxQuestionTemplate;
 use App\Services\TeacherPortal\TeacherPortalDataService;
 use App\Support\Security\TeacherPortalAccess;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -24,7 +25,9 @@ class QuestionDocxImport extends Component
     public array $summary = [];
     public array $sections = [];
     public bool $requiresSectionSplit = false;
+    #[Locked]
     public ?string $previewHash = null;
+    #[Locked]
     public ?string $previewAssignmentId = null;
     public bool $hasPreview = false;
 
