@@ -92,3 +92,17 @@ TP/ATP tidak dibuat dari tabel ini. Guru menyusun TP/ATP dan menghubungkannya ke
 
 ## Koreksi rentang halaman sumber
 Pengecekan render gambar dan heading per fase menemukan bahwa sejumlah rentang halaman dalam versi awal dataset bergeser dua halaman untuk Akidah Akhlak/Fikih/SKI dan tiga halaman untuk Bahasa Arab. Rujukan yang benar: Al-Qur'an Hadis PDF 13–15; Akidah Akhlak PDF 44–47; Fikih PDF 70–73; SKI PDF 90–92; Bahasa Arab PDF 99–101. Semua page provenance pada tabel harus mengikuti koreksi ini. Catatan fase SKI MI hanya B dan C tetap dipertahankan; tidak ditemukan fase A di bagian SKI MI.
+
+
+## Addendum — kelengkapan elemen proses dan batas transkripsi (26 November 2026)
+Transkripsi elemen Keterampilan Proses/Keterampilan Bahasa per fase sudah diperluas pada dokumen terpisah:
+`docs/CP_MI_9941_KETERAMPILAN_PROSES_TRANSKRIPSI.md` (commit `855fa5eea3d640b4ebd12a021d3a58db749a20a7`).
+
+Poin koreksi:
+- Al-Qur'an Hadis fase A/B/C: elemen proses ditranskripsikan per fase, bukan digabung satu ringkasan.
+- Akidah Akhlak fase A/B/C: elemen proses berbeda antar fase dan kini dipisahkan.
+- Fikih fase A/B/C: langkah proses lengkap dicatat; pengulangan frasa yang tercetak pada fase B dipertahankan sebagai sumber, tidak diperbaiki diam-diam.
+- SKI MI hanya memuat CP fase B dan C; elemen proses per fase ditranskripsikan terpisah.
+- Bahasa Arab fase A/B/C memuat elemen Keterampilan Bahasa. Contoh pola kalimat Arab di bagian Komponen Bahasa tidak boleh dianggap telah ditranskripsi lengkap dari tabel staging; contoh Arab harus ditranskripsi manual dari render PDF dan divalidasi huruf/harakat sebelum data final.
+
+Dengan adanya dokumen transkripsi proses, kolom Keterampilan Proses/Keterampilan Bahasa pada tabel awal di dokumen ini harus dibaca sebagai ringkasan indeks, bukan transkripsi final. Dataset masih berstatus `PENDING_VISUAL_QA`; belum boleh diimport.
