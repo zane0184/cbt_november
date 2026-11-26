@@ -145,7 +145,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($teacherUser);
-        Livewire::test(\\App\\Livewire\\Teacher\\TeacherAssignmentsPage::class)
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
             ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
             ->set('selectedSubjectId', (string) $subject->id)
             ->set('selectedSemesterId', (string) $semester->id)
@@ -216,7 +216,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
-        Livewire::test(\\App\\Livewire\\Teacher\\TeacherAssignmentsPage::class)
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
             ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
             ->set('selectedSubjectIds', [(string) $subject->id, (string) $bahasaSubject->id])
             ->set('selectedRombelId', (string) $secondRombel->id)
@@ -256,7 +256,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
-        Livewire::test(\\App\\Livewire\\Teacher\\TeacherAssignmentsPage::class)
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
             ->assertSee('Budaya Betawi (BUDAYA_BETAWI) — Mulok')
             ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
             ->set('selectedSubjectId', (string) $mulokSubject->id)
