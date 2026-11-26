@@ -284,11 +284,12 @@ class QuestionDocxImport extends Component
                 $allowedSequences,
                 true
             ) && (bool) ($question['included'] ?? true)
+                && ($question['status'] ?? 'NEEDS_REVIEW') === 'READY'
         ));
 
         if ($questionsForImport === []) {
             throw ValidationException::withMessages([
-                'docx' => 'Pilih minimal satu soal pada bagian dokumen yang dipilih.',
+                'docx' => 'Tidak ada soal berstatus VALID/READY yang dipilih. Periksa indikator “Perlu ditinjau”, lengkapi atau perbaiki soal, lalu buat preview ulang. Soal yang belum valid tidak boleh disimpan sebagai DRAFT.',
             ]);
         }
 
