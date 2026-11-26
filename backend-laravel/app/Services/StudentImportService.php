@@ -278,8 +278,9 @@ class StudentImportService
                 }
 
                 $rombelMeta = $preview['rombel_meta'] ?? null;
+                $rombelCreated = false;
                 if (is_array($rombelMeta)) {
-                    $rombel = $this->resolveTemplateRombel($tenantId, $rombelMeta, true);
+                    $rombel = $this->resolveTemplateRombel($tenantId, $rombelMeta, true, $rombelCreated);
                 } else {
                     if (!$rombelId) {
                         throw ValidationException::withMessages(['selectedRombelId' => 'Rombel tujuan tidak tersedia.']);
@@ -364,7 +365,7 @@ class StudentImportService
                     null,
                     [
                         'rombel_id' => $rombel->id,
-                        'rombel_created' => (bool) ($preview['rombel_will_create'] ?? false),
+                        'rombel_created' => $rombelCreated,
                         'file_sha256' => $preview['file_sha256'],
                         'total_rows' => $preview['total'],
                         'imported_rows' => $imported,
@@ -414,8 +415,11 @@ class StudentImportService
     }
 
 
-    private function resolveTemplateRombel(string $tenantId, array $target, bool $create): ?Rombel
+    private function resolveTemplateRombel(string $tenantId, array $target, bool $create, ?bool &$created = null): ?Rombel
     {
+        if ($created !== null) {
+            $created = false;
+        }
         $name = trim((string) ($target['name'] ?? ''));
         $academicYearName = trim((string) ($target['academic_year'] ?? ''));
         $gradeNumber = filter_var($target['grade_level'] ?? null, FILTER_VALIDATE_INT);
@@ -453,7 +457,7 @@ class StudentImportService
             ->where('academic_year_id', $academicYear->id)
             ->where('name', $name)
             ->whereNull('deleted_at')
-            ->lockForUpdate()
+            ->when($create, fn ($query) => $query->lockForUpdate())
             ->first();
 
         if ($sameName && (string) $sameName->grade_level_id !== (string) $gradeLevel->id) {
@@ -469,6 +473,10 @@ class StudentImportService
 
         if (!$create) {
             return null;
+        }
+
+        if ($created !== null) {
+            $created = true;
         }
 
         return Rombel::query()->create([
