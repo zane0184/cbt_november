@@ -1,9 +1,15 @@
 name: PHP Runtime Validation (PR 34)
 
 on:
+  push:
+    branches:
+      - work/rombel-docx-completion-20261126
+    paths:
+      - 'backend-laravel/**'
+      - '.github/workflows/php-runtime-pr34.yml'
   pull_request:
     branches:
-      - php-runtime-validation-base-20261126
+      - work/rombel-docx-completion-20261126
 
 permissions:
   contents: read
