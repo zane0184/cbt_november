@@ -125,7 +125,7 @@ class ImportKemenagMiCp extends Command
                 MultiLearningOutcome::query()->firstOrCreate(
                     [
                         'tenant_id' => $ownerId,
-                        'multi_curriculum_version_id' => $versionId = $structure->multi_curriculum_version_id,
+                        'multi_curriculum_version_id' => $structure->multi_curriculum_version_id,
                         'multi_curriculum_structure_id' => $structure->id,
                         'outcome_type' => 'CP',
                         'code' => $row['code'],
