@@ -308,8 +308,21 @@ class QuestionBank extends Component
 
     public function saveQuestion()
     {
-        // Normalize before uniqueness validation because persisted codes are uppercase.
+        // Normalize user-entered text before validation and persistence.
         $this->questionCode = strtoupper(trim((string) $this->questionCode));
+        $this->stem = trim((string) $this->stem);
+        $this->explanation = trim((string) $this->explanation);
+
+        foreach (['optionA', 'optionB', 'optionC', 'optionD'] as $optionField) {
+            $this->{$optionField} = trim((string) $this->{$optionField});
+        }
+
+        foreach ($this->matchingPairs as $index => $pair) {
+            if (is_array($pair)) {
+                $this->matchingPairs[$index]['left'] = trim((string) ($pair['left'] ?? ''));
+                $this->matchingPairs[$index]['right'] = trim((string) ($pair['right'] ?? ''));
+            }
+        }
 
         $this->validate([
             'questionCode' => [
