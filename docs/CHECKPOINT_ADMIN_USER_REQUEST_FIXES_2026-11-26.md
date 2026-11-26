@@ -86,3 +86,15 @@ Status: IMPLEMENTASI SOURCE SELESAI UNTUK REVIEW — PR DRAFT — RUNTIME ACCEPT
 - Tidak ada deployment, migration, atau perubahan database/VPS.
 
 Status ADM-04: **SOURCE PATCH COMMITTED — TEST COVERAGE ADDED — EXECUTION/UAT PENDING**.
+
+
+### PHP Runtime ADM-04 — 26 Nov 2026
+- **PASS** — GitHub Actions run [45759840186](https://github.com/zane0184/cbt_november/actions/runs/45759840186), source commit `ec9e79fedddacaa56662c5c30b7ffa7301a819a3`.
+- PHP 8.3.37, Composer 2.11.3, Laravel 13.42.0.
+- Composer validate/install: PASS.
+- PHP syntax lint: **310 file PASS** (termasuk service, Livewire component dan test yang diubah).
+- Laravel package discovery dan boot: PASS.
+- Route registration check: PASS.
+- PHP GD module tersedia pada runner.
+- PHPUnit dan test suite tidak dijalankan. Runtime check tidak membuktikan hasil normalisasi gambar secara fungsional.
+- Browser upload, Nginx/aaPanel Content-Type, PHP GD pada VPS, dan production UAT belum diuji.
