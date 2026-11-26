@@ -295,7 +295,6 @@ class DocxQuestionParser
                             'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
                             'text_direction' => $this->detectTextDirection($row, $xpath, $rowText),
                             'source_fragments' => $rowSourceFragments,
-                            'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
                             'locator' => [
                                 'sequence' => ++$sequence,
                                 'kind' => 'table-row',
@@ -484,7 +483,7 @@ class DocxQuestionParser
                 }
             }
 
-            if ($blockUnsupported !== [] && !$isQuestionStart && !$isExplicitStimulusStart) {
+            if (($blockUnsupported !== [] || $blockWarnings !== []) && !$isQuestionStart && !$isExplicitStimulusStart) {
                 if ($active !== null) {
                     $active['unsupported_blocks'] = array_merge($active['unsupported_blocks'] ?? [], $blockUnsupported);
                     $active['unsupported_features'] = array_merge($active['unsupported_features'] ?? [], $blockUnsupportedFeatures);
@@ -515,6 +514,14 @@ class DocxQuestionParser
                         $rawQuestions[$lastIndex]['source_warnings'] ?? [],
                         $blockWarnings
                     );
+                }
+            }
+
+            if ($blockUnsupported === [] && $blockWarnings === [] && !$isQuestionStart && !$isExplicitStimulusStart) {
+                if ($active !== null) {
+                    $active['source_fragments'] = array_merge($active['source_fragments'] ?? [], $blockSourceFragments);
+                } elseif ($stimulus !== null && !$answerSection) {
+                    $stimulus['source_fragments'] = array_merge($stimulus['source_fragments'] ?? [], $blockSourceFragments);
                 }
             }
 
@@ -571,6 +578,7 @@ class DocxQuestionParser
                     'unsupported_blocks' => $blockUnsupported,
                     'unsupported_features' => $blockUnsupportedFeatures,
                     'source_fragments' => $blockSourceFragments,
+                    'source_warnings' => $blockWarnings,
                     'table_rows' => [],
                 ];
                 continue;
