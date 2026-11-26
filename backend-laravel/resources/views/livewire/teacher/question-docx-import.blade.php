@@ -198,8 +198,37 @@
 
                     <div>
                         <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Teks soal</label>
-                        <textarea dir="auto" wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
+                        <textarea dir="{{ ($question['text_direction'] ?? 'auto') === 'rtl' ? 'rtl' : 'auto' }}" wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
                     </div>
+
+                    @if(($question['media_count'] ?? 0) > 0 || ($question['math_count'] ?? 0) > 0 || ($question['nested_table_count'] ?? 0) > 0)
+                        <div class="space-y-1 rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs leading-5 text-sky-900">
+                            @if(($question['media_count'] ?? 0) > 0)
+                                <p><strong>{{ $question['media_count'] }} gambar</strong> terdeteksi. Gambar JPEG/PNG yang lolos validasi akan disimpan di penyimpanan privat madrasah dan dilampirkan ke versi soal.</p>
+                            @endif
+                            @if(($question['math_count'] ?? 0) > 0)
+                                <p><strong>{{ $question['math_count'] }} rumus Word</strong> terdeteksi. Teks rumus dan sumber OMML dipertahankan; pastikan hasil fallback teks sesuai sebelum menerbitkan.</p>
+                            @endif
+                            @if(($question['nested_table_count'] ?? 0) > 0)
+                                <p><strong>Tabel bersarang</strong> terdeteksi. Struktur OOXML baris/sel disimpan; tampilan ringkas di bawah meratakan teks sel untuk pemeriksaan.</p>
+                            @endif
+                        </div>
+                    @endif
+
+                    @if(!empty($question['rich_paragraphs']))
+                        <details class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <summary class="cursor-pointer text-xs font-bold text-slate-700">Pratinjau format asli Word (tebal, miring, garis bawah, Arab/RTL)</summary>
+                            <div class="mt-3 space-y-2 rounded-lg bg-white p-3">
+                                @foreach($question['rich_paragraphs'] as $paragraph)
+                                    <p dir="{{ in_array($paragraph['direction'] ?? 'auto', ['rtl', 'ltr'], true) ? $paragraph['direction'] : 'auto' }}" class="whitespace-pre-wrap text-sm leading-7 text-slate-800">
+                                        @foreach($paragraph['runs'] ?? [] as $run)
+                                            <span class="{{ (!empty($run['bold']) ? 'font-bold ' : '') . (!empty($run['italic']) ? 'italic ' : '') . (!empty($run['underline']) ? 'underline' : '') }}">{{ $run['text'] ?? '' }}</span>
+                                        @endforeach
+                                    </p>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
 
                     <div class="grid gap-3 sm:grid-cols-2">
                         <div>
