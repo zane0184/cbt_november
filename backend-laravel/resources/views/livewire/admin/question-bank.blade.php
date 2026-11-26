@@ -114,6 +114,20 @@
                         </details>
                     @endif
 
+                    @if(!empty($q->currentVersion->metadata['rich_content']['table_structure']))
+                        <details class="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3">
+                            <summary class="cursor-pointer text-xs font-bold text-indigo-800">Struktur tabel Word bersarang</summary>
+                            <div class="mt-3 space-y-3 overflow-x-auto rounded-lg bg-white p-3">
+                                @foreach(collect($q->currentVersion->metadata['rich_content']['table_structure'])->groupBy('table_index') as $tableIndex => $tableEntries)
+                                    <div>
+                                        <p class="mb-1 text-[11px] font-bold text-slate-500">Tabel {{ $tableIndex }}</p>
+                                        @include('components.question-table-structure', ['rows' => $tableEntries->sortBy('row_index')->pluck('row')->all()])
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
+
                     @if($q->currentVersion->media->isNotEmpty())
                         <div class="flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                             @foreach($q->currentVersion->media as $media)
