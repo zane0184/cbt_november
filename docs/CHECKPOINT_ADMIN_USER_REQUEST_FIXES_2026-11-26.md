@@ -188,3 +188,24 @@ Status: **SOURCE PATCH COMMITTED — REGRESSION TEST DITAMBAHKAN — EKSEKUSI TE
 - Catatan: beberapa run lint awal menangkap kesalahan escaping namespace pada source/test; diperbaiki sebelum run PASS ini.
 
 Status: **PHP RUNTIME/SYNTAX/BOOT/ROUTE/BLADE PASS — FUNCTIONAL TEST DAN UAT PENDING.**
+
+
+ 
+### Penguatan Akhir — Admin Monitoring Saja, Guru Pembuat (26 Nov 2026)
+- Kedua action Livewire pembuatan (`createAssignment` dan `createBulkAssignments`) sekarang memanggil resolver profil Guru terautentikasi. Admin tidak dapat mengeksekusi action pembuatan meskipun mencoba memanggil method Livewire secara langsung.
+- Regression test menegaskan Admin mendapat 403 pada action create; test pembuatan Guru memakai route Portal Guru.
+- Guru profile dan `created_by` tetap berasal dari sesi server-side. `selectedTeacherProfileId` yang dimanipulasi browser tidak mengubah pemilik.
+- Admin tetap dapat membaca seluruh daftar kelas untuk monitoring melalui permission akademik.
+
+### PHP Runtime Final — Admin Gate + Guru Self-Service
+- **PASS** — [GitHub Actions run 45763509337](https://github.com/zane0184/cbt_november/actions/runs/45763509337), source commit `5dc67bb17e632e6feb08f1ae299c742b0ec05e67`.
+- PHP 8.3.37; Composer 2.11.3; Laravel 13.42.0.
+- Composer validate/install: PASS.
+- PHP syntax lint: **403 file** (app, bootstrap, config, database, routes, tests): PASS.
+- Laravel package discovery/boot: PASS.
+- Route registration Admin dan `guru/penugasan`: PASS.
+- Blade `view:cache` dan `view:clear`: PASS.
+- PHPUnit/full CI tidak dijalankan. Browser/VPS functional UAT belum dijalankan.
+- Tidak ada migration, perubahan database, atau deployment.
+
+Status: **SOURCE IMPLEMENTATION + PHP RUNTIME/ROUTE/BLADE PASS; FUNCTIONAL TEST DAN VPS UAT PENDING.**
