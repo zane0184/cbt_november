@@ -208,6 +208,9 @@
                         </div>
                         @error('selectedQuestionVersionIds') <span class="text-red-600 text-xs font-bold block">{{ $message }}</span> @enderror
 
+                        <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+                            Ujian umum dapat menggunakan soal terbit tanpa pemetaan CP/TP/ATP. Jika asesmen ini tidak memiliki pemetaan kurikulum, pilih soal yang juga belum dipetakan. Soal yang sudah dipetakan hanya dapat dipakai bersama asesmen dengan pemetaan resmi yang cocok.
+                        </p>
                         <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
                             @forelse($availableQuestions as $q)
                                 @if($q->currentVersion)
