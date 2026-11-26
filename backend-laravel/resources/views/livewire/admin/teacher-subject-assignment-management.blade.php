@@ -15,7 +15,7 @@
 
     <section class="rounded-2xl border border-cardBorder bg-white p-5 shadow-sm">
         <h2 class="text-lg font-bold text-navy-900">Buat penugasan baru</h2>
-        <form wire:submit.prevent="createAssignment" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <form wire:submit.prevent="createBulkAssignments" class="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div>
                 <label class="mb-1 block text-xs font-bold text-navy-900">Guru</label>
                 <select wire:model="selectedTeacherProfileId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
@@ -26,15 +26,22 @@
                 </select>
                 @error('selectedTeacherProfileId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
-            <div>
-                <label class="mb-1 block text-xs font-bold text-navy-900">Mata Pelajaran</label>
-                <select wire:model="selectedSubjectId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
-                    <option value="">Pilih mata pelajaran...</option>
+            <div class="xl:row-span-2">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                    <label class="block text-xs font-bold text-navy-900">Mata Pelajaran (bisa pilih banyak)</label>
+                    <span class="text-xs text-textSecondary">{{ count($selectedSubjectIds) }} dipilih</span>
+                </div>
+                <div class="max-h-64 space-y-2 overflow-y-auto rounded-xl border border-cardBorder bg-gray-50 p-3">
                     @foreach($subjects as $subject)
-                        <option value="{{ $subject->id }}">{{ $subject->name }} ({{ $subject->code }}) — {{ $subject->subject_category === 'MULOK' ? 'Mulok' : 'Wajib' }}</option>
+                        <label wire:key="bulk-subject-{{ $subject->id }}" class="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm hover:bg-emerald-50">
+                            <input type="checkbox" wire:model="selectedSubjectIds" value="{{ $subject->id }}" class="rounded border-cardBorder text-emerald-700 focus:ring-emerald-600">
+                            <span class="font-medium text-navy-900">{{ $subject->name }}</span>
+                            <span class="ml-auto text-xs text-textSecondary">{{ $subject->subject_category === 'MULOK' ? 'Mulok' : 'Wajib' }}</span>
+                        </label>
                     @endforeach
-                </select>
-                @error('selectedSubjectId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                </div>
+                @error('selectedSubjectIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                @error('selectedSubjectIds.*') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="mb-1 block text-xs font-bold text-navy-900">Rombel</label>
@@ -83,7 +90,7 @@
             </div>
             <div class="flex items-end xl:col-span-3">
                 <button type="submit" wire:loading.attr="disabled" class="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50">
-                    Simpan penugasan Guru
+                    Simpan {{ count($selectedSubjectIds) }} penugasan sekaligus
                 </button>
             </div>
         </form>

@@ -22,6 +22,8 @@ class TeacherSubjectAssignmentManagement extends Component
 {
     public string $selectedTeacherProfileId = '';
     public string $selectedSubjectId = '';
+    public array $selectedSubjectIds = [];
+    private bool $bulkCreating = false;
     public string $selectedRombelId = '';
     public string $selectedSemesterId = '';
     public string $selectedRegistrationId = '';
@@ -327,7 +329,70 @@ class TeacherSubjectAssignmentManagement extends Component
         }, 3);
 
         $this->reset(['selectedTeacherProfileId', 'selectedSubjectId', 'selectedRombelId', 'selectedSemesterId']);
-        $this->dispatch('notify', ['type' => 'success', 'message' => 'Penugasan Guru berhasil disimpan dengan versi kurikulum yang dipatok.']);
+        if (!$this->bulkCreating) {
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Penugasan Guru berhasil disimpan dengan versi kurikulum yang dipatok.']);
+        }
+    }
+
+    /**
+     * Create several subject assignments for one teacher and rombel atomically.
+     * Every subject is still validated by the canonical single-assignment path,
+     * including tenant, phase, curriculum provenance, active teacher and overlap checks.
+     */
+    public function createBulkAssignments(): void
+    {
+        $this->authorizeAcademicManagement();
+        $tenantId = auth()->user()->tenant_id;
+
+        $this->validate([
+            'selectedTeacherProfileId' => ['required', 'uuid', Rule::exists('teacher_profiles', 'id')->where('tenant_id', $tenantId)],
+            'selectedSubjectIds' => ['required', 'array', 'min:1'],
+            'selectedSubjectIds.*' => ['required', 'uuid', 'distinct', Rule::exists('subjects', 'id')->where('tenant_id', $tenantId)],
+            'selectedRombelId' => ['required', 'uuid', Rule::exists('rombels', 'id')->where('tenant_id', $tenantId)],
+            'selectedSemesterId' => ['required', 'uuid', Rule::exists('semesters', 'id')->where('tenant_id', $tenantId)],
+            'selectedRegistrationId' => ['required', 'uuid', Rule::exists('tenant_curriculum_registrations', 'id')->where('tenant_id', $tenantId)],
+            'startsAt' => ['required', 'date'],
+            'endsAt' => ['required', 'date', 'after_or_equal:startsAt'],
+        ]);
+
+        $teacherId = $this->selectedTeacherProfileId;
+        $rombelId = $this->selectedRombelId;
+        $semesterId = $this->selectedSemesterId;
+        $registrationId = $this->selectedRegistrationId;
+        $startsAt = $this->startsAt;
+        $endsAt = $this->endsAt;
+        $subjectIds = array_values(array_unique($this->selectedSubjectIds));
+        $createdCount = count($subjectIds);
+
+        $this->bulkCreating = true;
+        try {
+            DB::transaction(function () use ($teacherId, $rombelId, $semesterId, $registrationId, $startsAt, $endsAt, $subjectIds): void {
+                foreach ($subjectIds as $subjectId) {
+                    $this->selectedTeacherProfileId = $teacherId;
+                    $this->selectedSubjectId = $subjectId;
+                    $this->selectedRombelId = $rombelId;
+                    $this->selectedSemesterId = $semesterId;
+                    $this->selectedRegistrationId = $registrationId;
+                    $this->startsAt = $startsAt;
+                    $this->endsAt = $endsAt;
+                    $this->createAssignment();
+                }
+            }, 3);
+        } finally {
+            $this->bulkCreating = false;
+        }
+
+        $this->reset([
+            'selectedTeacherProfileId',
+            'selectedSubjectId',
+            'selectedSubjectIds',
+            'selectedRombelId',
+            'selectedSemesterId',
+        ]);
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => $createdCount . ' penugasan Guru berhasil disimpan sekaligus.',
+        ]);
     }
 
     public function render()
