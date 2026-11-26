@@ -143,7 +143,9 @@ class QuestionBank extends Component
             $this->explanation = $version->explanation ?? '';
             $this->defaultPoints = $version->default_points ?? 10.0;
             $firstAssignmentMapping = $version->curriculumMappings->first() ?? $version->tenantOutcomeMappings->first();
-            $this->selectedAssignmentId = $firstAssignmentMapping?->teacher_subject_assignment_id ?? '';
+            $mappingMetadata = $version->metadata['curriculum_mapping'] ?? [];
+            $this->selectedAssignmentId = $firstAssignmentMapping?->teacher_subject_assignment_id
+                ?? ($mappingMetadata['teacher_subject_assignment_id'] ?? '');
             $this->selectedCpIds = $version->curriculumMappings
                 ->where('teacher_subject_assignment_id', $this->selectedAssignmentId)
                 ->pluck('multi_learning_outcome_id')->all();
@@ -591,18 +593,16 @@ class QuestionBank extends Component
             // mapping was complete. Once the strict mapping service succeeds in
             // this editor, clear the pending marker on the current version.
             $versionMetadata = $version->metadata ?? [];
-            {
-                $isMapped = $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== [];
-                $versionMetadata['curriculum_mapping'] = [
-                    'status' => $isMapped ? 'MAPPED' : 'NOT_MAPPED',
-                    'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
-                    'requested_cp_ids' => array_values($this->selectedCpIds),
-                    'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
-                    'message' => null,
-                ];
-                $version->metadata = $versionMetadata;
-                $version->save();
-            }
+            $isMapped = $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== [];
+            $versionMetadata['curriculum_mapping'] = [
+                'status' => $isMapped ? 'MAPPED' : 'NOT_MAPPED',
+                'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
+                'requested_cp_ids' => array_values($this->selectedCpIds),
+                'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
+                'message' => null,
+            ];
+            $version->metadata = $versionMetadata;
+            $version->save();
 
             // Never write answer keys or full question content to the audit trail.
             $question->refresh();
