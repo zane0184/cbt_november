@@ -67,7 +67,7 @@
             <div>
                 <div class="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600">Langkah 2</div>
                 <h2 class="text-lg font-bold text-slate-900">Pemetaan default kurikulum</h2>
-                <p class="mt-1 text-sm leading-5 text-slate-500">Pilihan di sini menjadi default untuk semua soal. Kamu dapat mengganti CP dan TP/ATP secara khusus pada setiap kartu soal.</p>
+                <p class="mt-1 text-sm leading-5 text-slate-500">Pilihan di sini menjadi default untuk semua soal. Kamu dapat mengganti CP dan TP/ATP secara khusus pada setiap kartu. Pemetaan boleh dilengkapi setelah soal tersimpan sebagai DRAFT; pemetaan resmi tetap wajib sebelum publikasi.</p>
             </div>
 
             @if($selectedAssignment)
@@ -348,7 +348,7 @@
             @endif
 
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-                **Syarat penyimpanan DRAFT:** sistem memvalidasi ulang jenis soal, teks, opsi/pernyataan, dan pemetaan CP serta TP/ATP dari data terbaru. Status “Perlu ditinjau” dari pembacaan awal tidak otomatis menggagalkan penyimpanan DRAFT: jika struktur soal lolos validasi, soal dapat disimpan dengan alasan peninjauan tercatat dan publikasi tetap dikunci sampai Guru menyelesaikan peninjauan. Gambar dengan relasi rusak atau format yang tidak didukung tetap ditolak.
+                **Syarat penyimpanan DRAFT:** sistem memvalidasi ulang jenis soal, teks, opsi/pernyataan, dan data sumber dari hasil parser server. Status “Perlu ditinjau” dari pembacaan awal tidak otomatis menggagalkan penyimpanan DRAFT: jika struktur soal lolos validasi, soal dapat disimpan dengan alasan peninjauan tercatat dan publikasi tetap dikunci sampai Guru menyelesaikan peninjauan. Pemetaan CP dan TP/ATP dapat dilengkapi melalui editor Bank Soal setelah penyimpanan, tetapi wajib valid sebelum publikasi. Jika pemetaan sudah dipilih saat import, sistem akan memvalidasinya; bila belum valid, soal tetap disimpan sebagai DRAFT dengan status pemetaan tertunda. Gambar dengan relasi rusak atau format yang tidak didukung tetap ditolak.
             </div>
 
             <div class="flex flex-col gap-3 rounded-3xl border border-indigo-100 bg-indigo-50/60 p-5 md:flex-row md:items-center md:justify-between">
