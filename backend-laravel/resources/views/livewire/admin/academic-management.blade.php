@@ -113,6 +113,7 @@
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Kode</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Nama Mata Pelajaran</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Singkatan</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Kategori</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Status</th>
                         </tr>
                     </thead>
@@ -122,6 +123,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-navy-900 font-mono">{{ $subject->code }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900">{{ $subject->name }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-xs text-textSecondary">{{ $subject->short_name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs font-semibold">{{ $subject->subject_category === 'MULOK' ? 'Muatan Lokal' : 'Wajib' }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                                         {{ $subject->status }}
@@ -129,7 +131,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada mata pelajaran.</td></tr>
+                            <tr><td colspan="5" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada mata pelajaran.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -281,6 +283,14 @@
                     <div>
                         <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Singkatan / Short Name</label>
                         <input wire:model="subjectShortName" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: MTK">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kategori Mata Pelajaran</label>
+                        <select wire:model="subjectCategory" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <option value="WAJIB">Mata Pelajaran Wajib</option>
+                            <option value="MULOK">Muatan Lokal (ditentukan madrasah)</option>
+                        </select>
+                        @error('subjectCategory') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                     </div>
                     <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
                         <button type="button" wire:click="$set('showCreateSubjectModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
