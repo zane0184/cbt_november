@@ -13,6 +13,7 @@ use App\Livewire\Admin\AcademicManagement;
 use App\Livewire\Admin\RombelDetail;
 use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
 use App\Livewire\Admin\CurriculumRegistryManagement;
+use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\ProctorAssignmentManagement;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Admin\TenantProfileManagement;
@@ -89,7 +90,7 @@ Route::middleware(['auth', 'active.user', 'tenant', 'license'])->group(function 
     Route::get('/admin/academic', AcademicManagement::class);
     Route::get('/admin/academic/rombels/{rombel}', RombelDetail::class)->name('admin.academic.rombels.show');
     Route::get('/admin/teacher-assignments', TeacherSubjectAssignmentManagement::class)->name('admin.teacher-assignments');
-    Route::redirect('/admin/curriculum', '/admin/curriculum/registry')->name('admin.curriculum');
+    Route::get('/admin/curriculum', CurriculumManagement::class)->name('admin.curriculum');
     Route::get('/admin/curriculum/registry', CurriculumRegistryManagement::class)->name('admin.curriculum.registry');
     Route::get('/admin/proctor-assignments', ProctorAssignmentManagement::class)->name('admin.proctor-assignments');
 
