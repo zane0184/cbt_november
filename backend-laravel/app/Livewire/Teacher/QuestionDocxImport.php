@@ -316,6 +316,7 @@ class QuestionDocxImport extends Component
             $questionRow['math_count'] = $sourceRow['math_count'] ?? 0;
             $questionRow['nested_table_count'] = $sourceRow['nested_table_count'] ?? 0;
             $questionRow['rich_paragraphs'] = $sourceRow['rich_paragraphs'] ?? [];
+            $questionRow['mathml_fragments'] = $sourceRow['mathml_fragments'] ?? [];
         }
         unset($questionRow);
 
