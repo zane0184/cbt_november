@@ -29,15 +29,27 @@ class QuestionVersionCurriculumMappingService
     ): array {
         $user = auth()->user();
         $profile = app(TeacherPortalAccess::class)->profile($user);
-        abort_unless($user->hasPermission('question.manage') && $user->hasPermission('curriculum.manage'), 403);
 
         $tenantId = (string) $user->tenant_id;
         $cpIds = array_values(array_unique($cpIds));
         $outcomeIds = array_values(array_unique($outcomeIds));
+        $isMapped = $cpIds !== [] && $outcomeIds !== [];
 
-        if ($cpIds === [] || $outcomeIds === []) {
+        abort_unless(
+            $user->hasPermission('question.manage')
+                && (!$isMapped || $user->hasPermission('curriculum.manage')),
+            403
+        );
+
+        if (($cpIds === []) !== ($outcomeIds === [])) {
             throw ValidationException::withMessages([
-                'curriculumMapping' => 'Setiap versi soal wajib dipetakan ke minimal satu CP resmi dan satu TP/ATP terpublikasi.',
+                'curriculumMapping' => 'Pemetaan harus lengkap: pilih CP dan TP/ATP sekaligus, atau kosongkan keduanya untuk soal umum.',
+            ]);
+        }
+
+        if (!$isMapped && ($materialId || $topicId)) {
+            throw ValidationException::withMessages([
+                'curriculumMapping' => 'Materi dan topik hanya dapat dipilih jika soal dipetakan ke CP dan TP/ATP.',
             ]);
         }
 
@@ -79,6 +91,47 @@ class QuestionVersionCurriculumMappingService
                 ->where('curriculum_owner_id', $assignment->curriculum_owner_id)
                 ->where('status', 'ACTIVE')
                 ->firstOrFail();
+
+            if (!$isMapped) {
+                QuestionVersionCurriculumMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->where('teacher_subject_assignment_id', $assignment->id)
+                    ->delete();
+
+                QuestionVersionTenantOutcomeMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->where('teacher_subject_assignment_id', $assignment->id)
+                    ->delete();
+
+                QuestionVersionStructureMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->where('teacher_subject_assignment_id', $assignment->id)
+                    ->delete();
+
+                app(AuditService::class)->log(
+                    'QUESTION_VERSION_CURRICULUM_NOT_MAPPED',
+                    QuestionVersion::class,
+                    $version->id,
+                    null,
+                    [
+                        'teacher_subject_assignment_id' => $assignment->id,
+                        'mapping_status' => 'NOT_MAPPED',
+                        'reason' => 'GENERAL_QUESTION',
+                    ]
+                );
+
+                return [
+                    'status' => 'NOT_MAPPED',
+                    'cp_count' => 0,
+                    'outcome_count' => 0,
+                    'structure_count' => 0,
+                    'material_id' => null,
+                    'topic_id' => null,
+                ];
+            }
 
             $subjectStructureId = $assignment->curriculum_context_snapshot['subject']['official_structure_id'] ?? null;
             if (!$subjectStructureId) {
