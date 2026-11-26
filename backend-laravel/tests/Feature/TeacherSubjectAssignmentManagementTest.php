@@ -343,6 +343,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertDatabaseHas('teacher_subject_assignments', [
             'tenant_id' => $tenantId,
             'teacher_profile_id' => $teacherProfile->id,
+            'created_by' => $teacherUser->id,
             'subject_id' => $subject->id,
             'rombel_id' => $selfServiceRombel->id,
             'semester_id' => $semester->id,

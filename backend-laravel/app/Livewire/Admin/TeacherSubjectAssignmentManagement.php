@@ -345,6 +345,7 @@ class TeacherSubjectAssignmentManagement extends Component
             $assignment = TeacherSubjectAssignment::query()->create([
                 'tenant_id' => $tenantId,
                 'teacher_profile_id' => $teacher->id,
+                'created_by' => auth()->id(),
                 'subject_id' => $subject->id,
                 'rombel_id' => $rombel->id,
                 'academic_year_id' => $rombel->academic_year_id,
