@@ -99,17 +99,26 @@ Regression coverage yang ditambahkan/disesuaikan:
 - Password reset tepat 8 karakter.
 - Label Semester Ganjil tampil pada daftar penugasan Guru.
 
-Status eksekusi:
-- PHPUnit: **TIDAK DIJALANKAN**, mengikuti arahan pengguna agar validasi dilakukan langsung di VPS.
-- CI: **TIDAK DIJALANKAN**.
-- PHP lint/runtime: belum dijalankan.
+Status eksekusi PHP runtime:
+- **PASS — GitHub Actions run 45759006825**: [bukti run](https://github.com/zane0184/cbt_november/actions/runs/45759006825).
+- Runner: PHP **8.3.37**, Composer **2.11.3**, Laravel **13.42.0**.
+- `composer validate --strict --no-check-publish`: PASS (`composer.json is valid`).
+- `composer install` dari lock file: PASS; seluruh dependency berhasil dipasang.
+- PHP syntax lint: **310 file** di direktori `app`, `bootstrap`, `config`, `database`, dan `routes`: PASS, tidak ada syntax error.
+- `php artisan package:discover --ansi`: PASS.
+- `php artisan --version`: PASS, terdeteksi Laravel Framework 13.42.0.
+- `php artisan route:list --json`: PASS. Route Admin yang diverifikasi: `admin/users`, `admin/students/import`, `admin/teachers/import`, `admin/teacher-assignments`, `admin/curriculum`, dan `admin/academic`.
+- Runtime dijalankan pada runner terisolasi dengan environment testing dan SQLite memory; tidak melakukan migration atau menulis database produksi.
+- PHPUnit: **TIDAK DIJALANKAN**.
+- Full CI/test suite: **TIDAK DIJALANKAN**.
 - Browser UAT: belum dijalankan.
-- Migration/VPS: tidak dijalankan.
-- Source review dilakukan melalui pembacaan ulang file GitHub, perbandingan exact base/head, dan pemeriksaan struktur implementasi. Source review bukan bukti runtime PASS.
+- Migration/VPS/DB produksi: tidak dijalankan/tidak diakses.
+
+Runtime run menggunakan source aplikasi PR #34 pada saat itu (kode aplikasi sama dengan changeset `46f343ab3861af361bed785c41d22716999973a0`); commit harness saat run: `712822c1a1768922a908586a4daf5ca40eb60062`, merge-checkout runner: `eac50667ddf5d04a8cb260f3f9f7a356a4dff53a`. Setelah run, workflow runtime disimpan pada branch PR agar dapat digunakan untuk integrasi berikutnya.
 
 ## STATUS / BATASAN
 
-**SOURCE PATCH DITULIS — REGRESSION TEST DITAMBAHKAN — BELUM DIUJI RUNTIME — PR DRAFT BELUM MERGED.**
+**SOURCE PATCH DITULIS — PHP RUNTIME BOOT PASS — REGRESSION TEST DITAMBAHKAN TETAPI TIDAK DIEKSEKUSI — PR DRAFT BELUM MERGED.**
 
 Hal yang masih memerlukan tindak lanjut:
 1. Jalankan migration Mulok yang sudah ada hanya setelah backup database VPS, preflight, pemeriksaan migration ledger dan persetujuan.
