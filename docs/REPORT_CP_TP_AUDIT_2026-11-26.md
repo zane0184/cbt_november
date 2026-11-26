@@ -179,3 +179,23 @@ Dokumen staging memisahkan mata pelajaran, fase, elemen, subelemen, deskripsi, d
 
 ### PENGUJIAN
 Belum ada test importer atau aplikasi. Render halaman digunakan untuk QA visual sampel, bukan acceptance test. QA semua halaman, transkripsi penuh elemen proses, validasi Arab, serta verifikasi tanda tangan masih terbuka. Dataset staging dilarang masuk produksi sampai seluruh gate tersebut selesai.
+
+
+## Addendum — transkripsi elemen proses per fase dan kontrak importer (26 November 2026)
+
+### AUDIT
+Ekstraksi sumber lokal `9941.txt` ditelusuri per bagian D. Capaian Pembelajaran untuk lima mapel MI. Pemeriksaan visual tambahan atas render PDF halaman 44 (Akidah Akhlak A), 70 (Fikih A), 90 (SKI B), 99 (Bahasa Arab A), 100 (Bahasa Arab B) menunjukkan heading fase, elemen, dan isi pokok yang sesuai dengan transkripsi. Sampel halaman Al-Qur'an Hadis A PDF 13 juga telah diperiksa pada langkah sebelumnya. Ini QA sampel, bukan QA seluruh halaman.
+
+### IMPLEMENTASI DOKUMENTASI
+- Transkripsi elemen proses tiap fase disimpan di `docs/CP_MI_9941_KETERAMPILAN_PROSES_TRANSKRIPSI.md`, commit `855fa5eea3d640b4ebd12a021d3a58db749a20a7`.
+- Dataset staging menghubungkan transkripsi tersebut, commit `b28b79869e3dc31155f0f267256adaf32fd91fa5`.
+- Desain kontrak import dan gate aktivasi dibuat di `docs/CP_MI_IMPORT_CONTRACT_DESIGN.md`, commit `4bb2d8b3f18b7df52433ecb8847da1ca7b2fc3f8`.
+- Dokumen ini hanya perubahan dokumentasi pada branch audit. Tidak ada source aplikasi, migration, DB, atau deployment yang diubah.
+
+### DESAIN / RISIKO PENTING
+- Skema existing sudah menyediakan `curriculum_reference_sources`, provenance pada `multi_learning_outcomes`, dan authoring TP/ATP terikat assignment pada `tenant_learning_outcomes`.
+- Guru service menuntut source status `ARTIFACT_CHECKSUM_VERIFIED` dan checksum source/outcome sama persis. Gate ini jangan dilonggarkan untuk membuat dropdown tampil berisi.
+- File PDF 9941 yang diterima belum memiliki signature object digital tertanam menurut pdfsig. Karena itu isi dapat diproses sebagai staging untuk verifikasi konten, tetapi belum boleh dinaikkan ke status sumber terverifikasi kriptografis.
+
+### PENGUJIAN
+Tidak ada test aplikasi/importer. Visual QA hanya mencakup sampel halaman yang disebut. Seluruh halaman dan contoh teks Arab berharakat masih memerlukan proofread ahli. JSON final/importer dry-run belum dibuat.
