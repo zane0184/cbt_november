@@ -823,6 +823,49 @@ class QuestionBankTest extends TestCase
         $this->assertDatabaseCount('questions', 1);
     }
 
+    public function test_manual_question_save_trims_option_text_and_drops_whitespace_only_optional_options(): void
+    {
+        $this->actingAs($this->userA);
+
+        $this->questionBankComponent()
+            ->set('questionCode', 'TRIM-OPTIONS-01')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', '  Stem soal  ')
+            ->set('defaultPoints', 1)
+            ->set('optionA', '  Pilihan A  ')
+            ->set('optionB', '  Pilihan B  ')
+            ->set('optionC', '   ')
+            ->set('optionD', '')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $question = Question::query()->where('question_code', 'TRIM-OPTIONS-01')->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('Stem soal', $version->stem);
+        $this->assertSame(['Pilihan A', 'Pilihan B'], $version->options->pluck('content')->all());
+        $this->assertCount(2, $version->options);
+    }
+
+    public function test_manual_question_save_rejects_whitespace_only_required_option(): void
+    {
+        $this->actingAs($this->userA);
+
+        $this->questionBankComponent()
+            ->set('questionCode', 'TRIM-OPTIONS-02')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', 'Soal uji opsi wajib')
+            ->set('defaultPoints', 1)
+            ->set('optionA', '   ')
+            ->set('optionB', 'Pilihan B')
+            ->set('correctOption', 'B')
+            ->call('saveQuestion')
+            ->assertHasErrors(['optionA']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'TRIM-OPTIONS-02']);
+    }
+
     private function questionBankComponent()
     {
         return Livewire::test(QuestionBank::class)
