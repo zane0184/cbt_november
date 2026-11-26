@@ -319,7 +319,7 @@ class DocxQuestionParserTest extends TestCase
         } finally { @unlink($path); }
     }
 
-    public function test_inline_media_and_word_math_mark_questions_as_blocked(): void
+    public function test_invalid_inline_media_blocks_import_while_word_math_is_converted_for_review(): void
     {
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             . '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
@@ -340,12 +340,22 @@ class DocxQuestionParserTest extends TestCase
             $result = app(DocxQuestionParser::class)->parse($path);
             $this->assertSame([1], $result['blocked_source_numbers']);
             $this->assertContains('IMAGE_OR_DIAGRAM', $result['questions'][0]['blocked_features']);
-            $this->assertContains('WORD_MATH', $result['questions'][0]['blocked_features']);
-            $this->assertSame(['IMAGE_REFERENCE', 'WORD_MATH_OMML'], array_column($result['questions'][0]['source_fragments'], 'kind'));
-            $this->assertSame('rIdImage1', $result['questions'][0]['source_fragments'][0]['relationship_id']);
-            $this->assertTrue($result['questions'][0]['source_fragments'][0]['relationship_resolved']);
-            $this->assertStringContainsString('<m:oMath', $result['questions'][0]['source_fragments'][1]['xml']);
-            $this->assertNotEmpty($result['questions'][0]['source_fragments'][1]['xml_sha256']);
+            $this->assertNotContains('WORD_MATH', $result['questions'][0]['blocked_features']);
+
+            $imageFragment = collect($result['questions'][0]['source_fragments'])
+                ->firstWhere('kind', 'IMAGE_REFERENCE');
+            $mathFragment = collect($result['questions'][0]['source_fragments'])
+                ->firstWhere('kind', 'WORD_MATH_OMML');
+
+            $this->assertNotNull($imageFragment);
+            $this->assertSame('rIdImage1', $imageFragment['relationship_id']);
+            $this->assertTrue($imageFragment['relationship_resolved']);
+            $this->assertFalse($imageFragment['media_valid']);
+            $this->assertNotNull($mathFragment);
+            $this->assertStringContainsString('<m:oMath', $mathFragment['xml']);
+            $this->assertNotEmpty($mathFragment['xml_sha256']);
+            $this->assertSame('x+1', $result['questions'][0]['mathml_fragments'][0]['fallback_text']);
+            $this->assertTrue($result['questions'][0]['mathml_fragments'][0]['supported']);
         } finally { @unlink($path); }
     }
 
