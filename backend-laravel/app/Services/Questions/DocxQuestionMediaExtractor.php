@@ -50,7 +50,7 @@ final class DocxQuestionMediaExtractor
                     $target = str_replace('\\', '/', (string) ($fragment['target'] ?? ''));
                     if (empty($fragment['relationship_resolved'])
                         || !str_starts_with($target, 'word/media/')
-                        || str_contains($target, '\0')
+                        || str_contains($target, "\0")
                         || preg_match('#(^|/)\.\.?(/|$)#', $target) === 1) {
                         throw ValidationException::withMessages([
                             'docx' => 'Relasi gambar DOCX tidak aman atau tidak dapat diverifikasi. Periksa dokumen sumber.',
