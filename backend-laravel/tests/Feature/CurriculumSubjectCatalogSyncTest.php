@@ -75,6 +75,15 @@ class CurriculumSubjectCatalogSyncTest extends TestCase
 
         $this->assertGreaterThan(0, $nodes->count());
 
+        // Existing manually-created Mapel must be reused even when its local code differs.
+        $existingMath = Subject::create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'MAT',
+            'name' => 'Matematika',
+            'short_name' => 'MTK',
+            'status' => 'ACTIVE',
+        ]);
+
         $component = Livewire::test(CurriculumRegistryManagement::class)
             ->call('registerVersion', (string) $this->version->id)
             ->assertHasNoErrors();
@@ -104,10 +113,18 @@ class CurriculumSubjectCatalogSyncTest extends TestCase
         $this->assertSame($nodes->count(), $mappings->count());
         $this->assertDatabaseHas('subjects', [
             'tenant_id' => $this->tenant->id,
-            'code' => 'MATEMATIKA',
+            'id' => $existingMath->id,
+            'code' => 'MAT',
             'name' => 'Matematika',
             'status' => 'ACTIVE',
         ]);
+        $this->assertDatabaseMissing('subjects', [
+            'tenant_id' => $this->tenant->id,
+            'code' => 'MATEMATIKA',
+        ]);
+        $mathMapping = $mappings->firstWhere('subject_id', $existingMath->id);
+        $this->assertNotNull($mathMapping);
+        $this->assertSame('MATEMATIKA', $mathMapping->metadata['official_subject_code']);
         $this->assertDatabaseHas('subjects', [
             'tenant_id' => $this->tenant->id,
             'code' => 'SKI',
@@ -117,7 +134,7 @@ class CurriculumSubjectCatalogSyncTest extends TestCase
 
         $math = Subject::query()
             ->where('tenant_id', $this->tenant->id)
-            ->where('code', 'MATEMATIKA')
+            ->where('code', 'MAT')
             ->firstOrFail();
         $math->update(['name' => 'Matematika Lokal']);
 
