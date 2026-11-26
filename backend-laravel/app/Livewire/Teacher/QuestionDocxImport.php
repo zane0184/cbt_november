@@ -25,6 +25,7 @@ class QuestionDocxImport extends Component
     public array $sections = [];
     public bool $requiresSectionSplit = false;
     public ?string $previewHash = null;
+    public ?string $previewAssignmentId = null;
     public bool $hasPreview = false;
 
     public function mount(): void
@@ -67,11 +68,22 @@ class QuestionDocxImport extends Component
     {
         $this->selectedCpIds = [];
         $this->selectedOutcomeIds = [];
+
+        // A preview belongs to the assignment context used during extraction.
+        // Changing assignment invalidates it to prevent cross-subject imports.
+        $this->questions = [];
+        $this->excludedContent = [];
+        $this->summary = [];
+        $this->sections = [];
+        $this->requiresSectionSplit = false;
+        $this->previewHash = null;
+        $this->previewAssignmentId = null;
+        $this->hasPreview = false;
     }
 
     public function updated(string $propertyName, mixed $value): void
     {
-        if (!preg_match('/^questions\\.(\\d+)\\.question_type$/', $propertyName, $match)) {
+        if (!preg_match('/^questions\.(\d+)\.question_type$/', $propertyName, $match)) {
             return;
         }
 
@@ -142,6 +154,16 @@ class QuestionDocxImport extends Component
 
         abort_unless($this->selectedAssignmentRow(), 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
 
+        // Remove stale results before parsing a replacement upload.
+        $this->questions = [];
+        $this->excludedContent = [];
+        $this->summary = [];
+        $this->sections = [];
+        $this->requiresSectionSplit = false;
+        $this->previewHash = null;
+        $this->previewAssignmentId = null;
+        $this->hasPreview = false;
+
         $result = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
         $this->questions = array_map(function (array $question): array {
             $question['included'] = true;
@@ -166,6 +188,7 @@ class QuestionDocxImport extends Component
             'excluded' => count($this->excludedContent),
         ];
         $this->previewHash = $result['file_sha256'];
+        $this->previewAssignmentId = $this->selectedAssignmentId;
         $this->hasPreview = true;
     }
 
@@ -181,15 +204,17 @@ class QuestionDocxImport extends Component
             'selectedOutcomeIds.*' => ['required', 'uuid', 'distinct'],
             'questions' => ['required', 'array', 'min:1'],
             'questions.*.included' => ['sometimes', 'boolean'],
-            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
-            'questions.*.stem' => ['required', 'string', 'max:12000'],
-            'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
+            // Included rows receive full validation in DocxQuestionDraftImporter.
+            // Unchecked rows may be incomplete and must not block valid selections.
+            'questions.*.question_type' => ['sometimes', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
+            'questions.*.stem' => ['sometimes', 'string', 'max:12000'],
+            'questions.*.difficulty' => ['sometimes', 'in:EASY,MEDIUM,HARD'],
             'questions.*.options' => ['sometimes', 'array', 'max:4'],
-            'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
-            'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
+            'questions.*.options.*.option_key' => ['sometimes', 'string', 'in:A,B,C,D'],
+            'questions.*.options.*.content' => ['sometimes', 'string', 'max:12000'],
             'questions.*.statements' => ['sometimes', 'array', 'max:3'],
-            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
-            'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
+            'questions.*.statements.*.id' => ['sometimes', 'string', 'max:40', 'distinct'],
+            'questions.*.statements.*.text' => ['sometimes', 'string', 'max:12000'],
             'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
             'questions.*.source_section' => ['sometimes', 'nullable', 'string', 'max:120'],
             'questions.*.table_rows' => ['sometimes', 'array', 'max:100'],
@@ -201,8 +226,12 @@ class QuestionDocxImport extends Component
             'questions.*.mapping_outcome_ids.*' => ['required', 'uuid', 'distinct'],
         ]);
 
-        if (!$this->hasPreview || !$this->previewHash) {
+        if (!$this->hasPreview || !$this->previewHash || !$this->previewAssignmentId) {
             throw ValidationException::withMessages(['docx' => 'Buat preview dokumen terlebih dahulu.']);
+        }
+
+        if (!hash_equals($this->previewAssignmentId, $this->selectedAssignmentId)) {
+            throw ValidationException::withMessages(['docx' => 'Penugasan berubah setelah preview. Buat preview ulang sebelum menyimpan.']);
         }
 
         $freshHash = hash_file('sha256', $this->file->getRealPath());
@@ -245,7 +274,7 @@ class QuestionDocxImport extends Component
             $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.'
         );
 
-        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
+        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'previewHash', 'previewAssignmentId', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
     }
 
     public function downloadTemplate()
