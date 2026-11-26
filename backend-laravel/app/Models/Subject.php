@@ -12,5 +12,5 @@ class Subject extends Model
 {
     use HasUuids, HasFactory, SoftDeletes, TenantScoped;
 
-    protected $fillable = ['code', 'name', 'short_name', 'status'];
+    protected $fillable = ['code', 'name', 'short_name', 'subject_category', 'status'];
 }
