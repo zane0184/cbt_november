@@ -53,7 +53,7 @@ class QuestionVersionCurriculumMappingService
             ]);
         }
 
-        return DB::transaction(function () use ($version, $assignmentId, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId): array {
+        return DB::transaction(function () use ($version, $assignmentId, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId, $isMapped): array {
             $version = QuestionVersion::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($version->id)
