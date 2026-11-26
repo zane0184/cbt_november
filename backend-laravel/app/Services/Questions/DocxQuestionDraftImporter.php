@@ -132,6 +132,8 @@ class DocxQuestionDraftImporter
                     'source_locator' => $row['source_locator'] ?? [],
                     'source_section' => $row['source_section'] ?? null,
                     'source_tables' => array_values($row['table_rows'] ?? []),
+                    'source_review_required' => (bool) ($row['source_review_required'] ?? false),
+                    'source_review_reasons' => array_values($row['source_review_reasons'] ?? []),
                     'answer_key_status' => 'PENDING_TEACHER',
                     'score_weight_status' => 'PENDING_TEACHER',
                 ];
@@ -145,7 +147,8 @@ class DocxQuestionDraftImporter
                     'preview_runs' => array_values($row['rich_paragraphs'] ?? []),
                     'mathml_fragments' => array_values($row['mathml_fragments'] ?? []),
                     'table_structure' => array_values($row['table_structure'] ?? []),
-                    'requires_manual_review' => (int) ($row['math_count'] ?? 0) > 0
+                    'requires_manual_review' => (bool) ($row['source_review_required'] ?? false)
+                        || (int) ($row['math_count'] ?? 0) > 0
                         || (int) ($row['nested_table_count'] ?? 0) > 0
                         || count(array_filter(
                             $row['mathml_fragments'] ?? [],
