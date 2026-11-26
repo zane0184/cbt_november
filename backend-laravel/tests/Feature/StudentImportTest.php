@@ -618,4 +618,41 @@ class StudentImportTest extends TestCase
             ->assertJsonPath('data.user.roles.0', 'SISWA');
     }
 
+
+    public function test_template_metadata_creates_missing_rombel_and_assigns_imported_students(): void
+    {
+        $this->actingAs($this->admin);
+        $file = UploadedFile::fake()->createWithContent(
+            'siswa.csv',
+            "nama,nisn,rombel,tahun_pelajaran,kelas\\nSiswa Rombel Baru,0009876543,Kelas 1-B,2026/2027,1\\n"
+        );
+
+        Livewire::test(StudentImport::class)
+            ->set('file', $file)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->assertSee('Kelas 1-B')
+            ->call('import')
+            ->assertHasNoErrors()
+            ->assertRedirect('/admin/users');
+
+        $rombel = Rombel::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('name', 'Kelas 1-B')
+            ->firstOrFail();
+        $student = StudentProfile::query()->where('nisn', '0009876543')->firstOrFail();
+
+        $this->assertDatabaseHas('rombel_student', [
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $rombel->id,
+            'student_id' => $student->id,
+        ]);
+        $this->assertDatabaseHas('student_import_batches', [
+            'tenant_id' => $this->tenant->id,
+            'rombel_id' => $rombel->id,
+            'status' => 'COMPLETED',
+        ]);
+        $this->assertSame(8, strlen(session('import_credentials.0.password') ?? ''));
+    }
+
 }
