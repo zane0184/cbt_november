@@ -118,7 +118,7 @@ class CurriculumReferenceSourceSeeder extends Seeder
                     'document_version' => '2025',
                     'published_at' => '2025-11-28',
                     'effective_from' => '2025-11-28',
-                    'source_uri' => 'https://batam.kemenag.go.id/main/perkuat-mutu-pembelajaran-pengawas-madrasah-hadiri-perdana-mgmp-pai-dan-bahasa-arab-mts-kota-batam',
+                    'source_uri' => null,
                     'verification_status' => 'PENDING',
                     'metadata' => [
                         'source_kind' => 'official_kemenag_decision_pdf',
