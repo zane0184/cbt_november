@@ -2,6 +2,7 @@
 
 namespace App\Services\Questions;
 
+use App\Models\MediaAsset;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
@@ -11,6 +12,7 @@ use App\Services\TeacherPortal\QuestionVersionCurriculumMappingService;
 use App\Support\Security\TeacherAccess;
 use App\Support\Security\TeacherPortalAccess;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -31,7 +33,8 @@ class DocxQuestionDraftImporter
         array $cpIds,
         array $outcomeIds,
         ?string $materialId = null,
-        ?string $topicId = null
+        ?string $topicId = null,
+        ?string $docxPath = null
     ): array {
         $user = auth()->user();
         abort_unless(
@@ -47,10 +50,12 @@ class DocxQuestionDraftImporter
         $profile = app(TeacherPortalAccess::class)->profile($user);
         $tenantId = (string) $user->tenant_id;
 
-        return DB::transaction(function () use (
-            $questions, $fileSha256, $assignmentId, $cpIds, $outcomeIds,
-            $materialId, $topicId, $user, $profile, $tenantId
-        ): array {
+        $storedPaths = [];
+        try {
+            return DB::transaction(function () use (
+                $questions, $fileSha256, $assignmentId, $cpIds, $outcomeIds,
+                $materialId, $topicId, $docxPath, $user, $profile, $tenantId, &$storedPaths
+            ): array {
             $assignment = TeacherSubjectAssignment::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($assignmentId)
@@ -100,6 +105,9 @@ class DocxQuestionDraftImporter
                 }
             }
 
+            $mediaByQuestion = $docxPath
+                ? app(DocxQuestionMediaExtractor::class)->extractForQuestions($docxPath, $ready)
+                : [];
             $mappingService = app(QuestionVersionCurriculumMappingService::class);
             $importedIds = [];
 
@@ -126,6 +134,35 @@ class DocxQuestionDraftImporter
                     'source_tables' => array_values($row['table_rows'] ?? []),
                     'answer_key_status' => 'PENDING_TEACHER',
                     'score_weight_status' => 'PENDING_TEACHER',
+                ];
+
+                $sourceFragments = array_values($row['source_fragments'] ?? []);
+                $metadata['rich_content'] = [
+                    'format' => 'OOXML',
+                    'text_direction' => in_array($row['text_direction'] ?? 'auto', ['ltr', 'rtl', 'auto'], true)
+                        ? ($row['text_direction'] ?? 'auto')
+                        : 'auto',
+                    'math_omml' => array_values(array_map(
+                        fn (array $fragment): array => [
+                            'xml' => (string) ($fragment['xml'] ?? ''),
+                            'sha256' => (string) ($fragment['xml_sha256'] ?? ''),
+                        ],
+                        array_filter($sourceFragments, fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML')
+                    )),
+                    'paragraphs' => array_values(array_map(
+                        fn (array $fragment): array => [
+                            'xml' => (string) ($fragment['xml'] ?? ''),
+                            'sha256' => (string) ($fragment['xml_sha256'] ?? ''),
+                        ],
+                        array_filter($sourceFragments, fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_PARAGRAPH_OOXML')
+                    )),
+                    'table_rows' => array_values(array_map(
+                        fn (array $fragment): array => [
+                            'xml' => (string) ($fragment['xml'] ?? ''),
+                            'sha256' => (string) ($fragment['xml_sha256'] ?? ''),
+                        ],
+                        array_filter($sourceFragments, fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_TABLE_ROW_OOXML')
+                    )),
                 ];
 
                 if (($row['question_type'] ?? null) === 'ESSAY') {
@@ -173,6 +210,57 @@ class DocxQuestionDraftImporter
                     'is_current' => true,
                     'created_by' => $user->id,
                 ]);
+
+                $sourceSequence = (int) ($row['source_locator']['sequence'] ?? 0);
+                foreach (($mediaByQuestion[$sourceSequence] ?? []) as $mediaSequence => $payload) {
+                    $fileName = (string) Str::uuid() . '.' . $payload['extension'];
+                    $storagePath = "private/tenants/{$tenantId}/media/{$fileName}";
+                    if (!Storage::disk('local')->put($storagePath, $payload['bytes'])) {
+                        throw ValidationException::withMessages(['docx' => 'Gagal menyimpan gambar soal ke penyimpanan privat madrasah.']);
+                    }
+                    $storedPaths[] = $storagePath;
+
+                    $media = MediaAsset::query()->create([
+                        'tenant_id' => $tenantId,
+                        'owner_type' => 'QUESTION',
+                        'owner_id' => $question->id,
+                        'file_name' => $fileName,
+                        'original_name' => 'DOCX-image-' . ($mediaSequence + 1) . '.' . $payload['extension'],
+                        'storage_path' => $storagePath,
+                        'mime_type' => $payload['mime_type'],
+                        'extension' => $payload['extension'],
+                        'file_size' => $payload['file_size'],
+                        'checksum' => $payload['sha256'],
+                        'disk' => 'local',
+                        'metadata' => [
+                            'import_source' => 'DOCX',
+                            'source_file_sha256' => $fileSha256,
+                            'source_target' => $payload['source_target'],
+                            'relationship_id' => $payload['relationship_id'],
+                        ],
+                        'uploaded_by' => $user->id,
+                    ]);
+
+                    $version->media()->attach($media->id, [
+                        'id' => (string) Str::uuid(),
+                        'tenant_id' => $tenantId,
+                        'role' => 'STEM',
+                        'sequence' => $mediaSequence,
+                    ]);
+
+                    app(AuditService::class)->log(
+                        'QUESTION_DOCX_MEDIA_ATTACHED',
+                        MediaAsset::class,
+                        (string) $media->id,
+                        null,
+                        [
+                            'question_id' => $question->id,
+                            'question_version_id' => $version->id,
+                            'source_file_sha256' => $fileSha256,
+                            'media_sha256' => $payload['sha256'],
+                        ]
+                    );
+                }
 
                 if (in_array($row['question_type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
                     foreach (array_values($row['options']) as $sequence => $option) {
@@ -232,7 +320,13 @@ class DocxQuestionDraftImporter
                 'question_ids' => $importedIds,
                 'batch_sha256' => $fileSha256,
             ];
-        }, 3);
+            }, 3);
+        } catch (\\Throwable $exception) {
+            foreach ($storedPaths as $storedPath) {
+                Storage::disk('local')->delete($storedPath);
+            }
+            throw $exception;
+        }
     }
 
     private function validateQuestion(array $row, int $index): void
@@ -242,7 +336,7 @@ class DocxQuestionDraftImporter
 
         if (($row['blocked_features'] ?? []) !== []) {
             throw ValidationException::withMessages([
-                'docx' => $prefix . 'memuat gambar, diagram, atau rumus Word yang belum dapat disimpan dengan aman. Hapus konten tersebut dari dokumen sumber lalu unggah ulang.',
+                'docx' => $prefix . 'memuat gambar dengan relasi atau format yang belum aman untuk disimpan. Perbaiki gambar pada dokumen sumber lalu unggah ulang.',
             ]);
         }
 
