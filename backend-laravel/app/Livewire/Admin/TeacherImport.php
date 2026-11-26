@@ -85,7 +85,7 @@ class TeacherImport extends Component
             $sheet->getColumnDimension($column)->setWidth($width);
         }
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter('A1:H1');
+        $sheet->setAutoFilter('A1:G1');
 
         return response()->streamDownload(function () use ($spreadsheet): void {
             (new Xlsx($spreadsheet))->save('php://output');
