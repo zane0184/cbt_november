@@ -57,3 +57,15 @@ Temuan tambahan:
 - Salinan isi Kepdirjen Pendis 9941/2025 dan folder unduh PDF/DOCX lampiran ditemukan melalui sumber pihak ketiga. Status tetap `UNVERIFIED_COPY` sampai tanda tangan, nomor, lampiran MI, bytes, dan hash dicocokkan dengan sumber resmi.
 - Belum ada dataset CP yang diimport, tidak ada file aplikasi yang diubah, tidak ada migration/DB/production action, dan belum ada test baru.
 - Langkah berikutnya adalah akuisisi artefak PDF, verifikasi hash/provenance, ekstraksi teks persis beserta nomor halaman, lalu importer idempoten + acceptance test disposable. Jangan mengisi registry dengan data sintetis.
+
+
+## Addendum 2 — hasil verifikasi sumber primer/sekunder (26 November 2026)
+Manifest diperbarui pada commit `b85eea25d0d478488f28ffa29a182f17df4bc21c`.
+
+- BSKAP 046/H/KR/2025: PDF berhasil dibuka pada domain resmi Kemendikdasmen. Identitas keputusan, tanggal 16 Juli 2025, Lampiran II SD/MI, dan fase A/B/C terkonfirmasi. Ekstraksi web tersedia, tetapi byte PDF belum berhasil diunduh ke workspace/repository; SHA-256 file asli belum ada.
+- BKPDM 020/2026: pengumuman resmi Kemendikdasmen dan salinan PDF yang memuat naskah keputusan ditemukan. Salinan menunjukkan tanggal 11 Juni 2026 dan perubahan pada lampiran CP Agama/Budi Pekerti; host PDF bukan domain penerbit, sehingga status hanya dikorroborasi, belum validasi TTE/bytes primer.
+- SK Dirjen Pendis 9941/2025: halaman Kemenag subdomain mengindeks CP PAI/Bahasa Arab; salinan PDF/teks dari pihak ketiga juga ditemukan. Folder Drive yang ditautkan Ayo Madrasah ditemukan, tetapi PDF asli dan validasi TTE belum berhasil diambil. Status tetap `UNVERIFIED_COPY_PENDING_OFFICIAL_BYTES`.
+- Tidak ada CP buatan atau sintetis yang dimasukkan. Belum ada import, source aplikasi, migration, database, atau deployment yang diubah. Belum ada test baru.
+- Pekerjaan berikutnya: memperoleh bytes PDF 9941 dan 020 dari sumber penerbit/arsip, memvalidasi tanda tangan/hash, mengekstrak CP MI per halaman, baru menyiapkan dataset dan importer.
+
+**Jangan menyebut seluruh dokumen sudah didapat atau data CP siap diimpor.**
