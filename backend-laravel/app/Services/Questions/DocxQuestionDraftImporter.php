@@ -283,16 +283,25 @@ class DocxQuestionDraftImporter
                     }
                 }
 
-                // Importing a DRAFT must not be blocked solely because the
-                // teacher has not completed the official curriculum mapping yet.
-                // If a mapping is supplied, keep the mapping service strict. Its
-                // nested transaction rolls back any partial mapping writes when
-                // provenance/assignment/framework validation fails; the question
-                // itself remains a DRAFT with an explicit pending-mapping record.
-                $mappingStatus = 'PENDING_TEACHER';
-                $mappingMessage = 'Pemetaan CP dan TP/ATP belum dilengkapi. Lengkapi melalui editor Bank Soal sebelum menerbitkan soal.';
+                // An intentionally empty mapping is a valid NOT_MAPPED state,
+                // not a pending task. This applies to every assigned subject,
+                // including Religious Education and local-content subjects.
+                // Partial or invalid mappings remain pending for teacher review.
+                $mappingStatus = 'NOT_MAPPED';
+                $mappingMessage = null;
 
-                if ($questionCpIds !== [] && $questionOutcomeIds !== []) {
+                if ($questionCpIds === [] && $questionOutcomeIds === []) {
+                    $mappingService->sync(
+                        $version,
+                        (string) $assignment->id,
+                        [],
+                        [],
+                        null,
+                        null
+                    );
+                } elseif ($questionCpIds !== [] && $questionOutcomeIds !== []) {
+                    $mappingStatus = 'PENDING_TEACHER';
+                    $mappingMessage = 'Pemetaan CP dan TP/ATP belum tervalidasi. Lengkapi melalui editor Bank Soal sebelum menerbitkan soal.';
                     try {
                         $mappingService->sync(
                             $version,
@@ -309,7 +318,8 @@ class DocxQuestionDraftImporter
                         $mappingMessage = (string) ($mappingErrors->first()
                             ?? 'Pemetaan belum memenuhi validasi kurikulum resmi. Lengkapi kembali melalui editor Bank Soal.');
                     }
-                } elseif ($questionCpIds !== [] || $questionOutcomeIds !== []) {
+                } else {
+                    $mappingStatus = 'PENDING_TEACHER';
                     $mappingMessage = 'Pemetaan CP dan TP/ATP harus dilengkapi berpasangan. Lengkapi keduanya melalui editor Bank Soal sebelum menerbitkan soal.';
                 }
 
@@ -324,7 +334,7 @@ class DocxQuestionDraftImporter
                 $version->metadata = $versionMetadata;
                 $version->save();
 
-                if ($mappingStatus !== 'MAPPED') {
+                if ($mappingStatus === 'PENDING_TEACHER') {
                     $pendingMappingCount++;
                     app(AuditService::class)->log(
                         'QUESTION_VERSION_CURRICULUM_MAPPING_PENDING',
