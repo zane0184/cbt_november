@@ -146,6 +146,8 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->set('selectedRombelId', (string) $rombel->id)
             ->set('selectedSemesterId', (string) $semester->id)
             ->set('selectedRegistrationId', (string) $registration->id)
+            ->assertSee('Semester Ganjil')
+            ->assertSee($academicYear->name)
             ->set('startsAt', now()->toDateString())
             ->set('endsAt', now()->addMonths(6)->toDateString())
             ->call('createAssignment')
