@@ -5,9 +5,9 @@ Repository: `zane0184/cbt_november`
 Source base: `work/rombel-docx-completion-20261126`
 Base SHA: `841a1dd90dbe0277026fade1511a39b5dc9216b6`
 Branch perubahan: `work/admin-import-curriculum-fixes-20261126`
-HEAD perubahan: `0ca76d0d5c620da37006d69e52ddcdc344391db3`
+Code changeset HEAD: `0ca76d0d5c620da37006d69e52ddcdc344391db3` (sebelum commit dokumentasi). Branch/PR head setelah laporan dan checkpoint: `6e1a394a4c80f429376387fb8bf4ad6d7a126b0a`.
 PR: [#34 — Fix Admin semester, Mulok, account passwords, user tabs and curriculum visibility](https://github.com/zane0184/cbt_november/pull/34)
-Status PR: OPEN / DRAFT / BELUM MERGED.
+Status PR: OPEN / DRAFT / BELUM MERGED; GitHub melaporkan mergeable=true pada pemeriksaan terakhir.
 
 ## AUDIT
 
