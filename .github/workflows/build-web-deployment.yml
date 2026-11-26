@@ -11,6 +11,7 @@ on:
       - work/guru-docx-import-e2e-20261125
       - work/combined-feature-completion-20261126
       - work/rombel-docx-completion-20261126
+      - integration/zip-vps-php83-20261126
       - work/ui-import-improvements-20261125
     paths:
       - '.github/workflows/build-web-deployment.yml'
