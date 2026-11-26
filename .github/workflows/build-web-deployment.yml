@@ -152,6 +152,7 @@ jobs:
             --exclude='vendor/**/.phpunit.result.cache' \
             --exclude='database/seeders/DemoDataSeeder.php' \
             --exclude='database/seeders/RuntimeTestSeeder.php' \
+            --exclude='database/seeders/ImportBahasaIndonesiaFaseCCpSeeder.php' \
             --exclude='AUDIT_AWAL_SOURCE_TENANT.md' \
             --exclude='README_AUDIT_PERBAIKAN.md' \
             --exclude='check_latest.php' \
@@ -226,6 +227,7 @@ jobs:
           test -f backend-laravel/database/migrations/2026_11_20_100001_create_exam_proctor_assignments_table.php
           test ! -e backend-laravel/.env
           test ! -d backend-laravel/tests
+          test ! -e backend-laravel/database/seeders/ImportBahasaIndonesiaFaseCCpSeeder.php
 
           python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" self-test
           python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" staging "$STAGE"
