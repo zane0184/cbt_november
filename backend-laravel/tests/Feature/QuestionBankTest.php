@@ -766,6 +766,34 @@ class QuestionBankTest extends TestCase
         return UploadedFile::fake()->createWithContent('soal-uji.docx', $bytes);
     }
 
+    public function test_manual_question_save_accepts_active_assignment_with_open_ended_dates(): void
+    {
+        $this->actingAs($this->userA);
+        $this->assignment->forceFill([
+            'starts_at' => null,
+            'ends_at' => null,
+        ])->save();
+
+        $this->questionBankComponent()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->set('questionCode', 'OPEN-DATE-SAVE')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', 'Soal dengan penugasan tanpa batas tanggal')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenantA->id,
+            'question_code' => 'OPEN-DATE-SAVE',
+            'status' => 'DRAFT',
+        ]);
+    }
+
     private function questionBankComponent()
     {
         return Livewire::test(QuestionBank::class)
