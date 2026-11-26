@@ -66,7 +66,7 @@
         @endif
         @if($selectedRole === 'SISWA')<div><label class="block text-xs font-bold mb-1">NISN (10 digit)</label><input wire:model="nisn" type="text" maxlength="10" required class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('nisn')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>@endif
         <div><label class="block text-xs font-bold mb-1">Email Kontak / Pemulihan (opsional)</label><input wire:model="email" type="email" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('email')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
-        <div><label class="block text-xs font-bold mb-1">Password (minimal 14 karakter)</label><input wire:model="password" type="password" minlength="14" required autocomplete="new-password" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('password')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
+        <div><label class="block text-xs font-bold mb-1">Password (minimal 8 karakter)</label><input wire:model="password" type="password" minlength="8" required autocomplete="new-password" class="w-full border rounded-xl px-3.5 py-2 text-sm">@error('password')<span class="text-red-500 text-xs">{{ $message }}</span>@enderror</div>
         <div class="flex justify-end gap-3 pt-3 border-t border-cardBorder"><button type="button" wire:click="$set('showCreateModal', false)" class="px-4 py-2 text-xs font-bold rounded-xl bg-gray-100">Batal</button><button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 rounded-xl">Simpan Pengguna</button></div>
     </form></div></div>@endif
 </div>
