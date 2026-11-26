@@ -104,6 +104,7 @@ Tanggal: 27 November 2026
 
 ### PENGUJIAN
 - Fetch ulang source GitHub: PASS.
+- Regression test ditambahkan untuk save manual dan DOCX dengan starts_at/ends_at NULL; belum dijalankan.
 - PHPUnit/CI/runtime/browser: BELUM DIJALANKAN sesuai arahan.
 - Belum mengklaim tombol Simpan berfungsi di produksi. Perlu uji runtime ketika diizinkan.
 
