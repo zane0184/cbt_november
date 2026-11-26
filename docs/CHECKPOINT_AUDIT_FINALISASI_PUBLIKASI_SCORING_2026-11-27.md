@@ -76,3 +76,38 @@ P2: Defensive evaluator validation dan definisi metrik benar penuh vs skor posit
 4. Carry-forward feedback ESSAY pada reopen.
 5. Current pointer filtering pada report aggregations.
 6. Regression tests ditulis saja, belum dijalankan.
+
+
+---
+
+## CHECKPOINT TAMBAHAN — PERBAIKAN TOMBOL SIMPAN BANK SOAL / DOCX
+Tanggal: 27 November 2026
+
+### AUDIT
+- Pengguna mengklarifikasi bahwa halaman Bank Soal dan Import DOCX dapat dibuka; hanya penyimpanan yang gagal.
+- Jalur manual `QuestionBank::saveQuestion()` dan DOCX `DocxQuestionDraftImporter::import()` sama-sama memanggil `QuestionVersionCurriculumMappingService::sync()`.
+- Mapping service sebelumnya mensyaratkan `starts_at` dan `ends_at` tidak NULL melalui `whereDate()`, sedangkan scope `TeacherSubjectAssignment::activeForDate()` mendukung NULL untuk masa berlaku terbuka.
+- Ini merupakan penyebab statis yang masuk akal untuk kegagalan kedua save path; data runtime aktual belum diperiksa.
+
+### DESAIN
+- Samakan validasi assignment dengan scope `activeForDate()`.
+- Tidak mengubah authorization, tenant scope, curriculum registration, atau aturan pemetaan.
+
+### IMPLEMENTASI
+- Source diperbaiki: `backend-laravel/app/Services/TeacherPortal/QuestionVersionCurriculumMappingService.php`.
+- Backup: `backend-laravel/backups/question-save-nullable-assignment-dates-20261127/QuestionVersionCurriculumMappingService.php`.
+- Blob sebelum: `2d2aa64e666d98d90c6276d16a4cf6c735be415c`.
+- Blob sesudah: `bcb9a2722c013b9216b6663f7693b58f2d310e16`.
+- Commit: `e1a58e7a0bec8990bb5cfa006d43747ee00000d0`.
+- Tidak ada database/migration/VPS/deployment yang disentuh.
+- Backup laporan dan checkpoint lama tersimpan di `docs/backups/question-save-nullable-assignment-dates-20261127/`.
+
+### PENGUJIAN
+- Fetch ulang source GitHub: PASS.
+- PHPUnit/CI/runtime/browser: BELUM DIJALANKAN sesuai arahan.
+- Belum mengklaim tombol Simpan berfungsi di produksi. Perlu uji runtime ketika diizinkan.
+
+### LANJUTAN
+- Periksa semua cabang validasi dan persistence pada manual save serta DOCX save.
+- Tambahkan regression tests (jangan jalankan).
+- PR #44 tetap Draft; tidak merge/deploy.
