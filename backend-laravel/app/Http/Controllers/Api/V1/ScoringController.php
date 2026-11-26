@@ -188,7 +188,14 @@ class ScoringController extends Controller
                 return response()->json(['success' => false, 'message' => 'Cannot update historical score version.'], 422);
             }
 
-            $questionScore = ExamQuestionScore::where('id', $questionScore->id)->lockForUpdate()->first();
+            $questionScore = ExamQuestionScore::query()
+                ->whereKey($questionScore->id)
+                ->where('attempt_id', $lockedAttempt->id)
+                ->where('tenant_id', $lockedAttempt->tenant_id)
+                ->where('exam_id', $lockedAttempt->exam_id)
+                ->where('scoring_version', $currentPointer->scoring_version)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             $oldValues = $questionScore->toArray();
 
