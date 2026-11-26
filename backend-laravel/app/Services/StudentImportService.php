@@ -288,6 +288,10 @@ class StudentImportService
                     $rombel = $this->resolveRombel($tenantId, $rombelId, true);
                 }
 
+                if (!$rombel) {
+                    throw ValidationException::withMessages(['file' => 'Rombel tujuan tidak dapat dipastikan. Tidak ada akun Siswa yang disimpan.']);
+                }
+
                 $batchId = (string) Str::uuid();
                 DB::table('student_import_batches')->insert([
                     'id' => $batchId,
