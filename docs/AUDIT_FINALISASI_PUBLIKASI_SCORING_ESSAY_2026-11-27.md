@@ -281,7 +281,7 @@ Tanggal: 27 November 2026
 - Fetch ulang source setelah update: PASS (perubahan terkonfirmasi di GitHub).
 - PHPUnit/CI/browser/runtime: TIDAK DIJALANKAN sesuai instruksi pengguna.
 - Belum dapat menyatakan tombol Simpan sudah berhasil di lingkungan madrasah sampai uji runtime diizinkan.
-- Regression test untuk assignment ACTIVE dengan starts_at dan/atau ends_at NULL masih perlu ditambahkan; tidak dijalankan.
+- Regression test ditambahkan pada `tests/Feature/QuestionBankTest.php` dan `tests/Feature/QuestionDocxImportFeatureTest.php` untuk assignment ACTIVE dengan starts_at dan ends_at NULL pada save manual dan DOCX. Test belum dijalankan.
 
 ### NEXT
 1. Audit seluruh jalur save manual dan DOCX untuk prasyarat lain yang masih berbeda antara form dan service.
