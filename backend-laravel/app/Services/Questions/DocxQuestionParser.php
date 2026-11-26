@@ -282,6 +282,7 @@ class DocxQuestionParser
                                 'kind' => 'WORD_TABLE_ROW_OOXML',
                                 'xml' => $rowXml,
                                 'xml_sha256' => hash('sha256', $rowXml),
+                                'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
                             ];
                         }
                         if (trim($rowText) === '' && !$rowHasMedia && !$rowHasMath) {
@@ -899,6 +900,10 @@ class DocxQuestionParser
                 'math_count' => count(array_filter(
                     array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
                     fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML'
+                )),
+                'nested_table_count' => count(array_filter(
+                    array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
+                    fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_TABLE_ROW_OOXML' && !empty($fragment['has_nested_table'])
                 )),
                 'text_direction' => preg_match('/[\\x{0590}-\\x{08FF}]/u', $stem) === 1 ? 'rtl' : 'auto',
                 'blocked_features' => $blockedFeatures,
