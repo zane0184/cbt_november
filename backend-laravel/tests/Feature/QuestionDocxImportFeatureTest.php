@@ -236,6 +236,18 @@ class QuestionDocxImportFeatureTest extends TestCase
             'tenant_id' => $this->tenant->id,
             'question_version_id' => $version->id,
         ]);
+
+        // Make non-curriculum publication requirements valid so this regression
+        // specifically proves PENDING_TEACHER cannot fall through as NOT_MAPPED.
+        $version->update(['default_points' => 1.00]);
+        $version->options()->firstOrFail()->update(['is_correct' => true]);
+
+        Livewire::test(QuestionBank::class)
+            ->call('publishQuestion', $question->id)
+            ->assertStatus(422);
+
+        $this->assertSame('DRAFT', $question->fresh()->status);
+        $this->assertSame('DRAFT', $version->fresh()->status);
     }
 
     public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
