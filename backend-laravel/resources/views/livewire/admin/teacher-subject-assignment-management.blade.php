@@ -114,7 +114,7 @@
                                 <p class="text-xs text-textSecondary">{{ $assignment->rombel?->name }} · {{ $assignment->rombel?->gradeLevel?->name }}</p>
                             </td>
                             <td class="px-4 py-3 text-xs text-textSecondary">
-                                {{ $assignment->academicYear?->name }} · {{ $assignment->semester?->name }}
+                                {{ $assignment->academicYear?->name }} · Semester {{ $assignment->semester?->term === 'GANJIL' ? 'Ganjil' : ($assignment->semester?->term === 'GENAP' ? 'Genap' : '—') }}
                                 <p>{{ $assignment->starts_at?->format('d/m/Y') }} – {{ $assignment->ends_at?->format('d/m/Y') }}</p>
                             </td>
                             <td class="px-4 py-3 text-xs text-textSecondary">
