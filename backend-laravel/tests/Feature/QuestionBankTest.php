@@ -695,6 +695,50 @@ class QuestionBankTest extends TestCase
         $this->assertDatabaseHas('question_versions', ['id' => $version->id, 'status' => 'DRAFT']);
     }
 
+    public function test_matching_manual_save_rejects_blank_or_incomplete_pairs(): void
+    {
+        $this->actingAs($this->userA);
+
+        $this->questionBankComponent()
+            ->set('questionCode', 'MATCH-BAD-PAIR')
+            ->set('questionType', 'MATCHING')
+            ->set('stem', 'Pasangan harus lengkap')
+            ->set('defaultPoints', 5)
+            ->set('matchingPairs', [
+                ['left' => 'Premis satu', 'right' => 'Jawaban satu'],
+                ['left' => 'Premis dua', 'right' => ''],
+            ])
+            ->call('saveQuestion')
+            ->assertHasErrors(['matchingPairs']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'MATCH-BAD-PAIR']);
+    }
+
+    public function test_essay_manual_save_requires_and_persists_teacher_rubric(): void
+    {
+        $this->actingAs($this->userA);
+
+        $component = $this->questionBankComponent()
+            ->set('questionCode', 'ESSAY-RUBRIC-01')
+            ->set('questionType', 'ESSAY')
+            ->set('stem', 'Jelaskan proses fotosintesis.')
+            ->set('defaultPoints', 10)
+            ->set('explanation', '');
+
+        $component->call('saveQuestion')->assertHasErrors(['explanation']);
+        $this->assertDatabaseMissing('questions', ['question_code' => 'ESSAY-RUBRIC-01']);
+
+        $component->set('explanation', 'Nilai berdasarkan ketepatan konsep, urutan proses, dan kelengkapan istilah.')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $question = Question::query()->where('question_code', 'ESSAY-RUBRIC-01')->firstOrFail();
+        $this->assertSame(
+            'Nilai berdasarkan ketepatan konsep, urutan proses, dan kelengkapan istilah.',
+            $question->currentVersion->explanation
+        );
+    }
+
     private function makeDocxQuestionUpload(array $lines): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-question-docx-');
