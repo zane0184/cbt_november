@@ -173,3 +173,44 @@ Manifest: `MANIFEST.md`. Salinan backup byte-exact memiliki blob SHA yang sama d
 - Browser upload, Nginx/aaPanel Content-Type, PHP GD pada VPS, dan production UAT belum diuji.
 
 Status tetap: syntax/boot PASS; pengujian upload fungsional dan browser/VPS UAT masih pending.
+
+ 
+## Addendum — Implementasi Self-Service Kelas Guru (26 Nov 2026)
+
+### AUDIT
+- Penugasan kanonis, validasi tenant/akademik/kurikulum, snapshot, batch multi-mapel, dan AuditService sudah tersedia pada `TeacherSubjectAssignmentManagement`.
+- Halaman Guru sebelumnya hanya membaca data melalui `TeacherPortalDataService`; tidak ada UI create.
+- Komponen Admin sebelumnya menampilkan formulir create yang memaksa Admin memilih profil Guru.
+- Tabel `teacher_subject_assignments` sudah memiliki `created_by`; proses create sebelumnya belum mengisi kolom ini.
+
+### DESAIN
+- Guru membuat kelas dari menu **Kelas Saya**. Identitas Guru diambil dari akun yang sedang login, tidak dari input browser.
+- Dalam satu pengiriman Guru memilih satu rombel dan beberapa mata pelajaran. Untuk rombel berbeda, Guru mengulangi batch berikutnya agar sistem tidak membuat kombinasi silang mapel–rombel yang tidak benar.
+- Semester dipilih dari semester pada tahun ajaran rombel.
+- Versi kurikulum tidak dipilih bebas. Sistem otomatis mengambil tepat satu registrasi kurikulum aktif. Jika tidak ada atau lebih dari satu, submit dihentikan dan Admin diminta membetulkan Registry.
+- Admin menggunakan menu **Monitoring Kelas**; formulir pembuatan tidak ditampilkan pada portal Admin.
+- Data penugasan lama dipertahankan dan ditampilkan sebagai riwayat.
+
+### IMPLEMENTASI
+- `backend-laravel/app/Livewire/Admin/TeacherSubjectAssignmentManagement.php`: komponen kanonis dipakai bersama oleh route Admin dan Guru; akses Guru diperiksa dengan `TeacherPortalAccess`; akun harus aktif dan tepat satu role; teacher profile dipaksa dari session server-side; registrasi kurikulum aktif dipilih otomatis; daftar assignment dibatasi ke profil Guru yang login; `created_by` diisi dari `auth()->id()`.
+- `backend-laravel/app/Livewire/Teacher/TeacherAssignmentsPage.php`: entry point Portal Guru menggunakan kembali komponen/validasi yang sudah ada, tidak membuat service atau tabel baru.
+- `backend-laravel/resources/views/livewire/admin/teacher-subject-assignment-management.blade.php`: UI Guru menampilkan form self-service batch; UI Admin menjadi monitoring read-only.
+- `backend-laravel/resources/views/layouts/app.blade.php`: label Admin menjadi **Monitoring Kelas**.
+- `backend-laravel/resources/views/layouts/teacher.blade.php`: label Guru menjadi **Kelas Saya**.
+- `backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php`: ditambah skenario Guru membuat kelas melalui Portal Guru, mencoba memalsukan teacher_profile_id, dan verifikasi owner serta created_by tetap akun Guru login.
+- Workflow PHP runtime diperluas untuk branch PR #34, syntax lint termasuk `tests`, route `guru/penugasan`, serta kompilasi Blade.
+- Backup source sebelum patch: `backend-laravel/backups/guru-self-service-assignment-20261126/`; manifest tersedia pada folder tersebut. Backup laporan/checkpoint: `docs/backups/GURU_SELF_SERVICE_IMPLEMENTATION_20261126/`.
+
+### PENGUJIAN
+- Test regression baru ditulis, tetapi PHPUnit **belum dijalankan**.
+- Workflow PHP runtime diperluas; status eksekusi workflow untuk commit implementasi belum terkonfirmasi.
+- Belum ada bukti browser UAT atau pengujian pada VPS.
+- Tidak ada migration, perubahan database, atau deployment.
+- PR #34 masih Draft dan belum merged.
+
+### BATAS IMPLEMENTASI
+- Batch UI saat ini: satu rombel dengan banyak mapel per submit. Tidak ada auto-cross-product untuk banyak rombel.
+- Bila tenant mempunyai nol atau lebih dari satu registrasi kurikulum ACTIVE, Guru tidak dapat submit sampai registry diperbaiki Admin.
+- Komponen Admin masih menyimpan method lama untuk kompatibilitas/tes internal, tetapi form create tidak ditampilkan pada halaman Admin; operasional normal dipindahkan ke Guru.
+
+Status: **SOURCE PATCH COMMITTED — REGRESSION TEST DITAMBAHKAN — EKSEKUSI TEST DAN BROWSER/VPS UAT MENUNGGU.**
