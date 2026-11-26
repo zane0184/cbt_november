@@ -30,46 +30,46 @@
 ### Akidah Akhlak
 | Fase | Halaman PDF | Elemen/subelemen | Capaian (teks sumber) |
 |---|---:|---|---|
-| A | 42 | Pemahaman Konsep — Akidah | Menghafal dan menjelaskan dua kalimah syahadat, enam rukun iman, sifat wajib bagi Allah, dan iman kepada malaikat Allah; menemukan contoh asmaulhusna (ar-Rahman, ar-Rahim, al-Malik, al-Quddus, as-Salam, al-Mukmin, al-Muhaimin, al-Aziz). |
-| A | 42 | Pemahaman Konsep — Akhlak | Menghafal dan menjelaskan kalimah thayyibah (basmalah, hamdalah, dan taawuz); mengidentifikasi dan menerapkan pola hidup sehat dan bersih, sikap jujur, rasa terima kasih dan rendah hati, cara menghindari sikap malas, berkata kasar, dan berbohong. |
-| A | 42 | Pemahaman Konsep — Adab | Mengidentifikasi dan menerapkan adab belajar, mandi, berpakaian, bersin, menguap, makan, dan minum. |
-| A | 42 | Pemahaman Konsep — Kisah Keteladanan | Menceritakan dan meneladan kisah Nabi Muhammad saw. dan Nabi Nuh a.s. |
-| B | 43–44 | Pemahaman Konsep — Akidah | Menemukan contoh asmaulhusna (al-Halim, al-Wahhab, al-Kabir, al- 'Adhim, as-Sami’, al-Bashir, al-Waliy, dan al-'Alim); menghafal dan menjelaskan iman kepada kitab-kitab Allah Swt. serta nabi dan rasul-Nya. |
-| B | 43–44 | Pemahaman Konsep — Akhlak | Menghafal dan menjelaskan kalimah thayyibah (Subhanallah, Allahu Akbar, Masya Allah); menjelaskan dan menerapkan sikap bersyukur, pantang menyerah, pemberani, tolong-menolong, amanah serta cara menghindari sikap serakah, kikir, dan kufur nikmat. |
-| B | 44 | Pemahaman Konsep — Adab | Menerapkan adab kepada kedua orang tua, guru, dan teman. |
-| B | 44 | Pemahaman Konsep — Kisah Keteladanan | Menceritakan dan menerapkan perilaku taat melalui kisah Nabi Ibrahim a.s. dan Nabi Ismail a.s. |
-| C | 45 | Pemahaman Konsep — Akidah | Menerapkan perilaku yang mencerminkan sifat asmaulhusna (al-Qawiyy, al-Khabir, al-Muhyi, al-Wahid, al-Ahad, as-Samad, al-Ghaffar, dan al-Waasi’); menjelaskan hari akhir (kiamat), qada dan qadar. |
-| C | 45 | Pemahaman Konsep — Akhlak | Menjelaskan dan menerapkan kalimah thayyibah (istigfar, hauqalah, tarji', dan tahlil); menerapkan dan merefleksikan akhlak terpuji (sabar, disiplin, mandiri, pemaaf, tanggung jawab, adil, dan bijaksana), serta cara menghindari akhlak tercela (pemarah, fasik, pilih kasih, iri hati, dan egois). |
-| C | 45 | Pemahaman Konsep — Adab | Mengidentifikasi dan menerapkan adab bertamu, adab kepada tetangga, dan lingkungan. |
-| C | 45 | Pemahaman Konsep — Kisah Keteladanan | Menceritakan dan menerapkan sikap keberanian dan teguh pendirian melalui kisah Nabi Musa a.s. dan sikap sabar melalui kisah Nabi Isa a.s. |
-| A–C | 42–46 | Keterampilan Proses | Teks proses fase A, B, C tercantum terpisah pada lampiran; jangan hilangkan saat normalisasi. QA lengkap per halaman masih diperlukan. |
+| A | 44 | Pemahaman Konsep — Akidah | Menghafal dan menjelaskan dua kalimah syahadat, enam rukun iman, sifat wajib bagi Allah, dan iman kepada malaikat Allah; menemukan contoh asmaulhusna (ar-Rahman, ar-Rahim, al-Malik, al-Quddus, as-Salam, al-Mukmin, al-Muhaimin, al-Aziz). |
+| A | 44 | Pemahaman Konsep — Akhlak | Menghafal dan menjelaskan kalimah thayyibah (basmalah, hamdalah, dan taawuz); mengidentifikasi dan menerapkan pola hidup sehat dan bersih, sikap jujur, rasa terima kasih dan rendah hati, cara menghindari sikap malas, berkata kasar, dan berbohong. |
+| A | 44 | Pemahaman Konsep — Adab | Mengidentifikasi dan menerapkan adab belajar, mandi, berpakaian, bersin, menguap, makan, dan minum. |
+| A | 44 | Pemahaman Konsep — Kisah Keteladanan | Menceritakan dan meneladan kisah Nabi Muhammad saw. dan Nabi Nuh a.s. |
+| B | 45–46 | Pemahaman Konsep — Akidah | Menemukan contoh asmaulhusna (al-Halim, al-Wahhab, al-Kabir, al- 'Adhim, as-Sami’, al-Bashir, al-Waliy, dan al-'Alim); menghafal dan menjelaskan iman kepada kitab-kitab Allah Swt. serta nabi dan rasul-Nya. |
+| B | 45–46 | Pemahaman Konsep — Akhlak | Menghafal dan menjelaskan kalimah thayyibah (Subhanallah, Allahu Akbar, Masya Allah); menjelaskan dan menerapkan sikap bersyukur, pantang menyerah, pemberani, tolong-menolong, amanah serta cara menghindari sikap serakah, kikir, dan kufur nikmat. |
+| B | 46 | Pemahaman Konsep — Adab | Menerapkan adab kepada kedua orang tua, guru, dan teman. |
+| B | 46 | Pemahaman Konsep — Kisah Keteladanan | Menceritakan dan menerapkan perilaku taat melalui kisah Nabi Ibrahim a.s. dan Nabi Ismail a.s. |
+| C | 47 | Pemahaman Konsep — Akidah | Menerapkan perilaku yang mencerminkan sifat asmaulhusna (al-Qawiyy, al-Khabir, al-Muhyi, al-Wahid, al-Ahad, as-Samad, al-Ghaffar, dan al-Waasi’); menjelaskan hari akhir (kiamat), qada dan qadar. |
+| C | 47 | Pemahaman Konsep — Akhlak | Menjelaskan dan menerapkan kalimah thayyibah (istigfar, hauqalah, tarji', dan tahlil); menerapkan dan merefleksikan akhlak terpuji (sabar, disiplin, mandiri, pemaaf, tanggung jawab, adil, dan bijaksana), serta cara menghindari akhlak tercela (pemarah, fasik, pilih kasih, iri hati, dan egois). |
+| C | 47 | Pemahaman Konsep — Adab | Mengidentifikasi dan menerapkan adab bertamu, adab kepada tetangga, dan lingkungan. |
+| C | 47 | Pemahaman Konsep — Kisah Keteladanan | Menceritakan dan menerapkan sikap keberanian dan teguh pendirian melalui kisah Nabi Musa a.s. dan sikap sabar melalui kisah Nabi Isa a.s. |
+| A–C | 44–48 | Keterampilan Proses | Teks proses fase A, B, C tercantum terpisah pada lampiran; jangan hilangkan saat normalisasi. QA lengkap per halaman masih diperlukan. |
 
 ### Fikih
 | Fase | Halaman PDF | Elemen/subelemen | Capaian (teks sumber) |
 |---|---:|---|---|
-| A | 68 | Pemahaman Konsep — Ibadah | Menyebutkan rukun Islam; meniru dan melafalkan kalimah syahadatain; meniru praktik taharah, salat fardu, salat berjemaah; meniru dan melafalkan azan dan ikamah serta bacaan zikir sesudah salat. |
-| B | 69 | Pemahaman Konsep — Ibadah | Menyebutkan tata cara pelaksanaan puasa Ramadan; meniru tata cara salat Jumat dan beberapa salat sunah; menyebutkan rukhsah pada salat; menyebutkan tata cara khitan, tanda-tanda balig beserta cara bersuci dari hadas besar. |
-| C | 70 | Pemahaman Konsep — Ibadah | Membedakan zakat fitrah, infak dan sedekah; mengklasifikasikan jenis-jenis hewan kurban; menyebutkan hikmah dari pelaksanaan kurban; mengurutkan pelaksanaan tata cara haji dan umrah; menjelaskan ketentuan halal dan haram. |
-| C | 70 | Pemahaman Konsep — Muamalah | Menceritakan pengalaman praktik jual beli; mengilustrasikan ketentuan pinjam meminjam; menjelaskan pentingnya menghindari perbuatan gasab, ketentuan barang temuan/luqathah. |
-| A–C | 68–71 | Keterampilan Proses | Memuat pengamatan, menanya, pengumpulan data, analisis data, menyimpulkan/refleksi, dan komunikasi hasil. Teks rinci per fase harus dipertahankan sebagai rekaman elemen proses terpisah. |
+| A | 70 | Pemahaman Konsep — Ibadah | Menyebutkan rukun Islam; meniru dan melafalkan kalimah syahadatain; meniru praktik taharah, salat fardu, salat berjemaah; meniru dan melafalkan azan dan ikamah serta bacaan zikir sesudah salat. |
+| B | 71 | Pemahaman Konsep — Ibadah | Menyebutkan tata cara pelaksanaan puasa Ramadan; meniru tata cara salat Jumat dan beberapa salat sunah; menyebutkan rukhsah pada salat; menyebutkan tata cara khitan, tanda-tanda balig beserta cara bersuci dari hadas besar. |
+| C | 72 | Pemahaman Konsep — Ibadah | Membedakan zakat fitrah, infak dan sedekah; mengklasifikasikan jenis-jenis hewan kurban; menyebutkan hikmah dari pelaksanaan kurban; mengurutkan pelaksanaan tata cara haji dan umrah; menjelaskan ketentuan halal dan haram. |
+| C | 72 | Pemahaman Konsep — Muamalah | Menceritakan pengalaman praktik jual beli; mengilustrasikan ketentuan pinjam meminjam; menjelaskan pentingnya menghindari perbuatan gasab, ketentuan barang temuan/luqathah. |
+| A–C | 70–73 | Keterampilan Proses | Memuat pengamatan, menanya, pengumpulan data, analisis data, menyimpulkan/refleksi, dan komunikasi hasil. Teks rinci per fase harus dipertahankan sebagai rekaman elemen proses terpisah. |
 
 ### Sejarah Kebudayaan Islam
 | Fase | Halaman PDF | Elemen | Capaian (teks sumber) |
 |---|---:|---|---|
 | A | — | — | Tidak ditemukan bagian CP fase A MI pada bagian SKI dalam dokumen yang diekstrak. Tidak boleh dibuat asumsi atau menyalin fase A dari mapel lain. |
-| B | 88–89 | Pemahaman Konsep | Mengidentifikasi kehidupan masyarakat Arab sebelum Islam; menggambarkan kehidupan dan kepribadian Rasulullah saw.; mendeskripsikan peristiwa kerasulan Rasulullah saw.; menceritakan ketabahan Rasulullah saw. dan para sahabat dalam berdakwah; memahami kronologi hijrah Rasulullah saw.; menceritakan dan merefleksikan peristiwa Isra Mikraj Rasulullah saw. dalam kehidupan sehari-hari. |
-| C | 89–90 | Pemahaman Konsep | Merefleksikan dakwah Rasulullah saw. kepada kelompok nonmuslim di Madinah; menceritakan dan merefleksikan peristiwa menjelang akhir hayat Rasulullah saw. dalam kehidupan sehari-hari; merefleksikan kisah keteladanan Abu Bakar Ash-Shiddiq, Umar bin Khattab, Usman bin Affan, dan Ali bin Abi Thalib dalam kehidupan sehari-hari; menganalisis biografi Wali Sanga dalam mengembangkan Islam di Indonesia. |
-| B–C | 88–90 | Keterampilan Proses | Mengamati; mempertanyakan dan memprediksi; merencanakan dan melakukan penyelidikan; memproses/menganalisis data dan informasi; mengevaluasi dan refleksi; mengomunikasikan hasil. Teks rinci per fase masih perlu QA visual. |
+| B | 90–91 | Pemahaman Konsep | Mengidentifikasi kehidupan masyarakat Arab sebelum Islam; menggambarkan kehidupan dan kepribadian Rasulullah saw.; mendeskripsikan peristiwa kerasulan Rasulullah saw.; menceritakan ketabahan Rasulullah saw. dan para sahabat dalam berdakwah; memahami kronologi hijrah Rasulullah saw.; menceritakan dan merefleksikan peristiwa Isra Mikraj Rasulullah saw. dalam kehidupan sehari-hari. |
+| C | 91–92 | Pemahaman Konsep | Merefleksikan dakwah Rasulullah saw. kepada kelompok nonmuslim di Madinah; menceritakan dan merefleksikan peristiwa menjelang akhir hayat Rasulullah saw. dalam kehidupan sehari-hari; merefleksikan kisah keteladanan Abu Bakar Ash-Shiddiq, Umar bin Khattab, Usman bin Affan, dan Ali bin Abi Thalib dalam kehidupan sehari-hari; menganalisis biografi Wali Sanga dalam mengembangkan Islam di Indonesia. |
+| B–C | 90–92 | Keterampilan Proses | Mengamati; mempertanyakan dan memprediksi; merencanakan dan melakukan penyelidikan; memproses/menganalisis data dan informasi; mengevaluasi dan refleksi; mengomunikasikan hasil. Teks rinci per fase masih perlu QA visual. |
 
 ### Bahasa Arab
 | Fase | Halaman PDF | Elemen | Capaian (teks sumber) |
 |---|---:|---|---|
-| A | 96–98 | Komponen Bahasa | Mengenali bunyi dan kosakata tentang perkenalan, keluargaku, rumahku, madrasahku; serta hobiku, nama-nama buah, warna-warna, alat transportasi, pemandangan alam, dengan pola kalimat di antaranya sebagaimana dicontohkan dalam lampiran. |
-| A | 98 | Keterampilan Bahasa | Menerapkan keterampilan berbahasa yang meliputi kegiatan menyimak, berbicara, membaca, memirsa, menulis, dan mempresentasikan. |
-| B | 98 | Komponen Bahasa | Mengidentifikasi kalimat sapaan dan pertanyaan tentang materi pelajaran, nama-nama binatang, penyakit, olahraga, teman-temanku, taman; serta alamat, profesi, cita-citaku, di rumah, anggota keluarga, cinta Indonesia, dengan pola kalimat di antaranya sebagaimana dicontohkan dalam lampiran. |
-| B | 98 | Keterampilan Bahasa | Menerapkan keterampilan berbahasa yang meliputi kegiatan menyimak, berbicara, membaca, memirsa, menulis, mempresentasikan. |
-| C | 99–100 | Komponen Bahasa | Mengidentifikasi informasi dan bacaan sederhana tentang anggota tubuh, kebun binatang, di ruang tamu dan di ruang belajar, di perpustakaan, di kantin; serta jam, saya suka bahasa Arab, kegiatan liburan, piknik, dengan pola kalimat di antaranya sebagaimana dicontohkan dalam lampiran. |
-| C | 100 | Keterampilan Bahasa | Menerapkan keterampilan berbahasa yang meliputi kegiatan menyimak, berbicara, membaca, memirsa, menulis, dan mempresentasikan. |
+| A | 99 | Komponen Bahasa | Mengenali bunyi dan kosakata tentang perkenalan, keluargaku, rumahku, madrasahku; serta hobiku, nama-nama buah, warna-warna, alat transportasi, pemandangan alam, dengan pola kalimat di antaranya sebagaimana dicontohkan dalam lampiran. |
+| A | 99 | Keterampilan Bahasa | Menerapkan keterampilan berbahasa yang meliputi kegiatan menyimak, berbicara, membaca, memirsa, menulis, dan mempresentasikan. |
+| B | 100 | Komponen Bahasa | Mengidentifikasi kalimat sapaan dan pertanyaan tentang materi pelajaran, nama-nama binatang, penyakit, olahraga, teman-temanku, taman; serta alamat, profesi, cita-citaku, di rumah, anggota keluarga, cinta Indonesia, dengan pola kalimat di antaranya sebagaimana dicontohkan dalam lampiran. |
+| B | 100 | Keterampilan Bahasa | Menerapkan keterampilan berbahasa yang meliputi kegiatan menyimak, berbicara, membaca, memirsa, menulis, mempresentasikan. |
+| C | 100–101 | Komponen Bahasa | Mengidentifikasi informasi dan bacaan sederhana tentang anggota tubuh, kebun binatang, di ruang tamu dan di ruang belajar, di perpustakaan, di kantin; serta jam, saya suka bahasa Arab, kegiatan liburan, piknik, dengan pola kalimat di antaranya sebagaimana dicontohkan dalam lampiran. |
+| C | 101 | Keterampilan Bahasa | Menerapkan keterampilan berbahasa yang meliputi kegiatan menyimak, berbicara, membaca, memirsa, menulis, dan mempresentasikan. |
 
 ## Provenance dan batas penggunaan
 Setiap baris tabel adalah transkripsi kerja, bukan record terverifikasi final. Saat diubah menjadi data terstruktur, setiap record wajib membawa:
