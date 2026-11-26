@@ -145,21 +145,44 @@ class CurriculumReferenceSourceSeeder extends Seeder
             ];
 
             foreach ($sources as $source) {
+                $identity = [
+                    'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+                    'issuer' => $source['issuer'],
+                    'document_number' => $source['document_number'],
+                    'document_version' => $source['document_version'],
+                ];
+
+                $existing = CurriculumReferenceSource::query()->where($identity)->first();
+                $artifactAlreadyVerified = $existing
+                    && $existing->verification_status === 'ARTIFACT_CHECKSUM_VERIFIED'
+                    && is_string($existing->checksum_sha256)
+                    && preg_match('/\\A[a-f0-9]{64}\\z/i', $existing->checksum_sha256) === 1;
+
+                $metadata = array_replace_recursive(
+                    $existing?->metadata ?? [],
+                    $source['metadata']
+                );
+
+                if ($artifactAlreadyVerified) {
+                    $metadata['artifact_checksum_verified'] = true;
+                    $metadata['checksum_sha256'] = $existing->checksum_sha256;
+                    $metadata['archive_path'] = $existing->archive_path;
+                }
+
                 CurriculumReferenceSource::query()->updateOrCreate(
-                    [
-                        'tenant_id' => Tenant::SYSTEM_TENANT_ID,
-                        'issuer' => $source['issuer'],
-                        'document_number' => $source['document_number'],
-                        'document_version' => $source['document_version'],
-                    ],
+                    $identity,
                     [
                         'title' => $source['title'],
                         'published_at' => $source['published_at'],
                         'effective_from' => $source['effective_from'],
                         'source_uri' => $source['source_uri'],
-                        'verification_status' => $source['verification_status'],
-                        'verified_at' => $source['verification_status'] === 'PENDING' ? null : now(),
-                        'metadata' => $source['metadata'],
+                        'verification_status' => $artifactAlreadyVerified
+                            ? 'ARTIFACT_CHECKSUM_VERIFIED'
+                            : $source['verification_status'],
+                        'verified_at' => $artifactAlreadyVerified
+                            ? $existing->verified_at
+                            : ($source['verification_status'] === 'PENDING' ? null : now()),
+                        'metadata' => $metadata,
                     ]
                 );
             }
