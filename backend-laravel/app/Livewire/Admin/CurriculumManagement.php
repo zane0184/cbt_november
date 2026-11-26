@@ -77,6 +77,12 @@ class CurriculumManagement extends Component
             ->where('status', 'ACTIVE')
             ->where('is_official', true)
             ->where('is_editable', false)
+            ->where('verification_status', 'ARTIFACT_CHECKSUM_VERIFIED')
+            ->whereNotNull('source_checksum')
+            ->whereHas('source', fn ($query) => $query
+                ->where('verification_status', 'ARTIFACT_CHECKSUM_VERIFIED')
+                ->whereNotNull('checksum_sha256')
+                ->whereColumn('curriculum_reference_sources.checksum_sha256', 'multi_learning_outcomes.source_checksum'))
             ->with(['structure.parent', 'source', 'version'])
             ->when($this->search, function ($query): void {
                 $query->where(function ($searchQuery): void {
