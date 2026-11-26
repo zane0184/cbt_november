@@ -178,15 +178,15 @@
 
     <!-- Create / Edit Question Modal -->
     @if($showModal)
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 border border-cardBorder my-8">
-                <div class="flex justify-between items-center border-b border-cardBorder pb-3">
+        <div class="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-3 backdrop-blur-sm sm:items-center sm:p-4">
+            <div class="my-0 flex max-h-[calc(100vh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-cardBorder bg-white shadow-2xl sm:my-4 sm:max-h-[calc(100vh-2rem)]">
+                <div class="flex shrink-0 items-center justify-between border-b border-cardBorder bg-white px-5 py-4 sm:px-7">
                     <h3 class="text-lg font-bold text-navy-900">
                         {{ $editingQuestionId ? 'Edit Soal' : 'Buat Soal Baru' }}
                     </h3>
                     <button wire:click="$set('showModal', false)" class="text-gray-400 hover:text-gray-600 font-bold text-lg">✕</button>
                 </div>
-
+                <div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-7">
                 <form wire:submit.prevent="saveQuestion" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
@@ -557,6 +557,7 @@
                         @endif
                     </section>
                 @endif
+                </div>
             </div>
         </div>
     @endif

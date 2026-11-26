@@ -62,7 +62,7 @@ class TeacherImport extends Component
         session()->flash('import_credentials', $result['credentials']);
         session()->flash('import_credentials_label', 'Guru');
         session()->flash('import_batch_id', $result['batch_id']);
-        session()->flash('message', $result['imported'].' akun Guru berhasil diimpor. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.');
+        session()->flash('message', $result['imported'].' akun Guru berhasil diimpor. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.'); 
         return redirect('/admin/users');
     }
 

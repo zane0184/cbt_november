@@ -69,7 +69,7 @@
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-600 text-xl font-bold text-white">C</div>
                 @endif
                 <div>
-                    <h1 class="text-base font-bold leading-tight">CBT MADRASAH</h1>
+                    <h1 class="max-w-40 truncate text-base font-bold leading-tight" title="{{ $tenantBranding?->name ?: 'CBT MADRASAH' }}">{{ $tenantBranding?->short_name ?: ($tenantBranding?->name ?: 'CBT MADRASAH') }}</h1>
                     <p class="text-xs text-gray-400">{{ $isAdmin ? 'Panel Admin Madrasah' : ($isGuru ? 'Portal Guru' : 'Portal CBT') }}</p>
                 </div>
             </div>
@@ -199,8 +199,14 @@
     <div class="flex-1 flex flex-col min-w-0">
         <!-- Top Navbar -->
         <header class="mt-14 flex items-center justify-between border-b border-cardBorder bg-white px-6 py-4 shadow-sm md:mt-0">
-            <div class="flex items-center gap-3">
-                <h2 class="text-lg font-bold text-navy-900">{{ $isAdmin ? 'Panel Admin Madrasah' : ($isGuru ? 'Portal Guru' : 'CBT Madrasah') }}</h2>
+            <div class="flex min-w-0 items-center gap-3">
+                @if($tenantLogoUrl)
+                    <img src="{{ $tenantLogoUrl }}" alt="Logo {{ $tenantBranding?->name ?: 'Madrasah' }}" class="h-9 w-9 rounded-lg border border-cardBorder bg-white p-1 object-contain">
+                @endif
+                <div class="min-w-0">
+                    <p class="max-w-[48vw] truncate text-sm font-bold text-navy-900 md:max-w-md" title="{{ $tenantBranding?->name ?: 'CBT Madrasah' }}">{{ $tenantBranding?->short_name ?: ($tenantBranding?->name ?: 'CBT Madrasah') }}</p>
+                    <h2 class="text-xs font-semibold text-textSecondary">{{ $isAdmin ? 'Panel Admin Madrasah' : ($isGuru ? 'Portal Guru' : 'CBT Madrasah') }}</h2>
+                </div>
             </div>
             <div class="flex items-center gap-4">
                 <span class="text-sm font-semibold text-textSecondary bg-gray-100 px-3 py-1.5 rounded-full border border-cardBorder">

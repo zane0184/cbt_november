@@ -30,8 +30,8 @@
             @else
                 <div class="w-16 h-16 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-3xl mx-auto shadow-lg shadow-emerald-600/30">C</div>
             @endif
-            <h1 class="text-2xl font-bold text-navy-900 tracking-tight">CBT MADRASAH</h1>
-            <p class="text-xs font-semibold text-textSecondary uppercase tracking-wider">{{ $loginTenant?->name ?: 'Portal Ujian & Administrasi Madrasah' }}</p>
+            <h1 class="text-2xl font-bold text-navy-900 tracking-tight">{{ $loginTenant?->short_name ?: ($loginTenant?->name ?: 'CBT MADRASAH') }}</h1>
+            <p class="text-xs font-semibold text-textSecondary uppercase tracking-wider">Portal Ujian & Administrasi Madrasah</p>
             <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
                 <span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span> Platform Asesmen Digital Modern
             </div>

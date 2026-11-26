@@ -10,6 +10,7 @@ use App\Livewire\Admin\StudentImport;
 use App\Livewire\Admin\TeacherImport;
 use App\Livewire\Admin\StudentRombelManagement;
 use App\Livewire\Admin\AcademicManagement;
+use App\Livewire\Admin\RombelDetail;
 use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
 use App\Livewire\Admin\CurriculumManagement;
 use App\Livewire\Admin\CurriculumRegistryManagement;
@@ -87,6 +88,7 @@ Route::middleware(['auth', 'active.user', 'tenant', 'license'])->group(function 
     Route::get('/admin/teachers/import', TeacherImport::class)->name('admin.teachers.import');
     Route::get('/admin/rombel-students', StudentRombelManagement::class);
     Route::get('/admin/academic', AcademicManagement::class);
+    Route::get('/admin/academic/rombels/{rombel}', RombelDetail::class)->name('admin.academic.rombels.show');
     Route::get('/admin/teacher-assignments', TeacherSubjectAssignmentManagement::class)->name('admin.teacher-assignments');
     Route::get('/admin/curriculum', CurriculumManagement::class);
     Route::get('/admin/curriculum/registry', CurriculumRegistryManagement::class)->name('admin.curriculum.registry');
