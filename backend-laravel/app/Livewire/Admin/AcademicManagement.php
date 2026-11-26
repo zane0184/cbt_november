@@ -36,6 +36,7 @@ class AcademicManagement extends Component
     public $subjectCode = '';
     public $subjectName = '';
     public $subjectShortName = '';
+    public $subjectCategory = 'WAJIB';
 
     // Create academic year modal state
     public string $academicYearName = '';
@@ -124,7 +125,7 @@ class AcademicManagement extends Component
     public function openCreateSubjectModal()
     {
         $this->authorizeAcademicManagement();
-        $this->reset(['subjectCode', 'subjectName', 'subjectShortName']);
+        $this->reset(['subjectCode', 'subjectName', 'subjectShortName', 'subjectCategory']);
         $this->resetValidation();
         $this->showCreateSubjectModal = true;
     }
@@ -133,15 +134,17 @@ class AcademicManagement extends Component
     {
         $this->authorizeAcademicManagement();
         $this->validate([
-            'subjectCode' => 'required|string|max:20',
+            'subjectCode' => ['required', 'string', 'max:20', Rule::unique('subjects', 'code')->where('tenant_id', auth()->user()->tenant_id)],
             'subjectName' => 'required|string|max:100',
             'subjectShortName' => 'nullable|string|max:30',
+            'subjectCategory' => ['required', Rule::in(['WAJIB', 'MULOK'])],
         ]);
 
         Subject::create([
             'code' => strtoupper($this->subjectCode),
             'name' => $this->subjectName,
             'short_name' => $this->subjectShortName ?: $this->subjectName,
+            'subject_category' => $this->subjectCategory,
             'status' => 'ACTIVE',
         ]);
 
