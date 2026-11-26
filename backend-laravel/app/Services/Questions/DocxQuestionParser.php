@@ -849,7 +849,9 @@ class DocxQuestionParser
                         $active['options'] = array_merge($active['options'], $tableOptions);
                     } elseif (count(array_filter(array_slice($cells, 1), fn ($cell) => trim((string) $cell) !== '')) > 0) {
                         $active['table_unclassified'] = true;
-                        $active['stem_parts'][] = implode(' | ', array_slice($cells, 1));
+                        if (empty($block['has_nested_table'])) {
+                            $active['stem_parts'][] = implode(' | ', array_slice($cells, 1));
+                        }
                     }
                 }
                 $answerSection = false;
@@ -861,7 +863,9 @@ class DocxQuestionParser
                     if ($stimulus !== null) {
                         $stimulus['has_table_content'] = true;
                         $stimulus['table_rows'][] = $cells;
-                        $stimulus['content'] = trim(($stimulus['content'] ?? '') . "\n" . $text);
+                        if (empty($block['has_nested_table'])) {
+                            $stimulus['content'] = trim(($stimulus['content'] ?? '') . "\n" . $text);
+                        }
                     } else {
                         $excluded[] = [
                             'text' => mb_substr($text, 0, 500),
@@ -905,7 +909,9 @@ class DocxQuestionParser
                     continue;
                 }
                 $active['table_unclassified'] = true;
-                $active['stem_parts'][] = $text;
+                if (empty($block['has_nested_table'])) {
+                    $active['stem_parts'][] = $text;
+                }
                 continue;
             }
 
@@ -1049,10 +1055,12 @@ class DocxQuestionParser
                     array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
                     fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML'
                 )),
-                'table_structure' => $this->extractNestedTableStructures(array_merge(
-                    $raw['source_fragments'] ?? [],
-                    $raw['stimulus']['source_fragments'] ?? []
-                )),
+                'table_structure' => (!empty($raw['table_unclassified']) || !empty($raw['stimulus']['has_table_content']))
+                    ? $this->extractNestedTableStructures(array_merge(
+                        $raw['source_fragments'] ?? [],
+                        $raw['stimulus']['source_fragments'] ?? []
+                    ))
+                    : [],
                 'nested_table_count' => $this->countNestedTables(array_merge(
                     $raw['source_fragments'] ?? [],
                     $raw['stimulus']['source_fragments'] ?? []
