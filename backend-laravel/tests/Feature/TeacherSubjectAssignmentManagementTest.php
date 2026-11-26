@@ -329,7 +329,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         ]);
 
         $this->actingAs($teacherUser);
-        Livewire::test(\App\Livewire\\Teacher\\TeacherAssignmentsPage::class)
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
             ->set('selectedTeacherProfileId', '00000000-0000-4000-8000-000000000099')
             ->set('selectedSubjectIds', [(string) $subject->id])
             ->set('selectedRombelId', (string) $selfServiceRombel->id)
