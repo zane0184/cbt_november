@@ -589,9 +589,8 @@ class QuestionBank extends Component
                 $this->selectedMaterialTopicId ?: null
             );
 
-            // An imported DOCX draft may have been saved before its curriculum
-            // mapping was complete. Once the strict mapping service succeeds in
-            // this editor, clear the pending marker on the current version.
+            // Persist the explicit mapping mode after the mapping service has
+            // validated either a complete official mapping or a general question.
             $versionMetadata = $version->metadata ?? [];
             $isMapped = $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== [];
             $versionMetadata['curriculum_mapping'] = [
