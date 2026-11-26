@@ -69,15 +69,18 @@ class TenantBrandingService
         }
 
         [$width, $height] = $image;
-        if ($kind === 'favicon') {
-            if ($width < 32 || $height < 32 || $width > 256 || $height > 256 || $width !== $height) {
-                throw new RuntimeException('Favicon harus persegi dengan ukuran 32–256 piksel.');
-            }
-        } elseif ($width < 64 || $height < 64 || $width > 2000 || $height > 2000) {
-            throw new RuntimeException('Dimensi logo harus berada pada rentang 64–2000 piksel.');
+        // A compressed image can still expand to an unsafe amount of memory.
+        // Keep a generous source-pixel ceiling, then normalize output dimensions.
+        if ($width < 1 || $height < 1 || ($width * $height) > 20_000_000) {
+            throw new RuntimeException('Dimensi sumber gambar terlalu besar untuk diproses dengan aman (maksimal 20 megapiksel).');
         }
 
-        $extension = $detected[0];
+        if (!function_exists('imagecreatefromstring') || !function_exists('imagecopyresampled') || !function_exists('imagepng')) {
+            throw new RuntimeException('Pemrosesan dimensi gambar otomatis tidak tersedia. Pastikan ekstensi PHP GD aktif.');
+        }
+
+        // All branding assets are normalized to PNG, regardless of accepted source format.
+        $extension = 'png';
         $root = $this->preparePublicStorageRoot();
         if (!$root) {
             throw new RuntimeException('Akar storage publik instalasi tidak aman.');
@@ -110,9 +113,7 @@ class TenantBrandingService
             throw new RuntimeException('Tujuan file branding sudah ada atau tidak aman.');
         }
 
-        if (!File::copy($file->getRealPath(), $absolutePath)) {
-            throw new RuntimeException('File branding gagal disimpan ke storage lokal.');
-        }
+        $this->normalizeAndStorePng($sourcePath, $absolutePath, $kind, $width, $height);
 
         $resolvedTarget = realpath($absolutePath);
         if (
@@ -128,6 +129,86 @@ class TenantBrandingService
         }
 
         return $relativePath;
+    }
+
+    /**
+     * Normalize image dimensions on the server without asking the Admin to crop.
+     * Logos are proportionally fitted inside 1600x1200. Favicons are fitted
+     * inside a transparent 128x128 canvas, preserving the complete source image.
+     * Every stored asset is re-encoded as PNG.
+     */
+    private function normalizeAndStorePng(string $sourcePath, string $absolutePath, string $kind, int $sourceWidth, int $sourceHeight): void
+    {
+        $contents = @file_get_contents($sourcePath);
+        $source = $contents !== false ? @imagecreatefromstring($contents) : false;
+        if (!$source) {
+            throw new RuntimeException('Gambar tidak dapat dibaca atau formatnya tidak didukung oleh server.');
+        }
+
+        $canvas = null;
+        $temporaryPath = $absolutePath . '.tmp-' . (string) Str::uuid();
+
+        try {
+            $sourceWidth = imagesx($source);
+            $sourceHeight = imagesy($source);
+
+            if ($kind === 'favicon') {
+                $canvasSize = 128;
+                $fitSize = 112;
+                $scale = min($fitSize / $sourceWidth, $fitSize / $sourceHeight);
+                $targetWidth = max(1, (int) round($sourceWidth * $scale));
+                $targetHeight = max(1, (int) round($sourceHeight * $scale));
+                $canvas = imagecreatetruecolor($canvasSize, $canvasSize);
+                imagealphablending($canvas, false);
+                imagesavealpha($canvas, true);
+                $transparent = imagecolorallocatealpha($canvas, 255, 255, 255, 127);
+                imagefill($canvas, 0, 0, $transparent);
+                $destinationX = intdiv($canvasSize - $targetWidth, 2);
+                $destinationY = intdiv($canvasSize - $targetHeight, 2);
+            } else {
+                $scale = min(1, 1600 / $sourceWidth, 1200 / $sourceHeight);
+                $targetWidth = max(1, (int) round($sourceWidth * $scale));
+                $targetHeight = max(1, (int) round($sourceHeight * $scale));
+                $canvas = imagecreatetruecolor($targetWidth, $targetHeight);
+                imagealphablending($canvas, false);
+                imagesavealpha($canvas, true);
+                $transparent = imagecolorallocatealpha($canvas, 255, 255, 255, 127);
+                imagefill($canvas, 0, 0, $transparent);
+                $destinationX = 0;
+                $destinationY = 0;
+            }
+
+            if (!imagecopyresampled(
+                $canvas,
+                $source,
+                $destinationX,
+                $destinationY,
+                0,
+                0,
+                $targetWidth,
+                $targetHeight,
+                $sourceWidth,
+                $sourceHeight
+            )) {
+                throw new RuntimeException('Gambar gagal disesuaikan otomatis oleh server.');
+            }
+
+            if (!imagepng($canvas, $temporaryPath, 6)) {
+                throw new RuntimeException('Hasil normalisasi gambar gagal disimpan.');
+            }
+
+            if (!@rename($temporaryPath, $absolutePath)) {
+                throw new RuntimeException('Hasil gambar gagal dipindahkan ke storage branding.');
+            }
+        } finally {
+            if (is_file($temporaryPath) && !is_link($temporaryPath)) {
+                @unlink($temporaryPath);
+            }
+            if ($canvas instanceof \GdImage) {
+                imagedestroy($canvas);
+            }
+            imagedestroy($source);
+        }
     }
 
     /**

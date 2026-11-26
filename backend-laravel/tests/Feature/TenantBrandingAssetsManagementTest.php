@@ -75,12 +75,45 @@ class TenantBrandingAssetsManagementTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'TENANT_BRANDING_ASSETS_UPDATED', 'entity_id' => $tenant->id]);
     }
 
-    public function test_favicon_validation_rejects_non_square_image(): void
+    public function test_admin_can_upload_non_square_favicon_and_system_fits_it_to_square_canvas(): void
     {
         Livewire::test(TenantBrandingAssetsManagement::class)
             ->set('faviconUpload', UploadedFile::fake()->image('favicon-wide.png', 128, 64))
             ->call('save')
-            ->assertHasErrors(['faviconUpload']);
+            ->assertHasNoErrors();
+
+        $path = $this->tenant->fresh()->favicon_path;
+        $this->assertStringEndsWith('.png', $path);
+        $dimensions = getimagesize(storage_path('app/public/' . $path));
+        $this->assertSame(128, $dimensions[0]);
+        $this->assertSame(128, $dimensions[1]);
+    }
+
+    public function test_logo_dimensions_are_automatically_reduced_without_requiring_manual_crop(): void
+    {
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('appLogoUpload', UploadedFile::fake()->image('large-logo.png', 2400, 1200))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $path = $this->tenant->fresh()->logo_path;
+        $this->assertStringEndsWith('.png', $path);
+        $dimensions = getimagesize(storage_path('app/public/' . $path));
+        $this->assertSame(1600, $dimensions[0]);
+        $this->assertSame(800, $dimensions[1]);
+    }
+
+    public function test_small_logo_is_accepted_without_a_minimum_dimension_requirement(): void
+    {
+        Livewire::test(TenantBrandingAssetsManagement::class)
+            ->set('appLogoUpload', UploadedFile::fake()->image('small-logo.png', 40, 20))
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $path = $this->tenant->fresh()->logo_path;
+        $dimensions = getimagesize(storage_path('app/public/' . $path));
+        $this->assertSame(40, $dimensions[0]);
+        $this->assertSame(20, $dimensions[1]);
     }
 
     public function test_favicon_png_and_webp_preview_use_content_mime_and_fallback_when_unavailable(): void
@@ -120,7 +153,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $webpUpload = new UploadedFile($webpPath, 'favicon.webp', 'image/webp', UPLOAD_ERR_OK, true);
             $storedWebpPath = $branding->storeUpload($webpUpload, $tenantId, 'favicon');
             $webpAttributes = $branding->faviconAttributes($storedWebpPath, $tenantId);
-            $this->assertSame('image/webp', $webpAttributes['mime'] ?? null);
+            $this->assertSame('image/png', $webpAttributes['mime'] ?? null);
             $this->assertSame(
                 'image/webp',
                 (new \finfo(FILEINFO_MIME_TYPE))->file(storage_path('app/public/' . $storedWebpPath))
@@ -129,7 +162,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $this->tenant->forceFill(['favicon_path' => $storedWebpPath])->save();
             $this->get('/admin/branding-assets')
                 ->assertOk()
-                ->assertSee('type="image/webp"', false);
+                ->assertSee('type="image/png"', false);
 
             // The selected-file temporary preview branch is exercised above;
             // this asserts that a stored WebP favicon remains previewable in the UI.
