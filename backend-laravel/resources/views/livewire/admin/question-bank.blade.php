@@ -26,10 +26,13 @@
     <!-- Filter Header -->
     <div class="bg-white border border-cardBorder rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-3">
         <input wire:model.live="search" type="text" placeholder="Cari kode atau isi soal..." class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none flex-1">
-        <select wire:model.live="subjectFilter" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none md:w-52">
-            <option value="">Semua Mapel</option>
-            @foreach($subjects as $sub)
-                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+        <select wire:model.live="assignmentFilter" aria-label="Filter penugasan mata pelajaran, kelas, dan rombel" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none md:w-80">
+            <option value="">Semua Penugasan</option>
+            @foreach($assignmentRows as $row)
+                @php($assignment = $row['assignment'])
+                <option value="{{ $assignment->id }}">
+                    {{ $assignment->subject?->name ?? 'Mapel' }} · {{ $assignment->rombel?->gradeLevel?->name ?? 'Kelas -' }} · {{ $assignment->rombel?->name ?? 'Rombel -' }}
+                </option>
             @endforeach
         </select>
         <select wire:model.live="statusFilter" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none md:w-44">
