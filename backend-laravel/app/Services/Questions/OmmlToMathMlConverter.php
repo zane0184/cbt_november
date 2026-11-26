@@ -26,7 +26,8 @@ final class OmmlToMathMlConverter
         }
 
         $document = new DOMDocument();
-        if (!$document->loadXML($ommlXml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+        $wrappedXml = '<root xmlns:m="' . self::MATH_NS . '">' . $ommlXml . '</root>';
+        if (!$document->loadXML($wrappedXml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
             throw ValidationException::withMessages(['docx' => 'Sumber rumus Word tidak dapat dibaca.']);
         }
 
