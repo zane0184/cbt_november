@@ -141,6 +141,11 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->firstOrFail();
 
         Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->call('createBulkAssignments')
+            ->assertForbidden();
+
+        $this->actingAs($teacherUser);
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
             ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
             ->set('selectedSubjectId', (string) $subject->id)
             ->set('selectedSemesterId', (string) $semester->id)
@@ -153,7 +158,9 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->set('endsAt', now()->addMonths(6)->toDateString())
             ->call('createAssignment')
             ->assertHasNoErrors()
-            ->assertSee('Guru Assignment Test');
+            ->assertSee('Guru Assignment Test')
+            ->assertSee('Semester Ganjil')
+            ->assertSee($academicYear->name);
 
         $this->assertDatabaseHas('teacher_subject_assignments', [
             'tenant_id' => $tenantId,
@@ -180,6 +187,64 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame($subjectNode->id, $assignment->curriculum_context_snapshot['subject']['official_structure_id']);
         $this->assertSame($mapping->id, $mapping->fresh()->id);
 
+        // Bulk assignment: two mapped subjects for the same teacher and rombel
+        // are created in one atomic submission.
+        $bahasaSubject = Subject::create([
+            'tenant_id' => $tenantId,
+            'code' => 'BHS_IND',
+            'name' => 'Bahasa Indonesia',
+            'status' => 'ACTIVE',
+        ]);
+        $bahasaNode = MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('multi_curriculum_version_id', $version->id)
+            ->where('node_type', 'SUBJECT')
+            ->where('code', 'FASE_A_BAHASA_INDONESIA')
+            ->firstOrFail();
+
+        Livewire::test(CurriculumRegistryManagement::class)
+            ->set('selectedRegistrationId', (string) $registration->id)
+            ->set('selectedSubjectId', (string) $bahasaSubject->id)
+            ->set('selectedStructureId', (string) $bahasaNode->id)
+            ->call('mapSubject')
+            ->assertHasNoErrors();
+
+        $secondRombel = Rombel::create([
+            'academic_year_id' => $academicYear->id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => 'Kelas 1B',
+            'status' => 'ACTIVE',
+        ]);
+
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
+            ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
+            ->set('selectedSubjectIds', [(string) $subject->id, (string) $bahasaSubject->id])
+            ->set('selectedRombelId', (string) $secondRombel->id)
+            ->set('selectedSemesterId', (string) $semester->id)
+            ->set('selectedRegistrationId', (string) $registration->id)
+            ->set('startsAt', now()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createBulkAssignments')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify');
+
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $secondRombel->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+        ]);
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $bahasaSubject->id,
+            'rombel_id' => $secondRombel->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+        ]);
+
         // A madrasah-defined Mulok subject is mapped to the official generic
         // Muatan Lokal node for the rombel phase without changing the registry.
         $mulokSubject = Subject::create([
@@ -191,7 +256,7 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
-        Livewire::test(TeacherSubjectAssignmentManagement::class)
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
             ->assertSee('Budaya Betawi (BUDAYA_BETAWI) — Mulok')
             ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
             ->set('selectedSubjectId', (string) $mulokSubject->id)
@@ -224,39 +289,41 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'status' => 'ACTIVE',
         ]);
 
-        $inactiveTeacherUser = User::create([
-            'tenant_id' => $tenantId,
-            'name' => 'Guru Tidak Aktif',
-            'username' => 'guru.assignment.inactive',
-            'password' => bcrypt('StrongTestPassword123!'),
+        // Guru creates their own class through the Guru portal. A forged
+        // teacher_profile_id must never change the authenticated owner.
+        $selfServiceRombel = Rombel::create([
+            'academic_year_id' => $academicYear->id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => 'Kelas 1C',
+            'status' => 'ACTIVE',
         ]);
-        $inactiveTeacherUser->roles()->sync([$guruRole->id]);
-        DB::table('users')->where('id', $inactiveTeacherUser->id)->update(['is_active' => false]);
 
-        $inactiveTeacherProfile = TeacherProfile::create($this->withSyntheticTeacherIdentity([
-            'tenant_id' => $tenantId,
-            'user_id' => $inactiveTeacherUser->id,
-            'full_name' => 'Guru Tidak Aktif',
-            'employment_status' => 'PNS',
-            'nip' => '198001012006041002',
-        ]));
-
-        Livewire::test(TeacherSubjectAssignmentManagement::class)
-            ->set('selectedTeacherProfileId', (string) $inactiveTeacherProfile->id)
-            ->set('selectedSubjectId', (string) $subject->id)
-            ->set('selectedRombelId', (string) $rombel->id)
+        $this->actingAs($teacherUser);
+        Livewire::test(\App\Livewire\Teacher\TeacherAssignmentsPage::class)
+            ->set('selectedTeacherProfileId', '00000000-0000-4000-8000-000000000099')
+            ->set('selectedSubjectIds', [(string) $subject->id])
+            ->set('selectedRombelId', (string) $selfServiceRombel->id)
             ->set('selectedSemesterId', (string) $semester->id)
-            ->set('selectedRegistrationId', (string) $registration->id)
             ->set('startsAt', now()->toDateString())
             ->set('endsAt', now()->addMonths(6)->toDateString())
-            ->call('createAssignment')
-            ->assertHasErrors(['selectedTeacherProfileId']);
+            ->call('createBulkAssignments')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify');
 
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'created_by' => $teacherUser->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $selfServiceRombel->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+        ]);
         $this->assertDatabaseMissing('teacher_subject_assignments', [
             'tenant_id' => $tenantId,
-            'teacher_profile_id' => $inactiveTeacherProfile->id,
+            'teacher_profile_id' => '00000000-0000-4000-8000-000000000099',
             'subject_id' => $subject->id,
-            'rombel_id' => $rombel->id,
+            'rombel_id' => $selfServiceRombel->id,
         ]);
     }
 }

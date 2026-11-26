@@ -587,6 +587,23 @@ class QuestionBank extends Component
                 $this->selectedMaterialTopicId ?: null
             );
 
+            // An imported DOCX draft may have been saved before its curriculum
+            // mapping was complete. Once the strict mapping service succeeds in
+            // this editor, clear the pending marker on the current version.
+            $versionMetadata = $version->metadata ?? [];
+            if (($versionMetadata['import_source'] ?? null) === 'DOCX'
+                || isset($versionMetadata['curriculum_mapping'])) {
+                $versionMetadata['curriculum_mapping'] = [
+                    'status' => 'MAPPED',
+                    'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
+                    'requested_cp_ids' => array_values($this->selectedCpIds),
+                    'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
+                    'message' => null,
+                ];
+                $version->metadata = $versionMetadata;
+                $version->save();
+            }
+
             // Never write answer keys or full question content to the audit trail.
             $question->refresh();
             $version->refresh();
@@ -715,56 +732,76 @@ class QuestionBank extends Component
                 ->where('question_version_id', $version->id)
                 ->get();
 
-            $assignmentIds = $cpMappings->pluck('teacher_subject_assignment_id')->unique()->values();
-            $outcomeAssignmentIds = $outcomeMappings->pluck('teacher_subject_assignment_id')->unique()->values();
-            abort_unless($assignmentIds->isNotEmpty(), 409, 'Versi soal belum dipetakan ke CP resmi dan penugasan Guru.');
-            abort_unless($assignmentIds->sort()->values()->all() === $outcomeAssignmentIds->sort()->values()->all(), 409, 'Pemetaan CP dan TP/ATP harus konsisten untuk setiap penugasan.');
-            foreach ($cpMappings as $cpMapping) {
-                $cp = $cpMapping->learningOutcome;
-                abort_unless($cp && $cp->is_official && !$cp->is_editable
-                    && $cp->source
-                    && $cp->source->verification_status === 'ARTIFACT_CHECKSUM_VERIFIED'
-                    && $cp->source->checksum_sha256
-                    && $cp->source_checksum
-                    && hash_equals((string) $cp->source->checksum_sha256, (string) $cp->source_checksum),
-                    409,
-                    'CP resmi pada pemetaan soal tidak lagi memenuhi verifikasi sumber/checksum.');
-            }
-            foreach ($outcomeMappings as $outcomeMapping) {
-                abort_unless($outcomeMapping->learningOutcome
-                    && $outcomeMapping->learningOutcome->status === 'PUBLISHED'
-                    && $outcomeMapping->learningOutcome->is_current,
-                    409,
-                    'TP/ATP pada pemetaan soal harus tetap berstatus PUBLISHED dan versi terkini.');
-            }
-            $profile = app(TeacherPortalAccess::class)->profile(auth()->user());
+            $hasAnyCurriculumMapping = $cpMappings->isNotEmpty()
+                || $outcomeMappings->isNotEmpty()
+                || $structureMappings->isNotEmpty();
 
-            foreach ($assignmentIds as $assignmentId) {
-                $assignment = TeacherSubjectAssignment::query()
-                    ->where('tenant_id', auth()->user()->tenant_id)
-                    ->where('teacher_profile_id', $profile->id)
-                    ->whereKey($assignmentId)
-                    ->where('status', 'ACTIVE')
-                    ->whereDate('starts_at', '<=', now()->toDateString())
-                    ->whereDate('ends_at', '>=', now()->toDateString())
-                    ->first();
-                abort_unless($assignment, 403, 'Pemetaan versi soal memuat penugasan yang tidak lagi menjadi kewenangan Guru ini.');
+            // General-purpose questions may be published without curriculum mapping.
+            // If any mapping is supplied, the complete official CP/TP/ATP/framework
+            // contract remains mandatory and is validated exactly as before.
+            if ($hasAnyCurriculumMapping) {
+                $assignmentIds = $cpMappings->pluck('teacher_subject_assignment_id')->unique()->values();
+                $outcomeAssignmentIds = $outcomeMappings->pluck('teacher_subject_assignment_id')->unique()->values();
+                abort_unless($assignmentIds->isNotEmpty(), 409, 'Pemetaan kurikulum parsial tidak valid: CP resmi dan penugasan Guru wajib lengkap.');
+                abort_unless($assignmentIds->sort()->values()->all() === $outcomeAssignmentIds->sort()->values()->all(), 409, 'Pemetaan CP dan TP/ATP harus konsisten untuk setiap penugasan.');
+                foreach ($cpMappings as $cpMapping) {
+                    $cp = $cpMapping->learningOutcome;
+                    abort_unless($cp && $cp->is_official && !$cp->is_editable
+                        && $cp->source
+                        && $cp->source->verification_status === 'ARTIFACT_CHECKSUM_VERIFIED'
+                        && $cp->source->checksum_sha256
+                        && $cp->source_checksum
+                        && hash_equals((string) $cp->source->checksum_sha256, (string) $cp->source_checksum),
+                        409,
+                        'CP resmi pada pemetaan soal tidak lagi memenuhi verifikasi sumber/checksum.');
+                }
+                foreach ($outcomeMappings as $outcomeMapping) {
+                    abort_unless($outcomeMapping->learningOutcome
+                        && $outcomeMapping->learningOutcome->status === 'PUBLISHED'
+                        && $outcomeMapping->learningOutcome->is_current,
+                        409,
+                        'TP/ATP pada pemetaan soal harus tetap berstatus PUBLISHED dan versi terkini.');
+                }
+                $profile = app(TeacherPortalAccess::class)->profile(auth()->user());
 
-                abort_unless(
-                    $outcomeMappings->where('teacher_subject_assignment_id', $assignmentId)->isNotEmpty(),
-                    409,
-                    'Setiap penugasan soal wajib memiliki pemetaan TP/ATP terpublikasi.'
-                );
+                foreach ($assignmentIds as $assignmentId) {
+                    $assignment = TeacherSubjectAssignment::query()
+                        ->where('tenant_id', auth()->user()->tenant_id)
+                        ->where('teacher_profile_id', $profile->id)
+                        ->whereKey($assignmentId)
+                        ->where('status', 'ACTIVE')
+                        ->whereDate('starts_at', '<=', now()->toDateString())
+                        ->whereDate('ends_at', '>=', now()->toDateString())
+                        ->first();
+                    abort_unless($assignment, 403, 'Pemetaan versi soal memuat penugasan yang tidak lagi menjadi kewenangan Guru ini.');
 
-                $roles = $structureMappings
-                    ->where('teacher_subject_assignment_id', $assignmentId)
-                    ->pluck('mapping_role')
-                    ->unique()
-                    ->all();
-                foreach (['PANCA_CINTA', 'PM_PRINCIPLE', 'DIMENSI_PROFIL_LULUSAN'] as $requiredRole) {
-                    abort_unless(in_array($requiredRole, $roles, true), 409, 'Pemetaan Panca Cinta, Pembelajaran Mendalam, dan dimensi profil lulusan wajib lengkap sebelum publikasi soal.');
+                    abort_unless(
+                        $outcomeMappings->where('teacher_subject_assignment_id', $assignmentId)->isNotEmpty(),
+                        409,
+                        'Setiap penugasan soal wajib memiliki pemetaan TP/ATP terpublikasi.'
+                    );
+
+                    $roles = $structureMappings
+                        ->where('teacher_subject_assignment_id', $assignmentId)
+                        ->pluck('mapping_role')
+                        ->unique()
+                        ->all();
+                    foreach (['PANCA_CINTA', 'PM_PRINCIPLE', 'DIMENSI_PROFIL_LULUSAN'] as $requiredRole) {
+                        abort_unless(in_array($requiredRole, $roles, true), 409, 'Pemetaan Panca Cinta, Pembelajaran Mendalam, dan dimensi profil lulusan wajib lengkap sebelum publikasi soal.');
+                    }
                 }
             }
+
+            $versionMetadata = $version->metadata ?? [];
+            $mappingMetadata = $versionMetadata['curriculum_mapping'] ?? [];
+            $versionMetadata['curriculum_mapping'] = array_merge(
+                is_array($mappingMetadata) ? $mappingMetadata : [],
+                [
+                    'status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
+                    'resolved_at' => now()->toISOString(),
+                ]
+            );
+            $version->update(['metadata' => $versionMetadata]);
 
             $oldValues = [
                 'question_status' => $lockedQuestion->status,
@@ -783,6 +820,7 @@ class QuestionBank extends Component
                     'question_status' => 'PUBLISHED',
                     'version_status' => 'PUBLISHED',
                     'question_version_id' => $version->id,
+                    'curriculum_mapping_status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
                 ]
             );
         });

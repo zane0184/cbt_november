@@ -27,14 +27,13 @@ class TenantBrandingAssetsManagement extends Component
     {
         $this->authorizeBrandingManagement();
         $this->validate([
-            'appLogoUpload' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048', 'dimensions:min_width=64,min_height=64,max_width=2000,max_height=2000'],
-            'documentLogoUpload' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048', 'dimensions:min_width=64,min_height=64,max_width=2000,max_height=2000'],
-            'faviconUpload' => ['nullable', 'image', 'mimes:png,webp', 'max:512', 'dimensions:ratio=1,min_width=32,min_height=32,max_width=256,max_height=256'],
+            'appLogoUpload' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'documentLogoUpload' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp', 'max:2048'],
+            'faviconUpload' => ['nullable', 'image', 'mimes:png,webp', 'max:512'],
         ], [
             'appLogoUpload.max' => 'Logo aplikasi maksimal 2 MB.',
             'documentLogoUpload.max' => 'Logo dokumen maksimal 2 MB.',
             'faviconUpload.max' => 'Favicon maksimal 512 KB.',
-            'faviconUpload.dimensions' => 'Favicon harus persegi, berukuran 32–256 piksel.',
         ]);
 
         $tenantId = (string) auth()->user()->tenant_id;

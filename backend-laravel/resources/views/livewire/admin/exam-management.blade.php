@@ -70,7 +70,7 @@
                             <div><span class="font-bold text-navy-900">Jumlah Soal Snapshot:</span> <strong class="text-emerald-700">{{ $exam->snapshots->count() }} Soal</strong></div>
                             <div><span class="font-bold text-navy-900">Peserta Ditugaskan:</span> <strong class="text-indigo-700">{{ $exam->participants->count() }} Siswa</strong></div>
                         @endif
-                        <div><span class="font-bold text-navy-900">Mulai:</span> {{ $exam->start_at ? $exam->start_at->format('d M H:i') : '-' }}</div>
+                        <div><span class="font-bold text-navy-900">Mulai:</span> {{ $exam->start_at ? $exam->start_at->format('d M Y, H:i') : '-' }}</div>
                         <div><span class="font-bold text-navy-900">Selesai:</span> {{ $exam->end_at ? $exam->end_at->format('d M H:i') : '-' }}</div>
                     </div>
 
@@ -208,6 +208,9 @@
                         </div>
                         @error('selectedQuestionVersionIds') <span class="text-red-600 text-xs font-bold block">{{ $message }}</span> @enderror
 
+                        <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">
+                            Ujian umum dapat menggunakan soal terbit tanpa pemetaan CP/TP/ATP. Jika asesmen ini tidak memiliki pemetaan kurikulum, pilih soal yang juga belum dipetakan. Soal yang sudah dipetakan hanya dapat dipakai bersama asesmen dengan pemetaan resmi yang cocok.
+                        </p>
                         <div class="max-h-48 overflow-y-auto space-y-2 pr-1">
                             @forelse($availableQuestions as $q)
                                 @if($q->currentVersion)
@@ -249,13 +252,15 @@
 
                     <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Waktu Mulai</label>
-                            <input wire:model="startAt" type="datetime-local" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tanggal &amp; Waktu Mulai (Jam:Menit)</label>
+                            <input wire:model="startAt" type="datetime-local" step="60" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <p class="text-[11px] text-textSecondary mt-1">Atur tanggal, jam, dan menit mulai ujian.</p>
                             @error('startAt') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Waktu Selesai</label>
-                            <input wire:model="endAt" type="datetime-local" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tanggal &amp; Waktu Selesai (Jam:Menit)</label>
+                            <input wire:model="endAt" type="datetime-local" step="60" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <p class="text-[11px] text-textSecondary mt-1">Atur tanggal, jam, dan menit berakhirnya ujian.</p>
                             @error('endAt') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                         </div>
                     </div>

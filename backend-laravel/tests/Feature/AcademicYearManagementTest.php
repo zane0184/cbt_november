@@ -8,6 +8,7 @@ use App\Models\AcademicYear;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Rombel;
+use App\Models\Subject;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\AcademicYearManagementService;
@@ -188,6 +189,42 @@ class AcademicYearManagementTest extends TestCase
             'status' => 'ACTIVE',
         ]);
     }
+
+
+    public function test_admin_can_edit_tenant_defined_mulok_subject(): void
+    {
+        $subject = Subject::create([
+            'tenant_id' => $this->tenant->id,
+            'code' => 'MULOK_LAMA',
+            'name' => 'Muatan Lokal Lama',
+            'short_name' => 'Mulok Lama',
+            'subject_category' => 'MULOK',
+            'status' => 'ACTIVE',
+        ]);
+
+        Livewire::test(AcademicManagement::class)
+            ->call('setTab', 'subject')
+            ->call('openEditSubjectModal', $subject->id)
+            ->set('subjectCode', 'MULOK_BARU')
+            ->set('subjectName', 'Muatan Lokal Baru')
+            ->set('subjectShortName', 'Mulok Baru')
+            ->call('updateSubject')
+            ->assertHasNoErrors()
+            ->assertSee('Muatan Lokal Baru');
+
+        $this->assertDatabaseHas('subjects', [
+            'id' => $subject->id,
+            'tenant_id' => $this->tenant->id,
+            'code' => 'MULOK_BARU',
+            'name' => 'Muatan Lokal Baru',
+            'subject_category' => 'MULOK',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'tenant_id' => $this->tenant->id,
+            'action' => 'SUBJECT_UPDATED',
+        ]);
+    }
+
 
     public function test_non_admin_cannot_manage_academic_periods(): void
     {

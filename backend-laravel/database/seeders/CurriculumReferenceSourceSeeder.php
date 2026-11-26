@@ -100,15 +100,31 @@ class CurriculumReferenceSourceSeeder extends Seeder
                     'document_number' => 'Keputusan Kepala BKPDM 020 Tahun 2026',
                     'title' => 'Perubahan atas Keputusan Kepala BSKAP 046/H/KR/2025 tentang Capaian Pembelajaran',
                     'document_version' => '2026-06-23',
-                    'published_at' => null,
+                    'published_at' => '2026-06-11',
+                    'effective_from' => '2026-06-11',
+                    'source_uri' => 'https://cdn.schoolpro.id/documents/1782087907907-48baee9c9a6c43c280955078b534442c.pdf',
+                    'verification_status' => 'PENDING',
+                    'metadata' => [
+                        'source_kind' => 'unverified_decision_pdf_copy',
+                        'verified_scope' => [],
+                        'artifact_checksum_verified' => false,
+                        'notes' => 'Salinan PDF keputusan dapat dibaca, tetapi host bukan domain resmi penerbit dan byte asli/tanda tangan digital belum diverifikasi. Siaran pers resmi Kemendikdasmen mengonfirmasi keputusan dan ruang lingkup perubahan, bukan menggantikan artefak keputusan. Jangan aktifkan CP atau checksum sampai artefak resmi terverifikasi.',
+                    ],
+                ],
+                [
+                    'issuer' => 'Badan Kebijakan Pendidikan Dasar dan Menengah, Kemendikdasmen',
+                    'document_number' => 'Siaran Pers 520/sipers/A6/VI/2026',
+                    'title' => 'Capaian Pembelajaran Baru Telah Terbit, yang Berubah Hanya Mata Pelajaran Agama dan Budi Pekerti',
+                    'document_version' => '2026-06-23',
+                    'published_at' => '2026-06-23',
                     'effective_from' => null,
                     'source_uri' => 'https://www.kemendikdasmen.go.id/siaran-pers/15636-capaian-pembelajaran-baru-telah-terbit-yang-berubah-hanya-mata-pelajaran-agama-dan-budi-pekerti',
                     'verification_status' => 'METADATA_VERIFIED',
                     'metadata' => [
                         'source_kind' => 'official_press_release',
-                        'verified_scope' => ['religion_and_character_education_cp_only'],
+                        'verified_scope' => ['bkpdm_020_publication_notice', 'religion_and_character_education_cp_only'],
                         'artifact_checksum_verified' => false,
-                        'notes' => 'Siaran pers resmi 23 Juni 2026 menyatakan perubahan hanya untuk Pendidikan Agama dan Budi Pekerti; CP mapel lain tetap mengacu pada 046/H/KR/2025. Dokumen keputusan asli perlu diarsipkan untuk checksum.',
+                        'notes' => 'Siaran pers resmi nomor 520/sipers/A6/VI/2026 tanggal 23 Juni 2026. Sumber ini hanya membuktikan pemberitahuan penerbitan dan ruang lingkup perubahan; bukan artefak CP keputusan 020/2026 dan tidak dapat dipakai sebagai checksum CP.',
                     ],
                 ],
                 [
@@ -116,15 +132,15 @@ class CurriculumReferenceSourceSeeder extends Seeder
                     'document_number' => 'Kepdirjen Pendis 9941 Tahun 2025',
                     'title' => 'Capaian Pembelajaran Pendidikan Agama Islam dan Bahasa Arab Kurikulum Merdeka pada Madrasah',
                     'document_version' => '2025',
-                    'published_at' => null,
-                    'effective_from' => null,
-                    'source_uri' => 'https://batam.kemenag.go.id/main/perkuat-mutu-pembelajaran-pengawas-madrasah-hadiri-perdana-mgmp-pai-dan-bahasa-arab-mts-kota-batam',
+                    'published_at' => '2025-11-28',
+                    'effective_from' => '2025-11-28',
+                    'source_uri' => 'https://min2sbb.sch.id/wp-content/uploads/2025/12/SK-Dirjen-Pendis-9941-2025-CP-PAI-dan-Bahasa-Arab.pdf',
                     'verification_status' => 'PENDING',
                     'metadata' => [
-                        'source_kind' => 'official_kemenag_notice',
+                        'source_kind' => 'unverified_kemenag_decision_pdf_copy',
                         'verified_scope' => [],
                         'artifact_checksum_verified' => false,
-                        'notes' => 'Nomor keputusan disebut oleh laman resmi Kemenag; artefak keputusan dan lampiran CP MI harus diperoleh dan diverifikasi sebelum konten CP PAI/Bahasa Arab diimpor.',
+                        'notes' => 'Salinan PDF keputusan dan lampiran PAI/Bahasa Arab madrasah dapat dibaca pada situs madrasah pihak ketiga. Dokumen mengidentifikasi Kepdirjen Pendis 9941 Tahun 2025 tanggal 28 November 2025, tetapi byte asli, tanda tangan elektronik/QR, dan checksum independen belum diverifikasi. Tetap PENDING; jangan aktifkan CP atau mengklaim artefak resmi terverifikasi.',
                     ],
                 ],
                 [
@@ -145,21 +161,50 @@ class CurriculumReferenceSourceSeeder extends Seeder
             ];
 
             foreach ($sources as $source) {
+                $identity = [
+                    'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+                    'issuer' => $source['issuer'],
+                    'document_number' => $source['document_number'],
+                    'document_version' => $source['document_version'],
+                ];
+
+                $existing = CurriculumReferenceSource::query()->where($identity)->first();
+                $artifactAlreadyVerified = $existing
+                    && $existing->verification_status === 'ARTIFACT_CHECKSUM_VERIFIED'
+                    && is_string($existing->checksum_sha256)
+                    && preg_match('/\\A[a-f0-9]{64}\\z/i', $existing->checksum_sha256) === 1;
+
+                $metadata = array_replace_recursive(
+                    $existing?->metadata ?? [],
+                    $source['metadata']
+                );
+
+                // Empty scope is an intentional reset, not "leave the old scope".
+                // array_replace_recursive([], ...) does not clear prior numeric entries.
+                if (array_key_exists('verified_scope', $source['metadata'])) {
+                    $metadata['verified_scope'] = array_values($source['metadata']['verified_scope']);
+                }
+
+                if ($artifactAlreadyVerified) {
+                    $metadata['artifact_checksum_verified'] = true;
+                    $metadata['checksum_sha256'] = $existing->checksum_sha256;
+                    $metadata['archive_path'] = $existing->archive_path;
+                }
+
                 CurriculumReferenceSource::query()->updateOrCreate(
-                    [
-                        'tenant_id' => Tenant::SYSTEM_TENANT_ID,
-                        'issuer' => $source['issuer'],
-                        'document_number' => $source['document_number'],
-                        'document_version' => $source['document_version'],
-                    ],
+                    $identity,
                     [
                         'title' => $source['title'],
                         'published_at' => $source['published_at'],
                         'effective_from' => $source['effective_from'],
                         'source_uri' => $source['source_uri'],
-                        'verification_status' => $source['verification_status'],
-                        'verified_at' => $source['verification_status'] === 'PENDING' ? null : now(),
-                        'metadata' => $source['metadata'],
+                        'verification_status' => $artifactAlreadyVerified
+                            ? 'ARTIFACT_CHECKSUM_VERIFIED'
+                            : $source['verification_status'],
+                        'verified_at' => $artifactAlreadyVerified
+                            ? $existing->verified_at
+                            : ($source['verification_status'] === 'PENDING' ? null : now()),
+                        'metadata' => $metadata,
                     ]
                 );
             }

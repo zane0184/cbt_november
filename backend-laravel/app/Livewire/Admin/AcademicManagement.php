@@ -8,6 +8,7 @@ use App\Models\Rombel;
 use App\Models\Subject;
 use App\Models\Semester;
 use App\Services\AcademicYearManagementService;
+use App\Services\AuditService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -37,6 +38,7 @@ class AcademicManagement extends Component
     public $subjectName = '';
     public $subjectShortName = '';
     public $subjectCategory = 'WAJIB';
+    public ?string $editingSubjectId = null;
 
     // Create academic year modal state
     public string $academicYearName = '';
@@ -125,7 +127,7 @@ class AcademicManagement extends Component
     public function openCreateSubjectModal()
     {
         $this->authorizeAcademicManagement();
-        $this->reset(['subjectCode', 'subjectName', 'subjectShortName', 'subjectCategory']);
+        $this->reset(['subjectCode', 'subjectName', 'subjectShortName', 'subjectCategory', 'editingSubjectId']);
         $this->resetValidation();
         $this->showCreateSubjectModal = true;
     }
@@ -142,16 +144,83 @@ class AcademicManagement extends Component
             'subjectCategory' => ['required', Rule::in(['WAJIB', 'MULOK'])],
         ]);
 
-        Subject::create([
-            'code' => strtoupper($this->subjectCode),
-            'name' => $this->subjectName,
-            'short_name' => $this->subjectShortName ?: $this->subjectName,
-            'subject_category' => $this->subjectCategory,
-            'status' => 'ACTIVE',
+        DB::transaction(function (): void {
+            $subject = Subject::create([
+                'code' => strtoupper($this->subjectCode),
+                'name' => $this->subjectName,
+                'short_name' => $this->subjectShortName ?: $this->subjectName,
+                'subject_category' => $this->subjectCategory,
+                'status' => 'ACTIVE',
+            ]);
+
+            app(AuditService::class)->log('SUBJECT_CREATED', 'Subject', $subject->id, null, [
+                'code' => $subject->code,
+                'name' => $subject->name,
+                'subject_category' => $subject->subject_category,
+            ]);
+        });
+
+        $createdName = $this->subjectName;
+        $this->showCreateSubjectModal = false;
+        session()->flash('message', "Mata Pelajaran {$createdName} berhasil ditambahkan.");
+    }
+
+
+    public function openEditSubjectModal(string $subjectId): void
+    {
+        $this->authorizeAcademicManagement();
+        $subject = Subject::query()
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->whereKey($subjectId)
+            ->firstOrFail();
+
+        abort_unless($subject->subject_category === 'MULOK', 403, 'Hanya mata pelajaran Mulok milik madrasah yang dapat diubah.');
+
+        $this->editingSubjectId = $subject->id;
+        $this->subjectCode = $subject->code;
+        $this->subjectName = $subject->name;
+        $this->subjectShortName = $subject->short_name ?? '';
+        $this->subjectCategory = 'MULOK';
+        $this->resetValidation();
+        $this->showCreateSubjectModal = true;
+    }
+
+    public function updateSubject(): void
+    {
+        $this->authorizeAcademicManagement();
+        $tenantId = (string) auth()->user()->tenant_id;
+        $subjectId = $this->editingSubjectId;
+        abort_unless($subjectId, 404);
+
+        $subject = Subject::query()->where('tenant_id', $tenantId)->whereKey($subjectId)->firstOrFail();
+        abort_unless($subject->subject_category === 'MULOK', 403, 'Mata pelajaran wajib/registry tidak dapat diubah.');
+
+        $this->subjectCode = strtoupper(trim($this->subjectCode));
+        $this->subjectName = trim($this->subjectName);
+        $this->validate([
+            'subjectCode' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9_-]+$/',
+                Rule::unique('subjects', 'code')->where('tenant_id', $tenantId)->ignore($subjectId)],
+            'subjectName' => 'required|string|max:100',
+            'subjectShortName' => 'nullable|string|max:30',
         ]);
 
+        DB::transaction(function () use ($tenantId, $subjectId): void {
+            $locked = Subject::query()->where('tenant_id', $tenantId)->whereKey($subjectId)->lockForUpdate()->firstOrFail();
+            abort_unless($locked->subject_category === 'MULOK', 403, 'Hanya Mulok yang dapat diubah.');
+            $before = $locked->only(['code', 'name', 'short_name', 'subject_category', 'status']);
+            $locked->fill([
+                'code' => $this->subjectCode,
+                'name' => $this->subjectName,
+                'short_name' => $this->subjectShortName ?: $this->subjectName,
+            ]);
+            $locked->save();
+            app(AuditService::class)->log('SUBJECT_UPDATED', 'Subject', $locked->id, $before, $locked->only(['code', 'name', 'short_name', 'subject_category', 'status']));
+        });
+
+        $updatedName = $this->subjectName;
         $this->showCreateSubjectModal = false;
-        session()->flash('message', "Mata Pelajaran {$this->subjectName} berhasil ditambahkan.");
+        $this->reset(['subjectCode', 'subjectName', 'subjectShortName', 'subjectCategory', 'editingSubjectId']);
+        session()->flash('message', "Mata pelajaran Mulok {$updatedName} berhasil diperbarui.");
     }
 
     public function updatingSearch()

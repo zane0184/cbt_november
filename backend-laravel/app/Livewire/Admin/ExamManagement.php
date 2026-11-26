@@ -229,9 +229,9 @@ class ExamManagement extends Component
             'selectedAssessmentScopeOptionId' => ['required', 'uuid'],
             'selectedInstrumentTypeOptionId' => ['required', 'uuid'],
             'selectedDeliveryModeOptionId' => ['required', 'uuid'],
-            'selectedCpIds' => ['required', 'array', 'min:1'],
+            'selectedCpIds' => ['nullable', 'array'],
             'selectedCpIds.*' => ['required', 'uuid', 'distinct'],
-            'selectedOutcomeIds' => ['required', 'array', 'min:1'],
+            'selectedOutcomeIds' => ['nullable', 'array'],
             'selectedOutcomeIds.*' => ['required', 'uuid', 'distinct'],
             'selectedMaterialId' => ['nullable', 'uuid'],
             'selectedMaterialTopicId' => ['nullable', 'uuid'],
@@ -300,25 +300,45 @@ class ExamManagement extends Component
         }
 
         $selectedVersionIds = array_values(array_unique($this->selectedQuestionVersionIds));
-        $validQuestionCount = QuestionVersion::query()
+        $selectedCpIds = array_values(array_unique($this->selectedCpIds));
+        $selectedOutcomeIds = array_values(array_unique($this->selectedOutcomeIds));
+        $hasCurriculumMapping = $selectedCpIds !== [] || $selectedOutcomeIds !== [];
+
+        if (($selectedCpIds === []) !== ($selectedOutcomeIds === [])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'selectedCpIds' => 'Untuk memakai pemetaan kurikulum, pilih CP dan TP/ATP sekaligus. Jika tidak, kosongkan keduanya.',
+            ]);
+        }
+
+        $validQuestionsQuery = QuestionVersion::query()
             ->where('tenant_id', $tenantId)
             ->whereIn('id', $selectedVersionIds)
             ->where('status', 'PUBLISHED')
             ->whereHas('question', fn ($query) => $query
                 ->where('tenant_id', $tenantId)
                 ->where('subject_id', $assignment->subject_id)
-                ->where('status', 'PUBLISHED'))
-            ->whereHas('curriculumMappings', fn ($query) => $query
-                ->where('teacher_subject_assignment_id', $assignment->id)
-                ->whereIn('multi_learning_outcome_id', $this->selectedCpIds))
-            ->whereHas('tenantOutcomeMappings', fn ($query) => $query
-                ->where('teacher_subject_assignment_id', $assignment->id)
-                ->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds))
-            ->count();
+                ->where('status', 'PUBLISHED'));
+
+        if ($hasCurriculumMapping) {
+            $validQuestionsQuery
+                ->whereHas('curriculumMappings', fn ($query) => $query
+                    ->where('teacher_subject_assignment_id', $assignment->id)
+                    ->whereIn('multi_learning_outcome_id', $selectedCpIds))
+                ->whereHas('tenantOutcomeMappings', fn ($query) => $query
+                    ->where('teacher_subject_assignment_id', $assignment->id)
+                    ->whereIn('tenant_learning_outcome_id', $selectedOutcomeIds));
+        } else {
+            $validQuestionsQuery
+                ->whereDoesntHave('curriculumMappings')
+                ->whereDoesntHave('tenantOutcomeMappings')
+                ->whereDoesntHave('structureMappings');
+        }
+
+        $validQuestionCount = $validQuestionsQuery->count();
 
         if ($validQuestionCount !== count($selectedVersionIds)) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'selectedQuestionVersionIds' => 'Semua soal harus sudah terbit dan memiliki pemetaan CP serta TP/ATP yang sesuai dengan asesmen dan penugasan ini.',
+                'selectedQuestionVersionIds' => 'Semua soal harus sudah terbit, berasal dari mapel dan tenant yang sesuai, serta konsisten dengan mode pemetaan kurikulum yang dipilih.',
             ]);
         }
 
@@ -675,26 +695,58 @@ class ExamManagement extends Component
         TeacherAccess::constrainExamQuery($query, $user);
         $exams = $query->paginate(10);
 
-        $availableQuestions = $selectedAssignment
+        $availableQuestionsQuery = $selectedAssignment
             ? Question::query()
                 ->where('tenant_id', $tenantId)
                 ->where('subject_id', $selectedAssignment->subject_id)
                 ->where('status', 'PUBLISHED')
-                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
-                    ->where('status', 'PUBLISHED')
-                    ->whereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery
-                        ->where('teacher_subject_assignment_id', $selectedAssignment->id)
-                        ->when($this->selectedCpIds !== [], fn ($q) => $q->whereIn('multi_learning_outcome_id', $this->selectedCpIds)))
-                    ->whereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery
-                        ->where('teacher_subject_assignment_id', $selectedAssignment->id)
-                        ->when($this->selectedOutcomeIds !== [], fn ($q) => $q->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds))))
+                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery->where('status', 'PUBLISHED'))
+            : null;
+
+        if ($availableQuestionsQuery && $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== []) {
+            $availableQuestionsQuery->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
+                ->whereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery
+                    ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                    ->whereIn('multi_learning_outcome_id', $this->selectedCpIds))
+                ->whereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery
+                    ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                    ->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds)));
+        } elseif ($availableQuestionsQuery) {
+            $availableQuestionsQuery->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
+                ->whereDoesntHave('curriculumMappings')
+                ->whereDoesntHave('tenantOutcomeMappings')
+                ->whereDoesntHave('structureMappings'));
+        }
+
+        $availableQuestions = $availableQuestionsQuery
+            ? $availableQuestionsQuery
                 ->with(['currentVersion.options', 'currentVersion.curriculumMappings.learningOutcome', 'currentVersion.tenantOutcomeMappings.learningOutcome'])
                 ->orderBy('question_code')
                 ->get()
             : collect();
 
+        // The Blade modal consumes these collections. Derive them only from
+        // the current Guru's active, tenant-scoped assignments returned above;
+        // never query school-wide subjects/rombels for this portal.
+        $subjects = collect($assignmentRows)
+            ->pluck('assignment.subject')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $activeSemester = $selectedAssignment?->semester;
+
+        $rombels = collect($assignmentRows)
+            ->pluck('assignment.rombel')
+            ->filter()
+            ->unique('id')
+            ->values();
+
         return view('livewire.admin.exam-management', [
             'exams' => $exams,
+            'subjects' => $subjects,
+            'activeSemester' => $activeSemester,
+            'rombels' => $rombels,
             'assignmentRows' => $assignmentRows,
             'selectedAssignment' => $selectedAssignment,
             'curriculumContext' => $curriculumContext,

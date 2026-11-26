@@ -8,6 +8,7 @@ use App\Services\Questions\DocxQuestionTemplate;
 use App\Services\TeacherPortal\TeacherPortalDataService;
 use App\Support\Security\TeacherPortalAccess;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -25,7 +26,10 @@ class QuestionDocxImport extends Component
     public array $sections = [];
     public bool $requiresSectionSplit = false;
     public ?string $selectedSection = null;
+    #[Locked]
     public ?string $previewHash = null;
+    #[Locked]
+    public ?string $previewAssignmentId = null;
     public bool $hasPreview = false;
 
     public function mount(): void
@@ -43,10 +47,9 @@ class QuestionDocxImport extends Component
             && $user->tenant_id
             && $user->hasExactRole('GURU')
             && $user->hasPermission('question.view')
-            && $user->hasPermission('question.manage')
-            && $user->hasPermission('curriculum.manage'),
+            && $user->hasPermission('question.manage'),
             403,
-            'Import soal DOCX memerlukan akun Guru, penugasan aktif, serta kewenangan Bank Soal dan Kurikulum.'
+            'Import soal DOCX memerlukan akun Guru, penugasan aktif, serta kewenangan melihat dan mengelola Bank Soal.'
         );
 
         app(TeacherPortalAccess::class)->profile($user);
@@ -68,6 +71,18 @@ class QuestionDocxImport extends Component
     {
         $this->selectedCpIds = [];
         $this->selectedOutcomeIds = [];
+
+        // Multi-section DOCX is previewed before its assignment is chosen.
+        if ($this->hasPreview && $this->previewHash && $this->requiresSectionSplit
+            && $this->previewAssignmentId === null && $this->selectedAssignmentId !== '') {
+            $this->previewAssignmentId = $this->selectedAssignmentId;
+            return;
+        }
+
+        if ($this->previewAssignmentId !== null
+            && !hash_equals($this->previewAssignmentId, $this->selectedAssignmentId)) {
+            $this->invalidatePreview();
+        }
     }
 
     public function updatedSelectedSection(): void
@@ -75,11 +90,24 @@ class QuestionDocxImport extends Component
         $this->selectedAssignmentId = '';
         $this->selectedCpIds = [];
         $this->selectedOutcomeIds = [];
+        $this->previewAssignmentId = null;
+    }
+
+    private function invalidatePreview(): void
+    {
+        $this->questions = [];
+        $this->excludedContent = [];
+        $this->summary = [];
+        $this->sections = [];
+        $this->requiresSectionSplit = false;
+        $this->previewHash = null;
+        $this->previewAssignmentId = null;
+        $this->hasPreview = false;
     }
 
     public function updated(string $propertyName, mixed $value): void
     {
-        if (!preg_match('/^questions\\.(\\d+)\\.question_type$/', $propertyName, $match)) {
+        if (!preg_match('/^questions\.(\d+)\.question_type$/', $propertyName, $match)) {
             return;
         }
 
@@ -148,6 +176,9 @@ class QuestionDocxImport extends Component
             'selectedAssignmentId' => ['nullable', 'uuid'],
         ]);
 
+        // Clear old preview before parsing a replacement upload.
+        $this->invalidatePreview();
+
         $result = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
         $this->questions = array_map(function (array $question): array {
             $question['included'] = true;
@@ -180,6 +211,10 @@ class QuestionDocxImport extends Component
             $this->selectedAssignmentId = '';
             $this->selectedCpIds = [];
             $this->selectedOutcomeIds = [];
+            $this->previewAssignmentId = null;
+        } else {
+            abort_unless($this->selectedAssignmentRow(), 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
+            $this->previewAssignmentId = $this->selectedAssignmentId;
         }
         $this->summary = [
             'total' => $result['total'],
@@ -205,8 +240,12 @@ class QuestionDocxImport extends Component
             'questions.*.included' => ['sometimes', 'boolean'],
         ]);
 
-        if (!$this->hasPreview || !$this->previewHash) {
-            throw ValidationException::withMessages(['docx' => 'Buat preview dokumen terlebih dahulu.']);
+        if (!$this->hasPreview || !$this->previewHash || !$this->previewAssignmentId) {
+            throw ValidationException::withMessages(['docx' => 'Pilih penugasan yang sesuai dan buat preview dokumen terlebih dahulu.']);
+        }
+
+        if (!hash_equals($this->previewAssignmentId, $this->selectedAssignmentId)) {
+            throw ValidationException::withMessages(['docx' => 'Penugasan berubah setelah preview. Buat preview ulang sebelum menyimpan.']);
         }
 
         $freshHash = hash_file('sha256', $this->file->getRealPath());
@@ -227,35 +266,68 @@ class QuestionDocxImport extends Component
             ]);
         }
 
-        $allowedSequences = collect($freshParse['questions'] ?? [])
-            ->filter(fn (array $question): bool => !$requiresSectionSelection
-                || ($question['source_section'] ?? null) === $this->selectedSection)
-            ->map(fn (array $question): ?int => isset($question['source_locator']['sequence'])
-                ? (int) $question['source_locator']['sequence']
-                : null)
-            ->filter(fn (?int $sequence): bool => $sequence !== null)
-            ->values()
-            ->all();
+        // The parser output is the authority for source identity and unsupported
+        // features. Livewire state is used only for explicit teacher edits and
+        // include/exclude choices; its READY/NEEDS_REVIEW status is never trusted.
+        $freshQuestions = collect($freshParse['questions'] ?? []);
+        $previewBySequence = collect($this->questions)->keyBy(
+            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0)
+        );
 
-        $questionsForImport = array_values(array_filter(
-            $this->questions,
-            fn (array $question): bool => in_array(
-                (int) ($question['source_locator']['sequence'] ?? 0),
-                $allowedSequences,
-                true
-            ) && (bool) ($question['included'] ?? true)
-        ));
+        $questionsForImport = [];
+        $selectedSequences = [];
+        foreach ($freshQuestions as $sourceRow) {
+            if ($requiresSectionSelection
+                && ($sourceRow['source_section'] ?? null) !== $this->selectedSection) {
+                continue;
+            }
+
+            $sequence = (int) ($sourceRow['source_locator']['sequence'] ?? 0);
+            $previewRow = $previewBySequence->get($sequence);
+            if (!$previewRow
+                || (int) ($previewRow['source_number'] ?? 0) !== (int) ($sourceRow['source_number'] ?? 0)) {
+                throw ValidationException::withMessages([
+                    'docx' => 'Identitas soal pada preview tidak cocok dengan hasil pembacaan ulang dokumen. Buat preview baru.',
+                ]);
+            }
+
+            if (!(bool) ($previewRow['included'] ?? true)) {
+                continue;
+            }
+
+            // Only teacher-editable fields are accepted from the browser. Source
+            // locators, media references, OOXML fragments, blocked features and
+            // parser review reasons always come from the fresh server parse.
+            $questionRow = $sourceRow;
+            foreach (['question_type', 'stem', 'difficulty', 'options', 'statements', 'table_rows', 'mapping_cp_ids', 'mapping_outcome_ids'] as $editableField) {
+                if (array_key_exists($editableField, $previewRow)) {
+                    $questionRow[$editableField] = $previewRow[$editableField];
+                }
+            }
+            if (isset($sourceRow['stimulus']) && is_array($sourceRow['stimulus'])) {
+                $questionRow['stimulus'] = $sourceRow['stimulus'];
+                if (isset($previewRow['stimulus']['content'])) {
+                    $questionRow['stimulus']['content'] = $previewRow['stimulus']['content'];
+                }
+            }
+
+            $questionRow['included'] = true;
+            $questionRow['source_review_required'] = !empty($sourceRow['errors']);
+            $questionRow['source_review_reasons'] = array_values($sourceRow['errors'] ?? []);
+            $questionsForImport[] = $questionRow;
+            $selectedSequences[] = $sequence;
+        }
 
         if ($questionsForImport === []) {
             throw ValidationException::withMessages([
-                'docx' => 'Pilih minimal satu soal pada bagian dokumen yang dipilih.',
+                'docx' => 'Tidak ada soal yang dipilih untuk disimpan. Centang minimal satu kartu soal pada bagian dokumen yang dipilih.',
             ]);
         }
 
         validator(['questions' => $questionsForImport], [
             'questions' => ['required', 'array', 'min:1'],
             'questions.*.source_number' => ['required', 'integer', 'min:1'],
-            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
+            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY'],
             'questions.*.stem' => ['required', 'string', 'max:12000'],
             'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
             'questions.*.options' => ['sometimes', 'array', 'max:4'],
@@ -275,19 +347,7 @@ class QuestionDocxImport extends Component
             'questions.*.mapping_outcome_ids.*' => ['required', 'uuid', 'distinct'],
         ])->validate();
 
-        $selectedSequences = array_map(
-            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0),
-            $questionsForImport
-        );
-        if ($selectedSequences === []) {
-            throw ValidationException::withMessages([
-                'docx' => 'Pilih minimal satu soal pada bagian dokumen yang dipilih.',
-            ]);
-        }
-
-        $freshBySequence = collect($freshParse['questions'] ?? [])
-            ->keyBy(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0));
-        $blockedSequences = collect($freshParse['questions'] ?? [])
+        $blockedSequences = $freshQuestions
             ->filter(fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
             ->map(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0))
             ->all();
@@ -297,29 +357,7 @@ class QuestionDocxImport extends Component
             ]);
         }
 
-        foreach ($questionsForImport as &$questionRow) {
-            $sequence = (int) ($questionRow['source_locator']['sequence'] ?? 0);
-            $sourceRow = $freshBySequence->get($sequence);
-            if (!$sourceRow
-                || (int) ($sourceRow['source_number'] ?? 0) !== (int) ($questionRow['source_number'] ?? 0)) {
-                throw ValidationException::withMessages([
-                    'docx' => 'Identitas blok soal pada preview tidak cocok dengan hasil pembacaan ulang dokumen. Buat preview baru.',
-                ]);
-            }
-            $questionRow['source_number'] = (int) $sourceRow['source_number'];
-            $questionRow['source_section'] = $sourceRow['source_section'] ?? null;
-            $questionRow['source_locator'] = $sourceRow['source_locator'];
-            $questionRow['source_fragments'] = $sourceRow['source_fragments'] ?? [];
-            $questionRow['blocked_features'] = $sourceRow['blocked_features'] ?? [];
-            $questionRow['text_direction'] = $sourceRow['text_direction'] ?? 'auto';
-            $questionRow['media_count'] = $sourceRow['media_count'] ?? 0;
-            $questionRow['math_count'] = $sourceRow['math_count'] ?? 0;
-            $questionRow['nested_table_count'] = $sourceRow['nested_table_count'] ?? 0;
-            $questionRow['table_structure'] = $sourceRow['table_structure'] ?? [];
-            $questionRow['rich_paragraphs'] = $sourceRow['rich_paragraphs'] ?? [];
-            $questionRow['mathml_fragments'] = $sourceRow['mathml_fragments'] ?? [];
-        }
-        unset($questionRow);
+
 
         $assignmentRow = $this->selectedAssignmentRow();
         abort_unless($assignmentRow, 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
@@ -335,12 +373,15 @@ class QuestionDocxImport extends Component
             $this->file->getRealPath()
         );
 
-        session()->flash(
-            'message',
-            $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.'
-        );
+        $message = $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.';
+        $pendingMappingCount = (int) ($result['pending_mapping_count'] ?? 0);
+        if ($pendingMappingCount > 0) {
+            $message .= ' ' . $pendingMappingCount . ' soal masih menunggu pemetaan CP dan TP/ATP resmi; lengkapi pemetaannya melalui editor Bank Soal sebelum menerbitkan.';
+        }
 
-        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'selectedSection', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
+        session()->flash('message', $message);
+
+        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'selectedSection', 'previewHash', 'previewAssignmentId', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
     }
 
     public function downloadTemplate()

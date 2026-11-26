@@ -226,7 +226,7 @@ class TeacherImportService
                         ]);
                     }
 
-                    $temporaryPassword = Str::random(24);
+                    $temporaryPassword = Str::random(8);
                     $user = User::query()->create([
                         'name' => $data['name'],
                         'password' => Hash::make($temporaryPassword),

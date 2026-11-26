@@ -381,7 +381,7 @@ class InstallerService
             || ($requestedCode !== '' && ! preg_match('/^[A-Z0-9_-]{1,50}$/', $requestedCode))
             || ! preg_match('/^[a-z0-9._-]{3,80}$/', $adminUsername)
             || ($adminEmail !== '' && ! filter_var($adminEmail, FILTER_VALIDATE_EMAIL))
-            || strlen($adminPassword) < 14) {
+            || strlen($adminPassword) < 8) {
             return ['success' => false, 'message' => 'Format nama, username, email, atau panjang password tidak memenuhi ketentuan.'];
         }
 

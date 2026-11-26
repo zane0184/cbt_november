@@ -22,6 +22,8 @@ class TeacherSubjectAssignmentManagement extends Component
 {
     public string $selectedTeacherProfileId = '';
     public string $selectedSubjectId = '';
+    public array $selectedSubjectIds = [];
+    private bool $bulkCreating = false;
     public string $selectedRombelId = '';
     public string $selectedSemesterId = '';
     public string $selectedRegistrationId = '';
@@ -31,16 +33,44 @@ class TeacherSubjectAssignmentManagement extends Component
     private function authorizeAcademicManagement(): void
     {
         $user = auth()->user();
+        $roles = $user?->roles()->pluck('name')->all() ?? [];
+
+        abort_unless($user && $user->tenant_id && (bool) $user->is_active && count($roles) === 1, 403, 'Akses penugasan ditolak. Akun harus aktif dan memiliki tepat satu role portal.');
+
+        if ($roles[0] === 'GURU') {
+            app(\App\Support\Security\TeacherPortalAccess::class)->profile($user);
+            return;
+        }
 
         abort_unless(
-            $user
-            && $user->tenant_id
-            && $user->roles()->count() === 1
-            && $user->roles()->where('name', 'ADMIN_MADRASAH')->exists()
-            && $user->hasPermission('academic.manage'),
+            $roles[0] === 'ADMIN_MADRASAH' && $user->hasPermission('academic.manage'),
             403,
-            'Akses ditolak. Hanya Admin Madrasah berizin yang dapat mengatur penugasan mengajar.'
+            'Akses ditolak. Halaman ini hanya tersedia untuk Guru dan Admin Madrasah berizin.'
         );
+    }
+
+    private function isTeacherUser(): bool
+    {
+        $user = auth()->user();
+        return $user !== null && $user->roles()->count() === 1 && $user->roles()->where('name', 'GURU')->exists();
+    }
+
+    private function authenticatedTeacherProfile(): TeacherProfile
+    {
+        abort_unless($this->isTeacherUser(), 403, 'Aksi ini hanya tersedia untuk Guru.');
+        return app(\App\Support\Security\TeacherPortalAccess::class)->profile(auth()->user());
+    }
+
+    private function activeCurriculumRegistration(string $tenantId): ?TenantCurriculumRegistration
+    {
+        $registrations = TenantCurriculumRegistration::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'ACTIVE')
+            ->with('version.source')
+            ->orderByDesc('registered_at')
+            ->get();
+
+        return $registrations->count() === 1 ? $registrations->first() : null;
     }
 
     public function mount(): void
@@ -48,6 +78,13 @@ class TeacherSubjectAssignmentManagement extends Component
         $this->authorizeAcademicManagement();
         $this->startsAt = now()->toDateString();
         $this->endsAt = now()->addMonths(6)->toDateString();
+
+        if ($this->isTeacherUser()) {
+            $profile = $this->authenticatedTeacherProfile();
+            $this->selectedTeacherProfileId = (string) $profile->id;
+            $registration = $this->activeCurriculumRegistration((string) auth()->user()->tenant_id);
+            $this->selectedRegistrationId = (string) ($registration?->id ?? '');
+        }
     }
 
     public function updatedSelectedRombelId(): void
@@ -58,7 +95,16 @@ class TeacherSubjectAssignmentManagement extends Component
     public function createAssignment(): void
     {
         $this->authorizeAcademicManagement();
-        $tenantId = auth()->user()->tenant_id;
+        $tenantId = (string) auth()->user()->tenant_id;
+        $profile = $this->authenticatedTeacherProfile();
+        $this->selectedTeacherProfileId = (string) $profile->id;
+        $registration = $this->activeCurriculumRegistration($tenantId);
+        if (!$registration) {
+            throw ValidationException::withMessages([
+                'selectedRegistrationId' => 'Harus ada tepat satu versi kurikulum aktif yang terdaftar. Minta Admin memeriksa Registry Kurikulum.',
+            ]);
+        }
+        $this->selectedRegistrationId = (string) $registration->id;
 
         $this->validate([
             'selectedTeacherProfileId' => ['required', 'uuid', Rule::exists('teacher_profiles', 'id')->where('tenant_id', $tenantId)],
@@ -297,6 +343,7 @@ class TeacherSubjectAssignmentManagement extends Component
             $assignment = TeacherSubjectAssignment::query()->create([
                 'tenant_id' => $tenantId,
                 'teacher_profile_id' => $teacher->id,
+                'created_by' => auth()->id(),
                 'subject_id' => $subject->id,
                 'rombel_id' => $rombel->id,
                 'academic_year_id' => $rombel->academic_year_id,
@@ -327,24 +374,105 @@ class TeacherSubjectAssignmentManagement extends Component
         }, 3);
 
         $this->reset(['selectedTeacherProfileId', 'selectedSubjectId', 'selectedRombelId', 'selectedSemesterId']);
-        $this->dispatch('notify', ['type' => 'success', 'message' => 'Penugasan Guru berhasil disimpan dengan versi kurikulum yang dipatok.']);
+        if (!$this->bulkCreating) {
+            $this->dispatch('notify', ['type' => 'success', 'message' => 'Penugasan Guru berhasil disimpan dengan versi kurikulum yang dipatok.']);
+        }
+    }
+
+    /**
+     * Create several subject assignments for one teacher and rombel atomically.
+     * Every subject is still validated by the canonical single-assignment path,
+     * including tenant, phase, curriculum provenance, active teacher and overlap checks.
+     */
+    public function createBulkAssignments(): void
+    {
+        $this->authorizeAcademicManagement();
+        $tenantId = (string) auth()->user()->tenant_id;
+        $profile = $this->authenticatedTeacherProfile();
+        $this->selectedTeacherProfileId = (string) $profile->id;
+        $registration = $this->activeCurriculumRegistration($tenantId);
+        if (!$registration) {
+            throw ValidationException::withMessages([
+                'selectedRegistrationId' => 'Harus ada tepat satu versi kurikulum aktif yang terdaftar. Minta Admin memeriksa Registry Kurikulum.',
+            ]);
+        }
+        $this->selectedRegistrationId = (string) $registration->id;
+
+        $this->validate([
+            'selectedTeacherProfileId' => ['required', 'uuid', Rule::exists('teacher_profiles', 'id')->where('tenant_id', $tenantId)],
+            'selectedSubjectIds' => ['required', 'array', 'min:1'],
+            'selectedSubjectIds.*' => ['required', 'uuid', 'distinct', Rule::exists('subjects', 'id')->where('tenant_id', $tenantId)],
+            'selectedRombelId' => ['required', 'uuid', Rule::exists('rombels', 'id')->where('tenant_id', $tenantId)],
+            'selectedSemesterId' => ['required', 'uuid', Rule::exists('semesters', 'id')->where('tenant_id', $tenantId)],
+            'selectedRegistrationId' => ['required', 'uuid', Rule::exists('tenant_curriculum_registrations', 'id')->where('tenant_id', $tenantId)],
+            'startsAt' => ['required', 'date'],
+            'endsAt' => ['required', 'date', 'after_or_equal:startsAt'],
+        ]);
+
+        $teacherId = $this->selectedTeacherProfileId;
+        $rombelId = $this->selectedRombelId;
+        $semesterId = $this->selectedSemesterId;
+        $registrationId = $this->selectedRegistrationId;
+        $startsAt = $this->startsAt;
+        $endsAt = $this->endsAt;
+        $subjectIds = array_values(array_unique($this->selectedSubjectIds));
+        $createdCount = count($subjectIds);
+
+        $this->bulkCreating = true;
+        try {
+            DB::transaction(function () use ($teacherId, $rombelId, $semesterId, $registrationId, $startsAt, $endsAt, $subjectIds): void {
+                foreach ($subjectIds as $subjectId) {
+                    $this->selectedTeacherProfileId = $teacherId;
+                    $this->selectedSubjectId = $subjectId;
+                    $this->selectedRombelId = $rombelId;
+                    $this->selectedSemesterId = $semesterId;
+                    $this->selectedRegistrationId = $registrationId;
+                    $this->startsAt = $startsAt;
+                    $this->endsAt = $endsAt;
+                    $this->createAssignment();
+                }
+            }, 3);
+        } finally {
+            $this->bulkCreating = false;
+        }
+
+        $this->reset([
+            'selectedTeacherProfileId',
+            'selectedSubjectId',
+            'selectedSubjectIds',
+            'selectedRombelId',
+            'selectedSemesterId',
+        ]);
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => $createdCount . ' penugasan Guru berhasil disimpan sekaligus.',
+        ]);
     }
 
     public function render()
     {
         $this->authorizeAcademicManagement();
-        $tenantId = auth()->user()->tenant_id;
+        $tenantId = (string) auth()->user()->tenant_id;
+        $isTeacher = $this->isTeacherUser();
+        if ($isTeacher) {
+            $profile = $this->authenticatedTeacherProfile();
+            $this->selectedTeacherProfileId = (string) $profile->id;
+            $registration = $this->activeCurriculumRegistration($tenantId);
+            $this->selectedRegistrationId = (string) ($registration?->id ?? '');
+        }
 
-        $teachers = TeacherProfile::query()
-            ->where('tenant_id', $tenantId)
-            ->with('user.roles')
-            ->orderBy('full_name')
-            ->get()
-            ->filter(fn (TeacherProfile $profile) => $profile->user
-                && $profile->user->tenant_id === $tenantId
-                && $profile->user->roles->count() === 1
-                && $profile->user->roles->contains('name', 'GURU'))
-            ->values();
+        $teachers = $isTeacher
+            ? TeacherProfile::query()->where('tenant_id', $tenantId)->whereKey($this->selectedTeacherProfileId)->get()
+            : TeacherProfile::query()
+                ->where('tenant_id', $tenantId)
+                ->with('user.roles')
+                ->orderBy('full_name')
+                ->get()
+                ->filter(fn (TeacherProfile $profile) => $profile->user
+                    && $profile->user->tenant_id === $tenantId
+                    && $profile->user->roles->count() === 1
+                    && $profile->user->roles->contains('name', 'GURU'))
+                ->values();
 
         $subjects = Subject::query()
             ->where('tenant_id', $tenantId)
@@ -372,6 +500,7 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $assignments = TeacherSubjectAssignment::query()
             ->where('tenant_id', $tenantId)
+            ->when($isTeacher, fn ($query) => $query->where('teacher_profile_id', $this->selectedTeacherProfileId))
             ->with(['teacher.user', 'subject', 'rombel.gradeLevel.phase', 'academicYear', 'semester', 'curriculumVersion'])
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -382,7 +511,8 @@ class TeacherSubjectAssignmentManagement extends Component
             'rombels',
             'semesters',
             'registrations',
-            'assignments'
-        ))->layout('layouts.app');
+            'assignments',
+            'isTeacher'
+        ))->layout($isTeacher ? 'layouts.teacher' : 'layouts.app');
     }
 }

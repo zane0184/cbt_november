@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Contexts\TenantContext;
+use App\Models\AcademicYear;
+use App\Models\GradeLevel;
 use App\Models\Role;
 use App\Models\Rombel;
 use App\Models\StudentProfile;
@@ -37,10 +39,9 @@ class StudentImportService
         'nama_orang_tua', 'telepon', 'alamat',
     ];
 
-    public function preview(string $path, string $extension, string $tenantId, string $rombelId): array
+    public function preview(string $path, string $extension, string $tenantId, ?string $rombelId = null): array
     {
         $this->assertAdminActor($tenantId);
-        $rombel = $this->resolveRombel($tenantId, $rombelId);
         [$headers, $sourceRows] = $this->readRows($path, strtolower($extension));
 
         if (count(array_unique($headers)) !== count($headers)) {
@@ -55,8 +56,68 @@ class StudentImportService
             }
         }
 
+        $classHeaders = ['rombel', 'tahun_pelajaran', 'kelas'];
+        $hasClassMetadata = count(array_intersect($classHeaders, $headers)) > 0;
+        $targetMeta = null;
+        $rombel = null;
+
+        if ($hasClassMetadata) {
+            foreach ($classHeaders as $required) {
+                if (!in_array($required, $headers, true)) {
+                    throw ValidationException::withMessages([
+                        'file' => "Template otomatisasi Rombel harus memuat ketiga kolom: rombel, tahun_pelajaran, dan kelas.",
+                    ]);
+                }
+            }
+
+            foreach ($sourceRows as $source) {
+                if ($this->isBlankRow($source['values'])) {
+                    continue;
+                }
+                $raw = [];
+                foreach ($headers as $index => $header) {
+                    $raw[$header] = $source['values'][$index] ?? null;
+                }
+                $candidate = [
+                    'name' => $this->stringValue($raw['rombel'] ?? null),
+                    'academic_year' => $this->stringValue($raw['tahun_pelajaran'] ?? null),
+                    'grade_level' => $this->stringValue($raw['kelas'] ?? null),
+                ];
+                if ($candidate['name'] === '' || mb_strlen($candidate['name']) > 100
+                    || !preg_match('/^\d{4}\/\d{4}$/', $candidate['academic_year'])
+                    || !preg_match('/^[1-6]$/', $candidate['grade_level'])) {
+                    throw ValidationException::withMessages([
+                        'file' => "Metadata Rombel tidak valid pada baris {$source['row']}. Isi rombel, tahun_pelajaran (YYYY/YYYY), dan kelas (1–6).",
+                    ]);
+                }
+                if ($targetMeta === null) {
+                    $targetMeta = $candidate;
+                } elseif ($targetMeta !== $candidate) {
+                    throw ValidationException::withMessages([
+                        'file' => 'Satu file import hanya boleh berisi satu Rombel. Pastikan rombel, tahun_pelajaran, dan kelas sama pada seluruh baris.',
+                    ]);
+                }
+            }
+
+            if ($targetMeta === null) {
+                throw ValidationException::withMessages(['file' => 'Tidak ada baris siswa untuk diproses.']);
+            }
+
+            $rombel = $this->resolveTemplateRombel($tenantId, $targetMeta, false);
+        } else {
+            if (!$rombelId) {
+                throw ValidationException::withMessages([
+                    'selectedRombelId' => 'Pilih Rombel tujuan atau gunakan template yang berisi kolom rombel, tahun_pelajaran, dan kelas.',
+                ]);
+            }
+            $rombel = $this->resolveRombel($tenantId, $rombelId);
+        }
+
         $fileHash = hash_file('sha256', $path);
-        $idempotencyKey = $this->idempotencyKey($tenantId, $rombelId, $fileHash);
+        $targetKey = $targetMeta
+            ? 'AUTO:' . hash('sha256', json_encode($targetMeta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES))
+            : (string) $rombelId;
+        $idempotencyKey = $this->idempotencyKey($tenantId, $targetKey, $fileHash);
         $alreadyImported = DB::table('student_import_batches')
             ->where('tenant_id', $tenantId)
             ->where('idempotency_key', $idempotencyKey)
@@ -179,11 +240,15 @@ class StudentImportService
             'invalid' => count($rows) - $valid,
             'file_sha256' => $fileHash,
             'idempotency_key' => $idempotencyKey,
-            'rombel_name' => $rombel->name,
+            'rombel_name' => $targetMeta['name'] ?? $rombel?->name,
+            'rombel_will_create' => $targetMeta !== null && $rombel === null,
+            'rombel_meta' => $targetMeta,
+            'rombel_id' => $rombel?->id,
+            'target_key' => $targetKey,
         ];
     }
 
-    public function import(array $preview, string $tenantId, string $actorId, string $rombelId): array
+    public function import(array $preview, string $tenantId, string $actorId, ?string $rombelId = null): array
     {
         $this->assertAdminActor($tenantId, $actorId);
 
@@ -199,9 +264,7 @@ class StudentImportService
 
         try {
             return DB::transaction(function () use ($preview, $tenantId, $actorId, $rombelId): array {
-                $rombel = $this->resolveRombel($tenantId, $rombelId, true);
-                $idempotencyKey = $preview['idempotency_key'];
-
+                $idempotencyKey = (string) ($preview['idempotency_key'] ?? '');
                 $alreadyImported = DB::table('student_import_batches')
                     ->where('tenant_id', $tenantId)
                     ->where('idempotency_key', $idempotencyKey)
@@ -214,11 +277,26 @@ class StudentImportService
                     ]);
                 }
 
+                $rombelMeta = $preview['rombel_meta'] ?? null;
+                $rombelCreated = false;
+                if (is_array($rombelMeta)) {
+                    $rombel = $this->resolveTemplateRombel($tenantId, $rombelMeta, true, $rombelCreated);
+                } else {
+                    if (!$rombelId) {
+                        throw ValidationException::withMessages(['selectedRombelId' => 'Rombel tujuan tidak tersedia.']);
+                    }
+                    $rombel = $this->resolveRombel($tenantId, $rombelId, true);
+                }
+
+                if (!$rombel) {
+                    throw ValidationException::withMessages(['file' => 'Rombel tujuan tidak dapat dipastikan. Tidak ada akun Siswa yang disimpan.']);
+                }
+
                 $batchId = (string) Str::uuid();
                 DB::table('student_import_batches')->insert([
                     'id' => $batchId,
                     'tenant_id' => $tenantId,
-                    'rombel_id' => $rombelId,
+                    'rombel_id' => $rombel->id,
                     'uploaded_by' => $actorId,
                     'file_sha256' => $preview['file_sha256'],
                     'idempotency_key' => $idempotencyKey,
@@ -247,7 +325,7 @@ class StudentImportService
                         ]);
                     }
 
-                    $temporaryPassword = Str::random(24);
+                    $temporaryPassword = Str::random(8);
                     $user = User::query()->create([
                         'name' => $data['name'],
                         'password' => Hash::make($temporaryPassword),
@@ -290,14 +368,20 @@ class StudentImportService
                     $batchId,
                     null,
                     [
-                        'rombel_id' => $rombelId,
+                        'rombel_id' => $rombel->id,
+                        'rombel_created' => $rombelCreated,
                         'file_sha256' => $preview['file_sha256'],
                         'total_rows' => $preview['total'],
                         'imported_rows' => $imported,
                     ]
                 );
 
-                return ['batch_id' => $batchId, 'imported' => $imported, 'credentials' => $credentials];
+                return [
+                    'batch_id' => $batchId,
+                    'imported' => $imported,
+                    'credentials' => $credentials,
+                    'rombel_name' => $rombel->name,
+                ];
             }, 3);
         } finally {
             $context->setTenantId($previousTenant);
@@ -332,6 +416,79 @@ class StudentImportService
         }
 
         return $actor;
+    }
+
+
+    private function resolveTemplateRombel(string $tenantId, array $target, bool $create, ?bool &$created = null): ?Rombel
+    {
+        if ($created !== null) {
+            $created = false;
+        }
+        $name = trim((string) ($target['name'] ?? ''));
+        $academicYearName = trim((string) ($target['academic_year'] ?? ''));
+        $gradeNumber = filter_var($target['grade_level'] ?? null, FILTER_VALIDATE_INT);
+
+        if ($name === '' || mb_strlen($name) > 100
+            || !preg_match('/^\d{4}\/\d{4}$/', $academicYearName)
+            || $gradeNumber === false || $gradeNumber < 1 || $gradeNumber > 6) {
+            throw ValidationException::withMessages(['file' => 'Metadata Rombel tidak valid. Periksa nama Rombel, tahun pelajaran, dan kelas 1–6.']);
+        }
+
+        $academicYear = AcademicYear::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('name', $academicYearName)
+            ->whereNull('deleted_at')
+            ->when($create, fn ($query) => $query->lockForUpdate())
+            ->first();
+
+        if (!$academicYear) {
+            throw ValidationException::withMessages(['file' => "Tahun pelajaran {$academicYearName} belum terdaftar pada madrasah ini. Buat tahun pelajaran terlebih dahulu."]);
+        }
+
+        $gradeLevel = GradeLevel::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('level', $gradeNumber)
+            ->with('phase')
+            ->when($create, fn ($query) => $query->lockForUpdate())
+            ->first();
+
+        if (!$gradeLevel || !$gradeLevel->phase || (string) $gradeLevel->phase->tenant_id !== $tenantId) {
+            throw ValidationException::withMessages(['file' => "Kelas {$gradeNumber} belum tersedia pada data tingkat kelas madrasah ini."]);
+        }
+
+        $sameName = Rombel::withoutGlobalScopes()
+            ->where('tenant_id', $tenantId)
+            ->where('academic_year_id', $academicYear->id)
+            ->where('name', $name)
+            ->whereNull('deleted_at')
+            ->when($create, fn ($query) => $query->lockForUpdate())
+            ->first();
+
+        if ($sameName && (string) $sameName->grade_level_id !== (string) $gradeLevel->id) {
+            throw ValidationException::withMessages(['file' => "Nama Rombel {$name} sudah digunakan untuk tingkat kelas lain pada tahun pelajaran {$academicYearName}."]);
+        }
+
+        if ($sameName) {
+            if ($sameName->status !== 'ACTIVE') {
+                throw ValidationException::withMessages(['file' => "Rombel {$name} ditemukan tetapi berstatus nonaktif. Aktifkan dari Data Akademik sebelum import."]);
+            }
+            return $sameName;
+        }
+
+        if (!$create) {
+            return null;
+        }
+
+        if ($created !== null) {
+            $created = true;
+        }
+
+        return Rombel::query()->create([
+            'name' => $name,
+            'academic_year_id' => $academicYear->id,
+            'grade_level_id' => $gradeLevel->id,
+            'status' => 'ACTIVE',
+        ]);
     }
 
     private function resolveRombel(string $tenantId, string $rombelId, bool $lock = false): Rombel

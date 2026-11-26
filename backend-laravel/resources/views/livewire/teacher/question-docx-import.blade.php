@@ -25,6 +25,10 @@
         <div role="alert" class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">{{ $message }}</div>
     @enderror
 
+    @error('curriculumMapping')
+        <div role="alert" class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">{{ $message }}</div>
+    @enderror
+
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">
         <section class="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div>
@@ -63,7 +67,7 @@
             <div>
                 <div class="mb-1 text-xs font-bold uppercase tracking-wider text-indigo-600">Langkah 2</div>
                 <h2 class="text-lg font-bold text-slate-900">Pemetaan default kurikulum</h2>
-                <p class="mt-1 text-sm leading-5 text-slate-500">Pilihan di sini menjadi default untuk semua soal. Kamu dapat mengganti CP dan TP/ATP secara khusus pada setiap kartu soal.</p>
+                <p class="mt-1 text-sm leading-5 text-slate-500">Pilihan di sini menjadi default untuk semua soal. Kamu dapat mengganti CP dan TP/ATP secara khusus pada setiap kartu. Pemetaan boleh dilengkapi setelah soal tersimpan sebagai DRAFT; pemetaan resmi tetap wajib sebelum publikasi.</p>
             </div>
 
             @if($selectedAssignment)
@@ -198,7 +202,7 @@
 
                     <div>
                         <label class="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">Teks soal</label>
-                        <textarea dir="{{ ($question['text_direction'] ?? 'auto') === 'rtl' ? 'rtl' : 'auto' }}" wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm leading-6 text-slate-800 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
+                        <textarea dir="{{ ($question['text_direction'] ?? 'auto') === 'rtl' ? 'rtl' : 'auto' }}" wire:model="questions.{{ $index }}.stem" rows="3" class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 placeholder:text-slate-400 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"></textarea>
                     </div>
 
                     @if(($question['media_count'] ?? 0) > 0 || ($question['math_count'] ?? 0) > 0 || ($question['nested_table_count'] ?? 0) > 0)
@@ -286,7 +290,7 @@
                             @foreach($question['options'] as $optionIndex => $option)
                                 <div class="grid gap-2 rounded-xl border border-slate-200 p-3 sm:grid-cols-[auto_1fr_auto] sm:items-center">
                                     <span class="text-sm font-extrabold text-slate-600">{{ $option['option_key'] }}.</span>
-                                    <input dir="auto" type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                    <input dir="auto" type="text" wire:model="questions.{{ $index }}.options.{{ $optionIndex }}.content" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none">
                                 </div>
                             @endforeach
                         </div>
@@ -308,7 +312,7 @@
                                 <div class="grid gap-3 rounded-xl border border-slate-200 p-3 md:grid-cols-[1fr_auto] md:items-center">
                                     <div>
                                         <div class="mb-1 text-xs font-bold text-slate-500">Pernyataan {{ $statementIndex + 1 }}</div>
-                                        <input dir="auto" type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none">
+                                        <input dir="auto" type="text" wire:model="questions.{{ $index }}.statements.{{ $statementIndex }}.text" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none">
                                     </div>
                                     @if(count($question['statements']) > 3)
                                         <button type="button" wire:click="removeGroupedStatement({{ $index }}, {{ $statementIndex }})" class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-2 text-xs font-bold text-rose-700">Hapus</button>
@@ -343,13 +347,28 @@
                 </details>
             @endif
 
+            <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
+                **Syarat penyimpanan DRAFT:** sistem memvalidasi ulang jenis soal, teks, opsi/pernyataan, dan data sumber dari hasil parser server. Status “Perlu ditinjau” dari pembacaan awal tidak otomatis menggagalkan penyimpanan DRAFT: jika struktur soal lolos validasi, soal dapat disimpan dengan alasan peninjauan tercatat dan publikasi tetap dikunci sampai Guru menyelesaikan peninjauan. Pemetaan CP dan TP/ATP dapat dilengkapi melalui editor Bank Soal setelah penyimpanan, tetapi wajib valid sebelum publikasi. Jika pemetaan sudah dipilih saat import, sistem akan memvalidasinya; bila belum valid, soal tetap disimpan sebagai DRAFT dengan status pemetaan tertunda. Gambar dengan relasi rusak atau format yang tidak didukung tetap ditolak.
+            </div>
+
             <div class="flex flex-col gap-3 rounded-3xl border border-indigo-100 bg-indigo-50/60 p-5 md:flex-row md:items-center md:justify-between">
                 <div>
                     <p class="font-bold text-slate-900">Langkah 4 · Simpan sebagai draf Bank Soal</p>
                     <p class="mt-1 text-xs leading-5 text-slate-600">Validasi akhir akan dijalankan kembali. Soal yang disimpan tetap DRAFT; penerbitan dilakukan terpisah oleh Guru.</p>
                 </div>
-                <button type="button" wire:click="importDrafts" wire:loading.attr="disabled" @if(!$selectedAssignmentId || ($requiresSectionSplit && !$selectedSection)) disabled @endif class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-                    {{ $requiresSectionSplit ? 'Simpan bagian terpilih sebagai DRAFT' : 'Simpan Soal Valid sebagai Draf' }}
+                <button
+                    type="button"
+                    wire:click="importDrafts"
+                    wire:target="importDrafts"
+                    wire:loading.attr="disabled"
+                    aria-live="polite"
+                    @if(!$selectedAssignmentId || ($requiresSectionSplit && !$selectedSection)) disabled @endif
+                    class="inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <span wire:loading.remove wire:target="importDrafts">
+                        {{ $requiresSectionSplit ? 'Simpan bagian terpilih sebagai DRAFT' : 'Simpan Soal Valid sebagai Draf' }}
+                    </span>
+                    <span wire:loading wire:target="importDrafts">Menyimpan soal ke Bank Soal…</span>
                 </button>
             </div>
         </section>

@@ -11,6 +11,7 @@ on:
       - work/guru-docx-import-e2e-20261125
       - work/combined-feature-completion-20261126
       - work/rombel-docx-completion-20261126
+      - integration/zip-vps-php83-20261126
       - work/ui-import-improvements-20261125
     paths:
       - '.github/workflows/build-web-deployment.yml'
@@ -20,6 +21,7 @@ on:
   pull_request:
     branches:
       - work/guru-docx-import-e2e-20261125
+      - work/rombel-docx-completion-20261126
   workflow_dispatch:
 
 permissions:
@@ -69,7 +71,6 @@ jobs:
           php artisan route:list --path=install --json > "$RUNNER_TEMP/installer-routes.json"
           php -r '$routes = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR); $uris = array_column($routes, "uri"); foreach (["install/authorize", "install/requirements", "install/database/test", "install/migrations/run", "install/admin/save", "install/complete"] as $required) { if (!in_array($required, $uris, true)) { fwrite(STDERR, "Missing installer route: {$required}" . PHP_EOL); exit(1); } }' "$RUNNER_TEMP/installer-routes.json"
           test -f vendor/autoload.php
-          # Composer may generate Laravel bootstrap cache files; keep only the tracked placeholder.
           find bootstrap/cache -mindepth 1 -maxdepth 1 -type f ! -name '.gitignore' -delete
 
       - name: Assemble clean standalone deployment tree
@@ -151,6 +152,7 @@ jobs:
             --exclude='vendor/**/.phpunit.result.cache' \
             --exclude='database/seeders/DemoDataSeeder.php' \
             --exclude='database/seeders/RuntimeTestSeeder.php' \
+            --exclude='database/seeders/ImportBahasaIndonesiaFaseCCpSeeder.php' \
             --exclude='AUDIT_AWAL_SOURCE_TENANT.md' \
             --exclude='README_AUDIT_PERBAIKAN.md' \
             --exclude='check_latest.php' \
@@ -171,8 +173,6 @@ jobs:
             --exclude='bootstrap/cache/events.php' \
             backend-laravel/ "$STAGE/backend-laravel/"
 
-          # The Composer/Laravel bootstrap may leave generated cache files in the source tree.
-          # Remove generated staging cache only; the final scanner still rejects any remainder.
           find "$STAGE/backend-laravel/bootstrap/cache" -type f ! -name '.gitignore' -delete
           find "$STAGE/backend-laravel/bootstrap/cache" -mindepth 1 -type d -empty -delete
 
@@ -187,8 +187,6 @@ jobs:
           cp docs/PANDUAN_INSTALASI_WEB_CBT_MANDIRI.md "$STAGE/README_PEMASANGAN.md"
           cp docs/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md "$STAGE/PANDUAN_AKTIVASI_PRE_ACTIVATION_2026.md"
           cp backend-laravel/DISTRIBUTION_EXCLUSIONS.md "$STAGE/CATATAN_EKSKLUSI_DISTRIBUSI.md"
-          # Rebuild the production autoloader from the exact staged tree after test/fixture paths are excluded.
-          # No test/fixture dependency exception is permitted; Laravel boot and installer routes must still pass.
           (
             cd "$STAGE/backend-laravel"
             composer dump-autoload --no-dev --optimize --no-interaction
@@ -214,8 +212,6 @@ jobs:
           Build purpose: staging/deployment candidate; not production approval
           EOF
 
-          # The Laravel version probe above runs inside the staged tree and may regenerate cache files.
-          # Clean them after every build-time probe, then let the fail-closed scanner verify the result.
           find "$STAGE/backend-laravel/bootstrap/cache" -type f ! -name '.gitignore' -delete
           find "$STAGE/backend-laravel/bootstrap/cache" -mindepth 1 -type d -empty -delete
 
@@ -231,9 +227,8 @@ jobs:
           test -f backend-laravel/database/migrations/2026_11_20_100001_create_exam_proctor_assignments_table.php
           test ! -e backend-laravel/.env
           test ! -d backend-laravel/tests
+          test ! -e backend-laravel/database/seeders/ImportBahasaIndonesiaFaseCCpSeeder.php
 
-          # Fail closed on forbidden files, paths, symlinks, nested archives, and embedded high-confidence secrets.
-          # Exercise the exact staging and ZIP scanner implementations against positive and negative fixtures.
           python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" self-test
           python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" staging "$STAGE"
 
@@ -244,11 +239,8 @@ jobs:
           ARCHIVE="CBT_MADRASAH_WEB_DEPLOYMENT_${SOURCE_SHA:0:12}.zip"
           zip -qr "$ARCHIVE" CBT_MADRASAH_WEB_DEPLOYMENT
           unzip -t "$ARCHIVE"
-
-          # Inspect every ZIP entry, including hidden files and normalized/case-colliding paths.
           python3 "$GITHUB_WORKSPACE/.github/scripts/verify_web_package.py" zip "$ARCHIVE"
 
-          # Extract into a new, empty directory and verify every manifest entry plus full file-set coverage.
           EXTRACT_ROOT="$RUNNER_TEMP/CBT_MADRASAH_WEB_DEPLOYMENT_EXTRACTED"
           mkdir "$EXTRACT_ROOT"
           test -z "$(find "$EXTRACT_ROOT" -mindepth 1 -print -quit)"
@@ -263,7 +255,6 @@ jobs:
           python3 - "$EXTRACTED" <<'PY'
           import re, sys
           from pathlib import Path
-
           root = Path(sys.argv[1])
           manifest = root / "SHA256SUMS.txt"
           expected = set()

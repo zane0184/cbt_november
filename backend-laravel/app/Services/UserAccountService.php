@@ -43,7 +43,7 @@ class UserAccountService
     public function resetPassword(string $userId): string
     {
         $this->assertActorCanManageUsers();
-        $temporaryPassword = Str::random(24);
+        $temporaryPassword = Str::random(8);
         DB::transaction(function () use ($userId, $temporaryPassword): void {
             $user = $this->lockManageableUser($userId);
             $this->assertNoActiveStudentAttempt($user);

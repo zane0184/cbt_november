@@ -145,7 +145,7 @@ class UserAccountLifecycleTest extends TestCase
 
         $temporaryPassword = $component->get('oneTimePassword');
         $this->assertIsString($temporaryPassword);
-        $this->assertSame(24, strlen($temporaryPassword));
+        $this->assertSame(8, strlen($temporaryPassword));
         $this->assertTrue(Hash::check($temporaryPassword, $teacher->fresh()->password));
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->accessToken->id]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'USER_PASSWORD_RESET', 'entity_id' => $teacher->id]);
