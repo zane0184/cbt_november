@@ -300,14 +300,10 @@ class DocxQuestionDraftImporter
                 $mappingMessage = null;
 
                 if ($questionCpIds === [] && $questionOutcomeIds === []) {
-                    $mappingService->sync(
-                        $version,
-                        (string) $assignment->id,
-                        [],
-                        [],
-                        null,
-                        null
-                    );
+                    // New DOCX draft versions have no prior mappings. Keep the
+                    // NOT_MAPPED state local to the importer and avoid invoking
+                    // curriculum services for a general question.
+                    $mappingStatus = 'NOT_MAPPED';
                 } elseif ($questionCpIds !== [] && $questionOutcomeIds !== []) {
                     $mappingStatus = 'PENDING_TEACHER';
                     $mappingMessage = 'Pemetaan CP dan TP/ATP belum tervalidasi. Lengkapi melalui editor Bank Soal sebelum menerbitkan soal.';
