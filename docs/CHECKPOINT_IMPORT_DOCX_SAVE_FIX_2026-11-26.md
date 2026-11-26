@@ -1,8 +1,8 @@
 # Checkpoint Perbaikan Simpan Import DOCX Web Guru — 26 November 2026
 
 Repository: `zane0184/cbt_november`
-Branch kerja: `fix/docx-draft-save-root-cause-20261126`
-Commit source saat checkpoint: `6647404a3072214e0d7ced61d4a6e6901f39a13d`
+Branch final: `integration/zip-vps-php83-20261126`
+Commit integrasi source: `110ff43cc5f93eca1beda299984d19574cbf9ace` (PR #41 merged)
 
 ## AUDIT
 PR #32, #33, #39 dan source branch integrasi ditelusuri sampai jalur `QuestionDocxImport::importDrafts()`, `DocxQuestionDraftImporter::import()`, `QuestionVersionCurriculumMappingService::sync()`, penyimpanan media, batch idempotensi, serta query Bank Soal.
@@ -52,12 +52,12 @@ Tidak ada klaim transaksi database runtime telah berhasil. Pemeriksaan source st
 
 ## DISTRIBUSI
 Paket deployment lengkap sudah dirakit:
-- File: `CBT_MADRASAH_WEB_DEPLOYMENT_7cd0823d2fc8.zip`
-- Source runtime: commit `7cd0823d2fc81af450ce0acc670cc38cc9148d3d` pada branch `fix/docx-draft-save-root-cause-20261126`.
+- File: `CBT_MADRASAH_WEB_DEPLOYMENT_110ff43cc5f9.zip`
+- Source runtime: commit integrasi `110ff43cc5f93eca1beda299984d19574cbf9ace`.
 - Basis paket lengkap dan vendor: artifact deployment yang berhasil dibuat sebelumnya dari commit integrasi `ee38818f89627443704bbda2469cf9b16d89625c`.
-- Empat file runtime yang berubah ditimpa dengan source dari branch perbaikan dan diverifikasi byte-for-byte menggunakan Git blob SHA.
+- Empat file runtime yang berubah ditimpa dengan source dari PR #41 dan diverifikasi byte-for-byte menggunakan Git blob SHA.
 - Jumlah file di ZIP: 8.707.
-- Ukuran: 17.920.513 bytes.
-- SHA-256 ZIP: `262706f9ce6b31a84b76c4994027defb1625e6a036493e5a8c733273ace242ef`.
+- Ukuran: 17.920.508 bytes.
+- SHA-256 ZIP: `33f2367f5b7c9ab3aee78b4f65e9f429e96f1c61dfbb207e8628b4e9f1bd45ca`.
 - Pemeriksaan paket: struktur ZIP utuh, `vendor/autoload.php`, `artisan`, `composer.lock`, `.env.example`, dan migration batch DOCX tersedia; checksum mencakup seluruh file; backup/tests/.env tidak disertakan.
 - Pemeriksaan ini adalah integritas arsip dan kelengkapan file, bukan pengujian PHP, PHPUnit, CI, browser, atau runtime VPS.
