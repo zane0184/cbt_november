@@ -6,6 +6,8 @@ use App\Models\AcademicYear;
 use App\Models\GradeLevel;
 use App\Models\Rombel;
 use App\Models\Subject;
+use App\Models\Semester;
+use App\Services\AcademicYearManagementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
@@ -15,7 +17,7 @@ class AcademicManagement extends Component
 {
     use WithPagination;
 
-    public $activeTab = 'rombel'; // rombel, subject, grade_level
+    public $activeTab = 'rombel'; // rombel, subject, grade_level, academic_year
     public $search = '';
 
     public function mount()
@@ -34,6 +36,10 @@ class AcademicManagement extends Component
     public $subjectCode = '';
     public $subjectName = '';
     public $subjectShortName = '';
+
+    // Create academic year modal state
+    public string $academicYearName = '';
+    public bool $showCreateAcademicYearModal = false;
 
     private function authorizeAcademicManagement(): void
     {
@@ -80,6 +86,40 @@ class AcademicManagement extends Component
         session()->flash('message', "Rombel {$this->rombelName} berhasil dibuat.");
     }
 
+    public function openCreateAcademicYearModal(): void
+    {
+        $this->authorizeAcademicManagement();
+        $this->reset(['academicYearName']);
+        $this->resetValidation();
+        $this->showCreateAcademicYearModal = true;
+    }
+
+    public function createAcademicYear(): void
+    {
+        $this->authorizeAcademicManagement();
+        $this->validate([
+            'academicYearName' => ['required', 'string', 'max:9', 'regex:/^\\d{4}\\/\\d{4}$/'],
+        ]);
+
+        app(AcademicYearManagementService::class)
+            ->createForTenant((string) auth()->user()->tenant_id, trim($this->academicYearName));
+
+        $createdName = trim($this->academicYearName);
+        $this->showCreateAcademicYearModal = false;
+        $this->reset('academicYearName');
+        session()->flash('message', "Tahun pelajaran {$createdName} berhasil dibuat beserta Semester Ganjil dan Genap.");
+    }
+
+    public function activateSemester(string $semesterId): void
+    {
+        $this->authorizeAcademicManagement();
+
+        $semester = app(AcademicYearManagementService::class)
+            ->activateSemesterForTenant((string) auth()->user()->tenant_id, $semesterId);
+
+        session()->flash('message', "Semester {$semester->term} tahun pelajaran {$semester->academicYear->name} berhasil diaktifkan.");
+    }
+
     public function openCreateSubjectModal()
     {
         $this->authorizeAcademicManagement();
@@ -116,7 +156,7 @@ class AcademicManagement extends Component
     public function setTab($tab)
     {
         $this->authorizeAcademicManagement();
-        abort_unless(in_array($tab, ['rombel', 'subject', 'grade_level'], true), 422);
+        abort_unless(in_array($tab, ['rombel', 'subject', 'grade_level', 'academic_year'], true), 422);
         $this->activeTab = $tab;
         $this->resetPage();
     }
@@ -140,13 +180,15 @@ class AcademicManagement extends Component
             ->paginate(15);
 
         $gradeLevels = GradeLevel::with('phase')->get();
-        $academicYears = AcademicYear::all();
+        $academicYears = AcademicYear::with('semesters')->orderByDesc('name')->get();
+        $activeSemester = Semester::with('academicYear')->where('is_active', true)->first();
 
         return view('livewire.admin.academic-management', [
             'rombels' => $rombels,
             'subjects' => $subjects,
             'gradeLevels' => $gradeLevels,
             'academicYears' => $academicYears,
+            'activeSemester' => $activeSemester,
         ])->layout('layouts.app');
     }
 }
