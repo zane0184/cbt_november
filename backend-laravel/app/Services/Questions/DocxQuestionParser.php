@@ -395,6 +395,82 @@ class DocxQuestionParser
         return 'auto';
     }
 
+    private function extractRichParagraphs(array $fragments): array
+    {
+        $paragraphs = [];
+        $wordNamespace = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+        foreach ($fragments as $fragment) {
+            if (($fragment['kind'] ?? null) !== 'WORD_PARAGRAPH_OOXML' || empty($fragment['xml'])) {
+                continue;
+            }
+
+            $xml = (string) $fragment['xml'];
+            $this->assertSafeXml($xml);
+            $document = new DOMDocument();
+            if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+                continue;
+            }
+
+            $xpath = new \\DOMXPath($document);
+            $xpath->registerNamespace('w', $wordNamespace);
+            $xpath->registerNamespace('m', 'http://schemas.openxmlformats.org/officeDocument/2006/math');
+            $paragraphNode = $xpath->query('//*[local-name()="p"]')->item(0);
+            if (!$paragraphNode) {
+                continue;
+            }
+
+            $runs = [];
+            foreach ($xpath->query('.//w:r', $paragraphNode) as $run) {
+                $parts = [];
+                foreach ($xpath->query('.//w:t | .//m:t | .//w:tab | .//w:br | .//w:cr', $run) as $textNode) {
+                    if ($textNode->localName === 'tab') {
+                        $parts[] = "\\t";
+                    } elseif ($textNode->localName === 'br' || $textNode->localName === 'cr') {
+                        $parts[] = "\\n";
+                    } else {
+                        $parts[] = $textNode->textContent;
+                    }
+                }
+
+                $runText = implode('', $parts);
+                if ($runText === '') {
+                    continue;
+                }
+
+                $boldNode = $xpath->query('./w:rPr/w:b | ./w:rPr/w:bCs', $run)->item(0);
+                $italicNode = $xpath->query('./w:rPr/w:i | ./w:rPr/w:iCs', $run)->item(0);
+                $underlineNode = $xpath->query('./w:rPr/w:u', $run)->item(0);
+                $runs[] = [
+                    'text' => $runText,
+                    'bold' => $this->wordToggleEnabled($boldNode, $wordNamespace),
+                    'italic' => $this->wordToggleEnabled($italicNode, $wordNamespace),
+                    'underline' => $underlineNode !== null
+                        && !in_array(strtolower($underlineNode->getAttributeNS($wordNamespace, 'val')), ['0', 'false', 'off', 'none'], true),
+                ];
+            }
+
+            if ($runs !== []) {
+                $paragraphText = implode('', array_column($runs, 'text'));
+                $paragraphs[] = [
+                    'direction' => $this->detectTextDirection($paragraphNode, $xpath, $paragraphText),
+                    'runs' => $runs,
+                ];
+            }
+        }
+
+        return $paragraphs;
+    }
+
+    private function wordToggleEnabled(?DOMNode $node, string $wordNamespace): bool
+    {
+        if (!$node) {
+            return false;
+        }
+
+        return !in_array(strtolower($node->getAttributeNS($wordNamespace, 'val')), ['0', 'false', 'off', 'none'], true);
+    }
+
     private function normalizeText(string $text): string
     {
         $text = str_replace(["\u{00A0}", "\r"], [' ', "\n"], $text);
@@ -809,6 +885,10 @@ class DocxQuestionParser
                 'source_section' => $raw['source_section'] ?? null,
                 'table_rows' => array_values($raw['table_rows'] ?? []),
                 'source_fragments' => array_values(array_merge(
+                    $raw['source_fragments'] ?? [],
+                    $raw['stimulus']['source_fragments'] ?? []
+                )),
+                'rich_paragraphs' => $this->extractRichParagraphs(array_merge(
                     $raw['source_fragments'] ?? [],
                     $raw['stimulus']['source_fragments'] ?? []
                 )),
