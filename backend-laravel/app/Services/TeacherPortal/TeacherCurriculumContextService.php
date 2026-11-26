@@ -253,7 +253,7 @@ class TeacherCurriculumContextService
         }
 
         $subjectNode = $subjectMapping->curriculumStructure;
-        $cpOutcomes = MultiLearningOutcome::query()
+        $allSubjectCpOutcomes = MultiLearningOutcome::query()
             ->where('tenant_id', $ownerId)
             ->where('multi_curriculum_version_id', $versionId)
             ->where('multi_curriculum_structure_id', $subjectNode->id)
@@ -264,13 +264,30 @@ class TeacherCurriculumContextService
             ->orderBy('code')
             ->get();
 
-        $cpOptions = $cpOutcomes->map(fn (MultiLearningOutcome $outcome) => [
+        // CP must explicitly declare the same phase and applicable MI grade as
+        // the pinned assignment. A subject structure alone is not sufficient
+        // evidence if an imported CP row carries contradictory phase metadata.
+        $phaseCpOutcomes = $allSubjectCpOutcomes->filter(function (MultiLearningOutcome $outcome) use ($phaseCode, $gradeNumber): bool {
+            $metadata = $outcome->metadata ?? [];
+            $cpPhase = strtoupper((string) ($metadata['phase'] ?? ''));
+            $cpGrades = array_map('intval', (array) ($metadata['grade_levels'] ?? []));
+
+            return $cpPhase === $phaseCode
+                && $gradeNumber > 0
+                && in_array($gradeNumber, $cpGrades, true);
+        })->values();
+
+        $phaseMismatchCount = $allSubjectCpOutcomes->count() - $phaseCpOutcomes->count();
+
+        $cpOptions = $phaseCpOutcomes->map(fn (MultiLearningOutcome $outcome) => [
             'id' => $outcome->id,
             'code' => $outcome->code,
             'title' => $outcome->metadata['title'] ?? $outcome->code,
             'description' => $outcome->description,
             'source_document' => $outcome->source?->document_number,
             'source_verification_status' => $outcome->source?->verification_status,
+            'phase' => $outcome->metadata['phase'] ?? null,
+            'grade_levels' => $outcome->metadata['grade_levels'] ?? [],
             'selectable' => $this->outcomeArtifactVerified($outcome),
         ])->all();
 
@@ -306,11 +323,11 @@ class TeacherCurriculumContextService
         $pmFramework = $structures->get('PM_FRAMEWORK', collect())->filter(fn ($node) => $this->sourceMetadataVerified($node->source))->values();
         $graduateDimensions = $structures->get('DIMENSI_PROFIL_LULUSAN', collect())->filter(fn ($node) => $this->sourceMetadataVerified($node->source))->values();
 
-        $verifiedCp = $cpOutcomes->filter(fn (MultiLearningOutcome $outcome) => $this->outcomeArtifactVerified($outcome))->values();
+        $verifiedCp = $phaseCpOutcomes->filter(fn (MultiLearningOutcome $outcome) => $this->outcomeArtifactVerified($outcome))->values();
 
         return [
-            'status' => $cpOutcomes->isEmpty()
-                ? 'CP_REGISTRY_PENDING'
+            'status' => $phaseCpOutcomes->isEmpty()
+                ? ($phaseMismatchCount > 0 ? 'CP_PHASE_MISMATCH' : 'CP_REGISTRY_PENDING')
                 : ($verifiedCp->isEmpty() ? 'CP_SOURCE_UNVERIFIED' : 'READY'),
             'assignment' => [
                 'id' => $assignment->id,
@@ -331,7 +348,8 @@ class TeacherCurriculumContextService
             'grade' => $this->nodePayload($gradeNode),
             'subject_node' => $this->nodePayload($subjectNode),
             'cp_options' => $cpOptions,
-            'official_cp_verified' => $cpOutcomes->isNotEmpty() && $verifiedCp->count() === $cpOutcomes->count(),
+            'cp_phase_mismatch_count' => $phaseMismatchCount,
+            'official_cp_verified' => $phaseCpOutcomes->isNotEmpty() && $verifiedCp->count() === $phaseCpOutcomes->count(),
             'teacher_outcomes' => $tenantOutcomes->map(fn (TenantLearningOutcome $outcome) => [
                 'id' => $outcome->id,
                 'outcome_type' => $outcome->outcome_type,
@@ -360,10 +378,12 @@ class TeacherCurriculumContextService
             'panca_cinta_available' => $pancaCinta->count() === 5,
             'deep_learning_available' => $pmPrinciples->count() === 4 && $pmOlah->count() === 4 && $pmFramework->count() === 4,
             'graduate_dimensions_available' => $graduateDimensions->count() === 8,
-            'notice' => $cpOutcomes->isEmpty()
-                ? 'CP resmi untuk mata pelajaran dan fase ini belum diimpor atau diverifikasi. Penyusunan TP/ATP dinonaktifkan sampai CP induk tersedia.'
+            'notice' => $phaseCpOutcomes->isEmpty()
+                ? ($phaseMismatchCount > 0
+                    ? 'Data CP ditemukan tetapi metadata fase/kelas tidak cocok dengan penugasan. CP tersebut tidak ditampilkan dan tidak dapat dipakai.'
+                    : 'CP resmi untuk mata pelajaran, fase, dan kelas ini belum diimpor atau diverifikasi. Penyusunan TP/ATP dinonaktifkan sampai CP induk tersedia.')
                 : ($verifiedCp->isEmpty()
-                    ? 'CP ditemukan, tetapi sumber/artefaknya belum checksum verified. CP belum dapat dipilih.'
+                    ? 'CP ditemukan untuk fase dan kelas yang tepat, tetapi sumber/artefaknya belum checksum verified. CP belum dapat dipilih.'
                     : null),
         ];
     }
