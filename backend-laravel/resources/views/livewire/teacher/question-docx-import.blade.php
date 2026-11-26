@@ -207,7 +207,10 @@
                                 <p><strong>{{ $question['media_count'] }} gambar</strong> terdeteksi. Gambar JPEG/PNG yang lolos validasi akan disimpan di penyimpanan privat madrasah dan dilampirkan ke versi soal.</p>
                             @endif
                             @if(($question['math_count'] ?? 0) > 0)
-                                <p><strong>{{ $question['math_count'] }} rumus Word</strong> terdeteksi. Teks rumus dan sumber OMML dipertahankan; pastikan hasil fallback teks sesuai sebelum menerbitkan.</p>
+                                <p><strong>{{ $question['math_count'] }} rumus Word</strong> terdeteksi. Rumus yang didukung dikonversi ke MathML untuk tampilan ujian; sumber OMML tetap disimpan dan seluruh rumus wajib ditinjau Guru.</p>
+                                @foreach(($question['mathml_fragments'] ?? []) as $formulaIndex => $formula)
+                                    <p class="rounded-lg bg-white/70 p-2">Rumus {{ $formulaIndex + 1 }}: {{ $formula['fallback_text'] ?? 'Tidak ada teks fallback' }} · {{ ($formula['supported'] ?? false) ? 'MathML tersedia' : 'Ada struktur yang belum didukung otomatis' }}</p>
+                                @endforeach
                             @endif
                             @if(($question['nested_table_count'] ?? 0) > 0)
                                 <p><strong>Tabel bersarang</strong> terdeteksi. Struktur OOXML baris/sel disimpan; tampilan ringkas di bawah meratakan teks sel untuk pemeriksaan.</p>
