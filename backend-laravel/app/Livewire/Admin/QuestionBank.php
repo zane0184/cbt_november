@@ -310,9 +310,9 @@ class QuestionBank extends Component
             'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,MATCHING,ESSAY',
             'selectedAssignmentId' => 'required|uuid',
             'selectedSubjectId' => 'required|exists:subjects,id',
-            'selectedCpIds' => 'required|array|min:1',
+            'selectedCpIds' => 'nullable|array',
             'selectedCpIds.*' => 'required|uuid|distinct',
-            'selectedOutcomeIds' => 'required|array|min:1',
+            'selectedOutcomeIds' => 'nullable|array',
             'selectedOutcomeIds.*' => 'required|uuid|distinct',
             'selectedMaterialId' => 'nullable|uuid',
             'selectedMaterialTopicId' => 'nullable|uuid',
@@ -591,10 +591,10 @@ class QuestionBank extends Component
             // mapping was complete. Once the strict mapping service succeeds in
             // this editor, clear the pending marker on the current version.
             $versionMetadata = $version->metadata ?? [];
-            if (($versionMetadata['import_source'] ?? null) === 'DOCX'
-                || isset($versionMetadata['curriculum_mapping'])) {
+            {
+                $isMapped = $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== [];
                 $versionMetadata['curriculum_mapping'] = [
-                    'status' => 'MAPPED',
+                    'status' => $isMapped ? 'MAPPED' : 'NOT_MAPPED',
                     'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
                     'requested_cp_ids' => array_values($this->selectedCpIds),
                     'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
