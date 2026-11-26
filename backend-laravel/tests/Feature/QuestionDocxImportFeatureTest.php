@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Teacher\QuestionDocxImport;
 use App\Models\AcademicYear;
 use App\Models\Curriculum;
