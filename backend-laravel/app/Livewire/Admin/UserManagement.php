@@ -311,6 +311,14 @@ class UserManagement extends Component
         $this->showImportCredentials = false;
     }
 
+    public function setRoleFilter(string $role): void
+    {
+        $this->authorizeUserManagement();
+        abort_unless(in_array($role, ['', 'GURU', 'SISWA'], true), 422);
+        $this->roleFilter = $role;
+        $this->resetPage();
+    }
+
     public function updatingSearch(): void { $this->resetPage(); }
     public function updatingRoleFilter(): void { $this->resetPage(); }
 
