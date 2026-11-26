@@ -397,6 +397,28 @@ class ExamSnapshotService
                 if ($version->question_type === 'SHORT_ANSWER') {
                     abort(422, 'SHORT_ANSWER belum dapat dimasukkan ke ujian sampai accepted answers tersimpan di immutable snapshot dan scoring teruji.');
                 }
+                if ($version->question_type === 'ESSAY'
+                    && trim((string) $version->explanation) === '') {
+                    abort(422, 'Snapshot soal uraian diblokir: pedoman penskoran/rubrik belum diisi Guru.');
+                }
+                if ($version->question_type === 'MATCHING') {
+                    $options = $version->options;
+                    $leftOptions = $options->filter(fn ($option) => is_string($option->option_key) && $option->option_key !== '' && empty($option->matching_key));
+                    $rightOptions = $options->filter(fn ($option) => is_string($option->matching_key) && $option->matching_key !== '' && empty($option->option_key));
+                    $leftKeys = $leftOptions->pluck('option_key')->all();
+                    $rightKeys = $rightOptions->pluck('matching_key')->all();
+                    $validMatching = $leftOptions->count() >= 2
+                        && $leftOptions->count() === $rightOptions->count()
+                        && $options->count() === ($leftOptions->count() + $rightOptions->count())
+                        && count(array_unique($leftKeys)) === count($leftKeys)
+                        && count(array_unique($rightKeys)) === count($rightKeys)
+                        && collect($leftKeys)->sort()->values()->all() === collect($rightKeys)->sort()->values()->all()
+                        && $leftOptions->every(fn ($option) => trim((string) $option->content) !== '')
+                        && $rightOptions->every(fn ($option) => trim((string) $option->content) !== '');
+                    if (!$validMatching) {
+                        abort(422, 'Snapshot Menjodohkan tidak valid: setiap premis harus memiliki tepat satu jawaban pasangan.');
+                    }
+                }
                 if ($version->question_type === 'TRUE_FALSE_GROUP') {
                     $items = $version->metadata['statement_items'] ?? [];
                     $ids = array_map(fn ($item) => (string) ($item['id'] ?? ''), $items);
