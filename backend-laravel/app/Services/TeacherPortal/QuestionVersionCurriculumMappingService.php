@@ -82,14 +82,6 @@ class QuestionVersionCurriculumMappingService
                 ]);
             }
 
-            $registration = TenantCurriculumRegistration::query()
-                ->where('tenant_id', $tenantId)
-                ->whereKey($assignment->tenant_curriculum_registration_id)
-                ->where('multi_curriculum_version_id', $assignment->multi_curriculum_version_id)
-                ->where('curriculum_owner_id', $assignment->curriculum_owner_id)
-                ->where('status', 'ACTIVE')
-                ->firstOrFail();
-
             if (!$isMapped) {
                 // NOT_MAPPED is a version-wide state. Remove every mapping row
                 // for this tenant/version, including any legacy rows attached to
@@ -130,6 +122,17 @@ class QuestionVersionCurriculumMappingService
                     'topic_id' => null,
                 ];
             }
+
+            // A question without CP/TP/ATP mapping must not depend on a curriculum
+            // registration being configured. Assignment authorization above is
+            // still mandatory; curriculum registration is only needed when mapping.
+            $registration = TenantCurriculumRegistration::query()
+                ->where('tenant_id', $tenantId)
+                ->whereKey($assignment->tenant_curriculum_registration_id)
+                ->where('multi_curriculum_version_id', $assignment->multi_curriculum_version_id)
+                ->where('curriculum_owner_id', $assignment->curriculum_owner_id)
+                ->where('status', 'ACTIVE')
+                ->firstOrFail();
 
             $subjectStructureId = $assignment->curriculum_context_snapshot['subject']['official_structure_id'] ?? null;
             if (!$subjectStructureId) {
