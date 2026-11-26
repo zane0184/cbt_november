@@ -96,17 +96,15 @@ class TeacherSubjectAssignmentManagement extends Component
     {
         $this->authorizeAcademicManagement();
         $tenantId = (string) auth()->user()->tenant_id;
-        if ($this->isTeacherUser()) {
-            $profile = $this->authenticatedTeacherProfile();
-            $this->selectedTeacherProfileId = (string) $profile->id;
-            $registration = $this->activeCurriculumRegistration($tenantId);
-            if (!$registration) {
-                throw ValidationException::withMessages([
-                    'selectedRegistrationId' => 'Harus ada tepat satu versi kurikulum aktif yang terdaftar. Minta Admin memeriksa Registry Kurikulum.',
-                ]);
-            }
-            $this->selectedRegistrationId = (string) $registration->id;
+        $profile = $this->authenticatedTeacherProfile();
+        $this->selectedTeacherProfileId = (string) $profile->id;
+        $registration = $this->activeCurriculumRegistration($tenantId);
+        if (!$registration) {
+            throw ValidationException::withMessages([
+                'selectedRegistrationId' => 'Harus ada tepat satu versi kurikulum aktif yang terdaftar. Minta Admin memeriksa Registry Kurikulum.',
+            ]);
         }
+        $this->selectedRegistrationId = (string) $registration->id;
 
         $this->validate([
             'selectedTeacherProfileId' => ['required', 'uuid', Rule::exists('teacher_profiles', 'id')->where('tenant_id', $tenantId)],
@@ -390,17 +388,15 @@ class TeacherSubjectAssignmentManagement extends Component
     {
         $this->authorizeAcademicManagement();
         $tenantId = (string) auth()->user()->tenant_id;
-        if ($this->isTeacherUser()) {
-            $profile = $this->authenticatedTeacherProfile();
-            $this->selectedTeacherProfileId = (string) $profile->id;
-            $registration = $this->activeCurriculumRegistration($tenantId);
-            if (!$registration) {
-                throw ValidationException::withMessages([
-                    'selectedRegistrationId' => 'Harus ada tepat satu versi kurikulum aktif yang terdaftar. Minta Admin memeriksa Registry Kurikulum.',
-                ]);
-            }
-            $this->selectedRegistrationId = (string) $registration->id;
+        $profile = $this->authenticatedTeacherProfile();
+        $this->selectedTeacherProfileId = (string) $profile->id;
+        $registration = $this->activeCurriculumRegistration($tenantId);
+        if (!$registration) {
+            throw ValidationException::withMessages([
+                'selectedRegistrationId' => 'Harus ada tepat satu versi kurikulum aktif yang terdaftar. Minta Admin memeriksa Registry Kurikulum.',
+            ]);
         }
+        $this->selectedRegistrationId = (string) $registration->id;
 
         $this->validate([
             'selectedTeacherProfileId' => ['required', 'uuid', Rule::exists('teacher_profiles', 'id')->where('tenant_id', $tenantId)],
