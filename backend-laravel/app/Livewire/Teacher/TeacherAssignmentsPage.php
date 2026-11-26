@@ -1,8 +1,8 @@
 <?php
 
-namespace App\\Livewire\\Teacher;
+namespace App\Livewire\Teacher;
 
-use App\\Livewire\\Admin\\TeacherSubjectAssignmentManagement;
+use App\Livewire\Admin\TeacherSubjectAssignmentManagement;
 
 /**
  * Guru-facing route reuses the existing validated assignment workflow.
