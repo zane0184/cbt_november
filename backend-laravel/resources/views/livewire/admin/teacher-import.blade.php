@@ -25,7 +25,7 @@
             <label class="block text-sm font-semibold mb-2">File Guru (XLSX/CSV, maksimal 10 MB)</label>
             <input type="file" wire:model="file" accept=".xlsx,.csv,.txt" class="w-full border border-cardBorder rounded-xl px-4 py-3 text-sm">
             @error('file') <p class="text-red-600 text-xs mt-1">{{ $message }}</p> @enderror
-            <p class="text-xs text-textSecondary mt-2">Kolom wajib: nama, status_kepegawaian. Kolom lain: nip, nik, nuptk, jenis_kelamin, telepon, email. Maksimal 5.000 Guru per batch.</p>
+            <p class="text-xs text-textSecondary mt-2">Kolom wajib: nama, status_kepegawaian. Kolom lain: nip, nik, nuptk, jenis_kelamin, telepon. Maksimal 5.000 Guru per batch.</p>
         </div>
         <div wire:loading wire:target="file" class="text-xs text-blue-700">Mengunggah file...</div>
         <div class="flex flex-wrap gap-3">
