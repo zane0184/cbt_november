@@ -144,6 +144,7 @@ class DocxQuestionDraftImporter
                         : 'auto',
                     'preview_runs' => array_values($row['rich_paragraphs'] ?? []),
                     'mathml_fragments' => array_values($row['mathml_fragments'] ?? []),
+                    'table_structure' => array_values($row['table_structure'] ?? []),
                     'math_omml' => array_values(array_map(
                         fn (array $fragment): array => [
                             'xml' => (string) ($fragment['xml'] ?? ''),
