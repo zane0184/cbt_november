@@ -43,7 +43,7 @@ class QuestionVersionCurriculumMappingService
 
         if (($cpIds === []) !== ($outcomeIds === [])) {
             throw ValidationException::withMessages([
-                'curriculumMapping' => 'Pemetaan harus lengkap: pilih CP dan TP/ATP sekaligus, atau kosongkan keduanya untuk soal umum.',
+                'curriculumMapping' => 'Pemetaan harus lengkap: pilih CP dan TP/ATP sekaligus, atau kosongkan keduanya untuk soal tanpa pemetaan CP/TP/ATP.',
             ]);
         }
 
@@ -119,7 +119,7 @@ class QuestionVersionCurriculumMappingService
                     [
                         'teacher_subject_assignment_id' => $assignment->id,
                         'mapping_status' => 'NOT_MAPPED',
-                        'reason' => 'GENERAL_QUESTION',
+                        'reason' => 'CURRICULUM_MAPPING_NOT_SELECTED',
                     ]
                 );
 
