@@ -315,6 +315,7 @@ class QuestionDocxImport extends Component
             $questionRow['media_count'] = $sourceRow['media_count'] ?? 0;
             $questionRow['math_count'] = $sourceRow['math_count'] ?? 0;
             $questionRow['nested_table_count'] = $sourceRow['nested_table_count'] ?? 0;
+            $questionRow['table_structure'] = $sourceRow['table_structure'] ?? [];
             $questionRow['rich_paragraphs'] = $sourceRow['rich_paragraphs'] ?? [];
             $questionRow['mathml_fragments'] = $sourceRow['mathml_fragments'] ?? [];
         }
