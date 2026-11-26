@@ -74,6 +74,13 @@
                         {!! $qs->snapshot->snapshot_stem !!}
                     </div>
 
+                    @if($qs->question_type === 'ESSAY' && trim((string) $qs->snapshot->snapshot_explanation) !== '')
+                        <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+                            <h4 class="mb-2 text-xs font-bold uppercase text-amber-900">Pedoman Penskoran / Rubrik Guru</h4>
+                            <div class="whitespace-pre-wrap text-sm leading-6 text-amber-950">{{ $qs->snapshot->snapshot_explanation }}</div>
+                        </div>
+                    @endif
+
                     <div class="bg-gray-50/80 p-4 rounded-xl border border-cardBorder mb-4">
                         <h4 class="text-xs font-bold text-textSecondary uppercase mb-2">Jawaban Siswa:</h4>
                         <div class="text-sm font-medium text-navy-900">
@@ -111,7 +118,7 @@
                                     <div>
                                         <label class="block text-xs font-bold text-textSecondary uppercase mb-1">Nilai Manual</label>
                                         <input wire:model="manualScore" type="number" step="0.01" class="w-36 border border-cardBorder rounded-lg px-3 py-1.5 text-sm font-bold focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                                        @error('manualScore') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @error
+                                        @error('manualScore') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                                     </div>
                                     <div>
                                         <label class="block text-xs font-bold text-textSecondary uppercase mb-1">Catatan / Feedback Guru</label>

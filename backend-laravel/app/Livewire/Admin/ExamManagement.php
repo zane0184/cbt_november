@@ -314,6 +314,10 @@ class ExamManagement extends Component
             ->where('tenant_id', $tenantId)
             ->whereIn('id', $selectedVersionIds)
             ->where('status', 'PUBLISHED')
+            ->where(function ($query): void {
+                $query->whereNull('metadata->curriculum_mapping->status')
+                    ->orWhere('metadata->curriculum_mapping->status', '!=', 'PENDING_TEACHER');
+            })
             ->whereHas('question', fn ($query) => $query
                 ->where('tenant_id', $tenantId)
                 ->where('subject_id', $assignment->subject_id)
@@ -700,7 +704,12 @@ class ExamManagement extends Component
                 ->where('tenant_id', $tenantId)
                 ->where('subject_id', $selectedAssignment->subject_id)
                 ->where('status', 'PUBLISHED')
-                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery->where('status', 'PUBLISHED'))
+                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
+                    ->where('status', 'PUBLISHED')
+                    ->where(function ($mappingQuery): void {
+                        $mappingQuery->whereNull('metadata->curriculum_mapping->status')
+                            ->orWhere('metadata->curriculum_mapping->status', '!=', 'PENDING_TEACHER');
+                    }))
             : null;
 
         if ($availableQuestionsQuery && $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== []) {

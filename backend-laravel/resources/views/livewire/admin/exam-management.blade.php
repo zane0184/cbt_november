@@ -142,6 +142,22 @@
                         @error('title') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
                     </div>
 
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Nama Kegiatan</label>
+                        <input wire:model="activityName" type="text" maxlength="255" required
+                            class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            placeholder="Contoh: Asesmen Sumatif Akhir Semester Ganjil">
+                        @error('activityName') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tujuan Asesmen</label>
+                        <textarea wire:model="assessmentPurpose" rows="2" maxlength="5000" required
+                            class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none"
+                            placeholder="Jelaskan tujuan dan kompetensi yang akan diukur melalui asesmen ini."></textarea>
+                        @error('assessmentPurpose') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                             <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Mata Pelajaran</label>

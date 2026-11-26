@@ -105,8 +105,17 @@ class DocxQuestionDraftImporter
             $pendingMappingCount = 0;
 
             foreach ($ready as $row) {
-                $questionCpIds = array_values(array_unique(!empty($row['mapping_cp_ids']) ? $row['mapping_cp_ids'] : $cpIds));
-                $questionOutcomeIds = array_values(array_unique(!empty($row['mapping_outcome_ids']) ? $row['mapping_outcome_ids'] : $outcomeIds));
+                // A per-question override is an atomic CP + TP/ATP pair.
+                // Never combine one side of a local override with the other side
+                // from the batch default; partial local choices must stay pending.
+                $hasQuestionSpecificMapping = !empty($row['mapping_cp_ids'])
+                    || !empty($row['mapping_outcome_ids']);
+                $questionCpIds = array_values(array_unique(
+                    $hasQuestionSpecificMapping ? ($row['mapping_cp_ids'] ?? []) : $cpIds
+                ));
+                $questionOutcomeIds = array_values(array_unique(
+                    $hasQuestionSpecificMapping ? ($row['mapping_outcome_ids'] ?? []) : $outcomeIds
+                ));
                 $question = Question::query()->create([
                     'tenant_id' => $tenantId,
                     'owner_type' => 'SUBJECT',
@@ -283,16 +292,21 @@ class DocxQuestionDraftImporter
                     }
                 }
 
-                // Importing a DRAFT must not be blocked solely because the
-                // teacher has not completed the official curriculum mapping yet.
-                // If a mapping is supplied, keep the mapping service strict. Its
-                // nested transaction rolls back any partial mapping writes when
-                // provenance/assignment/framework validation fails; the question
-                // itself remains a DRAFT with an explicit pending-mapping record.
-                $mappingStatus = 'PENDING_TEACHER';
-                $mappingMessage = 'Pemetaan CP dan TP/ATP belum dilengkapi. Lengkapi melalui editor Bank Soal sebelum menerbitkan soal.';
+                // An intentionally empty mapping is a valid NOT_MAPPED state,
+                // not a pending task. This applies to every assigned subject,
+                // including Religious Education and local-content subjects.
+                // Partial or invalid mappings remain pending for teacher review.
+                $mappingStatus = 'NOT_MAPPED';
+                $mappingMessage = null;
 
-                if ($questionCpIds !== [] && $questionOutcomeIds !== []) {
+                if ($questionCpIds === [] && $questionOutcomeIds === []) {
+                    // New DOCX draft versions have no prior mappings. Keep the
+                    // NOT_MAPPED state local to the importer and avoid invoking
+                    // curriculum services for a general question.
+                    $mappingStatus = 'NOT_MAPPED';
+                } elseif ($questionCpIds !== [] && $questionOutcomeIds !== []) {
+                    $mappingStatus = 'PENDING_TEACHER';
+                    $mappingMessage = 'Pemetaan CP dan TP/ATP belum tervalidasi. Lengkapi melalui editor Bank Soal sebelum menerbitkan soal.';
                     try {
                         $mappingService->sync(
                             $version,
@@ -309,7 +323,8 @@ class DocxQuestionDraftImporter
                         $mappingMessage = (string) ($mappingErrors->first()
                             ?? 'Pemetaan belum memenuhi validasi kurikulum resmi. Lengkapi kembali melalui editor Bank Soal.');
                     }
-                } elseif ($questionCpIds !== [] || $questionOutcomeIds !== []) {
+                } else {
+                    $mappingStatus = 'PENDING_TEACHER';
                     $mappingMessage = 'Pemetaan CP dan TP/ATP harus dilengkapi berpasangan. Lengkapi keduanya melalui editor Bank Soal sebelum menerbitkan soal.';
                 }
 
@@ -324,7 +339,7 @@ class DocxQuestionDraftImporter
                 $version->metadata = $versionMetadata;
                 $version->save();
 
-                if ($mappingStatus !== 'MAPPED') {
+                if ($mappingStatus === 'PENDING_TEACHER') {
                     $pendingMappingCount++;
                     app(AuditService::class)->log(
                         'QUESTION_VERSION_CURRICULUM_MAPPING_PENDING',

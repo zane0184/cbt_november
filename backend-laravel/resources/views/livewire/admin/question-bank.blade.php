@@ -26,10 +26,13 @@
     <!-- Filter Header -->
     <div class="bg-white border border-cardBorder rounded-2xl p-4 shadow-sm flex flex-col md:flex-row gap-3">
         <input wire:model.live="search" type="text" placeholder="Cari kode atau isi soal..." class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none flex-1">
-        <select wire:model.live="subjectFilter" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none md:w-52">
-            <option value="">Semua Mapel</option>
-            @foreach($subjects as $sub)
-                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+        <select wire:model.live="assignmentFilter" aria-label="Filter penugasan mata pelajaran, kelas, dan rombel" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none md:w-80">
+            <option value="">Semua Penugasan</option>
+            @foreach($assignmentRows as $row)
+                @php($assignment = $row['assignment'])
+                <option value="{{ $assignment->id }}">
+                    {{ $assignment->subject?->name ?? 'Mapel' }} · {{ $assignment->rombel?->gradeLevel?->name ?? 'Kelas -' }} · {{ $assignment->rombel?->name ?? 'Rombel -' }}
+                </option>
             @endforeach
         </select>
         <select wire:model.live="statusFilter" class="border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none md:w-44">
@@ -260,7 +263,7 @@
                     <div class="space-y-4 rounded-xl border border-cardBorder bg-gray-50 p-4">
                         <div>
                             <h4 class="text-xs font-bold uppercase text-navy-900">Pemetaan kurikulum per versi soal</h4>
-                            <p class="mt-1 text-[11px] text-textSecondary">Pemetaan CP dan TP/ATP bersifat opsional untuk soal umum. Jika pemetaan dipilih, sistem tetap mewajibkan CP resmi terverifikasi, TP/ATP terpublikasi, dan struktur kurikulum resmi yang lengkap.</p>
+                            <p class="mt-1 text-[11px] text-textSecondary">Pemetaan CP dan TP/ATP bersifat opsional untuk semua mata pelajaran yang ditugaskan kepada Guru. Jika pemetaan dipilih, sistem tetap mewajibkan CP resmi terverifikasi, TP/ATP terpublikasi, dan struktur kurikulum resmi yang lengkap.</p>
                         </div>
                         @if($selectedAssignment)
                             <div class="rounded-lg border border-cardBorder bg-white p-3">
@@ -277,13 +280,13 @@
                                             <span><strong>{{ $cp['code'] }} — {{ $cp['title'] }}</strong><span class="mt-1 block text-[11px] text-textSecondary">{{ $cp['source_document'] ?? 'Sumber resmi' }}</span></span>
                                         </label>
                                     @empty
-                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi terverifikasi untuk penugasan ini. Soal tetap dapat diterbitkan sebagai soal umum tanpa pemetaan kurikulum.</p>
+                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi terverifikasi untuk penugasan ini. Soal tetap dapat diterbitkan tanpa pemetaan CP/TP/ATP.</p>
                                     @endforelse
                                 </div>
                                 @error('selectedCpIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
-                                <p class="mb-2 text-xs font-bold text-amber-900">TP/ATP terpublikasi (pilih minimal satu)</p>
+                                <p class="mb-2 text-xs font-bold text-amber-900">TP/ATP terpublikasi (pilih minimal satu jika ingin memetakan)</p>
                                 <div class="grid gap-2 md:grid-cols-2">
                                     @forelse($outcomes as $outcome)
                                         <label class="flex items-start gap-2 rounded-lg border border-amber-100 bg-white p-3 text-xs">
@@ -323,7 +326,7 @@
                                 <p class="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">Materi dan topik hanya dapat ditautkan jika CP dan TP/ATP dipetakan.</p>
                             @endif
                             @else
-                                <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Soal dapat disimpan dan diterbitkan sebagai soal umum tanpa CP/TP/ATP. Pemetaan kurikulum, materi, dan topik hanya tersedia bagi akun yang memiliki kewenangan pengelolaan kurikulum.</p>
+                                <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Soal dapat disimpan dan diterbitkan tanpa pemetaan CP/TP/ATP. Pemetaan kurikulum, materi, dan topik hanya tersedia bagi akun yang memiliki kewenangan pengelolaan kurikulum.</p>
                             @endif
                         @else
                             <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Pilih penugasan Guru untuk menampilkan CP, TP/ATP, materi, dan topik yang sah.</p>
@@ -533,6 +536,7 @@
                         <div class="space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                             <label class="block text-xs font-bold text-amber-900 uppercase mb-1">Pedoman Penskoran / Rubrik Jawaban Uraian</label>
                             <textarea dir="auto" wire:model="explanation" rows="3" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none" placeholder="Tuliskan pedoman penskoran atau kriteria jawaban benar untuk korektor..."></textarea>
+                            @error('explanation') <span class="block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
                         </div>
                     @endif
 

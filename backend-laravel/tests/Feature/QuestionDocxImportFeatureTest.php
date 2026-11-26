@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Admin\QuestionBank;
 use App\Livewire\Teacher\QuestionDocxImport;
 use App\Models\AcademicYear;
 use App\Models\Curriculum;
@@ -159,6 +160,97 @@ class QuestionDocxImportFeatureTest extends TestCase
     }
 
 
+    public function test_teacher_can_import_docx_as_explicit_not_mapped_draft(): void
+    {
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx())
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal berhasil disimpan sebagai DRAFT')
+            ->assertDontSee('menunggu pemetaan');
+
+        $question = \\App\\Models\\Question::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('created_by', $this->teacher->id)
+            ->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('DRAFT', $version->status);
+        $this->assertSame('NOT_MAPPED', $version->metadata['curriculum_mapping']['status']);
+        $this->assertSame(
+            (string) $this->assignment->id,
+            $version->metadata['curriculum_mapping']['teacher_subject_assignment_id']
+        );
+        $this->assertDatabaseMissing('question_version_curriculum_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseMissing('question_version_tenant_outcome_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseMissing('question_version_structure_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseHas('question_docx_import_batches', [
+            'tenant_id' => $this->tenant->id,
+            'teacher_subject_assignment_id' => $this->assignment->id,
+            'imported_count' => 1,
+        ]);
+    }
+
+    public function test_partial_per_question_mapping_override_does_not_mix_with_batch_default(): void
+    {
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx())
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedCpIds', [$this->curriculumContext['cp']->id])
+            ->set('selectedOutcomeIds', [$this->curriculumContext['tp']->id])
+            ->set('questions.0.mapping_cp_ids', [$this->curriculumContext['cp']->id])
+            ->set('questions.0.mapping_outcome_ids', [])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal masih menunggu pemetaan CP dan TP/ATP resmi');
+
+        $question = \\App\\Models\\Question::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('created_by', $this->teacher->id)
+            ->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('PENDING_TEACHER', $version->metadata['curriculum_mapping']['status']);
+        $this->assertSame([$this->curriculumContext['cp']->id], $version->metadata['curriculum_mapping']['requested_cp_ids']);
+        $this->assertSame([], $version->metadata['curriculum_mapping']['requested_outcome_ids']);
+        $this->assertDatabaseMissing('question_version_curriculum_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseMissing('question_version_tenant_outcome_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+
+        // Make non-curriculum publication requirements valid so this regression
+        // specifically proves PENDING_TEACHER cannot fall through as NOT_MAPPED.
+        $version->update(['default_points' => 1.00]);
+        $version->options()->firstOrFail()->update(['is_correct' => true]);
+
+        Livewire::test(QuestionBank::class)
+            ->call('publishQuestion', $question->id)
+            ->assertStatus(422);
+
+        $this->assertSame('DRAFT', $question->fresh()->status);
+        $this->assertSame('DRAFT', $version->fresh()->status);
+    }
+
     public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
     {
         $bytes = $this->makeDocxBytes(false);
@@ -273,6 +365,32 @@ class QuestionDocxImportFeatureTest extends TestCase
 
         $this->assertDatabaseCount('questions', 1);
         $this->assertDatabaseCount('question_docx_import_batches', 1);
+    }
+
+    public function test_docx_save_accepts_active_assignment_with_open_ended_dates(): void
+    {
+        $this->assignment->forceFill([
+            'starts_at' => null,
+            'ends_at' => null,
+        ])->save();
+
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx())
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal berhasil disimpan sebagai DRAFT');
+
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->assignment->subject_id,
+            'status' => 'DRAFT',
+            'created_by' => $this->teacher->id,
+        ]);
     }
 
     private function uploadedDocx(?string $bytes = null): UploadedFile

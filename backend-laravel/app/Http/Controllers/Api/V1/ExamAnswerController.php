@@ -461,6 +461,7 @@ class ExamAnswerController extends Controller
             case 'MC':
             case 'MULTIPLE_CHOICE':
             case 'TRUE_FALSE':
+            case 'TF':
                 if (!isset($payload['selected_option_id']) || !in_array($payload['selected_option_id'], $optionIds)) {
                     abort(422, 'Invalid option selected.');
                 }
@@ -532,6 +533,8 @@ class ExamAnswerController extends Controller
                     abort(422, 'Invalid text answer format.');
                 }
                 break;
+            default:
+                abort(422, 'Tipe soal tidak didukung untuk pengiriman jawaban.');
         }
     }
 }

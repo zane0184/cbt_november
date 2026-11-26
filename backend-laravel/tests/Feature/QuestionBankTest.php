@@ -294,11 +294,47 @@ class QuestionBankTest extends TestCase
 
         $this->questionBankComponent()
             ->call('gotoPage', 2)
-            ->set('subjectFilter', $this->subjectA->id)
+            ->set('assignmentFilter', $this->assignment->id)
             ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1)
             ->call('gotoPage', 2)
             ->set('statusFilter', 'PUBLISHED')
             ->assertViewHas('questions', fn ($questions) => $questions->currentPage() === 1);
+    }
+
+    public function test_question_bank_assignment_filter_shows_subject_grade_rombel_and_scopes_questions(): void
+    {
+        $this->actingAs($this->userA);
+
+        $question = Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'question_code' => 'ASSIGNMENT-FILTER-01',
+            'status' => 'DRAFT',
+            'created_by' => $this->userA->id,
+        ]);
+
+        $question->versions()->create([
+            'tenant_id' => $this->tenantA->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Soal untuk penugasan Matematika kelas 4A',
+            'metadata' => [
+                'curriculum_mapping' => [
+                    'status' => 'NOT_MAPPED',
+                    'teacher_subject_assignment_id' => (string) $this->assignment->id,
+                ],
+            ],
+            'status' => 'DRAFT',
+            'is_current' => true,
+            'created_by' => $this->userA->id,
+        ]);
+
+        Livewire::test(QuestionBank::class)
+            ->assertSee('Matematika · Kelas 4 · 4A')
+            ->set('assignmentFilter', $this->assignment->id)
+            ->assertViewHas('questions', fn ($questions) => $questions->contains('id', $question->id));
     }
 
     public function test_web_admin_create_and_update_multiple_response_question()
@@ -695,6 +731,50 @@ class QuestionBankTest extends TestCase
         $this->assertDatabaseHas('question_versions', ['id' => $version->id, 'status' => 'DRAFT']);
     }
 
+    public function test_matching_manual_save_rejects_blank_or_incomplete_pairs(): void
+    {
+        $this->actingAs($this->userA);
+
+        $this->questionBankComponent()
+            ->set('questionCode', 'MATCH-BAD-PAIR')
+            ->set('questionType', 'MATCHING')
+            ->set('stem', 'Pasangan harus lengkap')
+            ->set('defaultPoints', 5)
+            ->set('matchingPairs', [
+                ['left' => 'Premis satu', 'right' => 'Jawaban satu'],
+                ['left' => 'Premis dua', 'right' => ''],
+            ])
+            ->call('saveQuestion')
+            ->assertHasErrors(['matchingPairs']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'MATCH-BAD-PAIR']);
+    }
+
+    public function test_essay_manual_save_requires_and_persists_teacher_rubric(): void
+    {
+        $this->actingAs($this->userA);
+
+        $component = $this->questionBankComponent()
+            ->set('questionCode', 'ESSAY-RUBRIC-01')
+            ->set('questionType', 'ESSAY')
+            ->set('stem', 'Jelaskan proses fotosintesis.')
+            ->set('defaultPoints', 10)
+            ->set('explanation', '');
+
+        $component->call('saveQuestion')->assertHasErrors(['explanation']);
+        $this->assertDatabaseMissing('questions', ['question_code' => 'ESSAY-RUBRIC-01']);
+
+        $component->set('explanation', 'Nilai berdasarkan ketepatan konsep, urutan proses, dan kelengkapan istilah.')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $question = Question::query()->where('question_code', 'ESSAY-RUBRIC-01')->firstOrFail();
+        $this->assertSame(
+            'Nilai berdasarkan ketepatan konsep, urutan proses, dan kelengkapan istilah.',
+            $question->currentVersion->explanation
+        );
+    }
+
     private function makeDocxQuestionUpload(array $lines): UploadedFile
     {
         $path = tempnam(sys_get_temp_dir(), 'cbt-question-docx-');
@@ -720,6 +800,106 @@ class QuestionBankTest extends TestCase
         @unlink($path);
 
         return UploadedFile::fake()->createWithContent('soal-uji.docx', $bytes);
+    }
+
+    public function test_manual_question_save_accepts_active_assignment_with_open_ended_dates(): void
+    {
+        $this->actingAs($this->userA);
+        $this->assignment->forceFill([
+            'starts_at' => null,
+            'ends_at' => null,
+        ])->save();
+
+        $this->questionBankComponent()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->set('questionCode', 'OPEN-DATE-SAVE')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', 'Soal dengan penugasan tanpa batas tanggal')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenantA->id,
+            'question_code' => 'OPEN-DATE-SAVE',
+            'status' => 'DRAFT',
+        ]);
+    }
+
+    public function test_manual_question_save_rejects_duplicate_question_code_with_validation_error(): void
+    {
+        $this->actingAs($this->userA);
+
+        Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'question_code' => 'DUPLICATE-01',
+            'status' => 'DRAFT',
+            'created_by' => $this->userA->id,
+        ]);
+
+        $this->questionBankComponent()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->set('questionCode', ' duplicate-01 ')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', 'Soal dengan kode duplikat')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasErrors(['questionCode']);
+
+        $this->assertDatabaseCount('questions', 1);
+    }
+
+    public function test_manual_question_save_trims_option_text_and_drops_whitespace_only_optional_options(): void
+    {
+        $this->actingAs($this->userA);
+
+        $this->questionBankComponent()
+            ->set('questionCode', 'TRIM-OPTIONS-01')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', '  Stem soal  ')
+            ->set('defaultPoints', 1)
+            ->set('optionA', '  Pilihan A  ')
+            ->set('optionB', '  Pilihan B  ')
+            ->set('optionC', '   ')
+            ->set('optionD', '')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasNoErrors();
+
+        $question = Question::query()->where('question_code', 'TRIM-OPTIONS-01')->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('Stem soal', $version->stem);
+        $this->assertSame(['Pilihan A', 'Pilihan B'], $version->options->pluck('content')->all());
+        $this->assertCount(2, $version->options);
+    }
+
+    public function test_manual_question_save_rejects_whitespace_only_required_option(): void
+    {
+        $this->actingAs($this->userA);
+
+        $this->questionBankComponent()
+            ->set('questionCode', 'TRIM-OPTIONS-02')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', 'Soal uji opsi wajib')
+            ->set('defaultPoints', 1)
+            ->set('optionA', '   ')
+            ->set('optionB', 'Pilihan B')
+            ->set('correctOption', 'B')
+            ->call('saveQuestion')
+            ->assertHasErrors(['optionA']);
+
+        $this->assertDatabaseMissing('questions', ['question_code' => 'TRIM-OPTIONS-02']);
     }
 
     private function questionBankComponent()

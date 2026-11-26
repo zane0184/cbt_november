@@ -265,7 +265,7 @@ class ExamSnapshotTest extends TestCase
         $v1 = QuestionVersion::create([
             'question_id' => $q->id,
             'major_version' => 1, 'minor_version' => 0,
-            'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'is_current' => true,
+            'question_type' => 'ESSAY', 'stem' => 'Old Stem', 'explanation' => 'Rubrik soal lama.', 'default_points' => 5, 'is_current' => true,
             'status' => 'PUBLISHED',
             'created_by' => $this->user->id
         ]);
@@ -297,6 +297,231 @@ class ExamSnapshotTest extends TestCase
         $snapshot = $this->exam->snapshots()->first();
         $this->assertEquals('Old Stem', $snapshot->snapshot_stem);
         $this->assertEquals($v1->id, $snapshot->source_question_version_id);
+    }
+
+    public function test_essay_rubric_is_copied_to_immutable_snapshot(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'ESSAY-RUBRIC-SNAPSHOT',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Jelaskan proses fotosintesis.',
+            'explanation' => 'Rubrik versi pertama.',
+            'default_points' => 10,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+        $response->assertOk();
+
+        $snapshot = $this->exam->snapshots()->where('source_question_version_id', $version->id)->firstOrFail();
+        $this->assertSame('Rubrik versi pertama.', $snapshot->snapshot_explanation);
+
+        $version->update(['explanation' => 'Rubrik versi kedua.']);
+        $this->assertSame('Rubrik versi pertama.', $snapshot->fresh()->snapshot_explanation);
+    }
+
+    public function test_exam_snapshot_rejects_essay_without_teacher_rubric(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'ESSAY-NO-RUBRIC',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'ESSAY',
+            'stem' => 'Uraikan jawaban.',
+            'default_points' => 5,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_version_id' => $version->id,
+        ]);
+    }
+
+    public function test_valid_matching_pairs_are_copied_to_immutable_snapshot(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'MATCHING-VALID-SNAPSHOT',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MATCHING',
+            'stem' => 'Pasangkan istilah dan artinya.',
+            'default_points' => 10,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        foreach ([
+            ['option_key' => 'pair_1', 'matching_key' => null, 'content' => 'Istilah A'],
+            ['option_key' => 'pair_2', 'matching_key' => null, 'content' => 'Istilah B'],
+            ['option_key' => null, 'matching_key' => 'pair_1', 'content' => 'Arti A'],
+            ['option_key' => null, 'matching_key' => 'pair_2', 'content' => 'Arti B'],
+        ] as $index => $option) {
+            \App\Models\QuestionOption::create(array_merge($option, [
+                'tenant_id' => $this->tenant->id,
+                'question_version_id' => $version->id,
+                'sequence' => $index + 1,
+                'is_correct' => false,
+            ]));
+        }
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+        $response->assertOk();
+
+        $snapshot = $this->exam->snapshots()->where('source_question_version_id', $version->id)->firstOrFail();
+        $this->assertCount(4, $snapshot->snapshot_options);
+        $this->assertSame(
+            ['pair_1', 'pair_2'],
+            collect($snapshot->snapshot_options)->whereNotNull('option_key')->pluck('option_key')->values()->all()
+        );
+        $this->assertSame(
+            ['pair_1', 'pair_2'],
+            collect($snapshot->snapshot_options)->whereNotNull('matching_key')->pluck('matching_key')->values()->all()
+        );
+    }
+
+    public function test_exam_snapshot_rejects_matching_with_unpaired_options(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'MATCHING-UNPAIRED',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MATCHING',
+            'stem' => 'Pasangkan setiap premis.',
+            'default_points' => 10,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        foreach ([
+            ['option_key' => 'pair_1', 'matching_key' => null, 'content' => 'Premis satu'],
+            ['option_key' => 'pair_2', 'matching_key' => null, 'content' => 'Premis dua'],
+            ['option_key' => null, 'matching_key' => 'pair_1', 'content' => 'Jawaban satu'],
+        ] as $index => $option) {
+            \App\Models\QuestionOption::create(array_merge($option, [
+                'tenant_id' => $this->tenant->id,
+                'question_version_id' => $version->id,
+                'sequence' => $index + 1,
+                'is_correct' => false,
+            ]));
+        }
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_version_id' => $version->id,
+        ]);
+    }
+
+    public function test_exam_snapshot_rejects_unknown_question_type(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'UNKNOWN-QUESTION-TYPE',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'UNSUPPORTED_FUTURE_TYPE',
+            'stem' => 'Tipe soal belum didukung.',
+            'default_points' => 5,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('exam_question_snapshots', [
+            'exam_id' => $this->exam->id,
+            'source_question_version_id' => $version->id,
+        ]);
     }
 
     public function test_exam_rejects_same_tenant_question_from_a_different_subject()
@@ -402,7 +627,7 @@ class ExamSnapshotTest extends TestCase
 
         $v = QuestionVersion::create([
             'question_id' => $q->id,
-            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'is_current' => true, 'status' => 'PUBLISHED', 'created_by' => $this->user->id
+            'major_version' => 1, 'minor_version' => 0, 'question_type' => 'ESSAY', 'stem' => 'S', 'explanation' => 'Rubrik media.', 'default_points' => 5, 'is_current' => true, 'status' => 'PUBLISHED', 'created_by' => $this->user->id
         ]);
 
         $this->mapQuestionVersionToCanonicalCurriculum($v, $this->canonicalContext);
@@ -654,6 +879,8 @@ class ExamSnapshotTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'ESSAY',
             'stem' => 'Other tenant snapshot',
+            'explanation' => 'Rubrik tenant lain.',
+            'default_points' => 5,
             'is_current' => true,
             'status' => 'PUBLISHED',
             'created_by' => $otherUser->id,
@@ -917,6 +1144,8 @@ class ExamSnapshotTest extends TestCase
             'minor_version' => 0,
             'question_type' => 'ESSAY',
             'stem' => 'Snapshot mutation guard',
+            'explanation' => 'Rubrik mutation guard.',
+            'default_points' => 5,
             'is_current' => true,
             'status' => 'PUBLISHED',
             'created_by' => $this->user->id,

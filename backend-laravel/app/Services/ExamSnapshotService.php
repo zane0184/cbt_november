@@ -377,14 +377,28 @@ class ExamSnapshotService
                 if ((float) $version->default_points <= 0) {
                     abort(422, 'Snapshot diblokir: bobot nilai soal belum ditentukan oleh Guru.');
                 }
-                if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
+
+                $supportedQuestionTypes = [
+                    'MC',
+                    'MULTIPLE_CHOICE',
+                    'MULTIPLE_RESPONSE',
+                    'TRUE_FALSE',
+                    'TF',
+                    'TRUE_FALSE_GROUP',
+                    'MATCHING',
+                    'ESSAY',
+                ];
+                if (!in_array($version->question_type, $supportedQuestionTypes, true)) {
+                    abort(422, 'Snapshot diblokir: tipe soal belum didukung oleh alur jawaban dan penilaian CBT.');
+                }
+                if (in_array($version->question_type, ['MC', 'MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE', 'TF'], true)) {
                     $options = $version->options;
                     $optionCount = $options->count();
                     $correctCount = $options->filter(fn ($option) => (bool) $option->is_correct)->count();
                     $validKeys = match ($version->question_type) {
-                        'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
+                        'MC', 'MULTIPLE_CHOICE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount === 1,
                         'MULTIPLE_RESPONSE' => $optionCount >= 2 && $optionCount <= 4 && $correctCount >= 1,
-                        'TRUE_FALSE' => $optionCount === 2 && $correctCount === 1,
+                        'TRUE_FALSE', 'TF' => $optionCount === 2 && $correctCount === 1,
                         default => false,
                     };
                     if (!$validKeys) {
@@ -396,6 +410,28 @@ class ExamSnapshotService
                 // yet captured in the immutable snapshot and cannot be scored safely.
                 if ($version->question_type === 'SHORT_ANSWER') {
                     abort(422, 'SHORT_ANSWER belum dapat dimasukkan ke ujian sampai accepted answers tersimpan di immutable snapshot dan scoring teruji.');
+                }
+                if ($version->question_type === 'ESSAY'
+                    && trim((string) $version->explanation) === '') {
+                    abort(422, 'Snapshot soal uraian diblokir: pedoman penskoran/rubrik belum diisi Guru.');
+                }
+                if ($version->question_type === 'MATCHING') {
+                    $options = $version->options;
+                    $leftOptions = $options->filter(fn ($option) => is_string($option->option_key) && $option->option_key !== '' && empty($option->matching_key));
+                    $rightOptions = $options->filter(fn ($option) => is_string($option->matching_key) && $option->matching_key !== '' && empty($option->option_key));
+                    $leftKeys = $leftOptions->pluck('option_key')->all();
+                    $rightKeys = $rightOptions->pluck('matching_key')->all();
+                    $validMatching = $leftOptions->count() >= 2
+                        && $leftOptions->count() === $rightOptions->count()
+                        && $options->count() === ($leftOptions->count() + $rightOptions->count())
+                        && count(array_unique($leftKeys)) === count($leftKeys)
+                        && count(array_unique($rightKeys)) === count($rightKeys)
+                        && collect($leftKeys)->sort()->values()->all() === collect($rightKeys)->sort()->values()->all()
+                        && $leftOptions->every(fn ($option) => trim((string) $option->content) !== '')
+                        && $rightOptions->every(fn ($option) => trim((string) $option->content) !== '');
+                    if (!$validMatching) {
+                        abort(422, 'Snapshot Menjodohkan tidak valid: setiap premis harus memiliki tepat satu jawaban pasangan.');
+                    }
                 }
                 if ($version->question_type === 'TRUE_FALSE_GROUP') {
                     $items = $version->metadata['statement_items'] ?? [];
@@ -424,8 +460,23 @@ class ExamSnapshotService
                 $hasAnyQuestionCurriculumMapping = $cpMappings->isNotEmpty()
                     || $outcomeMappings->isNotEmpty()
                     || $structureMappings->isNotEmpty();
+                $hasAnyVersionCurriculumMapping = $version->curriculumMappings()->exists()
+                    || $version->tenantOutcomeMappings()->exists()
+                    || $version->structureMappings()->exists();
+                $questionMappingStatus = $version->metadata['curriculum_mapping']['status'] ?? null;
+
+                if ($questionMappingStatus === 'PENDING_TEACHER') {
+                    abort(422, 'Snapshot diblokir: pemetaan kurikulum soal masih menunggu verifikasi Guru.');
+                }
+                if (($questionMappingStatus === 'MAPPED' && !$hasAnyVersionCurriculumMapping)
+                    || ($questionMappingStatus === 'NOT_MAPPED' && $hasAnyVersionCurriculumMapping)) {
+                    abort(409, 'Snapshot diblokir: status pemetaan kurikulum tidak konsisten dengan data mapping versi soal.');
+                }
 
                 if (!$hasAssessmentCurriculumMapping) {
+                    if ($hasAnyVersionCurriculumMapping) {
+                        abort(422, 'Ujian tanpa pemetaan asesmen hanya dapat memuat soal yang sama sekali belum dipetakan ke kurikulum.');
+                    }
                     if ($hasAnyQuestionCurriculumMapping) {
                         abort(422, 'Ujian tanpa pemetaan asesmen hanya dapat memuat soal yang juga belum dipetakan ke kurikulum.');
                     }

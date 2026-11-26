@@ -12,7 +12,6 @@ use App\Models\TenantLearningOutcome;
 use App\Models\Question;
 use App\Models\QuestionOption;
 use App\Models\QuestionVersion;
-use App\Models\Subject;
 use App\Support\Security\TeacherAccess;
 use App\Support\Security\TeacherPortalAccess;
 use App\Services\AuditService;
@@ -20,6 +19,7 @@ use App\Services\TeacherPortal\QuestionVersionCurriculumMappingService;
 use App\Services\TeacherPortal\TeacherPortalDataService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -28,7 +28,7 @@ class QuestionBank extends Component
     use WithPagination;
 
     public $search = '';
-    public $subjectFilter = '';
+    public $assignmentFilter = '';
     public $statusFilter = '';
 
     public function boot(): void
@@ -143,7 +143,9 @@ class QuestionBank extends Component
             $this->explanation = $version->explanation ?? '';
             $this->defaultPoints = $version->default_points ?? 10.0;
             $firstAssignmentMapping = $version->curriculumMappings->first() ?? $version->tenantOutcomeMappings->first();
-            $this->selectedAssignmentId = $firstAssignmentMapping?->teacher_subject_assignment_id ?? '';
+            $mappingMetadata = $version->metadata['curriculum_mapping'] ?? [];
+            $this->selectedAssignmentId = $firstAssignmentMapping?->teacher_subject_assignment_id
+                ?? ($mappingMetadata['teacher_subject_assignment_id'] ?? '');
             $this->selectedCpIds = $version->curriculumMappings
                 ->where('teacher_subject_assignment_id', $this->selectedAssignmentId)
                 ->pluck('multi_learning_outcome_id')->all();
@@ -305,14 +307,37 @@ class QuestionBank extends Component
 
     public function saveQuestion()
     {
+        // Normalize user-entered text before validation and persistence.
+        $this->questionCode = strtoupper(trim((string) $this->questionCode));
+        $this->stem = trim((string) $this->stem);
+        $this->explanation = trim((string) $this->explanation);
+
+        foreach (['optionA', 'optionB', 'optionC', 'optionD'] as $optionField) {
+            $this->{$optionField} = trim((string) $this->{$optionField});
+        }
+
+        foreach ($this->matchingPairs as $index => $pair) {
+            if (is_array($pair)) {
+                $this->matchingPairs[$index]['left'] = trim((string) ($pair['left'] ?? ''));
+                $this->matchingPairs[$index]['right'] = trim((string) ($pair['right'] ?? ''));
+            }
+        }
+
         $this->validate([
-            'questionCode' => 'required|string|max:50',
+            'questionCode' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('questions', 'question_code')
+                    ->where(fn ($query) => $query->where('tenant_id', auth()->user()->tenant_id))
+                    ->ignore($this->editingQuestionId),
+            ],
             'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,MATCHING,ESSAY',
             'selectedAssignmentId' => 'required|uuid',
             'selectedSubjectId' => 'required|exists:subjects,id',
-            'selectedCpIds' => 'required|array|min:1',
+            'selectedCpIds' => 'nullable|array',
             'selectedCpIds.*' => 'required|uuid|distinct',
-            'selectedOutcomeIds' => 'required|array|min:1',
+            'selectedOutcomeIds' => 'nullable|array',
             'selectedOutcomeIds.*' => 'required|uuid|distinct',
             'selectedMaterialId' => 'nullable|uuid',
             'selectedMaterialTopicId' => 'nullable|uuid',
@@ -327,6 +352,11 @@ class QuestionBank extends Component
                 'groupStatements.*.text' => 'required|string|max:12000',
                 'groupStatements.*.is_true' => 'required|boolean',
             ]);
+        }
+
+        if ($this->questionType === 'ESSAY' && trim((string) $this->explanation) === '') {
+            $this->addError('explanation', 'Pedoman penskoran/rubrik wajib diisi untuk soal uraian.');
+            return;
         }
 
         $user = auth()->user();
@@ -389,19 +419,23 @@ class QuestionBank extends Component
             $this->optionA = 'BENAR';
             $this->optionB = 'SALAH';
         } elseif ($this->questionType === 'MATCHING') {
-            if (empty($this->matchingPairs) || count($this->matchingPairs) < 2) {
+            if (!is_array($this->matchingPairs) || count($this->matchingPairs) < 2) {
                 $this->addError('matchingPairs', 'Soal Menjodohkan membutuhkan setidaknya 2 pasangan.');
                 return;
             }
             foreach ($this->matchingPairs as $idx => $pair) {
-                if (empty(trim($pair['left'] ?? '')) || empty(trim($pair['right'] ?? ''))) {
+                if (!is_array($pair)
+                    || !is_string($pair['left'] ?? null)
+                    || !is_string($pair['right'] ?? null)
+                    || trim($pair['left']) === ''
+                    || trim($pair['right']) === '') {
                     $this->addError('matchingPairs', 'Setiap item premis dan jawaban pada pasangan ' . ($idx + 1) . ' wajib diisi.');
                     return;
                 }
             }
         }
 
-        DB::transaction(function () {
+        DB::transaction(function () use ($tenantId) {
             $oldAuditValues = null;
             $auditAction = 'CREATE_QUESTION';
 
@@ -578,31 +612,62 @@ class QuestionBank extends Component
                 }
             }
 
-            app(QuestionVersionCurriculumMappingService::class)->sync(
-                $version,
-                $this->selectedAssignmentId,
-                $this->selectedCpIds,
-                $this->selectedOutcomeIds,
-                $this->selectedMaterialId ?: null,
-                $this->selectedMaterialTopicId ?: null
-            );
+            $isMapped = $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== [];
 
-            // An imported DOCX draft may have been saved before its curriculum
-            // mapping was complete. Once the strict mapping service succeeds in
-            // this editor, clear the pending marker on the current version.
-            $versionMetadata = $version->metadata ?? [];
-            if (($versionMetadata['import_source'] ?? null) === 'DOCX'
-                || isset($versionMetadata['curriculum_mapping'])) {
-                $versionMetadata['curriculum_mapping'] = [
-                    'status' => 'MAPPED',
-                    'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
-                    'requested_cp_ids' => array_values($this->selectedCpIds),
-                    'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
-                    'message' => null,
-                ];
-                $version->metadata = $versionMetadata;
-                $version->save();
+            if ($isMapped || $this->selectedCpIds !== [] || $this->selectedOutcomeIds !== []) {
+                // Curriculum validation is invoked only when the teacher actually
+                // selects CP/TP/ATP. General draft questions do not depend on the
+                // curriculum registry or curriculum-mapping service.
+                app(QuestionVersionCurriculumMappingService::class)->sync(
+                    $version,
+                    $this->selectedAssignmentId,
+                    $this->selectedCpIds,
+                    $this->selectedOutcomeIds,
+                    $this->selectedMaterialId ?: null,
+                    $this->selectedMaterialTopicId ?: null
+                );
+            } else {
+                // Explicit NOT_MAPPED path: clear stale mappings on an edited
+                // draft without invoking curriculum validation or registry lookup.
+                QuestionVersionCurriculumMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                QuestionVersionTenantOutcomeMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                QuestionVersionStructureMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                app(AuditService::class)->log(
+                    'QUESTION_VERSION_CURRICULUM_NOT_MAPPED',
+                    QuestionVersion::class,
+                    (string) $version->id,
+                    null,
+                    [
+                        'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
+                        'mapping_status' => 'NOT_MAPPED',
+                        'reason' => 'CURRICULUM_MAPPING_NOT_SELECTED',
+                    ]
+                );
             }
+
+            // Persist the explicit mapping mode after the optional mapping path.
+            $versionMetadata = $version->metadata ?? [];
+            $versionMetadata['curriculum_mapping'] = [
+                'status' => $isMapped ? 'MAPPED' : 'NOT_MAPPED',
+                'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
+                'requested_cp_ids' => array_values($this->selectedCpIds),
+                'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
+                'message' => null,
+            ];
+            $version->metadata = $versionMetadata;
+            $version->save();
 
             // Never write answer keys or full question content to the audit trail.
             $question->refresh();
@@ -645,6 +710,22 @@ class QuestionBank extends Component
             Gate::authorize('update', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            $mappingStatus = $version->metadata['curriculum_mapping']['status'] ?? null;
+            abort_if(
+                $mappingStatus === 'PENDING_TEACHER',
+                422,
+                'Pemetaan kurikulum soal masih menunggu verifikasi Guru. Lengkapi atau kosongkan CP dan TP/ATP secara berpasangan sebelum menerbitkan.'
+            );
+            abort_if(
+                ($mappingStatus === 'MAPPED' && $version->curriculumMappings()->where('tenant_id', auth()->user()->tenant_id)->doesntExist())
+                    || ($mappingStatus === 'NOT_MAPPED' && (
+                        $version->curriculumMappings()->where('tenant_id', auth()->user()->tenant_id)->exists()
+                        || $version->tenantOutcomeMappings()->where('tenant_id', auth()->user()->tenant_id)->exists()
+                        || $version->structureMappings()->where('tenant_id', auth()->user()->tenant_id)->exists()
+                    )),
+                409,
+                'Status pemetaan kurikulum tidak konsisten dengan data mapping versi soal. Periksa kembali melalui editor Bank Soal.'
+            );
 
             $metadata = $version->metadata ?? [];
             $richContent = $metadata['rich_content'] ?? [];
@@ -693,6 +774,29 @@ class QuestionBank extends Component
                 'Konten DOCX kompleks belum ditinjau. Periksa pratinjau rumus/tabel, lalu catat peninjauan sebelum menerbitkan.'
             );
             abort_if((float) $version->default_points <= 0, 422, 'Bobot nilai belum ditentukan. Lengkapi bobot pada editor Bank Soal sebelum menerbitkan.');
+            if ($version->question_type === 'ESSAY') {
+                abort_if(
+                    trim((string) $version->explanation) === '',
+                    422,
+                    'Publikasi soal uraian memerlukan pedoman penskoran/rubrik yang diisi Guru.'
+                );
+            }
+            if ($version->question_type === 'MATCHING') {
+                $options = $version->options;
+                $leftOptions = $options->filter(fn ($option) => is_string($option->option_key) && $option->option_key !== '' && empty($option->matching_key));
+                $rightOptions = $options->filter(fn ($option) => is_string($option->matching_key) && $option->matching_key !== '' && empty($option->option_key));
+                $leftKeys = $leftOptions->pluck('option_key')->all();
+                $rightKeys = $rightOptions->pluck('matching_key')->all();
+                $validMatching = $leftOptions->count() >= 2
+                    && $leftOptions->count() === $rightOptions->count()
+                    && $options->count() === ($leftOptions->count() + $rightOptions->count())
+                    && count(array_unique($leftKeys)) === count($leftKeys)
+                    && count(array_unique($rightKeys)) === count($rightKeys)
+                    && collect($leftKeys)->sort()->values()->all() === collect($rightKeys)->sort()->values()->all()
+                    && $leftOptions->every(fn ($option) => trim((string) $option->content) !== '')
+                    && $rightOptions->every(fn ($option) => trim((string) $option->content) !== '');
+                abort_if(!$validMatching, 422, 'Pasangan Menjodohkan tidak konsisten. Setiap premis harus memiliki tepat satu jawaban pasangan yang valid.');
+            }
             if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
                 $options = $version->options;
                 $optionCount = $options->count();
@@ -736,7 +840,7 @@ class QuestionBank extends Component
                 || $outcomeMappings->isNotEmpty()
                 || $structureMappings->isNotEmpty();
 
-            // General-purpose questions may be published without curriculum mapping.
+            // Questions without curriculum mapping may be published for any assigned subject.
             // If any mapping is supplied, the complete official CP/TP/ATP/framework
             // contract remains mandatory and is validated exactly as before.
             if ($hasAnyCurriculumMapping) {
@@ -797,7 +901,7 @@ class QuestionBank extends Component
             $versionMetadata['curriculum_mapping'] = array_merge(
                 is_array($mappingMetadata) ? $mappingMetadata : [],
                 [
-                    'status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
+                    'status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_MAPPED',
                     'resolved_at' => now()->toISOString(),
                 ]
             );
@@ -820,7 +924,7 @@ class QuestionBank extends Component
                     'question_status' => 'PUBLISHED',
                     'version_status' => 'PUBLISHED',
                     'question_version_id' => $version->id,
-                    'curriculum_mapping_status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
+                    'curriculum_mapping_status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_MAPPED',
                 ]
             );
         });
@@ -887,7 +991,7 @@ class QuestionBank extends Component
         $this->resetPage();
     }
 
-    public function updatingSubjectFilter()
+    public function updatingAssignmentFilter()
     {
         $this->resetPage();
     }
@@ -967,7 +1071,16 @@ class QuestionBank extends Component
                         ->whereIn('subject_id', $teacherSubjectIds ?? []);
                 });
             })
-            ->when($this->subjectFilter, fn ($q) => $q->where('subject_id', $this->subjectFilter))
+            ->when($this->assignmentFilter, function ($q) {
+                $assignmentId = $this->assignmentFilter;
+                $q->where(function ($assignmentScope) use ($assignmentId): void {
+                    $assignmentScope->whereHas('currentVersion', function ($versionQuery) use ($assignmentId): void {
+                        $versionQuery->where('metadata->curriculum_mapping->teacher_subject_assignment_id', $assignmentId)
+                            ->orWhereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery->where('teacher_subject_assignment_id', $assignmentId))
+                            ->orWhereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery->where('teacher_subject_assignment_id', $assignmentId));
+                    });
+                });
+            })
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, function ($q) {
                 $q->where(function ($searchQuery) {
@@ -979,12 +1092,6 @@ class QuestionBank extends Component
             })
             ->latest()
             ->paginate(12);
-
-        $subjects = Subject::query()
-            ->where('tenant_id', $user->tenant_id)
-            ->whereIn('id', $teacherSubjectIds)
-            ->orderBy('name')
-            ->get();
 
         $editingVersionMedia = collect();
         if ($this->editingQuestionId && $this->editingQuestionVersionId) {
@@ -1000,7 +1107,6 @@ class QuestionBank extends Component
 
         return view('livewire.admin.question-bank', [
             'questions' => $questions,
-            'subjects' => $subjects,
             'assignmentRows' => $assignmentRows,
             'selectedAssignment' => $selectedAssignment,
             'curriculumContext' => $curriculumContext,

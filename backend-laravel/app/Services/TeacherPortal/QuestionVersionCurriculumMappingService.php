@@ -29,19 +29,31 @@ class QuestionVersionCurriculumMappingService
     ): array {
         $user = auth()->user();
         $profile = app(TeacherPortalAccess::class)->profile($user);
-        abort_unless($user->hasPermission('question.manage') && $user->hasPermission('curriculum.manage'), 403);
 
         $tenantId = (string) $user->tenant_id;
         $cpIds = array_values(array_unique($cpIds));
         $outcomeIds = array_values(array_unique($outcomeIds));
+        $isMapped = $cpIds !== [] && $outcomeIds !== [];
 
-        if ($cpIds === [] || $outcomeIds === []) {
+        abort_unless(
+            $user->hasPermission('question.manage')
+                && (!$isMapped || $user->hasPermission('curriculum.manage')),
+            403
+        );
+
+        if (($cpIds === []) !== ($outcomeIds === [])) {
             throw ValidationException::withMessages([
-                'curriculumMapping' => 'Setiap versi soal wajib dipetakan ke minimal satu CP resmi dan satu TP/ATP terpublikasi.',
+                'curriculumMapping' => 'Pemetaan harus lengkap: pilih CP dan TP/ATP sekaligus, atau kosongkan keduanya untuk soal tanpa pemetaan CP/TP/ATP.',
             ]);
         }
 
-        return DB::transaction(function () use ($version, $assignmentId, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId): array {
+        if (!$isMapped && ($materialId || $topicId)) {
+            throw ValidationException::withMessages([
+                'curriculumMapping' => 'Materi dan topik hanya dapat dipilih jika soal dipetakan ke CP dan TP/ATP.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($version, $assignmentId, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId, $isMapped): array {
             $version = QuestionVersion::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($version->id)
@@ -59,9 +71,7 @@ class QuestionVersionCurriculumMappingService
                 ->where('tenant_id', $tenantId)
                 ->whereKey($assignmentId)
                 ->where('teacher_profile_id', $profile->id)
-                ->where('status', 'ACTIVE')
-                ->whereDate('starts_at', '<=', now()->toDateString())
-                ->whereDate('ends_at', '>=', now()->toDateString())
+                ->activeForDate()
                 ->with('curriculumRegistration')
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -72,6 +82,50 @@ class QuestionVersionCurriculumMappingService
                 ]);
             }
 
+            if (!$isMapped) {
+                // NOT_MAPPED is a version-wide state. Remove every mapping row
+                // for this tenant/version, including any legacy rows attached to
+                // another assignment, so publication cannot see a mixed state.
+                QuestionVersionCurriculumMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                QuestionVersionTenantOutcomeMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                QuestionVersionStructureMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                app(AuditService::class)->log(
+                    'QUESTION_VERSION_CURRICULUM_NOT_MAPPED',
+                    QuestionVersion::class,
+                    $version->id,
+                    null,
+                    [
+                        'teacher_subject_assignment_id' => $assignment->id,
+                        'mapping_status' => 'NOT_MAPPED',
+                        'reason' => 'CURRICULUM_MAPPING_NOT_SELECTED',
+                    ]
+                );
+
+                return [
+                    'status' => 'NOT_MAPPED',
+                    'cp_count' => 0,
+                    'outcome_count' => 0,
+                    'structure_count' => 0,
+                    'material_id' => null,
+                    'topic_id' => null,
+                ];
+            }
+
+            // A question without CP/TP/ATP mapping must not depend on a curriculum
+            // registration being configured. Assignment authorization above is
+            // still mandatory; curriculum registration is only needed when mapping.
             $registration = TenantCurriculumRegistration::query()
                 ->where('tenant_id', $tenantId)
                 ->whereKey($assignment->tenant_curriculum_registration_id)
