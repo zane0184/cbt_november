@@ -84,3 +84,15 @@ Pengguna melampirkan dua PDF. Keduanya telah diperiksa dari byte file yang termo
 
 
 - Indeks halaman sumber CP MI dibuat di `docs/CP_9941_MI_SOURCE_INDEX.md` (commit `664e12cf1ab7ae196f2cc87c61c4371f2543a5ef`). Indeks mencatat halaman PDF per mapel, identitas dokumen, hash sumber, serta aturan provenance dan ekstraksi.
+
+
+## Addendum 4 — transkripsi staging CP MI (26 November 2026)
+
+- File staging dibuat: `docs/CP_MI_9941_STAGING_DATASET.md`, commit `16ed23375320c0b791243dbb32933a41f51e1e40`; koreksi page provenance terakhir commit `52f5d7a6e19d9b88714d1aea0d793651bc84dcd5`.
+- Lima mapel sudah diindeks dan sebagian teks CP Pemahaman Konsep ditranskripsikan ke tabel staging: Al-Qur'an Hadis (fase A/B/C), Akidah Akhlak (A/B/C), Fikih (A/B/C), SKI (B/C; fase A tidak ditemukan), Bahasa Arab (A/B/C).
+- Elemen Keterampilan Proses/Keterampilan Bahasa tidak dihapus; tabel staging saat ini masih menandai ekstraksi rinci elemen proses sebagai pekerjaan QA, jadi dataset belum lengkap.
+- Render halaman sumber telah dibuat dan diperiksa secara visual untuk sampel, termasuk PDF halaman 13 (Al-Qur'an Hadis fase A) dan PDF halaman 99 (Bahasa Arab fase A). Halaman tersebut cocok dengan transkripsi inti. Pemeriksaan visual semua halaman belum selesai.
+- Koreksi halaman PDF final: Al-Qur'an Hadis 13–15; Akidah Akhlak 44–47; Fikih 70–73; SKI 90–92; Bahasa Arab 99–101. Rentang indeks awal yang terlalu luas/bergeser telah diperbaiki di indeks dan tabel staging.
+- File transkripsi kerja lengkap ekstraksi yang belum dinormalisasi tersedia di workspace sesi saat ini sebagai `/mnt/data/cp_work/CP_MI_9941_TRANSKRIPSI_KERJA.md`; belum diarsipkan sebagai file biner GitHub. Data staging GitHub adalah dokumen utama yang dapat ditinjau.
+- Tidak ada source aplikasi, schema/migration, database, atau deployment yang diubah. Tidak ada test aplikasi dijalankan.
+- **Status:** transkripsi CP inti sebagian selesai; belum boleh dipakai untuk import produksi. Lanjutkan dengan QA visual semua halaman, ekstraksi penuh elemen proses, koreksi istilah Arab dari render, lalu dataset terstruktur dan importer dry-run.
