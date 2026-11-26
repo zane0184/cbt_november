@@ -51,4 +51,13 @@ Sesuai instruksi:
 Tidak ada klaim transaksi database runtime telah berhasil. Pemeriksaan source statis saja.
 
 ## DISTRIBUSI
-Paket instalasi harus berupa ZIP deployment Web CBT lengkap dari source branch ini, bukan hanya empat file perubahan. Basis paket deployment yang tersedia berasal dari artifact build untuk commit integrasi `ee38818f89627443704bbda2469cf9b16d89625c`; source perubahan DOCX di atas harus diterapkan ke dalam paket tersebut dan checksum package diperbarui sebelum diberikan.
+Paket deployment lengkap sudah dirakit:
+- File: `CBT_MADRASAH_WEB_DEPLOYMENT_7cd0823d2fc8.zip`
+- Source runtime: commit `7cd0823d2fc81af450ce0acc670cc38cc9148d3d` pada branch `fix/docx-draft-save-root-cause-20261126`.
+- Basis paket lengkap dan vendor: artifact deployment yang berhasil dibuat sebelumnya dari commit integrasi `ee38818f89627443704bbda2469cf9b16d89625c`.
+- Empat file runtime yang berubah ditimpa dengan source dari branch perbaikan dan diverifikasi byte-for-byte menggunakan Git blob SHA.
+- Jumlah file di ZIP: 8.707.
+- Ukuran: 17.920.513 bytes.
+- SHA-256 ZIP: `262706f9ce6b31a84b76c4994027defb1625e6a036493e5a8c733273ace242ef`.
+- Pemeriksaan paket: struktur ZIP utuh, `vendor/autoload.php`, `artisan`, `composer.lock`, `.env.example`, dan migration batch DOCX tersedia; checksum mencakup seluruh file; backup/tests/.env tidak disertakan.
+- Pemeriksaan ini adalah integritas arsip dan kelengkapan file, bukan pengujian PHP, PHPUnit, CI, browser, atau runtime VPS.
