@@ -608,6 +608,51 @@ class QuestionBank extends Component
         session()->flash('message', "Soal {$this->questionCode} berhasil disimpan.");
     }
 
+    public function acknowledgeImportedRichContentReview(string $questionId): void
+    {
+        $this->assertCanAccess();
+
+        $question = Question::query()->whereKey($questionId)->firstOrFail();
+        Gate::authorize('update', $question);
+        $this->authorizeTeacherQuestionAccess($question->subject_id);
+
+        DB::transaction(function () use ($question): void {
+            $lockedQuestion = Question::query()->whereKey($question->id)->lockForUpdate()->firstOrFail();
+            Gate::authorize('update', $lockedQuestion);
+            $version = $lockedQuestion->currentVersion;
+            abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+
+            $metadata = $version->metadata ?? [];
+            $richContent = $metadata['rich_content'] ?? [];
+            abort_unless(
+                ($richContent['requires_manual_review'] ?? false) === true,
+                409,
+                'Soal ini tidak memiliki peninjauan konten kompleks yang tertunda.'
+            );
+
+            $richContent['requires_manual_review'] = false;
+            $richContent['reviewed_at'] = now()->toIso8601String();
+            $richContent['reviewed_by'] = (string) auth()->id();
+            $metadata['rich_content'] = $richContent;
+            $version->metadata = $metadata;
+            $version->save();
+
+            app(AuditService::class)->log(
+                'QUESTION_DOCX_RICH_CONTENT_REVIEWED',
+                QuestionVersion::class,
+                (string) $version->id,
+                ['requires_manual_review' => true],
+                [
+                    'requires_manual_review' => false,
+                    'reviewed_by' => (string) auth()->id(),
+                    'reviewed_at' => $richContent['reviewed_at'],
+                ]
+            );
+        });
+
+        session()->flash('message', 'Peninjauan konten kompleks DOCX dicatat. Soal dapat diterbitkan setelah seluruh validasi Bank Soal terpenuhi.');
+    }
+
     public function publishQuestion($questionId)
     {
         $question = Question::where('id', $questionId)->firstOrFail();
@@ -618,6 +663,11 @@ class QuestionBank extends Component
             Gate::authorize('publish', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            abort_if(
+                ($version->metadata['rich_content']['requires_manual_review'] ?? false) === true,
+                422,
+                'Konten DOCX kompleks belum ditinjau. Periksa pratinjau rumus/tabel, lalu catat peninjauan sebelum menerbitkan.'
+            );
             abort_if((float) $version->default_points <= 0, 422, 'Bobot nilai belum ditentukan. Lengkapi bobot pada editor Bank Soal sebelum menerbitkan.');
             if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
                 $options = $version->options;
