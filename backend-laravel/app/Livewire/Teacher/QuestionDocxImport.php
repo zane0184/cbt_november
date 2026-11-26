@@ -333,8 +333,32 @@ class QuestionDocxImport extends Component
             'questions.*.options' => ['sometimes', 'array', 'max:4'],
             'questions.*.options.*.option_key' => ['required_with:questions.*.options', 'string', 'in:A,B,C,D'],
             'questions.*.options.*.content' => ['required_with:questions.*.options', 'string', 'max:12000'],
-            'questions.*.statements' => ['sometimes', 'array', 'max:3'],
-            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40', 'distinct'],
+            'questions.*.statements' => [
+                'sometimes',
+                'array',
+                'max:3',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (!is_array($value)) {
+                        return;
+                    }
+
+                    // Statement identifiers are scoped to one grouped question.
+                    // The parser intentionally reuses sa/sb/sc across different questions.
+                    $ids = array_map(
+                        static fn ($statement) => is_array($statement) ? ($statement['id'] ?? null) : null,
+                        $value
+                    );
+                    $ids = array_values(array_filter(
+                        $ids,
+                        static fn ($id): bool => is_string($id) && $id !== ''
+                    ));
+
+                    if (count($ids) !== count(array_unique($ids))) {
+                        $fail('ID pernyataan dalam satu kelompok soal harus unik.');
+                    }
+                },
+            ],
+            'questions.*.statements.*.id' => ['required_with:questions.*.statements', 'string', 'max:40'],
             'questions.*.statements.*.text' => ['required_with:questions.*.statements', 'string', 'max:12000'],
             'questions.*.stimulus.content' => ['sometimes', 'nullable', 'string', 'max:30000'],
             'questions.*.source_section' => ['sometimes', 'nullable', 'string', 'max:120'],
