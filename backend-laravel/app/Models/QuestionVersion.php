@@ -37,6 +37,7 @@ class QuestionVersion extends Model
     {
         return $this->belongsToMany(MediaAsset::class, 'question_version_media')
             ->withPivot('id', 'tenant_id', 'role', 'sequence')
+            ->orderByPivot('sequence')
             ->withTimestamps();
     }
 
