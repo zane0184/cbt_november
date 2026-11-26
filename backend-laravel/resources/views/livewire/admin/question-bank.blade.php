@@ -99,6 +99,15 @@
                         {!! nl2br(e($q->currentVersion->stem)) !!}
                     </div>
 
+                    @if(($q->currentVersion->metadata['rich_content']['requires_manual_review'] ?? false) === true)
+                        <div class="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                            <p class="text-xs leading-5 text-amber-900">Konten DOCX memuat rumus atau tabel kompleks. Periksa pratinjau sumber dan tampilan soal. Penerbitan dikunci sampai Guru mencatat peninjauan.</p>
+                            <button type="button" wire:click="acknowledgeImportedRichContentReview('{{ $q->id }}')" wire:loading.attr="disabled" class="rounded-lg bg-amber-700 px-3 py-2 text-xs font-bold text-white hover:bg-amber-800 disabled:opacity-50">Saya sudah memeriksa konten DOCX</button>
+                        </div>
+                    @elseif(!empty($q->currentVersion->metadata['rich_content']['reviewed_at']))
+                        <p class="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-800">Konten DOCX kompleks telah ditinjau Guru pada {{ $q->currentVersion->metadata['rich_content']['reviewed_at'] }}.</p>
+                    @endif
+
                     @if(!empty($q->currentVersion->metadata['rich_content']['preview_runs']))
                         <details class="rounded-xl border border-slate-200 bg-slate-50 p-3">
                             <summary class="cursor-pointer text-xs font-bold text-slate-700">Pratinjau format sumber DOCX</summary>
