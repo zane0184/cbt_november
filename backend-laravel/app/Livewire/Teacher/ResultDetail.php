@@ -65,6 +65,10 @@ class ResultDetail extends Component
     public function saveScore()
     {
         $this->authorize('grade', $this->attempt);
+        $this->validate([
+            'manualScore' => 'required|numeric|min:0',
+            'feedbackText' => 'nullable|string|max:5000',
+        ]);
 
         try {
             DB::transaction(function () {
@@ -110,12 +114,13 @@ class ResultDetail extends Component
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                if ($this->manualScore < 0 || $this->manualScore > $qScore->max_score) {
+                if ((float) $this->manualScore > (float) $qScore->max_score) {
+                    $this->addError('manualScore', 'Nilai tidak boleh melebihi ' . $qScore->max_score . '.');
                     throw new \InvalidArgumentException('Score must be between 0 and ' . $qScore->max_score . '.');
                 }
 
                 $qScore->update([
-                    'awarded_score' => $this->manualScore,
+                    'awarded_score' => (float) $this->manualScore,
                     'feedback' => $this->feedbackText,
                     'scoring_status' => 'GRADED',
                     'grader_id' => auth()->id(),
