@@ -487,6 +487,35 @@ class DocxQuestionParser
         return 'auto';
     }
 
+    private function extractNestedTableStructures(array $fragments): array
+    {
+        $rows = array_values(array_filter(
+            $fragments,
+            fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_TABLE_ROW_OOXML'
+                && isset($fragment['structure'])
+        ));
+
+        return array_map(fn (array $fragment): array => [
+            'table_index' => (int) ($fragment['table_index'] ?? 0),
+            'row_index' => (int) ($fragment['row_index'] ?? 0),
+            'row' => $fragment['structure'],
+        ], $rows);
+    }
+
+    private function countNestedTables(array $fragments): int
+    {
+        $indexes = array_map(
+            fn (array $fragment): int => (int) ($fragment['table_index'] ?? 0),
+            array_filter(
+                $fragments,
+                fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_TABLE_ROW_OOXML'
+                    && !empty($fragment['has_nested_table'])
+            )
+        );
+
+        return count(array_unique(array_filter($indexes)));
+    }
+
     private function buildMathMlFragments(array $fragments): array
     {
         $mathFragments = array_values(array_filter(
@@ -1020,9 +1049,13 @@ class DocxQuestionParser
                     array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
                     fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML'
                 )),
-                'nested_table_count' => count(array_filter(
-                    array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
-                    fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_TABLE_ROW_OOXML' && !empty($fragment['has_nested_table'])
+                'table_structure' => $this->extractNestedTableStructures(array_merge(
+                    $raw['source_fragments'] ?? [],
+                    $raw['stimulus']['source_fragments'] ?? []
+                )),
+                'nested_table_count' => $this->countNestedTables(array_merge(
+                    $raw['source_fragments'] ?? [],
+                    $raw['stimulus']['source_fragments'] ?? []
                 )),
                 'text_direction' => preg_match('/[\\x{0590}-\\x{08FF}]/u', $stem) === 1 ? 'rtl' : 'auto',
                 'blocked_features' => $blockedFeatures,
