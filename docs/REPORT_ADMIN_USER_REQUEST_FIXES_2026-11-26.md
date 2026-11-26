@@ -214,3 +214,20 @@ Status tetap: syntax/boot PASS; pengujian upload fungsional dan browser/VPS UAT 
 - Komponen Admin masih menyimpan method lama untuk kompatibilitas/tes internal, tetapi form create tidak ditampilkan pada halaman Admin; operasional normal dipindahkan ke Guru.
 
 Status: **SOURCE PATCH COMMITTED — REGRESSION TEST DITAMBAHKAN — EKSEKUSI TEST DAN BROWSER/VPS UAT MENUNGGU.**
+
+
+ 
+### Hasil PHP Runtime Self-Service Guru — 26 Nov 2026
+- **PASS** — [GitHub Actions run 45763189693](https://github.com/zane0184/cbt_november/actions/runs/45763189693), source commit `b5e2928bdcbe1f191fb20a34341dfbf4b2e24140`.
+- PHP 8.3.37, Composer 2.11.3, Laravel 13.42.0.
+- Composer validate dan dependency install dari lock file: PASS.
+- PHP syntax lint: **403 file** (app, bootstrap, config, database, routes, tests): PASS.
+- Laravel package discovery dan boot: PASS.
+- Route registration: PASS, termasuk `guru/penugasan` dan `admin/teacher-assignments`.
+- Blade templates: `php artisan view:cache` PASS; `view:clear` PASS.
+- PHPUnit/full CI test suite tidak dijalankan.
+- Runtime ini tidak membuktikan aksi submit database secara fungsional; browser/VPS UAT masih diperlukan.
+- Tidak ada migration, perubahan database produksi, atau deployment VPS.
+- Catatan: beberapa run lint awal menangkap kesalahan escaping namespace pada source/test; diperbaiki sebelum run PASS ini.
+
+Status: **PHP RUNTIME/SYNTAX/BOOT/ROUTE/BLADE PASS — FUNCTIONAL TEST DAN UAT PENDING.**
