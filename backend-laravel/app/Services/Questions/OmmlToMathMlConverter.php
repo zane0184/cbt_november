@@ -91,6 +91,7 @@ final class OmmlToMathMlConverter
             'borderBox' => '<menclose notation="box"><mrow>' . $this->renderChildren($node, $xpath) . '</mrow></menclose>',
             'box' => '<menclose notation="roundedbox"><mrow>' . $this->renderChildren($node, $xpath) . '</mrow></menclose>',
             'phant' => '',
+            'degHide' => '',
             'br' => '<mspace linebreak="newline"/>',
             default => $this->renderUnknown($node, $xpath),
         };
