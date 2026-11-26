@@ -397,6 +397,16 @@ class ExamAttemptController extends Controller
 
             // Security: Sanitize options & metadata for students
             if ($user->hasExactRole('SISWA')) {
+                // OOXML originals and teacher preview runs remain in the immutable
+                // version metadata; the student runner receives only render hints.
+                if (isset($metadata['rich_content']) && is_array($metadata['rich_content'])) {
+                    unset(
+                        $metadata['rich_content']['paragraphs'],
+                        $metadata['rich_content']['table_rows'],
+                        $metadata['rich_content']['preview_runs'],
+                        $metadata['rich_content']['math_omml']
+                    );
+                }
                 unset($metadata['accepted_answers']);
                 unset($metadata['rubric']);
                 unset($metadata['answer_key']);
