@@ -46,7 +46,7 @@ class AssessmentCurriculumMappingService
             ]);
         }
 
-        return DB::transaction(function () use ($assessment, $assignment, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId): array {
+        return DB::transaction(function () use ($assessment, $assignment, $cpIds, $outcomeIds, $materialId, $topicId, $user, $profile, $tenantId, $hasNoCurriculumMapping): array {
             $lockedAssignment = TeacherSubjectAssignment::query()
                 ->where('tenant_id', $tenantId)
                 ->where('teacher_profile_id', $profile->id)
