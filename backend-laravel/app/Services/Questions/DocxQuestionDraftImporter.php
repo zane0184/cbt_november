@@ -105,8 +105,17 @@ class DocxQuestionDraftImporter
             $pendingMappingCount = 0;
 
             foreach ($ready as $row) {
-                $questionCpIds = array_values(array_unique(!empty($row['mapping_cp_ids']) ? $row['mapping_cp_ids'] : $cpIds));
-                $questionOutcomeIds = array_values(array_unique(!empty($row['mapping_outcome_ids']) ? $row['mapping_outcome_ids'] : $outcomeIds));
+                // A per-question override is an atomic CP + TP/ATP pair.
+                // Never combine one side of a local override with the other side
+                // from the batch default; partial local choices must stay pending.
+                $hasQuestionSpecificMapping = !empty($row['mapping_cp_ids'])
+                    || !empty($row['mapping_outcome_ids']);
+                $questionCpIds = array_values(array_unique(
+                    $hasQuestionSpecificMapping ? ($row['mapping_cp_ids'] ?? []) : $cpIds
+                ));
+                $questionOutcomeIds = array_values(array_unique(
+                    $hasQuestionSpecificMapping ? ($row['mapping_outcome_ids'] ?? []) : $outcomeIds
+                ));
                 $question = Question::query()->create([
                     'tenant_id' => $tenantId,
                     'owner_type' => 'SUBJECT',
