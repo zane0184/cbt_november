@@ -305,7 +305,7 @@ class ExamManagement extends Component
         $hasCurriculumMapping = $selectedCpIds !== [] || $selectedOutcomeIds !== [];
 
         if (($selectedCpIds === []) !== ($selectedOutcomeIds === [])) {
-            throw \\Illuminate\\Validation\\ValidationException::withMessages([
+            throw \Illuminate\Validation\ValidationException::withMessages([
                 'selectedCpIds' => 'Untuk memakai pemetaan kurikulum, pilih CP dan TP/ATP sekaligus. Jika tidak, kosongkan keduanya.',
             ]);
         }
@@ -338,7 +338,7 @@ class ExamManagement extends Component
 
         if ($validQuestionCount !== count($selectedVersionIds)) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'selectedQuestionVersionIds' => 'Semua soal harus sudah terbit dan memiliki pemetaan CP serta TP/ATP yang sesuai dengan asesmen dan penugasan ini.',
+                'selectedQuestionVersionIds' => 'Semua soal harus sudah terbit, berasal dari mapel dan tenant yang sesuai, serta konsisten dengan mode pemetaan kurikulum yang dipilih.',
             ]);
         }
 
