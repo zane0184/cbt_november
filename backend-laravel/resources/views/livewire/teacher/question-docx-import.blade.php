@@ -348,7 +348,7 @@
             @endif
 
             <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-900">
-                **Syarat penyimpanan:** hanya soal berstatus VALID/READY yang dapat disimpan. Setiap soal wajib memiliki minimal satu pemetaan CP dan satu TP/ATP (default atau khusus per soal). Soal berstatus “Perlu ditinjau” tidak ikut disimpan.
+                **Syarat penyimpanan DRAFT:** sistem memvalidasi ulang jenis soal, teks, opsi/pernyataan, dan pemetaan CP serta TP/ATP dari data terbaru. Status “Perlu ditinjau” dari pembacaan awal tidak otomatis menggagalkan penyimpanan DRAFT: jika struktur soal lolos validasi, soal dapat disimpan dengan alasan peninjauan tercatat dan publikasi tetap dikunci sampai Guru menyelesaikan peninjauan. Gambar dengan relasi rusak atau format yang tidak didukung tetap ditolak.
             </div>
 
             <div class="flex flex-col gap-3 rounded-3xl border border-indigo-100 bg-indigo-50/60 p-5 md:flex-row md:items-center md:justify-between">
