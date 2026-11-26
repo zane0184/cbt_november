@@ -63,9 +63,9 @@ class TeacherImportTest extends TestCase
     public function test_admin_can_preview_and_import_asn_and_honorer_teachers_atomically(): void
     {
         $this->actingAs($this->admin);
-        $csv = "nama,status_kepegawaian,nip,nik,nuptk,jenis_kelamin,telepon,email\n"
-            ."Guru ASN,PNS,199001012026041001,,1234567890123456,L,081234567890,guru.asn@example.test\n"
-            ."Guru Honorer,HONORER,,3171010101900001,,P,081298765432,\n";
+        $csv = "nama,status_kepegawaian,nip,nik,nuptk,jenis_kelamin,telepon\n"
+            ."Guru ASN,PNS,199001012026041001,,1234567890123456,L,081234567890\n"
+            ."Guru Honorer,HONORER,,3171010101900001,,P,081298765432\n";
         $file = UploadedFile::fake()->createWithContent('guru.csv', $csv);
 
         Livewire::test(TeacherImport::class)
