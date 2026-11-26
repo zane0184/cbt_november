@@ -142,6 +142,7 @@ class DocxQuestionDraftImporter
                     'text_direction' => in_array($row['text_direction'] ?? 'auto', ['ltr', 'rtl', 'auto'], true)
                         ? ($row['text_direction'] ?? 'auto')
                         : 'auto',
+                    'preview_runs' => array_values($row['rich_paragraphs'] ?? []),
                     'math_omml' => array_values(array_map(
                         fn (array $fragment): array => [
                             'xml' => (string) ($fragment['xml'] ?? ''),
@@ -190,6 +191,7 @@ class DocxQuestionDraftImporter
                         'version' => 1,
                         'content' => $stimulusContent,
                         'content_sha256' => hash('sha256', $stimulusContent),
+                        'text_direction' => preg_match('/[\\x{0590}-\\x{08FF}]/u', $stimulusContent) === 1 ? 'rtl' : 'auto',
                         'source_locator' => $row['stimulus']['source'] ?? [],
                     ];
                 }
