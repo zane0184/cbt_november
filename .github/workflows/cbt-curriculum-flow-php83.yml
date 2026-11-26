@@ -1,0 +1,152 @@
+name: CBT Curriculum Flow - PHP 8.3 Runtime Preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  php83-mysql8-preflight:
+    name: PHP 8.3 + Disposable MySQL 8 preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: cbt_curriculum_flow_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+    defaults:
+      run:
+        working-directory: backend-laravel
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_DATABASE: cbt_curriculum_flow_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+
+    steps:
+      - name: Checkout selected source revision
+        uses: actions/checkout@v4
+
+      - name: Provision exact PHP 8.3 runtime and Composer 2
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, bcmath, ctype, fileinfo, pdo_mysql, tokenizer, xml, curl, dom, gd, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Fail-closed runtime and disposable database identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            if (PHP_MAJOR_VERSION !== 8 || PHP_MINOR_VERSION !== 3) {
+              fwrite(STDERR, "Required PHP 8.3.x; got " . PHP_VERSION . PHP_EOL);
+              exit(1);
+            }
+            if (!extension_loaded("pdo_mysql")) {
+              fwrite(STDERR, "pdo_mysql is required." . PHP_EOL);
+              exit(1);
+            }
+            echo "PHP runtime: " . PHP_VERSION . PHP_EOL;
+            echo "PDO MySQL: available" . PHP_EOL;
+          '
+          composer --version
+          test "$APP_ENV" = "testing"
+          test "$DB_CONNECTION" = "mysql"
+          test "$DB_HOST" = "127.0.0.1"
+          test "$DB_DATABASE" = "cbt_curriculum_flow_test"
+          test "$DB_USERNAME" = "root"
+          php -r '
+            $pdo = new PDO(
+              "mysql:host=" . getenv("DB_HOST") . ";port=" . getenv("DB_PORT") . ";dbname=" . getenv("DB_DATABASE"),
+              getenv("DB_USERNAME"),
+              getenv("DB_PASSWORD"),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $row = $pdo->query("SELECT DATABASE() AS db, VERSION() AS version, @@default_storage_engine AS engine")->fetch(PDO::FETCH_ASSOC);
+            if ($row["db"] !== "cbt_curriculum_flow_test" || !str_starts_with($row["version"], "8.") || strtoupper($row["engine"]) !== "INNODB") {
+              fwrite(STDERR, "Disposable MySQL identity check failed." . PHP_EOL);
+              exit(1);
+            }
+            echo "Disposable database: {$row["db"]}" . PHP_EOL;
+            echo "MySQL version: {$row["version"]}" . PHP_EOL;
+            echo "Default engine: {$row["engine"]}" . PHP_EOL;
+          '
+
+      - name: Validate Composer manifest and lock
+        run: composer validate --no-check-publish
+
+      - name: Install locked dependencies (no Composer scripts)
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Prepare writable Laravel runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+          touch .env
+          php artisan package:discover --ansi
+
+      - name: Apply migrations only to disposable MySQL 8 database
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$DB_DATABASE" = "cbt_curriculum_flow_test"
+          php artisan migrate:fresh --force -vvv
+
+      - name: Verify migrated schema and record preflight evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -r '
+            $pdo = new PDO(
+              "mysql:host=" . getenv("DB_HOST") . ";port=" . getenv("DB_PORT") . ";dbname=" . getenv("DB_DATABASE"),
+              getenv("DB_USERNAME"),
+              getenv("DB_PASSWORD"),
+              [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $tables = (int) $pdo->query("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_type = \'BASE TABLE\'")->fetchColumn();
+            if ($tables < 1) {
+              fwrite(STDERR, "No application tables were created." . PHP_EOL);
+              exit(1);
+            }
+            echo "Migrated base tables: {$tables}" . PHP_EOL;
+          '
+          php artisan route:list --path=api/v1 --except-vendor
+
+      - name: Write runtime preflight summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## CBT PHP 8.3 Runtime Preflight"
+            echo "- Source ref: $GITHUB_REF"
+            echo "- Source commit: $GITHUB_SHA"
+            echo "- Runtime requested: PHP 8.3"
+            echo "- Database: disposable MySQL 8 / cbt_curriculum_flow_test"
+            echo "- Scope: runtime, Composer, migrations, API route registration"
+            echo "- PHPUnit: not invoked"
+            echo "- Production/VPS database: not configured or accessed"
+            echo "- Note: this is a runtime preflight, not yet the Admin-to-Siswa curriculum integration acceptance."
+          } >> "$GITHUB_STEP_SUMMARY"
