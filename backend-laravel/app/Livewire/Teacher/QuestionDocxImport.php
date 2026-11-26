@@ -271,9 +271,6 @@ class QuestionDocxImport extends Component
         // features. Livewire state is used only for explicit teacher edits and
         // include/exclude choices; its READY/NEEDS_REVIEW status is never trusted.
         $freshQuestions = collect($freshParse['questions'] ?? []);
-        $freshBySequence = $freshQuestions->keyBy(
-            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0)
-        );
         $previewBySequence = collect($this->questions)->keyBy(
             fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0)
         );
@@ -377,10 +374,13 @@ class QuestionDocxImport extends Component
             $this->file->getRealPath()
         );
 
-        session()->flash(
-            'message',
-            $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.'
-        );
+        $message = $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.';
+        $pendingMappingCount = (int) ($result['pending_mapping_count'] ?? 0);
+        if ($pendingMappingCount > 0) {
+            $message .= ' ' . $pendingMappingCount . ' soal masih menunggu pemetaan CP dan TP/ATP resmi; lengkapi pemetaannya melalui editor Bank Soal sebelum menerbitkan.';
+        }
+
+        session()->flash('message', $message);
 
         $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'selectedSection', 'previewHash', 'previewAssignmentId', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
     }
