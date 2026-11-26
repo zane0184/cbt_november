@@ -147,3 +147,14 @@ Tanggal: 27 November 2026
 ### LANJUTAN
 - Saat izin pengujian berubah, jalankan regression tests manual nullable date, DOCX nullable date, duplicate question code, mapped/unmapped, image media, dan DOCX duplicate idempotency.
 - PR #44 tetap Draft/unmerged; jangan deploy.
+
+
+## CHECKPOINT TAMBAHAN — NORMALISASI OPSI BANK SOAL
+
+- Temuan: teks opsi yang hanya spasi dapat lolos sebagai string; C/D opsional berpotensi tersimpan sebagai opsi kosong.
+- Patch manual save men-trim kode, stem, rubrik, opsi A-D, dan pasangan MATCHING sebelum validasi.
+- A/B whitespace-only menjadi validation error; C/D whitespace-only tidak dibuat sebagai opsi.
+- Source blob: ba86aa0b898127a43ac7e82f7af2927321f4b01d; commit 1d63e04e18f6a3ee99f4602dd275feef3e382258.
+- Test blob: bdb47f642dcfd0a648e618aef49614eeb18463ba; commit 5a5b281494007d2db82ba7eedf3926b5b68be7b7.
+- Backup source/test disimpan dengan akhiran .pre-option-normalization pada folder backup tahap ini.
+- PHPUnit/CI/runtime belum dijalankan. Tidak ada perubahan database, migration, atau VPS.
