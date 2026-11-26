@@ -695,19 +695,31 @@ class ExamManagement extends Component
         TeacherAccess::constrainExamQuery($query, $user);
         $exams = $query->paginate(10);
 
-        $availableQuestions = $selectedAssignment
+        $availableQuestionsQuery = $selectedAssignment
             ? Question::query()
                 ->where('tenant_id', $tenantId)
                 ->where('subject_id', $selectedAssignment->subject_id)
                 ->where('status', 'PUBLISHED')
-                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
-                    ->where('status', 'PUBLISHED')
-                    ->whereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery
-                        ->where('teacher_subject_assignment_id', $selectedAssignment->id)
-                        ->when($this->selectedCpIds !== [], fn ($q) => $q->whereIn('multi_learning_outcome_id', $this->selectedCpIds)))
-                    ->whereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery
-                        ->where('teacher_subject_assignment_id', $selectedAssignment->id)
-                        ->when($this->selectedOutcomeIds !== [], fn ($q) => $q->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds))))
+                ->whereHas('currentVersion', fn ($versionQuery) => $versionQuery->where('status', 'PUBLISHED'))
+            : null;
+
+        if ($availableQuestionsQuery && $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== []) {
+            $availableQuestionsQuery->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
+                ->whereHas('curriculumMappings', fn ($mappingQuery) => $mappingQuery
+                    ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                    ->whereIn('multi_learning_outcome_id', $this->selectedCpIds))
+                ->whereHas('tenantOutcomeMappings', fn ($mappingQuery) => $mappingQuery
+                    ->where('teacher_subject_assignment_id', $selectedAssignment->id)
+                    ->whereIn('tenant_learning_outcome_id', $this->selectedOutcomeIds)));
+        } elseif ($availableQuestionsQuery) {
+            $availableQuestionsQuery->whereHas('currentVersion', fn ($versionQuery) => $versionQuery
+                ->whereDoesntHave('curriculumMappings')
+                ->whereDoesntHave('tenantOutcomeMappings')
+                ->whereDoesntHave('structureMappings'));
+        }
+
+        $availableQuestions = $availableQuestionsQuery
+            ? $availableQuestionsQuery
                 ->with(['currentVersion.options', 'currentVersion.curriculumMappings.learningOutcome', 'currentVersion.tenantOutcomeMappings.learningOutcome'])
                 ->orderBy('question_code')
                 ->get()
