@@ -493,7 +493,7 @@ class DocxQuestionParser
         return $this->normalizeText(implode('', $parts));
     }
 
-    private function detectTextDirection(DOMNode $node, \\DOMXPath $xpath, string $text): string
+    private function detectTextDirection(DOMNode $node, \DOMXPath $xpath, string $text): string
     {
         if ($xpath->query('.//w:bidi | .//w:rtl', $node)->length > 0
             || preg_match('/[\\x{0590}-\\x{08FF}]/u', $text) === 1) {
