@@ -613,19 +613,53 @@ class QuestionBank extends Component
                 }
             }
 
-            app(QuestionVersionCurriculumMappingService::class)->sync(
-                $version,
-                $this->selectedAssignmentId,
-                $this->selectedCpIds,
-                $this->selectedOutcomeIds,
-                $this->selectedMaterialId ?: null,
-                $this->selectedMaterialTopicId ?: null
-            );
-
-            // Persist the explicit mapping mode after the mapping service has
-            // validated either a complete official mapping or a general question.
-            $versionMetadata = $version->metadata ?? [];
             $isMapped = $this->selectedCpIds !== [] && $this->selectedOutcomeIds !== [];
+
+            if ($isMapped || $this->selectedCpIds !== [] || $this->selectedOutcomeIds !== []) {
+                // Curriculum validation is invoked only when the teacher actually
+                // selects CP/TP/ATP. General draft questions do not depend on the
+                // curriculum registry or curriculum-mapping service.
+                app(QuestionVersionCurriculumMappingService::class)->sync(
+                    $version,
+                    $this->selectedAssignmentId,
+                    $this->selectedCpIds,
+                    $this->selectedOutcomeIds,
+                    $this->selectedMaterialId ?: null,
+                    $this->selectedMaterialTopicId ?: null
+                );
+            } else {
+                // Explicit NOT_MAPPED path: clear stale mappings on an edited
+                // draft without invoking curriculum validation or registry lookup.
+                QuestionVersionCurriculumMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                QuestionVersionTenantOutcomeMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                QuestionVersionStructureMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('question_version_id', $version->id)
+                    ->delete();
+
+                app(AuditService::class)->log(
+                    'QUESTION_VERSION_CURRICULUM_NOT_MAPPED',
+                    QuestionVersion::class,
+                    (string) $version->id,
+                    null,
+                    [
+                        'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
+                        'mapping_status' => 'NOT_MAPPED',
+                        'reason' => 'CURRICULUM_MAPPING_NOT_SELECTED',
+                    ]
+                );
+            }
+
+            // Persist the explicit mapping mode after the optional mapping path.
+            $versionMetadata = $version->metadata ?? [];
             $versionMetadata['curriculum_mapping'] = [
                 'status' => $isMapped ? 'MAPPED' : 'NOT_MAPPED',
                 'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
