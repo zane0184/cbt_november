@@ -27,4 +27,5 @@ Each `.before` file is a copy of the exact source blob from the source branch be
 | app.blade.php.before | backend-laravel/resources/views/layouts/app.blade.php | ff4894d036410584c2dc205509a629efd6d4e16d |
 | StudentImportTest.php.before | backend-laravel/tests/Feature/StudentImportTest.php | 28ff1426fd6c30f42ccf85c4fc89144829392234 |
 | AcademicYearManagementTest.php.before | backend-laravel/tests/Feature/AcademicYearManagementTest.php | 77068b8bccde07dddae57214548037f1f830e0cf |
+| TeacherSubjectAssignmentManagementTest.php.before | backend-laravel/tests/Feature/TeacherSubjectAssignmentManagementTest.php | b491a79d1017d8136d220b8bafdd52e0089efc13 |
 | teacher-import.blade.php.before | backend-laravel/resources/views/livewire/admin/teacher-import.blade.php | 568d138e0433dbdf18d9093a5a814fd9cc639bc0 |
