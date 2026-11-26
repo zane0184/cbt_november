@@ -72,16 +72,16 @@ class TeacherImport extends Component
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Guru');
-        $headers = ['nama', 'status_kepegawaian', 'nip', 'nik', 'nuptk', 'jenis_kelamin', 'telepon', 'email'];
+        $headers = ['nama', 'status_kepegawaian', 'nip', 'nik', 'nuptk', 'jenis_kelamin', 'telepon'];
         foreach ($headers as $index => $header) {
             $sheet->setCellValue(Coordinate::stringFromColumnIndex($index + 1).'1', $header);
         }
-        $sheet->getStyle('A1:H1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:H1')->getAlignment()->setHorizontal('center');
+        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:G1')->getAlignment()->setHorizontal('center');
         foreach (['C' => '@', 'D' => '@', 'E' => '@', 'G' => '@'] as $column => $format) {
             $sheet->getStyle($column.'2:'.$column.'5001')->getNumberFormat()->setFormatCode($format);
         }
-        foreach (['A' => 30, 'B' => 22, 'C' => 22, 'D' => 22, 'E' => 22, 'F' => 18, 'G' => 22, 'H' => 34] as $column => $width) {
+        foreach (['A' => 30, 'B' => 22, 'C' => 22, 'D' => 22, 'E' => 22, 'F' => 18, 'G' => 22] as $column => $width) {
             $sheet->getColumnDimension($column)->setWidth($width);
         }
         $sheet->freezePane('A2');
@@ -98,7 +98,7 @@ class TeacherImport extends Component
     public function downloadCsvTemplate()
     {
         $this->authorizeImport();
-        $csv = "nama,status_kepegawaian,nip,nik,nuptk,jenis_kelamin,telepon,email\n";
+        $csv = "nama,status_kepegawaian,nip,nik,nuptk,jenis_kelamin,telepon\n";
         return response()->streamDownload(fn () => print($csv), 'template-import-guru.csv', [
             'Content-Type' => 'text/csv; charset=UTF-8',
         ]);
