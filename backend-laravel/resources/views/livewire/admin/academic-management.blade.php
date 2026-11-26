@@ -115,6 +115,7 @@
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Singkatan</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Kategori</th>
                             <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-bold text-textSecondary uppercase tracking-wider">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-cardBorder">
@@ -129,9 +130,16 @@
                                         {{ $subject->status }}
                                     </span>
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    @if($subject->subject_category === 'MULOK')
+                                        <button type="button" wire:click="openEditSubjectModal('{{ $subject->id }}')" class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-50">Ubah Mulok</button>
+                                    @else
+                                        <span class="text-xs text-textSecondary">Registry</span>
+                                    @endif
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada mata pelajaran.</td></tr>
+                            <tr><td colspan="6" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada mata pelajaran.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
@@ -268,8 +276,8 @@
     @if($showCreateSubjectModal)
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-cardBorder">
-                <h3 class="text-lg font-bold text-navy-900">Tambah Mata Pelajaran</h3>
-                <form wire:submit.prevent="createSubject" class="space-y-4">
+                <h3 class="text-lg font-bold text-navy-900">{{ $editingSubjectId ? "Ubah Mata Pelajaran Mulok" : "Tambah Mata Pelajaran" }}</h3>
+                <form wire:submit.prevent="{{ $editingSubjectId ? "updateSubject" : "createSubject" }}" class="space-y-4">
                     <div>
                         <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kode Mapel</label>
                         <input wire:model="subjectCode" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: MTK">
@@ -284,17 +292,21 @@
                         <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Singkatan / Short Name</label>
                         <input wire:model="subjectShortName" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: MTK">
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kategori Mata Pelajaran</label>
-                        <select wire:model="subjectCategory" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
-                            <option value="WAJIB">Mata Pelajaran Wajib</option>
-                            <option value="MULOK">Muatan Lokal (ditentukan madrasah)</option>
-                        </select>
-                        @error('subjectCategory') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
-                    </div>
+                    @if($editingSubjectId)
+                        <div class="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">Kategori tetap Muatan Lokal. Perubahan hanya berlaku pada katalog madrasah dan tidak mengubah histori penugasan/ujian.</div>
+                    @else
+                        <div>
+                            <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kategori Mata Pelajaran</label>
+                            <select wire:model="subjectCategory" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                                <option value="WAJIB">Mata Pelajaran Wajib</option>
+                                <option value="MULOK">Muatan Lokal (ditentukan madrasah)</option>
+                            </select>
+                            @error('subjectCategory') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                        </div>
+                    @endif
                     <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
                         <button type="button" wire:click="$set('showCreateSubjectModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
-                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">Simpan Mapel</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">{{ $editingSubjectId ? "Simpan Perubahan" : "Simpan Mapel" }}</button>
                     </div>
                 </form>
             </div>

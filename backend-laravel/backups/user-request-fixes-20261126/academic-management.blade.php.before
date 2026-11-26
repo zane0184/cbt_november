@@ -1,0 +1,303 @@
+<div class="space-y-6">
+    <!-- Header Card -->
+    <div class="bg-white border border-cardBorder rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-navy-900">Data Akademik & Rombel</h1>
+            <p class="text-xs text-textSecondary mt-1">Kelola rombongan belajar, tingkat kelas, dan mata pelajaran madrasah</p>
+        </div>
+        <div class="flex gap-2">
+            @if(auth()->user()?->hasPermission('academic.manage'))
+            @if($activeTab === 'rombel')
+                <button wire:click="openCreateRombelModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                    <span>+</span> Tambah Rombel
+                </button>
+            @elseif($activeTab === 'subject')
+                <button wire:click="openCreateSubjectModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                    <span>+</span> Tambah Mata Pelajaran
+                </button>
+            @elseif($activeTab === 'academic_year')
+                <button wire:click="openCreateAcademicYearModal" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-xl transition text-xs flex items-center gap-2 shadow-sm">
+                    <span>+</span> Tambah Tahun Pelajaran
+                </button>
+            @endif
+            @endif
+        </div>
+    </div>
+
+    @if (session()->has('message'))
+        <div class="bg-emerald-50 border-l-4 border-emerald-600 text-emerald-800 p-4 rounded-xl shadow-sm text-sm">
+            {{ session('message') }}
+        </div>
+    @endif
+
+    <div class="bg-white border border-cardBorder rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="text-xs font-bold text-navy-900">Periode Akademik Aktif</div>
+        @if($activeSemester)
+            <div class="text-sm font-bold text-emerald-700">{{ $activeSemester->academicYear->name }} — Semester {{ ucfirst(strtolower($activeSemester->term)) }}</div>
+        @else
+            <div class="text-sm font-bold text-amber-700">Belum Ditetapkan — Admin harus memilih semester aktif</div>
+        @endif
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-cardBorder gap-2">
+        <button wire:click="setTab('rombel')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'rombel' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
+            Rombongan Belajar (Rombel)
+        </button>
+        <button wire:click="setTab('subject')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'subject' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
+            Mata Pelajaran
+        </button>
+        <button wire:click="setTab('grade_level')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'grade_level' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
+            Tingkat Kelas & Fase
+        </button>
+        <button wire:click="setTab('academic_year')" class="px-5 py-3 font-bold text-sm rounded-t-xl transition border-b-2 {{ $activeTab === 'academic_year' ? 'border-emerald-600 text-emerald-700 bg-white' : 'border-transparent text-textSecondary hover:text-navy-900' }}">
+            Tahun Pelajaran & Semester
+        </button>
+    </div>
+
+    <!-- Search Input -->
+    @if(in_array($activeTab, ['rombel', 'subject'], true))
+        <div class="bg-white border border-cardBorder rounded-2xl p-4 shadow-sm">
+            <input wire:model.live="search" type="text" placeholder="Cari nama..." class="w-full border border-cardBorder rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+        </div>
+    @endif
+
+    <!-- Tab Contents -->
+    @if($activeTab === 'rombel')
+        <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-cardBorder">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Nama Rombel</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Tingkat Kelas</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Tahun Akademik</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Jumlah Siswa</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3.5 text-right text-xs font-bold text-textSecondary uppercase tracking-wider">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-cardBorder">
+                        @forelse($rombels as $rombel)
+                            <tr class="hover:bg-gray-50/80 transition">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900">
+                                    <a href="{{ route('admin.academic.rombels.show', $rombel->id) }}" class="text-emerald-700 hover:text-emerald-800 hover:underline">{{ $rombel->name }}</a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-textSecondary font-medium">{{ $rombel->gradeLevel->name ?? '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-textSecondary font-mono">{{ $rombel->academicYear->name ?? '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-navy-900">{{ number_format((int) $rombel->students_count) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {{ $rombel->status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-xs">
+                                    <a href="{{ route('admin.academic.rombels.show', $rombel->id) }}" class="font-bold text-emerald-700 hover:underline">Lihat Siswa &rarr;</a>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="6" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada data rombel.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-cardBorder">{{ $rombels->links() }}</div>
+        </div>
+
+    @elseif($activeTab === 'subject')
+        <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-cardBorder">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Kode</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Nama Mata Pelajaran</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Singkatan</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Kategori</th>
+                            <th class="px-6 py-3.5 text-left text-xs font-bold text-textSecondary uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-cardBorder">
+                        @forelse($subjects as $subject)
+                            <tr class="hover:bg-gray-50/80 transition">
+                                <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-navy-900 font-mono">{{ $subject->code }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-navy-900">{{ $subject->name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs text-textSecondary">{{ $subject->short_name }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-xs font-semibold">{{ $subject->subject_category === 'MULOK' ? 'Muatan Lokal' : 'Wajib' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {{ $subject->status }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="5" class="px-6 py-12 text-center text-textSecondary text-sm">Belum ada mata pelajaran.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="p-4 border-t border-cardBorder">{{ $subjects->links() }}</div>
+        </div>
+
+    @elseif($activeTab === 'grade_level')
+        <div class="bg-white border border-cardBorder rounded-2xl shadow-sm p-6 space-y-4">
+            <h3 class="text-base font-bold text-navy-900">Daftar Tingkat Kelas & Fase Kurikulum</h3>
+            <p class="text-xs text-textSecondary">Tingkat kelas MI 1–6 disediakan dari registry fase resmi dan menjadi referensi rombel. Pemetaan: Fase A (1–2), Fase B (3–4), Fase C (5–6).</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @foreach($gradeLevels as $gl)
+                    <div class="border border-cardBorder p-4 rounded-xl bg-contentBg shadow-sm">
+                        <div class="text-xs font-bold text-emerald-700 uppercase">{{ $gl->phase->name ?? '-' }}</div>
+                        <div class="text-lg font-bold text-navy-900 mt-1">{{ $gl->name }}</div>
+                        <div class="text-xs text-textSecondary mt-1">Level: {{ $gl->level }} | Kode: {{ $gl->code }}</div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
+    @elseif($activeTab === 'academic_year')
+        <div class="bg-white border border-cardBorder rounded-2xl shadow-sm overflow-hidden">
+            <div class="p-5 border-b border-cardBorder">
+                <h3 class="text-base font-bold text-navy-900">Tahun Pelajaran dan Semester</h3>
+                <p class="text-xs text-textSecondary mt-1">Setiap tahun pelajaran memiliki Semester Ganjil dan Genap. Tidak ada semester aktif secara otomatis. Memilih semester aktif akan menonaktifkan periode sebelumnya tanpa menghapus rombel, penugasan, ujian, atau histori.</p>
+            </div>
+            <div class="divide-y divide-cardBorder">
+                @forelse($academicYears as $academicYear)
+                    <div class="p-5 space-y-4">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-base font-bold text-navy-900">{{ $academicYear->name }}</span>
+                                    @if($academicYear->is_active)
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Tahun Aktif</span>
+                                    @else
+                                        <span class="px-2.5 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-600 border border-gray-200">Belum Aktif</span>
+                                    @endif
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            @foreach($academicYear->semesters as $semester)
+                                <div class="rounded-xl border border-cardBorder p-4 flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="text-sm font-bold text-navy-900">Semester {{ ucfirst(strtolower($semester->term)) }}</div>
+                                        @if($semester->is_active)
+                                            <div class="text-xs text-emerald-700 mt-1">Semester aktif</div>
+                                        @else
+                                            <div class="text-xs text-textSecondary mt-1">Tidak aktif</div>
+                                        @endif
+                                    </div>
+                                    @if(!$semester->is_active)
+                                        <button wire:click="activateSemester('{{ $semester->id }}')" class="px-3 py-2 text-xs font-bold rounded-lg border border-emerald-600 text-emerald-700 hover:bg-emerald-50">
+                                            Aktifkan
+                                        </button>
+                                    @endif
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @empty
+                    <div class="p-10 text-center text-sm text-textSecondary">Belum ada tahun pelajaran. Tambahkan tahun pelajaran untuk mulai membuat rombel dan penugasan Guru.</div>
+                @endforelse
+            </div>
+        </div>
+    @endif
+
+    <!-- Create Academic Year Modal -->
+    @if($showCreateAcademicYearModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-cardBorder">
+                <h3 class="text-lg font-bold text-navy-900">Tambah Tahun Pelajaran</h3>
+                <p class="text-xs text-textSecondary">Sistem akan membuat Semester Ganjil dan Genap dalam status tidak aktif. Admin harus menetapkan sendiri semester aktif; tidak ada periode yang dipilih otomatis.</p>
+                <form wire:submit.prevent="createAcademicYear" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tahun Pelajaran</label>
+                        <input wire:model="academicYearName" type="text" maxlength="9" placeholder="2026/2027" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                        @error('academicYearName') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
+                        <button type="button" wire:click="$set('showCreateAcademicYearModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">Simpan Tahun Pelajaran</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    <!-- Create Rombel Modal -->
+    @if($showCreateRombelModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-cardBorder">
+                <h3 class="text-lg font-bold text-navy-900">Tambah Rombel Baru</h3>
+                <form wire:submit.prevent="createRombel" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Nama Rombel</label>
+                        <input wire:model="rombelName" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: Kelas 1A">
+                        @error('rombelName') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tingkat Kelas</label>
+                        <select wire:model="selectedGradeLevelId" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <option value="">Pilih Tingkat Kelas...</option>
+                            @foreach($gradeLevels as $gl)
+                                <option value="{{ $gl->id }}">{{ $gl->name }} (Fase {{ $gl->phase->name ?? '' }})</option>
+                            @endforeach
+                        </select>
+                        @error('selectedGradeLevelId') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Tahun Akademik</label>
+                        <select wire:model="selectedAcademicYearId" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <option value="">Pilih Tahun Akademik...</option>
+                            @foreach($academicYears as $ay)
+                                <option value="{{ $ay->id }}">{{ $ay->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('selectedAcademicYearId') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
+                        <button type="button" wire:click="$set('showCreateRombelModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">Simpan Rombel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    <!-- Create Subject Modal -->
+    @if($showCreateSubjectModal)
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-cardBorder">
+                <h3 class="text-lg font-bold text-navy-900">Tambah Mata Pelajaran</h3>
+                <form wire:submit.prevent="createSubject" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kode Mapel</label>
+                        <input wire:model="subjectCode" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: MTK">
+                        @error('subjectCode') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Nama Mata Pelajaran</label>
+                        <input wire:model="subjectName" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: Matematika">
+                        @error('subjectName') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Singkatan / Short Name</label>
+                        <input wire:model="subjectShortName" type="text" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none" placeholder="Contoh: MTK">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-navy-900 uppercase mb-1">Kategori Mata Pelajaran</label>
+                        <select wire:model="subjectCategory" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-emerald-600 focus:outline-none">
+                            <option value="WAJIB">Mata Pelajaran Wajib</option>
+                            <option value="MULOK">Muatan Lokal (ditentukan madrasah)</option>
+                        </select>
+                        @error('subjectCategory') <span class="text-red-500 text-xs block mt-1">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="flex justify-end gap-3 pt-2 border-t border-cardBorder">
+                        <button type="button" wire:click="$set('showCreateSubjectModal', false)" class="px-4 py-2 text-xs font-bold text-textSecondary rounded-xl bg-gray-100">Batal</button>
+                        <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-md">Simpan Mapel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+</div>

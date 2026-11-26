@@ -1,0 +1,124 @@
+name: PHP Runtime Validation (PR 34)
+
+on:
+  push:
+    branches:
+      - work/rombel-docx-completion-20261126
+      - work/admin-import-curriculum-fixes-20261126
+    paths:
+      - 'backend-laravel/**'
+      - '.github/workflows/php-runtime-pr34.yml'
+  pull_request:
+    branches:
+      - work/rombel-docx-completion-20261126
+      - work/admin-import-curriculum-fixes-20261126
+
+permissions:
+  contents: read
+
+concurrency:
+  group: php-runtime-pr34-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  php-runtime:
+    name: PHP 8.3 syntax, Composer and Laravel boot
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend-laravel
+    env:
+      APP_ENV: testing
+      APP_DEBUG: "true"
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      CACHE_STORE: file
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: log
+    steps:
+      - name: Checkout exact PR source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Set up PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: bcmath, ctype, curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, pdo_sqlite, sqlite3, tokenizer, xml, xmlwriter, zip, sodium
+          coverage: none
+          tools: composer:v2
+
+      - name: Record runtime identity
+        run: |
+          php --version
+          composer --version
+          php -m
+
+      - name: Validate locked Composer project
+        run: composer validate --strict --no-check-publish
+
+      - name: Install locked production and development dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Prepare isolated Laravel runtime directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+          chmod -R u+rwX bootstrap/cache storage/framework storage/logs
+          touch .env
+
+      - name: PHP syntax lint for application and runtime source
+        shell: bash
+        run: |
+          set -euo pipefail
+          find app bootstrap config database routes tests -type f -name '*.php' -print0 | sort -z | xargs -0 -r -n1 php -l
+
+      - name: Boot Laravel and discover packages
+        run: php artisan package:discover --ansi
+
+      - name: Compile Blade views and verify portal routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          php artisan --version
+          php artisan route:list --json > "$RUNNER_TEMP/pr34-routes.json"
+          php -r '
+            $routes = json_decode(file_get_contents($argv[1]), true, 512, JSON_THROW_ON_ERROR);
+            $uris = array_column($routes, "uri");
+            $required = [
+              "admin/users",
+              "admin/students/import",
+              "admin/teachers/import",
+              "admin/teacher-assignments",
+              "admin/curriculum",
+              "admin/academic",
+              "guru/penugasan",
+            ];
+            $missing = array_values(array_diff($required, $uris));
+            if ($missing !== []) {
+              fwrite(STDERR, "Missing required Admin/Guru routes: " . implode(", ", $missing) . PHP_EOL);
+              exit(1);
+            }
+            echo "Laravel route boot PASS; verified: " . implode(", ", $required) . PHP_EOL;
+          ' "$RUNNER_TEMP/pr34-routes.json"
+          php artisan view:cache
+          php artisan view:clear
+
+      - name: Publish runtime summary
+        if: always()
+        run: |
+          {
+            echo "## PHP Runtime Validation (PR #34)"
+            echo "- PHP: $(php -r 'echo PHP_VERSION;')"
+            echo "- Composer: $(composer --version --no-ansi)"
+            echo "- Source commit: ${GITHUB_SHA}"
+            echo "- PHPUnit: not run"
+            echo "- Database migrations: not run"
+            echo "- Production VPS/database: not accessed"
+          } >> "$GITHUB_STEP_SUMMARY"
