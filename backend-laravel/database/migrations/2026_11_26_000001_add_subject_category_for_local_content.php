@@ -24,7 +24,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        throw new \\RuntimeException(
+        throw new \RuntimeException(
             'Subject category migration is intentionally forward-only. Do not drop tenant Mulok classification data; use an approved corrective migration.'
         );
     }
