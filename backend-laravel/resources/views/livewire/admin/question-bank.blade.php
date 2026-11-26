@@ -260,15 +260,16 @@
                     <div class="space-y-4 rounded-xl border border-cardBorder bg-gray-50 p-4">
                         <div>
                             <h4 class="text-xs font-bold uppercase text-navy-900">Pemetaan kurikulum per versi soal</h4>
-                            <p class="mt-1 text-[11px] text-textSecondary">Wajib pilih CP resmi yang checksum-nya telah diverifikasi dan TP/ATP yang telah dipublikasikan untuk penugasan yang dipilih. Versi soal akan menyimpan snapshot mapping secara terpisah per penugasan.</p>
+                            <p class="mt-1 text-[11px] text-textSecondary">Pemetaan CP dan TP/ATP bersifat opsional untuk soal umum. Jika pemetaan dipilih, sistem tetap mewajibkan CP resmi terverifikasi, TP/ATP terpublikasi, dan struktur kurikulum resmi yang lengkap.</p>
                         </div>
                         @if($selectedAssignment)
                             <div class="rounded-lg border border-cardBorder bg-white p-3">
                                 <p class="text-xs font-semibold text-navy-900">{{ $curriculumContext['assignment']['version_title'] ?? 'Versi kurikulum' }}</p>
                                 <p class="mt-1 text-[11px] text-textSecondary">{{ $curriculumContext['assignment']['phase'] ?? '-' }} · {{ $curriculumContext['assignment']['grade'] ?? '-' }} · {{ $curriculumContext['assignment']['official_subject'] ?? 'Mapel belum dipetakan' }}</p>
                             </div>
+                            @if(auth()->user()->hasPermission('curriculum.manage'))
                             <div>
-                                <p class="mb-2 text-xs font-bold text-indigo-900">CP resmi (pilih minimal satu)</p>
+                                <p class="mb-2 text-xs font-bold text-indigo-900">CP resmi (pilih minimal satu jika ingin memetakan)</p>
                                 <div class="grid gap-2 md:grid-cols-2">
                                     @forelse($cpOptions as $cp)
                                         <label class="flex items-start gap-2 rounded-lg border border-indigo-100 bg-white p-3 text-xs">
@@ -295,6 +296,9 @@
                                 </div>
                                 @error('selectedOutcomeIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
+                            @else
+                                <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Soal dapat disimpan dan diterbitkan sebagai soal umum tanpa CP/TP/ATP. Pemetaan kurikulum hanya tersedia bagi akun yang memiliki kewenangan pengelolaan kurikulum.</p>
+                            @endif
                             <div class="grid gap-3 md:grid-cols-2">
                                 <div>
                                     <label class="mb-1 block text-xs font-bold text-navy-900">Materi (opsional)</label>
