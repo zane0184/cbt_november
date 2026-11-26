@@ -153,7 +153,7 @@ class QuestionDocxImport extends Component
             $question['included'] = true;
             $question['difficulty'] = $question['difficulty'] ?? 'MEDIUM';
             $question['source_fragments'] = array_map(function (array $fragment): array {
-                unset($fragment['xml']);
+                unset($fragment['xml'], $fragment['structure']);
                 return $fragment;
             }, $question['source_fragments'] ?? []);
             if (isset($question['stimulus']['source_fragments'])) {
