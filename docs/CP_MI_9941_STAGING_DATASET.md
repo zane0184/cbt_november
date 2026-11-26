@@ -88,3 +88,7 @@ TP/ATP tidak dibuat dari tabel ini. Guru menyusun TP/ATP dan menghubungkannya ke
 3. Konfirmasi halaman SKI fase A memang tidak ada pada sumber dan minta klarifikasi resmi jika diperlukan; jangan mengisi kekosongan dengan konten rekaan.
 4. Setelah QA, buat JSON/CSV staging idempoten, importer dry-run, validasi duplikasi dan relasi fase/kelas/mapel.
 5. Uji pada MySQL 8/InnoDB disposable. Tidak ada seed atau migration ke database produksi pada tahap ini.
+
+
+## Koreksi rentang halaman sumber
+Pengecekan render gambar dan heading per fase menemukan bahwa sejumlah rentang halaman dalam versi awal dataset bergeser dua halaman untuk Akidah Akhlak/Fikih/SKI dan tiga halaman untuk Bahasa Arab. Rujukan yang benar: Al-Qur'an Hadis PDF 13–15; Akidah Akhlak PDF 44–47; Fikih PDF 70–73; SKI PDF 90–92; Bahasa Arab PDF 99–101. Semua page provenance pada tabel harus mengikuti koreksi ini. Catatan fase SKI MI hanya B dan C tetap dipertahankan; tidak ditemukan fase A di bagian SKI MI.
