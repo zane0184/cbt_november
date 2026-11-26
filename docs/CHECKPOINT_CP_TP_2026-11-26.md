@@ -99,3 +99,14 @@ Pengguna melampirkan dua PDF. Keduanya telah diperiksa dari byte file yang termo
 
 
 - Laporan audit diperbarui dengan hasil QA visual sampel, batas status signature, temuan SKI fase A yang tidak tercantum, dan larangan import produksi sebelum QA penuh; commit `ed27b9696666d2b3eff9962557d82442750bdf82`.
+
+
+## Addendum 5 — transkripsi elemen proses per fase (26 November 2026)
+
+- Dokumen `docs/CP_MI_9941_KETERAMPILAN_PROSES_TRANSKRIPSI.md` dibuat, commit `855fa5eea3d640b4ebd12a021d3a58db749a20a7`.
+- Isi mencakup Al-Qur'an Hadis fase A/B/C, Akidah Akhlak A/B/C, Fikih A/B/C, SKI B/C, dan Bahasa Arab A/B/C; memisahkan tiap proses sesuai struktur keputusan.
+- Untuk Fikih fase B, pengulangan frasa pada dokumen sumber dicatat sebagai karakteristik transkripsi dan tidak diperbaiki tanpa catatan.
+- Untuk Bahasa Arab, teks CP umum diterjemahkan/transkripsi dalam bahasa Indonesia, tetapi contoh pola kalimat Arab masih memerlukan proofread manual dari render halaman PDF. Belum ditandai final.
+- Dataset staging diberi addendum yang menautkan dokumen transkripsi proses, commit `b28b79869e3dc31155f0f267256adaf32fd91fa5`.
+- Source aplikasi, schema, migration, database, deployment tidak diubah. Tidak ada acceptance test dijalankan.
+- Pekerjaan berikutnya: proofread seluruh baris Pemahaman Konsep terhadap render halaman, transkripsi manual pola kalimat Arab, lalu bentuk JSON/CSV dengan provenance per record dan buat importer dry-run.
