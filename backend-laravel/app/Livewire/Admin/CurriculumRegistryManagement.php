@@ -205,6 +205,14 @@ class CurriculumRegistryManagement extends Component
                     ]);
                 }
 
+                if ($subject
+                    && $officialCode === 'SEJARAH_KEBUDAYAAN_ISLAM'
+                    && !in_array(mb_strtolower(trim($subject->name)), ['sejarah kebudayaan islam', 'ski'], true)) {
+                    throw ValidationException::withMessages([
+                        'selectedRegistrationId' => 'Kode lokal SKI sudah digunakan untuk nama mapel lain. Sinkronisasi dibatalkan agar tidak membuat pemetaan yang keliru.',
+                    ]);
+                }
+
                 if (!$subject) {
                     $subject = Subject::create([
                         'code' => $localCode,
