@@ -104,6 +104,7 @@
                                             {{ $cp['selectable'] ? 'Terverifikasi' : 'Menunggu verifikasi' }}
                                         </span>
                                     </div>
+                                    <p class="mt-1 text-[11px] font-semibold text-emerald-800">Fase {{ $cp['phase'] ?? '-' }} · Kelas {{ implode(', ', $cp['grade_levels'] ?? []) }}</p>
                                     <p class="mt-2 whitespace-pre-line text-xs leading-relaxed text-textSecondary">{{ $cp['description'] }}</p>
                                     <p class="mt-2 text-[11px] text-textSecondary">Sumber: {{ $cp['source_document'] ?? 'Belum tercatat' }} · {{ $cp['source_verification_status'] ?? 'PENDING' }}</p>
                                 </div>
