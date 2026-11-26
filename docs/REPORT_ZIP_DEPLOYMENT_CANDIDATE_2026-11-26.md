@@ -74,10 +74,10 @@ Dilakukan untuk tugas pengemasan ini:
 - Tidak ada pengujian runtime di VPS, migrasi produksi, browser UAT, atau validasi madrasah.
 
 ## Instruksi penggunaan dan batas klaim
-1. ZIP dapat diunggah ke VPS untuk uji pemasangan/pengecekan langsung.
-2. Untuk instalasi baru, ekstrak folder paket dan ikuti `README_PEMASANGAN.md`.
-3. Untuk instalasi yang sudah berjalan, jangan langsung menjalankan seluruh migration tanpa memeriksa migration ledger, backup database, dan rencana upgrade. Source ZIP saja tidak membuktikan database VPS sudah kompatibel.
+1. **PENTING: README paket ini menetapkan clean extraction/instalasi baru. Jangan ekstrak menimpa webroot aktif atau database CBT yang sudah berjalan.** Untuk uji VPS, ekstrak ke direktori kosong terpisah dan gunakan database staging kosong yang terisolasi.
+2. Untuk instalasi baru/staging, ikuti `README_PEMASANGAN.md`, termasuk document root ke `backend-laravel/public`, penyalinan `.env.example` menjadi `.env`, serta wizard installer.
+3. Untuk instalasi yang sudah berjalan, ini belum merupakan paket upgrade in-place. Perlu audit migration ledger, backup source+database, rencana upgrade forward-only, dan preflight sebelum mengganti source atau menjalankan migration.
 4. Jangan menimpa `.env` yang sudah ada; konfigurasi rahasia tetap milik instalasi madrasah.
 5. Belum boleh menyatakan siap produksi atau menutup backlog Proktor Guru, provenance kurikulum, snapshot mapping, Web Siswa E2E, dan UAT.
 
-**Status: ZIP KANDIDAT VPS TERSEDIA — PAKET TERVERIFIKASI SECARA STRUKTURAL — ACCEPTANCE PRODUKSI MASIH TERBUKA.**
+**Status: ZIP KANDIDAT VPS TERSEDIA — PAKET TERVERIFIKASI SECARA STRUKTURAL — BUKAN PAKET UPGRADE IN-PLACE — ACCEPTANCE PRODUKSI MASIH TERBUKA.**
