@@ -69,3 +69,15 @@ Manifest diperbarui pada commit `b85eea25d0d478488f28ffa29a182f17df4bc21c`.
 - Pekerjaan berikutnya: memperoleh bytes PDF 9941 dan 020 dari sumber penerbit/arsip, memvalidasi tanda tangan/hash, mengekstrak CP MI per halaman, baru menyiapkan dataset dan importer.
 
 **Jangan menyebut seluruh dokumen sudah didapat atau data CP siap diimpor.**
+
+
+## Addendum 3 — dua berkas sumber diterima dan diperiksa (26 November 2026)
+
+Pengguna melampirkan dua PDF. Keduanya telah diperiksa dari byte file yang termount di workspace; SHA-256 dan peta halaman dicatat pada `docs/CP_TP_SOURCE_RECOVERY_MANIFEST_2026-11-26.md`, commit `3a684830b3f09429cfb717fa1ad99ae423c6300b`.
+
+- **SK Dirjen Pendis 9941/2025**: 1,161,548 byte, 107 halaman, SHA-256 `63ecce28af6c02b9fefde85f9594e7432b2575a69a263a46882ace6e87ffb757`. Surat pengantar Ditjen Pendis B-606 tertanggal 1 Desember 2025, keputusan 9941 tertanggal 28 November 2025, diktum dan lampiran cocok secara isi/identitas. Peta CP MI: Al-Qur'an Hadis PDF 10–19; Akidah Akhlak 39–54; Fikih 68–85; SKI 88–95; Bahasa Arab 96–103. PDF tidak memiliki signature object menurut `pdfsig`, meskipun surat pengantar menyebut TTE BSrE. Status belum tervalidasi kriptografis.
+- **Salinan Kepka BKPDM 020/2026**: 8,510,107 byte, 79 halaman, SHA-256 `598278746b0f62333fdcab520d5dd4c1a9650c94bd3906acff4254100976552b`. Halaman 1–3 memuat nomor, judul, tanggal 11 Juni 2026, pejabat dan cap/tanda tangan hasil scan. Lampiran I PDF 4–45; perubahan CP PAIBP umum SD/MI ada pada PDF 4–9. Lampiran II PDF 46–79 adalah CP Pendidikan Khusus. Teks PDF hasil scan tidak terbaca oleh pdftotext; pemeriksaan dilakukan dengan gambar halaman. Tidak ada signature object digital.
+- Pembedaan penting: 9941 adalah acuan khusus PAI dan Bahasa Arab pada madrasah (lima mapel MI), sedangkan Kepka 020 mengubah CP PAIBP dalam struktur BSKAP 046/2025. Jangan menggabungkan atau mengganti CP PAI MI madrasah dengan struktur PAIBP umum SD/MI tanpa dasar harmonisasi resmi.
+- Belum ada import data, perubahan source, migration, akses DB, deployment, atau pengujian aplikasi. Belum ada transkripsi CP penuh. Tidak mengklaim validasi tanda tangan atau keaslian digital final.
+
+**Tahap saat ini:** AUDIT SUMBER DOKUMEN selesai untuk penerimaan, identitas, hash dan indeks halaman awal. Berikutnya: transkripsi CP MI per fase/elemen dari 9941 dengan verifikasi visual, menyimpan provenance; setelah itu desain importer dry-run dan uji terisolasi. Jangan mulai seed produksi.
