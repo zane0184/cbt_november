@@ -95,9 +95,19 @@
                 </div>
 
                 @if($q->currentVersion)
-                    <div class="prose prose-sm max-w-none text-navy-900 bg-contentBg p-4 rounded-xl border border-cardBorder">
+                    <div dir="{{ ($q->currentVersion->metadata['rich_content']['text_direction'] ?? 'auto') === 'rtl' ? 'rtl' : 'auto' }}" class="prose prose-sm max-w-none text-navy-900 bg-contentBg p-4 rounded-xl border border-cardBorder">
                         {!! nl2br(e($q->currentVersion->stem)) !!}
                     </div>
+
+                    @if($q->currentVersion->media->isNotEmpty())
+                        <div class="flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            @foreach($q->currentVersion->media as $media)
+                                @if(in_array($media->mime_type, ['image/jpeg', 'image/png'], true))
+                                    <img src="{{ url('/api/v1/media/' . $media->id) }}" alt="Gambar soal" loading="lazy" class="max-h-56 max-w-full rounded-lg border border-slate-200 bg-white object-contain">
+                                @endif
+                            @endforeach
+                        </div>
+                    @endif
 
                     @if($q->currentVersion->explanation)
                         <div class="text-xs bg-amber-50/80 border border-amber-200 p-3 rounded-xl text-amber-900">
