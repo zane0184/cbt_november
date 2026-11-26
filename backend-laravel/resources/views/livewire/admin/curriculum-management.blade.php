@@ -52,6 +52,36 @@
     </section>
 
     <section class="bg-white border border-cardBorder rounded-2xl p-5 shadow-sm space-y-3">
+        <h2 class="font-bold text-navy-900">KBC/Panca Cinta, Pembelajaran Mendalam & Profil Lulusan</h2>
+        <p class="text-xs text-textSecondary">Satu ekosistem yang menyatu dengan Kurikulum Merdeka: Panca Cinta sebagai nilai lintas pembelajaran, Pembelajaran Mendalam sebagai pendekatan pedagogis, dan delapan dimensi sebagai profil lulusan.</p>
+        @php
+            $frameworkLabels = [
+                'PANCA_CINTA' => 'Panca Cinta',
+                'PM_PRINCIPLE' => 'Prinsip Pembelajaran Mendalam',
+                'PM_OLAH' => 'Olah Pikir, Hati, Rasa, Raga',
+                'PM_FRAMEWORK' => 'Kerangka Pembelajaran Mendalam',
+                'DIMENSI_PROFIL_LULUSAN' => 'Delapan Dimensi Profil Lulusan',
+            ];
+        @endphp
+        @forelse($frameworkLabels as $nodeType => $label)
+            @php $items = $frameworkNodes->where('node_type', $nodeType); @endphp
+            <div class="space-y-2">
+                <h3 class="text-xs font-bold uppercase tracking-wide text-textSecondary">{{ $label }}</h3>
+                @if($items->isEmpty())
+                    <p class="text-xs text-amber-800">Belum tersedia pada versi kurikulum yang didaftarkan.</p>
+                @else
+                    <div class="flex flex-wrap gap-2">
+                        @foreach($items as $node)
+                            <span class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900">{{ $node->title }}</span>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        @empty
+        @endforelse
+    </section>
+
+    <section class="bg-white border border-cardBorder rounded-2xl p-5 shadow-sm space-y-3">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
             <div>
                 <h2 class="font-bold text-navy-900">Tujuan Pembelajaran (TP) & Alur Tujuan Pembelajaran (ATP)</h2>
