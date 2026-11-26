@@ -152,6 +152,10 @@ class QuestionDocxImport extends Component
         $this->questions = array_map(function (array $question): array {
             $question['included'] = true;
             $question['difficulty'] = $question['difficulty'] ?? 'MEDIUM';
+            $question['source_fragments'] = array_map(function (array $fragment): array {
+                unset($fragment['xml']);
+                return $fragment;
+            }, $question['source_fragments'] ?? []);
             if (($question['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
                 $question['statements'] = array_map(function (array $statement): array {
                     $statement['is_true'] = is_bool($statement['is_true'] ?? null)
@@ -275,15 +279,37 @@ class QuestionDocxImport extends Component
             ]);
         }
 
+        $freshBySequence = collect($freshParse['questions'] ?? [])
+            ->keyBy(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0));
         $blockedSequences = collect($freshParse['questions'] ?? [])
             ->filter(fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
             ->map(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0))
             ->all();
         if (array_intersect($blockedSequences, $selectedSequences) !== []) {
             throw ValidationException::withMessages([
-                'docx' => 'Ada soal terpilih yang memuat gambar, diagram, atau rumus Word yang belum didukung. Konten tersebut tidak boleh dihilangkan diam-diam.',
+                'docx' => 'Ada soal terpilih dengan relasi gambar yang rusak atau format media yang tidak didukung. Perbaiki gambar sumber sebelum impor.',
             ]);
         }
+
+        foreach ($questionsForImport as &$questionRow) {
+            $sequence = (int) ($questionRow['source_locator']['sequence'] ?? 0);
+            $sourceRow = $freshBySequence->get($sequence);
+            if (!$sourceRow
+                || (int) ($sourceRow['source_number'] ?? 0) !== (int) ($questionRow['source_number'] ?? 0)) {
+                throw ValidationException::withMessages([
+                    'docx' => 'Identitas blok soal pada preview tidak cocok dengan hasil pembacaan ulang dokumen. Buat preview baru.',
+                ]);
+            }
+            $questionRow['source_number'] = (int) $sourceRow['source_number'];
+            $questionRow['source_section'] = $sourceRow['source_section'] ?? null;
+            $questionRow['source_locator'] = $sourceRow['source_locator'];
+            $questionRow['source_fragments'] = $sourceRow['source_fragments'] ?? [];
+            $questionRow['blocked_features'] = $sourceRow['blocked_features'] ?? [];
+            $questionRow['text_direction'] = $sourceRow['text_direction'] ?? 'auto';
+            $questionRow['media_count'] = $sourceRow['media_count'] ?? 0;
+            $questionRow['math_count'] = $sourceRow['math_count'] ?? 0;
+        }
+        unset($questionRow);
 
         $assignmentRow = $this->selectedAssignmentRow();
         abort_unless($assignmentRow, 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
@@ -293,7 +319,10 @@ class QuestionDocxImport extends Component
             $this->previewHash,
             $this->selectedAssignmentId,
             $this->selectedCpIds,
-            $this->selectedOutcomeIds
+            $this->selectedOutcomeIds,
+            null,
+            null,
+            $this->file->getRealPath()
         );
 
         session()->flash(
