@@ -24,11 +24,8 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (Schema::hasColumn('subjects', 'subject_category')) {
-            Schema::table('subjects', function (Blueprint $table): void {
-                $table->dropIndex('subjects_category_status_idx');
-                $table->dropColumn('subject_category');
-            });
-        }
+        throw new \\RuntimeException(
+            'Subject category migration is intentionally forward-only. Do not drop tenant Mulok classification data; use an approved corrective migration.'
+        );
     }
 };
