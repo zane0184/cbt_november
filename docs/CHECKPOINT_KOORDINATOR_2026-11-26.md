@@ -24,7 +24,7 @@ Audit branch: `audit/coordinator-continuation-20261126`
 - Satu ZIP Web CBT generik per madrasah, tanpa Android dan tanpa portal Super Admin pusat.
 - Kurmer dan KBC adalah satu kesatuan pada kontrak kurikulum, pembelajaran, asesmen dan laporan.
 - Role aktif tiga; Proktor adalah penugasan/capability tambahan Guru, bukan role permanen.
-- ZIP ini untuk uji langsung di VPS, bukan sertifikat produksi.
+- ZIP ini untuk uji VPS, bukan sertifikat produksi.
 
 ## IMPLEMENTASI
 - Tidak ada source aplikasi, migration, workflow, database, VPS, atau PR implementer yang diubah.
@@ -42,6 +42,11 @@ Audit branch: `audit/coordinator-continuation-20261126`
 - Koordinator tidak menjalankan PHPUnit maupun Tenant Backend CI untuk tugas ini, sesuai instruksi pengguna.
 - Belum ada uji runtime VPS, migration produksi, browser E2E atau UAT.
 
+## BATAS PEMAKAIAN
+- README paket mensyaratkan clean extraction pada direktori kosong dan instalasi/database baru. Ini **bukan paket upgrade in-place** untuk webroot/database CBT yang sedang aktif.
+- Untuk uji di VPS, gunakan direktori staging kosong dan database staging terisolasi. Jangan ekstrak menimpa source aktif.
+- Untuk upgrade instalasi berjalan, perlu backup source+database, pemeriksaan migration ledger, rencana upgrade forward-only dan preflight sebelum perubahan.
+- Jangan menutup backlog Proktor Guru, provenance kurikulum, snapshot mapping, Web Siswa E2E dan UAT hanya berdasarkan keberadaan ZIP.
+
 ## STATUS
-**ZIP KANDIDAT VPS TERSEDIA — STRUKTUR DAN CHECKSUM TERVERIFIKASI — ACCEPTANCE PRODUKSI MASIH TERBUKA.**
-Jangan menutup backlog Proktor Guru, provenance kurikulum, snapshot mapping, Web Siswa E2E dan UAT hanya berdasarkan keberadaan ZIP.
+**ZIP KANDIDAT VPS TERSEDIA — STRUKTUR DAN CHECKSUM TERVERIFIKASI — BUKAN PAKET UPGRADE IN-PLACE — ACCEPTANCE PRODUKSI MASIH TERBUKA.**
