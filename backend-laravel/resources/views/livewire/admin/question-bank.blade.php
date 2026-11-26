@@ -260,7 +260,7 @@
                     <div class="space-y-4 rounded-xl border border-cardBorder bg-gray-50 p-4">
                         <div>
                             <h4 class="text-xs font-bold uppercase text-navy-900">Pemetaan kurikulum per versi soal</h4>
-                            <p class="mt-1 text-[11px] text-textSecondary">Pemetaan CP dan TP/ATP bersifat opsional untuk soal umum. Jika pemetaan dipilih, sistem tetap mewajibkan CP resmi terverifikasi, TP/ATP terpublikasi, dan struktur kurikulum resmi yang lengkap.</p>
+                            <p class="mt-1 text-[11px] text-textSecondary">Pemetaan CP dan TP/ATP bersifat opsional untuk semua mata pelajaran yang ditugaskan kepada Guru. Jika pemetaan dipilih, sistem tetap mewajibkan CP resmi terverifikasi, TP/ATP terpublikasi, dan struktur kurikulum resmi yang lengkap.</p>
                         </div>
                         @if($selectedAssignment)
                             <div class="rounded-lg border border-cardBorder bg-white p-3">
@@ -277,7 +277,7 @@
                                             <span><strong>{{ $cp['code'] }} — {{ $cp['title'] }}</strong><span class="mt-1 block text-[11px] text-textSecondary">{{ $cp['source_document'] ?? 'Sumber resmi' }}</span></span>
                                         </label>
                                     @empty
-                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi terverifikasi untuk penugasan ini. Soal tetap dapat diterbitkan sebagai soal umum tanpa pemetaan kurikulum.</p>
+                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi terverifikasi untuk penugasan ini. Soal tetap dapat diterbitkan tanpa pemetaan CP/TP/ATP.</p>
                                     @endforelse
                                 </div>
                                 @error('selectedCpIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
@@ -323,7 +323,7 @@
                                 <p class="rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-700">Materi dan topik hanya dapat ditautkan jika CP dan TP/ATP dipetakan.</p>
                             @endif
                             @else
-                                <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Soal dapat disimpan dan diterbitkan sebagai soal umum tanpa CP/TP/ATP. Pemetaan kurikulum, materi, dan topik hanya tersedia bagi akun yang memiliki kewenangan pengelolaan kurikulum.</p>
+                                <p class="rounded-lg border border-sky-200 bg-sky-50 p-3 text-xs text-sky-900">Soal dapat disimpan dan diterbitkan tanpa pemetaan CP/TP/ATP. Pemetaan kurikulum, materi, dan topik hanya tersedia bagi akun yang memiliki kewenangan pengelolaan kurikulum.</p>
                             @endif
                         @else
                             <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Pilih penugasan Guru untuk menampilkan CP, TP/ATP, materi, dan topik yang sah.</p>
