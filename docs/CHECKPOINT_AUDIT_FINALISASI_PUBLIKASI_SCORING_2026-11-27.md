@@ -112,3 +112,38 @@ Tanggal: 27 November 2026
 - Periksa semua cabang validasi dan persistence pada manual save serta DOCX save.
 - Tambahkan regression tests (jangan jalankan).
 - PR #44 tetap Draft; tidak merge/deploy.
+
+
+## CHECKPOINT TAMBAHAN — AUDIT LENGKAP JALUR SIMPAN BANK SOAL / DOCX
+
+### AUDIT
+- Kedua halaman dapat dibuka; ruang lingkup pemeriksaan adalah proses simpan.
+- Root cause bersama yang ditemukan: mapping service menggunakan predicate tanggal non-null, sedangkan schema mengizinkan starts_at/ends_at NULL dan scope activeForDate() mendukung tanggal terbuka.
+- Manual save dan DOCX import sama-sama melewati mapping service. Patch sebelumnya menyamakan validasi ke activeForDate().
+- Manual save melakukan validasi tiap jenis soal dan menulis Question/Version/Options/Mapping/Metadata/Audit dalam satu transaksi.
+- DOCX save memverifikasi preview hash, parse ulang file, membatasi field editable, validasi assignment dalam transaksi, memeriksa duplikasi batch, dan mengelola gambar privat dengan batas ukuran serta cleanup saat transaksi gagal.
+- Temuan tambahan: unique constraint kode soal ada di database tetapi form manual belum memberi validasi unik tenant-scoped sebelum insert/update.
+
+### DESAIN
+- Pertahankan validasi jenis soal, mapping, tenant, assignment, dan media.
+- Normalisasi kode soal menjadi uppercase/trim, validasi unik pada tenant saat simpan, abaikan question ID yang sedang diedit.
+- DOCX tidak memerlukan validasi kode manual karena generator menggunakan kode acak.
+
+### IMPLEMENTASI
+- Patch mapping service: bcb9a2722c013b9216b6663f7693b58f2d310e16; commit e1a58e7a0bec8990bb5cfa006d43747ee00000d0.
+- Backup mapping service di backend-laravel/backups/question-save-nullable-assignment-dates-20261127/.
+- Regression tests nullable date ditambahkan ke QuestionBankTest.php dan QuestionDocxImportFeatureTest.php.
+- Patch kode unik QuestionBank.php: blob af65f5298f982dc97edb28dd064fd29056d8290c; commit 2124ef9d92cbe90132cf712fe8984dbe38c09072.
+- Backup QuestionBank.php tersedia di folder backup tahap ini.
+- Test kode duplikat ditambahkan pada QuestionBankTest.php; blob d97ed924a450f364368a452ecf432c269e8af253; commit 21382203f5ac1f967512f4bdc9d8a4a172e2accd.
+- Backup kedua test file dan backup report/checkpoint sebelum update tersedia di folder backup tahap ini.
+- Tidak ada perubahan migration, database, VPS, atau deployment.
+
+### PENGUJIAN
+- Fetch ulang source dan migration dari GitHub: pemeriksaan statis.
+- PHPUnit/CI/Livewire/browser/DB integration: BELUM DIJALANKAN.
+- Tidak menyatakan save manual atau DOCX sudah terbukti sukses runtime.
+
+### LANJUTAN
+- Saat izin pengujian berubah, jalankan regression tests manual nullable date, DOCX nullable date, duplicate question code, mapped/unmapped, image media, dan DOCX duplicate idempotency.
+- PR #44 tetap Draft/unmerged; jangan deploy.
