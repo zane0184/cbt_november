@@ -73,14 +73,6 @@ final class DocxQuestionMediaExtractor
                             ]);
                         }
 
-                        $totalImages++;
-                        $totalBytes += strlen($bytes);
-                        if ($totalImages > self::MAX_IMAGES_PER_IMPORT || $totalBytes > self::MAX_TOTAL_IMAGE_BYTES) {
-                            throw ValidationException::withMessages([
-                                'docx' => 'Jumlah atau total ukuran gambar DOCX melebihi batas keamanan impor.',
-                            ]);
-                        }
-
                         $mime = $finfo->buffer($bytes);
                         $extension = match ($mime) {
                             'image/jpeg' => 'jpg',
@@ -108,6 +100,16 @@ final class DocxQuestionMediaExtractor
                     }
 
                     $payload = $uniquePayloads[$target];
+                    // The importer stores one tenant-owned asset per question reference.
+                    // Count expanded attachments (including shared stimulus reuse) to cap disk writes.
+                    $totalImages++;
+                    $totalBytes += (int) $payload['file_size'];
+                    if ($totalImages > self::MAX_IMAGES_PER_IMPORT || $totalBytes > self::MAX_TOTAL_IMAGE_BYTES) {
+                        throw ValidationException::withMessages([
+                            'docx' => 'Jumlah atau total ukuran lampiran gambar DOCX melebihi batas keamanan impor.',
+                        ]);
+                    }
+
                     $payload['relationship_id'] = (string) ($fragment['relationship_id'] ?? '');
                     $result[$sequence][] = $payload;
                 }
