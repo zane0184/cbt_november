@@ -794,6 +794,35 @@ class QuestionBankTest extends TestCase
         ]);
     }
 
+    public function test_manual_question_save_rejects_duplicate_question_code_with_validation_error(): void
+    {
+        $this->actingAs($this->userA);
+
+        Question::create([
+            'tenant_id' => $this->tenantA->id,
+            'owner_type' => 'SUBJECT',
+            'subject_id' => $this->subjectA->id,
+            'question_code' => 'DUPLICATE-01',
+            'status' => 'DRAFT',
+            'created_by' => $this->userA->id,
+        ]);
+
+        $this->questionBankComponent()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->set('questionCode', ' duplicate-01 ')
+            ->set('questionType', 'MULTIPLE_CHOICE')
+            ->set('stem', 'Soal dengan kode duplikat')
+            ->set('defaultPoints', 1)
+            ->set('optionA', 'Pilihan A')
+            ->set('optionB', 'Pilihan B')
+            ->set('correctOption', 'A')
+            ->call('saveQuestion')
+            ->assertHasErrors(['questionCode']);
+
+        $this->assertDatabaseCount('questions', 1);
+    }
+
     private function questionBankComponent()
     {
         return Livewire::test(QuestionBank::class)
