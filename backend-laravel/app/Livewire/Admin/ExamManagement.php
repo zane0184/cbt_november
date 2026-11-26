@@ -693,8 +693,28 @@ class ExamManagement extends Component
                 ->get()
             : collect();
 
+        // The Blade modal consumes these collections. Derive them only from
+        // the current Guru's active, tenant-scoped assignments returned above;
+        // never query school-wide subjects/rombels for this portal.
+        $subjects = collect($assignmentRows)
+            ->pluck('assignment.subject')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $activeSemester = $selectedAssignment?->semester;
+
+        $rombels = collect($assignmentRows)
+            ->pluck('assignment.rombel')
+            ->filter()
+            ->unique('id')
+            ->values();
+
         return view('livewire.admin.exam-management', [
             'exams' => $exams,
+            'subjects' => $subjects,
+            'activeSemester' => $activeSemester,
+            'rombels' => $rombels,
             'assignmentRows' => $assignmentRows,
             'selectedAssignment' => $selectedAssignment,
             'curriculumContext' => $curriculumContext,
