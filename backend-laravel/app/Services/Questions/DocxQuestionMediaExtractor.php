@@ -32,6 +32,9 @@ final class DocxQuestionMediaExtractor
         $result = [];
         $totalBytes = 0;
         $totalImages = 0;
+        // Shared stimulus images may appear in several question fragments.
+        // Validate/count each source target once while retaining per-question references.
+        $uniquePayloads = [];
         $finfo = new \finfo(FILEINFO_MIME_TYPE);
 
         try {
@@ -41,7 +44,6 @@ final class DocxQuestionMediaExtractor
                     continue;
                 }
 
-                $seenTargets = [];
                 foreach (($question['source_fragments'] ?? []) as $fragment) {
                     if (($fragment['kind'] ?? null) !== 'IMAGE_REFERENCE') {
                         continue;
@@ -57,51 +59,51 @@ final class DocxQuestionMediaExtractor
                         ]);
                     }
 
-                    if (isset($seenTargets[$target])) {
-                        continue;
-                    }
-                    $seenTargets[$target] = true;
+                    if (!isset($uniquePayloads[$target])) {
+                        $bytes = $zip->getFromName($target);
+                        if (!is_string($bytes) || $bytes === '' || strlen($bytes) > self::MAX_IMAGE_BYTES) {
+                            throw ValidationException::withMessages([
+                                'docx' => 'Gambar DOCX kosong atau melebihi batas 2 MB per gambar.',
+                            ]);
+                        }
 
-                    $bytes = $zip->getFromName($target);
-                    if (!is_string($bytes) || $bytes === '' || strlen($bytes) > self::MAX_IMAGE_BYTES) {
-                        throw ValidationException::withMessages([
-                            'docx' => 'Gambar DOCX kosong atau melebihi batas 2 MB per gambar.',
-                        ]);
+                        $totalImages++;
+                        $totalBytes += strlen($bytes);
+                        if ($totalImages > self::MAX_IMAGES_PER_IMPORT || $totalBytes > self::MAX_TOTAL_IMAGE_BYTES) {
+                            throw ValidationException::withMessages([
+                                'docx' => 'Jumlah atau total ukuran gambar DOCX melebihi batas keamanan impor.',
+                            ]);
+                        }
+
+                        $mime = $finfo->buffer($bytes);
+                        $extension = match ($mime) {
+                            'image/jpeg' => 'jpg',
+                            'image/png' => 'png',
+                            default => null,
+                        };
+                        $imageInfo = @getimagesizefromstring($bytes);
+                        if ($extension === null
+                            || !is_array($imageInfo)
+                            || ($imageInfo['mime'] ?? null) !== $mime
+                            || ((int) ($imageInfo[0] ?? 0) * (int) ($imageInfo[1] ?? 0)) > self::MAX_IMAGE_PIXELS) {
+                            throw ValidationException::withMessages([
+                                'docx' => 'Format gambar DOCX tidak didukung atau dimensi gambar terlalu besar. Hanya JPEG dan PNG yang diizinkan.',
+                            ]);
+                        }
+
+                        $uniquePayloads[$target] = [
+                            'bytes' => $bytes,
+                            'mime_type' => $mime,
+                            'extension' => $extension,
+                            'file_size' => strlen($bytes),
+                            'sha256' => hash('sha256', $bytes),
+                            'source_target' => $target,
+                        ];
                     }
 
-                    $totalImages++;
-                    $totalBytes += strlen($bytes);
-                    if ($totalImages > self::MAX_IMAGES_PER_IMPORT || $totalBytes > self::MAX_TOTAL_IMAGE_BYTES) {
-                        throw ValidationException::withMessages([
-                            'docx' => 'Jumlah atau total ukuran gambar DOCX melebihi batas keamanan impor.',
-                        ]);
-                    }
-
-                    $mime = $finfo->buffer($bytes);
-                    $extension = match ($mime) {
-                        'image/jpeg' => 'jpg',
-                        'image/png' => 'png',
-                        default => null,
-                    };
-                    $imageInfo = @getimagesizefromstring($bytes);
-                    if ($extension === null
-                        || !is_array($imageInfo)
-                        || ($imageInfo['mime'] ?? null) !== $mime
-                        || ((int) ($imageInfo[0] ?? 0) * (int) ($imageInfo[1] ?? 0)) > self::MAX_IMAGE_PIXELS) {
-                        throw ValidationException::withMessages([
-                            'docx' => 'Format gambar DOCX tidak didukung atau dimensi gambar terlalu besar. Hanya JPEG dan PNG yang diizinkan.',
-                        ]);
-                    }
-
-                    $result[$sequence][] = [
-                        'bytes' => $bytes,
-                        'mime_type' => $mime,
-                        'extension' => $extension,
-                        'file_size' => strlen($bytes),
-                        'sha256' => hash('sha256', $bytes),
-                        'source_target' => $target,
-                        'relationship_id' => (string) ($fragment['relationship_id'] ?? ''),
-                    ];
+                    $payload = $uniquePayloads[$target];
+                    $payload['relationship_id'] = (string) ($fragment['relationship_id'] ?? '');
+                    $result[$sequence][] = $payload;
                 }
             }
         } finally {
