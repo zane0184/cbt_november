@@ -158,3 +158,11 @@ Tanggal: 27 November 2026
 - Test blob: bdb47f642dcfd0a648e618aef49614eeb18463ba; commit 5a5b281494007d2db82ba7eedf3926b5b68be7b7.
 - Backup source/test disimpan dengan akhiran .pre-option-normalization pada folder backup tahap ini.
 - PHPUnit/CI/runtime belum dijalankan. Tidak ada perubahan database, migration, atau VPS.
+
+
+## CHECKPOINT TAMBAHAN — TEST EKSTRAKSI MEDIA DOCX
+
+- Ditambahkan file baru backend-laravel/tests/Unit/DocxQuestionMediaExtractorTest.php.
+- Cakupan: ekstraksi PNG valid, penolakan path traversal/relasi tidak aman, penolakan MIME GIF.
+- Test belum dijalankan. Integrasi Storage + MediaAsset + pivot belum terbukti runtime.
+- Tidak ada perubahan migration, DB, atau VPS.
