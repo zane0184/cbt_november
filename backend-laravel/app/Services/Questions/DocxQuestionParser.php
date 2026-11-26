@@ -1072,12 +1072,17 @@ class DocxQuestionParser
                     array_merge($raw['source_fragments'] ?? [], $raw['stimulus']['source_fragments'] ?? []),
                     fn (array $fragment): bool => ($fragment['kind'] ?? null) === 'WORD_MATH_OMML'
                 )),
-                'table_structure' => (!empty($raw['table_unclassified']) || !empty($raw['stimulus']['has_table_content']))
-                    ? $this->extractNestedTableStructures(array_merge(
+                'table_structure' => (
+                    !empty($raw['table_unclassified'])
+                    || !empty($raw['stimulus']['has_table_content'])
+                    || $this->countNestedTables(array_merge(
                         $raw['source_fragments'] ?? [],
                         $raw['stimulus']['source_fragments'] ?? []
-                    ))
-                    : [],
+                    )) > 0
+                ) ? $this->extractNestedTableStructures(array_merge(
+                    $raw['source_fragments'] ?? [],
+                    $raw['stimulus']['source_fragments'] ?? []
+                )) : [],
                 'nested_table_count' => $this->countNestedTables(array_merge(
                     $raw['source_fragments'] ?? [],
                     $raw['stimulus']['source_fragments'] ?? []
