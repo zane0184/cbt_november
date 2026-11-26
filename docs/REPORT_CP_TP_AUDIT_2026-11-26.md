@@ -155,3 +155,27 @@ Status: **BLOCKED — missing source artifacts**.
 - TP/ATP authoring guard dan QuestionVersion→Exam snapshot code already exist; do not rebuild them.
 - Next safe action: obtain official CP source artifacts in GitHub, verify SHA/provenance, then implement only the missing CP import/registry data and replace Admin legacy read-only display with canonical view.
 - Status: **AUDIT CP/TP SELESAI — IMPLEMENTASI DATA CP BLOCKED OLEH ARTEFAK RESMI — SOURCE BELUM SIAP DIKLAIM CP/TP END-TO-END**.
+
+
+## Addendum — transkripsi staging dan koreksi halaman sumber (26 November 2026)
+
+### AUDIT
+Pemeriksaan visual tambahan pada render halaman PDF memastikan isi contoh transkripsi inti sesuai pada halaman sumber: Al-Qur'an Hadis fase A PDF 13; Akidah Akhlak fase A PDF 44; Fikih fase A PDF 70; SKI fase B PDF 90; Bahasa Arab fase A PDF 99. Halaman-halaman ini memperlihatkan heading fase dan teks CP yang sesuai. Koreksi rentang halaman sudah dicatat pada indeks sumber dan dataset staging.
+
+Hal penting yang ditemukan:
+- SKI MI pada bagian CP yang diperiksa dimulai pada fase B (kelas III–IV); fase A tidak tercantum di bagian tersebut. Jangan membuat CP fase A tanpa dasar resmi.
+- Elemen keterampilan proses/bahasa tercantum terpisah dari pemahaman konsep. Dataset harus mempertahankan keduanya.
+- Bahasa Arab memuat teks/pola kalimat Arab berharakat. Ekstraksi teks PDF dapat merusak urutan karakter/harakat; transkripsi Arab wajib dicocokkan visual dan tidak boleh dianggap benar hanya karena hasil pdftotext.
+- File sumber tidak menunjukkan signature object digital tertanam. Status keaslian kriptografis tetap pending.
+
+### DESAIN
+Dokumen staging memisahkan mata pelajaran, fase, elemen, subelemen, deskripsi, dan halaman PDF. Setiap rekaman wajib menyimpan document number, source hash, page, subject, phase, element, dan verification/transcription status. TP/ATP tetap dibuat Guru dan ditautkan ke CP induk. KBC/Panca Cinta dan Pembelajaran Mendalam hanya konteks/pemetaan, bukan CP baru.
+
+### IMPLEMENTASI
+- `docs/CP_MI_9941_STAGING_DATASET.md` ditambahkan; commit terakhir yang menyelaraskan halaman: `52f5d7a6e19d9b88714d1aea0d793651bc84dcd5`.
+- `docs/CP_9941_MI_SOURCE_INDEX.md` diperbarui; commit koreksi halaman: `aeb56de984ca3468bee52a6672bb4eb8f862f1de`.
+- Checkpoint terbaru: `742a78e7f3952c30dba42f228e713ec097ea6195`.
+- Tidak ada source aplikasi yang diubah; tidak ada migration, query database, atau deployment.
+
+### PENGUJIAN
+Belum ada test importer atau aplikasi. Render halaman digunakan untuk QA visual sampel, bukan acceptance test. QA semua halaman, transkripsi penuh elemen proses, validasi Arab, serta verifikasi tanda tangan masih terbuka. Dataset staging dilarang masuk produksi sampai seluruh gate tersebut selesai.
