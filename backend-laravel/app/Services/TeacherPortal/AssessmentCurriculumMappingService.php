@@ -27,14 +27,22 @@ class AssessmentCurriculumMappingService
     ): array {
         $user = auth()->user();
         $profile = app(TeacherPortalAccess::class)->profile($user);
-        abort_unless($user->hasPermission('exam.manage') && $user->hasPermission('curriculum.manage'), 403);
+        abort_unless($user->hasPermission('exam.manage'), 403);
 
         $tenantId = (string) $user->tenant_id;
         $cpIds = array_values(array_unique($cpIds));
         $outcomeIds = array_values(array_unique($outcomeIds));
-        if ($cpIds === [] || $outcomeIds === []) {
+        $hasNoCurriculumMapping = $cpIds === [] && $outcomeIds === [];
+        if (($cpIds === []) !== ($outcomeIds === [])) {
             throw ValidationException::withMessages([
-                'assessmentCurriculum' => 'Asesmen wajib dipetakan ke minimal satu CP resmi dan satu TP/ATP terpublikasi.',
+                'assessmentCurriculum' => 'Pemetaan asesmen harus lengkap: pilih CP dan TP/ATP sekaligus, atau kosongkan keduanya.',
+            ]);
+        }
+        if (!$hasNoCurriculumMapping) {
+            abort_unless($user->hasPermission('curriculum.manage'), 403);
+        } elseif ($materialId || $topicId) {
+            throw ValidationException::withMessages([
+                'assessmentCurriculum' => 'Materi dan topik hanya dapat dicatat jika pemetaan CP dan TP/ATP dipilih.',
             ]);
         }
 
@@ -66,6 +74,55 @@ class AssessmentCurriculumMappingService
                 ->where('curriculum_owner_id', $lockedAssignment->curriculum_owner_id)
                 ->where('status', 'ACTIVE')
                 ->firstOrFail();
+
+            if ($hasNoCurriculumMapping) {
+                AssessmentCurriculumMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('assessment_id', $lockedAssessment->id)
+                    ->delete();
+
+                $snapshot = $lockedAssignment->curriculum_context_snapshot ?? [];
+                $lockedAssessment->update([
+                    'curriculum_context_snapshot' => [
+                        ...$snapshot,
+                        'assessment' => [
+                            'activity_name' => $lockedAssessment->activity_name,
+                            'assessment_origin' => $lockedAssessment->assessment_origin,
+                            'assessment_function_option_id' => $lockedAssessment->assessment_function_option_id,
+                            'assessment_scope_option_id' => $lockedAssessment->assessment_scope_option_id,
+                            'instrument_type_option_id' => $lockedAssessment->instrument_type_option_id,
+                            'delivery_mode_option_id' => $lockedAssessment->delivery_mode_option_id,
+                            'cp_ids' => [],
+                            'outcome_ids' => [],
+                            'material_id' => null,
+                            'material_topic_id' => null,
+                            'mapping_status' => 'NOT_MAPPED',
+                            'captured_at' => now()->toISOString(),
+                        ],
+                    ],
+                ]);
+
+                app(AuditService::class)->log(
+                    'ASSESSMENT_CURRICULUM_UNMAPPED',
+                    Assessment::class,
+                    $lockedAssessment->id,
+                    null,
+                    [
+                        'teacher_subject_assignment_id' => $lockedAssignment->id,
+                        'cp_ids' => [],
+                        'outcome_ids' => [],
+                        'mapping_status' => 'NOT_MAPPED',
+                    ]
+                );
+
+                return [
+                    'cp_count' => 0,
+                    'outcome_count' => 0,
+                    'material_id' => null,
+                    'topic_id' => null,
+                    'mapping_status' => 'NOT_MAPPED',
+                ];
+            }
 
             $subjectStructureId = $lockedAssignment->curriculum_context_snapshot['subject']['official_structure_id'] ?? null;
             if (!$subjectStructureId) {
