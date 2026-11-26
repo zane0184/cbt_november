@@ -1,6 +1,9 @@
 name: CBT Curriculum Flow - PHP 8.3 Runtime Preflight
 
 on:
+  push:
+    branches:
+      - work/cbt-curriculum-flow-php83-20261126
   workflow_dispatch:
 
 permissions:
