@@ -5,37 +5,46 @@
 - SHA-256: `9de8dab2590ac2070b69f520a13b927bcfda1573626cdd834650421a45dfc55d`.
 - Repository: `zane0184/cbt_november`.
 - Branch kerja: `fix/import-docx-persistence-20261126`.
-- ZIP/source aktif belum disinkronkan ke branch; tidak ada commit aplikasi yang boleh dianggap sudah dibuat.
+- ZIP/source aktif belum disinkronkan ke branch. Tidak ada commit source aplikasi.
+- Laporan audit rinci: [AUDIT_MENDALAM_IMPORT_DOCX_WEB_GURU_2026-11-26.md](AUDIT_MENDALAM_IMPORT_DOCX_WEB_GURU_2026-11-26.md).
 
 ## AUDIT
-- `QuestionDocxImport::importDrafts()` memvalidasi upload, preview hash, assignment, section, dan soal, lalu memanggil `DocxQuestionDraftImporter::import()`.
-- Importer menjalankan satu transaksi DB untuk membuat Question, QuestionVersion, opsi, media, pemetaan kurikulum, audit log, dan batch idempotensi.
-- Throwable menyebabkan rollback; file media yang sempat ditulis dihapus.
-- Model Question, QuestionVersion, QuestionOption, dan MediaAsset memakai `TenantScoped`; trait mengisi tenant_id pada create dan query fail-closed bila tenant context tidak tersedia.
-- AuditLog tidak memakai TenantScoped, tetapi tenant_id diisi eksplisit oleh AuditService.
-- Dump DB yang diberikan memuat kolom utama tabel question/version/options/media/batch yang dipakai. Dump tidak membuktikan koneksi DB aktif website sama dengan dump.
-- CP/TP/ATP tetap aktif. Tidak ada diagnostic bypass yang dipakai.
-- Belum ditemukan exception runtime yang menunjukkan titik kegagalan.
+- Route Web Guru: `/guru/bank-soal/import-docx`, memakai middleware auth, active.user, tenant, license, dan EnsureTeacherPortalAccess.
+- Layout Guru memuat Livewire styles/scripts. Tombol Blade memanggil `importDrafts`.
+- `QuestionDocxImport::importDrafts()` memvalidasi file, preview hash, assignment, section, dan urutan sumber.
+- **CACAT TERKONFIRMASI:** parser memberi status READY/NEEDS_REVIEW; UI menyatakan NEEDS_REVIEW tidak ikut disimpan, tetapi filter `questionsForImport` hanya memeriksa section/sequence dan checkbox `included`. Semua soal diberi included=true pada preview. Status READY/errors tidak diperiksa.
+- Importer juga hanya memfilter included. `validateQuestion()` menolak tipe di luar MULTIPLE_CHOICE, MULTIPLE_RESPONSE, TRUE_FALSE, TRUE_FALSE_GROUP, ESSAY. Maka satu soal NEEDS_REVIEW/UNSUPPORTED yang masih dicentang dapat menggagalkan seluruh transaksi, termasuk soal READY.
+- Validasi Livewire masih menerima MATCHING, SHORT_ANSWER, UNSUPPORTED, tidak selaras dengan allow-list importer.
+- Parser memberi NEEDS_REVIEW untuk unsupported blocks, tabel tidak terklasifikasi, stem kosong, opsi tidak lengkap/duplikat, dan tipe tidak didukung.
+- **Penilaian:** kandidat kuat penyebab gagal simpan bila DOCX berisi soal NEEDS_REVIEW yang tidak didukung. Belum terbukti sebagai penyebab insiden pengguna karena DOCX/log runtime spesifik belum tersedia dalam bahan yang diperiksa.
+- Importer menjalankan satu transaksi untuk question, version, media, options, mapping, audit log, dan batch idempotensi. Exception menyebabkan rollback.
+- Mapping CP/TP/ATP tetap aktif. Mapel umum melewati mapping tetapi service masih menuntut registration kurikulum aktif; mapel yang wajib mapping memvalidasi provenance CP, TP/ATP, dan struktur framework.
+- Tidak ada DOCX contoh atau log request/stack trace yang cocok dengan percobaan pengguna dalam folder kerja saat audit.
+- Dump DB memiliki tabel/kolom utama; laporan VPS sebelumnya menyebut migration import batch Ran, tetapi dump tidak membuktikan identitas DB aktif website.
 
 ## DESAIN
-1. Jangan ubah alur CP/TP/ATP dan jangan sentuh DB produksi.
-2. Dapatkan exception aktual dari request Simpan di staging atau runtime yang identik.
-3. Instrumentasi hanya boleh ditambahkan setelah backup file, dengan log terarah tanpa isi soal, dokumen, token, atau kredensial.
-4. Uji sukses, rollback, idempotensi, tenant/assignment mismatch, media, dan mapping CP/TP pada MySQL disposable.
+1. Hanya soal READY, errors kosong, tanpa blocked_features, dan dicentang yang boleh dikirim ke importer.
+2. Ulangi validasi status di service importer (defense in depth).
+3. Samakan allow-list tipe di Livewire, parser, dan importer.
+4. Tangani exception tak terduga dengan correlation ID dan pesan aman bagi Guru.
+5. Pertahankan tenant, role, permission, assignment, transaksi, idempotensi, audit, serta CP/TP/ATP tanpa bypass.
+6. Uji MySQL disposable: campuran READY/NEEDS_REVIEW, unsupported type, duplicate batch, mapping, media/audit failure, tenant mismatch, dan rollback.
 
 ## IMPLEMENTASI
 - Workspace ekstraksi: `/mnt/data/CBT_IMPORT_DOCX_WORK_20261126/backend-laravel/`.
-- Backup sebelum eksperimen: `backups/20261126-before-import-diagnostic/QuestionDocxImport.php`.
-- File Livewire diverifikasi byte-identik dengan backup setelah eksperimen logging sementara dibatalkan.
-- Tidak ada patch aplikasi yang dipertahankan; tidak ada migration atau perubahan DB.
-- Checkpoint ini diperbarui pada branch GitHub kerja. Source aplikasi ZIP belum diunggah.
+- Backup `QuestionDocxImport.php`: `backups/20261126-before-import-diagnostic/QuestionDocxImport.php`.
+- Tidak ada patch source yang dipertahankan; tidak ada migration/database change.
+- ZIP asli tidak diubah.
+- GitHub connector yang tersedia tidak menyediakan upload binary ZIP/release asset; karena itu ZIP 18.5 MB belum diunggah. Jangan klaim ZIP tersinkron.
 
 ## PENGUJIAN
-- PHP lint 10 file terkait: PASS.
-- PHPUnit, CI, browser/Livewire, runtime MySQL: NOT RUN karena ZIP tidak menyertakan tests/phpunit.xml/PHPUnit binary dan PHP lokal tidak memiliki ekstensi DOM, ZIP, MBSTRING, PDO MySQL.
-- Akar masalah belum teridentifikasi; fitur belum boleh dinyatakan berhasil.
+- PHP lint 10 file terkait dari audit sebelumnya: PASS.
+- Audit statis jalur UI/parser/importer/mapping: selesai.
+- PHPUnit, browser/Livewire, MySQL runtime/rollback: NOT TESTED.
+- PHP lokal tidak memiliki DOM, ZIP, MBSTRING, PDO MySQL.
+- Fitur belum dinyatakan berhasil.
 
-## Langkah berikutnya
-- Ambil exception lengkap dan timestamp dari log Laravel/PHP-FPM saat satu percobaan impor staging dilakukan.
-- Bandingkan row count sebelum/sesudah pada questions, question_versions, question_options, media_assets, question_docx_import_batches, audit_logs, dan tabel mapping.
-- Pastikan identitas DB aktif aplikasi dibandingkan dengan dump yang tersedia, tanpa membagikan secret.
+## Berikutnya
+- Siapkan patch terisolasi untuk READY/NEEDS_REVIEW + defense-in-depth setelah backup file terkait.
+- Tambahkan test yang sesuai dan jalankan di runtime PHP 8.3/MySQL 8 disposable.
+- Jangan jalankan migration atau eksperimen di database produksi.
