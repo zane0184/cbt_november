@@ -104,6 +104,11 @@
                             <span aria-hidden="true">♙</span><span>Pengguna & Akun</span>
                         </a>
                     @endif
+                    @if($u->hasPermission('curriculum.view'))
+                        <a href="/admin/curriculum" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/curriculum') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
+                            <span aria-hidden="true">▧</span><span>CP & TP Kurikulum</span>
+                        </a>
+                    @endif
                     @if($u->hasPermission('curriculum.registry.manage'))
                         <a href="/admin/curriculum/registry" class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-300 transition hover:bg-navy-800 hover:text-white {{ request()->is('admin/curriculum/registry*') ? 'border-l-4 border-emerald-500 bg-navy-800 font-bold text-white' : '' }}">
                             <span aria-hidden="true">▧</span><span>Registry Kurikulum</span>
@@ -176,6 +181,9 @@
                     @endif
                     @if($u->hasPermission('user.manage'))
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/users">Pengguna & Akun</a>
+                    @endif
+                    @if($u->hasPermission('curriculum.view'))
+                        <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/curriculum">CP & TP Kurikulum</a>
                     @endif
                     @if($u->hasPermission('curriculum.registry.manage'))
                         <a class="block rounded-lg px-3 py-2 hover:bg-contentBg" href="/admin/curriculum/registry">Registry Kurikulum</a>
