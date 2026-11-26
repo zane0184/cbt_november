@@ -27,7 +27,8 @@ Perubahan:
 3. Mengosongkan preview lama sebelum parsing upload baru, sehingga kegagalan parsing tidak meninggalkan hasil lama yang tampak masih aktif.
 4. Mengikat preview ke ID penugasan saat preview dibuat; import ditolak jika konteks penugasan berubah.
 5. Validasi struktur kartu yang belum dicentang dibuat opsional pada lapisan UI; seluruh kartu yang dipilih tetap divalidasi oleh `DocxQuestionDraftImporter` sebelum penyimpanan.
-6. Tidak menambah dependency, migration, tabel, route, controller, maupun subsystem import baru.
+6. Metadata hash file dan ID penugasan preview dikunci dengan atribut Livewire `#[Locked]` agar tidak dapat dimanipulasi dari state browser.
+7. Tidak menambah dependency, migration, tabel, route, controller, maupun subsystem import baru.
 
 ## BACKUP
 Branch backup dibuat sebelum perubahan:
@@ -38,7 +39,7 @@ Branch backup dibuat sebelum perubahan:
 - GitHub membuktikan branch kerja hanya berbeda satu file dari branch audit asal.
 - File berubah: 1.
 - Diff: 39 penambahan, 10 penghapusan.
-- SHA file sesudah perubahan: `144784b5fab5e19dccddc7098f09ff494d9a03a0`.
+- SHA file sesudah perubahan: `c1d4bdf0a330b8dd22dc8f1f92b025bf05788091`.
 - CI, PHPUnit, dan runtime browser tidak dijalankan sesuai instruksi ruang lingkup.
 - Belum ada fixture DOCX aktual yang dijalankan pada runtime dalam sesi ini. Karena itu, hasil ini berstatus **perbaikan source tercommit; perilaku runtime belum terverifikasi**, bukan klaim Import DOCX siap produksi.
 
