@@ -156,6 +156,12 @@ class QuestionDocxImport extends Component
                 unset($fragment['xml']);
                 return $fragment;
             }, $question['source_fragments'] ?? []);
+            if (isset($question['stimulus']['source_fragments'])) {
+                $question['stimulus']['source_fragments'] = array_map(function (array $fragment): array {
+                    unset($fragment['xml']);
+                    return $fragment;
+                }, $question['stimulus']['source_fragments']);
+            }
             if (($question['question_type'] ?? null) === 'TRUE_FALSE_GROUP') {
                 $question['statements'] = array_map(function (array $statement): array {
                     $statement['is_true'] = is_bool($statement['is_true'] ?? null)
@@ -308,6 +314,8 @@ class QuestionDocxImport extends Component
             $questionRow['text_direction'] = $sourceRow['text_direction'] ?? 'auto';
             $questionRow['media_count'] = $sourceRow['media_count'] ?? 0;
             $questionRow['math_count'] = $sourceRow['math_count'] ?? 0;
+            $questionRow['nested_table_count'] = $sourceRow['nested_table_count'] ?? 0;
+            $questionRow['rich_paragraphs'] = $sourceRow['rich_paragraphs'] ?? [];
         }
         unset($questionRow);
 
