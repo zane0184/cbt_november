@@ -159,6 +159,51 @@ class QuestionDocxImportFeatureTest extends TestCase
     }
 
 
+    public function test_teacher_can_import_docx_as_explicit_not_mapped_draft(): void
+    {
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx())
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal berhasil disimpan sebagai DRAFT')
+            ->assertDontSee('menunggu pemetaan');
+
+        $question = \\App\\Models\\Question::query()
+            ->where('tenant_id', $this->tenant->id)
+            ->where('created_by', $this->teacher->id)
+            ->firstOrFail();
+        $version = $question->currentVersion;
+
+        $this->assertSame('DRAFT', $version->status);
+        $this->assertSame('NOT_MAPPED', $version->metadata['curriculum_mapping']['status']);
+        $this->assertSame(
+            (string) $this->assignment->id,
+            $version->metadata['curriculum_mapping']['teacher_subject_assignment_id']
+        );
+        $this->assertDatabaseMissing('question_version_curriculum_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseMissing('question_version_tenant_outcome_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseMissing('question_version_structure_mappings', [
+            'tenant_id' => $this->tenant->id,
+            'question_version_id' => $version->id,
+        ]);
+        $this->assertDatabaseHas('question_docx_import_batches', [
+            'tenant_id' => $this->tenant->id,
+            'teacher_subject_assignment_id' => $this->assignment->id,
+            'imported_count' => 1,
+        ]);
+    }
+
     public function test_teacher_can_import_docx_without_answer_key_or_score_weight_as_draft(): void
     {
         $bytes = $this->makeDocxBytes(false);
