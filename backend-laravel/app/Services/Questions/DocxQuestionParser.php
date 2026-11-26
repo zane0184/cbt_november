@@ -28,7 +28,7 @@ class DocxQuestionParser
         try {
             $xml = $this->validatePackage($zip);
             $relationships = $this->readDocumentRelationshipMap($zip);
-            $blocks = $this->readOrderedBlocks($xml, $relationships);
+            $blocks = $this->readOrderedBlocks($xml, $relationships, $zip);
         } finally {
             $zip->close();
         }
@@ -209,7 +209,7 @@ class DocxQuestionParser
         }
     }
 
-    private function readOrderedBlocks(string $xml, array $relationships = []): array
+    private function readOrderedBlocks(string $xml, array $relationships, ZipArchive $zip): array
     {
         $previous = libxml_use_internal_errors(true);
         try {
@@ -239,7 +239,7 @@ class DocxQuestionParser
                     $text = $this->paragraphText($node, $xpath);
                     $hasMedia = $xpath->query('.//w:drawing | .//w:pict', $node)->length > 0;
                     $hasMath = $xpath->query('.//m:oMath | .//m:oMathPara', $node)->length > 0;
-                    $sourceFragments = $this->extractSourceFragments($node, $xpath, $relationships);
+                    $sourceFragments = $this->extractSourceFragments($node, $xpath, $relationships, $zip);
                     if (trim($text) !== '' || $hasMedia || $hasMath) {
                         $blocks[] = [
                             'text' => $text,
@@ -271,7 +271,7 @@ class DocxQuestionParser
                                 $rowHasMath = $rowHasMath || $xpath->query('.//m:oMath | .//m:oMathPara', $paragraph)->length > 0;
                                 $rowSourceFragments = array_merge(
                                     $rowSourceFragments,
-                                    $this->extractSourceFragments($paragraph, $xpath, $relationships)
+                                    $this->extractSourceFragments($paragraph, $xpath, $relationships, $zip)
                                 );
                             }
                             $cells[] = trim(implode("\n", $paragraphTexts));
@@ -406,7 +406,7 @@ class DocxQuestionParser
         return $content;
     }
 
-    private function extractSourceFragments(DOMElement $node, \DOMXPath $xpath, array $relationships): array
+    private function extractSourceFragments(DOMElement $node, \DOMXPath $xpath, array $relationships, ZipArchive $zip): array
     {
         $fragments = [];
         $paragraphXml = $node->ownerDocument?->saveXML($node) ?: '';
@@ -429,12 +429,28 @@ class DocxQuestionParser
             }
 
             $relationship = $relationshipId !== null ? ($relationships[$relationshipId] ?? null) : null;
+            $target = (string) ($relationship['target'] ?? '');
+            $relationshipResolved = (bool) (($relationship['is_image'] ?? false) && ($relationship['resolved'] ?? false));
+            $imageBytes = $relationshipResolved && $target !== '' ? $zip->getFromName($target) : false;
+            $imageMime = is_string($imageBytes) ? (new \finfo(FILEINFO_MIME_TYPE))->buffer($imageBytes) : null;
+            $imageInfo = is_string($imageBytes) ? @getimagesizefromstring($imageBytes) : false;
+            $imageExtension = strtolower(pathinfo($target, PATHINFO_EXTENSION));
+            $mediaValid = is_string($imageBytes)
+                && $imageBytes !== ''
+                && strlen($imageBytes) <= 2 * 1024 * 1024
+                && in_array($imageExtension, ['jpg', 'jpeg', 'png'], true)
+                && in_array($imageMime, ['image/jpeg', 'image/png'], true)
+                && is_array($imageInfo)
+                && ($imageInfo['mime'] ?? null) === $imageMime
+                && ((int) ($imageInfo[0] ?? 0) * (int) ($imageInfo[1] ?? 0)) <= 25000000;
             $fragmentXml = $mediaNode->ownerDocument?->saveXML($mediaNode) ?: '';
             $fragments[] = [
                 'kind' => 'IMAGE_REFERENCE',
                 'relationship_id' => $relationshipId,
-                'relationship_resolved' => (bool) (($relationship['is_image'] ?? false) && ($relationship['resolved'] ?? false)),
-                'target' => $relationship['target'] ?? null,
+                'relationship_resolved' => $relationshipResolved,
+                'media_valid' => $mediaValid,
+                'mime_type' => $imageMime,
+                'target' => $target !== '' ? $target : null,
                 'xml' => $fragmentXml,
                 'xml_sha256' => hash('sha256', $fragmentXml),
             ];
@@ -651,6 +667,7 @@ class DocxQuestionParser
                     $target = (string) ($imageFragment['target'] ?? '');
                     $extension = strtolower(pathinfo($target, PATHINFO_EXTENSION));
                     if (empty($imageFragment['relationship_resolved'])
+                        || empty($imageFragment['media_valid'])
                         || !str_starts_with($target, 'word/media/')
                         || !in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
                         $supportedImages = false;
