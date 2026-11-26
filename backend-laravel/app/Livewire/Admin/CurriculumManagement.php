@@ -145,6 +145,10 @@ class CurriculumManagement extends Component
         $curriculumSources = CurriculumReferenceSource::query()
             ->where('tenant_id', $systemTenantId)
             ->whereIn('document_number', [
+                'KMA 1503 Tahun 2025',
+                'Kepdirjen Pendis 6077 Tahun 2025',
+                'Kepmendikdasmen 126/P/2025',
+                'Permendikdasmen 10 Tahun 2025',
                 'Keputusan Kepala BSKAP 046/H/KR/2025',
                 'Keputusan Kepala BKPDM 020 Tahun 2026',
                 'Kepdirjen Pendis 9941 Tahun 2025',
