@@ -287,10 +287,10 @@ class ExamSnapshotService
             }
 
             $assessmentMappings = $assessment->curriculumMappings;
-            if ($assessmentMappings->isEmpty()) {
-                abort(422, 'Asesmen belum dipetakan ke CP dan TP/ATP resmi.');
-            }
+            $hasAssessmentCurriculumMapping = $assessmentMappings->isNotEmpty();
 
+            // Curriculum mapping is optional for a general-purpose CBT exam.
+            // When present, the complete official CP/TP provenance contract remains strict.
             foreach ($assessmentMappings as $mapping) {
                 if (!$this->cpSourceVerified($mapping->curriculumOutcome)
                     || !$mapping->tenantOutcome
@@ -417,55 +417,65 @@ class ExamSnapshotService
                     ->where('teacher_subject_assignment_id', $assignment->id)
                     ->values();
 
-                if ($cpMappings->isEmpty() || $outcomeMappings->isEmpty()) {
-                    abort(422, 'Setiap soal wajib memiliki pemetaan CP dan TP/ATP untuk penugasan ujian ini.');
-                }
+                $hasAnyQuestionCurriculumMapping = $cpMappings->isNotEmpty()
+                    || $outcomeMappings->isNotEmpty()
+                    || $structureMappings->isNotEmpty();
 
-                foreach ($cpMappings as $mapping) {
-                    if (!$this->cpSourceVerified($mapping->learningOutcome)
-                        || !$assessmentCpIds->contains($mapping->multi_learning_outcome_id)) {
-                        abort(422, 'Pemetaan CP soal tidak cocok dengan asesmen atau sumber CP tidak terverifikasi.');
+                if (!$hasAssessmentCurriculumMapping) {
+                    if ($hasAnyQuestionCurriculumMapping) {
+                        abort(422, 'Ujian tanpa pemetaan asesmen hanya dapat memuat soal yang juga belum dipetakan ke kurikulum.');
                     }
-                }
+                } else {
+                    if ($cpMappings->isEmpty() || $outcomeMappings->isEmpty()) {
+                        abort(422, 'Setiap soal pada asesmen yang dipetakan wajib memiliki CP dan TP/ATP untuk penugasan ujian ini.');
+                    }
 
-                foreach ($outcomeMappings as $mapping) {
-                    $outcome = $mapping->learningOutcome;
-                    if (!$outcome
-                        || $outcome->status !== 'PUBLISHED'
-                        || !$outcome->is_current
-                        || !$assessmentOutcomeIds->contains($outcome->id)
-                        || !$cpMappings->contains(fn ($cpMapping) => $cpMapping->multi_learning_outcome_id === $outcome->parent_cp_id)) {
-                        abort(422, 'Pemetaan TP/ATP soal tidak cocok dengan asesmen atau tidak lagi terpublikasi.');
+                    foreach ($cpMappings as $mapping) {
+                        if (!$this->cpSourceVerified($mapping->learningOutcome)
+                            || !$assessmentCpIds->contains($mapping->multi_learning_outcome_id)) {
+                            abort(422, 'Pemetaan CP soal tidak cocok dengan asesmen atau sumber CP tidak terverifikasi.');
+                        }
                     }
-                }
 
-                $frameworkRoles = $structureMappings->pluck('mapping_role')->unique()->all();
-                foreach (['PANCA_CINTA', 'PM_PRINCIPLE', 'DIMENSI_PROFIL_LULUSAN'] as $requiredRole) {
-                    if (!in_array($requiredRole, $frameworkRoles, true)) {
-                        abort(422, 'Snapshot soal wajib membawa pemetaan Panca Cinta, Pembelajaran Mendalam, dan dimensi profil lulusan.');
+                    foreach ($outcomeMappings as $mapping) {
+                        $outcome = $mapping->learningOutcome;
+                        if (!$outcome
+                            || $outcome->status !== 'PUBLISHED'
+                            || !$outcome->is_current
+                            || !$assessmentOutcomeIds->contains($outcome->id)
+                            || !$cpMappings->contains(fn ($cpMapping) => $cpMapping->multi_learning_outcome_id === $outcome->parent_cp_id)) {
+                            abort(422, 'Pemetaan TP/ATP soal tidak cocok dengan asesmen atau tidak lagi terpublikasi.');
+                        }
                     }
-                }
 
-                foreach ($structureMappings as $mapping) {
-                    if (!$this->frameworkNodeVerified($mapping->structure)) {
-                        abort(422, 'Node Panca Cinta/PM/profil lulusan pada snapshot tidak memiliki provenance resmi yang valid.');
+                    $frameworkRoles = $structureMappings->pluck('mapping_role')->unique()->all();
+                    foreach (['PANCA_CINTA', 'PM_PRINCIPLE', 'DIMENSI_PROFIL_LULUSAN'] as $requiredRole) {
+                        if (!in_array($requiredRole, $frameworkRoles, true)) {
+                            abort(422, 'Snapshot soal wajib membawa pemetaan Panca Cinta, Pembelajaran Mendalam, dan dimensi profil lulusan.');
+                        }
                     }
-                }
 
-                $materialId = $firstAssessmentMapping->material_id;
-                $topicId = $firstAssessmentMapping->material_topic_id;
-                if ($materialId) {
-                    $questionMaterialIds = $cpMappings->pluck('material_id')
-                        ->merge($outcomeMappings->pluck('material_id'))->unique()->filter()->values();
-                    if ($questionMaterialIds->count() !== 1 || !$questionMaterialIds->contains($materialId)) {
-                        abort(422, 'Seluruh pemetaan CP/TP/ATP soal harus memakai materi yang sama dengan asesmen.');
+                    foreach ($structureMappings as $mapping) {
+                        if (!$this->frameworkNodeVerified($mapping->structure)) {
+                            abort(422, 'Node Panca Cinta/PM/profil lulusan pada snapshot tidak memiliki provenance resmi yang valid.');
+                        }
                     }
-                }
-                if ($topicId) {
-                    $questionTopicIds = $cpMappings->pluck('material_topic_id')
-                        ->merge($outcomeMappings->pluck('material_topic_id'))->unique()->filter()->values();
-                    if ($questionTopicIds->count() !== 1 || !$questionTopicIds->contains($topicId)) {
-                        abort(422, 'Seluruh pemetaan CP/TP/ATP soal harus memakai topik yang sama dengan asesmen.');
+
+                    $materialId = $firstAssessmentMapping?->material_id;
+                    $topicId = $firstAssessmentMapping?->material_topic_id;
+                    if ($materialId) {
+                        $questionMaterialIds = $cpMappings->pluck('material_id')
+                            ->merge($outcomeMappings->pluck('material_id'))->unique()->filter()->values();
+                        if ($questionMaterialIds->count() !== 1 || !$questionMaterialIds->contains($materialId)) {
+                            abort(422, 'Seluruh pemetaan CP/TP/ATP soal harus memakai materi yang sama dengan asesmen.');
+                        }
+                    }
+                    if ($topicId) {
+                        $questionTopicIds = $cpMappings->pluck('material_topic_id')
+                            ->merge($outcomeMappings->pluck('material_topic_id'))->unique()->filter()->values();
+                        if ($questionTopicIds->count() !== 1 || !$questionTopicIds->contains($topicId)) {
+                            abort(422, 'Seluruh pemetaan CP/TP/ATP soal harus memakai topik yang sama dengan asesmen.');
+                        }
                     }
                 }
 
