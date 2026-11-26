@@ -133,6 +133,8 @@ class ResultList extends Component
                         'finalized_at' => now(),
                         'finalized_by' => auth()->id()
                     ]);
+
+                    app(AuditService::class)->log('FINALIZE_SCORE', 'ExamAttemptScore', $score->id);
                     $count++;
                     $finalizedAttemptIds[] = $attempt->id;
                 }
