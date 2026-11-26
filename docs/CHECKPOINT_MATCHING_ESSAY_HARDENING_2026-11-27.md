@@ -63,3 +63,41 @@ Semua backup dibuat sebelum perubahan source:
 - Audit konsistensi UI koreksi, finalisasi nilai, dan publikasi hasil lintas tenant/role.
 - Lanjut audit tipe soal lainnya serta alur DOCX.
 - PR #44 jangan di-merge sebelum audit menyeluruh dan izin pengguna.
+
+
+## ADDENDUM — AUDIT LANJUTAN 27 NOVEMBER 2026
+
+### Status PR dan branch
+- Head terverifikasi: `641155faf7f8989f6a5d1008ce4faf76ee68c896`.
+- PR #44 tetap OPEN, DRAFT, belum merged.
+- Compare terhadap `integration/zip-vps-php83-20261126`: 48 commit ahead, 0 behind.
+
+### Verifikasi snapshot ESSAY
+- `QuestionVersion` memiliki field `explanation`.
+- `ExamSnapshotService::createSnapshots()` menyalin `$version->explanation` ke `snapshot_explanation`.
+- `ExamQuestionSnapshot` memasukkan `snapshot_explanation` ke fillable.
+- Halaman koreksi Guru membaca `$qs->snapshot->snapshot_explanation`.
+- Dengan demikian sumber rubrik pada halaman koreksi adalah snapshot ujian immutable, bukan versi soal aktif yang bisa berubah.
+
+### Temuan dan perbaikan tambahan
+1. `resources/views/livewire/teacher/result-detail.blade.php`: directive penutup validasi `manualScore` salah. Diperbaiki menjadi `@enderror`.
+2. `app/Livewire/Teacher/ResultDetail.php`: jalur finalisasi satu attempt dari UI Guru belum menulis audit event. Ditambahkan `FINALIZE_SCORE`.
+3. `app/Livewire/Teacher/ResultList.php`: finalisasi massal dari UI Guru belum menulis audit event per score. Ditambahkan `FINALIZE_SCORE` untuk setiap skor yang benar-benar difinalisasi.
+
+### Source dan backup tambahan
+- `backend-laravel/app/Livewire/Teacher/ResultDetail.php` — blob SHA `8c23d37df6dc0a87d12948f014f201852222b739`.
+- `backend-laravel/app/Livewire/Teacher/ResultList.php` — blob SHA `0c15c2361e0d7941356133f7b4e041ecbcafe527`.
+- `backend-laravel/resources/views/livewire/teacher/result-detail.blade.php` — blob SHA `9908f787266899ec5b5c3c274d3f94104a26dfc3`.
+- Backup sebelum perubahan tersedia pada `backend-laravel/backups/matching-essay-hardening-20261127/`, dengan nama `result-detail.blade.php.pre-fix-manualScore-error-directive`, `ResultDetail.php.pre-finalize-audit-log`, dan `ResultList.php.pre-finalize-audit-log`.
+
+### PENGUJIAN
+- PHPUnit, CI, runtime, dan integration tests tetap tidak dijalankan sesuai instruksi.
+- Source dibaca ulang dari GitHub setelah perubahan dan SHA diverifikasi.
+- `TenantScoped` pada Attempt dan score models menerapkan filter tenant serta fail-closed tanpa konteks tenant. Policy Attempt membatasi role, permission, tenant, dan akses exam berdasarkan penugasan.
+- Belum ada bukti compile/render Blade atau runtime. Regression tests MATCHING/ESSAY belum ditulis.
+- Tidak ada database, migration, atau data produksi yang disentuh.
+
+### Berikutnya
+- Tulis regression tests MATCHING dan ESSAY tanpa menjalankannya.
+- Lanjutkan audit alur koreksi, finalisasi, dan publikasi hasil.
+- PR tetap Draft dan tidak di-merge. SHORT_ANSWER tetap nonaktif.
