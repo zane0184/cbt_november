@@ -20,9 +20,9 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 class TeacherImportService
 {
     private const MAX_ROWS = 5000;
-    private const MAX_COLUMNS = 8;
+    private const MAX_COLUMNS = 7;
     private const MAX_CELL_BYTES = 4096;
-    private const HEADERS = ['nama', 'status_kepegawaian', 'nip', 'nik', 'nuptk', 'jenis_kelamin', 'telepon', 'email'];
+    private const HEADERS = ['nama', 'status_kepegawaian', 'nip', 'nik', 'nuptk', 'jenis_kelamin', 'telepon'];
 
     public function preview(string $path, string $extension, string $tenantId): array
     {
@@ -47,7 +47,7 @@ class TeacherImportService
             ->where('idempotency_key', $idempotencyKey)
             ->exists();
 
-        $seen = ['nip' => [], 'nik' => [], 'nuptk' => [], 'email' => []];
+        $seen = ['nip' => [], 'nik' => [], 'nuptk' => []];
         $rows = [];
         $valid = 0;
 
@@ -68,7 +68,6 @@ class TeacherImportService
             $nuptk = $this->stringValue($data['nuptk'] ?? null);
             $genderRaw = strtoupper($this->stringValue($data['jenis_kelamin'] ?? null));
             $phone = $this->stringValue($data['telepon'] ?? null);
-            $email = strtolower($this->stringValue($data['email'] ?? null));
             $errors = [];
 
             if ($name === '' || mb_strlen($name) > 255) {
@@ -106,11 +105,7 @@ class TeacherImportService
             if (mb_strlen($phone) > 40) {
                 $errors[] = 'Telepon maksimal 40 karakter.';
             }
-            if ($email !== '' && (!filter_var($email, FILTER_VALIDATE_EMAIL) || mb_strlen($email) > 255)) {
-                $errors[] = 'Email harus berupa alamat email valid dan maksimal 255 karakter.';
-            }
-
-            foreach (['nip' => $nip, 'nik' => $nik, 'nuptk' => $nuptk, 'email' => $email] as $field => $value) {
+            foreach (['nip' => $nip, 'nik' => $nik, 'nuptk' => $nuptk] as $field => $value) {
                 if ($value === '') {
                     continue;
                 }
@@ -129,13 +124,6 @@ class TeacherImportService
             if ($nuptk !== '') {
                 $this->addDuplicateError($errors, 'nuptk', $nuptk, $tenantId);
             }
-            if ($email !== '') {
-                $exists = User::withoutGlobalScopes()->where('tenant_id', $tenantId)->whereRaw('LOWER(email) = ?', [$email])->exists();
-                if ($exists) {
-                    $errors[] = 'Email sudah digunakan oleh akun pada instalasi/madrasah ini.';
-                }
-            }
-
             $rows[] = [
                 'row' => $source['row'],
                 'data' => [
@@ -147,7 +135,6 @@ class TeacherImportService
                     'employee_identifier' => in_array($status, ['PNS', 'PPPK'], true) ? $nip : ($status === 'HONORER' ? $nik : null),
                     'gender' => $gender === '__INVALID__' ? null : $gender,
                     'phone' => $phone !== '' ? $phone : null,
-                    'email' => $email !== '' ? $email : null,
                 ],
                 'errors' => $errors,
             ];
@@ -242,7 +229,6 @@ class TeacherImportService
                     $temporaryPassword = Str::random(24);
                     $user = User::query()->create([
                         'name' => $data['name'],
-                        'email' => $data['email'],
                         'password' => Hash::make($temporaryPassword),
                     ]);
                     $user->roles()->sync([$role->id]);
@@ -349,7 +335,7 @@ class TeacherImportService
                 }
                 $headers = array_map(fn ($value) => $this->normalizeHeader((string) $value), $headers);
                 if (count($headers) > self::MAX_COLUMNS) {
-                    throw ValidationException::withMessages(['file' => 'Template Import Guru maksimal 8 kolom.']);
+                    throw ValidationException::withMessages(['file' => 'Template Import Guru maksimal 7 kolom.']);
                 }
                 $rows = [];
                 $line = 1;
@@ -387,7 +373,7 @@ class TeacherImportService
             $reader = IOFactory::createReader('Xlsx');
             $reader->setReadDataOnly(true);
             $reader->setLoadSheetsOnly([$sheetName]);
-            $reader->setReadFilter(new StudentImportReadFilter(self::MAX_ROWS + 1, XlsxPackagePreflight::MAX_COLUMNS));
+            $reader->setReadFilter(new StudentImportReadFilter(self::MAX_ROWS + 1, self::MAX_COLUMNS));
             $spreadsheet = $reader->load($path);
             $sheet = $spreadsheet->getSheetByName($sheetName);
             if (!$sheet) {
@@ -396,7 +382,7 @@ class TeacherImportService
             $lastColumn = Coordinate::columnIndexFromString($sheet->getHighestDataColumn());
             $lastRow = $sheet->getHighestDataRow();
             if ($lastRow > self::MAX_ROWS + 1 || $lastColumn > self::MAX_COLUMNS) {
-                throw ValidationException::withMessages(['file' => 'Worksheet XLSX melewati batas 5.000 baris data atau 8 kolom.']);
+                throw ValidationException::withMessages(['file' => 'Worksheet XLSX melewati batas 5.000 baris data atau 7 kolom.']);
             }
             $headers = [];
             for ($column = 1; $column <= $lastColumn; $column++) {
