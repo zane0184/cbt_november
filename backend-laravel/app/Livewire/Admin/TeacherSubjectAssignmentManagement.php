@@ -50,6 +50,11 @@ class TeacherSubjectAssignmentManagement extends Component
         $this->endsAt = now()->addMonths(6)->toDateString();
     }
 
+    public function updatedSelectedRombelId(): void
+    {
+        $this->selectedSemesterId = '';
+    }
+
     public function createAssignment(): void
     {
         $this->authorizeAcademicManagement();
@@ -146,24 +151,70 @@ class TeacherSubjectAssignmentManagement extends Component
                 ]);
             }
 
-            $subjectMapping = TenantCurriculumSubjectMapping::query()
-                ->where('tenant_id', $tenantId)
-                ->where('subject_id', $subject->id)
-                ->where('tenant_curriculum_registration_id', $registration->id)
-                ->where('multi_curriculum_version_id', $registration->multi_curriculum_version_id)
-                ->where('curriculum_owner_id', $registration->curriculum_owner_id)
-                ->where('status', 'ACTIVE')
-                ->with('curriculumStructure.source')
-                ->get()
-                ->first(function (TenantCurriculumSubjectMapping $mapping) use ($phaseNode): bool {
-                    return $mapping->curriculumStructure
-                        && $mapping->curriculumStructure->node_type === 'SUBJECT'
-                        && $mapping->curriculumStructure->parent_id === $phaseNode->id;
-                });
+            if ($subject->subject_category === 'MULOK') {
+                // Every tenant-defined Mulok subject maps to the official phase-level
+                // Muatan Lokal node; its local title remains independent and editable.
+                $localContentNode = MultiCurriculumStructure::query()
+                    ->where('tenant_id', $registration->curriculum_owner_id)
+                    ->where('multi_curriculum_version_id', $registration->multi_curriculum_version_id)
+                    ->where('node_type', 'SUBJECT')
+                    ->where('code', 'FASE_' . $phaseCode . '_MUATAN_LOKAL')
+                    ->where('parent_id', $phaseNode->id)
+                    ->where('status', 'ACTIVE')
+                    ->where('is_official', true)
+                    ->where('is_editable', false)
+                    ->with('source')
+                    ->first();
+
+                if (!$localContentNode
+                    || !$localContentNode->source
+                    || !in_array($localContentNode->source->verification_status, ['METADATA_VERIFIED', 'ARTIFACT_CHECKSUM_VERIFIED'], true)) {
+                    throw ValidationException::withMessages([
+                        'selectedSubjectId' => 'Node resmi Muatan Lokal untuk fase rombel ini belum tersedia atau sumbernya belum diverifikasi.',
+                    ]);
+                }
+
+                $subjectMapping = TenantCurriculumSubjectMapping::query()->firstOrCreate(
+                    [
+                        'tenant_id' => $tenantId,
+                        'subject_id' => $subject->id,
+                        'multi_curriculum_version_id' => $registration->multi_curriculum_version_id,
+                        'multi_curriculum_structure_id' => $localContentNode->id,
+                    ],
+                    [
+                        'tenant_curriculum_registration_id' => $registration->id,
+                        'curriculum_owner_id' => $registration->curriculum_owner_id,
+                        'status' => 'ACTIVE',
+                        'effective_from' => $localContentNode->effective_from,
+                        'effective_until' => $localContentNode->effective_until,
+                        'created_by' => auth()->id(),
+                        'metadata' => [
+                            'local_subject_code' => $subject->code,
+                            'official_subject_code' => 'MUATAN_LOKAL',
+                            'mapping_method' => 'TENANT_DEFINED_LOCAL_CONTENT',
+                        ],
+                    ]
+                )->load('curriculumStructure.source');
+            } else {
+                $subjectMapping = TenantCurriculumSubjectMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('subject_id', $subject->id)
+                    ->where('tenant_curriculum_registration_id', $registration->id)
+                    ->where('multi_curriculum_version_id', $registration->multi_curriculum_version_id)
+                    ->where('curriculum_owner_id', $registration->curriculum_owner_id)
+                    ->where('status', 'ACTIVE')
+                    ->with('curriculumStructure.source')
+                    ->get()
+                    ->first(function (TenantCurriculumSubjectMapping $mapping) use ($phaseNode): bool {
+                        return $mapping->curriculumStructure
+                            && $mapping->curriculumStructure->node_type === 'SUBJECT'
+                            && $mapping->curriculumStructure->parent_id === $phaseNode->id;
+                    });
+            }
 
             if (!$subjectMapping || !$subjectMapping->curriculumStructure) {
                 throw ValidationException::withMessages([
-                    'selectedSubjectId' => 'Mata pelajaran lokal belum dipetakan ke mata pelajaran resmi untuk fase rombel ini.',
+                    'selectedSubjectId' => 'Mata pelajaran belum memiliki pemetaan kurikulum yang sah untuk fase rombel ini.',
                 ]);
             }
 
@@ -291,10 +342,15 @@ class TeacherSubjectAssignmentManagement extends Component
 
         $subjects = Subject::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->orderBy('name')->get();
         $rombels = Rombel::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->with(['gradeLevel.phase', 'academicYear'])->orderBy('name')->get();
+        $selectedRombel = $this->selectedRombelId !== ''
+            ? $rombels->firstWhere('id', $this->selectedRombelId)
+            : null;
         $semesters = Semester::query()
             ->where('tenant_id', $tenantId)
+            ->when($selectedRombel, fn ($query) => $query->where('academic_year_id', $selectedRombel->academic_year_id))
             ->with('academicYear:id,name')
-            ->orderBy('term')
+            ->orderByDesc(AcademicYear::select('name')->whereColumn('academic_years.id', 'semesters.academic_year_id'))
+            ->orderByRaw("CASE WHEN term = 'GANJIL' THEN 0 ELSE 1 END")
             ->get();
         $registrations = TenantCurriculumRegistration::query()
             ->where('tenant_id', $tenantId)
