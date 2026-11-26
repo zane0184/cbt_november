@@ -35,11 +35,17 @@ Tanggal: 26 November 2026
 - Tidak ada migration baru, perubahan VPS, database produksi, atau merge.
 
 ## PENGUJIAN
-- Regression tests ditambah/disesuaikan: Mulok edit, Rombel otomatis, password 8 karakter, dan semester pada daftar assignment.
+- **PHP runtime PASS** pada GitHub Actions run 45759006825: https://github.com/zane0184/cbt_november/actions/runs/45759006825
+- Runner: PHP 8.3.37, Composer 2.11.3, Laravel 13.42.0.
+- Composer validate dan locked dependency install: PASS.
+- PHP syntax lint 310 file di app/bootstrap/config/database/routes: PASS.
+- Laravel package discovery dan boot: PASS.
+- Route list: PASS; enam route Admin terverifikasi (users, import siswa, import guru, penugasan guru, curriculum, academic).
 - PHPUnit: tidak dijalankan.
-- CI: tidak dijalankan.
-- PHP lint/runtime, browser UAT, migration dan VPS: tidak dijalankan.
-- Tidak ada klaim PASS runtime.
+- Full CI/test suite: tidak dijalankan.
+- Migration, browser UAT, VPS dan database produksi: tidak dijalankan/tidak diakses.
+- Regression tests ditambah/disesuaikan: Mulok edit, Rombel otomatis, password 8 karakter, dan semester pada daftar assignment; test belum dieksekusi.
+- Runtime dilakukan pada source aplikasi PR #34 (kode sama dengan changeset 46f343ab3861af361bed785c41d22716999973a0); run merge-checkout SHA eac50667ddf5d04a8cb260f3f9f7a356a4dff53a.
 
 ## NEXT
 1. Review/merge PR #34 setelah source review.
