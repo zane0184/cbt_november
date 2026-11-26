@@ -19,6 +19,9 @@
         #question-stem, #question-media, #question-input { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
         #question-stem { font-size: clamp(1rem, 4.2vw, 1.125rem); line-height: 1.75; }
         #question-math math { max-width: 100%; font-size: 1.2em; }
+        #question-tables table { border-collapse: collapse; min-width: 100%; width: max-content; max-width: 100%; }
+        #question-tables td { border: 1px solid #cbd5e1; padding: .65rem; vertical-align: top; }
+        #question-tables td table { margin: .35rem 0; width: 100%; }
         #question-media img, #question-media video { display: block; max-width: 100%; max-height: 60vh; height: auto; object-fit: contain; }
         #question-media audio { width: 100%; max-width: 100%; }
         #question-input label { min-height: 48px; align-items: flex-start; }
@@ -118,7 +121,8 @@
                     <div id="question-media" class="question-copy-protected mb-5 space-y-3"></div>
                     <div id="question-stimulus" class="question-copy-protected mb-5 hidden rounded-xl border border-blue-200 bg-blue-50 p-4 text-base leading-relaxed text-slate-800"></div>
                     <div id="question-stem" dir="auto" class="question-copy-protected mb-3 whitespace-pre-wrap text-lg leading-relaxed"></div>
-                    <div id="question-math" class="question-copy-protected mb-6 flex flex-wrap items-center gap-4 overflow-x-auto text-xl"></div>
+                    <div id="question-math" class="question-copy-protected mb-4 flex flex-wrap items-center gap-4 overflow-x-auto text-xl"></div>
+                    <div id="question-tables" class="question-copy-protected mb-6 space-y-3 overflow-x-auto"></div>
                     <div id="question-input" class="question-copy-protected space-y-3"></div>
                     <div class="mt-8 flex justify-between gap-3"><button id="previous-button" class="flex-1 rounded-xl border border-slate-300 px-3 py-3 font-semibold sm:flex-none sm:px-4">Sebelumnya</button><button id="next-button" class="flex-1 rounded-xl bg-blue-700 px-3 py-3 font-semibold text-white sm:flex-none sm:px-5">Berikutnya</button></div>
                 </div>
@@ -769,6 +773,52 @@
         }
     }
 
+    function buildNestedTable(rows) {
+        const table = document.createElement('table');
+        table.className = 'rounded-lg bg-white text-sm';
+        for (const row of rows || []) {
+            const tr = document.createElement('tr');
+            for (const cell of row.cells || []) {
+                const td = document.createElement('td');
+                for (const item of cell.content || []) {
+                    if (item.type === 'paragraph') {
+                        const paragraph = document.createElement('p');
+                        paragraph.className = 'whitespace-pre-wrap leading-6';
+                        paragraph.dir = ['ltr', 'rtl', 'auto'].includes(item.direction) ? item.direction : 'auto';
+                        paragraph.textContent = item.text || '';
+                        td.appendChild(paragraph);
+                    } else if (item.type === 'table') {
+                        td.appendChild(buildNestedTable(item.rows || []));
+                    }
+                }
+                tr.appendChild(td);
+            }
+            table.appendChild(tr);
+        }
+        return table;
+    }
+
+    function renderQuestionTables(container, structures) {
+        container.replaceChildren();
+        const groups = new Map();
+        for (const item of structures || []) {
+            const key = Number(item.table_index || 0);
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key).push(item);
+        }
+        for (const [tableIndex, entries] of groups) {
+            const wrapper = document.createElement('section');
+            wrapper.className = 'rounded-xl border border-slate-200 bg-slate-50 p-3';
+            const heading = document.createElement('p');
+            heading.className = 'mb-2 text-xs font-bold text-slate-600';
+            heading.textContent = 'Tabel sumber ' + tableIndex;
+            wrapper.appendChild(heading);
+            entries.sort((a, b) => Number(a.row_index || 0) - Number(b.row_index || 0));
+            wrapper.appendChild(buildNestedTable(entries.map(entry => entry.row || {})));
+            container.appendChild(wrapper);
+        }
+    }
+
     function renderQuestion() {
         const question = state.questions[state.current]; if (!question) return;
         const metadata = question.metadata || {}; const type = metadata.question_type || 'MC';
@@ -792,6 +842,7 @@
             ? metadata.rich_content.text_direction
             : 'auto';
         renderMathMl(el('question-math'), mathFragments);
+        renderQuestionTables(el('question-tables'), metadata.rich_content?.table_structure || []);
         const stimulusArea = el('question-stimulus');
         const stimulusText = metadata.shared_stimulus?.content || '';
         stimulusArea.textContent = stimulusText;
