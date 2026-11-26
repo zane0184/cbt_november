@@ -16,6 +16,9 @@ on:
       - 'backend-laravel/**'
       - 'docs/**'
       - '.github/scripts/**'
+  pull_request:
+    branches:
+      - work/guru-docx-import-e2e-20261125
   workflow_dispatch:
 
 permissions:
