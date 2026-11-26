@@ -179,6 +179,49 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame($subjectNode->id, $assignment->curriculum_context_snapshot['subject']['official_structure_id']);
         $this->assertSame($mapping->id, $mapping->fresh()->id);
 
+        // A madrasah-defined Mulok subject is mapped to the official generic
+        // Muatan Lokal node for the rombel phase without changing the registry.
+        $mulokSubject = Subject::create([
+            'tenant_id' => $tenantId,
+            'code' => 'BUDAYA_BETAWI',
+            'name' => 'Budaya Betawi',
+            'short_name' => 'Budaya Betawi',
+            'subject_category' => 'MULOK',
+            'status' => 'ACTIVE',
+        ]);
+
+        Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->assertSee('Budaya Betawi (BUDAYA_BETAWI) — Mulok')
+            ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
+            ->set('selectedSubjectId', (string) $mulokSubject->id)
+            ->set('selectedRombelId', (string) $rombel->id)
+            ->set('selectedSemesterId', (string) $semester->id)
+            ->set('selectedRegistrationId', (string) $registration->id)
+            ->set('startsAt', now()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createAssignment')
+            ->assertHasNoErrors();
+
+        $mulokMapping = TenantCurriculumSubjectMapping::query()
+            ->where('tenant_id', $tenantId)
+            ->where('subject_id', $mulokSubject->id)
+            ->where('multi_curriculum_structure_id', $systemTenantId ? MultiCurriculumStructure::query()
+                ->where('tenant_id', $systemTenantId)
+                ->where('multi_curriculum_version_id', $version->id)
+                ->where('code', 'FASE_A_MUATAN_LOKAL')
+                ->value('id') : null)
+            ->where('status', 'ACTIVE')
+            ->firstOrFail();
+
+        $this->assertSame('TENANT_DEFINED_LOCAL_CONTENT', $mulokMapping->metadata['mapping_method']);
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $mulokSubject->id,
+            'rombel_id' => $rombel->id,
+            'status' => 'ACTIVE',
+        ]);
+
         $inactiveTeacherUser = User::create([
             'tenant_id' => $tenantId,
             'name' => 'Guru Tidak Aktif',
