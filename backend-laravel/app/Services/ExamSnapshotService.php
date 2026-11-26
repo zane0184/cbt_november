@@ -99,6 +99,7 @@ class ExamSnapshotService
                 'source_verification_status' => $assignment->curriculumVersion?->source?->verification_status,
             ],
             'curriculum_mappings' => [
+                'status' => $mappings->isEmpty() ? 'NOT_MAPPED' : 'MAPPED',
                 'cp' => $cpRows->map(fn ($cp) => [
                     'id' => $cp->id,
                     'code' => $cp->code,
@@ -151,6 +152,9 @@ class ExamSnapshotService
             'phase' => $assignment->curriculum_context_snapshot['phase'] ?? null,
             'grade' => $assignment->curriculum_context_snapshot['grade'] ?? null,
             'subject' => $assignment->curriculum_context_snapshot['subject'] ?? null,
+            'mapping_status' => $cpMappings->isEmpty() && $outcomeMappings->isEmpty() && $structureMappings->isEmpty()
+                ? 'NOT_MAPPED'
+                : 'MAPPED',
             'cp' => $cpMappings->map(fn ($mapping) => [
                 'id' => $mapping->learningOutcome?->id,
                 'code' => $mapping->learningOutcome?->code,
