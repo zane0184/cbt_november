@@ -117,6 +117,202 @@ class CurriculumRegistryManagement extends Component
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Versi kurikulum resmi berhasil didaftarkan pada instalasi madrasah ini.']);
     }
 
+
+    /**
+     * Copy verified official subject references into this installation's local
+     * subject catalog and map each local subject to its phase-specific node.
+     * Existing local names and inactive mapping history are never overwritten.
+     */
+    public function syncOfficialSubjects(): void
+    {
+        $this->authorizeRegistry();
+        $tenantId = (string) auth()->user()->tenant_id;
+        $systemTenantId = Tenant::SYSTEM_TENANT_ID;
+
+        $this->validate([
+            'selectedRegistrationId' => ['required', 'uuid'],
+        ]);
+
+        $result = DB::transaction(function () use ($tenantId, $systemTenantId): array {
+            $registration = TenantCurriculumRegistration::query()
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'ACTIVE')
+                ->whereKey($this->selectedRegistrationId)
+                ->with('version.source')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            $version = $registration->version;
+            if ($registration->curriculum_owner_id !== $systemTenantId
+                || !$version
+                || $version->tenant_id !== $systemTenantId
+                || !$version->is_official
+                || $version->is_editable
+                || !$version->source
+                || !in_array($version->source->verification_status, ['METADATA_VERIFIED', 'ARTIFACT_CHECKSUM_VERIFIED'], true)) {
+                throw ValidationException::withMessages([
+                    'selectedRegistrationId' => 'Sinkronisasi hanya menerima versi kurikulum resmi dengan sumber yang sudah diverifikasi.',
+                ]);
+            }
+
+            $nodes = MultiCurriculumStructure::query()
+                ->where('tenant_id', $systemTenantId)
+                ->where('multi_curriculum_version_id', $version->id)
+                ->where('node_type', 'SUBJECT')
+                ->where('status', 'ACTIVE')
+                ->where('is_official', true)
+                ->where('is_editable', false)
+                ->with('source')
+                ->orderBy('sort_order')
+                ->lockForUpdate()
+                ->get();
+
+            if ($nodes->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'selectedRegistrationId' => 'Tidak ada katalog mata pelajaran resmi pada versi yang dipilih.',
+                ]);
+            }
+
+            $subjectsCreated = 0;
+            $mappingsCreated = 0;
+            $inactiveHistoryPreserved = 0;
+
+            foreach ($nodes as $node) {
+                if (!$node->source
+                    || !in_array($node->source->verification_status, ['METADATA_VERIFIED', 'ARTIFACT_CHECKSUM_VERIFIED'], true)) {
+                    throw ValidationException::withMessages([
+                        'selectedRegistrationId' => 'Ada node mata pelajaran yang sumber resminya belum diverifikasi. Sinkronisasi dibatalkan tanpa perubahan parsial.',
+                    ]);
+                }
+
+                $officialCode = strtoupper(trim((string) ($node->metadata['subject_code'] ?? '')));
+                if ($officialCode === '') {
+                    throw ValidationException::withMessages([
+                        'selectedRegistrationId' => 'Ada node mata pelajaran resmi tanpa subject_code. Sinkronisasi dibatalkan.',
+                    ]);
+                }
+
+                $localCode = $this->localSubjectCode($officialCode);
+                $subject = Subject::withTrashed()
+                    ->where('tenant_id', $tenantId)
+                    ->where('code', $localCode)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($subject && $subject->trashed()) {
+                    throw ValidationException::withMessages([
+                        'selectedRegistrationId' => "Kode mapel {$localCode} pernah diarsipkan. Data tidak dipulihkan otomatis; periksa histori terlebih dahulu.",
+                    ]);
+                }
+
+                if (!$subject) {
+                    $subject = Subject::create([
+                        'code' => $localCode,
+                        'name' => $node->title,
+                        'short_name' => $this->officialSubjectShortName($officialCode, $node->title),
+                        'status' => 'ACTIVE',
+                    ]);
+                    $subjectsCreated++;
+                }
+
+                $mapping = TenantCurriculumSubjectMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('subject_id', $subject->id)
+                    ->where('multi_curriculum_version_id', $version->id)
+                    ->where('multi_curriculum_structure_id', $node->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($mapping) {
+                    if ($mapping->status !== 'ACTIVE') {
+                        $inactiveHistoryPreserved++;
+                    }
+                    continue;
+                }
+
+                TenantCurriculumSubjectMapping::query()->create([
+                    'tenant_id' => $tenantId,
+                    'subject_id' => $subject->id,
+                    'tenant_curriculum_registration_id' => $registration->id,
+                    'multi_curriculum_version_id' => $version->id,
+                    'curriculum_owner_id' => $systemTenantId,
+                    'multi_curriculum_structure_id' => $node->id,
+                    'status' => 'ACTIVE',
+                    'effective_from' => $node->effective_from,
+                    'effective_until' => $node->effective_until,
+                    'created_by' => auth()->id(),
+                    'metadata' => [
+                        'local_subject_code' => $subject->code,
+                        'official_subject_code' => $officialCode,
+                        'mapping_method' => 'OFFICIAL_CATALOG_SYNC',
+                    ],
+                ]);
+                $mappingsCreated++;
+            }
+
+            app(AuditService::class)->log(
+                'CURRICULUM_SUBJECT_CATALOG_SYNCED',
+                'TenantCurriculumRegistration',
+                $registration->id,
+                null,
+                [
+                    'tenant_id' => $tenantId,
+                    'curriculum_version_id' => $version->id,
+                    'version_code' => $version->version_code,
+                    'official_subject_node_count' => $nodes->count(),
+                    'local_subjects_created' => $subjectsCreated,
+                    'mappings_created' => $mappingsCreated,
+                    'inactive_mapping_history_preserved' => $inactiveHistoryPreserved,
+                ]
+            );
+
+            return [
+                'subjects_created' => $subjectsCreated,
+                'mappings_created' => $mappingsCreated,
+                'inactive_history_preserved' => $inactiveHistoryPreserved,
+            ];
+        }, 3);
+
+        session()->flash(
+            'message',
+            "Sinkronisasi katalog resmi selesai: {$result['subjects_created']} mapel lokal baru dan {$result['mappings_created']} pemetaan baru. {$result['inactive_history_preserved']} pemetaan nonaktif tetap dipertahankan."
+        );
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Katalog mata pelajaran resmi berhasil disinkronkan ke instalasi madrasah ini.']);
+    }
+
+    private function localSubjectCode(string $officialCode): string
+    {
+        // The local Subject.code column is limited to 20 characters.
+        if ($officialCode === 'SEJARAH_KEBUDAYAAN_ISLAM') {
+            return 'SKI';
+        }
+
+        if (strlen($officialCode) > 20) {
+            throw ValidationException::withMessages([
+                'selectedRegistrationId' => "Kode mapel resmi {$officialCode} melebihi batas kode lokal 20 karakter dan belum memiliki alias aman.",
+            ]);
+        }
+
+        return $officialCode;
+    }
+
+    private function officialSubjectShortName(string $officialCode, string $title): string
+    {
+        return match ($officialCode) {
+            'ALQURAN_HADIS' => 'Al-Qur’an Hadis',
+            'AKIDAH_AKHLAK' => 'Akidah Akhlak',
+            'SEJARAH_KEBUDAYAAN_ISLAM' => 'SKI',
+            'PENDIDIKAN_PANCASILA' => 'P. Pancasila',
+            'BAHASA_INDONESIA' => 'B. Indonesia',
+            'BAHASA_ARAB' => 'B. Arab',
+            'BAHASA_INGGRIS' => 'B. Inggris',
+            'SENI_BUDAYA' => 'Seni Budaya',
+            'MUATAN_LOKAL' => 'Mulok',
+            'KODING_AI' => 'Koding & AI',
+            default => mb_substr($title, 0, 30),
+        };
+    }
+
     public function mapSubject(): void
     {
         $this->authorizeRegistry();
