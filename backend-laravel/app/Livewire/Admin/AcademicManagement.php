@@ -175,6 +175,7 @@ class AcademicManagement extends Component
             ->paginate(15);
 
         $subjects = Subject::query()
+            ->where('code', '!=', 'MUATAN_LOKAL')
             ->when($this->search, function ($query): void {
                 // Group alternatives to preserve tenant/soft-delete constraints.
                 $query->where(function ($searchQuery): void {
