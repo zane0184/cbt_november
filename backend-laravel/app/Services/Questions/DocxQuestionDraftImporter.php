@@ -321,7 +321,7 @@ class DocxQuestionDraftImporter
                 'batch_sha256' => $fileSha256,
             ];
             }, 3);
-        } catch (\\Throwable $exception) {
+        } catch (\Throwable $exception) {
             foreach ($storedPaths as $storedPath) {
                 Storage::disk('local')->delete($storedPath);
             }
