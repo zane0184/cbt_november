@@ -254,6 +254,7 @@ class DocxQuestionParser
                 }
                 if ($node->localName === 'tbl') {
                     $tableIndex = ++$tableSequence;
+                    $tableHasNestedTables = $xpath->query('.//w:tbl', $node)->length > 0;
                     foreach ($xpath->query('./w:tr', $node) as $rowIndex => $row) {
                         $cells = [];
                         $rowHasMedia = false;
@@ -278,12 +279,18 @@ class DocxQuestionParser
                         $rowText = implode(' | ', $cells);
                         $rowXml = $row->ownerDocument?->saveXML($row) ?: '';
                         if ($rowXml !== '') {
-                            $rowSourceFragments[] = [
+                            $rowFragment = [
                                 'kind' => 'WORD_TABLE_ROW_OOXML',
                                 'xml' => $rowXml,
                                 'xml_sha256' => hash('sha256', $rowXml),
-                                'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
+                                'has_nested_table' => $tableHasNestedTables,
                             ];
+                            if ($tableHasNestedTables) {
+                                $rowFragment['table_index'] = $tableIndex;
+                                $rowFragment['row_index'] = $rowIndex + 1;
+                                $rowFragment['structure'] = $this->extractNestedTableRowStructure($row, $xpath, 0);
+                            }
+                            $rowSourceFragments[] = $rowFragment;
                         }
                         if (trim($rowText) === '' && !$rowHasMedia && !$rowHasMath) {
                             continue;
@@ -293,7 +300,7 @@ class DocxQuestionParser
                             'cells' => $cells,
                             'has_media' => $rowHasMedia,
                             'has_math' => $rowHasMath,
-                            'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
+                            'has_nested_table' => $tableHasNestedTables,
                             'text_direction' => $this->detectTextDirection($row, $xpath, $rowText),
                             'source_fragments' => $rowSourceFragments,
                             'locator' => [
@@ -314,6 +321,90 @@ class DocxQuestionParser
         }
     }
 
+
+    private function extractNestedTableRowStructure(DOMElement $row, \DOMXPath $xpath, int $depth): array
+    {
+        $cells = [];
+        foreach ($xpath->query('./w:tc', $row) as $cell) {
+            $content = [];
+            foreach ($cell->childNodes as $child) {
+                if (!$child instanceof DOMElement) {
+                    continue;
+                }
+                if ($child->localName === 'p') {
+                    $text = $this->paragraphText($child, $xpath);
+                    if ($text !== '') {
+                        $content[] = [
+                            'type' => 'paragraph',
+                            'text' => $text,
+                            'direction' => $this->detectTextDirection($child, $xpath, $text),
+                        ];
+                    }
+                } elseif ($child->localName === 'tbl') {
+                    $content[] = [
+                        'type' => 'table',
+                        'rows' => $this->extractNestedTableRows($child, $xpath, $depth + 1),
+                    ];
+                } else {
+                    $content = array_merge($content, $this->extractNestedCellContent($child, $xpath, $depth));
+                }
+            }
+            $cells[] = ['content' => $content];
+        }
+
+        return ['cells' => $cells];
+    }
+
+    private function extractNestedTableRows(DOMElement $table, \DOMXPath $xpath, int $depth): array
+    {
+        if ($depth > 4) {
+            return [[
+                'cells' => [[
+                    'content' => [[
+                        'type' => 'paragraph',
+                        'text' => '[Kedalaman tabel bersarang melebihi batas preview]',
+                        'direction' => 'auto',
+                    ]],
+                ]],
+            ]];
+        }
+
+        $rows = [];
+        foreach ($xpath->query('./w:tr', $table) as $row) {
+            $rows[] = $this->extractNestedTableRowStructure($row, $xpath, $depth);
+        }
+
+        return $rows;
+    }
+
+    private function extractNestedCellContent(DOMNode $node, \DOMXPath $xpath, int $depth): array
+    {
+        $content = [];
+        foreach ($node->childNodes as $child) {
+            if (!$child instanceof DOMElement) {
+                continue;
+            }
+            if ($child->localName === 'p') {
+                $text = $this->paragraphText($child, $xpath);
+                if ($text !== '') {
+                    $content[] = [
+                        'type' => 'paragraph',
+                        'text' => $text,
+                        'direction' => $this->detectTextDirection($child, $xpath, $text),
+                    ];
+                }
+            } elseif ($child->localName === 'tbl') {
+                $content[] = [
+                    'type' => 'table',
+                    'rows' => $this->extractNestedTableRows($child, $xpath, $depth + 1),
+                ];
+            } else {
+                $content = array_merge($content, $this->extractNestedCellContent($child, $xpath, $depth));
+            }
+        }
+
+        return $content;
+    }
 
     private function extractSourceFragments(DOMElement $node, \DOMXPath $xpath, array $relationships): array
     {
