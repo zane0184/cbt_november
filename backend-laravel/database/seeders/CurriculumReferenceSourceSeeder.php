@@ -114,17 +114,17 @@ class CurriculumReferenceSourceSeeder extends Seeder
                 [
                     'issuer' => 'Direktorat Jenderal Pendidikan Islam, Kementerian Agama Republik Indonesia',
                     'document_number' => 'Kepdirjen Pendis 9941 Tahun 2025',
-                    'title' => 'Capaian Pembelajaran Pendidikan Agama Islam dan Bahasa Arab Kurikulum Merdeka pada Madrasah',
+                    'title' => 'Capaian Pembelajaran Mata Pelajaran Pendidikan Agama Islam dan Bahasa Arab pada Madrasah',
                     'document_version' => '2025',
-                    'published_at' => null,
-                    'effective_from' => null,
+                    'published_at' => '2025-11-28',
+                    'effective_from' => '2025-11-28',
                     'source_uri' => 'https://batam.kemenag.go.id/main/perkuat-mutu-pembelajaran-pengawas-madrasah-hadiri-perdana-mgmp-pai-dan-bahasa-arab-mts-kota-batam',
                     'verification_status' => 'PENDING',
                     'metadata' => [
-                        'source_kind' => 'official_kemenag_notice',
-                        'verified_scope' => [],
+                        'source_kind' => 'official_kemenag_decision_pdf',
+                        'verified_scope' => ['MI_PAI', 'MI_BAHASA_ARAB', 'PHASE_A', 'PHASE_B', 'PHASE_C'],
                         'artifact_checksum_verified' => false,
-                        'notes' => 'Nomor keputusan disebut oleh laman resmi Kemenag; artefak keputusan dan lampiran CP MI harus diperoleh dan diverifikasi sebelum konten CP PAI/Bahasa Arab diimpor.',
+                        'notes' => 'Keputusan Dirjen Pendis Nomor 9941 Tahun 2025 tanggal 28 November 2025. Status artefak menjadi ARTIFACT_CHECKSUM_VERIFIED hanya setelah PDF arsip cocok dengan SHA-256 paket impor.',
                     ],
                 ],
                 [
@@ -145,23 +145,35 @@ class CurriculumReferenceSourceSeeder extends Seeder
             ];
 
             foreach ($sources as $source) {
-                CurriculumReferenceSource::query()->updateOrCreate(
-                    [
-                        'tenant_id' => Tenant::SYSTEM_TENANT_ID,
-                        'issuer' => $source['issuer'],
-                        'document_number' => $source['document_number'],
-                        'document_version' => $source['document_version'],
-                    ],
-                    [
-                        'title' => $source['title'],
-                        'published_at' => $source['published_at'],
-                        'effective_from' => $source['effective_from'],
-                        'source_uri' => $source['source_uri'],
-                        'verification_status' => $source['verification_status'],
-                        'verified_at' => $source['verification_status'] === 'PENDING' ? null : now(),
-                        'metadata' => $source['metadata'],
-                    ]
-                );
+                $record = CurriculumReferenceSource::query()->firstOrNew([
+                    'tenant_id' => Tenant::SYSTEM_TENANT_ID,
+                    'issuer' => $source['issuer'],
+                    'document_number' => $source['document_number'],
+                    'document_version' => $source['document_version'],
+                ]);
+
+                $artifactAlreadyVerified = $record->exists
+                    && $record->verification_status === 'ARTIFACT_CHECKSUM_VERIFIED'
+                    && preg_match('/\\A[a-f0-9]{64}\\z/i', (string) $record->checksum_sha256) === 1;
+
+                $record->fill([
+                    'title' => $source['title'],
+                    'published_at' => $source['published_at'],
+                    'effective_from' => $source['effective_from'],
+                    'source_uri' => $source['source_uri'],
+                ]);
+
+                if ($artifactAlreadyVerified) {
+                    $record->metadata = array_merge($source['metadata'], $record->metadata ?? [], [
+                        'artifact_checksum_verified' => true,
+                    ]);
+                } else {
+                    $record->verification_status = $source['verification_status'];
+                    $record->verified_at = $source['verification_status'] === 'PENDING' ? null : now();
+                    $record->metadata = $source['metadata'];
+                }
+
+                $record->save();
             }
         });
     }
