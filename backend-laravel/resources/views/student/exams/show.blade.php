@@ -744,10 +744,17 @@
         el('question-number').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
         el('question-announcement').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
         el('question-points').textContent = `${question.points ?? 0} poin`;
-        el('question-stem').textContent = question.snapshot_stem || '';
+        const stemArea = el('question-stem');
+        stemArea.textContent = question.snapshot_stem || '';
+        stemArea.dir = ['ltr', 'rtl', 'auto'].includes(metadata.rich_content?.text_direction)
+            ? metadata.rich_content.text_direction
+            : 'auto';
         const stimulusArea = el('question-stimulus');
         const stimulusText = metadata.shared_stimulus?.content || '';
         stimulusArea.textContent = stimulusText;
+        stimulusArea.dir = ['ltr', 'rtl', 'auto'].includes(metadata.shared_stimulus?.text_direction)
+            ? metadata.shared_stimulus.text_direction
+            : 'auto';
         stimulusArea.classList.toggle('hidden', !stimulusText);
         const mediaArea = el('question-media');
         state.mediaRenderVersion++;
