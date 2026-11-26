@@ -346,7 +346,12 @@ class TeacherSubjectAssignmentManagement extends Component
                 && $profile->user->roles->contains('name', 'GURU'))
             ->values();
 
-        $subjects = Subject::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->orderBy('name')->get();
+        $subjects = Subject::query()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'ACTIVE')
+            ->where('code', '!=', 'MUATAN_LOKAL')
+            ->orderBy('name')
+            ->get();
         $rombels = Rombel::query()->where('tenant_id', $tenantId)->where('status', 'ACTIVE')->with(['gradeLevel.phase', 'academicYear'])->orderBy('name')->get();
         $selectedRombel = $this->selectedRombelId !== ''
             ? $rombels->firstWhere('id', $this->selectedRombelId)
