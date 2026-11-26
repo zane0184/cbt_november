@@ -192,6 +192,39 @@ class CurriculumRegistryManagement extends Component
                     ]);
                 }
 
+                // An existing mapping is the strongest identity for a phase node.
+                // Check it first so local renames never create a second Mapel on a later sync.
+                $existingMappings = TenantCurriculumSubjectMapping::query()
+                    ->where('tenant_id', $tenantId)
+                    ->where('multi_curriculum_version_id', $version->id)
+                    ->where('multi_curriculum_structure_id', $node->id)
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($existingMappings->count() > 1) {
+                    throw ValidationException::withMessages([
+                        'selectedRegistrationId' => "Node resmi {$node->code} sudah dipetakan ke lebih dari satu Mapel lokal. Audit pemetaan sebelum melanjutkan sinkronisasi.",
+                    ]);
+                }
+
+                if ($existingMapping = $existingMappings->first()) {
+                    $mappedSubject = Subject::withTrashed()
+                        ->where('tenant_id', $tenantId)
+                        ->whereKey($existingMapping->subject_id)
+                        ->first();
+
+                    if (!$mappedSubject || $mappedSubject->trashed()) {
+                        throw ValidationException::withMessages([
+                            'selectedRegistrationId' => "Pemetaan node {$node->code} menunjuk Mapel lokal yang tidak tersedia atau telah diarsipkan.",
+                        ]);
+                    }
+
+                    if ($existingMapping->status !== 'ACTIVE') {
+                        $inactiveHistoryPreserved++;
+                    }
+                    continue;
+                }
+
                 $localCode = $this->localSubjectCode($officialCode);
                 $subject = Subject::withTrashed()
                     ->where('tenant_id', $tenantId)
@@ -199,14 +232,39 @@ class CurriculumRegistryManagement extends Component
                     ->lockForUpdate()
                     ->first();
 
+                // Reuse a manually-created local subject when its name matches the
+                // official title; never create a duplicate merely because its code differs.
+                if (!$subject) {
+                    $normalizedTitle = $this->normalizeSubjectName($node->title);
+                    $candidates = Subject::withTrashed()
+                        ->where('tenant_id', $tenantId)
+                        ->lockForUpdate()
+                        ->get()
+                        ->filter(function (Subject $candidate) use ($normalizedTitle): bool {
+                            return $this->normalizeSubjectName($candidate->name) === $normalizedTitle
+                                || ($candidate->short_name !== null
+                                    && $this->normalizeSubjectName($candidate->short_name) === $normalizedTitle);
+                        })
+                        ->values();
+
+                    if ($candidates->count() > 1) {
+                        throw ValidationException::withMessages([
+                            'selectedRegistrationId' => "Nama mapel {$node->title} cocok dengan lebih dari satu Mapel lokal. Sinkronisasi dihentikan agar tidak memilih data yang salah.",
+                        ]);
+                    }
+
+                    $subject = $candidates->first();
+                }
+
                 if ($subject && $subject->trashed()) {
                     throw ValidationException::withMessages([
-                        'selectedRegistrationId' => "Kode mapel {$localCode} pernah diarsipkan. Data tidak dipulihkan otomatis; periksa histori terlebih dahulu.",
+                        'selectedRegistrationId' => "Mapel lokal {$subject->code} pernah diarsipkan. Data tidak dipulihkan otomatis; periksa histori terlebih dahulu.",
                     ]);
                 }
 
                 if ($subject
                     && $officialCode === 'SEJARAH_KEBUDAYAAN_ISLAM'
+                    && $subject->code === 'SKI'
                     && !in_array(mb_strtolower(trim($subject->name)), ['sejarah kebudayaan islam', 'ski'], true)) {
                     throw ValidationException::withMessages([
                         'selectedRegistrationId' => 'Kode lokal SKI sudah digunakan untuk nama mapel lain. Sinkronisasi dibatalkan agar tidak membuat pemetaan yang keliru.',
@@ -221,21 +279,6 @@ class CurriculumRegistryManagement extends Component
                         'status' => 'ACTIVE',
                     ]);
                     $subjectsCreated++;
-                }
-
-                $mapping = TenantCurriculumSubjectMapping::query()
-                    ->where('tenant_id', $tenantId)
-                    ->where('subject_id', $subject->id)
-                    ->where('multi_curriculum_version_id', $version->id)
-                    ->where('multi_curriculum_structure_id', $node->id)
-                    ->lockForUpdate()
-                    ->first();
-
-                if ($mapping) {
-                    if ($mapping->status !== 'ACTIVE') {
-                        $inactiveHistoryPreserved++;
-                    }
-                    continue;
                 }
 
                 TenantCurriculumSubjectMapping::query()->create([
@@ -286,6 +329,13 @@ class CurriculumRegistryManagement extends Component
             "Sinkronisasi katalog resmi selesai: {$result['subjects_created']} mapel lokal baru dan {$result['mappings_created']} pemetaan baru. {$result['inactive_history_preserved']} pemetaan nonaktif tetap dipertahankan."
         );
         $this->dispatch('notify', ['type' => 'success', 'message' => 'Katalog mata pelajaran resmi berhasil disinkronkan ke instalasi madrasah ini.']);
+    }
+
+    private function normalizeSubjectName(string $name): string
+    {
+        $normalized = mb_strtolower(trim($name));
+        $normalized = preg_replace('/\\b(dan)\\b/u', ' ', $normalized) ?? $normalized;
+        return preg_replace('/[^\\p{L}\\p{N}]+/u', '', $normalized) ?? '';
     }
 
     private function localSubjectCode(string $officialCode): string
