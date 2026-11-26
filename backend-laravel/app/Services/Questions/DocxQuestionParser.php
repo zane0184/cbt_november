@@ -27,7 +27,8 @@ class DocxQuestionParser
 
         try {
             $xml = $this->validatePackage($zip);
-            $blocks = $this->readOrderedBlocks($xml);
+            $relationships = $this->readDocumentRelationshipMap($zip);
+            $blocks = $this->readOrderedBlocks($xml, $relationships);
         } finally {
             $zip->close();
         }
@@ -130,6 +131,77 @@ class DocxQuestionParser
         }
     }
 
+
+    /**
+     * Resolve internal document relationships without extracting package files.
+     * External relationships are rejected by validateRelationships before this method.
+     */
+    private function readDocumentRelationshipMap(ZipArchive $zip): array
+    {
+        $xml = $zip->getFromName('word/_rels/document.xml.rels');
+        if (!is_string($xml)) {
+            return [];
+        }
+
+        $this->assertSafeXml($xml);
+        $document = new DOMDocument();
+        if (!$document->loadXML($xml, LIBXML_NONET | LIBXML_NOBLANKS | LIBXML_COMPACT)) {
+            throw ValidationException::withMessages(['docx' => 'Relasi dokumen Word tidak dapat dibaca.']);
+        }
+
+        $xpath = new \DOMXPath($document);
+        $relationships = [];
+        foreach ($xpath->query('//*[local-name()="Relationship"]') as $relationship) {
+            $id = trim($relationship->getAttribute('Id'));
+            $target = trim($relationship->getAttribute('Target'));
+            $type = trim($relationship->getAttribute('Type'));
+            if ($id === '' || $target === '' || strcasecmp($relationship->getAttribute('TargetMode'), 'External') === 0) {
+                continue;
+            }
+
+            $resolvedTarget = $this->resolveDocumentRelationshipTarget($target);
+            $relationships[$id] = [
+                'target' => $resolvedTarget,
+                'type' => $type,
+                'is_image' => str_ends_with(strtolower($type), '/image'),
+                'resolved' => $resolvedTarget !== null && $zip->locateName($resolvedTarget) !== false,
+            ];
+        }
+
+        return $relationships;
+    }
+
+    private function resolveDocumentRelationshipTarget(string $target): ?string
+    {
+        $target = str_replace('\\', '/', trim($target));
+        if ($target === '' || str_contains($target, "\0")
+            || preg_match('/^[a-z][a-z0-9+.-]*:/i', $target) === 1) {
+            return null;
+        }
+
+        $segments = str_starts_with($target, '/')
+            ? explode('/', ltrim($target, '/'))
+            : array_merge(['word'], explode('/', $target));
+        $normalized = [];
+
+        foreach ($segments as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+            if ($segment === '..') {
+                if ($normalized === []) {
+                    return null;
+                }
+                array_pop($normalized);
+                continue;
+            }
+            $normalized[] = $segment;
+        }
+
+        $path = implode('/', $normalized);
+        return $path !== '' ? $path : null;
+    }
+
     private function assertSafeXml(string $xml): void
     {
         if (preg_match('/<!DOCTYPE|<!ENTITY/i', $xml) === 1) {
@@ -137,7 +209,7 @@ class DocxQuestionParser
         }
     }
 
-    private function readOrderedBlocks(string $xml): array
+    private function readOrderedBlocks(string $xml, array $relationships = []): array
     {
         $previous = libxml_use_internal_errors(true);
         try {
@@ -151,6 +223,7 @@ class DocxQuestionParser
             $xpath->registerNamespace('m', 'http://schemas.openxmlformats.org/officeDocument/2006/math');
             $xpath->registerNamespace('a', 'http://schemas.openxmlformats.org/drawingml/2006/main');
             $xpath->registerNamespace('r', 'http://schemas.openxmlformats.org/officeDocument/2006/relationships');
+            $xpath->registerNamespace('v', 'urn:schemas-microsoft-com:vml');
             $body = $xpath->query('/w:document/w:body')->item(0);
             if (!$body) {
                 throw ValidationException::withMessages(['docx' => 'Bagian isi dokumen Word tidak ditemukan.']);
@@ -166,11 +239,13 @@ class DocxQuestionParser
                     $text = $this->paragraphText($node, $xpath);
                     $hasMedia = $xpath->query('.//w:drawing | .//w:pict', $node)->length > 0;
                     $hasMath = $xpath->query('.//m:oMath | .//m:oMathPara', $node)->length > 0;
+                    $sourceFragments = $this->extractSourceFragments($node, $xpath, $relationships);
                     if (trim($text) !== '' || $hasMedia || $hasMath) {
                         $blocks[] = [
                             'text' => $text,
                             'has_media' => $hasMedia,
                             'has_math' => $hasMath,
+                            'source_fragments' => $sourceFragments,
                             'locator' => ['sequence' => ++$sequence, 'kind' => 'paragraph'],
                         ];
                     }
@@ -182,6 +257,7 @@ class DocxQuestionParser
                         $cells = [];
                         $rowHasMedia = false;
                         $rowHasMath = false;
+                        $rowSourceFragments = [];
                         foreach ($xpath->query('./w:tc', $row) as $cell) {
                             $paragraphTexts = [];
                             foreach ($xpath->query('.//w:p', $cell) as $paragraph) {
@@ -191,6 +267,10 @@ class DocxQuestionParser
                                 }
                                 $rowHasMedia = $rowHasMedia || $xpath->query('.//w:drawing | .//w:pict', $paragraph)->length > 0;
                                 $rowHasMath = $rowHasMath || $xpath->query('.//m:oMath | .//m:oMathPara', $paragraph)->length > 0;
+                                $rowSourceFragments = array_merge(
+                                    $rowSourceFragments,
+                                    $this->extractSourceFragments($paragraph, $xpath, $relationships)
+                                );
                             }
                             $cells[] = trim(implode("\n", $paragraphTexts));
                         }
@@ -203,6 +283,7 @@ class DocxQuestionParser
                             'cells' => $cells,
                             'has_media' => $rowHasMedia,
                             'has_math' => $rowHasMath,
+                            'source_fragments' => $rowSourceFragments,
                             'has_nested_table' => $xpath->query('.//w:tbl', $row)->length > 0,
                             'locator' => [
                                 'sequence' => ++$sequence,
@@ -220,6 +301,45 @@ class DocxQuestionParser
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
         }
+    }
+
+
+    private function extractSourceFragments(DOMElement $node, \DOMXPath $xpath, array $relationships): array
+    {
+        $fragments = [];
+
+        foreach ($xpath->query('.//w:drawing | .//w:pict', $node) as $mediaNode) {
+            $relationshipId = null;
+            $relationshipAttributes = $xpath->query(
+                './/a:blip/@r:embed | .//a:blip/@r:link | .//v:imagedata/@r:id',
+                $mediaNode
+            );
+            if ($relationshipAttributes->length > 0) {
+                $relationshipId = trim((string) $relationshipAttributes->item(0)->nodeValue);
+            }
+
+            $relationship = $relationshipId !== null ? ($relationships[$relationshipId] ?? null) : null;
+            $fragmentXml = $mediaNode->ownerDocument?->saveXML($mediaNode) ?: '';
+            $fragments[] = [
+                'kind' => 'IMAGE_REFERENCE',
+                'relationship_id' => $relationshipId,
+                'relationship_resolved' => (bool) (($relationship['is_image'] ?? false) && ($relationship['resolved'] ?? false)),
+                'target' => $relationship['target'] ?? null,
+                'xml' => $fragmentXml,
+                'xml_sha256' => hash('sha256', $fragmentXml),
+            ];
+        }
+
+        foreach ($xpath->query('.//m:oMath | .//m:oMathPara', $node) as $mathNode) {
+            $fragmentXml = $mathNode->ownerDocument?->saveXML($mathNode) ?: '';
+            $fragments[] = [
+                'kind' => 'WORD_MATH_OMML',
+                'xml' => $fragmentXml,
+                'xml_sha256' => hash('sha256', $fragmentXml),
+            ];
+        }
+
+        return $fragments;
     }
 
     private function paragraphText(DOMNode $paragraph, \DOMXPath $xpath): string
@@ -273,6 +393,7 @@ class DocxQuestionParser
 
             $blockUnsupported = [];
             $blockUnsupportedFeatures = [];
+            $blockSourceFragments = array_values($block['source_fragments'] ?? []);
             if (!empty($block['has_media'])) {
                 $blockUnsupported[] = 'Dokumen memuat gambar/diagram pada blok ini; import media belum diaktifkan dan item harus ditinjau manual.';
                 $blockUnsupportedFeatures[] = 'IMAGE_OR_DIAGRAM';
@@ -317,9 +438,11 @@ class DocxQuestionParser
                 if ($active !== null) {
                     $active['unsupported_blocks'] = array_merge($active['unsupported_blocks'] ?? [], $blockUnsupported);
                     $active['unsupported_features'] = array_merge($active['unsupported_features'] ?? [], $blockUnsupportedFeatures);
+                    $active['source_fragments'] = array_merge($active['source_fragments'] ?? [], $blockSourceFragments);
                 } elseif ($stimulus !== null) {
                     $stimulus['unsupported_blocks'] = array_merge($stimulus['unsupported_blocks'] ?? [], $blockUnsupported);
                     $stimulus['unsupported_features'] = array_merge($stimulus['unsupported_features'] ?? [], $blockUnsupportedFeatures);
+                    $stimulus['source_fragments'] = array_merge($stimulus['source_fragments'] ?? [], $blockSourceFragments);
                 } elseif ($rawQuestions !== []) {
                     // Word commonly places floating media/formulas after the answer-key paragraph.
                     // Attach a contiguous trailing unsupported block to the last completed question.
@@ -331,6 +454,10 @@ class DocxQuestionParser
                     $rawQuestions[$lastIndex]['unsupported_features'] = array_merge(
                         $rawQuestions[$lastIndex]['unsupported_features'] ?? [],
                         $blockUnsupportedFeatures
+                    );
+                    $rawQuestions[$lastIndex]['source_fragments'] = array_merge(
+                        $rawQuestions[$lastIndex]['source_fragments'] ?? [],
+                        $blockSourceFragments
                     );
                 }
             }
@@ -365,6 +492,7 @@ class DocxQuestionParser
                     'source' => $locator,
                     'unsupported_blocks' => $blockUnsupported,
                     'unsupported_features' => $blockUnsupportedFeatures,
+                    'source_fragments' => $blockSourceFragments,
                     'table_rows' => [],
                 ];
                 continue;
@@ -385,6 +513,7 @@ class DocxQuestionParser
                     'source' => $locator,
                     'unsupported_blocks' => $blockUnsupported,
                     'unsupported_features' => $blockUnsupportedFeatures,
+                    'source_fragments' => $blockSourceFragments,
                     'table_rows' => [],
                 ];
                 continue;
@@ -423,6 +552,7 @@ class DocxQuestionParser
                     'inferred_type' => false,
                     'unsupported_blocks' => $blockUnsupported,
                     'unsupported_features' => $blockUnsupportedFeatures,
+                    'source_fragments' => $blockSourceFragments,
                     'has_table_content' => $isTableRow,
                 ];
                 if ($isTableRow) {
@@ -609,6 +739,10 @@ class DocxQuestionParser
                 'source_number' => $number,
                 'source_section' => $raw['source_section'] ?? null,
                 'table_rows' => array_values($raw['table_rows'] ?? []),
+                'source_fragments' => array_values(array_merge(
+                    $raw['source_fragments'] ?? [],
+                    $raw['stimulus']['source_fragments'] ?? []
+                )),
                 'blocked_features' => $blockedFeatures,
                 'question_type' => $type,
                 'stem' => $stem,
@@ -667,16 +801,29 @@ class DocxQuestionParser
         if (preg_match('/^MATA PELAJARAN\s*[:=]\s*(.+)$/u', $value, $match) === 1) {
             return trim($match[1]);
         }
+        $aliases = [
+            'MTK' => 'MATEMATIKA',
+            'INDO' => 'BAHASA INDONESIA',
+            'B INDONESIA' => 'BAHASA INDONESIA',
+            'B INDONESIA' => 'BAHASA INDONESIA',
+        ];
         $subjects = [
             'MATEMATIKA', 'BAHASA INDONESIA', 'BAHASA ARAB', 'IPAS', 'IPA', 'IPS',
             'PENDIDIKAN AGAMA ISLAM', 'AL-QURAN HADIS', 'QURAN HADIS', 'AKIDAH AKHLAK',
             'FIKIH', 'FIQIH', 'SKI', 'PJOK', 'PENDIDIKAN JASMANI', 'PENDIDIKAN PANCASILA',
             'PPKN', 'SENI BUDAYA',
         ];
-        foreach ($subjects as $subject) {
-            if ($value === $subject || preg_match('/^' . preg_quote($subject, '/') . '\s+KELAS\s+[1-6]$/u', $value) === 1) {
-                return $value;
+
+        if (preg_match('/^(.+?)\s+KELAS\s+([1-6])$/u', $value, $classMatch) === 1) {
+            $candidate = $aliases[$classMatch[1]] ?? $classMatch[1];
+            if (in_array($candidate, $subjects, true)) {
+                return $candidate . ' KELAS ' . $classMatch[2];
             }
+        }
+
+        $canonical = $aliases[$value] ?? $value;
+        if (in_array($canonical, $subjects, true)) {
+            return $canonical;
         }
         return null;
     }
@@ -709,13 +856,14 @@ class DocxQuestionParser
             if ($value === '') {
                 continue;
             }
-            if (preg_match('/^[☐□☑✓]\s*(.+)$/u', $value, $checkboxMatch) === 1) {
+            $hasCheckbox = preg_match('/^[☐□☑✓]\s*(.+)$/u', $value, $checkboxMatch) === 1;
+            if ($hasCheckbox) {
                 $value = trim($checkboxMatch[1]);
             }
             if (preg_match('/^([A-D])\s*[.)=:]\s*(.+)$/iu', $value, $optionMatch) === 1) {
                 $key = strtoupper($optionMatch[1]);
                 $content = trim($optionMatch[2]);
-            } elseif ($this->isMultipleResponseHint($hint)) {
+            } elseif ($hasCheckbox && $this->isMultipleResponseHint($hint)) {
                 $key = chr(65 + count($options));
                 $content = $value;
             } else {
@@ -773,11 +921,8 @@ class DocxQuestionParser
             if (str_contains($hint, 'ISIAN') || str_contains($hint, 'SHORT ANSWER')) {
                 return 'SHORT_ANSWER';
             }
-            if (str_contains($hint, 'LENGKAPI')) {
-                return 'FILL_BLANK';
-            }
-            if (str_contains($hint, 'URUT')) {
-                return 'ORDERING';
+            if (str_contains($hint, 'LENGKAPI') || str_contains($hint, 'URUT')) {
+                return 'UNSUPPORTED';
             }
 
             return 'UNSUPPORTED';
