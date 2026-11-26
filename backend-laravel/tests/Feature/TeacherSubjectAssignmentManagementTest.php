@@ -202,14 +202,15 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             ->call('createAssignment')
             ->assertHasNoErrors();
 
+        $mulokNode = MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('multi_curriculum_version_id', $version->id)
+            ->where('code', 'FASE_A_MUATAN_LOKAL')
+            ->firstOrFail();
         $mulokMapping = TenantCurriculumSubjectMapping::query()
             ->where('tenant_id', $tenantId)
             ->where('subject_id', $mulokSubject->id)
-            ->where('multi_curriculum_structure_id', $systemTenantId ? MultiCurriculumStructure::query()
-                ->where('tenant_id', $systemTenantId)
-                ->where('multi_curriculum_version_id', $version->id)
-                ->where('code', 'FASE_A_MUATAN_LOKAL')
-                ->value('id') : null)
+            ->where('multi_curriculum_structure_id', $mulokNode->id)
             ->where('status', 'ACTIVE')
             ->firstOrFail();
 
