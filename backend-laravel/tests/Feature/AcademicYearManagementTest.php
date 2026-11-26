@@ -167,6 +167,28 @@ class AcademicYearManagementTest extends TestCase
         }
     }
 
+    public function test_admin_can_create_a_tenant_defined_mulok_subject(): void
+    {
+        Livewire::test(AcademicManagement::class)
+            ->call('setTab', 'subject')
+            ->call('openCreateSubjectModal')
+            ->set('subjectCode', 'BAHASA_BETAWI')
+            ->set('subjectName', 'Bahasa Betawi')
+            ->set('subjectShortName', 'B. Betawi')
+            ->set('subjectCategory', 'MULOK')
+            ->call('createSubject')
+            ->assertHasNoErrors()
+            ->assertSee('Bahasa Betawi');
+
+        $this->assertDatabaseHas('subjects', [
+            'tenant_id' => $this->tenant->id,
+            'code' => 'BAHASA_BETAWI',
+            'name' => 'Bahasa Betawi',
+            'subject_category' => 'MULOK',
+            'status' => 'ACTIVE',
+        ]);
+    }
+
     public function test_non_admin_cannot_manage_academic_periods(): void
     {
         $guruRole = Role::firstOrCreate(['name' => 'GURU'], ['label' => 'Guru']);
