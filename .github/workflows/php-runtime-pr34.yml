@@ -1,12 +1,9 @@
 name: PHP Runtime Validation (PR 34)
 
 on:
-  push:
+  pull_request:
     branches:
-      - work/admin-import-curriculum-fixes-20261126
-    paths:
-      - '.github/workflows/php-runtime-pr34.yml'
-      - 'backend-laravel/**'
+      - php-runtime-validation-base-20261126
 
 permissions:
   contents: read
