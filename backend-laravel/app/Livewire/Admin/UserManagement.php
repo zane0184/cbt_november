@@ -89,7 +89,7 @@ class UserManagement extends Component
             'name' => ['required','string','max:255'],
             'username' => ['nullable','string','min:3','max:80','regex:/^[A-Za-z0-9._-]+$/', Rule::unique('users','username')->where(fn ($q) => $q->where('tenant_id', $tenantId))],
             'email' => ['nullable','email','max:255', Rule::unique('users','email')->where(fn ($q) => $q->where('tenant_id', $tenantId))],
-            'password' => ['required','string','min:14'],
+            'password' => ['required','string','min:8'],
             'selectedRole' => ['required','string',Rule::in($manageableRoles)],
             'employmentStatus' => ['nullable', Rule::in(['PNS', 'PPPK', 'HONORER'])],
             'nip' => ['nullable', 'digits:18'],
