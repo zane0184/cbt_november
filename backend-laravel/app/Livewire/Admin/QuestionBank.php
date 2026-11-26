@@ -854,6 +854,7 @@ class QuestionBank extends Component
         $questions = Question::with([
                 'subject',
                 'currentVersion.options',
+                'currentVersion.media',
                 'currentVersion.curriculumMappings.learningOutcome.source',
                 'currentVersion.tenantOutcomeMappings.learningOutcome',
                 'currentVersion.structureMappings.structure',
