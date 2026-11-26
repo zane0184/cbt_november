@@ -644,6 +644,22 @@ class QuestionBank extends Component
             Gate::authorize('update', $lockedQuestion);
             $version = $lockedQuestion->currentVersion;
             abort_unless($version, 409, 'Soal tidak memiliki versi aktif.');
+            $mappingStatus = $version->metadata['curriculum_mapping']['status'] ?? null;
+            abort_if(
+                $mappingStatus === 'PENDING_TEACHER',
+                422,
+                'Pemetaan kurikulum soal masih menunggu verifikasi Guru. Lengkapi atau kosongkan CP dan TP/ATP secara berpasangan sebelum menerbitkan.'
+            );
+            abort_if(
+                ($mappingStatus === 'MAPPED' && $version->curriculumMappings()->where('tenant_id', auth()->user()->tenant_id)->doesntExist())
+                    || ($mappingStatus === 'NOT_MAPPED' && (
+                        $version->curriculumMappings()->where('tenant_id', auth()->user()->tenant_id)->exists()
+                        || $version->tenantOutcomeMappings()->where('tenant_id', auth()->user()->tenant_id)->exists()
+                        || $version->structureMappings()->where('tenant_id', auth()->user()->tenant_id)->exists()
+                    )),
+                409,
+                'Status pemetaan kurikulum tidak konsisten dengan data mapping versi soal. Periksa kembali melalui editor Bank Soal.'
+            );
 
             $metadata = $version->metadata ?? [];
             $richContent = $metadata['rich_content'] ?? [];
