@@ -47,7 +47,7 @@ class StudentImport extends Component
         return [
             'file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
             'selectedRombelId' => [
-                'required',
+                'nullable',
                 'uuid',
                 Rule::exists('rombels', 'id')->where(fn ($query) => $query
                     ->where('tenant_id', $tenantId)
@@ -69,7 +69,7 @@ class StudentImport extends Component
             $path,
             $extension,
             $tenantId,
-            $this->selectedRombelId
+            $this->selectedRombelId !== '' ? $this->selectedRombelId : null
         );
 
         $this->previewRows = $result['rows'];
@@ -78,6 +78,7 @@ class StudentImport extends Component
             'valid' => $result['valid'],
             'invalid' => $result['invalid'],
             'rombel_name' => $result['rombel_name'],
+            'rombel_will_create' => $result['rombel_will_create'],
         ];
         $this->previewHash = $result['file_sha256'];
     }
@@ -94,7 +95,7 @@ class StudentImport extends Component
             $path,
             $extension,
             $tenantId,
-            $this->selectedRombelId
+            $this->selectedRombelId !== '' ? $this->selectedRombelId : null
         );
 
         $this->previewRows = $result['rows'];
@@ -103,6 +104,7 @@ class StudentImport extends Component
             'valid' => $result['valid'],
             'invalid' => $result['invalid'],
             'rombel_name' => $result['rombel_name'],
+            'rombel_will_create' => $result['rombel_will_create'],
         ];
         $this->previewHash = $result['file_sha256'];
 
@@ -116,14 +118,14 @@ class StudentImport extends Component
             $result,
             $tenantId,
             auth()->user()->id,
-            $this->selectedRombelId
+            $this->selectedRombelId !== '' ? $this->selectedRombelId : null
         );
 
         $this->reset(['file', 'selectedRombelId', 'previewRows', 'summary', 'previewHash']);
         session()->flash('import_credentials', $imported['credentials']);
         session()->flash('import_credentials_label', 'Siswa');
         session()->flash('import_batch_id', $imported['batch_id']);
-        session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.');
+        session()->flash('message', $imported['imported'] . ' akun Siswa berhasil diimpor ke Rombel ' . $imported['rombel_name'] . '. Kredensial awal ditampilkan satu kali pada halaman daftar pengguna.');
         return redirect('/admin/users');
     }
 
@@ -136,8 +138,9 @@ class StudentImport extends Component
         $sheet->setTitle('Data Siswa');
 
         $headers = [
-            'nama', 'nisn', 'jenis_kelamin', 'tempat_lahir',
-            'tanggal_lahir', 'nama_orang_tua', 'telepon', 'alamat',
+            'nama', 'nisn', 'rombel', 'tahun_pelajaran', 'kelas',
+            'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir',
+            'nama_orang_tua', 'telepon', 'alamat',
         ];
         foreach ($headers as $index => $header) {
             $column = Coordinate::stringFromColumnIndex($index + 1);
@@ -146,23 +149,27 @@ class StudentImport extends Component
 
         $sheet->setCellValue('A2', 'Contoh Nama');
         $sheet->setCellValueExplicit('B2', '0001234567', DataType::TYPE_STRING);
-        $sheet->setCellValue('C2', 'L');
-        $sheet->setCellValue('D2', 'Jakarta');
-        $sheet->setCellValueExplicit('E2', '2015-01-31', DataType::TYPE_STRING);
-        $sheet->setCellValue('F2', 'Nama Orang Tua');
-        $sheet->setCellValueExplicit('G2', '081234567890', DataType::TYPE_STRING);
-        $sheet->setCellValue('H2', 'Alamat Siswa');
+        $sheet->setCellValue('C2', 'Kelas 1-A');
+        $sheet->setCellValueExplicit('D2', '2026/2027', DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('E2', '1', DataType::TYPE_STRING);
+        $sheet->setCellValue('F2', 'L');
+        $sheet->setCellValue('G2', 'Jakarta');
+        $sheet->setCellValueExplicit('H2', '2015-01-31', DataType::TYPE_STRING);
+        $sheet->setCellValue('I2', 'Nama Orang Tua');
+        $sheet->setCellValueExplicit('J2', '081234567890', DataType::TYPE_STRING);
+        $sheet->setCellValue('K2', 'Alamat Siswa');
 
-        $sheet->getStyle('A1:H1')->getFont()->setBold(true);
-        $sheet->getStyle('A1:H1')->getAlignment()->setHorizontal('center');
+        $sheet->getStyle('A1:K1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:K1')->getAlignment()->setHorizontal('center');
         $sheet->getStyle('B2:B5001')->getNumberFormat()->setFormatCode('@');
-        $sheet->getStyle('E2:E5001')->getNumberFormat()->setFormatCode('@');
-        $sheet->getStyle('G2:G5001')->getNumberFormat()->setFormatCode('@');
-        foreach (['A' => 28, 'B' => 16, 'C' => 18, 'D' => 20, 'E' => 18, 'F' => 28, 'G' => 20, 'H' => 42] as $column => $width) {
+        $sheet->getStyle('D2:E5001')->getNumberFormat()->setFormatCode('@');
+        $sheet->getStyle('H2:H5001')->getNumberFormat()->setFormatCode('@');
+        $sheet->getStyle('J2:J5001')->getNumberFormat()->setFormatCode('@');
+        foreach (['A' => 28, 'B' => 16, 'C' => 22, 'D' => 18, 'E' => 10, 'F' => 18, 'G' => 20, 'H' => 18, 'I' => 28, 'J' => 20, 'K' => 42] as $column => $width) {
             $sheet->getColumnDimension($column)->setWidth($width);
         }
         $sheet->freezePane('A2');
-        $sheet->setAutoFilter('A1:H2');
+        $sheet->setAutoFilter('A1:K2');
 
 
         return response()->streamDownload(
@@ -180,8 +187,8 @@ class StudentImport extends Component
     {
         $this->authorizeImport();
 
-        $csv = "nama,nisn,jenis_kelamin,tempat_lahir,tanggal_lahir,nama_orang_tua,telepon,alamat\n";
-        $csv .= "Contoh Nama,0001234567,L,Jakarta,2015-01-31,Nama Orang Tua,081234567890,Alamat Siswa\n";
+        $csv = "nama,nisn,rombel,tahun_pelajaran,kelas,jenis_kelamin,tempat_lahir,tanggal_lahir,nama_orang_tua,telepon,alamat\n";
+        $csv .= "Contoh Nama,0001234567,Kelas 1-A,2026/2027,1,L,Jakarta,2015-01-31,Nama Orang Tua,081234567890,Alamat Siswa\n";
 
         return response()->streamDownload(
             fn () => print($csv),
