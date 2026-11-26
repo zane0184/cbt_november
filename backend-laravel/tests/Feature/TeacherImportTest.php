@@ -291,6 +291,8 @@ class TeacherImportTest extends TestCase
         $this->assertSame('NIP', $result['credentials'][0]['identifier_type']);
         $this->assertSame('3171010101900002', $result['credentials'][1]['login_identifier']);
         $this->assertSame('NIK', $result['credentials'][1]['identifier_type']);
+        $this->assertSame(8, strlen($result['credentials'][0]['password']));
+        $this->assertSame(8, strlen($result['credentials'][1]['password']));
         $this->assertSame($asn->user_id, app(LoginIdentityResolver::class)->resolve('199001012026041101')?->id);
         $this->assertSame($honorer->user_id, app(LoginIdentityResolver::class)->resolve('3171010101900002')?->id);
         $this->assertTrue(Hash::check($result['credentials'][0]['password'], $asn->user->password));
