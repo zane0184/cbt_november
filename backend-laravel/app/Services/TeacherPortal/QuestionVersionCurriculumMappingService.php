@@ -71,9 +71,7 @@ class QuestionVersionCurriculumMappingService
                 ->where('tenant_id', $tenantId)
                 ->whereKey($assignmentId)
                 ->where('teacher_profile_id', $profile->id)
-                ->where('status', 'ACTIVE')
-                ->whereDate('starts_at', '<=', now()->toDateString())
-                ->whereDate('ends_at', '>=', now()->toDateString())
+                ->activeForDate()
                 ->with('curriculumRegistration')
                 ->lockForUpdate()
                 ->firstOrFail();
