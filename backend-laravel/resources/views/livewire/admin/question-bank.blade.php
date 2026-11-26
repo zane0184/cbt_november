@@ -283,7 +283,7 @@
                                 @error('selectedCpIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                             </div>
                             <div>
-                                <p class="mb-2 text-xs font-bold text-amber-900">TP/ATP terpublikasi (pilih minimal satu)</p>
+                                <p class="mb-2 text-xs font-bold text-amber-900">TP/ATP terpublikasi (pilih minimal satu jika ingin memetakan)</p>
                                 <div class="grid gap-2 md:grid-cols-2">
                                     @forelse($outcomes as $outcome)
                                         <label class="flex items-start gap-2 rounded-lg border border-amber-100 bg-white p-3 text-xs">
