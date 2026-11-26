@@ -267,36 +267,71 @@ class QuestionDocxImport extends Component
             ]);
         }
 
-        $allowedSequences = collect($freshParse['questions'] ?? [])
-            ->filter(fn (array $question): bool => !$requiresSectionSelection
-                || ($question['source_section'] ?? null) === $this->selectedSection)
-            ->map(fn (array $question): ?int => isset($question['source_locator']['sequence'])
-                ? (int) $question['source_locator']['sequence']
-                : null)
-            ->filter(fn (?int $sequence): bool => $sequence !== null)
-            ->values()
-            ->all();
+        // The parser output is the authority for source identity and unsupported
+        // features. Livewire state is used only for explicit teacher edits and
+        // include/exclude choices; its READY/NEEDS_REVIEW status is never trusted.
+        $freshQuestions = collect($freshParse['questions'] ?? []);
+        $freshBySequence = $freshQuestions->keyBy(
+            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0)
+        );
+        $previewBySequence = collect($this->questions)->keyBy(
+            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0)
+        );
 
-        $questionsForImport = array_values(array_filter(
-            $this->questions,
-            fn (array $question): bool => in_array(
-                (int) ($question['source_locator']['sequence'] ?? 0),
-                $allowedSequences,
-                true
-            ) && (bool) ($question['included'] ?? true)
-                && ($question['status'] ?? 'NEEDS_REVIEW') === 'READY'
-        ));
+        $questionsForImport = [];
+        $selectedSequences = [];
+        foreach ($freshQuestions as $sourceRow) {
+            if ($requiresSectionSelection
+                && ($sourceRow['source_section'] ?? null) !== $this->selectedSection) {
+                continue;
+            }
+
+            $sequence = (int) ($sourceRow['source_locator']['sequence'] ?? 0);
+            $previewRow = $previewBySequence->get($sequence);
+            if (!$previewRow
+                || (int) ($previewRow['source_number'] ?? 0) !== (int) ($sourceRow['source_number'] ?? 0)) {
+                throw ValidationException::withMessages([
+                    'docx' => 'Identitas soal pada preview tidak cocok dengan hasil pembacaan ulang dokumen. Buat preview baru.',
+                ]);
+            }
+
+            if (!(bool) ($previewRow['included'] ?? true)) {
+                continue;
+            }
+
+            // Only teacher-editable fields are accepted from the browser. Source
+            // locators, media references, OOXML fragments, blocked features and
+            // parser review reasons always come from the fresh server parse.
+            $questionRow = $sourceRow;
+            foreach (['question_type', 'stem', 'difficulty', 'options', 'statements', 'table_rows', 'mapping_cp_ids', 'mapping_outcome_ids'] as $editableField) {
+                if (array_key_exists($editableField, $previewRow)) {
+                    $questionRow[$editableField] = $previewRow[$editableField];
+                }
+            }
+            if (isset($sourceRow['stimulus']) && is_array($sourceRow['stimulus'])) {
+                $questionRow['stimulus'] = $sourceRow['stimulus'];
+                if (isset($previewRow['stimulus']['content'])) {
+                    $questionRow['stimulus']['content'] = $previewRow['stimulus']['content'];
+                }
+            }
+
+            $questionRow['included'] = true;
+            $questionRow['source_review_required'] = !empty($sourceRow['errors']);
+            $questionRow['source_review_reasons'] = array_values($sourceRow['errors'] ?? []);
+            $questionsForImport[] = $questionRow;
+            $selectedSequences[] = $sequence;
+        }
 
         if ($questionsForImport === []) {
             throw ValidationException::withMessages([
-                'docx' => 'Tidak ada soal berstatus VALID/READY yang dipilih. Periksa indikator “Perlu ditinjau”, lengkapi atau perbaiki soal, lalu buat preview ulang. Soal yang belum valid tidak boleh disimpan sebagai DRAFT.',
+                'docx' => 'Tidak ada soal yang dipilih untuk disimpan. Centang minimal satu kartu soal pada bagian dokumen yang dipilih.',
             ]);
         }
 
         validator(['questions' => $questionsForImport], [
             'questions' => ['required', 'array', 'min:1'],
             'questions.*.source_number' => ['required', 'integer', 'min:1'],
-            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY,MATCHING,SHORT_ANSWER,UNSUPPORTED'],
+            'questions.*.question_type' => ['required', 'string', 'in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,ESSAY'],
             'questions.*.stem' => ['required', 'string', 'max:12000'],
             'questions.*.difficulty' => ['required', 'in:EASY,MEDIUM,HARD'],
             'questions.*.options' => ['sometimes', 'array', 'max:4'],
@@ -316,19 +351,7 @@ class QuestionDocxImport extends Component
             'questions.*.mapping_outcome_ids.*' => ['required', 'uuid', 'distinct'],
         ])->validate();
 
-        $selectedSequences = array_map(
-            fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0),
-            $questionsForImport
-        );
-        if ($selectedSequences === []) {
-            throw ValidationException::withMessages([
-                'docx' => 'Pilih minimal satu soal pada bagian dokumen yang dipilih.',
-            ]);
-        }
-
-        $freshBySequence = collect($freshParse['questions'] ?? [])
-            ->keyBy(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0));
-        $blockedSequences = collect($freshParse['questions'] ?? [])
+        $blockedSequences = $freshQuestions
             ->filter(fn (array $question): bool => ($question['blocked_features'] ?? []) !== [])
             ->map(fn (array $question): int => (int) ($question['source_locator']['sequence'] ?? 0))
             ->all();
@@ -338,29 +361,7 @@ class QuestionDocxImport extends Component
             ]);
         }
 
-        foreach ($questionsForImport as &$questionRow) {
-            $sequence = (int) ($questionRow['source_locator']['sequence'] ?? 0);
-            $sourceRow = $freshBySequence->get($sequence);
-            if (!$sourceRow
-                || (int) ($sourceRow['source_number'] ?? 0) !== (int) ($questionRow['source_number'] ?? 0)) {
-                throw ValidationException::withMessages([
-                    'docx' => 'Identitas blok soal pada preview tidak cocok dengan hasil pembacaan ulang dokumen. Buat preview baru.',
-                ]);
-            }
-            $questionRow['source_number'] = (int) $sourceRow['source_number'];
-            $questionRow['source_section'] = $sourceRow['source_section'] ?? null;
-            $questionRow['source_locator'] = $sourceRow['source_locator'];
-            $questionRow['source_fragments'] = $sourceRow['source_fragments'] ?? [];
-            $questionRow['blocked_features'] = $sourceRow['blocked_features'] ?? [];
-            $questionRow['text_direction'] = $sourceRow['text_direction'] ?? 'auto';
-            $questionRow['media_count'] = $sourceRow['media_count'] ?? 0;
-            $questionRow['math_count'] = $sourceRow['math_count'] ?? 0;
-            $questionRow['nested_table_count'] = $sourceRow['nested_table_count'] ?? 0;
-            $questionRow['table_structure'] = $sourceRow['table_structure'] ?? [];
-            $questionRow['rich_paragraphs'] = $sourceRow['rich_paragraphs'] ?? [];
-            $questionRow['mathml_fragments'] = $sourceRow['mathml_fragments'] ?? [];
-        }
-        unset($questionRow);
+
 
         $assignmentRow = $this->selectedAssignmentRow();
         abort_unless($assignmentRow, 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
