@@ -182,6 +182,64 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
         $this->assertSame($subjectNode->id, $assignment->curriculum_context_snapshot['subject']['official_structure_id']);
         $this->assertSame($mapping->id, $mapping->fresh()->id);
 
+        // Bulk assignment: two mapped subjects for the same teacher and rombel
+        // are created in one atomic submission.
+        $bahasaSubject = Subject::create([
+            'tenant_id' => $tenantId,
+            'code' => 'BHS_IND',
+            'name' => 'Bahasa Indonesia',
+            'status' => 'ACTIVE',
+        ]);
+        $bahasaNode = MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->where('multi_curriculum_version_id', $version->id)
+            ->where('node_type', 'SUBJECT')
+            ->where('code', 'FASE_A_BAHASA_INDONESIA')
+            ->firstOrFail();
+
+        Livewire::test(CurriculumRegistryManagement::class)
+            ->set('selectedRegistrationId', (string) $registration->id)
+            ->set('selectedSubjectId', (string) $bahasaSubject->id)
+            ->set('selectedStructureId', (string) $bahasaNode->id)
+            ->call('mapSubject')
+            ->assertHasNoErrors();
+
+        $secondRombel = Rombel::create([
+            'academic_year_id' => $academicYear->id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => 'Kelas 1B',
+            'status' => 'ACTIVE',
+        ]);
+
+        Livewire::test(TeacherSubjectAssignmentManagement::class)
+            ->set('selectedTeacherProfileId', (string) $teacherProfile->id)
+            ->set('selectedSubjectIds', [(string) $subject->id, (string) $bahasaSubject->id])
+            ->set('selectedRombelId', (string) $secondRombel->id)
+            ->set('selectedSemesterId', (string) $semester->id)
+            ->set('selectedRegistrationId', (string) $registration->id)
+            ->set('startsAt', now()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createBulkAssignments')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify');
+
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $secondRombel->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+        ]);
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $bahasaSubject->id,
+            'rombel_id' => $secondRombel->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+        ]);
+
         // A madrasah-defined Mulok subject is mapped to the official generic
         // Muatan Lokal node for the rombel phase without changing the registry.
         $mulokSubject = Subject::create([
