@@ -98,3 +98,35 @@ Status ADM-04: **SOURCE PATCH COMMITTED — TEST COVERAGE ADDED — EXECUTION/UA
 - PHP GD module tersedia pada runner.
 - PHPUnit dan test suite tidak dijalankan. Runtime check tidak membuktikan hasil normalisasi gambar secara fungsional.
 - Browser upload, Nginx/aaPanel Content-Type, PHP GD pada VPS, dan production UAT belum diuji.
+
+
+ 
+## Addendum — DESAIN SELF-SERVICE KELAS/PENUGASAN GURU (26 Nov 2026)
+
+### AUDIT
+- Source branch HEAD `2308754139b7f8c5d3785c7571e37e60fbae0f00` diperiksa.
+- `teacher_subject_assignments` sudah menjadi relasi Guru-mapel-rombel-tahun ajaran-semester dan memiliki `created_by`, status, tanggal, serta snapshot kurikulum.
+- Migration tenant FK assignment sudah memaksa relasi tenant-aware, termasuk creator.
+- `TeacherPortalAccess` memvalidasi role GURU tunggal, tenant, akun aktif, dan profil Guru unik.
+- `TeacherAssignmentsPage` hanya membaca data; Admin Livewire component masih memiliki proses create dan validasi akademik.
+
+### DESAIN
+- Guru membuat sendiri kelas/penugasan mapel-rombel tanpa persetujuan Admin.
+- Admin mengelola data induk dan memonitor kelas/pengampu; tindakan koreksi/penonaktifan administratif harus beralasan dan diaudit.
+- Gunakan `TeacherSubjectAssignment` sebagai identitas ruang kelas kanonis; tidak membuat tabel kelas paralel.
+- Wizard batch: periode aktif otomatis, pilih rombel, pilih mapel yang sesuai fase, review pasangan mapel-rombel, simpan atomik.
+- Kurikulum dipilih dari registrasi aktif server-side; guru tidak memilih versi sembarangan.
+- Validasi tenant, role, profil, mapel, rombel, fase, semester/tahun ajaran, mapping subject/provenance, duplikasi dan snapshot diulang server-side.
+- Co-teaching lintas Guru diberi peringatan; duplikasi identik Guru yang sama ditolak.
+- Assignment inti tidak diedit setelah dipakai modul pembelajaran; penonaktifan beralasan dan histori dipertahankan.
+
+### IMPLEMENTASI
+- Belum ada source aplikasi yang diubah.
+- Dokumen rancangan: `docs/DESIGN_GURU_SELF_SERVICE_CLASS_ASSIGNMENT_2026-11-26.md`.
+- Backup checkpoint sebelum addendum: `docs/backups/GURU_SELF_SERVICE_ASSIGNMENT_DESIGN_20261126/CHECKPOINT_ADMIN_USER_REQUEST_FIXES_2026-11-26.md.before`; manifest: `docs/backups/GURU_SELF_SERVICE_ASSIGNMENT_DESIGN_20261126/MANIFEST.md`.
+
+### PENGUJIAN
+- Tidak ada test yang dijalankan karena tahap ini adalah desain.
+- Tidak ada migration, database produksi, VPS, atau deployment yang disentuh.
+
+Status: **DESAIN DISETUJUI — SOURCE IMPLEMENTATION BELUM DIMULAI.**
