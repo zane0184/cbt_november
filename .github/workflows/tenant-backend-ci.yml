@@ -22,6 +22,7 @@ on:
     branches:
       - main
       - work/web-admin-implementation-20261123
+      - work/guru-docx-import-e2e-20261125
   workflow_dispatch:
 
 permissions:
