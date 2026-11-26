@@ -587,6 +587,23 @@ class QuestionBank extends Component
                 $this->selectedMaterialTopicId ?: null
             );
 
+            // An imported DOCX draft may have been saved before its curriculum
+            // mapping was complete. Once the strict mapping service succeeds in
+            // this editor, clear the pending marker on the current version.
+            $versionMetadata = $version->metadata ?? [];
+            if (($versionMetadata['import_source'] ?? null) === 'DOCX'
+                || isset($versionMetadata['curriculum_mapping'])) {
+                $versionMetadata['curriculum_mapping'] = [
+                    'status' => 'MAPPED',
+                    'teacher_subject_assignment_id' => (string) $this->selectedAssignmentId,
+                    'requested_cp_ids' => array_values($this->selectedCpIds),
+                    'requested_outcome_ids' => array_values($this->selectedOutcomeIds),
+                    'message' => null,
+                ];
+                $version->metadata = $versionMetadata;
+                $version->save();
+            }
+
             // Never write answer keys or full question content to the audit trail.
             $question->refresh();
             $version->refresh();
