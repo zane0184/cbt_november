@@ -120,7 +120,7 @@ final class OmmlToMathMlConverter
         if (preg_match('/^[\p{L}\p{M}]+$/u', $text) === 1) {
             return '<mi>' . $escaped . '</mi>';
         }
-        if (preg_match('/^[=+\-*\/<>≤≥≠≈±×÷∑∏∫√∞(),.;:!%|[\]{}]+$/u', $text) === 1) {
+        if (preg_match('/^[=+\-*\/<>≤≥≠≈±×÷∑∏∫√∞(),.;:!%|{}\[\]]+$/u', $text) === 1) {
             return '<mo>' . $escaped . '</mo>';
         }
 
