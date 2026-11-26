@@ -179,6 +179,12 @@ class CurriculumReferenceSourceSeeder extends Seeder
                     $source['metadata']
                 );
 
+                // Empty scope is an intentional reset, not "leave the old scope".
+                // array_replace_recursive([], ...) does not clear prior numeric entries.
+                if (array_key_exists('verified_scope', $source['metadata'])) {
+                    $metadata['verified_scope'] = array_values($source['metadata']['verified_scope']);
+                }
+
                 if ($artifactAlreadyVerified) {
                     $metadata['artifact_checksum_verified'] = true;
                     $metadata['checksum_sha256'] = $existing->checksum_sha256;
