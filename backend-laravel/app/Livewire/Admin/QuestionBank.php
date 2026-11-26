@@ -331,6 +331,11 @@ class QuestionBank extends Component
             ]);
         }
 
+        if ($this->questionType === 'ESSAY' && trim((string) $this->explanation) === '') {
+            $this->addError('explanation', 'Pedoman penskoran/rubrik wajib diisi untuk soal uraian.');
+            return;
+        }
+
         $user = auth()->user();
         $tenantId = $user->tenant_id ?? null;
 
@@ -391,12 +396,16 @@ class QuestionBank extends Component
             $this->optionA = 'BENAR';
             $this->optionB = 'SALAH';
         } elseif ($this->questionType === 'MATCHING') {
-            if (empty($this->matchingPairs) || count($this->matchingPairs) < 2) {
+            if (!is_array($this->matchingPairs) || count($this->matchingPairs) < 2) {
                 $this->addError('matchingPairs', 'Soal Menjodohkan membutuhkan setidaknya 2 pasangan.');
                 return;
             }
             foreach ($this->matchingPairs as $idx => $pair) {
-                if (empty(trim($pair['left'] ?? '')) || empty(trim($pair['right'] ?? ''))) {
+                if (!is_array($pair)
+                    || !is_string($pair['left'] ?? null)
+                    || !is_string($pair['right'] ?? null)
+                    || trim($pair['left']) === ''
+                    || trim($pair['right']) === '') {
                     $this->addError('matchingPairs', 'Setiap item premis dan jawaban pada pasangan ' . ($idx + 1) . ' wajib diisi.');
                     return;
                 }
@@ -708,6 +717,29 @@ class QuestionBank extends Component
                 'Konten DOCX kompleks belum ditinjau. Periksa pratinjau rumus/tabel, lalu catat peninjauan sebelum menerbitkan.'
             );
             abort_if((float) $version->default_points <= 0, 422, 'Bobot nilai belum ditentukan. Lengkapi bobot pada editor Bank Soal sebelum menerbitkan.');
+            if ($version->question_type === 'ESSAY') {
+                abort_if(
+                    trim((string) $version->explanation) === '',
+                    422,
+                    'Publikasi soal uraian memerlukan pedoman penskoran/rubrik yang diisi Guru.'
+                );
+            }
+            if ($version->question_type === 'MATCHING') {
+                $options = $version->options;
+                $leftOptions = $options->filter(fn ($option) => is_string($option->option_key) && $option->option_key !== '' && empty($option->matching_key));
+                $rightOptions = $options->filter(fn ($option) => is_string($option->matching_key) && $option->matching_key !== '' && empty($option->option_key));
+                $leftKeys = $leftOptions->pluck('option_key')->all();
+                $rightKeys = $rightOptions->pluck('matching_key')->all();
+                $validMatching = $leftOptions->count() >= 2
+                    && $leftOptions->count() === $rightOptions->count()
+                    && $options->count() === ($leftOptions->count() + $rightOptions->count())
+                    && count(array_unique($leftKeys)) === count($leftKeys)
+                    && count(array_unique($rightKeys)) === count($rightKeys)
+                    && collect($leftKeys)->sort()->values()->all() === collect($rightKeys)->sort()->values()->all()
+                    && $leftOptions->every(fn ($option) => trim((string) $option->content) !== '')
+                    && $rightOptions->every(fn ($option) => trim((string) $option->content) !== '');
+                abort_if(!$validMatching, 422, 'Pasangan Menjodohkan tidak konsisten. Setiap premis harus memiliki tepat satu jawaban pasangan yang valid.');
+            }
             if (in_array($version->question_type, ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true)) {
                 $options = $version->options;
                 $optionCount = $options->count();
