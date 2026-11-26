@@ -712,6 +712,9 @@ class ExamManagement extends Component
 
         return view('livewire.admin.exam-management', [
             'exams' => $exams,
+            'subjects' => $subjects,
+            'activeSemester' => $activeSemester,
+            'rombels' => $rombels,
             'assignmentRows' => $assignmentRows,
             'selectedAssignment' => $selectedAssignment,
             'curriculumContext' => $curriculumContext,
