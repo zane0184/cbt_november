@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="color-scheme" content="light dark">
+    <meta name="color-scheme" content="light">
     <title>{{ config('app.name', 'CBT Madrasah') }} — Portal Guru</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -35,7 +35,7 @@
     </script>
     <style>
         :root {
-            color-scheme: light dark;
+            color-scheme: light;
             --page: #f4f7f6;
             --surface: #ffffff;
             --surface-soft: #edf4f1;
@@ -49,23 +49,6 @@
             --accent-text: #ffffff;
             --warning-bg: #fff8e6;
             --warning-text: #805b16;
-        }
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --page: #101a17;
-                --surface: #182622;
-                --surface-soft: #20332d;
-                --text: #e6f1ec;
-                --muted: #a7bbb1;
-                --border: #31483e;
-                --nav: #0b211b;
-                --nav-soft: #17372c;
-                --accent: #38b58d;
-                --accent-strong: #55c9a0;
-                --accent-text: #08251c;
-                --warning-bg: #3a301d;
-                --warning-text: #f1d18a;
-            }
         }
         html, body { min-height: 100%; }
         body { margin: 0; background: var(--page); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -108,9 +91,9 @@
                 </div>
             </div>
             <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-5 text-sm">
-                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Ruang Kerja Guru</p>
-                <a href="{{ route('teacher.dashboard') }}" class="portal-nav-link {{ request()->routeIs('teacher.dashboard') ? 'active' : '' }}"><span>▦</span> Dashboard</a>
-                <a href="{{ route('teacher.assignments') }}" class="portal-nav-link {{ request()->routeIs('teacher.assignments') ? 'active' : '' }}"><span>▤</span> Penugasan Saya</a>
+                <p class="px-3 pb-2 text-[11px] font-bold uppercase tracking-widest text-emerald-100/50">Kelas Virtual</p>
+                <a href="{{ route('teacher.dashboard') }}" class="portal-nav-link {{ request()->routeIs('teacher.dashboard') ? 'active' : '' }}"><span>▦</span> Kelas Virtual</a>
+                <a href="{{ route('teacher.assignments') }}" class="portal-nav-link {{ request()->routeIs('teacher.assignments') ? 'active' : '' }}"><span>▤</span> Penugasan Mengajar</a>
                 <a href="{{ route('teacher.learning') }}" class="portal-nav-link {{ request()->routeIs('teacher.learning') ? 'active' : '' }}"><span>▤</span> Pembelajaran</a>
                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="portal-nav-link {{ request()->routeIs('teacher.curriculum') ? 'active' : '' }}"><span>◈</span> Kurikulum & Akademik</a>
                 <a href="{{ route('teacher.materials') }}" class="portal-nav-link {{ request()->routeIs('teacher.materials') ? 'active' : '' }}"><span>▤</span> Materi Pembelajaran</a>
@@ -145,7 +128,7 @@
                 <div class="flex items-center justify-between gap-3 px-4 py-3 md:px-8">
                     <div>
                         <p class="text-xs font-semibold uppercase tracking-wider portal-muted">CBT Madrasah</p>
-                        <p class="text-sm font-bold">Ruang Kerja Guru</p>
+                        <p class="text-sm font-bold">Kelas Virtual & Asesmen</p>
                         @if($hasTemporaryProctorDuty)
                             <span class="mt-1 inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-900">Tugas pengawas sementara aktif</span>
                         @endif
@@ -154,8 +137,8 @@
                         <details class="relative md:hidden">
                             <summary class="cursor-pointer rounded-lg border portal-border px-3 py-2 text-sm font-semibold">☰ Menu</summary>
                             <div class="portal-card absolute right-0 mt-2 w-64 p-2 shadow-xl">
-                                <a href="{{ route('teacher.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm">Dashboard</a>
-                                <a href="{{ route('teacher.assignments') }}" class="block rounded-lg px-3 py-2 text-sm">Penugasan Saya</a>
+                                <a href="{{ route('teacher.dashboard') }}" class="block rounded-lg px-3 py-2 text-sm">Kelas Virtual</a>
+                                <a href="{{ route('teacher.assignments') }}" class="block rounded-lg px-3 py-2 text-sm">Penugasan Mengajar</a>
                                 <a href="{{ route('teacher.learning') }}" class="block rounded-lg px-3 py-2 text-sm">Pembelajaran</a>
                                 <a href="{{ route('teacher.curriculum') }}#kurikulum" class="block rounded-lg px-3 py-2 text-sm">Kurikulum & Akademik</a>
                                 <a href="{{ route('teacher.materials') }}" class="block rounded-lg px-3 py-2 text-sm">Materi Pembelajaran</a>
