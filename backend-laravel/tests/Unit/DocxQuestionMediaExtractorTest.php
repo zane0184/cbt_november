@@ -1,10 +1,10 @@
 <?php
 
-namespace Tests\\Unit;
+namespace Tests\Unit;
 
-use App\\Services\\Questions\\DocxQuestionMediaExtractor;
-use Illuminate\\Validation\\ValidationException;
-use Tests\\TestCase;
+use App\Services\Questions\DocxQuestionMediaExtractor;
+use Illuminate\Validation\ValidationException;
+use Tests\TestCase;
 use ZipArchive;
 
 class DocxQuestionMediaExtractorTest extends TestCase
@@ -80,7 +80,7 @@ class DocxQuestionMediaExtractorTest extends TestCase
         $path = tempnam(sys_get_temp_dir(), 'cbt-docx-media-');
         $zip = new ZipArchive();
         if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new \\RuntimeException('Cannot create DOCX media fixture.');
+            throw new \RuntimeException('Cannot create DOCX media fixture.');
         }
 
         foreach ($entries as $name => $bytes) {
