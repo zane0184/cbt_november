@@ -46,8 +46,7 @@ class StudentImport extends Component
 
         return [
             'file' => ['required', 'file', 'mimes:xlsx,csv,txt', 'max:10240'],
-            'selectedRombelId' => [
-                'nullable',
+            'selectedRombelId' => $this->selectedRombelId === '' ? ['nullable'] : [
                 'uuid',
                 Rule::exists('rombels', 'id')->where(fn ($query) => $query
                     ->where('tenant_id', $tenantId)
