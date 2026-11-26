@@ -277,7 +277,7 @@
                                             <span><strong>{{ $cp['code'] }} — {{ $cp['title'] }}</strong><span class="mt-1 block text-[11px] text-textSecondary">{{ $cp['source_document'] ?? 'Sumber resmi' }}</span></span>
                                         </label>
                                     @empty
-                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi yang artefak dan checksum-nya terverifikasi untuk penugasan ini. Pemetaan soal belum dapat disimpan.</p>
+                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada CP resmi terverifikasi untuk penugasan ini. Soal tetap dapat diterbitkan sebagai soal umum tanpa pemetaan kurikulum.</p>
                                     @endforelse
                                 </div>
                                 @error('selectedCpIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
@@ -291,7 +291,7 @@
                                             <span><strong>{{ $outcome['outcome_type'] }} · {{ $outcome['code'] }} — {{ $outcome['title'] }}</strong><span class="mt-1 block text-[11px] text-textSecondary">CP induk: {{ $outcome['parent_cp'] ?? '-' }}</span></span>
                                         </label>
                                     @empty
-                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada TP/ATP terpublikasi pada penugasan ini. Buat dan publikasikan TP/ATP terlebih dahulu di menu Pembelajaran & Kurikulum.</p>
+                                        <p class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Belum ada TP/ATP terpublikasi pada penugasan ini. Soal tetap dapat diterbitkan sebagai soal umum tanpa pemetaan kurikulum.</p>
                                     @endforelse
                                 </div>
                                 @error('selectedOutcomeIds') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
