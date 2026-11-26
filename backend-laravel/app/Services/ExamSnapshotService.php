@@ -424,8 +424,23 @@ class ExamSnapshotService
                 $hasAnyQuestionCurriculumMapping = $cpMappings->isNotEmpty()
                     || $outcomeMappings->isNotEmpty()
                     || $structureMappings->isNotEmpty();
+                $hasAnyVersionCurriculumMapping = $version->curriculumMappings()->exists()
+                    || $version->tenantOutcomeMappings()->exists()
+                    || $version->structureMappings()->exists();
+                $questionMappingStatus = $version->metadata['curriculum_mapping']['status'] ?? null;
+
+                if ($questionMappingStatus === 'PENDING_TEACHER') {
+                    abort(422, 'Snapshot diblokir: pemetaan kurikulum soal masih menunggu verifikasi Guru.');
+                }
+                if (($questionMappingStatus === 'MAPPED' && !$hasAnyVersionCurriculumMapping)
+                    || ($questionMappingStatus === 'NOT_MAPPED' && $hasAnyVersionCurriculumMapping)) {
+                    abort(409, 'Snapshot diblokir: status pemetaan kurikulum tidak konsisten dengan data mapping versi soal.');
+                }
 
                 if (!$hasAssessmentCurriculumMapping) {
+                    if ($hasAnyVersionCurriculumMapping) {
+                        abort(422, 'Ujian tanpa pemetaan asesmen hanya dapat memuat soal yang sama sekali belum dipetakan ke kurikulum.');
+                    }
                     if ($hasAnyQuestionCurriculumMapping) {
                         abort(422, 'Ujian tanpa pemetaan asesmen hanya dapat memuat soal yang juga belum dipetakan ke kurikulum.');
                     }
