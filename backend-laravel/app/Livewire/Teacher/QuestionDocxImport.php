@@ -47,8 +47,7 @@ class QuestionDocxImport extends Component
             && $user->tenant_id
             && $user->hasExactRole('GURU')
             && $user->hasPermission('question.view')
-            && $user->hasPermission('question.manage')
-            && $user->hasPermission('curriculum.manage'),
+            && $user->hasPermission('question.manage'),
             403,
             'Import soal DOCX memerlukan akun Guru, penugasan aktif, serta kewenangan Bank Soal dan Kurikulum.'
         );
