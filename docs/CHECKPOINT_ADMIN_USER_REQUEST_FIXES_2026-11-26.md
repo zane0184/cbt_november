@@ -55,3 +55,34 @@ Tanggal: 26 November 2026
 5. Buat ZIP deployment baru setelah integrasi source dan acceptance VPS; jangan gunakan ZIP lama untuk menyatakan patch ini sudah terpasang.
 
 Status: IMPLEMENTASI SOURCE SELESAI UNTUK REVIEW — PR DRAFT — RUNTIME ACCEPTANCE BELUM DILAKUKAN.
+
+
+## Addendum — ADM-04 Web Admin Upload PNG & Dimensi Otomatis (26 Nov 2026)
+
+### AUDIT
+- Sebelumnya validasi Livewire mewajibkan dimensi minimum/maksimum logo dan favicon persegi.
+- `TenantBrandingService::storeUpload()` mengulang penolakan dimensi tersebut, sehingga gambar valid gagal disimpan walau ukuran file dan formatnya sesuai.
+- Admin diminta crop/menyesuaikan gambar sendiri; ini tidak sesuai kebutuhan.
+
+### DESAIN
+- Logo aplikasi/dokumen: PNG/JPG/JPEG/WebP, maksimum 2 MB; sistem mempertahankan rasio dan mengecilkan gambar secara otomatis agar muat dalam 1600×1200 px, tanpa crop dan tanpa memperbesar gambar kecil.
+- Favicon: PNG/WebP, maksimum 512 KB; sistem membuat kanvas PNG transparan 128×128 px, lalu memasukkan gambar secara proporsional ke area 112×112 px. Seluruh gambar dipertahankan, tidak dipotong.
+- Semua aset branding hasil pemrosesan disimpan sebagai PNG.
+- Batas keamanan sumber 20 megapiksel mencegah gambar terkompresi ekstrem menghabiskan memori; ekstensi PHP GD wajib aktif.
+- Pemeriksaan ekstensi, MIME aktual, validitas raster, batas byte, tenant/install identity, dan path storage aman tetap dipertahankan.
+
+### IMPLEMENTASI
+- `TenantBrandingAssetsManagement.php`: aturan `dimensions` dihapus; validasi format dan batas ukuran file tetap.
+- `TenantBrandingService.php`: normalisasi otomatis melalui GD, PNG output, logo fit proporsional 1600×1200, favicon fit ke kanvas 128×128, tulis file sementara lalu rename atomik.
+- `tenant-branding-assets-management.blade.php`: petunjuk UI menjelaskan dimensi otomatis dan tidak perlu crop manual.
+- `TenantBrandingAssetsManagementTest.php`: regression coverage untuk favicon non-persegi, logo besar yang otomatis diperkecil, logo kecil tanpa minimum dimensi, dan WebP yang dinormalisasi menjadi PNG.
+- Backup byte-exact dibuat sebelum perubahan pada `backend-laravel/backups/admin-branding-auto-dimensions-20261126/`; manifest mencatat SHA file sumber dan backup.
+
+### PENGUJIAN
+- Regression tests ditambahkan/diubah tetapi **belum dieksekusi**.
+- PHPUnit/full CI tidak dijalankan.
+- PHP runtime PASS sebelumnya pada PR #34 hanya membuktikan source sebelum patch ADM-04; bukan bukti runtime patch ini.
+- Browser upload UAT, header HTTP Nginx/aaPanel, dan VPS belum diuji.
+- Tidak ada deployment, migration, atau perubahan database/VPS.
+
+Status ADM-04: **SOURCE PATCH COMMITTED — TEST COVERAGE ADDED — EXECUTION/UAT PENDING**.

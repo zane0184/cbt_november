@@ -125,3 +125,36 @@ Hal yang masih memerlukan tindak lanjut:
 2. Uji keenam permintaan pada VPS menggunakan source PR #34 setelah disetujui/diintegrasikan.
 3. CP resmi tetap BLOCKED sampai artefak PDF asli dan lampiran yang sah diunggah ke GitHub, diarsipkan dan checksum-nya diverifikasi. Halaman Admin sekarang menampilkan status dan tidak mengarang konten.
 4. Setelah uji VPS, catat hasil PASS/FAIL per fitur sebelum membuat ZIP distribusi baru.
+
+
+## Addendum ADM-04 — Perbaikan Upload Branding Web Admin (26 November 2026)
+
+### AUDIT
+Masalah ditemukan pada dua lapisan. Livewire menolak logo jika dimensinya di luar rentang 64–2000 px dan menolak favicon yang belum persegi 32–256 px. Layanan penyimpanan mengulangi aturan dimensi yang sama. Karena itu, file PNG yang valid bisa gagal hanya karena ukuran pixel, padahal Admin seharusnya cukup mengunggah file sesuai format dan batas byte.
+
+### DESAIN
+- Logo aplikasi dan logo kop dokumen menerima PNG/JPG/JPEG/WebP maksimal 2 MB. Server mempertahankan rasio dan menyesuaikan agar masuk dalam batas 1600×1200 px. Tidak ada crop dan tidak ada upscaling untuk gambar kecil.
+- Favicon menerima PNG/WebP maksimal 512 KB. Server membuat kanvas PNG transparan 128×128 px dan memasukkan gambar secara proporsional ke area 112×112 px. Tidak ada crop; gambar non-persegi diberi ruang transparan.
+- Semua output branding disimpan dalam PNG agar format output konsisten.
+- Validasi byte, MIME aktual, signature/raster, tenant/install identity, dan managed storage path tetap berjalan.
+- Sumber gambar dibatasi maksimal 20 megapiksel sebagai perlindungan memori; GD wajib aktif.
+
+### IMPLEMENTASI
+File diubah:
+1. `backend-laravel/app/Livewire/Admin/TenantBrandingAssetsManagement.php` — menghapus validasi dimensi dari tiga field upload.
+2. `backend-laravel/app/Services/TenantBrandingService.php` — menambahkan normalisasi GD, output PNG, resize proporsional logo, kanvas favicon, file sementara dan rename atomik.
+3. `backend-laravel/resources/views/livewire/admin/tenant-branding-assets-management.blade.php` — memperjelas bahwa dimensi ditangani otomatis dan pengguna tidak perlu crop.
+4. `backend-laravel/tests/Feature/TenantBrandingAssetsManagementTest.php` — mengganti test penolakan favicon non-persegi dengan test normalisasi; menambah test logo besar dan logo kecil; memperbarui ekspektasi WebP input menjadi PNG output.
+
+Backup sebelum perubahan:
+`backend-laravel/backups/admin-branding-auto-dimensions-20261126/`
+Manifest: `MANIFEST.md`. Salinan backup byte-exact memiliki blob SHA yang sama dengan sumber sebelum patch.
+
+### PENGUJIAN
+- Test coverage baru ditulis, tetapi PHPUnit belum dijalankan.
+- PHP runtime check sebelumnya pada PR #34 tidak mencakup patch ADM-04.
+- Belum ada bukti upload langsung melalui browser atau respons Nginx/aaPanel.
+- Tidak ada akses/perubahan ke VPS, database, atau deployment. Patch berada di branch PR #34 yang masih draft dan belum merged.
+
+### STATUS
+**IMPLEMENTASI SOURCE SELESAI UNTUK REVIEW — PENGUJIAN EKSEKUSI DAN UAT BELUM DILAKUKAN.**
