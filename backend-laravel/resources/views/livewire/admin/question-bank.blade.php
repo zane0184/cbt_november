@@ -533,6 +533,7 @@
                         <div class="space-y-2 bg-amber-50/50 p-4 rounded-xl border border-amber-200">
                             <label class="block text-xs font-bold text-amber-900 uppercase mb-1">Pedoman Penskoran / Rubrik Jawaban Uraian</label>
                             <textarea dir="auto" wire:model="explanation" rows="3" class="w-full border border-cardBorder rounded-xl px-3.5 py-2 text-sm focus:ring-2 focus:ring-amber-600 focus:outline-none" placeholder="Tuliskan pedoman penskoran atau kriteria jawaban benar untuk korektor..."></textarea>
+                            @error('explanation') <span class="block text-xs font-semibold text-red-600">{{ $message }}</span> @enderror
                         </div>
                     @endif
 
