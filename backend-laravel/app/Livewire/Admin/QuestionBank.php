@@ -293,6 +293,13 @@ class QuestionBank extends Component
             unset($existingMetadata['statement_items'], $existingMetadata['statement_scoring']);
         }
 
+        $richContent = $existingMetadata['rich_content'] ?? [];
+        if (!empty($richContent['mathml_fragments']) || !empty($richContent['table_structure'])) {
+            $richContent['requires_manual_review'] = true;
+            unset($richContent['reviewed_at'], $richContent['reviewed_by']);
+            $existingMetadata['rich_content'] = $richContent;
+        }
+
         return $existingMetadata;
     }
 
