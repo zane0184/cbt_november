@@ -263,6 +263,20 @@
                         </details>
                     @endif
 
+                    @if(!empty($question['table_structure']))
+                        <details class="rounded-xl border border-indigo-200 bg-indigo-50/40 p-3">
+                            <summary class="cursor-pointer text-xs font-bold text-indigo-800">Pratinjau tabel Word bersarang ({{ $question['nested_table_count'] ?? 0 }} tabel)</summary>
+                            <div class="mt-3 space-y-3 overflow-x-auto rounded-lg bg-white p-3">
+                                @foreach(collect($question['table_structure'])->groupBy('table_index') as $tableIndex => $tableEntries)
+                                    <div>
+                                        <p class="mb-1 text-[11px] font-bold text-slate-500">Tabel {{ $tableIndex }}</p>
+                                        @include('components.question-table-structure', ['rows' => $tableEntries->sortBy('row_index')->pluck('row')->all()])
+                                    </div>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
+
                     @if(in_array($question['question_type'], ['MULTIPLE_CHOICE', 'MULTIPLE_RESPONSE', 'TRUE_FALSE'], true))
                         <div class="space-y-2">
                             <div class="text-xs font-bold uppercase tracking-wide text-slate-500">Pilihan jawaban</div>
