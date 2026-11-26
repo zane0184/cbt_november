@@ -99,6 +99,21 @@
                         {!! nl2br(e($q->currentVersion->stem)) !!}
                     </div>
 
+                    @if(!empty($q->currentVersion->metadata['rich_content']['preview_runs']))
+                        <details class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                            <summary class="cursor-pointer text-xs font-bold text-slate-700">Pratinjau format sumber DOCX</summary>
+                            <div class="mt-3 space-y-2 rounded-lg bg-white p-3">
+                                @foreach($q->currentVersion->metadata['rich_content']['preview_runs'] as $paragraph)
+                                    <p dir="{{ in_array($paragraph['direction'] ?? 'auto', ['rtl', 'ltr'], true) ? $paragraph['direction'] : 'auto' }}" class="whitespace-pre-wrap text-sm leading-7 text-slate-800">
+                                        @foreach($paragraph['runs'] ?? [] as $run)
+                                            <span class="{{ (!empty($run['bold']) ? 'font-bold ' : '') . (!empty($run['italic']) ? 'italic ' : '') . (!empty($run['underline']) ? 'underline' : '') }}">{{ $run['text'] ?? '' }}</span>
+                                        @endforeach
+                                    </p>
+                                @endforeach
+                            </div>
+                        </details>
+                    @endif
+
                     @if($q->currentVersion->media->isNotEmpty())
                         <div class="flex flex-wrap gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                             @foreach($q->currentVersion->media as $media)
