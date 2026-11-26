@@ -8,11 +8,11 @@
 
 | Mata pelajaran | Halaman PDF | Halaman tercetak awal/akhir | Keterangan |
 |---|---:|---:|---|
-| Al-Qur'an Hadis MI, MTs, MA/MAK | 10–19 | 8–17 | Memuat CP fase A, B, C MI |
-| Akidah Akhlak MI, MTs, MA/MAK | 39–54 | 37–52 | Memuat CP MI dan bagian MAPK |
-| Fikih MI, MTs, MA/MAK | 68–85 | 66–83 | Memuat CP MI dan jenjang berikutnya |
-| Sejarah Kebudayaan Islam MI, MTs, MA/MAK | 88–95 | 86–93 | Memuat CP MI; perlu verifikasi awal fase yang berlaku |
-| Bahasa Arab MI, MTs, MA/MAK | 96–103 | 94–101 | Memuat CP MI dan jenjang berikutnya |
+| Al-Qur'an Hadis MI, MTs, MA/MAK | 13–15 (CP MI) | 11–13 | Memuat CP fase A, B, C MI |
+| Akidah Akhlak MI, MTs, MA/MAK | 44–47 (CP MI) | 42–45 | Memuat CP MI dan bagian MAPK |
+| Fikih MI, MTs, MA/MAK | 70–73 (CP MI) | 68–71 | Memuat CP MI dan jenjang berikutnya |
+| Sejarah Kebudayaan Islam MI, MTs, MA/MAK | 90–92 (CP MI) | 88–90 | Memuat CP MI; perlu verifikasi awal fase yang berlaku |
+| Bahasa Arab MI, MTs, MA/MAK | 99–101 (CP MI) | 97–99 | Memuat CP MI dan jenjang berikutnya |
 
 ## Identitas keputusan yang terbaca
 - Surat pengantar Ditjen Pendis: Nomor B-606/Dt.I.I/PP.00/12/2025, tanggal 1 Desember 2025.
@@ -36,3 +36,7 @@
 - Buat dataset staging yang immutable/read-only dan importer dry-run idempoten.
 - Jalankan uji pada MySQL 8/InnoDB disposable, bukan database produksi.
 - Baru setelah hasil audit data dan tes lolos, sambungkan ke registry Admin dan konteks Guru. Siswa menerima konteks melalui ujian/snapshot yang sudah dipublikasikan, bukan mengedit CP.
+
+
+## Koreksi indeks halaman berdasarkan render PDF (26 November 2026)
+Pemeriksaan visual render per halaman menunjukkan bahwa rentang awal pada tabel di atas terlalu luas/bergeser karena mencakup pengantar/karakteristik. Rentang CP MI yang benar untuk pemeriksaan isi adalah: Al-Qur'an Hadis PDF 13–15; Akidah Akhlak PDF 44–47; Fikih PDF 70–73; SKI PDF 90–92; Bahasa Arab PDF 99–101. Halaman awal mapel sebelum rentang ini berisi bagian rasional/tujuan/karakteristik, bukan CP fase MI. Perbaikan ini berbasis pencarian heading fase dan pengecekan gambar halaman, bukan perubahan isi CP.
