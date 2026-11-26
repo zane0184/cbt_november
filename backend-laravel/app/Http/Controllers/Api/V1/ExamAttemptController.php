@@ -404,7 +404,10 @@ class ExamAttemptController extends Controller
                         $metadata['rich_content']['paragraphs'],
                         $metadata['rich_content']['table_rows'],
                         $metadata['rich_content']['preview_runs'],
-                        $metadata['rich_content']['math_omml']
+                        $metadata['rich_content']['math_omml'],
+                        $metadata['rich_content']['requires_manual_review'],
+                        $metadata['rich_content']['reviewed_at'],
+                        $metadata['rich_content']['reviewed_by']
                     );
                 }
                 unset($metadata['accepted_answers']);
