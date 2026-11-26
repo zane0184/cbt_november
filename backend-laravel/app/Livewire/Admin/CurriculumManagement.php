@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\CurriculumReferenceSource;
 use App\Models\LearningOutcome;
+use App\Models\MultiCurriculumStructure;
 use App\Models\MultiLearningOutcome;
 use App\Models\Tenant;
 use App\Models\TenantCurriculumRegistration;
@@ -93,6 +94,16 @@ class CurriculumManagement extends Component
             ->orderBy('code')
             ->paginate(10, ['*'], 'cpPage');
 
+        $frameworkNodes = MultiCurriculumStructure::query()
+            ->where('tenant_id', $systemTenantId)
+            ->whereIn('multi_curriculum_version_id', $versionIds ?: ['00000000-0000-0000-0000-000000000000'])
+            ->whereIn('node_type', ['PANCA_CINTA', 'PM_PRINCIPLE', 'PM_OLAH', 'PM_FRAMEWORK', 'DIMENSI_PROFIL_LULUSAN'])
+            ->where('status', 'ACTIVE')
+            ->with(['source', 'version'])
+            ->orderBy('node_type')
+            ->orderBy('sort_order')
+            ->get();
+
         // Teacher-authored TP and ATP are local to this installation and shown
         // read-only to Admin. Their assignment, semester and parent CP remain linked.
         $teacherOutcomes = TenantLearningOutcome::query()
@@ -144,6 +155,7 @@ class CurriculumManagement extends Component
         return view('livewire.admin.curriculum-management', [
             'registrations' => $registrations,
             'officialCps' => $officialCps,
+            'frameworkNodes' => $frameworkNodes,
             'teacherOutcomes' => $teacherOutcomes,
             'legacyOutcomes' => $legacyOutcomes,
             'subjects' => $subjects,
