@@ -475,6 +475,7 @@ class ExamSnapshotService
 
                 $media = $version->media()
                     ->where('media_assets.tenant_id', $lockedExam->tenant_id)
+                    ->orderByPivot('sequence')
                     ->orderBy('media_assets.id')
                     ->lockForUpdate()
                     ->get();
