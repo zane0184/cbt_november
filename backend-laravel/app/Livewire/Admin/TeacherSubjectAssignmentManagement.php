@@ -35,7 +35,7 @@ class TeacherSubjectAssignmentManagement extends Component
         $user = auth()->user();
         $roles = $user?->roles()->pluck('name')->all() ?? [];
 
-        abort_unless($user && $user->tenant_id && count($roles) === 1, 403, 'Akses penugasan ditolak.');
+        abort_unless($user && $user->tenant_id && (bool) $user->is_active && count($roles) === 1, 403, 'Akses penugasan ditolak. Akun harus aktif dan memiliki tepat satu role portal.');
 
         if ($roles[0] === 'GURU') {
             app(\\App\\Support\\Security\\TeacherPortalAccess::class)->profile($user);
