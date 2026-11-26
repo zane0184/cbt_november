@@ -19,6 +19,7 @@ use App\Models\Phase;
 use App\Models\Subject;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Services\ExcelQuestionImporter;
 
 class QuestionImportTest extends TestCase
 {
@@ -168,4 +169,36 @@ class QuestionImportTest extends TestCase
         $this->assertEquals('DRAFT', $q->fresh()->currentVersion->status);
         $this->assertEquals('V2', $q->fresh()->currentVersion->stem);
     }
+
+    public function test_generic_question_row_importer_rolls_back_all_rows_on_batch_failure(): void
+    {
+        $this->actingAs($this->teacher);
+
+        $rows = [
+            [
+                'stem' => 'Soal valid sebelum kegagalan batch',
+                'type' => 'MULTIPLE_CHOICE',
+                'subject_id' => $this->subject->id,
+                'question_code' => 'BATCH-VALID',
+                'options' => [
+                    ['option_key' => 'A', 'content' => 'Salah', 'is_correct' => false],
+                    ['option_key' => 'B', 'content' => 'Benar', 'is_correct' => true],
+                ],
+            ],
+            [
+                'stem' => 'Soal belum didukung',
+                'type' => 'SHORT_ANSWER',
+                'subject_id' => $this->subject->id,
+                'options' => [],
+            ],
+        ];
+
+        $result = app(ExcelQuestionImporter::class)->import('not-used', ['rows' => $rows]);
+
+        $this->assertFalse($result['success']);
+        $this->assertSame(0, $result['imported']);
+        $this->assertSame(2, $result['total_rows']);
+        $this->assertSame(0, Question::query()->count());
+    }
+
 }

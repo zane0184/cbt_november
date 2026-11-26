@@ -163,7 +163,8 @@ class QuestionBankTest extends TestCase
             'tenant_id' => $this->tenantA->id,
             'major_version' => 1,
             'minor_version' => 0,
-            'question_type' => 'SHORT_ANSWER',
+            // SHORT_ANSWER remains blocked; use a supported type to test immutable versioning.
+            'question_type' => 'ESSAY',
             'stem' => 'Stem lama',
             'status' => 'PUBLISHED',
             'is_current' => true,
