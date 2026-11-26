@@ -20,6 +20,7 @@ use App\Services\TeacherPortal\QuestionVersionCurriculumMappingService;
 use App\Services\TeacherPortal\TeacherPortalDataService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -307,8 +308,18 @@ class QuestionBank extends Component
 
     public function saveQuestion()
     {
+        // Normalize before uniqueness validation because persisted codes are uppercase.
+        $this->questionCode = strtoupper(trim((string) $this->questionCode));
+
         $this->validate([
-            'questionCode' => 'required|string|max:50',
+            'questionCode' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('questions', 'question_code')
+                    ->where(fn ($query) => $query->where('tenant_id', auth()->user()->tenant_id))
+                    ->ignore($this->editingQuestionId),
+            ],
             'questionType' => 'required|string|in:MULTIPLE_CHOICE,MULTIPLE_RESPONSE,TRUE_FALSE,TRUE_FALSE_GROUP,MATCHING,ESSAY',
             'selectedAssignmentId' => 'required|uuid',
             'selectedSubjectId' => 'required|exists:subjects,id',
