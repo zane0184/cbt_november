@@ -318,5 +318,41 @@ class TeacherSubjectAssignmentManagementTest extends TestCase
             'subject_id' => $subject->id,
             'rombel_id' => $rombel->id,
         ]);
+
+        // Guru creates their own class through the Guru portal. A forged
+        // teacher_profile_id must never change the authenticated owner.
+        $selfServiceRombel = Rombel::create([
+            'academic_year_id' => $academicYear->id,
+            'grade_level_id' => $gradeLevel->id,
+            'name' => 'Kelas 1C',
+            'status' => 'ACTIVE',
+        ]);
+
+        $this->actingAs($teacherUser);
+        Livewire::test(\\App\\Livewire\\Teacher\\TeacherAssignmentsPage::class)
+            ->set('selectedTeacherProfileId', '00000000-0000-4000-8000-000000000099')
+            ->set('selectedSubjectIds', [(string) $subject->id])
+            ->set('selectedRombelId', (string) $selfServiceRombel->id)
+            ->set('selectedSemesterId', (string) $semester->id)
+            ->set('startsAt', now()->toDateString())
+            ->set('endsAt', now()->addMonths(6)->toDateString())
+            ->call('createBulkAssignments')
+            ->assertHasNoErrors()
+            ->assertDispatched('notify');
+
+        $this->assertDatabaseHas('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => $teacherProfile->id,
+            'subject_id' => $subject->id,
+            'rombel_id' => $selfServiceRombel->id,
+            'semester_id' => $semester->id,
+            'status' => 'ACTIVE',
+        ]);
+        $this->assertDatabaseMissing('teacher_subject_assignments', [
+            'tenant_id' => $tenantId,
+            'teacher_profile_id' => '00000000-0000-4000-8000-000000000099',
+            'subject_id' => $subject->id,
+            'rombel_id' => $selfServiceRombel->id,
+        ]);
     }
 }
