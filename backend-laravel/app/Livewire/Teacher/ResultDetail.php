@@ -7,6 +7,7 @@ use App\Models\ExamAttempt;
 use App\Models\ExamQuestionScore;
 use App\Models\ExamAttemptScore;
 use App\Services\ScoringService;
+use App\Services\AuditService;
 use App\Services\Analytics\AnalyticsCacheService;
 use Livewire\Component;
 use Illuminate\Support\Facades\DB;
@@ -188,6 +189,8 @@ class ResultDetail extends Component
                     'finalized_at' => now(),
                     'finalized_by' => auth()->id()
                 ]);
+
+                app(AuditService::class)->log('FINALIZE_SCORE', 'ExamAttemptScore', $score->id);
             });
 
             app(AnalyticsCacheService::class)->invalidateExamAnalytics($this->exam, $this->attempt);
