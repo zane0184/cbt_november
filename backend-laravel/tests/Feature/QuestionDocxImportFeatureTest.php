@@ -367,6 +367,32 @@ class QuestionDocxImportFeatureTest extends TestCase
         $this->assertDatabaseCount('question_docx_import_batches', 1);
     }
 
+    public function test_docx_save_accepts_active_assignment_with_open_ended_dates(): void
+    {
+        $this->assignment->forceFill([
+            'starts_at' => null,
+            'ends_at' => null,
+        ])->save();
+
+        Livewire::test(QuestionDocxImport::class)
+            ->set('file', $this->uploadedDocx())
+            ->set('selectedAssignmentId', $this->assignment->id)
+            ->call('preview')
+            ->assertHasNoErrors()
+            ->set('selectedCpIds', [])
+            ->set('selectedOutcomeIds', [])
+            ->call('importDrafts')
+            ->assertHasNoErrors()
+            ->assertSee('1 soal berhasil disimpan sebagai DRAFT');
+
+        $this->assertDatabaseHas('questions', [
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->assignment->subject_id,
+            'status' => 'DRAFT',
+            'created_by' => $this->teacher->id,
+        ]);
+    }
+
     private function uploadedDocx(?string $bytes = null): UploadedFile
     {
         return UploadedFile::fake()->createWithContent('soal.docx', $bytes ?? $this->makeDocxBytes());
