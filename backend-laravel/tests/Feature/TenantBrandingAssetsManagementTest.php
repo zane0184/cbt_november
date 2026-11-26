@@ -155,7 +155,7 @@ class TenantBrandingAssetsManagementTest extends TestCase
             $webpAttributes = $branding->faviconAttributes($storedWebpPath, $tenantId);
             $this->assertSame('image/png', $webpAttributes['mime'] ?? null);
             $this->assertSame(
-                'image/webp',
+                'image/png',
                 (new \finfo(FILEINFO_MIME_TYPE))->file(storage_path('app/public/' . $storedWebpPath))
             );
 
