@@ -735,7 +735,7 @@ class QuestionBank extends Component
                 || $outcomeMappings->isNotEmpty()
                 || $structureMappings->isNotEmpty();
 
-            // General-purpose questions may be published without curriculum mapping.
+            // Questions without curriculum mapping may be published for any assigned subject.
             // If any mapping is supplied, the complete official CP/TP/ATP/framework
             // contract remains mandatory and is validated exactly as before.
             if ($hasAnyCurriculumMapping) {
@@ -796,7 +796,7 @@ class QuestionBank extends Component
             $versionMetadata['curriculum_mapping'] = array_merge(
                 is_array($mappingMetadata) ? $mappingMetadata : [],
                 [
-                    'status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
+                    'status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_MAPPED',
                     'resolved_at' => now()->toISOString(),
                 ]
             );
@@ -819,7 +819,7 @@ class QuestionBank extends Component
                     'question_status' => 'PUBLISHED',
                     'version_status' => 'PUBLISHED',
                     'question_version_id' => $version->id,
-                    'curriculum_mapping_status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_REQUIRED',
+                    'curriculum_mapping_status' => $hasAnyCurriculumMapping ? 'MAPPED' : 'NOT_MAPPED',
                 ]
             );
         });
