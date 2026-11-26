@@ -31,14 +31,14 @@
                 <select wire:model="selectedSubjectId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
                     <option value="">Pilih mata pelajaran...</option>
                     @foreach($subjects as $subject)
-                        <option value="{{ $subject->id }}">{{ $subject->name }} ({{ $subject->code }})</option>
+                        <option value="{{ $subject->id }}">{{ $subject->name }} ({{ $subject->code }}) — {{ $subject->subject_category === 'MULOK' ? 'Mulok' : 'Wajib' }}</option>
                     @endforeach
                 </select>
                 @error('selectedSubjectId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
                 <label class="mb-1 block text-xs font-bold text-navy-900">Rombel</label>
-                <select wire:model="selectedRombelId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
+                <select wire:model.live="selectedRombelId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
                     <option value="">Pilih rombel...</option>
                     @foreach($rombels as $rombel)
                         <option value="{{ $rombel->id }}">{{ $rombel->name }} — {{ $rombel->gradeLevel?->name }} / Fase {{ $rombel->gradeLevel?->phase?->name }}</option>
@@ -50,11 +50,14 @@
                 <label class="mb-1 block text-xs font-bold text-navy-900">Semester</label>
                 <select wire:model="selectedSemesterId" class="w-full rounded-xl border border-cardBorder px-3 py-2 text-sm">
                     <option value="">Pilih semester...</option>
-                    @foreach($semesters as $semester)
+                    @forelse($semesters as $semester)
                         <option value="{{ $semester->id }}">Semester {{ $semester->term === 'GANJIL' ? 'Ganjil' : 'Genap' }} — {{ $semester->academicYear?->name ?? 'Tahun ajaran tidak tersedia' }}</option>
-                    @endforeach
+                    @empty
+                        <option value="" disabled>Belum ada semester untuk tahun ajaran rombel ini</option>
+                    @endforelse
                 </select>
                 @error('selectedSemesterId') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                @if($semesters->isEmpty()) <p class="mt-1 text-xs text-amber-700">Periksa Data Akademik & Rombel: tahun ajaran rombel harus memiliki Semester Ganjil dan Genap.</p> @endif
             </div>
             <div>
                 <label class="mb-1 block text-xs font-bold text-navy-900">Versi kurikulum terdaftar</label>
