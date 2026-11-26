@@ -25,6 +25,10 @@
         <div role="alert" class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">{{ $message }}</div>
     @enderror
 
+    @error('curriculumMapping')
+        <div role="alert" class="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-800">{{ $message }}</div>
+    @enderror
+
     <div class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.85fr)]">
         <section class="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <div>
@@ -352,8 +356,19 @@
                     <p class="font-bold text-slate-900">Langkah 4 · Simpan sebagai draf Bank Soal</p>
                     <p class="mt-1 text-xs leading-5 text-slate-600">Validasi akhir akan dijalankan kembali. Soal yang disimpan tetap DRAFT; penerbitan dilakukan terpisah oleh Guru.</p>
                 </div>
-                <button type="button" wire:click="importDrafts" wire:loading.attr="disabled" @if(!$selectedAssignmentId || ($requiresSectionSplit && !$selectedSection)) disabled @endif class="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">
-                    {{ $requiresSectionSplit ? 'Simpan bagian terpilih sebagai DRAFT' : 'Simpan Soal Valid sebagai Draf' }}
+                <button
+                    type="button"
+                    wire:click="importDrafts"
+                    wire:target="importDrafts"
+                    wire:loading.attr="disabled"
+                    aria-live="polite"
+                    @if(!$selectedAssignmentId || ($requiresSectionSplit && !$selectedSection)) disabled @endif
+                    class="inline-flex min-w-56 items-center justify-center rounded-xl bg-emerald-600 px-6 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    <span wire:loading.remove wire:target="importDrafts">
+                        {{ $requiresSectionSplit ? 'Simpan bagian terpilih sebagai DRAFT' : 'Simpan Soal Valid sebagai Draf' }}
+                    </span>
+                    <span wire:loading wire:target="importDrafts">Menyimpan soal ke Bank Soal…</span>
                 </button>
             </div>
         </section>
