@@ -178,7 +178,7 @@ class InstallerController extends Controller
             'admin_name' => 'required|string|max:255',
             'admin_username' => 'required|string|min:3|max:80|regex:/^[A-Za-z0-9._-]+$/',
             'admin_email' => 'nullable|email|max:255',
-            'admin_password' => 'required|string|min:14|confirmed',
+            'admin_password' => 'required|string|min:8|confirmed',
         ]);
 
         if (config('license.pre_activation_2026')) {
