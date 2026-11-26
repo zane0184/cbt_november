@@ -370,3 +370,23 @@ Tanggal: 27 November 2026
 ### PENGUJIAN
 - Regression tests ditulis tetapi belum dijalankan.
 - Tidak ada klaim runtime save berhasil.
+
+
+## J. REGRESSION COVERAGE EKSTRAKSI MEDIA DOCX
+
+### AUDIT
+- DocxQuestionMediaExtractor memvalidasi file DOCX, target relasi harus berada di word/media/, relasi harus resolved, MIME hanya JPEG/PNG, ukuran gambar maksimal 2 MB, total attachment maksimal 20 dan 8 MB, serta dimensi maksimal 25 juta piksel.
+- Sebelumnya belum ditemukan unit test khusus untuk extractor media pada direktori tests.
+
+### DESAIN
+- Tambahkan test terisolasi untuk ekstraksi PNG yang sah, penolakan path traversal/relasi tidak aman, dan penolakan MIME yang tidak didukung.
+- Tidak mengubah aturan ekstraksi atau storage karena audit source belum menemukan alasan untuk mengubahnya.
+
+### IMPLEMENTASI
+- File baru: backend-laravel/tests/Unit/DocxQuestionMediaExtractorTest.php.
+- Test mencakup PNG valid, path traversal, dan GIF yang tidak didukung.
+- File test berada di branch kerja; tidak ada source runtime atau schema yang diubah pada tahap ini.
+
+### PENGUJIAN
+- Test ditulis, belum dijalankan sesuai kebijakan.
+- Integrasi penyimpanan file, media_assets, dan question_version_media belum diuji runtime.
