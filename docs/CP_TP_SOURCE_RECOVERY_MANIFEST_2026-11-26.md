@@ -52,3 +52,39 @@ Tidak ada CP yang boleh ditulis ulang, dihasilkan AI, atau dimasukkan ke registr
 6. Buat importer idempoten + dry-run, lalu acceptance test MySQL 8/InnoDB disposable. Dilarang menulis ke database produksi pada tahap ini.
 
 **Status keseluruhan: sumber primer BSKAP 046 sudah terbaca; BKPDM 020 sudah dikorroborasi melalui siaran resmi dan salinan dokumen; SK Dirjen Pendis 9941 belum memiliki bytes PDF asli terverifikasi. Belum ada data CP resmi diimpor.**
+
+
+## G. Berkas diterima dari pengguna — pemeriksaan byte-level awal (26 November 2026)
+
+Dua PDF sekarang tersedia sebagai lampiran percakapan dan telah diperiksa dari file yang termount di workspace. Ini memperbarui status sebelumnya: berkas sumber sudah diterima; belum berarti tanda tangan digitalnya tervalidasi.
+
+### G1. SK Dirjen Pendis Nomor 9941 Tahun 2025
+- Nama file: `Dirjen-pendis-2025-9941 Capaian Pembelajaran PAI dan Bahasa Arab pada Madrasah.pdf`
+- Ukuran: 1,161,548 byte; 107 halaman; PDF 1.7.
+- SHA-256 bytes file yang diterima: `63ecce28af6c02b9fefde85f9594e7432b2575a69a263a46882ace6e87ffb757`.
+- Isi halaman awal memuat surat pengantar Ditjen Pendis Nomor B-606/Dt.I.I/PP.00/12/2025 tertanggal 1 Desember 2025; surat menyatakan melampirkan SK Dirjen Pendis Nomor 9941 tanggal 28 November 2025. Keputusan dan diktum KESATU/KEDUA terlihat pada halaman PDF 3–5; lampiran dimulai halaman PDF 6.
+- Struktur CP MI yang terdeteksi dari dokumen:
+  - Al-Qur'an Hadis: PDF halaman 10–19.
+  - Akidah Akhlak: PDF halaman 39–54.
+  - Fikih: PDF halaman 68–85.
+  - Sejarah Kebudayaan Islam: PDF halaman 88–95.
+  - Bahasa Arab: PDF halaman 96–103.
+- Fase MI menggunakan A (kelas I–II), B (kelas III–IV), C (kelas V–VI). Tiap record CP harus mempertahankan kode/subelemen/elemen dan halaman sumber aslinya.
+- **Validasi tanda tangan**: `pdfsig` melaporkan tidak ada signature object tertanam. Surat pengantar menyatakan dokumen ditandatangani elektronik BSrE, tetapi metadata/teks pernyataan saja tidak membuktikan tanda tangan kriptografis pada PDF yang diterima. Maka status: `USER_SUPPLIED_COPY_CONTENT_REVIEWED_SIGNATURE_NOT_CRYPTOGRAPHICALLY_VERIFIED`.
+- Identitas, nomor, tanggal, judul, diktum dan susunan lampiran konsisten dengan dokumen yang dicari. Namun jangan mengklaim keaslian kriptografis final sampai diperoleh file dengan signature object tervalidasi atau salinan yang dikonfirmasi melalui kanal resmi Kemenag.
+
+### G2. Salinan Kepka BKPDM Nomor 020 Tahun 2026
+- Nama file: `Salinan Kepka BKPDM No. 020 Tahun 2026 tentang Perubahan atas Keputusan Kepala BSKAP Kemendikdasmen No. 046_H_KR_2025.pdf`
+- Ukuran: 8,510,107 byte; 79 halaman; PDF 1.3; metadata menunjukkan dibuat/diubah 16 Juni 2026 dengan perangkat pemindai ApeosPort-V C5575.
+- SHA-256 bytes file yang diterima: `598278746b0f62333fdcab520d5dd4c1a9650c94bd3906acff4254100976552b`.
+- Halaman PDF 1–3 menampilkan keputusan, nomor 020 Tahun 2026, judul perubahan atas Kepka 046/H/KR/2025, tanggal penetapan 11 Juni 2026, nama Kepala BSKAP Toni Toharudin, serta cap dan tanda tangan basah pada halaman 3.
+- Lampiran I dimulai halaman PDF 4. Halaman PDF 4–9 memuat perubahan CP Pendidikan Agama dan Budi Pekerti (umum) pada SD/MI dan jenjang lain. Untuk SD/MI, bagian Islam menampilkan elemen Al-Qur'an Hadis, Akidah, Akhlak, Fikih, Sejarah Peradaban Islam dan fase A/B/C.
+- Lampiran II dimulai halaman PDF 46 dan membahas CP Pendidikan Khusus Agama dan Budi Pekerti.
+- `pdfsig` tidak menemukan signature object digital; file merupakan salinan hasil pemindaian yang menampilkan cap/tanda tangan. Status: `USER_SUPPLIED_SCANNED_COPY_VISUALLY_REVIEWED_DIGITAL_SIGNATURE_NOT_APPLICABLE_OR_NOT_PRESENT`.
+- Catatan penerapan: dokumen ini mengubah CP PAIBP dalam struktur BSKAP 046/2025. Untuk MI madrasah, jangan otomatis mengganti CP mapel PAI yang diatur khusus oleh SK Dirjen Pendis 9941/2025. Perlakukan 9941 sebagai sumber langsung mapel PAI dan Bahasa Arab madrasah; gunakan 020/2026 untuk konteks perubahan CP PAIBP SD/MI umum dan untuk analisis harmonisasi, bukan untuk menggabungkan dua struktur mata pelajaran.
+
+### G3. Keputusan audit setelah menerima berkas
+1. Dua file sumber sudah diterima dan byte-level SHA-256 sudah dihitung. Hash di atas mengidentifikasi persis file yang diperiksa, bukan bukti penerbit atau validasi tanda tangan.
+2. Isi 9941 dapat diekstrak dan peta halaman CP MI telah ditentukan; PDF 020 perlu OCR/ekstraksi berbasis halaman karena teks tidak dapat diekstrak secara normal.
+3. Tidak ada isi CP yang direka atau disintesis. Belum ada data yang diimpor ke registry, belum ada source aplikasi, migration, database, maupun deployment yang diubah.
+4. Langkah selanjutnya adalah transkripsi terkontrol CP 9941 per halaman dan verifikasi silang visual; lalu dataset dengan provenance per record. BKPDM 020 dipakai hanya untuk perubahan yang ruang lingkupnya benar-benar sesuai.
