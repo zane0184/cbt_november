@@ -624,7 +624,7 @@ class StudentImportTest extends TestCase
         $this->actingAs($this->admin);
         $file = UploadedFile::fake()->createWithContent(
             'siswa.csv',
-            "nama,nisn,rombel,tahun_pelajaran,kelas\\nSiswa Rombel Baru,0009876543,Kelas 1-B,2026/2027,1\\n"
+            "nama,nisn,rombel,tahun_pelajaran,kelas\nSiswa Rombel Baru,0009876543,Kelas 1-B,2026/2027,1\n"
         );
 
         Livewire::test(StudentImport::class)
@@ -652,7 +652,8 @@ class StudentImportTest extends TestCase
             'rombel_id' => $rombel->id,
             'status' => 'COMPLETED',
         ]);
-        $this->assertSame(8, strlen(session('import_credentials.0.password') ?? ''));
+        $credentials = session('import_credentials', []);
+        $this->assertSame(8, strlen($credentials[0]['password'] ?? ''));
     }
 
 }
