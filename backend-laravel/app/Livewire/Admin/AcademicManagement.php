@@ -136,7 +136,7 @@ class AcademicManagement extends Component
         $this->subjectCode = strtoupper(trim($this->subjectCode));
         $this->subjectName = trim($this->subjectName);
         $this->validate([
-            'subjectCode' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9_]+$/', Rule::unique('subjects', 'code')->where('tenant_id', auth()->user()->tenant_id)],
+            'subjectCode' => ['required', 'string', 'max:20', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('subjects', 'code')->where('tenant_id', auth()->user()->tenant_id)],
             'subjectName' => 'required|string|max:100',
             'subjectShortName' => 'nullable|string|max:30',
             'subjectCategory' => ['required', Rule::in(['WAJIB', 'MULOK'])],
