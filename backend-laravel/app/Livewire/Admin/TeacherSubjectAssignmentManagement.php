@@ -195,6 +195,12 @@ class TeacherSubjectAssignmentManagement extends Component
                         ],
                     ]
                 )->load('curriculumStructure.source');
+
+                if ($subjectMapping->status !== 'ACTIVE') {
+                    throw ValidationException::withMessages([
+                        'selectedSubjectId' => 'Pemetaan Mulok untuk versi kurikulum ini pernah dinonaktifkan. Audit histori pemetaan sebelum mengaktifkannya kembali.',
+                    ]);
+                }
             } else {
                 $subjectMapping = TenantCurriculumSubjectMapping::query()
                     ->where('tenant_id', $tenantId)
