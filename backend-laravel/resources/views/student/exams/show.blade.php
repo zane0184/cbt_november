@@ -18,6 +18,7 @@
         .question-card { min-width: 0; overflow-wrap: anywhere; padding-bottom: 5.5rem; }
         #question-stem, #question-media, #question-input { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
         #question-stem { font-size: clamp(1rem, 4.2vw, 1.125rem); line-height: 1.75; }
+        #question-math math { max-width: 100%; font-size: 1.2em; }
         #question-media img, #question-media video { display: block; max-width: 100%; max-height: 60vh; height: auto; object-fit: contain; }
         #question-media audio { width: 100%; max-width: 100%; }
         #question-input label { min-height: 48px; align-items: flex-start; }
@@ -116,7 +117,8 @@
                     <div class="mb-4 flex items-center justify-between gap-2"><span id="question-number" class="text-sm font-semibold text-blue-700"></span><span id="question-points" class="shrink-0 text-xs text-slate-500"></span></div>
                     <div id="question-media" class="question-copy-protected mb-5 space-y-3"></div>
                     <div id="question-stimulus" class="question-copy-protected mb-5 hidden rounded-xl border border-blue-200 bg-blue-50 p-4 text-base leading-relaxed text-slate-800"></div>
-                    <div id="question-stem" dir="auto" class="question-copy-protected mb-6 whitespace-pre-wrap text-lg leading-relaxed"></div>
+                    <div id="question-stem" dir="auto" class="question-copy-protected mb-3 whitespace-pre-wrap text-lg leading-relaxed"></div>
+                    <div id="question-math" class="question-copy-protected mb-6 flex flex-wrap items-center gap-4 overflow-x-auto text-xl"></div>
                     <div id="question-input" class="question-copy-protected space-y-3"></div>
                     <div class="mt-8 flex justify-between gap-3"><button id="previous-button" class="flex-1 rounded-xl border border-slate-300 px-3 py-3 font-semibold sm:flex-none sm:px-4">Sebelumnya</button><button id="next-button" class="flex-1 rounded-xl bg-blue-700 px-3 py-3 font-semibold text-white sm:flex-none sm:px-5">Berikutnya</button></div>
                 </div>
@@ -737,6 +739,36 @@
         }
     }
 
+    function renderMathMl(mathArea, fragments) {
+        mathArea.replaceChildren();
+        const parser = new DOMParser();
+        for (const fragment of fragments || []) {
+            if (!fragment || fragment.supported !== true || typeof fragment.mathml !== 'string') {
+                const fallback = document.createElement('p');
+                fallback.className = 'text-sm text-amber-700';
+                fallback.textContent = 'Rumus Word belum dapat dirender otomatis secara lengkap. Teks fallback dipertahankan; hubungi Guru bila bentuk rumus tidak sesuai.';
+                mathArea.appendChild(fallback);
+                continue;
+            }
+
+            try {
+                const parsed = parser.parseFromString(fragment.mathml, 'application/xml');
+                const root = parsed.documentElement;
+                if (!root || root.localName !== 'math'
+                    || root.namespaceURI !== 'http://www.w3.org/1998/Math/MathML'
+                    || parsed.getElementsByTagName('parsererror').length > 0) {
+                    throw new Error('MathML tidak valid.');
+                }
+                mathArea.appendChild(document.importNode(root, true));
+            } catch (_) {
+                const fallback = document.createElement('p');
+                fallback.className = 'text-sm text-amber-700';
+                fallback.textContent = fragment.fallback_text || 'Rumus tidak dapat ditampilkan; periksa kembali dokumen sumber.';
+                mathArea.appendChild(fallback);
+            }
+        }
+    }
+
     function renderQuestion() {
         const question = state.questions[state.current]; if (!question) return;
         const metadata = question.metadata || {}; const type = metadata.question_type || 'MC';
@@ -745,10 +777,21 @@
         el('question-announcement').textContent = `Soal ${state.current + 1} dari ${state.questions.length}`;
         el('question-points').textContent = `${question.points ?? 0} poin`;
         const stemArea = el('question-stem');
-        stemArea.textContent = question.snapshot_stem || '';
+        let stemText = question.snapshot_stem || '';
+        const mathFragments = metadata.rich_content?.mathml_fragments || [];
+        for (const formula of mathFragments) {
+            if (formula?.supported === true && typeof formula.fallback_text === 'string' && formula.fallback_text !== '') {
+                const fallbackIndex = stemText.indexOf(formula.fallback_text);
+                if (fallbackIndex >= 0) {
+                    stemText = stemText.slice(0, fallbackIndex) + stemText.slice(fallbackIndex + formula.fallback_text.length);
+                }
+            }
+        }
+        stemArea.textContent = stemText;
         stemArea.dir = ['ltr', 'rtl', 'auto'].includes(metadata.rich_content?.text_direction)
             ? metadata.rich_content.text_direction
             : 'auto';
+        renderMathMl(el('question-math'), mathFragments);
         const stimulusArea = el('question-stimulus');
         const stimulusText = metadata.shared_stimulus?.content || '';
         stimulusArea.textContent = stimulusText;
