@@ -436,7 +436,7 @@ class QuestionBank extends Component
             }
         }
 
-        DB::transaction(function () {
+        DB::transaction(function () use ($tenantId) {
             $oldAuditValues = null;
             $auditAction = 'CREATE_QUESTION';
 
