@@ -8,6 +8,7 @@ use App\Services\Questions\DocxQuestionTemplate;
 use App\Services\TeacherPortal\TeacherPortalDataService;
 use App\Support\Security\TeacherPortalAccess;
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -25,7 +26,10 @@ class QuestionDocxImport extends Component
     public array $sections = [];
     public bool $requiresSectionSplit = false;
     public ?string $selectedSection = null;
+    #[Locked]
     public ?string $previewHash = null;
+    #[Locked]
+    public ?string $previewAssignmentId = null;
     public bool $hasPreview = false;
 
     public function mount(): void
@@ -68,6 +72,18 @@ class QuestionDocxImport extends Component
     {
         $this->selectedCpIds = [];
         $this->selectedOutcomeIds = [];
+
+        // Multi-section DOCX is previewed before its assignment is chosen.
+        if ($this->hasPreview && $this->previewHash && $this->requiresSectionSplit
+            && $this->previewAssignmentId === null && $this->selectedAssignmentId !== '') {
+            $this->previewAssignmentId = $this->selectedAssignmentId;
+            return;
+        }
+
+        if ($this->previewAssignmentId !== null
+            && !hash_equals($this->previewAssignmentId, $this->selectedAssignmentId)) {
+            $this->invalidatePreview();
+        }
     }
 
     public function updatedSelectedSection(): void
@@ -75,11 +91,24 @@ class QuestionDocxImport extends Component
         $this->selectedAssignmentId = '';
         $this->selectedCpIds = [];
         $this->selectedOutcomeIds = [];
+        $this->previewAssignmentId = null;
+    }
+
+    private function invalidatePreview(): void
+    {
+        $this->questions = [];
+        $this->excludedContent = [];
+        $this->summary = [];
+        $this->sections = [];
+        $this->requiresSectionSplit = false;
+        $this->previewHash = null;
+        $this->previewAssignmentId = null;
+        $this->hasPreview = false;
     }
 
     public function updated(string $propertyName, mixed $value): void
     {
-        if (!preg_match('/^questions\\.(\\d+)\\.question_type$/', $propertyName, $match)) {
+        if (!preg_match('/^questions\.(\d+)\.question_type$/', $propertyName, $match)) {
             return;
         }
 
@@ -148,6 +177,9 @@ class QuestionDocxImport extends Component
             'selectedAssignmentId' => ['nullable', 'uuid'],
         ]);
 
+        // Clear old preview before parsing a replacement upload.
+        $this->invalidatePreview();
+
         $result = app(DocxQuestionParser::class)->parse($this->file->getRealPath());
         $this->questions = array_map(function (array $question): array {
             $question['included'] = true;
@@ -180,6 +212,10 @@ class QuestionDocxImport extends Component
             $this->selectedAssignmentId = '';
             $this->selectedCpIds = [];
             $this->selectedOutcomeIds = [];
+            $this->previewAssignmentId = null;
+        } else {
+            abort_unless($this->selectedAssignmentRow(), 403, 'Penugasan tidak ditemukan atau bukan milik Guru yang sedang masuk.');
+            $this->previewAssignmentId = $this->selectedAssignmentId;
         }
         $this->summary = [
             'total' => $result['total'],
@@ -205,8 +241,12 @@ class QuestionDocxImport extends Component
             'questions.*.included' => ['sometimes', 'boolean'],
         ]);
 
-        if (!$this->hasPreview || !$this->previewHash) {
-            throw ValidationException::withMessages(['docx' => 'Buat preview dokumen terlebih dahulu.']);
+        if (!$this->hasPreview || !$this->previewHash || !$this->previewAssignmentId) {
+            throw ValidationException::withMessages(['docx' => 'Pilih penugasan yang sesuai dan buat preview dokumen terlebih dahulu.']);
+        }
+
+        if (!hash_equals($this->previewAssignmentId, $this->selectedAssignmentId)) {
+            throw ValidationException::withMessages(['docx' => 'Penugasan berubah setelah preview. Buat preview ulang sebelum menyimpan.']);
         }
 
         $freshHash = hash_file('sha256', $this->file->getRealPath());
@@ -340,7 +380,7 @@ class QuestionDocxImport extends Component
             $result['imported'] . ' soal berhasil disimpan sebagai DRAFT pada Bank Soal. Soal belum diterbitkan dan belum dimasukkan ke ujian.'
         );
 
-        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'selectedSection', 'previewHash', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
+        $this->reset(['file', 'questions', 'excludedContent', 'summary', 'sections', 'requiresSectionSplit', 'selectedSection', 'previewHash', 'previewAssignmentId', 'hasPreview', 'selectedCpIds', 'selectedOutcomeIds']);
     }
 
     public function downloadTemplate()
