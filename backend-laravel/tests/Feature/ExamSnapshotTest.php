@@ -377,6 +377,64 @@ class ExamSnapshotTest extends TestCase
         ]);
     }
 
+    public function test_valid_matching_pairs_are_copied_to_immutable_snapshot(): void
+    {
+        $question = Question::create([
+            'tenant_id' => $this->tenant->id,
+            'subject_id' => $this->subject->id,
+            'owner_type' => 'TENANT',
+            'owner_user_id' => $this->user->id,
+            'question_code' => 'MATCHING-VALID-SNAPSHOT',
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        $version = QuestionVersion::create([
+            'tenant_id' => $this->tenant->id,
+            'question_id' => $question->id,
+            'major_version' => 1,
+            'minor_version' => 0,
+            'question_type' => 'MATCHING',
+            'stem' => 'Pasangkan istilah dan artinya.',
+            'default_points' => 10,
+            'is_current' => true,
+            'status' => 'PUBLISHED',
+            'created_by' => $this->user->id,
+        ]);
+
+        foreach ([
+            ['option_key' => 'pair_1', 'matching_key' => null, 'content' => 'Istilah A'],
+            ['option_key' => 'pair_2', 'matching_key' => null, 'content' => 'Istilah B'],
+            ['option_key' => null, 'matching_key' => 'pair_1', 'content' => 'Arti A'],
+            ['option_key' => null, 'matching_key' => 'pair_2', 'content' => 'Arti B'],
+        ] as $index => $option) {
+            \App\Models\QuestionOption::create(array_merge($option, [
+                'tenant_id' => $this->tenant->id,
+                'question_version_id' => $version->id,
+                'sequence' => $index + 1,
+                'is_correct' => false,
+            ]));
+        }
+        $this->mapQuestionVersionToCanonicalCurriculum($version, $this->canonicalContext);
+
+        $response = $this->actingAs($this->user, 'sanctum')->postJson(
+            "/api/v1/exams/{$this->exam->id}/questions",
+            ['question_version_ids' => [$version->id]]
+        );
+        $response->assertOk();
+
+        $snapshot = $this->exam->snapshots()->where('source_question_version_id', $version->id)->firstOrFail();
+        $this->assertCount(4, $snapshot->snapshot_options);
+        $this->assertSame(
+            ['pair_1', 'pair_2'],
+            collect($snapshot->snapshot_options)->whereNotNull('option_key')->pluck('option_key')->values()->all()
+        );
+        $this->assertSame(
+            ['pair_1', 'pair_2'],
+            collect($snapshot->snapshot_options)->whereNotNull('matching_key')->pluck('matching_key')->values()->all()
+        );
+    }
+
     public function test_exam_snapshot_rejects_matching_with_unpaired_options(): void
     {
         $question = Question::create([
